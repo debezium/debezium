@@ -53,7 +53,7 @@ linhnh,Linh Nguyen Hoang
 victorxiang30,Victor Xiang
 AndreyIg,Andrey Ignatenko
 eric-weaver,Eric Weaver
-ericpangiawan, Eric Pangiawan
+ericpangiawan,Eric Pangiawan
 karamel,Michael Wang
 alisator,Alisa Houskova
 ani-sha,Anisha Mohanty
@@ -226,6 +226,6 @@ j2gg0s,Yanjie Wang
 REMY David,David Remy
 tyrantlucifer,Chao Tian
 ryanvanhuuksloot,Ryan van Huuksloot
-vsantona, Vincenzo Santonastaso
-rolevinks, Stein Rolevink
+vsantona,Vincenzo Santonastaso
+rolevinks,Stein Rolevink
 matan-cohen,Matan Cohen
