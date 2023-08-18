@@ -15,10 +15,11 @@ After the snapshot completes, the streaming is resumed.
 .Configure snapshot
 
 You can set the following properties in the `data` component of a signal:
+
  * data-collections: to specify which {data-collection}s must be snapshot
  * additional-conditions: You can specify different filters for different {data-collection}. +
-    * The `data-collection` property is the fully-qualified name of the {data-collection} for which the filter will be applied.
-    * The `filter` property will have the same value used in the  `snapshot.select.statement.overrides`
+ ** The `data-collection` property is the fully-qualified name of the {data-collection} for which the filter will be applied.
+ ** The `filter` property will have the same value used in the  `snapshot.select.statement.overrides`
 
 For example:
 [source,json]
