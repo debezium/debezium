@@ -62,8 +62,8 @@ import io.debezium.util.Strings;
  * The SMT by default drops the tombstone message created by Debezium and converts the delete message into
  * a tombstone message that can be dropped, too, if required.
  * <p>
- * The SMT also has the option to insert fields from the original record (e.g. 'op' or 'source.ts_ms' into the
- * unwrapped record or ad them as header attributes.
+ * The SMT also has the option to insert fields from the original record (e.g. 'op' or 'source.ts_ms') into the
+ * unwrapped record or add them as header attributes.
  *
  * @param <R> the subtype of {@link ConnectRecord} on which this transformation will operate
  * @author Jiri Pechanec
