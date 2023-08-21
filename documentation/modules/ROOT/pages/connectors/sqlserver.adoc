@@ -39,7 +39,7 @@ endif::product[]
 
 ifdef::product[]
 
-For details about the {prodname} SQL Server connector and its use, see following topics:
+For details about the {prodname} SQL Server connector and its use, see the following topics:
 
 * xref:overview-of-debezium-sql-server-connector[]
 * xref:how-debezium-sql-server-connectors-work[]
@@ -2881,7 +2881,7 @@ Use the following format to specify the collection name: +
 
 |[[sqlserver-property-signal-enabled-channels]]<<sqlserver-property-signal-enabled-channels, `+signal.enabled.channels+`>>
 |source
-|  List of the signaling channel names that are enabled for the connector. 
+|  List of the signaling channel names that are enabled for the connector.
 By default, the following channels are available:
 
 * `source`
@@ -2894,7 +2894,7 @@ Optionally, you can also implement a {link-prefix}:{link-signalling}#debezium-si
 |[[sqlserver-property-notification-enabled-channels]]<<sqlserver-property-notification-enabled-channels, `+notification.enabled.channels+`>>
 |No default
 |List of notification channel names that are enabled for the connector.
-By default, the following channels are available: 
+By default, the following channels are available:
 
 * `sink`
 * `log`
