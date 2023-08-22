@@ -8,6 +8,7 @@ package io.debezium.connector.jdbc.util;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
+import java.util.function.UnaryOperator;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -55,7 +56,15 @@ public interface SinkRecordFactory {
      * Returns a single field key schema.
      */
     default Schema basicKeySchema() {
-        return SchemaBuilder.struct().field("id", Schema.INT8_SCHEMA).build();
+        return basicKeySchema(UnaryOperator.identity());
+    }
+
+    /**
+     * Returns a single field key schema.
+     * @param columnNameTransformation transformation for the field name
+     */
+    default Schema basicKeySchema(UnaryOperator<String> columnNameTransformation) {
+        return SchemaBuilder.struct().field(columnNameTransformation.apply("id"), Schema.INT8_SCHEMA).build();
     }
 
     /**
@@ -77,9 +86,13 @@ public interface SinkRecordFactory {
     }
 
     default Schema basicRecordSchema() {
+        return basicRecordSchema(UnaryOperator.identity());
+    }
+
+    default Schema basicRecordSchema(UnaryOperator<String> columnNameTransformation) {
         return SchemaBuilder.struct()
-                .field("id", Schema.INT8_SCHEMA)
-                .field("name", Schema.OPTIONAL_STRING_SCHEMA)
+                .field(columnNameTransformation.apply("id"), Schema.INT8_SCHEMA)
+                .field(columnNameTransformation.apply("name"), Schema.OPTIONAL_STRING_SCHEMA)
                 .build();
     }
 
@@ -182,18 +195,22 @@ public interface SinkRecordFactory {
     }
 
     default SinkRecord createRecord(String topicName, byte key) {
+        return createRecord(topicName, key, UnaryOperator.identity());
+    }
+
+    default SinkRecord createRecord(String topicName, byte key, UnaryOperator<String> columnNameTransformation) {
         return SinkRecordBuilder.create()
                 .flat(isFlattened())
                 .name("prefix")
                 .topic(topicName)
                 .offset(1)
                 .partition(0)
-                .keySchema(basicKeySchema())
-                .recordSchema(basicRecordSchema())
+                .keySchema(basicKeySchema(columnNameTransformation))
+                .recordSchema(basicRecordSchema(columnNameTransformation))
                 .sourceSchema(basicSourceSchema())
-                .key("id", key)
-                .after("id", key)
-                .after("name", "John Doe")
+                .key(columnNameTransformation.apply("id"), key)
+                .after(columnNameTransformation.apply("id"), key)
+                .after(columnNameTransformation.apply("name"), "John Doe")
                 .source("ts_ms", (int) Instant.now().getEpochSecond())
                 .build();
     }

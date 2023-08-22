@@ -225,20 +225,31 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
 
     @Override
     public Set<String> resolveMissingFields(SinkRecordDescriptor record, TableDescriptor table) {
+
         final Set<String> missingFields = new HashSet<>();
         for (FieldDescriptor field : record.getFields().values()) {
-            String columnName = columnNamingStrategy.resolveColumnName(field.getName());
-            if (isIdentifierUppercaseWhenNotQuoted() && !getConfig().isQuoteIdentifiers()) {
-                final String columnIdentifier = toIdentifier(columnName);
-                if (!(columnIdentifier.startsWith("\"") && columnIdentifier.endsWith("\""))) {
-                    columnName = columnName.toUpperCase();
-                }
-            }
+            String columnName = resolveColumnName(field);
             if (!table.hasColumn(columnName)) {
                 missingFields.add(field.getName());
             }
         }
         return missingFields;
+    }
+
+    private String resolveColumnName(FieldDescriptor field) {
+
+        String columnName = columnNamingStrategy.resolveColumnName(field.getName());
+        if (!getConfig().isQuoteIdentifiers()) {
+            if (isIdentifierUppercaseWhenNotQuoted()) {
+                final String columnIdentifier = toIdentifier(columnName);
+                if (!(columnIdentifier.startsWith("\"") && columnIdentifier.endsWith("\""))) {
+                    return columnName.toUpperCase();
+                }
+            }
+            return columnName.toLowerCase();
+        }
+
+        return columnName;
     }
 
     @Override
