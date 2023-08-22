@@ -16,7 +16,11 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.assertj.db.api.TableAssert;
+import org.assertj.db.type.DataSourceWithLetterCase;
 import org.assertj.db.type.ValueType;
+import org.assertj.db.type.lettercase.CaseComparisons;
+import org.assertj.db.type.lettercase.CaseConversions;
+import org.assertj.db.type.lettercase.LetterCase;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -25,6 +29,9 @@ import org.postgresql.geometric.PGpoint;
 import org.postgresql.util.PGobject;
 
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
+import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.InsertMode;
+import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.PrimaryKeyMode;
+import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.SchemaEvolutionMode;
 import io.debezium.connector.jdbc.integration.AbstractJdbcSinkInsertModeTest;
 import io.debezium.connector.jdbc.junit.TestHelper;
 import io.debezium.connector.jdbc.junit.jupiter.PostgresSinkDatabaseContextProvider;
@@ -45,6 +52,9 @@ import io.debezium.doc.FixFor;
 @ExtendWith(PostgresSinkDatabaseContextProvider.class)
 public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
 
+    public static final LetterCase LOWER_CASE_STRICT = LetterCase.getLetterCase(CaseConversions.LOWER, CaseComparisons.STRICT);
+    public static final LetterCase UPPER_CASE_STRICT = LetterCase.getLetterCase(CaseConversions.UPPER, CaseComparisons.STRICT);
+
     public JdbcSinkInsertModeIT(Sink sink) {
         super(sink);
     }
@@ -56,10 +66,10 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
     public void testInsertModeInsertWithPrimaryKeyModeComplexRecordValue(SinkRecordFactory factory) throws SQLException {
 
         final Map<String, String> properties = getDefaultSinkConfig();
-        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.BASIC.getValue());
-        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_VALUE.getValue());
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_VALUE.getValue());
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_FIELDS, "id");
-        properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.INSERT.getValue());
+        properties.put(JdbcSinkConnectorConfig.INSERT_MODE, InsertMode.INSERT.getValue());
         properties.put(JdbcSinkConnectorConfig.POSTGRES_POSTGIS_SCHEMA, "postgis");
 
         startSinkConnector(properties);
@@ -116,6 +126,67 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
         getSink().assertColumnType(tableAssert, "geography", PGobject.class, expectedGeographyValue);
 
         getSink().assertColumnHasNullValue(tableAssert, "p");
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("DBZ-6682")
+    public void testInsertModeInsertWithPrimaryKeyModeUpperCaseColumnNameWithQuotedIdentifiers(SinkRecordFactory factory) {
+
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_VALUE.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_FIELDS, "ID");
+        properties.put(JdbcSinkConnectorConfig.QUOTE_IDENTIFIERS, "true");
+        properties.put(JdbcSinkConnectorConfig.INSERT_MODE, InsertMode.INSERT.getValue());
+
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server1", "schema", tableName);
+
+        final SinkRecord createSimpleRecord1 = factory.createRecord(topicName, (byte) 1, String::toUpperCase);
+        final SinkRecord createSimpleRecord2 = factory.createRecord(topicName, (byte) 2, String::toUpperCase);
+        consume(createSimpleRecord1);
+        consume(createSimpleRecord2);
+
+        DataSourceWithLetterCase dataSourceWithLetterCase = new DataSourceWithLetterCase(dataSource(), LetterCase.TABLE_DEFAULT, UPPER_CASE_STRICT, UPPER_CASE_STRICT);
+        final TableAssert tableAssert = TestHelper.assertTable(dataSourceWithLetterCase, destinationTableName(createSimpleRecord1));
+        tableAssert.exists().hasNumberOfRows(2).hasNumberOfColumns(2);
+
+        getSink().assertColumnType(tableAssert, "ID", ValueType.NUMBER, (byte) 1, (byte) 2);
+        getSink().assertColumnType(tableAssert, "NAME", ValueType.TEXT, "John Doe", "John Doe");
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("DBZ-6682")
+    public void testInsertModeInsertWithPrimaryKeyModeUpperCaseColumnNameWithoutQuotedIdentifiers(SinkRecordFactory factory) {
+
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_VALUE.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_FIELDS, "ID");
+        properties.put(JdbcSinkConnectorConfig.INSERT_MODE, InsertMode.INSERT.getValue());
+
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server1", "schema", tableName);
+
+        final SinkRecord createSimpleRecord1 = factory.createRecord(topicName, (byte) 1, String::toUpperCase);
+        final SinkRecord createSimpleRecord2 = factory.createRecord(topicName, (byte) 2, String::toUpperCase);
+        consume(createSimpleRecord1);
+        consume(createSimpleRecord2);
+
+        DataSourceWithLetterCase dataSourceWithLetterCase = new DataSourceWithLetterCase(dataSource(), LetterCase.TABLE_DEFAULT, LOWER_CASE_STRICT, LOWER_CASE_STRICT);
+        final TableAssert tableAssert = TestHelper.assertTable(dataSourceWithLetterCase, destinationTableName(createSimpleRecord1));
+        tableAssert.exists().hasNumberOfRows(2).hasNumberOfColumns(2);
+
+        getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1, (byte) 2);
+        getSink().assertColumnType(tableAssert, "name", ValueType.TEXT, "John Doe", "John Doe");
     }
 
     private static Schema buildGeoTypeSchema(String type) {
