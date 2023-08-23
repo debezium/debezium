@@ -578,6 +578,12 @@ public class TestHelper {
 
             builder.with(field, config);
         }
+
+        if (bufferType.isInfinispanEmbedded()) {
+            builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_INFINISPAN_CACHE_GLOBAL,
+                    getDefaultInfinispanEmbeddedCacheConfig("global"));
+        }
+
         return builder;
     }
 
