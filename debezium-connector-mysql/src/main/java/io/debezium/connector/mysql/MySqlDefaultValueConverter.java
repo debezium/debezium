@@ -62,7 +62,7 @@ public class MySqlDefaultValueConverter implements DefaultValueConverter {
     @Immutable
     private static final Set<Integer> TRIM_DATA_TYPES = Collect.unmodifiableSet(Types.TINYINT, Types.INTEGER,
             Types.DATE, Types.TIMESTAMP, Types.TIMESTAMP_WITH_TIMEZONE, Types.TIME, Types.BOOLEAN, Types.BIT,
-            Types.NUMERIC, Types.DECIMAL, Types.FLOAT, Types.DOUBLE, Types.REAL);
+            Types.NUMERIC, Types.DECIMAL, Types.FLOAT, Types.DOUBLE, Types.REAL, Types.BIGINT, Types.SMALLINT);
 
     @Immutable
     private static final Set<Integer> NUMBER_DATA_TYPES = Collect.unmodifiableSet(Types.BIT, Types.TINYINT,

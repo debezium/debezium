@@ -12,6 +12,7 @@ import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.Instant;
@@ -3186,6 +3187,74 @@ public class MySqlAntlrDdlParserTest {
         assertThat(getColumnSchema(table, "columnE").defaultValue()).isEqualTo(null);
         assertThat(getColumnSchema(table, "my_dateA").defaultValue()).isEqualTo(LocalDateTime.of(2018, 4, 27, 13, 28, 43).toEpochSecond(ZoneOffset.UTC) * 1_000);
         assertThat(getColumnSchema(table, "my_dateB").defaultValue()).isEqualTo(LocalDateTime.of(9999, 12, 31, 0, 0, 0).toEpochSecond(ZoneOffset.UTC) * 1_000);
+    }
+
+    @FixFor("DBZ-6824")
+    @Test
+    public void parseDefaultValueWhichNeedTrim() {
+        String ddl = " CREATE TABLE default_value_test (" +
+                "id INTEGER NOT NULL PRIMARY KEY," +
+                "tiny_c TINYINT DEFAULT ' 0 '," +
+                "boolean_c BOOLEAN DEFAULT ' 1 '," +
+                "tiny_un_z_c TINYINT UNSIGNED ZEROFILL DEFAULT ' 2 '," +
+                "small_c SMALLINT DEFAULT ' 3 '," +
+                "small_un_c SMALLINT UNSIGNED DEFAULT ' 4 '," +
+                "small_un_z_c SMALLINT UNSIGNED ZEROFILL DEFAULT ' 5 '," +
+                "medium_c MEDIUMINT DEFAULT ' 6 '," +
+                "medium_un_c MEDIUMINT UNSIGNED DEFAULT ' 7 '," +
+                "medium_un_z_c MEDIUMINT UNSIGNED ZEROFILL DEFAULT ' 8 '," +
+                "int_c INTEGER DEFAULT ' 9 '," +
+                "int_un_c INTEGER UNSIGNED DEFAULT ' 10 '," +
+                "int_un_z_c INTEGER UNSIGNED ZEROFILL DEFAULT ' 11 '," +
+                "int11_c INT(11) DEFAULT ' 12 '," +
+                "big_c BIGINT DEFAULT ' 13 '," +
+                "big_un_c BIGINT UNSIGNED DEFAULT ' 14 '," +
+                "big_un_z_c BIGINT UNSIGNED ZEROFILL DEFAULT ' 15 '," +
+                "decimal_c DECIMAL(8, 4) DEFAULT ' 16  '," +
+                "decimal_un_c DECIMAL(8, 4) UNSIGNED DEFAULT ' 17 '," +
+                "decimal_un_z_c DECIMAL(8, 4) UNSIGNED ZEROFILL DEFAULT ' 18 '," +
+                "numeric_c NUMERIC(6, 0) DEFAULT ' 19 '," +
+                "big_decimal_c DECIMAL(65, 1) DEFAULT ' 20 '," +
+                "real_c REAL DEFAULT ' 21.0'," +
+                "float_c FLOAT DEFAULT ' 22.0'," +
+                "float_un_c FLOAT UNSIGNED DEFAULT ' 23'," +
+                "float_un_z_c FLOAT UNSIGNED ZEROFILL DEFAULT ' 24'," +
+                "double_c DOUBLE DEFAULT ' 25'," +
+                "double_un_c DOUBLE UNSIGNED DEFAULT ' 26'," +
+                "double_un_z_c DOUBLE UNSIGNED ZEROFILL DEFAULT ' 27'," +
+                "tiny_un_c TINYINT UNSIGNED DEFAULT ' 28 ');";
+        parser.parse(ddl, tables);
+        Table table = tables.forTable(new TableId(null, null, "default_value_test"));
+        assertThat(table.columnWithName("id").isOptional()).isEqualTo(false);
+        assertThat(getColumnSchema(table, "tiny_c").defaultValue()).isEqualTo((short) 0);
+        assertThat(getColumnSchema(table, "boolean_c").defaultValue()).isEqualTo(true);
+        assertThat(getColumnSchema(table, "tiny_un_z_c").defaultValue()).isEqualTo((short) 2);
+        assertThat(getColumnSchema(table, "small_c").defaultValue()).isEqualTo((short) 3);
+        assertThat(getColumnSchema(table, "small_un_c").defaultValue()).isEqualTo(4);
+        assertThat(getColumnSchema(table, "small_un_z_c").defaultValue()).isEqualTo(5);
+        assertThat(getColumnSchema(table, "medium_c").defaultValue()).isEqualTo(6);
+        assertThat(getColumnSchema(table, "medium_un_c").defaultValue()).isEqualTo(7);
+        assertThat(getColumnSchema(table, "medium_un_z_c").defaultValue()).isEqualTo(8);
+        assertThat(getColumnSchema(table, "int_c").defaultValue()).isEqualTo(9);
+        assertThat(getColumnSchema(table, "int_un_c").defaultValue()).isEqualTo(10);
+        assertThat(getColumnSchema(table, "int_un_z_c").defaultValue()).isEqualTo(11);
+        assertThat(getColumnSchema(table, "int11_c").defaultValue()).isEqualTo(12);
+        assertThat(getColumnSchema(table, "big_c").defaultValue()).isEqualTo(13L);
+        assertThat(getColumnSchema(table, "big_un_c").defaultValue()).isEqualTo(new BigDecimal(14));
+        assertThat(getColumnSchema(table, "big_un_z_c").defaultValue()).isEqualTo(new BigDecimal(15));
+        assertThat(getColumnSchema(table, "decimal_c").defaultValue()).isEqualTo(16.0);
+        assertThat(getColumnSchema(table, "decimal_un_c").defaultValue()).isEqualTo(17.0);
+        assertThat(getColumnSchema(table, "decimal_un_z_c").defaultValue()).isEqualTo(18.0);
+        assertThat(getColumnSchema(table, "numeric_c").defaultValue()).isEqualTo(19.0);
+        assertThat(getColumnSchema(table, "big_decimal_c").defaultValue()).isEqualTo(20.0);
+        assertThat(getColumnSchema(table, "real_c").defaultValue()).isEqualTo(21.0f);
+        assertThat(getColumnSchema(table, "float_c").defaultValue()).isEqualTo(22.0f);
+        assertThat(getColumnSchema(table, "float_un_c").defaultValue()).isEqualTo(23.0f);
+        assertThat(getColumnSchema(table, "float_un_z_c").defaultValue()).isEqualTo(24.0f);
+        assertThat(getColumnSchema(table, "double_c").defaultValue()).isEqualTo(25.0);
+        assertThat(getColumnSchema(table, "double_un_c").defaultValue()).isEqualTo(26.0);
+        assertThat(getColumnSchema(table, "double_un_z_c").defaultValue()).isEqualTo(27.0);
+        assertThat(getColumnSchema(table, "tiny_un_c").defaultValue()).isEqualTo((short) 28);
     }
 
     @Test
