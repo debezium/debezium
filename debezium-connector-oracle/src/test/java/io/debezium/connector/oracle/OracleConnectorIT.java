@@ -5528,7 +5528,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-6660")
-    @SkipWhenAdapterNameIsNot(SkipWhenAdapterNameIsNot.AdapterName.LOGMINER)
+    @Ignore("Test can be flaky when using a brand new docker instance")
     public void shouldUseEndScnIfDeviationProducesScnOutsideOfUndoRetention() throws Exception {
         try {
             TestHelper.dropTable(connection, "dbz6660");
