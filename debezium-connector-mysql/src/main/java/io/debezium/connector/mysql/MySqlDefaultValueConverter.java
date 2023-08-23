@@ -59,10 +59,10 @@ public class MySqlDefaultValueConverter implements DefaultValueConverter {
 
     private static final Pattern CHARSET_INTRODUCER_PATTERN = Pattern.compile("^_[A-Za-z0-9]+'(.*)'$");
 
+    // Default values of these data types and number data types need to be trimmed.
     @Immutable
-    private static final Set<Integer> TRIM_DATA_TYPES = Collect.unmodifiableSet(Types.TINYINT, Types.INTEGER,
-            Types.DATE, Types.TIMESTAMP, Types.TIMESTAMP_WITH_TIMEZONE, Types.TIME, Types.BOOLEAN, Types.BIT,
-            Types.NUMERIC, Types.DECIMAL, Types.FLOAT, Types.DOUBLE, Types.REAL, Types.BIGINT, Types.SMALLINT);
+    private static final Set<Integer> TRIM_DATA_TYPES_BESIDES_NUMBER = Collect.unmodifiableSet(Types.DATE,
+            Types.TIMESTAMP, Types.TIMESTAMP_WITH_TIMEZONE, Types.TIME, Types.BOOLEAN);
 
     @Immutable
     private static final Set<Integer> NUMBER_DATA_TYPES = Collect.unmodifiableSet(Types.BIT, Types.TINYINT,
@@ -127,7 +127,8 @@ public class MySqlDefaultValueConverter implements DefaultValueConverter {
         }
 
         // trim non varchar data types before converting
-        if (TRIM_DATA_TYPES.contains(column.jdbcType())) {
+        int jdbcType = column.jdbcType();
+        if (TRIM_DATA_TYPES_BESIDES_NUMBER.contains(jdbcType) || NUMBER_DATA_TYPES.contains(jdbcType)) {
             value = value.trim();
         }
 
@@ -135,13 +136,13 @@ public class MySqlDefaultValueConverter implements DefaultValueConverter {
         value = stripCharacterSetIntroducer(value);
 
         // boolean is also INT(1) or TINYINT(1)
-        if (NUMBER_DATA_TYPES.contains(column.jdbcType()) && ("true".equalsIgnoreCase(value) || "false".equalsIgnoreCase(value))) {
-            if (Types.DECIMAL == column.jdbcType() || Types.NUMERIC == column.jdbcType()) {
+        if (NUMBER_DATA_TYPES.contains(jdbcType) && ("true".equalsIgnoreCase(value) || "false".equalsIgnoreCase(value))) {
+            if (Types.DECIMAL == jdbcType || Types.NUMERIC == jdbcType) {
                 return convertToDecimal(column, value.equalsIgnoreCase("true") ? "1" : "0");
             }
             return value.equalsIgnoreCase("true") ? 1 : 0;
         }
-        switch (column.jdbcType()) {
+        switch (jdbcType) {
             case Types.DATE:
                 return convertToLocalDate(column, value);
             case Types.TIMESTAMP:
