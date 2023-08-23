@@ -98,7 +98,6 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.history.MemorySchemaHistory;
 import io.debezium.storage.file.history.FileSchemaHistory;
-import io.debezium.util.Strings;
 import io.debezium.util.Testing;
 
 import ch.qos.logback.classic.Level;
@@ -2654,7 +2653,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
             // Wait for the connector to advance beyond the current SCN after the INSERT.
             Awaitility.await().atMost(Duration.ofMinutes(3))
-                    .until(() -> Scn.valueOf(getStreamingMetric("CurrentScn")).compareTo(scnAfterInsert) > 0);
+                    .until(() -> new Scn(getStreamingMetric("CurrentScn")).compareTo(scnAfterInsert) > 0);
 
             assertNoRecordsToConsume();
         }
@@ -3775,11 +3774,11 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
             // There should at least be a commit by the flush policy that triggers the advancement
             // of the SCN values in the offsets within a few seconds of the polling mechanism.
-            final String offsetScn = getStreamingMetric("OffsetScn");
-            final String committedScn = getStreamingMetric("CommittedScn");
+            final BigInteger offsetScn = getStreamingMetric("OffsetScn");
+            final BigInteger committedScn = getStreamingMetric("CommittedScn");
             Awaitility.await().atMost(60, TimeUnit.SECONDS).until(() -> {
-                final String newOffsetScn = getStreamingMetric("OffsetScn");
-                final String newCommittedScn = getStreamingMetric("CommittedScn");
+                final BigInteger newOffsetScn = getStreamingMetric("OffsetScn");
+                final BigInteger newCommittedScn = getStreamingMetric("CommittedScn");
                 return !newOffsetScn.equals(offsetScn) && !newCommittedScn.equals(committedScn);
             });
         }
@@ -5137,16 +5136,16 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
             final AtomicReference<Scn> offsetScn = new AtomicReference<>(Scn.NULL);
             Awaitility.await().atMost(Duration.ofMinutes(5)).until(() -> {
-                final String offsetScnStr = getStreamingMetric("OffsetScn");
-                if (!Strings.isNullOrBlank(offsetScnStr) && !"null".equals(offsetScnStr)) {
-                    offsetScn.set(Scn.valueOf(offsetScnStr));
+                final BigInteger offsetScnValue = getStreamingMetric("OffsetScn");
+                if (offsetScnValue != null) {
+                    offsetScn.set(new Scn(offsetScnValue));
                     return true;
                 }
                 return false;
             });
 
             Awaitility.await().atMost(Duration.ofMinutes(5)).pollInterval(Duration.ofSeconds(2)).until(() -> {
-                return Scn.valueOf(getStreamingMetric("OffsetScn")).compareTo(offsetScn.get()) > 0;
+                return new Scn(getStreamingMetric("OffsetScn")).compareTo(offsetScn.get()) > 0;
             });
         }
         finally {
@@ -5635,11 +5634,11 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             Awaitility.await()
                     .atMost(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS)
                     .until(() -> {
-                        final String scnValue = getStreamingMetric("CurrentScn");
-                        if (scnValue == null || "null".equals(scnValue)) {
+                        final BigInteger scnValue = getStreamingMetric("CurrentScn");
+                        if (scnValue == null) {
                             return false;
                         }
-                        return Scn.valueOf(scnValue).compareTo(scn) > 0;
+                        return new Scn(scnValue).compareTo(scn) > 0;
                     });
         }
     }
