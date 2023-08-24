@@ -3477,15 +3477,19 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-6076")
     public void shouldAddNewFieldToSourceInfo() throws InterruptedException {
-        TestHelper.execute(SETUP_TABLES_STMT);
+        TestHelper.execute(
+                "DROP TABLE IF EXISTS s1.DBZ6076;",
+                "CREATE TABLE s1.DBZ6076 (pk SERIAL, aa integer, PRIMARY KEY(pk));",
+                "INSERT INTO s1.DBZ6076 (aa) VALUES (1);");
         start(PostgresConnector.class, TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.name())
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.DBZ6076")
                 .with(PostgresConnectorConfig.SOURCE_INFO_STRUCT_MAKER, CustomPostgresSourceInfoStructMaker.class.getName())
                 .build());
         assertConnectorIsRunning();
 
         // check records from snapshot
-        SourceRecords actualRecords = consumeRecordsByTopic(2);
+        SourceRecords actualRecords = consumeRecordsByTopic(1);
         actualRecords.forEach(sourceRecord -> {
             assertTrue(sourceRecord.value() instanceof Struct);
             Struct source = ((Struct) sourceRecord.value()).getStruct("source");
@@ -3493,9 +3497,9 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         });
 
         // insert 2 new records
-        TestHelper.execute(INSERT_STMT);
+        TestHelper.execute("INSERT INTO s1.DBZ6076 (aa) VALUES (2);");
         // check records from streaming
-        actualRecords = consumeRecordsByTopic(2);
+        actualRecords = consumeRecordsByTopic(1);
         actualRecords.forEach(sourceRecord -> {
             assertTrue(sourceRecord.value() instanceof Struct);
             Struct source = ((Struct) sourceRecord.value()).getStruct("source");
