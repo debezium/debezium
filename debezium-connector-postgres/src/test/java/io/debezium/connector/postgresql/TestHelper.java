@@ -53,8 +53,8 @@ import io.debezium.util.Throwables;
  */
 public final class TestHelper {
 
-    private static final String CONNECTION_TEST = "Debezium Test";
-    protected static final String TEST_SERVER = "test_server";
+    public static final String CONNECTION_TEST = "Debezium Test";
+    public static final String TEST_SERVER = "test_server";
     protected static final String TEST_DATABASE = "postgres";
     protected static final String PK_FIELD = "pk";
     private static final String TEST_PROPERTY_PREFIX = "debezium.test.";
@@ -261,15 +261,19 @@ public final class TestHelper {
         }
     }
 
-    public static JdbcConfiguration defaultJdbcConfig() {
+    public static JdbcConfiguration defaultJdbcConfig(String hostname, int port) {
         return JdbcConfiguration.copy(Configuration.fromSystemProperties("database."))
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "dbserver1")
                 .withDefault(JdbcConfiguration.DATABASE, "postgres")
-                .withDefault(JdbcConfiguration.HOSTNAME, "localhost")
-                .withDefault(JdbcConfiguration.PORT, 5432)
+                .withDefault(JdbcConfiguration.HOSTNAME, hostname)
+                .withDefault(JdbcConfiguration.PORT, port)
                 .withDefault(JdbcConfiguration.USER, "postgres")
                 .withDefault(JdbcConfiguration.PASSWORD, "postgres")
                 .build();
+    }
+
+    public static JdbcConfiguration defaultJdbcConfig() {
+        return defaultJdbcConfig("localhost", 5432);
     }
 
     public static Configuration.Builder defaultConfig() {
