@@ -37,7 +37,6 @@ public class CustomPostgresSourceInfoStructMaker extends PostgresSourceInfoStruc
     @Override
     public Struct struct(SourceInfo sourceInfo) {
         Struct result = super.struct(sourceInfo);
-        Long lsn = result.getInt64(SourceInfo.LSN_KEY);
         result.put("newField", "newFieldValue");
         return result;
     }
