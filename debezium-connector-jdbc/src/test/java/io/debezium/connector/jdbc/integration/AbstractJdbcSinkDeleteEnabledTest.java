@@ -50,10 +50,11 @@ public abstract class AbstractJdbcSinkDeleteEnabledTest extends AbstractJdbcSink
         consume(factory.deleteRecord(topicName));
 
         final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName(createRecord));
-        tableAssert.exists().hasNumberOfRows(1).hasNumberOfColumns(2);
+        tableAssert.exists().hasNumberOfRows(1).hasNumberOfColumns(3);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1);
         getSink().assertColumnType(tableAssert, "name", ValueType.TEXT, "John Doe");
+        getSink().assertColumnType(tableAssert, "nick_name$", ValueType.TEXT, "John Doe$");
     }
 
     @ParameterizedTest
@@ -74,10 +75,11 @@ public abstract class AbstractJdbcSinkDeleteEnabledTest extends AbstractJdbcSink
         consume(factory.deleteRecord(topicName));
 
         final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName(createRecord));
-        tableAssert.exists().hasNumberOfRows(0).hasNumberOfColumns(2);
+        tableAssert.exists().hasNumberOfRows(0).hasNumberOfColumns(3);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER);
         getSink().assertColumnType(tableAssert, "name", ValueType.TEXT);
+        getSink().assertColumnType(tableAssert, "nick_name$", ValueType.TEXT);
     }
 
     @ParameterizedTest
@@ -123,10 +125,11 @@ public abstract class AbstractJdbcSinkDeleteEnabledTest extends AbstractJdbcSink
         consume(deleteRecord);
 
         final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName(deleteRecord));
-        tableAssert.exists().hasNumberOfRows(0).hasNumberOfColumns(2);
+        tableAssert.exists().hasNumberOfRows(0).hasNumberOfColumns(3);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER);
         getSink().assertColumnType(tableAssert, "name", ValueType.TEXT);
+        getSink().assertColumnType(tableAssert, "nick_name$", ValueType.TEXT);
     }
 
     @ParameterizedTest

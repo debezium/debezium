@@ -236,9 +236,9 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
         return missingFields;
     }
 
-    private String resolveColumnName(FieldDescriptor field) {
+    protected String resolveColumnName(FieldDescriptor field) {
 
-        String columnName = columnNamingStrategy.resolveColumnName(field.getName());
+        String columnName = columnNamingStrategy.resolveColumnName(field.getColumnName());
         if (!getConfig().isQuoteIdentifiers()) {
             if (isIdentifierUppercaseWhenNotQuoted()) {
                 final String columnIdentifier = toIdentifier(columnName);
@@ -262,7 +262,7 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
         // First handle key columns
         builder.appendLists(", ", record.getKeyFieldNames(), record.getNonKeyFieldNames(), (name) -> {
             final FieldDescriptor field = record.getFields().get(name);
-            final String columnName = toIdentifier(columnNamingStrategy.resolveColumnName(name));
+            final String columnName = toIdentifier(columnNamingStrategy.resolveColumnName(field.getColumnName()));
 
             final String columnType = field.getTypeName();
 
@@ -284,7 +284,7 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
             builder.append(", PRIMARY KEY(");
             builder.appendList(", ", record.getKeyFieldNames(), (name) -> {
                 final FieldDescriptor field = record.getFields().get(name);
-                return toIdentifier(columnNamingStrategy.resolveColumnName(field.getName()));
+                return toIdentifier(columnNamingStrategy.resolveColumnName(field.getColumnName()));
             });
             builder.append(")");
         }
@@ -304,7 +304,7 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
             final FieldDescriptor field = record.getFields().get(name);
             final StringBuilder addColumnSpec = new StringBuilder();
             addColumnSpec.append("ADD ");
-            addColumnSpec.append(toIdentifier(columnNamingStrategy.resolveColumnName(name)));
+            addColumnSpec.append(toIdentifier(columnNamingStrategy.resolveColumnName(field.getColumnName())));
             addColumnSpec.append(" ").append(field.getTypeName());
             addColumnDefaultValue(field, addColumnSpec);
 
@@ -632,7 +632,8 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
     }
 
     protected String columnQueryBindingFromField(String fieldName, TableDescriptor table, SinkRecordDescriptor record) {
-        final String columnName = resolveColumnNameFromField(fieldName);
+        final FieldDescriptor field = record.getFields().get(fieldName);
+        final String columnName = resolveColumnNameFromField(field.getColumnName());
         final ColumnDescriptor column = table.getColumnByName(columnName);
         if (column == null) {
             throw new DebeziumException("Failed to find column " + columnName + " in table " + table.getId().getTableName());
@@ -679,7 +680,7 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
 
     protected String columnNameFromField(String fieldName, SinkRecordDescriptor record) {
         final FieldDescriptor field = record.getFields().get(fieldName);
-        final String columnName = getColumnNamingStrategy().resolveColumnName(field.getName());
+        final String columnName = getColumnNamingStrategy().resolveColumnName(field.getColumnName());
         return getIdentifierHelper().toIdentifier(columnName, getConfig().isQuoteIdentifiers()).render(dialect);
     }
 
@@ -728,9 +729,10 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
     }
 
     private String columnNameEqualsBinding(String fieldName, TableDescriptor table, SinkRecordDescriptor record) {
-        final ColumnDescriptor column = table.getColumnByName(columnNameFromField(fieldName, record));
         final FieldDescriptor field = record.getFields().get(fieldName);
-        return toIdentifier(columnNamingStrategy.resolveColumnName(fieldName)) + "=" + field.getQueryBinding(column, record.getAfterStruct());
+        final String columnName = columnNamingStrategy.resolveColumnName(field.getColumnName());
+        final ColumnDescriptor column = table.getColumnByName(columnName);
+        return toIdentifier(columnName) + "=" + field.getQueryBinding(column, record.getAfterStruct());
     }
 
     private static boolean isColumnNullable(String columnName, Collection<String> primaryKeyColumnNames, int nullability) {

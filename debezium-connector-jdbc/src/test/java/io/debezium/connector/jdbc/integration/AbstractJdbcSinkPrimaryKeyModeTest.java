@@ -55,10 +55,11 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
         final String destinationTableName = destinationTableName(createRecord);
 
         final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName);
-        tableAssert.exists().hasNumberOfColumns(2);
+        tableAssert.exists().hasNumberOfColumns(3);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1);
         getSink().assertColumnType(tableAssert, "name", ValueType.TEXT, "John Doe");
+        getSink().assertColumnType(tableAssert, "nick_name$", ValueType.TEXT, "John Doe$");
 
         assertHasPrimaryKeyColumns(destinationTableName);
     }
@@ -81,13 +82,14 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
         final String destinationTableName = destinationTableName(createRecord);
 
         final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName);
-        tableAssert.exists().hasNumberOfColumns(5);
+        tableAssert.exists().hasNumberOfColumns(6);
 
         getSink().assertColumnType(tableAssert, "__connect_topic", ValueType.TEXT, topicName);
         getSink().assertColumnType(tableAssert, "__connect_partition", ValueType.NUMBER, 0);
         getSink().assertColumnType(tableAssert, "__connect_offset", ValueType.NUMBER, 0);
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1);
         getSink().assertColumnType(tableAssert, "name", ValueType.TEXT, "John Doe");
+        getSink().assertColumnType(tableAssert, "nick_name$", ValueType.TEXT, "John Doe$");
 
         assertHasPrimaryKeyColumns(destinationTableName, "__connect_topic", "__connect_partition", "__connect_offset");
     }
@@ -110,13 +112,14 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
         final String destinationTableName = destinationTableName(createRecord);
 
         final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName);
-        tableAssert.exists().hasNumberOfColumns(5);
+        tableAssert.exists().hasNumberOfColumns(6);
 
         getSink().assertColumnType(tableAssert, "__connect_topic", ValueType.TEXT, topicName);
         getSink().assertColumnType(tableAssert, "__connect_partition", ValueType.NUMBER, 0);
         getSink().assertColumnType(tableAssert, "__connect_offset", ValueType.NUMBER, 1L);
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1);
         getSink().assertColumnType(tableAssert, "name", ValueType.TEXT, "John Doe");
+        getSink().assertColumnType(tableAssert, "nick_name$", ValueType.TEXT, "John Doe$");
 
         assertHasPrimaryKeyColumns(destinationTableName, "__connect_topic", "__connect_partition", "__connect_offset");
     }
@@ -139,16 +142,18 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
         final String destinationTableName = destinationTableName(createRecord);
 
         final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName);
-        tableAssert.exists().hasNumberOfColumns(2);
+        tableAssert.exists().hasNumberOfColumns(3);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1);
         getSink().assertColumnType(tableAssert, "name", ValueType.TEXT, "John Doe");
+        getSink().assertColumnType(tableAssert, "nick_name$", ValueType.TEXT, "John Doe$");
 
         TestHelper.assertTable(dataSource(), destinationTableName)
                 .exists()
-                .hasNumberOfColumns(2)
+                .hasNumberOfColumns(3)
                 .column("id").isNumber(false).hasValues((byte) 1)
-                .column("name").isText(false).hasValues("John Doe");
+                .column("name").isText(false).hasValues("John Doe")
+                .column("nick_name$").isText(false).hasValues("John Doe$");
 
         assertHasPrimaryKeyColumns(destinationTableName, "id");
     }
@@ -201,16 +206,18 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
         final String destinationTableName = destinationTableName(createRecord);
 
         final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName);
-        tableAssert.exists().hasNumberOfColumns(2);
+        tableAssert.exists().hasNumberOfColumns(3);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1);
         getSink().assertColumnType(tableAssert, "name", ValueType.TEXT, "John Doe");
+        getSink().assertColumnType(tableAssert, "nick_name$", ValueType.TEXT, "John Doe$");
 
         TestHelper.assertTable(dataSource(), destinationTableName)
                 .exists()
-                .hasNumberOfColumns(2)
+                .hasNumberOfColumns(3)
                 .column("id").isNumber(false).hasValues((byte) 1)
-                .column("name").isText(false).hasValues("John Doe");
+                .column("name").isText(false).hasValues("John Doe")
+                .column("nick_name$").isText(false).hasValues("John Doe$");
 
         assertHasPrimaryKeyColumns(destinationTableName, "id");
     }
@@ -265,10 +272,11 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
         final String destinationTableName = destinationTableName(createRecord);
 
         final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName);
-        tableAssert.exists().hasNumberOfColumns(2);
+        tableAssert.exists().hasNumberOfColumns(3);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1);
         getSink().assertColumnType(tableAssert, "name", ValueType.TEXT, "John Doe");
+        getSink().assertColumnType(tableAssert, "nick_name$", ValueType.TEXT, "John Doe$");
 
         assertHasPrimaryKeyColumns(destinationTableName, "id", "name");
     }
@@ -286,9 +294,10 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
         final String topicName = topicName("server1", "schema", tableName);
         try {
             consume(factory.createRecord(topicName));
+            stopSinkConnector();
         }
         catch (Exception e) {
-            assertThat(TestHelper.getRootCause(e).getMessage()).contains("At least one primary.key.fields field name should be specified");
+            assertThat(e.getCause().getCause().getMessage()).contains("At least one primary.key.fields field name should be specified");
         }
     }
 
@@ -311,10 +320,11 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
         final String destinationTableName = destinationTableName(createRecord);
 
         final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName);
-        tableAssert.exists().hasNumberOfColumns(2);
+        tableAssert.exists().hasNumberOfColumns(3);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1);
         getSink().assertColumnType(tableAssert, "name", ValueType.TEXT, "John Doe");
+        getSink().assertColumnType(tableAssert, "nick_name$", ValueType.TEXT, "John Doe$");
 
         assertHasPrimaryKeyColumns(destinationTableName, "id", "name");
     }
