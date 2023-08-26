@@ -18,6 +18,7 @@ import org.hibernate.dialect.PostgreSQLDialect;
 
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.SinkRecordDescriptor;
+import io.debezium.connector.jdbc.SinkRecordDescriptor.FieldDescriptor;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.dialect.DatabaseDialectProvider;
 import io.debezium.connector.jdbc.dialect.GeneralDatabaseDialect;
@@ -193,6 +194,16 @@ public class PostgresDatabaseDialect extends GeneralDatabaseDialect {
             }
         }
         return columnName;
+    }
+
+    @Override
+    protected String resolveColumnName(FieldDescriptor field) {
+        final String columnName = getColumnNamingStrategy().resolveColumnName(field.getColumnName());
+        final String columnIdentifier = toIdentifier(columnName);
+        if (columnIdentifier.startsWith("\"") && columnIdentifier.endsWith("\"")) {
+            return columnName;
+        }
+        return super.resolveColumnName(field);
     }
 
 }

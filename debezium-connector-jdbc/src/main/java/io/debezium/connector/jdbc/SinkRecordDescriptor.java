@@ -154,6 +154,7 @@ public class SinkRecordDescriptor {
 
         private final Schema schema;
         private final String name;
+        private final String columnName;
         private final boolean key;
         private final Type type;
         private final DatabaseDialect dialect;
@@ -171,7 +172,8 @@ public class SinkRecordDescriptor {
             this.type = dialect.getSchemaType(schema);
             this.typeName = type.getTypeName(dialect, schema, key);
 
-            this.name = SchemaUtils.getSourceColumnName(schema).orElse(name);
+            this.name = name;
+            this.columnName = SchemaUtils.getSourceColumnName(schema).orElse(name);
 
             LOGGER.trace("Field [{}] with schema [{}]", this.name, schema.type());
             LOGGER.trace("    Type      : {}", type.getClass().getName());
@@ -192,6 +194,10 @@ public class SinkRecordDescriptor {
 
         public String getName() {
             return name;
+        }
+
+        public String getColumnName() {
+            return columnName;
         }
 
         public boolean isKey() {
@@ -225,6 +231,7 @@ public class SinkRecordDescriptor {
                     ", key=" + key +
                     ", typeName='" + typeName + '\'' +
                     ", type=" + type +
+                    ", columnName='" + columnName + '\'' +
                     '}';
         }
     }
