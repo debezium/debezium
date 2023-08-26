@@ -153,10 +153,11 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
 
         DataSourceWithLetterCase dataSourceWithLetterCase = new DataSourceWithLetterCase(dataSource(), LetterCase.TABLE_DEFAULT, UPPER_CASE_STRICT, UPPER_CASE_STRICT);
         final TableAssert tableAssert = TestHelper.assertTable(dataSourceWithLetterCase, destinationTableName(createSimpleRecord1));
-        tableAssert.exists().hasNumberOfRows(2).hasNumberOfColumns(2);
+        tableAssert.exists().hasNumberOfRows(2).hasNumberOfColumns(3);
 
         getSink().assertColumnType(tableAssert, "ID", ValueType.NUMBER, (byte) 1, (byte) 2);
         getSink().assertColumnType(tableAssert, "NAME", ValueType.TEXT, "John Doe", "John Doe");
+        getSink().assertColumnType(tableAssert, "NICK_NAME$", ValueType.TEXT, "John Doe$", "John Doe$");
     }
 
     @ParameterizedTest
@@ -182,7 +183,10 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
         consume(createSimpleRecord2);
 
         DataSourceWithLetterCase dataSourceWithLetterCase = new DataSourceWithLetterCase(dataSource(), LetterCase.TABLE_DEFAULT, LOWER_CASE_STRICT, LOWER_CASE_STRICT);
-        final TableAssert tableAssert = TestHelper.assertTable(dataSourceWithLetterCase, destinationTableName(createSimpleRecord1));
+        // The case-insensitive conflict issue will cause getting zero rows, because the postgres always keep the origin column name as "NICK_NAME$",
+        // but the table assert will treat it as lower according the definition.
+        final String[] columnsToExclude = new String[]{ "nick_name$" };
+        final TableAssert tableAssert = TestHelper.assertTable(dataSourceWithLetterCase, destinationTableName(createSimpleRecord1), null, columnsToExclude);
         tableAssert.exists().hasNumberOfRows(2).hasNumberOfColumns(2);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1, (byte) 2);

@@ -93,6 +93,16 @@ public interface SinkRecordFactory {
         return SchemaBuilder.struct()
                 .field(columnNameTransformation.apply("id"), Schema.INT8_SCHEMA)
                 .field(columnNameTransformation.apply("name"), Schema.OPTIONAL_STRING_SCHEMA)
+                .field(columnNameTransformation.apply("nick_name_"), nickNameFieldSchema(columnNameTransformation))
+                .build();
+    }
+
+    default Schema nickNameFieldSchema(UnaryOperator<String> columnNameTransformation) {
+        return SchemaBuilder.string()
+                .optional()
+                .parameter("__debezium.source.column.name", columnNameTransformation.apply("nick_name$"))
+                .parameter("__debezium.source.column.type", "varchar")
+                .parameter("__debezium.source.column.length", "255")
                 .build();
     }
 
@@ -186,6 +196,7 @@ public interface SinkRecordFactory {
                 .sourceSchema(basicSourceSchema())
                 .after("id", (byte) 1)
                 .after("name", "John Doe")
+                .after("nick_name_", "John Doe$")
                 .source("ts_ms", (int) Instant.now().getEpochSecond())
                 .build();
     }
@@ -211,6 +222,7 @@ public interface SinkRecordFactory {
                 .key(columnNameTransformation.apply("id"), key)
                 .after(columnNameTransformation.apply("id"), key)
                 .after(columnNameTransformation.apply("name"), "John Doe")
+                .after(columnNameTransformation.apply("nick_name_"), "John Doe$")
                 .source("ts_ms", (int) Instant.now().getEpochSecond())
                 .build();
     }
@@ -314,6 +326,7 @@ public interface SinkRecordFactory {
                 .before("name", "John Doe")
                 .after("id", (byte) 1)
                 .after("name", "Jane Doe")
+                .after("nick_name_", "John Doe$")
                 .source("ts_ms", (int) Instant.now().getEpochSecond())
                 .build();
     }

@@ -129,13 +129,29 @@ public class JdbcSinkConnectorTask extends SinkTask {
 
     @Override
     public void stop() {
-        if (changeEventSink != null) {
-            try {
-                changeEventSink.close();
+        stateLock.lock();
+        try {
+            if (previousPutException != null) {
+                throw new ConnectException("JDBC sink connector failure", previousPutException);
             }
-            catch (Exception e) {
-                LOGGER.error("Failed to gracefully close resources.", e);
+
+            if (changeEventSink != null) {
+                try {
+                    changeEventSink.close();
+                }
+                catch (Exception e) {
+                    LOGGER.error("Failed to gracefully close resources.", e);
+                }
             }
+        }
+        finally {
+            if (previousPutException != null) {
+                previousPutException = null;
+            }
+            if (changeEventSink != null) {
+                changeEventSink = null;
+            }
+            stateLock.unlock();
         }
     }
 

@@ -81,6 +81,10 @@ public class TestHelper {
         return assertThat(new Table(dataSource, tableName));
     }
 
+    public static TableAssert assertTable(DataSource dataSource, String tableName, String[] columnsToCheck, String[] columnsToExclude) {
+        return assertThat(new Table(dataSource, tableName, columnsToCheck, columnsToExclude));
+    }
+
     public static TableAssert assertTable(Source source, String tableName) {
         return assertThat(new Table(source, tableName));
     }
