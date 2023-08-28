@@ -254,6 +254,7 @@ public class TimezoneConverter<R extends ConnectRecord<R>> implements Transforma
         switch (schemaName) {
             case ZonedTimestamp.SCHEMA_NAME:
                 OffsetDateTime offsetDateTime = OffsetDateTime.parse((String) fieldValue, DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+                zoneOffset = zoneId.getRules().getOffset(offsetDateTime.toLocalDateTime());
                 OffsetDateTime offsetDateTimeWithZone = offsetDateTime.withOffsetSameInstant(zoneOffset);
                 updatedFieldValue = ZonedTimestamp.toIsoString(offsetDateTimeWithZone, null);
                 break;
@@ -266,23 +267,27 @@ public class TimezoneConverter<R extends ConnectRecord<R>> implements Transforma
                 long microTimestamp = (long) fieldValue;
                 Instant microInstant = Instant.ofEpochSecond(microTimestamp / 1_000_000, (microTimestamp % 1_000_000) * 1_000);
                 LocalDateTime microLocalDateTime = microInstant.atOffset(ZoneOffset.UTC).toLocalDateTime();
+                zoneOffset = zoneId.getRules().getOffset(microLocalDateTime);
                 updatedFieldValue = microLocalDateTime.atOffset(zoneOffset).toInstant().toEpochMilli() * 1_000;
                 break;
             case NanoTimestamp.SCHEMA_NAME:
                 long nanoTimestamp = (long) fieldValue;
                 Instant nanoInstant = Instant.ofEpochSecond(nanoTimestamp / 1_000_000_000, (nanoTimestamp % 1_000_000_000));
                 LocalDateTime nanoLocalDateTime = nanoInstant.atOffset(ZoneOffset.UTC).toLocalDateTime();
+                zoneOffset = zoneId.getRules().getOffset(nanoLocalDateTime);
                 updatedFieldValue = nanoLocalDateTime.atOffset(zoneOffset).toInstant().toEpochMilli() * 1_000_000;
                 break;
             case Timestamp.SCHEMA_NAME:
                 Instant instant = Instant.ofEpochMilli((long) fieldValue);
                 LocalDateTime localDateTime = instant.atOffset(ZoneOffset.UTC).toLocalDateTime();
+                zoneOffset = zoneId.getRules().getOffset(localDateTime);
                 updatedFieldValue = localDateTime.atOffset(zoneOffset).toInstant().toEpochMilli();
                 break;
             case org.apache.kafka.connect.data.Timestamp.LOGICAL_NAME:
                 Date date = (Date) fieldValue;
                 Instant timestampInstant = date.toInstant();
                 LocalDateTime timestampLocalDateTime = timestampInstant.atOffset(ZoneOffset.UTC).toLocalDateTime();
+                zoneOffset = zoneId.getRules().getOffset(timestampLocalDateTime);
                 updatedFieldValue = Date.from(timestampLocalDateTime.atOffset(zoneOffset).toInstant());
                 break;
         }
