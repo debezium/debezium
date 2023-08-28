@@ -88,7 +88,7 @@ public class BaseSourceTaskTest {
             @Override
             protected ChangeEventSourceCoordinator<Partition, OffsetContext> start(Configuration config) {
                 ChangeEventSourceCoordinator<Partition, OffsetContext> result = super.start(config);
-                if (startCount.get() < 3) {
+                if (startCount.get() < 4) {
                     throw new RetriableException("Retry " + startCount.get());
                 }
 
@@ -101,6 +101,7 @@ public class BaseSourceTaskTest {
                 CommonConnectorConfig.RETRIABLE_RESTART_WAIT.name(), "1" // wait 1ms between restarts
         );
         baseSourceTask.start(config);
+        sleep(1); // wait 1ms in order to satisfy retriable wait
         assertEquals(BaseSourceTask.State.RESTARTING, baseSourceTask.getTaskState());
         pollAndIgnoreRetryException(baseSourceTask);
         assertEquals(BaseSourceTask.State.RESTARTING, baseSourceTask.getTaskState());
@@ -113,8 +114,8 @@ public class BaseSourceTaskTest {
         baseSourceTask.stop();
         assertEquals(BaseSourceTask.State.STOPPED, baseSourceTask.getTaskState());
 
-        assertEquals(3, baseSourceTask.startCount.get());
-        assertEquals(2, baseSourceTask.stopCount.get());
+        assertEquals(4, baseSourceTask.startCount.get());
+        assertEquals(3, baseSourceTask.stopCount.get());
         verify(baseSourceTask.coordinator, times(1)).stop();
     }
 
