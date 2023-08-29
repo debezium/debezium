@@ -134,26 +134,6 @@ jobs:
           files: |
             debezium-testing/**
 
-      - name: Get modified files (Debezium UI)
-        id: changed-files-debezium-ui
-        uses: tj-actions/changed-files@v39.1.0
-        with:
-          files: |
-            debezium-core/**
-            debezium-schema-generator/**
-            debezium-connect-rest-extension/**
-            debezium-connector-mongodb/**
-            debezium-connector-mysql/**                        
-            debezium-connector-postgres/**
-            debezium-connector-sqlserver/**
-            debezium-connector-oracle/**
-            debezium-storage/**
-            support/checkstyle/**
-            debezium-parent/pom.xml
-            debezium-bom/pom.xml
-            pom.xml
-            .github/workflows/debezium-workflow.yml
-
       - name: Get modified files (MySQL DDL parser)
         id: changed-files-mysql-ddl-parser
         uses: tj-actions/changed-files@v39.1.0
@@ -1042,10 +1022,3 @@ jobs:
           restore-keys: |
             maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
 
-      - name: Build Debezium UI
-        working-directory: debezium-ui
-        run: >
-          ./mvnw clean install -am -pl backend -B -U
-          -Ddebezium.test.records.waittime=20
-          -Dformat.formatter.goal=validate
-          -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn

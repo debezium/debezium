@@ -142,6 +142,11 @@
             <artifactId>mysql</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>io.rest-assured</groupId>
+            <artifactId>rest-assured</artifactId>
+            <scope>test</scope>
+        </dependency>
 
         <!-- Used for unit testing with Kafka -->
         <dependency>
@@ -566,6 +571,9 @@
                             <goal>generate-api-spec</goal>
                         </goals>
                         <phase>prepare-package</phase>
+                        <configuration>
+                            <outputDirectory>${project.build.outputDirectory}/META-INF/resources/</outputDirectory>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
@@ -674,6 +682,7 @@
                                 <database.replica.port>${mysql.port}</database.replica.port>
                                 <database.ssl.mode>disabled</database.ssl.mode>
                                 <skipLongRunningTests>false</skipLongRunningTests>
+                                <isAssemblyProfileActive>true</isAssemblyProfileActive>
                             </systemPropertyVariables>
                             <runOrder>${runOrder}</runOrder>
                         </configuration>

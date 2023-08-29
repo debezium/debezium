@@ -162,6 +162,14 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
 
     private SmtManager<R> smtManager;
 
+    private final Field.Set configFields = Field.setOf(ARRAY_ENCODING, FLATTEN_STRUCT, DELIMITER,
+            ExtractNewRecordStateConfigDefinition.HANDLE_DELETES,
+            ExtractNewRecordStateConfigDefinition.DROP_TOMBSTONES,
+            ExtractNewRecordStateConfigDefinition.ADD_HEADERS,
+            ExtractNewRecordStateConfigDefinition.ADD_HEADERS_PREFIX,
+            ExtractNewRecordStateConfigDefinition.ADD_FIELDS,
+            ExtractNewRecordStateConfigDefinition.ADD_FIELDS_PREFIX);
+
     @Override
     public R apply(R record) {
         if (!smtManager.isValidKey(record)) {
@@ -367,10 +375,7 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
     @Override
     public ConfigDef config() {
         final ConfigDef config = new ConfigDef();
-        Field.group(config, null,
-                ARRAY_ENCODING,
-                FLATTEN_STRUCT,
-                DELIMITER);
+        Field.group(config, null, configFields.asArray());
         return config;
     }
 
@@ -382,12 +387,6 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
     public void configure(final Map<String, ?> map) {
         final Configuration config = Configuration.from(map);
         smtManager = new SmtManager<>(config);
-
-        final Field.Set configFields = Field.setOf(ARRAY_ENCODING, FLATTEN_STRUCT, DELIMITER,
-                ExtractNewRecordStateConfigDefinition.HANDLE_DELETES,
-                ExtractNewRecordStateConfigDefinition.DROP_TOMBSTONES,
-                ExtractNewRecordStateConfigDefinition.ADD_HEADERS,
-                ExtractNewRecordStateConfigDefinition.ADD_FIELDS);
 
         if (!config.validateAndRecord(configFields, LOGGER::error)) {
             throw new DebeziumException("Unable to validate config.");
