@@ -73,7 +73,7 @@ public abstract class RelationalChangeRecordEmitter<P extends Partition>
 
         if (skipEmptyMessages() && (newColumnValues == null || newColumnValues.length == 0)) {
             // This case can be hit on UPDATE / DELETE when there's no primary key defined while using certain decoders
-            LOGGER.warn("no new values found for table '{}' from create message at '{}'; skipping record", tableSchema, getOffset().getSourceInfo());
+            LOGGER.debug("no new values found for table '{}' from create message at '{}'; skipping record", tableSchema, getOffset().getSourceInfo());
             return;
         }
         receiver.changeRecord(getPartition(), tableSchema, Operation.CREATE, newKey, envelope, getOffset(), null);
@@ -136,7 +136,7 @@ public abstract class RelationalChangeRecordEmitter<P extends Partition>
         Struct oldValue = tableSchema.valueFromColumnData(oldColumnValues);
 
         if (skipEmptyMessages() && (oldColumnValues == null || oldColumnValues.length == 0)) {
-            LOGGER.warn("no old values found for table '{}' from delete message at '{}'; skipping record", tableSchema, getOffset().getSourceInfo());
+            LOGGER.debug("no old values found for table '{}' from delete message at '{}'; skipping record", tableSchema, getOffset().getSourceInfo());
             return;
         }
 
