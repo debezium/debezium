@@ -216,17 +216,15 @@ public class MongoDbConnector extends SourceConnector {
         if (userValue.errorMessages().isEmpty()
                 && passwordValue.errorMessages().isEmpty()
                 && connectionStringValue.errorMessages().isEmpty()) {
-
             // Try to connect to the database ...
             ConnectionContext connContext = new ConnectionContext(config);
             try (MongoClient client = connContext.connect()) {
-                client.listDatabaseNames();
+                client.listDatabaseNames().first(); // only when we try to fetch results a connection gets established
             }
             catch (MongoException e) {
                 connectionStringValue.addErrorMessage("Unable to connect: " + e.getMessage());
             }
         }
-
         return new Config(new ArrayList<>(results.values()));
     }
 }

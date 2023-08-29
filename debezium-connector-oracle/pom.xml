@@ -287,6 +287,9 @@
                             <goal>generate-api-spec</goal>
                         </goals>
                         <phase>prepare-package</phase>
+                        <configuration>
+                            <outputDirectory>${project.build.outputDirectory}/META-INF/resources/</outputDirectory>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>

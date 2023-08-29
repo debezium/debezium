@@ -32,6 +32,7 @@ import org.apache.kafka.connect.runtime.isolation.PluginDesc;
 import org.apache.kafka.connect.transforms.Transformation;
 import org.apache.kafka.connect.transforms.predicates.Predicate;
 
+import io.debezium.DebeziumException;
 import io.debezium.kcrestextension.entities.PredicateDefinition;
 import io.debezium.kcrestextension.entities.TransformDefinition;
 import io.debezium.metadata.ConnectorDescriptor;
@@ -151,14 +152,14 @@ public class DebeziumResource {
                 herderField = this.connectClusterState.getClass().getDeclaredField("herder");
             }
             catch (NoSuchFieldException e) {
-                throw new RuntimeException(e);
+                throw new DebeziumException(e);
             }
             herderField.setAccessible(true);
             try {
                 this.herder = (Herder) herderField.get(this.connectClusterState);
             }
             catch (IllegalAccessException e) {
-                throw new RuntimeException(e);
+                throw new DebeziumException(e);
             }
         }
         return this.herder;

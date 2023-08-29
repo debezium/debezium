@@ -17,7 +17,7 @@ public final class MongoDbDatabaseProvider {
     public static final String MONGO_SHARD_REPLICA_SIZE = "mongodb.shard.replica.size";
     public static final String MONGO_DOCKER_DESKTOP_PORT_PROPERTY = "mongodb.docker.desktop.ports";
 
-    // Should be aligned with definition in pom.xm
+    // Should be aligned with definition in pom.xml
     public static final String MONGO_DOCKER_DESKTOP_PORT_DEFAULT = "27017:27117";
 
     private static MongoDbReplicaSet.Builder dockerReplicaSetBuilder() {

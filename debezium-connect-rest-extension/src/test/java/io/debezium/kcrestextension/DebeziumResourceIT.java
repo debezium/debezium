@@ -39,6 +39,7 @@ public class DebeziumResourceIT {
             "io.debezium.transforms.Filter",
             "io.debezium.transforms.HeaderToValue",
             "io.debezium.transforms.SchemaChangeEventFilter",
+            "io.debezium.transforms.TimezoneConverter",
             "io.debezium.transforms.outbox.EventRouter",
             "io.debezium.transforms.partitions.ComputePartition",
             "io.debezium.transforms.partitions.PartitionRouting",
