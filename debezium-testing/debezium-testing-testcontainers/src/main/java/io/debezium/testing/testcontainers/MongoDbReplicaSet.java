@@ -280,7 +280,7 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
     public void stop() {
         LOGGER.info("[{}] Stopping...", name);
         MoreStartables.deepStopSync(members.stream());
-        network.close();
+        started = false;
     }
 
     private void initializeReplicaSet() {
