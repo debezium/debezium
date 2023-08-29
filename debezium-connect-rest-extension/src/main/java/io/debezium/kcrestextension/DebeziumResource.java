@@ -7,11 +7,14 @@ package io.debezium.kcrestextension;
 
 import java.lang.Runtime.Version;
 import java.lang.reflect.Field;
-import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -25,16 +28,13 @@ import javax.ws.rs.core.MediaType;
 import org.apache.kafka.common.utils.AppInfoParser;
 import org.apache.kafka.connect.health.ConnectClusterState;
 import org.apache.kafka.connect.runtime.Herder;
-import org.apache.kafka.connect.runtime.health.ConnectClusterStateImpl;
 import org.apache.kafka.connect.runtime.isolation.PluginDesc;
 import org.apache.kafka.connect.transforms.Transformation;
-import org.apache.kafka.connect.transforms.predicates.HasHeaderKey;
-import org.apache.kafka.connect.transforms.predicates.RecordIsTombstone;
-import org.apache.kafka.connect.transforms.predicates.TopicNameMatches;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.kafka.connect.transforms.predicates.Predicate;
 
-import io.debezium.kcrestextension.entities.TransformsInfo;
+import io.debezium.kcrestextension.entities.PredicateDefinition;
+import io.debezium.kcrestextension.entities.TransformDefinition;
+import io.debezium.metadata.ConnectorDescriptor;
 
 /**
  * A JAX-RS Resource class defining endpoints that enable some advanced features
@@ -43,26 +43,30 @@ import io.debezium.kcrestextension.entities.TransformsInfo;
  *   + return if topic auto-creation is available and enabled
  *
  */
-@Path("/debezium")
+@Path(DebeziumResource.BASE_PATH)
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class DebeziumResource {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(DebeziumResource.class);
+    public static final String BASE_PATH = "/debezium";
+    public static final String CONNECTOR_PLUGINS_ENDPOINT = "/connector-plugins";
+    public static final String TRANSFORMS_ENDPOINT = "/transforms";
+    public static final String PREDICATES_ENDPOINT = "/predicates";
+    public static final String TOPIC_CREATION_ENDPOINT = "/topic-creation-enabled";
 
-    // TODO: This should not be so long. However, due to potentially long rebalances that may have to wait a full
-    // session timeout to complete, during which we cannot serve some requests. Ideally we could reduce this, but
-    // we need to consider all possible scenarios this could fail. It might be ok to fail with a timeout in rare cases,
-    // but currently a worker simply leaving the group can take this long as well.
-    public static final Duration REQUEST_TIMEOUT_MS = Duration.ofSeconds(90);
-    // Mutable for integration testing; otherwise, some tests would take at least REQUEST_TIMEOUT_MS
-    // to run
-    private static Duration requestTimeoutMs = REQUEST_TIMEOUT_MS;
+    public static final Set<String> SUPPORTED_CONNECTORS = new HashSet<>(Arrays.asList(
+            "io.debezium.connector.mongodb.MongoDbConnector",
+            "io.debezium.connector.mysql.MySqlConnector",
+            "io.debezium.connector.oracle.OracleConnector",
+            "io.debezium.connector.postgresql.PostgresConnector",
+            "io.debezium.connector.sqlserver.SqlServerConnector"));
 
-    private final List<TransformsInfo> transforms;
+    private final ConnectClusterState connectClusterState;
+    private Herder herder = null;
     private final Boolean isTopicCreationEnabled;
-    private final Herder herder;
-    private final Map<String, ?> config;
+    private List<TransformDefinition> transforms = null;
+    private List<PredicateDefinition> predicates = null;
+    private List<ConnectorDescriptor> availableConnectorPlugins = null;
 
     private static final Pattern VERSION_PATTERN = Pattern
             .compile("([1-9][0-9]*(?:(?:\\.0)*\\.[1-9][0-9]*)*)(?:-([a-zA-Z0-9]+))?(?:(\\+)(0|[1-9][0-9]*)?)?(?:-([-a-zA-Z0-9.]+))?");
@@ -71,29 +75,9 @@ public class DebeziumResource {
     @javax.ws.rs.core.Context
     private ServletContext context;
 
-    public DebeziumResource(ConnectClusterState clusterState, Map<String, ?> config) {
-        Field herderField;
-        try {
-            herderField = ConnectClusterStateImpl.class.getDeclaredField("herder");
-        }
-        catch (NoSuchFieldException e) {
-            throw new RuntimeException(e);
-        }
-        herderField.setAccessible(true);
-        try {
-            this.herder = (Herder) herderField.get(clusterState);
-        }
-        catch (IllegalAccessException e) {
-            throw new RuntimeException(e);
-        }
-        this.transforms = new ArrayList<>();
-        this.config = config;
-        this.isTopicCreationEnabled = isTopicCreationEnabled();
-    }
-
-    // For testing purposes only
-    public static void setRequestTimeout(long requestTimeoutMs) {
-        DebeziumResource.requestTimeoutMs = Duration.ofMillis(requestTimeoutMs);
+    public DebeziumResource(ConnectClusterState connectClusterState, Map<String, ?> config) {
+        this.connectClusterState = connectClusterState;
+        this.isTopicCreationEnabled = isTopicCreationEnabled(config);
     }
 
     public static Version parseVersion(String version) {
@@ -107,40 +91,50 @@ public class DebeziumResource {
         throw new IllegalArgumentException("Invalid version string: \"" + version + "\"");
     }
 
-    public static void resetRequestTimeout() {
-        DebeziumResource.requestTimeoutMs = REQUEST_TIMEOUT_MS;
+    private static <T> void addConnectorPlugins(List<ConnectorDescriptor> connectorPlugins, Collection<PluginDesc<T>> plugins) {
+        plugins.stream()
+                .filter(p -> SUPPORTED_CONNECTORS.contains(p.pluginClass().getName()))
+                .forEach(p -> connectorPlugins.add(new ConnectorDescriptor(p.pluginClass().getName(), p.version())));
     }
 
-    @GET
-    @Path("/transforms")
-    public List<TransformsInfo> listTransforms() {
-        return this.getTransforms();
+    private synchronized void initConnectorPlugins() {
+        if (null == this.availableConnectorPlugins || this.availableConnectorPlugins.isEmpty()) {
+            // TODO: improve once plugins are allowed to be added/removed during runtime by Kafka Connect, @see org.apache.kafka.connect.runtime.rest.resources.ConnectorPluginsResource
+            final List<ConnectorDescriptor> connectorPlugins = new ArrayList<>();
+            Herder herder = getHerder();
+            addConnectorPlugins(connectorPlugins, herder.plugins().sinkConnectors());
+            addConnectorPlugins(connectorPlugins, herder.plugins().sourceConnectors());
+            this.availableConnectorPlugins = Collections.unmodifiableList(connectorPlugins);
+        }
     }
 
-    private synchronized List<TransformsInfo> getTransforms() {
-        if (this.transforms.isEmpty()) {
-            for (PluginDesc<Transformation<?>> plugin : herder.plugins().transformations()) {
-                if ("org.apache.kafka.connect.runtime.PredicatedTransformation".equals(plugin.className())) {
-                    this.transforms.add(new TransformsInfo(HasHeaderKey.class.getName(), (new HasHeaderKey<>().config())));
-                    this.transforms.add(new TransformsInfo(RecordIsTombstone.class.getName(), (new RecordIsTombstone<>().config())));
-                    this.transforms.add(new TransformsInfo(TopicNameMatches.class.getName(), (new TopicNameMatches<>().config())));
+    private synchronized void initTransformsAndPredicates() {
+        if (null == this.transforms || this.transforms.isEmpty()) {
+            final List<TransformDefinition> transformPlugins = new ArrayList<>();
+            final List<PredicateDefinition> predicatePlugins = new ArrayList<>();
+            Herder herder = getHerder();
+            for (PluginDesc<Transformation<?>> transformPlugin : herder.plugins().transformations()) {
+                if ("org.apache.kafka.connect.runtime.PredicatedTransformation".equals(transformPlugin.className())) {
+                    for (PluginDesc<Predicate<?>> predicate : herder.plugins().predicates()) {
+                        PredicateDefinition predicateDefinition = PredicateDefinition.fromPluginDesc(predicate);
+                        if (null != predicateDefinition) {
+                            predicatePlugins.add(predicateDefinition);
+                        }
+                    }
                 }
                 else {
-                    this.transforms.add(new TransformsInfo(plugin));
+                    TransformDefinition transformDefinition = TransformDefinition.fromPluginDesc(transformPlugin);
+                    if (null != transformDefinition) {
+                        transformPlugins.add(transformDefinition);
+                    }
                 }
             }
+            this.predicates = Collections.unmodifiableList(predicatePlugins);
+            this.transforms = Collections.unmodifiableList(transformPlugins);
         }
-
-        return Collections.unmodifiableList(this.transforms);
     }
 
-    @GET
-    @Path("/topic-creation")
-    public boolean getTopicCreationEnabled() {
-        return this.isTopicCreationEnabled;
-    }
-
-    private synchronized Boolean isTopicCreationEnabled() {
+    private synchronized Boolean isTopicCreationEnabled(Map<String, ?> config) {
         Version kafkaConnectVersion = parseVersion(AppInfoParser.getVersion());
         String topicCreationProperty = (String) config.get("topic.creation.enable");
         if (null == topicCreationProperty) { // when config is not set, default to true
@@ -150,8 +144,60 @@ public class DebeziumResource {
                 && Boolean.parseBoolean(topicCreationProperty);
     }
 
+    private synchronized Herder getHerder() {
+        if (null == this.herder) {
+            Field herderField;
+            try {
+                herderField = this.connectClusterState.getClass().getDeclaredField("herder");
+            }
+            catch (NoSuchFieldException e) {
+                throw new RuntimeException(e);
+            }
+            herderField.setAccessible(true);
+            try {
+                this.herder = (Herder) herderField.get(this.connectClusterState);
+            }
+            catch (IllegalAccessException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        return this.herder;
+    }
+
+    @GET
+    @Path(CONNECTOR_PLUGINS_ENDPOINT)
+    @Produces(MediaType.APPLICATION_JSON)
+    public List<ConnectorDescriptor> availableDebeziumConnectors() {
+        initConnectorPlugins();
+        return this.availableConnectorPlugins;
+    }
+
+    @GET
+    @Path(TRANSFORMS_ENDPOINT)
+    @Produces(MediaType.APPLICATION_JSON)
+    public List<TransformDefinition> listTransforms() {
+        initTransformsAndPredicates();
+        return this.transforms;
+    }
+
+    @GET
+    @Path(PREDICATES_ENDPOINT)
+    @Produces(MediaType.APPLICATION_JSON)
+    public List<PredicateDefinition> listPredicates() {
+        initTransformsAndPredicates();
+        return this.predicates;
+    }
+
+    @GET
+    @Path(TOPIC_CREATION_ENDPOINT)
+    @Produces(MediaType.APPLICATION_JSON)
+    public boolean getTopicCreationEnabled() {
+        return this.isTopicCreationEnabled;
+    }
+
     @GET
     @Path("/version")
+    @Produces(MediaType.APPLICATION_JSON)
     public String getDebeziumVersion() {
         return Module.version();
     }

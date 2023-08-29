@@ -5,6 +5,7 @@
  */
 package io.debezium.kcrestextension;
 
+import static io.debezium.testing.testcontainers.testhelper.RestExtensionTestInfrastructure.DATABASE;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.is;
@@ -17,33 +18,70 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.testing.testcontainers.testhelper.RestExtensionTestInfrastructure;
+
 /**
  * Tests topic creation (which is enabled in Kafka version greater than 2.6.0) and transforms endpoints.
  * Debezium Container with 1.7 image is used for the same.
  */
 public class DebeziumResourceIT {
-
     private static final Logger LOGGER = LoggerFactory.getLogger(DebeziumResourceIT.class);
-    private static final String DEBEZIUM_CONTAINER_IMAGE_VERSION = "1.7";
+
+    private static final List<String> SUPPORTED_TRANSFORMS = List.of(
+            "io.debezium.connector.mongodb.transforms.ExtractNewDocumentState",
+            "io.debezium.connector.mongodb.transforms.outbox.MongoEventRouter",
+            "io.debezium.connector.mysql.transforms.ReadToInsertEvent",
+            "io.debezium.connector.postgresql.transforms.timescaledb.TimescaleDb",
+            "io.debezium.transforms.ByLogicalTableRouter",
+            "io.debezium.transforms.ContentBasedRouter",
+            "io.debezium.transforms.ExtractChangedRecordState",
+            "io.debezium.transforms.ExtractNewRecordState",
+            "io.debezium.transforms.Filter",
+            "io.debezium.transforms.HeaderToValue",
+            "io.debezium.transforms.SchemaChangeEventFilter",
+            "io.debezium.transforms.outbox.EventRouter",
+            "io.debezium.transforms.partitions.ComputePartition",
+            "io.debezium.transforms.partitions.PartitionRouting",
+            "io.debezium.transforms.tracing.ActivateTracingSpan",
+            "org.apache.kafka.connect.transforms.Cast",
+            "org.apache.kafka.connect.transforms.DropHeaders",
+            "org.apache.kafka.connect.transforms.ExtractField",
+            "org.apache.kafka.connect.transforms.Filter",
+            "org.apache.kafka.connect.transforms.Flatten",
+            "org.apache.kafka.connect.transforms.HeaderFrom",
+            "org.apache.kafka.connect.transforms.HoistField",
+            "org.apache.kafka.connect.transforms.InsertField",
+            "org.apache.kafka.connect.transforms.InsertHeader",
+            "org.apache.kafka.connect.transforms.MaskField",
+            "org.apache.kafka.connect.transforms.RegexRouter",
+            "org.apache.kafka.connect.transforms.ReplaceField",
+            "org.apache.kafka.connect.transforms.SetSchemaMetadata",
+            "org.apache.kafka.connect.transforms.TimestampConverter",
+            "org.apache.kafka.connect.transforms.TimestampRouter",
+            "org.apache.kafka.connect.transforms.ValueToKey");
+
+    private static final List<String> SUPPORTED_PREDICATES = List.of(
+            "org.apache.kafka.connect.transforms.predicates.HasHeaderKey",
+            "org.apache.kafka.connect.transforms.predicates.RecordIsTombstone",
+            "org.apache.kafka.connect.transforms.predicates.TopicNameMatches");
 
     @BeforeEach
     public void start() {
-        TestHelper.stopContainers();
-        TestHelper.setupDebeziumContainer(DEBEZIUM_CONTAINER_IMAGE_VERSION);
+        RestExtensionTestInfrastructure.setupDebeziumContainer(Module.version(), DebeziumConnectRestExtension.class.getName());
     }
 
     @AfterEach
     public void stop() {
-        TestHelper.stopContainers();
+        RestExtensionTestInfrastructure.stopContainers();
     }
 
     @Test
     public void testTopicCreationEndpoint() {
-        TestHelper.startContainers();
+        RestExtensionTestInfrastructure.startContainers(DATABASE.NONE);
         given()
-                .port(TestHelper.getDebeziumContainer().getFirstMappedPort())
+                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
                 .when()
-                .get(TestHelper.API_PREFIX + TestHelper.TOPIC_CREATION_ENDPOINT)
+                .get(DebeziumResource.BASE_PATH + DebeziumResource.TOPIC_CREATION_ENDPOINT)
                 .then().log().all()
                 .statusCode(200)
                 .body(is("true"));
@@ -51,12 +89,12 @@ public class DebeziumResourceIT {
 
     @Test
     public void testTopicCreationEndpointWhenExplicitlyDisabled() {
-        TestHelper.withEnv("CONNECT_TOPIC_CREATION_ENABLE", "false");
-        TestHelper.startContainers();
+        RestExtensionTestInfrastructure.getDebeziumContainer().withEnv("CONNECT_TOPIC_CREATION_ENABLE", "false");
+        RestExtensionTestInfrastructure.startContainers(DATABASE.NONE);
         given()
-                .port(TestHelper.getDebeziumContainer().getFirstMappedPort())
+                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
                 .when()
-                .get(TestHelper.API_PREFIX + TestHelper.TOPIC_CREATION_ENDPOINT)
+                .get(DebeziumResource.BASE_PATH + DebeziumResource.TOPIC_CREATION_ENDPOINT)
                 .then().log().all()
                 .statusCode(200)
                 .body(is("false"));
@@ -64,30 +102,38 @@ public class DebeziumResourceIT {
 
     @Test
     public void testTransformsEndpoint() {
-        TestHelper.startContainers();
+        RestExtensionTestInfrastructure.startContainers(DATABASE.NONE);
         given()
-                .port(TestHelper.getDebeziumContainer().getFirstMappedPort())
-                .when().get(TestHelper.API_PREFIX + TestHelper.TRANSFORMS_ENDPOINT)
+                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .when().get(DebeziumResource.BASE_PATH + DebeziumResource.TRANSFORMS_ENDPOINT)
                 .then().log().all()
                 .statusCode(200)
-                .body("transform.size()", is(33))
-                .body("transform",
-                        containsInAnyOrder(List.of("io.debezium.connector.mongodb.transforms.ExtractNewDocumentState",
-                                "io.debezium.connector.mysql.transforms.ReadToInsertEvent", "io.debezium.transforms.ByLogicalTableRouter",
-                                "io.debezium.transforms.ContentBasedRouter", "io.debezium.transforms.ExtractNewRecordState", "io.debezium.transforms.Filter",
-                                "io.debezium.transforms.outbox.EventRouter", "io.debezium.transforms.tracing.ActivateTracingSpan",
-                                "org.apache.kafka.connect.transforms.predicates.HasHeaderKey", "org.apache.kafka.connect.transforms.predicates.RecordIsTombstone",
-                                "org.apache.kafka.connect.transforms.predicates.TopicNameMatches", "org.apache.kafka.connect.transforms.Cast$Key",
-                                "org.apache.kafka.connect.transforms.Cast$Value", "org.apache.kafka.connect.transforms.ExtractField$Key",
-                                "org.apache.kafka.connect.transforms.ExtractField$Value", "org.apache.kafka.connect.transforms.Filter",
-                                "org.apache.kafka.connect.transforms.Flatten$Key", "org.apache.kafka.connect.transforms.Flatten$Value",
-                                "org.apache.kafka.connect.transforms.HoistField$Key", "org.apache.kafka.connect.transforms.HoistField$Value",
-                                "org.apache.kafka.connect.transforms.InsertField$Key",
-                                "org.apache.kafka.connect.transforms.InsertField$Value", "org.apache.kafka.connect.transforms.MaskField$Key",
-                                "org.apache.kafka.connect.transforms.MaskField$Value", "org.apache.kafka.connect.transforms.RegexRouter",
-                                "org.apache.kafka.connect.transforms.ReplaceField$Key", "org.apache.kafka.connect.transforms.ReplaceField$Value",
-                                "org.apache.kafka.connect.transforms.SetSchemaMetadata$Key", "org.apache.kafka.connect.transforms.SetSchemaMetadata$Value",
-                                "org.apache.kafka.connect.transforms.TimestampConverter$Key", "org.apache.kafka.connect.transforms.TimestampConverter$Value",
-                                "org.apache.kafka.connect.transforms.TimestampRouter", "org.apache.kafka.connect.transforms.ValueToKey").toArray()));
+                .body("transform.size()", is(SUPPORTED_TRANSFORMS.size()))
+                .body("transform", containsInAnyOrder(SUPPORTED_TRANSFORMS.toArray()));
     }
+
+    @Test
+    public void testPredicatesEndpoint() {
+        RestExtensionTestInfrastructure.startContainers(DATABASE.NONE);
+        given()
+                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .when().get(DebeziumResource.BASE_PATH + DebeziumResource.PREDICATES_ENDPOINT)
+                .then().log().all()
+                .statusCode(200)
+                .body("predicate.size()", is(SUPPORTED_PREDICATES.size()))
+                .body("predicate", containsInAnyOrder(SUPPORTED_PREDICATES.toArray()));
+    }
+
+    @Test
+    public void testConnectorPluginsEndpoint() {
+        RestExtensionTestInfrastructure.startContainers(DATABASE.NONE);
+        given()
+                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .when().get(DebeziumResource.BASE_PATH + DebeziumResource.CONNECTOR_PLUGINS_ENDPOINT)
+                .then().log().all()
+                .statusCode(200)
+                .body("size()", is(DebeziumResource.SUPPORTED_CONNECTORS.size()))
+                .body("className", containsInAnyOrder(DebeziumResource.SUPPORTED_CONNECTORS.toArray()));
+    }
+
 }

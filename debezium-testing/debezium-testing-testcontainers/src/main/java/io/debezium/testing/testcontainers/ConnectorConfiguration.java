@@ -18,6 +18,14 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
  */
 public class ConnectorConfiguration {
 
+    public static final String CONNECTOR = "connector.class";
+    public static final String HOSTNAME = "database.hostname";
+    public static final String CONNECTION_STRING = "mongodb.connection.string";
+    public static final String PORT = "database.port";
+    public static final String USER = "database.user";
+    public static final String PASSWORD = "database.password";
+    public static final String DBNAME = "database.dbname";
+
     private final ObjectNode configNode;
 
     protected ConnectorConfiguration() {
@@ -35,14 +43,6 @@ public class ConnectorConfiguration {
         configNode.fields().forEachRemaining(e -> configuration.configNode.set(e.getKey(), e.getValue()));
         return configuration;
     }
-
-    private static final String CONNECTOR = "connector.class";
-    private static final String HOSTNAME = "database.hostname";
-    private static final String CONNECTION_STRING = "mongodb.connection.string";
-    private static final String PORT = "database.port";
-    private static final String USER = "database.user";
-    private static final String PASSWORD = "database.password";
-    private static final String DBNAME = "database.dbname";
 
     public static ConnectorConfiguration forJdbcContainer(JdbcDatabaseContainer<?> jdbcDatabaseContainer) {
         ConnectorConfiguration configuration = new ConnectorConfiguration();

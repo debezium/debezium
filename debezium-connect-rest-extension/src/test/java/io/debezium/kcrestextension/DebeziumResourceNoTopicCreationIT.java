@@ -5,6 +5,7 @@
  */
 package io.debezium.kcrestextension;
 
+import static io.debezium.testing.testcontainers.testhelper.RestExtensionTestInfrastructure.DATABASE;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.is;
 
@@ -13,6 +14,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import io.debezium.testing.testcontainers.testhelper.RestExtensionTestInfrastructure;
 
 /**
  * Tests topic creation endpoint which is disabled in Kafka version less than 2.6.0.
@@ -24,22 +27,21 @@ public class DebeziumResourceNoTopicCreationIT {
 
     @BeforeEach
     public void start() {
-        TestHelper.stopContainers();
-        TestHelper.setupDebeziumContainer(DEBEZIUM_CONTAINER_IMAGE_VERSION);
-        TestHelper.startContainers();
+        RestExtensionTestInfrastructure.setupDebeziumContainer(Module.version(), DebeziumConnectRestExtension.class.getName(), DEBEZIUM_CONTAINER_IMAGE_VERSION);
+        RestExtensionTestInfrastructure.startContainers(DATABASE.NONE);
     }
 
     @AfterEach
     public void stop() {
-        TestHelper.stopContainers();
+        RestExtensionTestInfrastructure.stopContainers();
     }
 
     @Test
     public void testTopicCreationEndpoint() {
         given()
-                .port(TestHelper.getDebeziumContainer().getFirstMappedPort())
+                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
                 .when()
-                .get(TestHelper.API_PREFIX + TestHelper.TOPIC_CREATION_ENDPOINT)
+                .get(DebeziumResource.BASE_PATH + DebeziumResource.TOPIC_CREATION_ENDPOINT)
                 .then().log().all()
                 .statusCode(200)
                 .body(is("false"));
