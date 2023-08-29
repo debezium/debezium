@@ -6,14 +6,22 @@
 package io.debezium.metadata;
 
 public class ConnectorDescriptor {
+
     private final String id;
-    private final String name;
+    private final String displayName;
     private final String className;
     private final String version;
 
-    public ConnectorDescriptor(String id, String name, String className, String version) {
+    public ConnectorDescriptor(String id, String displayName, String className, String version) {
         this.id = id;
-        this.name = name;
+        this.displayName = displayName;
+        this.className = className;
+        this.version = version;
+    }
+
+    public ConnectorDescriptor(String className, String version) {
+        this.id = getIdForConnectorClass(className);
+        this.displayName = getDisplayNameForConnectorClass(className);
         this.className = className;
         this.version = version;
     }
@@ -22,8 +30,8 @@ public class ConnectorDescriptor {
         return id;
     }
 
-    public String getName() {
-        return name;
+    public String getDisplayName() {
+        return displayName;
     }
 
     public String getClassName() {
@@ -32,5 +40,39 @@ public class ConnectorDescriptor {
 
     public String getVersion() {
         return version;
+    }
+
+    public static String getIdForConnectorClass(String className) {
+        switch (className) {
+            case "io.debezium.connector.mongodb.MongoDbConnector":
+                return "mongodb";
+            case "io.debezium.connector.mysql.MySqlConnector":
+                return "mysql";
+            case "io.debezium.connector.oracle.OracleConnector":
+                return "oracle";
+            case "io.debezium.connector.postgresql.PostgresConnector":
+                return "postgres";
+            case "io.debezium.connector.sqlserver.SqlServerConnector":
+                return "sqlserver";
+            default:
+                throw new RuntimeException("Unsupported connector type with className: \"" + className + "\"");
+        }
+    }
+
+    public static String getDisplayNameForConnectorClass(String className) {
+        switch (className) {
+            case "io.debezium.connector.mongodb.MongoDbConnector":
+                return "Debezium MongoDB Connector";
+            case "io.debezium.connector.mysql.MySqlConnector":
+                return "Debezium MySQL Connector";
+            case "io.debezium.connector.oracle.OracleConnector":
+                return "Debezium Oracle Connector";
+            case "io.debezium.connector.postgresql.PostgresConnector":
+                return "Debezium PostgreSQL Connector";
+            case "io.debezium.connector.sqlserver.SqlServerConnector":
+                return "Debezium SQLServer Connector";
+            default:
+                throw new RuntimeException("Unsupported connector type with className: \"" + className + "\"");
+        }
     }
 }
