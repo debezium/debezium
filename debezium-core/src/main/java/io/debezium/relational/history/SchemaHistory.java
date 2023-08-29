@@ -88,7 +88,8 @@ public interface SchemaHistory {
                             "FLUSH RELAY LOGS.*," +
                             "flush relay logs.*," +
                             "SAVEPOINT .*," +
-                            "^\\s*#.*")
+                            // Filter out the comment start with "# Dummy event" according https://jira.mariadb.org/browse/MDEV-225
+                            "^\\s*#\\s*Dummy event.*")
             .withWidth(Width.LONG)
             .withImportance(Importance.LOW)
             .withDescription("A regular expression to filter out a subset of incoming DDL statements "
