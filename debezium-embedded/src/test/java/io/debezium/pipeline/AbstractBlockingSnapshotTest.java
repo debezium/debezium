@@ -35,9 +35,12 @@ import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.junit.EqualityCheck;
+import io.debezium.junit.SkipWhenConnectorUnderTest;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.source.AbstractSnapshotChangeEventSource;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractSnapshotTest;
+import io.debezium.util.Testing;
 
 public abstract class AbstractBlockingSnapshotTest extends AbstractSnapshotTest {
     private int signalingRecords;
@@ -72,7 +75,7 @@ public abstract class AbstractBlockingSnapshotTest extends AbstractSnapshotTest 
 
         insertRecords(ROW_COUNT, ROW_COUNT);
 
-        assertRecordsFromSnapshotAndStreamingArePresent(ROW_COUNT * 2);
+        assertRecordsFromSnapshotAndStreamingArePresent(ROW_COUNT * 2, consumeRecordsByTopic(ROW_COUNT * 2, 10));
 
         sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey("", "", BLOCKING, tableDataCollectionId());
 
@@ -80,11 +83,11 @@ public abstract class AbstractBlockingSnapshotTest extends AbstractSnapshotTest 
 
         signalingRecords = 1;
 
-        assertRecordsFromSnapshotAndStreamingArePresent((ROW_COUNT * 2) + signalingRecords);
+        assertRecordsFromSnapshotAndStreamingArePresent((ROW_COUNT * 2), consumeRecordsByTopic((ROW_COUNT * 2) + signalingRecords, 10));
 
         insertRecords(ROW_COUNT, ROW_COUNT * 2);
 
-        assertStreamingRecordsArePresent(ROW_COUNT);
+        assertStreamingRecordsArePresent(ROW_COUNT, consumeRecordsByTopic(ROW_COUNT, 10));
 
     }
 
@@ -116,8 +119,8 @@ public abstract class AbstractBlockingSnapshotTest extends AbstractSnapshotTest 
 
         signalingRecords = 1; // from streaming
 
-        assertRecordsWithValuesPresent((int) ((ROW_COUNT * 3) + totalSnapshotRecords + signalingRecords),
-                getExpectedValues(totalSnapshotRecords), topicName());
+        assertRecordsWithValuesPresent((int) ((ROW_COUNT * 3) + totalSnapshotRecords),
+                getExpectedValues(totalSnapshotRecords), topicName(), consumeRecordsByTopic((int) ((ROW_COUNT * 3) + totalSnapshotRecords + signalingRecords), 10));
     }
 
     @Test
@@ -138,9 +141,52 @@ public abstract class AbstractBlockingSnapshotTest extends AbstractSnapshotTest 
 
         signalingRecords = 1; // from streaming
 
-        assertRecordsWithValuesPresent(500 + signalingRecords, IntStream.rangeClosed(0, 499).boxed().collect(Collectors.toList()), topicNames().get(1).toString());
+        assertRecordsWithValuesPresent(500, IntStream.rangeClosed(0, 499).boxed().collect(Collectors.toList()), topicNames().get(1).toString(),
+                consumeRecordsByTopic(500 + signalingRecords, 10));
 
     }
+
+    @Test
+    @SkipWhenConnectorUnderTest(check = EqualityCheck.EQUAL, value = SkipWhenConnectorUnderTest.Connector.POSTGRES)
+    @SkipWhenConnectorUnderTest(check = EqualityCheck.EQUAL, value = SkipWhenConnectorUnderTest.Connector.SQL_SERVER)
+    @SkipWhenConnectorUnderTest(check = EqualityCheck.EQUAL, value = SkipWhenConnectorUnderTest.Connector.DB2)
+    public void readsSchemaOnlyForSignaledTables() throws Exception {
+        Testing.Print.enable();
+
+        populateTable(tableNames().get(1).toString());
+
+        startConnectorWithSnapshot(x -> mutableConfig(false, false));
+
+        waitForStreamingRunning(connector(), server(), getStreamingNamespace(), task());
+
+        sendAdHocSnapshotSignalWithAdditionalConditionsWithSurrogateKey(
+                Map.of(tableDataCollectionIds().get(1), String.format("SELECT * FROM %s WHERE aa < 500", tableNames().get(1))), "", BLOCKING,
+                tableDataCollectionIds().get(1).toString());
+
+        waitForLogMessage("Snapshot completed", AbstractSnapshotChangeEventSource.class);
+
+        signalingRecords = 1; // from streaming
+
+        SourceRecords recordsByTopic = consumeRecordsByTopic(500 + signalingRecords + expectedDdlsCount(), 1);
+
+        assertRecordsWithValuesPresent(500, IntStream.rangeClosed(0, 499).boxed().collect(Collectors.toList()), topicNames().get(1).toString(),
+                recordsByTopic);
+
+        List<String> ddls = recordsByTopic.recordsForTopic(server()).stream()
+                .map(sourceRecord -> ((Struct) sourceRecord.value()).getString("ddl"))
+                .collect(Collectors.toList());
+
+        Testing.print(ddls);
+
+        assertDdl(ddls);
+    }
+
+    protected int expectedDdlsCount() {
+        return 0;
+    };
+
+    protected void assertDdl(List<String> schemaChangesDdls) {
+    };
 
     protected int insertMaxSleep() {
         return 2;
@@ -199,23 +245,24 @@ public abstract class AbstractBlockingSnapshotTest extends AbstractSnapshotTest 
         return Executors.newSingleThreadExecutor().submit(operation);
     }
 
-    private void assertStreamingRecordsArePresent(int expectedRecords) throws InterruptedException {
+    private void assertStreamingRecordsArePresent(int expectedRecords, SourceRecords recordsByTopic) throws InterruptedException {
 
-        assertRecordsWithValuesPresent(expectedRecords, IntStream.range(2000, 2999).boxed().collect(Collectors.toList()), topicName());
+        assertRecordsWithValuesPresent(expectedRecords, IntStream.range(2000, 2999).boxed().collect(Collectors.toList()), topicName(),
+                recordsByTopic);
     }
 
-    private void assertRecordsFromSnapshotAndStreamingArePresent(int expectedRecords) throws InterruptedException {
+    private void assertRecordsFromSnapshotAndStreamingArePresent(int expectedRecords, SourceRecords recordsByTopic) throws InterruptedException {
 
-        assertRecordsWithValuesPresent(expectedRecords, IntStream.range(0, expectedRecords - 1).boxed().collect(Collectors.toList()), topicName());
+        assertRecordsWithValuesPresent(expectedRecords, IntStream.range(0, expectedRecords - 1).boxed().collect(Collectors.toList()), topicName(),
+                recordsByTopic);
     }
 
-    private void assertRecordsWithValuesPresent(int expectedRecords, List<Integer> expectedValues, String topicName) throws InterruptedException {
+    private void assertRecordsWithValuesPresent(int expectedRecords, List<Integer> expectedValues, String topicName, SourceRecords recordsByTopic) {
 
-        SourceRecords snapshotAndStreamingRecords = consumeRecordsByTopic(expectedRecords, 10);
-        List<Integer> actual = snapshotAndStreamingRecords.recordsForTopic(topicName).stream()
+        List<Integer> actual = recordsByTopic.recordsForTopic(topicName).stream()
                 .map(s -> ((Struct) s.value()).getStruct("after").getInt32(valueFieldName()))
                 .collect(Collectors.toList());
-        assertThat(snapshotAndStreamingRecords.allRecordsInOrder().size()).isEqualTo(expectedRecords);
+        assertThat(recordsByTopic.recordsForTopic(topicName).size()).isEqualTo(expectedRecords);
         assertThat(actual).containsAll(expectedValues);
     }
 

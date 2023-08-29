@@ -31,6 +31,7 @@ import io.debezium.relational.Column;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
+import io.debezium.relational.Tables;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.util.Clock;
 
@@ -84,7 +85,7 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
             snapshotData = this.connectorConfig.getSnapshotMode().includeData();
         }
 
-        return new SnapshottingTask(snapshotSchema, snapshotData, dataCollectionsToBeSnapshotted, snapshotSelectOverridesByTable);
+        return new SnapshottingTask(snapshotSchema, snapshotData, dataCollectionsToBeSnapshotted, snapshotSelectOverridesByTable, false);
     }
 
     @Override
@@ -182,8 +183,9 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
     @Override
     protected void readTableStructure(ChangeEventSourceContext sourceContext,
                                       RelationalSnapshotContext<SqlServerPartition, SqlServerOffsetContext> snapshotContext,
-                                      SqlServerOffsetContext offsetContext)
+                                      SqlServerOffsetContext offsetContext, SnapshottingTask snapshottingTask)
             throws SQLException, InterruptedException {
+
         Set<String> schemas = snapshotContext.capturedTables.stream()
                 .map(TableId::schema)
                 .collect(Collectors.toSet());
@@ -206,11 +208,15 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
             }
 
             LOGGER.info("Reading structure of schema '{}'", snapshotContext.catalogName);
+
+            Tables.TableFilter tableFilter = snapshottingTask.isBlocking() ? Tables.TableFilter.fromPredicate(snapshotContext.capturedTables::contains)
+                    : connectorConfig.getTableFilters().dataCollectionFilter();
+
             jdbcConnection.readSchema(
                     snapshotContext.tables,
                     snapshotContext.catalogName,
                     schema,
-                    connectorConfig.getTableFilters().dataCollectionFilter(),
+                    tableFilter,
                     null,
                     false);
 

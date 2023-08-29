@@ -37,6 +37,14 @@ public @interface SkipWhenConnectorUnderTest {
             }
         },
 
+        POSTGRES {
+
+            @Override
+            boolean isEqualTo(String packageName) {
+                return packageName != null && packageName.startsWith("io.debezium.connector.postgresql");
+            }
+        },
+
         DB2 {
 
             @Override

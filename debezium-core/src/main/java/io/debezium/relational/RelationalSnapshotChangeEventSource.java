@@ -131,7 +131,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
             // Note that there's a minor race condition here: a new table matching the filters could be created between
             // this call and the determination of the initial snapshot position below; this seems acceptable, though
-            determineCapturedTables(ctx, dataCollectionsToBeSnapshotted);
+            determineCapturedTables(ctx, dataCollectionsToBeSnapshotted, snapshottingTask);
             snapshotProgressListener.monitoredDataCollectionsDetermined(snapshotContext.partition, ctx.capturedTables);
             // Init jdbc connection pool for reading table schema and data
             connectionPool = createConnectionPool(ctx);
@@ -146,12 +146,12 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
             determineSnapshotOffset(ctx, previousOffset);
 
             LOGGER.info("Snapshot step 5 - Reading structure of captured tables");
-            readTableStructure(context, ctx, previousOffset);
+            readTableStructure(context, ctx, previousOffset, snapshottingTask);
 
             if (snapshottingTask.snapshotSchema()) {
                 LOGGER.info("Snapshot step 6 - Persisting schema history");
 
-                createSchemaChangeEventsForTables(context, ctx, snapshottingTask);
+                createSchemaChangeEventsForTables(context, ctx, snapshottingTask); // TODO check
 
                 // if we've been interrupted before, the TX rollback will cause any locks to be released
                 releaseSchemaSnapshotLocks(ctx);
@@ -275,7 +275,9 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                 .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
-    private void determineCapturedTables(RelationalSnapshotContext<P, O> ctx, Set<Pattern> dataCollectionsToBeSnapshotted) throws Exception {
+    private void determineCapturedTables(RelationalSnapshotContext<P, O> ctx, Set<Pattern> dataCollectionsToBeSnapshotted, SnapshottingTask snapshottingTask)
+            throws Exception {
+
         Set<TableId> allTableIds = getAllTableIds(ctx);
         Set<TableId> snapshottedTableIds = determineDataCollectionsToBeSnapshotted(allTableIds, dataCollectionsToBeSnapshotted).collect(Collectors.toSet());
 
@@ -283,7 +285,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         Set<TableId> capturedSchemaTables = new HashSet<>();
 
         for (TableId tableId : allTableIds) {
-            if (connectorConfig.getTableFilters().eligibleForSchemaDataCollectionFilter().isIncluded(tableId)) {
+            if (connectorConfig.getTableFilters().eligibleForSchemaDataCollectionFilter().isIncluded(tableId) && !snapshottingTask.isBlocking()) {
                 LOGGER.info("Adding table {} to the list of capture schema tables", tableId);
                 capturedSchemaTables.add(tableId);
             }
@@ -300,10 +302,11 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         }
 
         ctx.capturedTables = addSignalingCollectionAndSort(capturedTables);
-        ctx.capturedSchemaTables = capturedSchemaTables
-                .stream()
-                .sorted()
-                .collect(Collectors.toCollection(LinkedHashSet::new));
+        ctx.capturedSchemaTables = snapshottingTask.isBlocking() ? ctx.capturedTables
+                : capturedSchemaTables
+                        .stream()
+                        .sorted()
+                        .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
     /**
@@ -332,7 +335,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
      * Reads the structure of all the captured tables, writing it to {@link RelationalSnapshotContext#tables}.
      */
     protected abstract void readTableStructure(ChangeEventSourceContext sourceContext,
-                                               RelationalSnapshotContext<P, O> snapshotContext, O offsetContext)
+                                               RelationalSnapshotContext<P, O> snapshotContext, O offsetContext, SnapshottingTask snapshottingTask)
             throws Exception;
 
     /**
@@ -747,7 +750,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         public Set<TableId> capturedTables;
         public Set<TableId> capturedSchemaTables;
 
-        public RelationalSnapshotContext(P partition, String catalogName) throws SQLException {
+        public RelationalSnapshotContext(P partition, String catalogName) {
             super(partition);
             this.catalogName = catalogName;
             this.tables = new Tables();

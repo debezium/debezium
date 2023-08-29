@@ -92,7 +92,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
             LOGGER.info("According to the connector configuration only schema will be snapshot.");
         }
 
-        return new SnapshottingTask(snapshotSchema, snapshotData, dataCollectionsToBeSnapshotted, snapshotSelectOverridesByTable);
+        return new SnapshottingTask(snapshotSchema, snapshotData, dataCollectionsToBeSnapshotted, snapshotSelectOverridesByTable, false);
     }
 
     @Override
@@ -171,7 +171,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     @Override
     protected void readTableStructure(ChangeEventSourceContext sourceContext,
                                       RelationalSnapshotContext<OraclePartition, OracleOffsetContext> snapshotContext,
-                                      OracleOffsetContext offsetContext)
+                                      OracleOffsetContext offsetContext, SnapshottingTask snapshottingTask)
             throws SQLException, InterruptedException {
         Set<TableId> capturedSchemaTables;
         if (databaseSchema.storeOnlyCapturedTables()) {
@@ -185,11 +185,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
 
         Set<String> schemas = capturedSchemaTables.stream().map(TableId::schema).collect(Collectors.toSet());
 
-        // reading info only for the schemas we're interested in as per the set of captured tables;
-        // while the passed table name filter alone would skip all non-included tables, reading the schema
-        // would take much longer that way
-        // however, for users interested only in captured tables, we need to pass also table filter
-        final Tables.TableFilter tableFilter = connectorConfig.storeOnlyCapturedTables() ? connectorConfig.getTableFilters().dataCollectionFilter() : null;
+        final Tables.TableFilter tableFilter = getTableFilter(snapshottingTask, snapshotContext);
         for (String schema : schemas) {
             if (!sourceContext.isRunning()) {
                 throw new InterruptedException("Interrupted while reading structure of schema " + schema);
@@ -202,6 +198,19 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
                     null,
                     false);
         }
+    }
+
+    private Tables.TableFilter getTableFilter(SnapshottingTask snapshottingTask, RelationalSnapshotContext<OraclePartition, OracleOffsetContext> snapshotContext) {
+
+        if (snapshottingTask.isBlocking()) {
+            return Tables.TableFilter.fromPredicate(snapshotContext.capturedTables::contains);
+        }
+
+        // reading info only for the schemas we're interested in as per the set of captured tables;
+        // while the passed table name filter alone would skip all non-included tables, reading the schema
+        // would take much longer that way
+        // however, for users interested only in captured tables, we need to pass also table filter
+        return connectorConfig.storeOnlyCapturedTables() ? connectorConfig.getTableFilters().dataCollectionFilter() : null;
     }
 
     @Override
