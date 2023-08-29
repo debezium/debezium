@@ -5,9 +5,6 @@
  */
 package io.debezium.testing.testcontainers;
 
-import static io.debezium.testing.testcontainers.util.DockerUtils.addFakeDnsEntry;
-import static io.debezium.testing.testcontainers.util.DockerUtils.isDockerDesktop;
-import static io.debezium.testing.testcontainers.util.DockerUtils.logDockerDesktopBanner;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.IntStream.range;
 
@@ -178,7 +175,7 @@ public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
         this.authEnabled = builder.authEnabled;
         this.configAddress = builder.configAddress;
 
-        if (isDockerDesktop()) {
+        if (DockerUtils.isDockerDesktop()) {
             this.port = portResolver.resolveFreePort();
             addFixedExposedPort(port, port);
         }
@@ -186,7 +183,7 @@ public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
             this.port = builder.port;
         }
 
-        logDockerDesktopBanner(LOGGER, List.of(name), builder.skipDockerDesktopLogWarning);
+        DockerUtils.logDockerDesktopBanner(LOGGER, List.of(name), builder.skipDockerDesktopLogWarning);
 
         withNetwork(builder.network);
         withNetworkAliases(name);
@@ -228,7 +225,7 @@ public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
         checkStarted();
 
         // Technically we only need to do this for Mac
-        if (isDockerDesktop()) {
+        if (DockerUtils.isDockerDesktop()) {
             return getNamedAddress();
         }
 
@@ -392,7 +389,7 @@ public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
     @Override
     protected void containerIsStarted(InspectContainerResponse containerInfo) {
         super.containerIsStarted(containerInfo);
-        addFakeDnsEntry(name);
+        DockerUtils.addFakeDnsEntry(name);
     }
 
     /**
