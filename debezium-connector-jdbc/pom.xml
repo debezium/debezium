@@ -9,7 +9,7 @@
 
     <modelVersion>4.0.0</modelVersion>
     <artifactId>debezium-connector-jdbc</artifactId>
-    <version>2.4.0-SNAPSHOT</version>
+    <version>2.4.0.Beta1</version>
     <name>Debezium JDBC Sink Connector</name>
     <packaging>jar</packaging>
 
@@ -17,7 +17,7 @@
         <connection>scm:git:git@github.com:debezium/debezium-connector-jdbc.git</connection>
         <developerConnection>scm:git:git@github.com:debezium/debezium-connector-jdbc.git</developerConnection>
         <url>https://github.com/debezium/debezium-connector-jdbc</url>
-        <tag>HEAD</tag>
+        <tag>v2.4.0.Beta1</tag>
     </scm>
 
     <properties>
