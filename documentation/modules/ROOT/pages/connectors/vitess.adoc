@@ -1297,6 +1297,18 @@ If you change the name value, after a restart, instead of continuing to emit eve
 |No default
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of columns that should be excluded from change event record values. Fully-qualified names for columns are of the form _keyspace_._tableName_._columnName_. Do not also set the `column.include.list` property.
 
+|[[vitess-property-column-truncate-to-length-chars]]<<vitess-property-column-truncate-to-length-chars, `column.truncate.to._length_.chars`>>
+|_n/a_
+|An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns.
+Set this property if you want to truncate the data in a set of columns when it exceeds the number of characters specified by the _length_ in the property name.
+Set `length` to a positive integer value, for example, `column.truncate.to.20.chars`.
+
+The fully-qualified name of a column observes the following format: _databaseName_._tableName_._columnName_.
+To match the name of a column, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the column; the expression does not match substrings that might be present in a column name.
+
+You can specify multiple properties with different lengths in a single configuration.
+
 |[[vitess-property-tombstones-on-delete]]<<vitess-property-tombstones-on-delete, `+tombstones.on.delete+`>>
 |`true`
 |Controls whether a _delete_ event is followed by a tombstone event. +
