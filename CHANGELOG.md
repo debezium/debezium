@@ -2,6 +2,65 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.4.0.Beta1
+August 29th 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12411390)
+
+### New features since 2.4.0.Alpha2
+
+* Provide by DDL type schema event filtering [DBZ-6240](https://issues.redhat.com/browse/DBZ-6240)
+* Add support for TimescaleDB [DBZ-6482](https://issues.redhat.com/browse/DBZ-6482)
+* Max transaction duration for Oracle connector [DBZ-6615](https://issues.redhat.com/browse/DBZ-6615)
+* Debezium 2.3.0.Final Missing Kafka Channel Documentation [DBZ-6688](https://issues.redhat.com/browse/DBZ-6688)
+* Make the Kafka channel consumer group ID configurable for the PostgreSQL connector [DBZ-6689](https://issues.redhat.com/browse/DBZ-6689)
+* Use JSON format for JMX Notification userData [DBZ-6742](https://issues.redhat.com/browse/DBZ-6742)
+* Use custom RowDeserializers in case of binlog compression [DBZ-6786](https://issues.redhat.com/browse/DBZ-6786)
+* Create a shardless topic naming strategy for vitess connector [DBZ-6800](https://issues.redhat.com/browse/DBZ-6800)
+* JDBC sink does not support SQL Server identity inserts  [DBZ-6801](https://issues.redhat.com/browse/DBZ-6801)
+* Allow the embedded infinispan global configuration to be configurable [DBZ-6808](https://issues.redhat.com/browse/DBZ-6808)
+* SqlServer connector send heartbeats when there is no change in the DB [DBZ-6811](https://issues.redhat.com/browse/DBZ-6811)
+* Make finished partition deletion delay configurable. [DBZ-6814](https://issues.redhat.com/browse/DBZ-6814)
+* Add vcs.xml for idea [DBZ-6825](https://issues.redhat.com/browse/DBZ-6825)
+* Make partial and multi-response transactions debug level logs [DBZ-6830](https://issues.redhat.com/browse/DBZ-6830)
+
+
+### Breaking changes since 2.4.0.Alpha2
+
+* Expose Oracle SCN-based metrics as Numeric rather than String values [DBZ-6798](https://issues.redhat.com/browse/DBZ-6798)
+
+
+### Fixes since 2.4.0.Alpha2
+
+* Debezium heartbeat.action.query does not start before writing to WAL. [DBZ-6635](https://issues.redhat.com/browse/DBZ-6635)
+* Schema name changed with Custom topic naming strategy [DBZ-6641](https://issues.redhat.com/browse/DBZ-6641)
+* Wrong behavior of quote.identifiers in JdbcSinkConnector [DBZ-6682](https://issues.redhat.com/browse/DBZ-6682)
+* Toasted UUID array is not properly processed [DBZ-6720](https://issues.redhat.com/browse/DBZ-6720)
+* Debezium crashes on parsing MySQL DDL statement (specific JOIN) [DBZ-6724](https://issues.redhat.com/browse/DBZ-6724)
+* When using pgoutput in postgres connector, (+/-)Infinity is not supported in decimal values [DBZ-6758](https://issues.redhat.com/browse/DBZ-6758)
+* Outbox transformation can cause connector to crash [DBZ-6760](https://issues.redhat.com/browse/DBZ-6760)
+* MongoDB New Document State Extraction: nonexistent field for add.headers [DBZ-6774](https://issues.redhat.com/browse/DBZ-6774)
+* Mongodb connector tests are massively failing when executed on 7.0-rc version [DBZ-6779](https://issues.redhat.com/browse/DBZ-6779)
+* Dbz crashes on parsing MySQL DDL statement (SELECT 1.;) [DBZ-6780](https://issues.redhat.com/browse/DBZ-6780)
+* Mysql connector tests are failing when executed without any profile [DBZ-6791](https://issues.redhat.com/browse/DBZ-6791)
+* Dbz crashed on parsing MySQL DDL statement (SELECT 1 + @sum:=1 AS ss;) [DBZ-6794](https://issues.redhat.com/browse/DBZ-6794)
+* MySQL DDL parser - REPEAT function not accepted [DBZ-6803](https://issues.redhat.com/browse/DBZ-6803)
+* Fix bug with getsnapshottingtask [DBZ-6820](https://issues.redhat.com/browse/DBZ-6820)
+* Dbz crashes on DDL statement (non Latin chars in variables) [DBZ-6821](https://issues.redhat.com/browse/DBZ-6821)
+* Not trim the default value for the BIGINT and SMALLINT types when parsing MySQL DDL [DBZ-6824](https://issues.redhat.com/browse/DBZ-6824)
+* PostgresConnectorIT#shouldAddNewFieldToSourceInfo fails randomly [DBZ-6839](https://issues.redhat.com/browse/DBZ-6839)
+* Wrong filtered comments [DBZ-6840](https://issues.redhat.com/browse/DBZ-6840)
+* Intermittend test failure: BaseSourceTaskTest.verifyTaskRestartsSuccessfully [DBZ-6841](https://issues.redhat.com/browse/DBZ-6841)
+
+
+### Other changes since 2.4.0.Alpha2
+
+* Upstream documentation connector config is not unified [DBZ-6704](https://issues.redhat.com/browse/DBZ-6704)
+* Blocking snapshot must take snapshot configurations from signal [DBZ-6731](https://issues.redhat.com/browse/DBZ-6731)
+* Documentation Request - Property File Configuration - Off-Heap Event Buffering with Embedded Infinispan [DBZ-6813](https://issues.redhat.com/browse/DBZ-6813)
+* Onboard testing farm [DBZ-6827](https://issues.redhat.com/browse/DBZ-6827)
+* When using `skip.messages.without.change=true` a WARN log message is reported for each record [DBZ-6843](https://issues.redhat.com/browse/DBZ-6843)
+
+
+
 ## 2.4.0.Alpha2
 August 9th 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12410665)
 
