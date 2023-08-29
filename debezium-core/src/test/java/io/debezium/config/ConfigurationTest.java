@@ -267,6 +267,24 @@ public class ConfigurationTest {
     }
 
     @Test
+    @FixFor("DBZ-6840")
+    public void defaultDdlFilterShouldNotFilterMariaDBComments() {
+        String defaultDdlFilter = Configuration.create().build().getString(SchemaHistory.DDL_FILTER);
+        Predicate<String> ddlFilter = Predicates.includes(defaultDdlFilter, Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+        assertThat(ddlFilter.test("# Create the new ENTITY table which will be the parent of all other resource tables.\n" +
+                "CREATE TABLE IF NOT EXISTS ENTITY (\n" +
+                " ID BIGINT AUTO_INCREMENT PRIMARY KEY,\n" +
+                " ENTITY_UUID VARCHAR(255) NOT NULL,\n" +
+                " ENTITY_TYPE VARCHAR(255) NULL,\n" +
+                " CREATED_ON DATETIME(6)  NULL,\n" +
+                " UPDATED_ON DATETIME(6)  NULL,\n" +
+                " CREATED_BY VARCHAR(255) NULL,\n" +
+                " UPDATED_BY VARCHAR(255) NULL,\n" +
+                " CONSTRAINT UI_ENTITY_UUID UNIQUE (ENTITY_UUID)\n" +
+                ")")).isFalse();
+    }
+
+    @Test
     @FixFor("DBZ-1015")
     public void testMsgKeyColumnsField() {
         List<String> errorList;
