@@ -97,7 +97,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
         if (previousOffset != null && !previousOffset.isSnapshotRunning()) {
 
             LOGGER.info("A previous offset indicating a completed snapshot has been found. Neither schema nor data will be snapshotted.");
-            return new SnapshottingTask(databaseSchema.isStorageInitializationExecuted(), false, dataCollectionsToBeSnapshotted, snapshotSelectOverridesByTable);
+            return new SnapshottingTask(databaseSchema.isStorageInitializationExecuted(), false, dataCollectionsToBeSnapshotted, snapshotSelectOverridesByTable, false);
         }
 
         LOGGER.info("No previous offset has been found");
@@ -110,7 +110,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
 
         return new SnapshottingTask(this.connectorConfig.getSnapshotMode().includeSchema(), this.connectorConfig.getSnapshotMode().includeData(),
                 dataCollectionsToBeSnapshotted,
-                snapshotSelectOverridesByTable);
+                snapshotSelectOverridesByTable, false);
     }
 
     @Override
@@ -326,7 +326,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
     @Override
     protected void readTableStructure(ChangeEventSourceContext sourceContext,
                                       RelationalSnapshotContext<MySqlPartition, MySqlOffsetContext> snapshotContext,
-                                      MySqlOffsetContext offsetContext)
+                                      MySqlOffsetContext offsetContext, SnapshottingTask snapshottingTask)
             throws Exception {
         Set<TableId> capturedSchemaTables;
         if (twoPhaseSchemaSnapshot()) {
@@ -350,8 +350,10 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
                 .collect(Collectors.groupingBy(TableId::catalog, LinkedHashMap::new, Collectors.toList()));
         final Set<String> databases = tablesToRead.keySet();
 
-        // Record default charset
-        addSchemaEvent(snapshotContext, "", connection.setStatementFor(connection.readMySqlCharsetSystemVariables()));
+        if (!snapshottingTask.isBlocking()) {
+            // Record default charset
+            addSchemaEvent(snapshotContext, "", connection.setStatementFor(connection.readMySqlCharsetSystemVariables()));
+        }
 
         for (TableId tableId : capturedSchemaTables) {
             if (!sourceContext.isRunning()) {
@@ -374,15 +376,18 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
                     throw new InterruptedException("Interrupted while reading structure of schema " + databases);
                 }
 
-                LOGGER.info("Reading structure of database '{}'", database);
-                addSchemaEvent(snapshotContext, database, "DROP DATABASE IF EXISTS " + quote(database));
-                final StringBuilder createDatabaseDdl = new StringBuilder("CREATE DATABASE " + quote(database));
-                final DatabaseLocales defaultDatabaseLocales = databaseCharsets.get(database);
-                if (defaultDatabaseLocales != null) {
-                    defaultDatabaseLocales.appendToDdlStatement(database, createDatabaseDdl);
+                if (!snapshottingTask.isBlocking()) {
+                    // in case of blocking snapshot we want to read structures only for collections specified in the signal
+                    LOGGER.info("Reading structure of database '{}'", database);
+                    addSchemaEvent(snapshotContext, database, "DROP DATABASE IF EXISTS " + quote(database));
+                    final StringBuilder createDatabaseDdl = new StringBuilder("CREATE DATABASE " + quote(database));
+                    final DatabaseLocales defaultDatabaseLocales = databaseCharsets.get(database);
+                    if (defaultDatabaseLocales != null) {
+                        defaultDatabaseLocales.appendToDdlStatement(database, createDatabaseDdl);
+                    }
+                    addSchemaEvent(snapshotContext, database, createDatabaseDdl.toString());
+                    addSchemaEvent(snapshotContext, database, "USE " + quote(database));
                 }
-                addSchemaEvent(snapshotContext, database, createDatabaseDdl.toString());
-                addSchemaEvent(snapshotContext, database, "USE " + quote(database));
 
                 if (connectorConfig.getSnapshotLockingMode().usesLocking()) {
                     createSchemaEventsForTables(snapshotContext, tablesToRead.get(database), true);
@@ -469,8 +474,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
 
     @Override
     protected SchemaChangeEvent getCreateTableEvent(RelationalSnapshotContext<MySqlPartition, MySqlOffsetContext> snapshotContext,
-                                                    Table table)
-            throws SQLException {
+                                                    Table table) {
         return SchemaChangeEvent.ofSnapshotCreate(snapshotContext.partition, snapshotContext.offset, snapshotContext.catalogName, table);
     }
 
@@ -635,6 +639,10 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
             LOGGER.debug("Processing schema event {}", event);
 
             final TableId tableId = event.getTables().isEmpty() ? null : event.getTables().iterator().next().id();
+            if (snapshottingTask.isBlocking() && !snapshotContext.capturedTables.contains(tableId)) {
+                LOGGER.debug("Event {} will be skipped since it's not related to blocking snapshot captured table {}", event, snapshotContext.capturedTables);
+                continue;
+            }
             snapshotContext.offset.event(tableId, getClock().currentTime());
             dispatcher.dispatchSchemaChangeEvent(snapshotContext.partition, snapshotContext.offset, tableId, (receiver) -> receiver.schemaChangeEvent(event));
         }

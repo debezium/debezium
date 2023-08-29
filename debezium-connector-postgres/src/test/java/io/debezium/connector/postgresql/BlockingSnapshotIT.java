@@ -71,7 +71,8 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
                 .with(CommonConnectorConfig.SIGNAL_POLL_INTERVAL_MS, 5)
                 .with(PostgresConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 10)
                 .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "s1")
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE_TABLES, "s1.a");
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE_TABLES, "s1.a")
+                .with(PostgresConnectorConfig.INCLUDE_SCHEMA_CHANGES, true);
     }
 
     @Override

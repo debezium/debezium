@@ -6,6 +6,8 @@
 
 package io.debezium.connector.mysql;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.sql.SQLException;
 import java.util.List;
 
@@ -23,7 +25,7 @@ import io.debezium.util.Testing;
 public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
 
     protected static final String SERVER_NAME = "is_test";
-    protected final UniqueDatabase DATABASE = new UniqueDatabase(SERVER_NAME, "blocking_snapshot-test").withDbHistoryPath(SCHEMA_HISTORY_PATH);
+    protected final UniqueDatabase DATABASE = new UniqueDatabase(SERVER_NAME, "blocking_snapshot_test", "1", null).withDbHistoryPath(SCHEMA_HISTORY_PATH);
 
     @Before
     public void before() throws SQLException {
@@ -37,6 +39,13 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
     public void after() {
         try {
             stopConnector();
+
+            JdbcConnection connection = databaseConnection();
+            connection.execute("drop database if exists blocking_snapshot_test_1");
+
+        }
+        catch (SQLException e) {
+            throw new RuntimeException(e);
         }
         finally {
             Testing.Files.delete(SCHEMA_HISTORY_PATH);
@@ -56,19 +65,13 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
 
     @Override
     protected Configuration.Builder mutableConfig(boolean signalTableOnly, boolean storeOnlyCapturedDdl) {
-        final String tableIncludeList;
-        if (signalTableOnly) {
-            tableIncludeList = DATABASE.qualifiedTableName("c");
-        }
-        else {
-            tableIncludeList = DATABASE.qualifiedTableName("a") + ", " + DATABASE.qualifiedTableName("c");
-        }
+
         return DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.INCLUDE_SQL_QUERY, true)
                 .with(MySqlConnectorConfig.USER, "mysqluser")
                 .with(MySqlConnectorConfig.PASSWORD, "mysqlpw")
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL.getValue())
-                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                 .with(MySqlConnectorConfig.SIGNAL_DATA_COLLECTION, DATABASE.qualifiedTableName("debezium_signal"))
                 .with(CommonConnectorConfig.SIGNAL_POLL_INTERVAL_MS, 5)
                 .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, storeOnlyCapturedDdl)
@@ -146,4 +149,20 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
         return TableId.parse(DATABASE.qualifiedTableName(table));
     }
 
+    @Override
+    protected int expectedDdlsCount() {
+        return 12;
+    }
+
+    @Override
+    protected void assertDdl(List<String> schemaChangesDdls) {
+
+        assertThat(schemaChangesDdls.get(schemaChangesDdls.size() - 2)).isEqualTo("DROP TABLE IF EXISTS `blocking_snapshot_test_1`.`b`");
+        assertThat(schemaChangesDdls.get(schemaChangesDdls.size() - 1)).isEqualTo("\"CREATE TABLE `b` (\n" +
+                "  `pk` int NOT NULL AUTO_INCREMENT,\n" +
+                "  `aa` int DEFAULT NULL,\n" +
+                "  PRIMARY KEY (`pk`)\n" +
+                ") ENGINE=InnoDB AUTO_INCREMENT=1001 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci\"");
+
+    }
 }

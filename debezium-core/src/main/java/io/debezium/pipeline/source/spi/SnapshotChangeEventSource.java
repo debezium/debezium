@@ -50,6 +50,6 @@ public interface SnapshotChangeEventSource<P extends Partition, O extends Offset
         Map<String, String> filtersByTable = snapshotConfiguration.getAdditionalConditions().stream()
                 .collect(Collectors.toMap(k -> k.getDataCollection().toString(), AdditionalCondition::getFilter));
 
-        return new SnapshottingTask(true, true, snapshotConfiguration.getDataCollections(), filtersByTable);
+        return new SnapshottingTask(true, true, snapshotConfiguration.getDataCollections(), filtersByTable, true);
     }
 }

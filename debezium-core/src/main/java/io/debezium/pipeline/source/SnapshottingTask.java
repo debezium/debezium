@@ -18,11 +18,14 @@ public class SnapshottingTask {
     private final List<String> dataCollections;
     private final Map<String, String> filterQueries;
 
-    public SnapshottingTask(boolean snapshotSchema, boolean snapshotData, List<String> dataCollections, Map<String, String> filterQueries) {
+    private final boolean blocking;
+
+    public SnapshottingTask(boolean snapshotSchema, boolean snapshotData, List<String> dataCollections, Map<String, String> filterQueries, boolean blocking) {
         this.snapshotSchema = snapshotSchema;
         this.snapshotData = snapshotData;
         this.dataCollections = dataCollections;
         this.filterQueries = filterQueries;
+        this.blocking = blocking;
     }
 
     /**
@@ -62,6 +65,14 @@ public class SnapshottingTask {
      */
     public boolean shouldSkipSnapshot() {
         return !snapshotSchema() && !snapshotData();
+    }
+
+    /**
+     * Determine if the task is a blocking snapshot or not
+     *
+     */
+    public boolean isBlocking() {
+        return blocking;
     }
 
     @Override

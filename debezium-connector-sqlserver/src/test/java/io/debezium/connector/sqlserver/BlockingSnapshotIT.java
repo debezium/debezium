@@ -97,13 +97,7 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
 
     @Override
     protected Configuration.Builder mutableConfig(boolean signalTableOnly, boolean storeOnlyCapturedDdl) {
-        final String tableIncludeList;
-        if (signalTableOnly) {
-            tableIncludeList = "dbo.b";
-        }
-        else {
-            tableIncludeList = "dbo.a," + signalTableName();
-        }
+
         return TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SqlServerConnectorConfig.SnapshotMode.INITIAL)
                 .with(SqlServerConnectorConfig.SIGNAL_DATA_COLLECTION, "testDB1.dbo.debezium_signal")

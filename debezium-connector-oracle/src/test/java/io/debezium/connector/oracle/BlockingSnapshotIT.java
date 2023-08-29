@@ -6,6 +6,8 @@
 
 package io.debezium.connector.oracle;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -125,6 +127,7 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
                 .with(OracleConnectorConfig.SIGNAL_DATA_COLLECTION, TestHelper.getDatabaseName() + ".DEBEZIUM.DEBEZIUM_SIGNAL")
                 .with(OracleConnectorConfig.SCHEMA_INCLUDE_LIST, "DEBEZIUM")
                 .with(OracleConnectorConfig.SNAPSHOT_MODE_TABLES, TestHelper.getDatabaseName() + ".DEBEZIUM.A")
+                .with(OracleConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                 .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true);
     }
 
@@ -158,4 +161,20 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
         return TestHelper.SERVER_NAME;
     }
 
+    @Override
+    protected int expectedDdlsCount() {
+        return 4;
+    }
+
+    @Override
+    protected void assertDdl(List<String> schemaChangesDdls) {
+        assertThat(schemaChangesDdls.get(schemaChangesDdls.size() - 1)).isEqualTo("\n" +
+                "  CREATE TABLE \"DEBEZIUM\".\"B\" \n" +
+                "   (\t\"PK\" NUMBER(9,0), \n" +
+                "\t\"AA\" NUMBER(9,0), \n" +
+                "\t PRIMARY KEY (\"PK\")\n" +
+                "  USING INDEX  ENABLE, \n" +
+                "\t SUPPLEMENTAL LOG DATA (ALL) COLUMNS\n" +
+                "   ) ;");
+    }
 }
