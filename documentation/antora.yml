@@ -65,6 +65,7 @@ asciidoc:
     link-cassandra-4-plugin-snapshot: 'https://oss.sonatype.org/service/local/artifact/maven/redirect?r=snapshots&g=io.debezium&a=debezium-connector-cassandra-4&v=LATEST&c=plugin&e=tar.gz'
     link-vitess-plugin-snapshot: 'https://oss.sonatype.org/service/local/artifact/maven/redirect?r=snapshots&g=io.debezium&a=debezium-connector-vitess&v=LATEST&c=plugin&e=tar.gz'
     link-spanner-plugin-snapshot: 'https://oss.sonatype.org/service/local/artifact/maven/redirect?r=snapshots&g=io.debezium&a=debezium-connector-spanner&v=LATEST&c=plugin&e=tar.gz'
+    link-jdbc-plugin-snapshot: 'https://oss.sonatype.org/service/local/artifact/maven/redirect?r=snapshots&g=io.debezium&a=debezium-connector-jdbc&v=LATEST&c=plugin&e=tar.gz'
     link-server-snapshot: 'https://oss.sonatype.org/service/local/artifact/maven/redirect?r=snapshots&g=io.debezium&a=debezium-server-dist&v=LATEST&e=tar.gz'
     link-kafka-docs: 'https://kafka.apache.org/documentation'
     link-java7-standard-names: 'https://docs.oracle.com/javase/7/docs/technotes/guides/security/StandardNames.html#MessageDigest'

@@ -22,13 +22,13 @@ For streaming change events to Apache Kafka, it is recommended to deploy the {pr
 
 To install the server download and unpack the server distribution archive:
 
-ifeval::['{page-version}' == 'main']
+ifeval::['{page-version}' == 'master']
 * {link-server-snapshot}[{prodname} Server distribution]
 
 NOTE: The above links refers to the nightly snapshot build of the {prodname} main branch.
 If you are looking for a non-snapshot version, please select the appropriate version of this documentation in the menu to the right.
 endif::[]
-ifeval::['{page-version}' != 'main']
+ifeval::['{page-version}' != 'master']
 * https://repo1.maven.org/maven2/io/debezium/debezium-server-dist/{debezium-version}/debezium-server-dist-{debezium-version}.tar.gz[{prodname} Server distribution]
 endif::[]
 
