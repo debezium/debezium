@@ -3470,8 +3470,11 @@ public class OracleConnectorIT extends AbstractConnectorTest {
                 else {
                     connection.executeWithoutCommitting("INSERT INTO dbz5085 (id,data) values (" + i + ", 'Test-" + i + "')");
                 }
-                // simulate longer lived transactions
-                Thread.sleep(100L);
+            }
+
+            try (OracleConnection admin = TestHelper.adminConnection()) {
+                Awaitility.await().atMost(Duration.ofMinutes(5)).until(() -> admin.queryAndMap("SELECT COUNT(1) FROM v$transaction",
+                        admin.singleResultMapper(rs -> rs.getLong(1), "Failed to get count")) > 0L);
             }
 
             start(OracleConnector.class, config);
@@ -3545,8 +3548,11 @@ public class OracleConnectorIT extends AbstractConnectorTest {
                 else {
                     connection.executeWithoutCommitting("INSERT INTO dbz5085 (id,data) values (" + i + ", 'Test-" + i + "')");
                 }
-                // simulate longer lived transactions
-                Thread.sleep(100L);
+            }
+
+            try (OracleConnection admin = TestHelper.adminConnection()) {
+                Awaitility.await().atMost(Duration.ofMinutes(5)).until(() -> admin.queryAndMap("SELECT COUNT(1) FROM v$transaction",
+                        admin.singleResultMapper(rs -> rs.getLong(1), "Failed to get count")) > 0L);
             }
 
             start(OracleConnector.class, config);
