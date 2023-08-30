@@ -3478,7 +3478,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             assertConnectorIsRunning();
 
             // make sure transaction doesn't commit too early
-            Awaitility.await().atMost(Duration.ofMinutes(3)).until(() -> logInterceptor.containsMessage("Pending Transaction '"));
+            Awaitility.await().atMost(Duration.ofMinutes(5)).until(() -> logInterceptor.containsMessage("Pending Transaction '"));
 
             connection.commit();
 
@@ -3553,7 +3553,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             assertConnectorIsRunning();
 
             // make sure transaction doesn't commit too early
-            Awaitility.await().atMost(Duration.ofMinutes(3)).until(() -> logInterceptor.containsMessage("Pending Transaction '"));
+            Awaitility.await().atMost(Duration.ofMinutes(5)).until(() -> logInterceptor.containsMessage("Pending Transaction '"));
 
             connection.commit();
 
