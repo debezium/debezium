@@ -282,6 +282,7 @@ jobs:
         - variables:
             ORACLE_VERSION: 21.3.0
             TEST_PROFILE: oracle
+            ORACLE_ARG: "-Dit=io.debezium.connector.oracle.OracleConnectorIT"
 
   ###############################################################################################
   - job: tests
