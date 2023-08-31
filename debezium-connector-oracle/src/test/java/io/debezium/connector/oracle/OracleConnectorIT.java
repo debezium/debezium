@@ -3779,7 +3779,10 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             Awaitility.await().atMost(60, TimeUnit.SECONDS).until(() -> {
                 final BigInteger newOffsetScn = getStreamingMetric("OffsetScn");
                 final BigInteger newCommittedScn = getStreamingMetric("CommittedScn");
-                return !newOffsetScn.equals(offsetScn) && !newCommittedScn.equals(committedScn);
+                return newOffsetScn != null &&
+                        newCommittedScn != null &&
+                        !newOffsetScn.equals(offsetScn) &&
+                        !newCommittedScn.equals(committedScn);
             });
         }
         finally {
