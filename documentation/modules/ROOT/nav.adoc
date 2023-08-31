@@ -36,6 +36,7 @@
 ** xref:transformations/compute-partition.adoc[Compute Partition [Deprecated\]]
 ** xref:transformations/partition-routing.adoc[Partition Routing]
 ** xref:transformations/header-to-value.adoc[HeaderToValue]
+** xref:transformations/timezone-converter.adoc[Timezone Converter]
 * API and SPI
 ** xref:development/engine.adoc[Debezium Engine]
 ** xref:development/converters.adoc[Custom Converters]

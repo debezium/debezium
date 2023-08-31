@@ -39,6 +39,9 @@ The following SMTs are provided by {prodname}:
 |xref:transformations/partition-routing.adoc[Partition Routing]
 |Re-routes records to specific partitions based on configured payload fields.
 
+|xref:transformations/timezone-converter.adoc[Timezone Converter]
+|Converts Debezium and Kafka Connect timestamp fields of the record into a different timezone.
+
 |===
 
 By means of xref:transformations/applying-transformations-selectively.adoc[SMT Predicates] you can apply any of the transformations selectively, so that it modifies only that subset of change event messages that share a common characteristic.
