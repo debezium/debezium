@@ -62,7 +62,7 @@ public class SqlServerDatabaseDialect extends GeneralDatabaseDialect {
         String qualifiedTableName = getQualifiedTableName(table.getId());
         return new StringBuilder()
                 .append("SET IDENTITY_INSERT ").append(qualifiedTableName).append(" ON ;")
-                .append(sqlStatement)
+                .append(sqlStatement).append(";")
                 .append("SET IDENTITY_INSERT ").append(qualifiedTableName).append(" OFF ;")
                 .toString();
 
