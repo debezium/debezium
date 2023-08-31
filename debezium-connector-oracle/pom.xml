@@ -253,11 +253,12 @@
                     <skipTests>${skipITs}</skipTests>
                     <enableAssertions>true</enableAssertions>
                     <forkCount>0</forkCount>
-                    <argLine>-Djava.library.path=${instantclient.dir} -Ddebezium.embedded.shutdown.pause.before.interrupt.ms=20000 -Djavax.xml.parsers.SAXParserFactory=com.sun.org.apache.xerces.internal.jaxp.SAXParserFactoryImpl</argLine>
+                    <argLine>-Djava.library.path=${instantclient.dir} -Ddebezium.embedded.shutdown.pause.before.interrupt.ms=20000</argLine>
                     <systemPropertyVariables>
                         <database.connection.adapter>${adapter.name}</database.connection.adapter>
                         <log.mining.buffer.type>${log.mining.buffer.type.name}</log.mining.buffer.type>
                         <internal.log.mining.read.only>${log.mining.read.only.mode}</internal.log.mining.read.only>
+                        <javax.xml.parsers.SAXParserFactory>com.sun.org.apache.xerces.internal.jaxp.SAXParserFactoryImpl</javax.xml.parsers.SAXParserFactory>
                     </systemPropertyVariables>
                     <runOrder>${runOrder}</runOrder>
                 </configuration>
