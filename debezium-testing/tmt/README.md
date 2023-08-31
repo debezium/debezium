@@ -47,6 +47,14 @@ testing-farm request --compose CentOS-Stream-8 \
  --git-ref some-branch \
  --plan mysql
 ```
+Run only one test class on testing farm from cli
+```shell
+testing-farm request --composea debezium-tf-2130 \
+ --git-url https://github.com/debezium/debezium.git \
+ --git-ref some-branch \
+ --plan oracle \
+ -e EXECUTION_ARG="-Dit.test=io.debezium.connector.oracle.OracleConnectorIT" 
+```
 
 ## Packit-as-a-service for PR check
 
