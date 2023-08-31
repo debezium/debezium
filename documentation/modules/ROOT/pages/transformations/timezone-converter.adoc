@@ -1,0 +1,181 @@
+:page-aliases: configuration/timezone-converter.adoc
+[id="timezone-converter"]
+= Timezone Converter
+
+:toc:
+:toc-placement: macro
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+
+toc::[]
+
+[[timezone-converter-introduction]]
+
+Effortlessly synchronizing timestamp data from diverse sources into a consistent timezone representation holds significance for maintaining data consistency and precision within data processing pipelines and applications. The `Timezone Converter` SMT is designed to seamlessly transform the timestamp values of fields from one timezone to another. It is specifically helpful when you require to ensure that timestamps in your event data are in a consistent timezone representation.
+
+The SMT converts the value of the specified field to the target timezone using `converted.timezone` configuration option. The target timezone can be specified as a geographic timezone e.g. `America/New_York` or as a UTC offset e.g. `+02:00`. It is assumed that the fields of the record are in UTC. Along with specified timezone, the SMT also provides configuration options to include or exclude specific fields from timezone conversion using the `include.fields` and `exclude.fields` configuration options.
+
+The SMT supports all Debezium and Kafka Connect temporal and non-temporal types.
+
+[NOTE]
+====
+In order to comply the conversions with the daylight saving time, you must specify a geographic timezone in the `converted.timezone` configuration option. If you specify a UTC offset, the conversion does not comply with the daylight saving time, it simply implies a fixed offset from UTC. Providing a fixed UTC offset is useful when you want to convert the timestamp fields to a specific timezone that does not follow the daylight saving time.
+====
+
+[NOTE]
+====
+The `include.fields` and `exclude.fields` configuration options are mutually exclusive. You must specify only one of the options.
+====
+
+[[timezone-converter-usage]]
+
+[[basic-example-timezone-converter]]
+== Example: Basic configuration
+
+To convert the time based fields in an event record to a target timezone, configure the `TimezoneConverter` SMT in the Kafka Connect configuration for a connector.
+For example, to convert the all timestamp fields in an event record from UTC to the `Pacific/Easter` timezone:
+
+[source]
+----
+transforms=convertTimezone
+transforms.convertTimezone.type=io.debezium.transforms.TimezoneConverter
+transforms.convertTimezone.converted.timezone=Pacific/Easter
+----
+
+The following example shows how to convert the all timestamp fields in an event record:
+
+.Effect of applying the `TimezoneConverter` SMT
+====
+Event record before it is processed by the `TimezoneConverter` transformation::
+
+Value before the SMT processes the event record:::
++
+[source, json]
+----
+{
+        "before": null,
+        "after": {
+            "id": 1,
+            "first_name": "Anne",
+            "last_name": "Kretchmar",
+            "email": "annek@noanswer.org",
+            "created_at": "2011-01-11T16:40:30.123456789+00:00"
+        },
+        "source": {
+            "version": "2.4.0.Aplha2",
+            "connector": "postgresql",
+            "name": "PostgreSQL_server",
+            "ts_ms": 1559033904863,
+            "snapshot": true,
+            "db": "postgres",
+            "sequence": "[\"24023119\",\"24023128\"]",
+            "schema": "public",
+            "table": "customers",
+            "txId": 555,
+            "lsn": 24023128,
+            "xmin": null
+        },
+        "op": "c",
+        "ts_ms": 1559033904863
+    }
+----
+
+Event record after it is processed by the `TimezoneConverter` transformation::
+
+Value after the SMT converts the timestamp field to the target timezone:::
++
+[source, json]
+----
+{
+        "before": null,
+        "after": {
+            "id": 1,
+            "first_name": "Anne",
+            "last_name": "Kretchmar",
+            "email": "annek@noanswer.org",
+            "created_at": "2011-01-11T11:40:30.123456789-05:00"
+        },
+        "source": {
+            "version": "2.4.0.Aplha2",
+            "connector": "postgresql",
+            "name": "PostgreSQL_server",
+            "ts_ms": 1559033904863,
+            "snapshot": true,
+            "db": "postgres",
+            "sequence": "[\"24023119\",\"24023128\"]",
+            "schema": "public",
+            "table": "customers",
+            "txId": 555,
+            "lsn": 24023128,
+            "xmin": null,
+            "id": 100
+        },
+        "op": "c",
+        "ts_ms": 1559033904863,
+        "event_timestamp": 1626102708861
+    }
+----
+====
+
+[[advanced-example-timezone-converter]]
+== Example: Advanced configuration
+
+For example, to convert the `created_at`, and `updated_at` timestamp fields in an event record from UTC to a fixed offset of `+05:30`, configure the `include.fields` configuration option as follows:
+
+[source]
+----
+transforms=convertTimezone
+transforms.convertTimezone.type=io.debezium.transforms.TimezoneConverter
+transforms.convertTimezone.converted.timezone=+05:30
+transforms.convertTimezone.include.fields=source:customers:created_at,customers:updated_at
+----
+
+In the same the way, you can exclude specific timestamp fields from timezone conversion. For example, to exclude the `updated_at` timestamp field in an event record from timezone conversion, configure the `exclude.fields` configuration option as follows:
+
+[source]
+----
+transforms=convertTimezone
+transforms.convertTimezone.type=io.debezium.transforms.TimezoneConverter
+transforms.convertTimezone.converted.timezone=+05:30
+transforms.convertTimezone.exclude.fields=source:customers:updated_at
+----
+
+[[timezone-converter-configuration-options]]
+== Configuration options
+
+The following table lists the configuration options that you can use with the `TimezoneConverter` SMT.
+
+.TimezoneConverter SMT configuration options
+[cols="14%a,40%a,10%a,10%a"]
+|===
+|Property
+|Description
+|Type
+|Importance
+
+|[[timezone-converter-converted-timezone]]<<timezone-converter-converted-timezone, `converted.timezone`>>
+|A string that specifies the target timezone to which the timestamp fields should be converted. The target timezone can be specified as a geographic timezone e.g. `America/New_York` or as a UTC offset e.g. `+02:00`.
+|string
+|high
+|[[timezone-converter-include-fields]]<<timezone-converter-include-fields, `include.fields`>>
+|A comma-separated list of rules that specify which fields should be included for timezone conversion, using one of the following formats:
+
+    `source:<tablename>` :: Matches Debezium change events with a source information block having the specified table name. All time-based fields in the matched table will be converted.
+    `source:<tablename>:<fieldname>` :: Matches Debezium change events with a source information block having the specified table name. Only the specified field name will be converted.
+    `topic:<topicname>` :: Matches events from the specified topic name, converting all time-based fields.
+    `topic:<topicname>:<fieldname>` :: Matches events from the specified topic name, converting only the specified field name.
+    `<matchname>:<fieldname>` :: Applies a heuristic matching algorithm to match against the source information block table name if present; otherwise, matches against the topic name. Conversion is applied only to the specified field name.
+|list
+|medium
+|[[timezone-converter-exclude-fields]]<<timezone-converter-exclude-fields, `exclude.fields`>>
+|A comma-separated list of rules that specify what fields should be excluded from timezone conversion, using one of the following formats:
+
+    `source:<tablename>` :: Matches Debezium change events with a source information block having the specified table name. All time-based fields in the matched table will be excluded from conversion.
+    `source:<tablename>:<fieldname>` :: Matches Debezium change events with a source information block having the specified table name. Only the specified field name will be excluded from conversion.
+    `topic:<topicname>` :: Matches events from the specified topic name, excluding all time-based fields.
+    `topic:<topicname>:<fieldname>` :: Matches events from the specified topic name, excluding only the specified field name.
+    `<matchname>:<fieldname>` :: Applies a heuristic matching algorithm to match against the source information block table name if present; otherwise, matches against the topic name. Excludes conversion only for the specified field name.
+|list
+|medium
+|===
