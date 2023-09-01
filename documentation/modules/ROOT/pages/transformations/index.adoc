@@ -40,7 +40,7 @@ The following SMTs are provided by {prodname}:
 |Re-routes records to specific partitions based on configured payload fields.
 
 |xref:transformations/timezone-converter.adoc[Timezone Converter]
-|Converts Debezium and Kafka Connect timestamp fields of the record into a different timezone.
+|Converts {prodname} and Kafka Connect timestamp fields in event records to a specified timezone.
 
 |===
 
