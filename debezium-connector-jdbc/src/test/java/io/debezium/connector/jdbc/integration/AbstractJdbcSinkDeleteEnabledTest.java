@@ -5,14 +5,6 @@
  */
 package io.debezium.connector.jdbc.integration;
 
-import java.util.Map;
-
-import org.apache.kafka.connect.sink.SinkRecord;
-import org.assertj.db.api.TableAssert;
-import org.assertj.db.type.ValueType;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ArgumentsSource;
-
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.PrimaryKeyMode;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.SchemaEvolutionMode;
@@ -20,6 +12,16 @@ import io.debezium.connector.jdbc.junit.TestHelper;
 import io.debezium.connector.jdbc.junit.jupiter.Sink;
 import io.debezium.connector.jdbc.junit.jupiter.SinkRecordFactoryArgumentsProvider;
 import io.debezium.connector.jdbc.util.SinkRecordFactory;
+import io.debezium.doc.FixFor;
+import org.apache.kafka.connect.sink.SinkRecord;
+import org.assertj.db.api.TableAssert;
+import org.assertj.db.type.ValueType;
+import org.junit.Assume;
+import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ArgumentsSource;
+
+import java.util.Map;
 
 /**
  * Common delete enabled tests.
@@ -154,6 +156,36 @@ public abstract class AbstractJdbcSinkDeleteEnabledTest extends AbstractJdbcSink
 
         getSink().assertColumnType(tableAssert, "id1", ValueType.NUMBER);
         getSink().assertColumnType(tableAssert, "id2", ValueType.NUMBER);
+        getSink().assertColumnType(tableAssert, "name", ValueType.TEXT);
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("DBZ-6862")
+    public void testShouldSkipTombstoneRecord(SinkRecordFactory factory) {
+
+        Assumptions.assumeFalse(factory.isFlattened());
+
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_KEY.getValue());
+        properties.put(JdbcSinkConnectorConfig.DELETE_ENABLED, "true");
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server1", "schema", tableName);
+
+        final SinkRecord deleteRecord = factory.deleteRecord(topicName);
+        //Switching the normal order for test purpose.
+        // If the delete record is not processed mean that the tombstone generated an error
+        consume(factory.tombstoneRecord(topicName));
+        consume(deleteRecord);
+
+        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName(deleteRecord));
+        tableAssert.exists().hasNumberOfRows(0).hasNumberOfColumns(2);
+
+        getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER);
         getSink().assertColumnType(tableAssert, "name", ValueType.TEXT);
     }
 
