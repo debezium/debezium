@@ -88,6 +88,11 @@ public class JdbcSinkConnectorTask extends SinkTask {
         for (Iterator<SinkRecord> iterator = records.iterator(); iterator.hasNext();) {
             final SinkRecord record = iterator.next();
             LOGGER.trace("Received {}", record);
+            if (isTombstone(record)) {
+                LOGGER.trace("Skipping tombstone record.");
+                markProcessed(record);
+                continue;
+            }
             try {
                 validate(record);
                 changeEventSink.execute(record);
@@ -105,6 +110,10 @@ public class JdbcSinkConnectorTask extends SinkTask {
                 markNotProcessed(iterator);
             }
         }
+    }
+
+    private static boolean isTombstone(SinkRecord record) {
+        return record.value() == null;
     }
 
     private void validate(SinkRecord record) {
