@@ -164,8 +164,6 @@ public abstract class AbstractJdbcSinkDeleteEnabledTest extends AbstractJdbcSink
     @FixFor("DBZ-6862")
     public void testShouldSkipTombstoneRecord(SinkRecordFactory factory) {
 
-        Assumptions.assumeFalse(factory.isFlattened());
-
         final Map<String, String> properties = getDefaultSinkConfig();
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_KEY.getValue());
