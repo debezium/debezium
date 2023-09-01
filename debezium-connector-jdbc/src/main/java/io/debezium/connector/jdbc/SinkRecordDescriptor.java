@@ -285,7 +285,8 @@ public class SinkRecordDescriptor {
         }
 
         private boolean isFlattened(SinkRecord record) {
-            return record.valueSchema().name() == null || !record.valueSchema().name().contains("Envelope");
+            return record.value() == null ||  // When delete.handling.mode of New Record State Extraction is set to none
+                    record.valueSchema().name() == null || !record.valueSchema().name().contains("Envelope");
         }
 
         private void readSinkRecordKeyData(SinkRecord record, boolean flattened) {
