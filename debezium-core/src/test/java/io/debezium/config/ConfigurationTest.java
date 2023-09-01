@@ -390,4 +390,13 @@ public class ConfigurationTest {
         assertThat(dbConfig.keys().size()).isEqualTo(2);
         assertThat(dbConfig.getString("user")).isEqualTo("mysqluser");
     }
+
+    @Test
+    @FixFor("DBZ-6864")
+    public void defaultDdlFilterShouldFilterOutRdsSetStatements() {
+        String defaultDdlFilter = Configuration.create().build().getString(SchemaHistory.DDL_FILTER);
+        Predicate<String> ddlFilter = Predicates.includes(defaultDdlFilter, Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+        assertThat(ddlFilter.test("SET STATEMENT max_statement_time=60 FOR DELETE FROM mysql.rds_sysinfo where name = 'innodb_txn_key'")).isTrue();
+        assertThat(ddlFilter.test("SET STATEMENT max_statement_time=60 FOR INSERT INTO mysql.rds_heartbeat2(id, value) values (1,1692866524004) ON DUPLICATE KEY UPDATE value = 1692866524004")).isTrue();
+    }
 }
