@@ -13,7 +13,7 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.connector.AbstractSourceInfo;
-import io.debezium.data.Envelope;
+import io.debezium.converters.recordandmetadata.RecordAndMetadata;
 import io.debezium.util.Collect;
 
 /**
@@ -39,20 +39,21 @@ public abstract class RecordParser {
             AbstractSourceInfo.SNAPSHOT_KEY,
             AbstractSourceInfo.DATABASE_NAME_KEY);
 
-    protected RecordParser(Schema schema, Struct record, String... dataFields) {
-        this.record = record;
-        this.source = record.getStruct(Envelope.FieldName.SOURCE);
-        this.transaction = record.schema().field(Envelope.FieldName.TRANSACTION) != null ? record.getStruct(Envelope.FieldName.TRANSACTION) : null;
-        this.op = record.getString(Envelope.FieldName.OPERATION);
-        this.opSchema = schema.field(Envelope.FieldName.OPERATION).schema();
-        this.ts_ms = record.getInt64(Envelope.FieldName.TIMESTAMP).toString();
-        this.ts_msSchema = schema.field(Envelope.FieldName.TIMESTAMP).schema();
+    protected RecordParser(RecordAndMetadata recordAndMetadata, String... dataFields) {
+        this.record = recordAndMetadata.record();
+        this.source = recordAndMetadata.source();
+        this.transaction = recordAndMetadata.transaction();
+        this.op = recordAndMetadata.operation();
+        this.opSchema = Schema.STRING_SCHEMA;
+        this.ts_ms = (String) recordAndMetadata.ts_ms().value();
+        this.ts_msSchema = recordAndMetadata.ts_ms().schema();
         this.connectorType = source.getString(AbstractSourceInfo.DEBEZIUM_CONNECTOR_KEY);
-        this.dataSchema = getDataSchema(schema, connectorType, dataFields);
+        this.dataSchema = recordAndMetadata.dataSchema(dataFields);
     }
 
     private static Schema getDataSchema(Schema schema, String connectorType, String... fields) {
-        SchemaBuilder builder = SchemaBuilder.struct().name("io.debezium.connector.mysql.Data");
+        String dataSchemaName = "io.debezium.connector." + connectorType + ".Data";
+        SchemaBuilder builder = SchemaBuilder.struct().name(dataSchemaName);
 
         for (String field : fields) {
             builder.field(field, schema.field(field).schema());

@@ -21,6 +21,8 @@ import java.util.ServiceLoader;
 import java.util.function.Function;
 
 import org.apache.kafka.common.errors.SerializationException;
+import org.apache.kafka.common.header.Header;
+import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Schema.Type;
@@ -46,6 +48,10 @@ import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.Configuration;
 import io.debezium.config.Instantiator;
 import io.debezium.connector.AbstractSourceInfo;
+import io.debezium.converters.CloudEventsConverterConfig.MetadataLocation;
+import io.debezium.converters.recordandmetadata.RecordAndMetadata;
+import io.debezium.converters.recordandmetadata.RecordAndMetadataBaseImpl;
+import io.debezium.converters.recordandmetadata.RecordAndMetadataHeaderImpl;
 import io.debezium.converters.spi.CloudEventsMaker;
 import io.debezium.converters.spi.CloudEventsProvider;
 import io.debezium.converters.spi.RecordParser;
@@ -135,6 +141,8 @@ public class CloudEventsConverter implements Converter {
     private final JsonConverter jsonCloudEventsConverter = new JsonConverter();
     private JsonConverterConfig jsonCloudEventsConverterConfig = null;
 
+    private JsonConverter jsonHeaderConverter = new JsonConverter();
+
     private final JsonConverter jsonDataConverter = new JsonConverter();
 
     private boolean enableJsonSchemas;
@@ -143,6 +151,8 @@ public class CloudEventsConverter implements Converter {
     private Converter avroConverter;
     private List<String> schemaRegistryUrls;
     private SchemaNameAdjuster schemaNameAdjuster;
+
+    private MetadataLocation metadataLocation;
 
     public CloudEventsConverter() {
         this(null);
@@ -163,6 +173,12 @@ public class CloudEventsConverter implements Converter {
         ceSerializerType = ceConfig.cloudeventsSerializerType();
         dataSerializerType = ceConfig.cloudeventsDataSerializerTypeConfig();
         schemaNameAdjuster = ceConfig.schemaNameAdjustmentMode().createAdjuster();
+        metadataLocation = ceConfig.metadataLocation();
+
+        Map<String, Object> jsonHeaderConverterConfig = new HashMap<>();
+        jsonHeaderConverterConfig.put(JsonConverterConfig.SCHEMAS_ENABLE_CONFIG, true);
+        jsonHeaderConverterConfig.put(JsonConverterConfig.TYPE_CONFIG, "header");
+        jsonHeaderConverter.configure(jsonHeaderConverterConfig);
 
         boolean usingAvro = false;
 
@@ -220,21 +236,45 @@ public class CloudEventsConverter implements Converter {
 
     @Override
     public byte[] fromConnectData(String topic, Schema schema, Object value) {
+        return this.fromConnectData(topic, null, schema, value);
+    }
+
+    @Override
+    public byte[] fromConnectData(String topic, Headers headers, Schema schema, Object value) {
         if (schema == null || value == null) {
             return null;
         }
-        if (!Envelope.isEnvelopeSchema(schema)) {
-            // TODO Handling of non-data messages like schema change or transaction metadata
-            return null;
+
+        if (this.metadataLocation == MetadataLocation.VALUE) {
+            if (!Envelope.isEnvelopeSchema(schema)) {
+                // TODO Handling of non-data messages like schema change or transaction metadata
+                return null;
+            }
+        }
+        else {
+            if (headers.lastHeader(Envelope.FieldName.SOURCE) == null || headers.lastHeader(Envelope.FieldName.OPERATION) == null) {
+                return null;
+            }
         }
         if (schema.type() != STRUCT) {
             throw new DataException("Mismatching schema");
         }
 
         Struct record = requireStruct(value, "CloudEvents converter");
-        CloudEventsProvider provider = lookupCloudEventsProvider(record);
+        Struct source = getSource(record, headers);
 
-        RecordParser parser = provider.createParser(schema, record);
+        CloudEventsProvider provider = lookupCloudEventsProvider(source);
+
+        RecordAndMetadata recordAndMetadata;
+        if (this.metadataLocation == MetadataLocation.VALUE) {
+            recordAndMetadata = new RecordAndMetadataBaseImpl(record, schema);
+        }
+        else {
+            recordAndMetadata = new RecordAndMetadataHeaderImpl(record, schema, headers, jsonHeaderConverter);
+        }
+
+        RecordParser parser = provider.createParser(recordAndMetadata);
+
         CloudEventsMaker maker = provider.createMaker(parser, dataSerializerType,
                 (schemaRegistryUrls == null) ? null : String.join(",", schemaRegistryUrls));
 
@@ -280,13 +320,24 @@ public class CloudEventsConverter implements Converter {
     /**
      * Lookup the CloudEventsProvider implementation for the source connector.
      */
-    private static CloudEventsProvider lookupCloudEventsProvider(Struct record) {
-        String connectorType = record.getStruct(Envelope.FieldName.SOURCE).getString(AbstractSourceInfo.DEBEZIUM_CONNECTOR_KEY);
+    private static CloudEventsProvider lookupCloudEventsProvider(Struct source) {
+        String connectorType = source.getString(AbstractSourceInfo.DEBEZIUM_CONNECTOR_KEY);
         CloudEventsProvider provider = providers.get(connectorType);
         if (provider != null) {
             return provider;
         }
         throw new DataException("No usable CloudEvents converters for connector type \"" + connectorType + "\"");
+    }
+
+    private Struct getSource(Struct record, Headers headers) {
+        if (this.metadataLocation == MetadataLocation.VALUE) {
+            return record.getStruct(Envelope.FieldName.SOURCE);
+        }
+        else {
+            Header header = headers.lastHeader(Envelope.FieldName.SOURCE);
+            SchemaAndValue sav = jsonHeaderConverter.toConnectData(null, header.value());
+            return (Struct) sav.value();
+        }
     }
 
     /**

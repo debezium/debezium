@@ -5,8 +5,7 @@
  */
 package io.debezium.converters.spi;
 
-import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.Struct;
+import io.debezium.converters.recordandmetadata.RecordAndMetadata;
 
 /**
  * A {@link java.util.ServiceLoader} interface that connectors should implement if they wish to provide
@@ -25,11 +24,10 @@ public interface CloudEventsProvider {
     /**
      * Create a concrete parser of a change record for the connector.
      *
-     * @param schema the schema of the record
-     * @param record the value of the record
+     * @param recordAndMetadata record and its metadata
      * @return a concrete parser
      */
-    RecordParser createParser(Schema schema, Struct record);
+    RecordParser createParser(RecordAndMetadata recordAndMetadata);
 
     /**
      * Create a concrete CloudEvents maker using the outputs of a record parser. Also need to specify the data content

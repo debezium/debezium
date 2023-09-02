@@ -8,17 +8,24 @@ package io.debezium.converters;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.fail;
 
+import java.io.IOException;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Consumer;
 
+import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.connect.data.SchemaAndValue;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.header.Header;
+import org.apache.kafka.connect.header.Headers;
+import org.apache.kafka.connect.json.JsonConverter;
+import org.apache.kafka.connect.json.JsonConverterConfig;
 import org.apache.kafka.connect.json.JsonDeserializer;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.storage.Converter;
+import org.apache.kafka.connect.storage.HeaderConverter;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -314,6 +321,90 @@ public class CloudEventsConverterTest {
                 throw t;
             }
             fail("error " + msg + ": " + t.getMessage());
+        }
+    }
+
+    public static void shouldConvertToCloudEventsInJsonWithMetadataInHeaders(SourceRecord record, String connectorName, String serverName) throws Exception {
+        Map<String, Object> config = new HashMap<>();
+        config.put("serializer.type", "json");
+        config.put("data.serializer.type", "json");
+        config.put("metadata.location", "header");
+
+        CloudEventsConverter cloudEventsConverter = new CloudEventsConverter();
+        cloudEventsConverter.configure(config, false);
+
+        JsonNode valueJson = null;
+        JsonNode dataJson;
+        String msg = null;
+
+        try {
+            // Convert the value and inspect it ...
+            msg = "converting value using CloudEvents JSON converter";
+            byte[] valueBytes = cloudEventsConverter.fromConnectData(record.topic(), convertHeadersFor(record), record.valueSchema(), record.value());
+            msg = "deserializing value using CE deserializer";
+            final SchemaAndValue ceValue = cloudEventsConverter.toConnectData(record.topic(), valueBytes);
+            msg = "deserializing value using JSON deserializer";
+
+            try (JsonDeserializer jsonDeserializer = new JsonDeserializer()) {
+                jsonDeserializer.configure(Collections.emptyMap(), false);
+                valueJson = jsonDeserializer.deserialize(record.topic(), valueBytes);
+            }
+
+            msg = "inspecting all required CloudEvents fields in the value";
+            assertThat(valueJson.get(CloudEventsMaker.FieldName.ID)).isNotNull();
+            assertThat(valueJson.get(CloudEventsMaker.FieldName.SOURCE).asText()).isEqualTo("/debezium/" + connectorName + "/" + serverName);
+            assertThat(valueJson.get(CloudEventsMaker.FieldName.SPECVERSION).asText()).isEqualTo("1.0");
+            assertThat(valueJson.get(CloudEventsMaker.FieldName.DATASCHEMA)).isNull();
+            assertThat(valueJson.get(CloudEventsMaker.FieldName.TYPE).asText()).isEqualTo("io.debezium." + connectorName + ".datachangeevent");
+            assertThat(valueJson.get(CloudEventsMaker.FieldName.DATACONTENTTYPE).asText()).isEqualTo("application/json");
+            assertThat(valueJson.get(CloudEventsMaker.FieldName.TIME)).isNotNull();
+            assertThat(valueJson.get(CloudEventsMaker.FieldName.DATA)).isNotNull();
+            msg = "inspecting required CloudEvents extension attributes for Debezium";
+            assertThat(valueJson.get("iodebeziumop")).isNotNull();
+            assertThat(valueJson.get("iodebeziumtsms")).isNotNull();
+            msg = "inspecting transaction metadata attributes";
+            assertThat(valueJson.get("iodebeziumtxid")).isNotNull();
+            assertThat(valueJson.get("iodebeziumtxtotalorder")).isNotNull();
+            assertThat(valueJson.get("iodebeziumtxdatacollectionorder")).isNotNull();
+            msg = "inspecting the data field in the value";
+            dataJson = valueJson.get(CloudEventsMaker.FieldName.DATA);
+            assertThat(dataJson.get(CloudEventsMaker.FieldName.SCHEMA_FIELD_NAME)).isNotNull();
+            assertThat(dataJson.get(CloudEventsMaker.FieldName.PAYLOAD_FIELD_NAME)).isNotNull();
+            assertThat(dataJson.get(CloudEventsMaker.FieldName.PAYLOAD_FIELD_NAME).get("someField1").textValue()).isEqualTo("some value 1");
+            assertThat(dataJson.get(CloudEventsMaker.FieldName.PAYLOAD_FIELD_NAME).get("someField2").intValue()).isEqualTo(7005);
+        }
+        catch (Throwable t) {
+            Testing.Print.enable();
+            Testing.print("Problem with message on topic '" + record.topic() + "':");
+            Testing.printError(t);
+            Testing.print("error " + msg);
+            Testing.print("  value: " + SchemaUtil.asString(record.value()));
+            Testing.print("  value deserialized from CloudEvents in JSON: " + prettyJson(valueJson));
+            if (t instanceof AssertionError) {
+                throw t;
+            }
+            fail("error " + msg + ": " + t.getMessage());
+        }
+    }
+
+    private static RecordHeaders convertHeadersFor(SourceRecord record) throws IOException {
+        try (HeaderConverter jsonHeaderConverter = new JsonConverter()) {
+            Map<String, Object> jsonHeaderConverterConfig = new HashMap<>();
+            jsonHeaderConverterConfig.put(JsonConverterConfig.SCHEMAS_ENABLE_CONFIG, true);
+            jsonHeaderConverterConfig.put(JsonConverterConfig.TYPE_CONFIG, "header");
+            jsonHeaderConverter.configure(jsonHeaderConverterConfig);
+
+            Headers headers = record.headers();
+            RecordHeaders result = new RecordHeaders();
+            if (headers != null) {
+                String topic = record.topic();
+                for (Header header : headers) {
+                    String key = header.key();
+                    byte[] rawHeader = jsonHeaderConverter.fromConnectHeader(topic, key, header.schema(), header.value());
+                    result.add(key, rawHeader);
+                }
+            }
+            return result;
         }
     }
 

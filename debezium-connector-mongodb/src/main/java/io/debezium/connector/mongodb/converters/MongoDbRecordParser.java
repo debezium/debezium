@@ -7,11 +7,10 @@ package io.debezium.connector.mongodb.converters;
 
 import java.util.Set;
 
-import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
 
 import io.debezium.connector.mongodb.MongoDbFieldName;
+import io.debezium.converters.recordandmetadata.RecordAndMetadata;
 import io.debezium.converters.spi.RecordParser;
 import io.debezium.data.Envelope;
 import io.debezium.util.Collect;
@@ -34,8 +33,8 @@ public class MongoDbRecordParser extends RecordParser {
             COLLECTION,
             WALL_TIME);
 
-    public MongoDbRecordParser(Schema schema, Struct record) {
-        super(schema, record, Envelope.FieldName.BEFORE, Envelope.FieldName.AFTER, MongoDbFieldName.UPDATE_DESCRIPTION);
+    public MongoDbRecordParser(RecordAndMetadata recordAndMetadata) {
+        super(recordAndMetadata, Envelope.FieldName.BEFORE, Envelope.FieldName.AFTER, MongoDbFieldName.UPDATE_DESCRIPTION);
     }
 
     @Override

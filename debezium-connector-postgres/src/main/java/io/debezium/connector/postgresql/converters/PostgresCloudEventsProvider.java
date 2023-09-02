@@ -5,10 +5,8 @@
  */
 package io.debezium.connector.postgresql.converters;
 
-import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.Struct;
-
 import io.debezium.connector.postgresql.Module;
+import io.debezium.converters.recordandmetadata.RecordAndMetadata;
 import io.debezium.converters.spi.CloudEventsMaker;
 import io.debezium.converters.spi.CloudEventsProvider;
 import io.debezium.converters.spi.RecordParser;
@@ -26,8 +24,8 @@ public class PostgresCloudEventsProvider implements CloudEventsProvider {
     }
 
     @Override
-    public RecordParser createParser(Schema schema, Struct record) {
-        return new PostgresRecordParser(schema, record);
+    public RecordParser createParser(RecordAndMetadata recordAndMetadata) {
+        return new PostgresRecordParser(recordAndMetadata);
     }
 
     @Override
