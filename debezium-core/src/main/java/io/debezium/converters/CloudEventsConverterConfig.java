@@ -11,6 +11,7 @@ import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.storage.ConverterConfig;
 
 import io.debezium.config.CommonConnectorConfig.SchemaNameAdjustmentMode;
+import io.debezium.config.EnumeratedValue;
 import io.debezium.converters.spi.SerializerType;
 
 /**
@@ -32,6 +33,10 @@ public class CloudEventsConverterConfig extends ConverterConfig {
             + "'avro' replaces the characters that cannot be used in the Avro type name with underscore (default)"
             + "'none' does not apply any adjustment";
 
+    public static final String CLOUDEVENTS_METADATA_LOCATION_CONFIG = "metadata.location";
+    public static final String CLOUDEVENTS_METADATA_LOCATION_DEFAULT = "value";
+    private static final String CLOUDEVENTS_METADATA_LOCATION_DOC = "Specify from where to retrieve metadata";
+
     private static final ConfigDef CONFIG;
 
     static {
@@ -43,6 +48,8 @@ public class CloudEventsConverterConfig extends ConverterConfig {
                 CLOUDEVENTS_DATA_SERIALIZER_TYPE_DOC);
         CONFIG.define(CLOUDEVENTS_SCHEMA_NAME_ADJUSTMENT_MODE_CONFIG, ConfigDef.Type.STRING, CLOUDEVENTS_SCHEMA_NAME_ADJUSTMENT_MODE_DEFAULT, ConfigDef.Importance.LOW,
                 CLOUDEVENTS_SCHEMA_NAME_ADJUSTMENT_MODE_DOC);
+        CONFIG.define(CLOUDEVENTS_METADATA_LOCATION_CONFIG, ConfigDef.Type.STRING, CLOUDEVENTS_METADATA_LOCATION_DEFAULT, ConfigDef.Importance.HIGH,
+                CLOUDEVENTS_METADATA_LOCATION_DOC);
     }
 
     public static ConfigDef configDef() {
@@ -78,5 +85,60 @@ public class CloudEventsConverterConfig extends ConverterConfig {
      */
     public SchemaNameAdjustmentMode schemaNameAdjustmentMode() {
         return SchemaNameAdjustmentMode.parse(getString(CLOUDEVENTS_SCHEMA_NAME_ADJUSTMENT_MODE_CONFIG));
+    }
+
+    /**
+     * Return from where to retrieve metadata
+     *
+     * @return metadata location
+     */
+    public MetadataLocation metadataLocation() {
+        return MetadataLocation.parse(getString(CLOUDEVENTS_METADATA_LOCATION_CONFIG));
+    }
+
+    /**
+     * The set of predefined MetadataLocation options
+     */
+    public enum MetadataLocation implements EnumeratedValue {
+
+        /**
+         * Get metadata from the value
+         */
+        VALUE("value"),
+
+        /**
+         * Get metadata from the header
+         */
+        HEADER("header");
+
+        private final String value;
+
+        MetadataLocation(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied values is one of the predefined options
+         *
+         * @param value the configuration property value ; may not be null
+         * @return the matching option, or null if the match is not found
+         */
+        public static MetadataLocation parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (MetadataLocation option : MetadataLocation.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return null;
+        }
     }
 }

@@ -7,10 +7,9 @@ package io.debezium.connector.sqlserver.converters;
 
 import java.util.Set;
 
-import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
 
+import io.debezium.converters.recordandmetadata.RecordAndMetadata;
 import io.debezium.converters.spi.RecordParser;
 import io.debezium.data.Envelope;
 import io.debezium.util.Collect;
@@ -31,8 +30,8 @@ public class SqlServerRecordParser extends RecordParser {
             COMMIT_LSN_KEY,
             EVENT_SERIAL_NO_KEY);
 
-    public SqlServerRecordParser(Schema schema, Struct record) {
-        super(schema, record, Envelope.FieldName.BEFORE, Envelope.FieldName.AFTER);
+    public SqlServerRecordParser(RecordAndMetadata recordAndMetadata) {
+        super(recordAndMetadata, Envelope.FieldName.BEFORE, Envelope.FieldName.AFTER);
     }
 
     @Override
