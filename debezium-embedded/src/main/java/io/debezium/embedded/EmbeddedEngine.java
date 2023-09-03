@@ -866,7 +866,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                             catch (RetriableException e) {
                                 int maxRetries = getErrorsMaxRetries();
                                 LOGGER.info("Retriable exception thrown, connector will be restarted; errors.max.retries={}", maxRetries, e);
-                                if (maxRetries < DEFAULT_ERROR_MAX_RETRIES) {
+                                if (maxRetries == 0 || maxRetries < DEFAULT_ERROR_MAX_RETRIES) {
                                     retryError = e;
                                     throw e;
                                 }
