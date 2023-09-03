@@ -932,10 +932,15 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
         Throwable retryError = null;
         int maxRetries = getErrorsMaxRetries();
         LOGGER.info("Retriable exception thrown, connector will be restarted; errors.max.retries={}", maxRetries, e);
-        if (maxRetries < DEFAULT_ERROR_MAX_RETRIES) {
+        if (maxRetries == 0) {
             retryError = e;
         }
-        else if (maxRetries != 0) {
+        else if (maxRetries < DEFAULT_ERROR_MAX_RETRIES) {
+            LOGGER.warn("Setting {}={} is deprecated. To disable retries on connection errors, set {}=0", ERRORS_MAX_RETRIES.name(), maxRetries,
+                    ERRORS_MAX_RETRIES.name());
+            retryError = e;
+        }
+        else {
             DelayStrategy delayStrategy = delayStrategy(config);
             int totalRetries = 0;
             boolean startedSuccessfully = false;
