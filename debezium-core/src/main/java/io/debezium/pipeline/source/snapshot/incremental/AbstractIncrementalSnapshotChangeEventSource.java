@@ -347,7 +347,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                     break;
                 }
                 final TableId currentTableId = (TableId) context.currentDataCollectionId().getId();
-                if (!context.maximumKey().isPresent()) {
+                if (context.maximumKey().isEmpty()) {
                     currentTable = refreshTableSchema(currentTable);
                     Object[] maximumKey;
                     try {
@@ -368,7 +368,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                         nextDataCollection(partition, offsetContext);
                         continue;
                     }
-                    if (!context.maximumKey().isPresent()) {
+                    if (context.maximumKey().isEmpty()) {
                         LOGGER.info(
                                 "No maximum key returned by the query, incremental snapshotting of table '{}' finished as it is empty",
                                 currentTableId);

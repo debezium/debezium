@@ -13,6 +13,7 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.document.Array;
 import io.debezium.document.Document;
 import io.debezium.document.Value;
@@ -60,8 +61,8 @@ public class ExecuteSnapshot<P extends Partition> extends AbstractSnapshotSignal
         List<AdditionalCondition> additionalConditions = getAdditionalConditions(signalPayload.data, type);
         Optional<String> surrogateKey = getSurrogateKey(signalPayload.data);
 
-        LOGGER.info("Requested '{}' snapshot of data collections '{}' with additional conditions '{}' and surrogate key '{}'", type, dataCollections,
-                additionalConditions, surrogateKey.orElse("PK of table will be used"));
+        LOGGER.info("Requested '{}' snapshot of data collections '{}' with additional conditions '{}' and surrogate key '{}'",
+                type, dataCollections, additionalConditions, surrogateKey.orElse("PK of table will be used"));
 
         SnapshotConfiguration.Builder snapsthoConfigurationBuilder = SnapshotConfiguration.Builder.builder();
         snapsthoConfigurationBuilder.dataCollections(dataCollections);
@@ -70,6 +71,9 @@ public class ExecuteSnapshot<P extends Partition> extends AbstractSnapshotSignal
 
         switch (type) {
             case INCREMENTAL:
+                if (dispatcher.getIncrementalSnapshotChangeEventSource() == null) {
+                    throw new DebeziumException("Should enable relative incremental snapshot configuration");
+                }
                 dispatcher.getIncrementalSnapshotChangeEventSource().addDataCollectionNamesToSnapshot(
                         signalPayload, snapsthoConfigurationBuilder.build());
                 break;

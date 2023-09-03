@@ -80,7 +80,7 @@ import io.debezium.util.Clock;
 public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCollectionId> extends AbstractIncrementalSnapshotChangeEventSource<MySqlPartition, T> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MySqlReadOnlyIncrementalSnapshotChangeEventSource.class);
-    private final String showMasterStmt = "SHOW MASTER STATUS";
+    private static final String SHOW_MASTER_STMT = "SHOW MASTER STATUS";
 
     public MySqlReadOnlyIncrementalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig config,
                                                              JdbcConnection jdbcConnection,
@@ -176,7 +176,7 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
 
     private void getExecutedGtidSet(Consumer<GtidSet> watermark) {
         try {
-            jdbcConnection.query(showMasterStmt, rs -> {
+            jdbcConnection.query(SHOW_MASTER_STMT, rs -> {
                 if (rs.next()) {
                     if (rs.getMetaData().getColumnCount() > 4) {
                         // This column exists only in MySQL 5.6.5 or later ...
