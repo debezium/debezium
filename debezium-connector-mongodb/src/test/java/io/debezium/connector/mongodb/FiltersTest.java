@@ -174,6 +174,14 @@ public class FiltersTest {
     }
 
     @Test
+    public void shouldIncludeAllCollectionsFromDatabaseWithSignalingCollection() {
+        filters = build.includeDatabases("db1")
+                .signalingCollection("db1.singal")
+                .createFilters();
+        assertCollectionIncluded("db1.other");
+    }
+
+    @Test
     public void shouldIncludeSignalingCollectionAndNoWhitelistAndNoBlacklist() {
         filters = build.signalingCollection("db1.signal").createFilters();
         assertCollectionIncluded("db1.signal");

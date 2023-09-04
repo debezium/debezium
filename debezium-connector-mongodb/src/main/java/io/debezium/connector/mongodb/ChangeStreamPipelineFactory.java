@@ -116,10 +116,10 @@ class ChangeStreamPipelineFactory {
         }
 
         // Combined filters
-        return andFilters(
-                dbFilters,
-                orFilters(
-                        includedSignalCollectionFilters,
+        return orFilters(
+                includedSignalCollectionFilters,
+                andFilters(
+                        dbFilters,
                         collectionsFilters));
     }
 
