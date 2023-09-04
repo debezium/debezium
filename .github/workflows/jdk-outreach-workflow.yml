@@ -17,7 +17,7 @@ jobs:
         feature: [ 20 ]
     name: SQL Server - Java ${{ matrix.feature }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Setup OpenJDK
@@ -34,7 +34,7 @@ jobs:
         feature: [ 20 ]
     name: MySQL - Java ${{ matrix.feature }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Setup OpenJDK
@@ -51,7 +51,7 @@ jobs:
         feature: [ 20 ]
     name: PostgreSQL Pgoutput - Java ${{ matrix.feature }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Setup OpenJDK
@@ -68,7 +68,7 @@ jobs:
         feature: [ 20 ]
     name: MongoDB 4.0 - Java ${{ matrix.feature }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Setup OpenJDK
@@ -85,7 +85,7 @@ jobs:
         feature: [ 20 ]
     name: Oracle - Java ${{ matrix.feature }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Setup OpenJDK
@@ -103,11 +103,11 @@ jobs:
     name: Cassandra - Java ${{ matrix.feature }}
     steps:
       - name: Checkout Core
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: core
       - name: Checkout Cassandra
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: debezium/debezium-connector-cassandra
           path: cassandra
@@ -131,11 +131,11 @@ jobs:
     name: Db2 - Java ${{ matrix.feature }}
     steps:
       - name: Checkout Core
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: core
       - name: Checkout Db2
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: debezium/debezium-connector-db2
           path: db2
@@ -156,11 +156,11 @@ jobs:
     name: Spanner - Java ${{ matrix.feature }}
     steps:
       - name: Checkout Core
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: core
       - name: Checkout Spanner
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: debezium/debezium-connector-spanner
           path: spanner
@@ -181,11 +181,11 @@ jobs:
     name: Vitess - Java ${{ matrix.feature }}
     steps:
       - name: Checkout Core
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: core
       - name: Checkout Vitess
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: debezium/debezium-connector-vitess
           path: vitess
@@ -205,7 +205,7 @@ jobs:
         feature: [ 20 ]
     name: Quarkus Outbox Extension - Java ${{ matrix.feature }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Setup OpenJDK
@@ -222,7 +222,7 @@ jobs:
         feature: [ 20 ]
     name: Rest Extension - Java ${{ matrix.feature }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Setup OpenJDK
@@ -239,7 +239,7 @@ jobs:
         feature: [ 20 ]
     name: Testing - Java ${{ matrix.feature }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Setup OpenJDK
@@ -257,11 +257,11 @@ jobs:
     name: Server - Java ${{ matrix.feature }}
     steps:
       - name: Checkout Core
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: core
       - name: Checkout Server
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: debezium/debezium-server
           path: server

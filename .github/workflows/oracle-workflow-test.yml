@@ -43,7 +43,7 @@ jobs:
       HAS_QUAY_IO: ${{ steps.skip.outputs.HAS_QUAY_IO }}
     steps:
       - name: Checkout Action
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Check if author has Quay.io credentials
         id: skip
@@ -64,7 +64,7 @@ jobs:
     if: ${{ needs.check.outputs.HAS_QUAY_IO == 'true' }}
     steps:
       - name: Checkout Action
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Get Date
         id: get-date
