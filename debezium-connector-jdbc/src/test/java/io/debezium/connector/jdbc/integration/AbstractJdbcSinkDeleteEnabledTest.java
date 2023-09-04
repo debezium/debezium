@@ -180,7 +180,7 @@ public abstract class AbstractJdbcSinkDeleteEnabledTest extends AbstractJdbcSink
         consume(deleteRecord);
 
         final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName(deleteRecord));
-        tableAssert.exists().hasNumberOfRows(0).hasNumberOfColumns(2);
+        tableAssert.exists().hasNumberOfRows(0).hasNumberOfColumns(3);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER);
         getSink().assertColumnType(tableAssert, "name", ValueType.TEXT);
