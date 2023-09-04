@@ -20,13 +20,13 @@ jobs:
 
     steps:
       - name: Checkout core repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: debezium/debezium
           ref: ${{ github.ref }}
           path: core
       - name: Checkout JDBC connector
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: jdbc
       - name: Set up JDK
