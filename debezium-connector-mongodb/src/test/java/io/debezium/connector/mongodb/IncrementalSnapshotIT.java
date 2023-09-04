@@ -365,6 +365,23 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
     }
 
     @Test
+    public void shouldStreamWithDatabaseIncludeList() throws InterruptedException {
+        startConnector(
+                config -> config
+                        .with(MongoDbConnectorConfig.DATABASE_INCLUDE_LIST, DATABASE_NAME)
+                        .without(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST.name()),
+                loggingCompletion());
+        assertConnectorIsRunning();
+        assertNoRecordsToConsume();
+        insertDocuments(DATABASE_NAME, COLLECTION_NAME, new Document("foo", "bar"));
+        SourceRecords records = consumeRecordsByTopic(1);
+        records.topics().forEach(System.out::println);
+
+        assertThat(records.topics()).contains(topicName());
+        assertThat(records.recordsForTopic(topicName())).hasSize(1);
+    }
+
+    @Test
     public void snapshotOnlyInt32() throws Exception {
         snapshotOnly(0, k -> k + 1);
     }
