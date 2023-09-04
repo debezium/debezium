@@ -72,7 +72,8 @@ public class ExecuteSnapshot<P extends Partition> extends AbstractSnapshotSignal
         switch (type) {
             case INCREMENTAL:
                 if (dispatcher.getIncrementalSnapshotChangeEventSource() == null) {
-                    throw new DebeziumException("Should enable relative incremental snapshot configuration");
+                    throw new DebeziumException(
+                            "Incremental snapshot is not properly configured, either sinalling data collection is not provided or connector-specific snapshotting not set");
                 }
                 dispatcher.getIncrementalSnapshotChangeEventSource().addDataCollectionNamesToSnapshot(
                         signalPayload, snapsthoConfigurationBuilder.build());
