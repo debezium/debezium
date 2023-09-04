@@ -2,6 +2,44 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.3.3.Final
+September 4th 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12411366)
+
+### New features since 2.3.2.Final
+
+* Debezium 2.3.0.Final Missing Kafka Channel Documentation [DBZ-6688](https://issues.redhat.com/browse/DBZ-6688)
+* Make partial and multi-response transactions debug level logs [DBZ-6830](https://issues.redhat.com/browse/DBZ-6830)
+
+
+### Breaking changes since 2.3.2.Final
+
+* Expose Oracle SCN-based metrics as Numeric rather than String values [DBZ-6798](https://issues.redhat.com/browse/DBZ-6798)
+
+
+### Fixes since 2.3.2.Final
+
+* Support PostgreSQL coercion for UUID, JSON, and JSONB data types [DBZ-6589](https://issues.redhat.com/browse/DBZ-6589)
+* Debezium crashes on parsing MySQL DDL statement (specific JOIN) [DBZ-6724](https://issues.redhat.com/browse/DBZ-6724)
+* ExtractNewDocumentState for MongoDB ignore previous document state when handling delete event's with REWRITE [DBZ-6725](https://issues.redhat.com/browse/DBZ-6725)
+* When using pgoutput in postgres connector, (+/-)Infinity is not supported in decimal values [DBZ-6758](https://issues.redhat.com/browse/DBZ-6758)
+* Outbox transformation can cause connector to crash [DBZ-6760](https://issues.redhat.com/browse/DBZ-6760)
+* Postgres tests for toasted byte array and toasted date array fail with decoderbufs plugin [DBZ-6767](https://issues.redhat.com/browse/DBZ-6767)
+* MongoDB New Document State Extraction: nonexistent field for add.headers [DBZ-6774](https://issues.redhat.com/browse/DBZ-6774)
+* Notifications and signals leaks between MBean instances when using JMX channels [DBZ-6777](https://issues.redhat.com/browse/DBZ-6777)
+* Dbz crashes on parsing MySQL DDL statement (SELECT 1.;) [DBZ-6780](https://issues.redhat.com/browse/DBZ-6780)
+* Dbz crashed on parsing MySQL DDL statement (SELECT 1 + @sum:=1 AS ss;) [DBZ-6794](https://issues.redhat.com/browse/DBZ-6794)
+* MySQL DDL parser - REPEAT function not accepted [DBZ-6803](https://issues.redhat.com/browse/DBZ-6803)
+* Dbz crashes on DDL statement (non Latin chars in variables) [DBZ-6821](https://issues.redhat.com/browse/DBZ-6821)
+* Not trim the default value for the BIGINT and SMALLINT types when parsing MySQL DDL [DBZ-6824](https://issues.redhat.com/browse/DBZ-6824)
+* Oracle test shouldContinueToUpdateOffsetsEvenWhenTableIsNotChanged fails with NPE [DBZ-6860](https://issues.redhat.com/browse/DBZ-6860)
+* Streaming aggregation pipeline broken for combination of database filter and signal collection [DBZ-6867](https://issues.redhat.com/browse/DBZ-6867)
+
+### Other changes since 2.3.2.Final
+
+* Missing or misspelled IDs result in downstream build errors [DBZ-6754](https://issues.redhat.com/browse/DBZ-6754)
+
+
+
 ## 2.3.2.Final
 August 4th 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12411058)
 
