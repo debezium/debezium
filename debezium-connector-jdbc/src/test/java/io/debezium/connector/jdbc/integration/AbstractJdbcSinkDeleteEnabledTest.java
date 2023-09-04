@@ -5,6 +5,14 @@
  */
 package io.debezium.connector.jdbc.integration;
 
+import java.util.Map;
+
+import org.apache.kafka.connect.sink.SinkRecord;
+import org.assertj.db.api.TableAssert;
+import org.assertj.db.type.ValueType;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ArgumentsSource;
+
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.PrimaryKeyMode;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.SchemaEvolutionMode;
@@ -13,15 +21,6 @@ import io.debezium.connector.jdbc.junit.jupiter.Sink;
 import io.debezium.connector.jdbc.junit.jupiter.SinkRecordFactoryArgumentsProvider;
 import io.debezium.connector.jdbc.util.SinkRecordFactory;
 import io.debezium.doc.FixFor;
-import org.apache.kafka.connect.sink.SinkRecord;
-import org.assertj.db.api.TableAssert;
-import org.assertj.db.type.ValueType;
-import org.junit.Assume;
-import org.junit.jupiter.api.Assumptions;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ArgumentsSource;
-
-import java.util.Map;
 
 /**
  * Common delete enabled tests.
@@ -175,7 +174,7 @@ public abstract class AbstractJdbcSinkDeleteEnabledTest extends AbstractJdbcSink
         final String topicName = topicName("server1", "schema", tableName);
 
         final SinkRecord deleteRecord = factory.deleteRecord(topicName);
-        //Switching the normal order for test purpose.
+        // Switching the normal order for test purpose.
         // If the delete record is not processed mean that the tombstone generated an error
         consume(factory.tombstoneRecord(topicName));
         consume(deleteRecord);

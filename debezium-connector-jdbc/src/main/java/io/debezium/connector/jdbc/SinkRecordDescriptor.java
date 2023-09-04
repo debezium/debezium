@@ -85,6 +85,10 @@ public class SinkRecordDescriptor {
         return !flattened;
     }
 
+    public boolean isTombstone() {
+        return record.value() == null && record.valueSchema() == null;
+    }
+
     public boolean isDelete() {
         if (!isDebeziumSinkRecord()) {
             return record.value() == null;
@@ -277,7 +281,7 @@ public class SinkRecordDescriptor {
             Objects.requireNonNull(primaryKeyMode, "The primary key mode must be provided.");
             Objects.requireNonNull(sinkRecord, "The sink record must be provided.");
 
-            final boolean flattened = isFlattened(sinkRecord);
+            final boolean flattened = !isTombstone(sinkRecord) && isFlattened(sinkRecord);
             readSinkRecordKeyData(sinkRecord, flattened);
             readSinkRecordNonKeyData(sinkRecord, flattened);
 
@@ -285,8 +289,12 @@ public class SinkRecordDescriptor {
         }
 
         private boolean isFlattened(SinkRecord record) {
-            return record.value() == null ||  // When delete.handling.mode of New Record State Extraction is set to none
-                    record.valueSchema().name() == null || !record.valueSchema().name().contains("Envelope");
+            return record.valueSchema().name() == null || !record.valueSchema().name().contains("Envelope");
+        }
+
+        private boolean isTombstone(SinkRecord record) {
+
+            return record.value() == null && record.valueSchema() == null;
         }
 
         private void readSinkRecordKeyData(SinkRecord record, boolean flattened) {

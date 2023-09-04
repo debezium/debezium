@@ -69,6 +69,11 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                     .withDialect(dialect)
                     .build();
 
+            if (descriptor.isTombstone()) {
+                LOGGER.info("Skipping tombstone record {}", descriptor);
+                return;
+            }
+
             String tableName = tableNamingStrategy.resolveTableName(config, record);
             if (tableName == null) {
                 LOGGER.warn("Ignored to write record from topic '{}' partition '{}' offset '{}'", record.topic(), record.kafkaPartition(), record.kafkaOffset());
