@@ -41,14 +41,14 @@ jobs:
           done < SORTED_PULLS.txt
       - name: Checkout core repository with pull request branch
         if: ${{ steps.branch.outputs.BRANCH_FOUND == 'true' }}
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: ${{ github.event.pull_request.user.login }}/debezium
           ref: ${{ github.head_ref }}
           path: core
       - name: Checkout core repository with default base branch
         if: ${{ steps.branch.outputs.BRANCH_FOUND != 'true' }}
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: debezium/debezium
           ref: ${{ github.base_ref }}
@@ -81,7 +81,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout JDBC sink connector
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: jdbc
       - name: Set up Java 17
@@ -105,12 +105,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout core repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: debezium/debezium
           path: core
       - name: Checkout JDBC sink connector
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: jdbc
       - name: Set up Java 17
@@ -134,12 +134,12 @@ jobs:
   #    runs-on: ubuntu-latest
   #    steps:
   #      - name: Checkout core repository
-  #        uses: actions/checkout@v3
+  #        uses: actions/checkout@v4
   #        with:
   #          repository: debezium/debezium
   #          path: core
   #      - name: Checkout JDBC sink connector
-  #        uses: actions/checkout@v3
+  #        uses: actions/checkout@v4
   #        with:
   #          path: jdbc
   #      - name: Set up Java 17
@@ -163,12 +163,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout core repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: debezium/debezium
           path: core
       - name: Checkout JDBC sink connector
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: jdbc
       - name: Set up Java 17
@@ -192,12 +192,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout core repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: debezium/debezium
           path: core
       - name: Checkout JDBC sink connector
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: jdbc
       - name: Set up Java 17
