@@ -70,7 +70,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                     .build();
 
             if (descriptor.isTombstone()) {
-                LOGGER.info("Skipping tombstone record {}", descriptor);
+                LOGGER.debug("Skipping tombstone record {}", descriptor);
                 return;
             }
 
