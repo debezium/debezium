@@ -12,12 +12,12 @@ toc::[]
 
 [[timezone-converter-introduction]]
 
-Effortlessly synchronizing timestamp data from diverse sources into a consistent timezone representation holds significance for maintaining data consistency and precision within data processing pipelines and applications.
-The `Timezone Converter` SMT is designed to seamlessly transform the timestamp values of fields from one timezone to another.
+When {prodname} emits event records, the timezone values for timestamp fields in the record can vary depending on the type and configuration of the data source.
+To maintain data consistency and precision within data processing pipelines and applications, you can use the `Timezone Converter` SMT to convert the time zone values of timestamp fields so that they represent data consistently.
 It is specifically helpful when you need to ensure that timestamps in your event data are consistent in timezone representation.
 
-The SMT converts the value of the specified field to the target timezone using `converted.timezone` configuration option.
-The target timezone can be specified as a geographic timezone, for example,  `America/New_York`, or as a UTC offset, such as `+02:00`.
+The SMT converts the value of the specified field to the target timezone by using the `converted.timezone` configuration option.
+You can specify the target timezone as a geographic timezone, for example,  `America/New_York`, or as a UTC offset, such as `+02:00`.
 It is assumed that the fields of the record are in UTC.
 Along with the specified timezone, the SMT also provides configuration options to include or exclude specific fields from timezone conversion using the `include.fields` and `exclude.fields` configuration options.
 
@@ -130,9 +130,9 @@ The SMT also adds an `event_timestamp` field.
 [[advanced-example-timezone-converter]]
 == Example: Advanced configuration
 
-Instead of converting all  timestamp fields in an event record, you can configure the SMT to convert specific fields only.
+Instead of converting all timestamp fields in an event record, you can configure the SMT to convert specific fields only.
 The following example shows how you might use the `include.fields` option in the SMT configuration to add convert only the `created_at`, and `updated_at` timestamp fields in an event record.
-Instead of specifying a geographic timezone designator,  this configuration uses a fixed offset to convert the  time from UTC to `+05:30`.
+Instead of specifying a geographic timezone designator, this configuration uses a fixed offset to convert the  time from UTC to `+05:30`.
 
 [source]
 ----
@@ -143,7 +143,7 @@ transforms.convertTimezone.include.fields=source:customers:created_at,customers:
 ----
 
 Similarly, you can exclude specific timestamp fields from timezone conversion.
-For example, to exclude the `updated_at` timestamp field in an event record from timezone conversion, us the `exclude.fields` configuration option as in the following example:
+For example, to exclude the `updated_at` timestamp field in an event record from timezone conversion, use the `exclude.fields` configuration option as in the following example:
 
 [source]
 ----
