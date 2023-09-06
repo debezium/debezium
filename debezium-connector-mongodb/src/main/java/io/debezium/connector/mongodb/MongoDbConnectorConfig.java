@@ -361,6 +361,70 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         }
     }
 
+    /**
+     * The set of predefined CursorPipelineOrder options or aliases.
+     */
+    public enum CursorPipelineOrder implements EnumeratedValue {
+        /**
+         * Connect individually to each replica set
+         */
+        INTERNAL_FIRST("internal_first"),
+
+        /**
+         * Connect to sharded cluster with single connection via mongos
+         */
+        USER_FIRST("user_first");
+
+        private String value;
+
+        CursorPipelineOrder(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static CursorPipelineOrder parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+
+            for (CursorPipelineOrder option : CursorPipelineOrder.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static CursorPipelineOrder parse(String value, String defaultValue) {
+            CursorPipelineOrder mode = parse(value);
+
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+
+            return mode;
+        }
+    }
+
     protected static final int DEFAULT_SNAPSHOT_FETCH_SIZE = 0;
 
     /**
@@ -652,8 +716,9 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withDescription("The maximum processing time in milliseconds to wait for the oplog cursor to process a single poll request");
 
     public static final Field CURSOR_PIPELINE = Field.create("cursor.pipeline")
-            .withDisplayName("Pipeline expression apply to the change stream cursor")
+            .withDisplayName("Pipeline stages applied to the change stream cursor")
             .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 4))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withValidation(MongoDbConnectorConfig::validateChangeStreamPipeline)
@@ -661,6 +726,17 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                     "A pipeline is a MongoDB aggregation pipeline composed of instructions to the database to filter or transform data. " +
                     "This can be used customize the data that the connector consumes. " +
                     "Note that this comes after the internal pipelines used to support the connector (e.g. filtering database and collection names).");
+
+    public static final Field CURSOR_PIPELINE_ORDER = Field.create("cursor.pipeline.order")
+            .withDisplayName("Change stream cursor pipeline order")
+            .withEnum(CursorPipelineOrder.class, CursorPipelineOrder.INTERNAL_FIRST)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 5))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("The order used to construct the effective MongoDB aggregation stream pipeline "
+                    + "Options include: "
+                    + "'internal_first' (the default) Internal stages defined by the connector are applied first; "
+                    + "'user_first' Stages defined by the 'cursor.pipeline' property are applied first; ");
 
     public static final Field TOPIC_NAMING_STRATEGY = Field.create("topic.naming.strategy")
             .withDisplayName("Topic naming strategy class")
@@ -756,6 +832,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     private final int snapshotMaxThreads;
     private final int cursorMaxAwaitTimeMs;
     private final ReplicaSets replicaSets;
+    private final CursorPipelineOrder cursorPipelineOrder;
 
     public MongoDbConnectorConfig(Configuration config) {
         super(config, DEFAULT_SNAPSHOT_FETCH_SIZE);
@@ -773,6 +850,9 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         String captureScopeValue = config.getString(MongoDbConnectorConfig.CAPTURE_SCOPE);
         this.captureScope = CaptureScope.parse(captureScopeValue, MongoDbConnectorConfig.CAPTURE_SCOPE.defaultValueAsString());
         this.captureTarget = config.getString(MongoDbConnectorConfig.CAPTURE_TARGET);
+
+        String cursorPipelineOrderValue = config.getString(MongoDbConnectorConfig.CURSOR_PIPELINE_ORDER);
+        this.cursorPipelineOrder = CursorPipelineOrder.parse(cursorPipelineOrderValue, MongoDbConnectorConfig.CURSOR_PIPELINE_ORDER.defaultValueAsString());
 
         this.snapshotMaxThreads = resolveSnapshotMaxThreads(config);
         this.cursorMaxAwaitTimeMs = config.getInteger(MongoDbConnectorConfig.CURSOR_MAX_AWAIT_TIME_MS, 0);
@@ -942,6 +1022,10 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
     public int getCursorMaxAwaitTime() {
         return cursorMaxAwaitTimeMs;
+    }
+
+    public CursorPipelineOrder getCursorPipelineOrder() {
+        return cursorPipelineOrder;
     }
 
     @Override
