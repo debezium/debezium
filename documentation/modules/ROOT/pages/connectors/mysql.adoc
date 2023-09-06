@@ -454,7 +454,7 @@ a|Start a transaction with link:https://dev.mysql.com/doc/refman/{mysql-version}
 [NOTE]
 ====
 The use of these isolation semantics can slow the progress of the snapshot.
-If the snapshot takes too long to complete, consider using a different isolation configuration, or skip the initial snapshot and run an xref:"mysql-incremental-snapshots[incremental snapshot] instead.
+If the snapshot takes too long to complete, consider using a different isolation configuration, or skip the initial snapshot and run an xref:{context}-incremental-snapshots[incremental snapshot] instead.
 ====
 
 |5
