@@ -9,8 +9,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.bson.conversions.Bson;
 import org.junit.Test;
@@ -22,10 +25,58 @@ import org.mockito.junit.MockitoJUnitRunner;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.debezium.connector.mongodb.Filters.FilterConfig;
+import io.debezium.connector.mongodb.MongoDbConnectorConfig.CursorPipelineOrder;
 import io.debezium.data.Envelope;
 
 @RunWith(MockitoJUnitRunner.class)
 public class ChangeStreamPipelineFactoryTest {
+
+    private static final List<String> INTERNAL_PIPELINE = List.of(
+            "" +
+                    "{\n" +
+                    "  \"$replaceRoot\" : {\n" +
+                    "    \"newRoot\" : {\n" +
+                    "      \"event\" : \"$$ROOT\",\n" +
+                    "      \"namespace\" : {\n" +
+                    "        \"$concat\" : [ \"$ns.db\", \".\", \"$ns.coll\" ]\n" +
+                    "      }\n" +
+                    "    }\n" +
+                    "  }\n" +
+                    "}",
+            "" +
+                    "{\n" +
+                    "  \"$match\" : {\n" +
+                    "    \"$and\" : [ {\n" +
+                    "      \"namespace\" : {\n" +
+                    "        \"$regularExpression\" : {\n" +
+                    "          \"pattern\" : \"dbit.*\",\n" +
+                    "          \"options\" : \"i\"\n" +
+                    "        }\n" +
+                    "      }\n" +
+                    "    }, {\n" +
+                    "      \"event.operationType\" : {\n" +
+                    "        \"$in\" : [ \"insert\", \"update\", \"replace\", \"delete\" ]\n" +
+                    "      }\n" +
+                    "    } ]\n" +
+                    "  }\n" +
+                    "}",
+            "" +
+                    "{\n" +
+                    "  \"$replaceRoot\" : {\n" +
+                    "    \"newRoot\" : \"$event\"\n" +
+                    "  }\n" +
+                    "}");
+
+    private static final List<String> USER_PIPELINE = List.of(
+            "{\n" +
+                    "  \"$match\" : {\n" +
+                    "    \"$and\" : [ {\n" +
+                    "      \"operationType\" : \"insert\"\n" +
+                    "    }, {\n" +
+                    "      \"fullDocument.eventId\" : 1404\n" +
+                    "    } ]\n" +
+                    "  }\n" +
+                    "}");
 
     @InjectMocks
     private ChangeStreamPipelineFactory sut;
@@ -36,72 +87,50 @@ public class ChangeStreamPipelineFactoryTest {
     private FilterConfig filterConfig;
 
     @Test
-    public void testCreate() {
+    public void testCreateWithInternalFirst() {
+        testCreate(CursorPipelineOrder.INTERNAL_FIRST, mergeStages(INTERNAL_PIPELINE, USER_PIPELINE));
+    }
+
+    @Test
+    public void testCreateWithUserFirst() {
+        testCreate(CursorPipelineOrder.USER_FIRST, mergeStages(USER_PIPELINE, INTERNAL_PIPELINE));
+    }
+
+    @SafeVarargs
+    private List<String> mergeStages(List<String>... stages) {
+        return Stream.of(stages)
+                .flatMap(Collection::stream)
+                .collect(Collectors.toList());
+    }
+
+    private String asJsonArray(List<String> stages) {
+        return stages.stream().collect(Collectors.joining(",", "[", "]"));
+    }
+
+    public void testCreate(CursorPipelineOrder pipelineOrder, List<String> expectedStageJsons) {
         // Given:
+        given(connectorConfig.getCursorPipelineOrder())
+                .willReturn(pipelineOrder);
         given(connectorConfig.getSkippedOperations())
                 .willReturn(EnumSet.of(Envelope.Operation.TRUNCATE)); // The default
         given(filterConfig.getCollectionIncludeList())
                 .willReturn("dbit.*");
         given(filterConfig.getUserPipeline())
-                .willReturn(new ChangeStreamPipeline("[{\"$match\": { \"$and\": [{\"operationType\": \"insert\"}, {\"fullDocument.eventId\": 1404 }] } }]"));
+                .willReturn(new ChangeStreamPipeline(asJsonArray(USER_PIPELINE)));
 
         // When:
         var pipeline = sut.create();
 
         // Then:
-        assertPipelineStagesEquals(pipeline.getStages(),
-                "" +
-                        "{\n" +
-                        "  \"$replaceRoot\" : {\n" +
-                        "    \"newRoot\" : {\n" +
-                        "      \"event\" : \"$$ROOT\",\n" +
-                        "      \"namespace\" : {\n" +
-                        "        \"$concat\" : [ \"$ns.db\", \".\", \"$ns.coll\" ]\n" +
-                        "      }\n" +
-                        "    }\n" +
-                        "  }\n" +
-                        "}",
-                "" +
-                        "{\n" +
-                        "  \"$match\" : {\n" +
-                        "    \"$and\" : [ {\n" +
-                        "      \"namespace\" : {\n" +
-                        "        \"$regularExpression\" : {\n" +
-                        "          \"pattern\" : \"dbit.*\",\n" +
-                        "          \"options\" : \"i\"\n" +
-                        "        }\n" +
-                        "      }\n" +
-                        "    }, {\n" +
-                        "      \"event.operationType\" : {\n" +
-                        "        \"$in\" : [ \"insert\", \"update\", \"replace\", \"delete\" ]\n" +
-                        "      }\n" +
-                        "    } ]\n" +
-                        "  }\n" +
-                        "}",
-                "" +
-                        "{\n" +
-                        "  \"$replaceRoot\" : {\n" +
-                        "    \"newRoot\" : \"$event\"\n" +
-                        "  }\n" +
-                        "}",
-                "" +
-                        "{\n" +
-                        "  \"$match\" : {\n" +
-                        "    \"$and\" : [ {\n" +
-                        "      \"operationType\" : \"insert\"\n" +
-                        "    }, {\n" +
-                        "      \"fullDocument.eventId\" : 1404\n" +
-                        "    } ]\n" +
-                        "  }\n" +
-                        "}");
+        assertPipelineStagesEquals(pipeline.getStages(), expectedStageJsons);
     }
 
-    private static void assertPipelineStagesEquals(List<? extends Bson> stages, String... expectedStageJsons) {
+    private static void assertPipelineStagesEquals(List<? extends Bson> stages, List<String> expectedStageJsons) {
         assertThat(stages)
                 .hasSameSizeAs(expectedStageJsons);
 
         for (int i = 0; i < stages.size(); i++) {
-            var expectedStageJson = expectedStageJsons[i];
+            var expectedStageJson = expectedStageJsons.get(i);
             assertThat(stages)
                     .element(i)
                     .satisfies((stage) -> assertJsonEquals(stage.toBsonDocument().toJson(), expectedStageJson));

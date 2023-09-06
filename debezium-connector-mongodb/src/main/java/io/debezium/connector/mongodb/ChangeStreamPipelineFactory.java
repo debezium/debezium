@@ -22,6 +22,7 @@ import com.mongodb.client.model.Aggregates;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.changestream.OperationType;
 
+import io.debezium.DebeziumException;
 import io.debezium.connector.mongodb.Filters.FilterConfig;
 import io.debezium.data.Envelope;
 
@@ -44,12 +45,25 @@ class ChangeStreamPipelineFactory {
 
     ChangeStreamPipeline create() {
         // Resolve and combine internal and user pipelines serially
-        var internalPipeline = createInternalPipeline();
-        var userPipeline = createUserPipeline();
-        var effectivePipeline = internalPipeline.then(userPipeline);
+        var effectivePipeline = mergeUserAndInternalPipeline();
 
         LOGGER.info("Effective change stream pipeline: {}", effectivePipeline);
         return effectivePipeline;
+    }
+
+    private ChangeStreamPipeline mergeUserAndInternalPipeline() {
+        var internalPipeline = createInternalPipeline();
+        var userPipeline = createUserPipeline();
+
+        switch (connectorConfig.getCursorPipelineOrder()) {
+            case INTERNAL_FIRST:
+                return internalPipeline.then(userPipeline);
+            case USER_FIRST:
+                return userPipeline.then(internalPipeline);
+            default:
+                // this should never happen
+                throw new DebeziumException("Unknown aggregation pipeline order");
+        }
     }
 
     private ChangeStreamPipeline createInternalPipeline() {
