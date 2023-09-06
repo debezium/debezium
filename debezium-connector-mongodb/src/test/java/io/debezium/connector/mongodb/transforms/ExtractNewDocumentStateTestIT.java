@@ -1418,6 +1418,28 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
     }
 
     @Test
+    @FixFor({ "DBZ-2606", "DebeziumDBZ-6773" })
+    public void testNewFieldAndHeaderMapping() throws Exception {
+        waitForStreamingRunning();
+
+        final Map<String, String> props = new HashMap<>();
+        String fieldPrefix = "";
+        String headerPrefix = "prefix.";
+        props.put(ADD_FIELDS, "op:OP");
+        props.put(ADD_FIELDS_PREFIX, fieldPrefix);
+        props.put(ADD_HEADERS, "op:OPERATION");
+        props.put(ADD_HEADERS_PREFIX, headerPrefix);
+        transformation.configure(props);
+
+        final SourceRecord createRecord = createCreateRecord();
+        final SourceRecord transformed = transformation.apply(createRecord);
+
+        assertThat(((Struct) transformed.value()).get(fieldPrefix + "OP")).isEqualTo(Operation.CREATE.code());
+        assertThat(transformed.headers()).hasSize(1);
+        assertThat(getSourceRecordHeaderByKey(transformed, headerPrefix + "OPERATION")).isEqualTo(Operation.CREATE.code());
+    }
+
+    @Test
     @FixFor({ "DBZ-1791", "DBZ-2504" })
     public void testAddFields() throws Exception {
         waitForStreamingRunning();

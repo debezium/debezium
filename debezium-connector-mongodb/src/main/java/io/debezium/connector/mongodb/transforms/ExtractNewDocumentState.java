@@ -115,6 +115,7 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ExtractNewDocumentState.class);
     private static final Pattern FIELD_SEPARATOR = Pattern.compile("\\.");
+    private static final Pattern NEW_FIELD_SEPARATOR = Pattern.compile(":");
 
     private static final Field ARRAY_ENCODING = Field.create("array.encoding")
             .withDisplayName("Array encoding")
@@ -458,26 +459,19 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
         private final String newFieldName;
 
         private FieldReference(String prefix, String field) {
-            String[] parts = FIELD_SEPARATOR.split(field);
+            String[] parts = NEW_FIELD_SEPARATOR.split(field);
+            String[] splits = FIELD_SEPARATOR.split(parts[0]);
+            this.field = splits.length == 1 ? splits[0] : splits[1];
+            this.struct = (splits.length == 1) ? determineStruct(this.field) : splits[0];
 
             if (parts.length == 1) {
-                this.struct = determineStruct(parts[0]);
-                this.field = parts[0];
-                this.newFieldName = prefix + field;
+                this.newFieldName = prefix + (splits.length == 1 ? this.field : this.struct + "_" + this.field);
             }
             else if (parts.length == 2) {
-                this.struct = parts[0];
-
-                if (!(this.struct.equals(Envelope.FieldName.SOURCE) || this.struct.equals(Envelope.FieldName.TRANSACTION)
-                        || this.struct.equals(MongoDbFieldName.UPDATE_DESCRIPTION))) {
-                    throw new IllegalArgumentException("Unexpected field name: " + field);
-                }
-
-                this.field = parts[1];
-                this.newFieldName = prefix + this.struct + "_" + this.field;
+                this.newFieldName = prefix + parts[1];
             }
             else {
-                throw new IllegalArgumentException("Unexpected field value: " + field);
+                throw new IllegalArgumentException("Unexpected field name: " + field);
             }
         }
 
