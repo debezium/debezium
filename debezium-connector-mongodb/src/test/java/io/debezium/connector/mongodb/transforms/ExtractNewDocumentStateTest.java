@@ -10,10 +10,8 @@ import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static io.debezium.junit.SkipWhenKafkaVersion.KafkaVersion.KAFKA_241;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -26,18 +24,10 @@ import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.junit.rules.TestRule;
 
-import io.debezium.config.CommonConnectorConfig;
-import io.debezium.config.Configuration;
 import io.debezium.connector.AbstractSourceInfo;
-import io.debezium.connector.mongodb.Configurator;
-import io.debezium.connector.mongodb.Filters;
-import io.debezium.connector.mongodb.MongoDbConnectorConfig;
-import io.debezium.connector.mongodb.SourceInfo;
 import io.debezium.doc.FixFor;
 import io.debezium.junit.SkipTestRule;
 import io.debezium.junit.SkipWhenKafkaVersion;
-import io.debezium.schema.DefaultTopicNamingStrategy;
-import io.debezium.spi.topic.TopicNamingStrategy;
 
 /**
  * Unit test for {@link ExtractNewDocumentState}.
@@ -47,11 +37,6 @@ import io.debezium.spi.topic.TopicNamingStrategy;
 public class ExtractNewDocumentStateTest {
 
     private static final String SERVER_NAME = "serverX";
-
-    private Filters filters;
-    private SourceInfo source;
-    private TopicNamingStrategy topicNamingStrategy;
-    private List<SourceRecord> produced;
 
     private ExtractNewDocumentState<SourceRecord> transformation;
 
@@ -63,15 +48,6 @@ public class ExtractNewDocumentStateTest {
 
     @Before
     public void setup() {
-        filters = new Configurator().createFilters();
-        MongoDbConnectorConfig connectorConfig = new MongoDbConnectorConfig(
-                Configuration.create()
-                        .with(CommonConnectorConfig.TOPIC_PREFIX, SERVER_NAME)
-                        .build());
-        source = new SourceInfo(connectorConfig);
-        topicNamingStrategy = DefaultTopicNamingStrategy.create(connectorConfig);
-        produced = new ArrayList<>();
-
         transformation = new ExtractNewDocumentState<>();
         transformation.configure(Collections.singletonMap("array.encoding", "array"));
     }
