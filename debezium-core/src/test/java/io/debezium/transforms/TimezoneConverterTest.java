@@ -8,8 +8,10 @@ package io.debezium.transforms;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.catchThrowable;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.Date;
 import java.util.HashMap;
@@ -788,6 +790,59 @@ public class TimezoneConverterTest {
         assertThat(transformedInventoryAfter.get("name")).isEqualTo("Amy Rose");
         assertThat(transformedInventoryAfter.get("shipping_time")).isEqualTo("22:19:25+03:00");
         assertThat(transformedInventoryAfter.get("order_time")).isEqualTo("10:19:25+00:00");
+    }
 
+    @Test
+    public void testDayLightSavings() {
+        String withDayLightSavingsInstant = "2014-12-22T10:15:30Z"; // DST is in effect
+        String withoutDayLightSavingsInstant = "2015-06-22T10:15:30Z"; // DST is not in effect
+        Clock clockWithDayLightSavings = Clock.fixed(Instant.parse(withDayLightSavingsInstant), ZoneId.of("UTC"));
+        Clock clockWithoutDayLightSavings = Clock.fixed(Instant.parse(withoutDayLightSavingsInstant), ZoneId.of("UTC"));
+
+        Map<String, String> props = new HashMap<>();
+        props.put("converted.timezone", "Europe/Paris");
+        converter.configure(props);
+
+        Schema recordSchema = SchemaBuilder.struct()
+                .field("id", Schema.INT8_SCHEMA)
+                .field("name", Schema.STRING_SCHEMA)
+                .field("order_date", ZonedTimestamp.builder().optional().build())
+                .field("shipping_date", ZonedTimestamp.builder().optional().build())
+                .build();
+
+        final Struct before = new Struct(recordSchema);
+        final Struct source = new Struct(sourceSchema);
+
+        before.put("id", (byte) 1);
+        before.put("name", "Amy Rose");
+        before.put("order_date", Instant.now(clockWithDayLightSavings).toString());
+        before.put("shipping_date", Instant.now(clockWithoutDayLightSavings).toString());
+
+        source.put("table", "customers");
+        source.put("lsn", 1);
+        source.put("ts_ms", 123456789);
+
+        final Envelope envelope = Envelope.defineSchema()
+                .withName("dummy.Envelope")
+                .withRecord(recordSchema)
+                .withSource(sourceSchema)
+                .build();
+
+        final Struct payload = envelope.create(before, source, Instant.now());
+
+        SourceRecord record = new SourceRecord(
+                new HashMap<>(),
+                new HashMap<>(),
+                "db.server1.table1",
+                envelope.schema(),
+                payload);
+
+        final SourceRecord transformedRecord = converter.apply(record);
+
+        final Struct transformedValue = (Struct) transformedRecord.value();
+        final Struct transformedAfter = transformedValue.getStruct(Envelope.FieldName.AFTER);
+
+        assertThat(transformedAfter.get("order_date")).isEqualTo("2014-12-22T11:15:30+01:00");
+        assertThat(transformedAfter.get("shipping_date")).isEqualTo("2015-06-22T12:15:30+02:00");
     }
 }
