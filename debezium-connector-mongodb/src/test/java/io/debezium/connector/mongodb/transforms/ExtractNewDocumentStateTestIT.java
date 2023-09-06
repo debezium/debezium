@@ -1418,7 +1418,7 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
     }
 
     @Test
-    @FixFor({ "DBZ-2606", "DebeziumDBZ-6773" })
+    @FixFor({ "DBZ-2606", "DBZ-6773" })
     public void testNewFieldAndHeaderMapping() throws Exception {
         waitForStreamingRunning();
 
