@@ -94,7 +94,7 @@ public class TimezoneConverter<R extends ConnectRecord<R>> implements Transforma
     private List<String> excludeList;
     private static final String SOURCE = "source";
     private static final String TOPIC = "topic";
-    private static final Pattern TIMEZONE_PATTERN = Pattern.compile("^[+-]\\d{2}:\\d{2}$");
+    private static final Pattern TIMEZONE_OFFSET_PATTERN = Pattern.compile("^[+-]\\d{2}:\\d{2}(:\\d{2})?$");
     private static final Pattern LIST_PATTERN = Pattern.compile("^\\[(source|topic|[\".\\w\\s_]+):([\".\\w\\s_]+(?::[\".\\w\\s_]+)?(?:,|]$))+$");
     private final Map<String, Set<String>> topicFieldsMap = new HashMap<>();
     private final Map<String, Set<String>> tableFieldsMap = new HashMap<>();
@@ -226,7 +226,7 @@ public class TimezoneConverter<R extends ConnectRecord<R>> implements Transforma
     }
 
     private boolean validateTimezoneString() {
-        if (TIMEZONE_PATTERN.matcher(convertedTimezone).matches()) {
+        if (TIMEZONE_OFFSET_PATTERN.matcher(convertedTimezone).matches()) {
             return true;
         }
         else if (ZoneId.getAvailableZoneIds().contains(convertedTimezone)) {
@@ -268,14 +268,14 @@ public class TimezoneConverter<R extends ConnectRecord<R>> implements Transforma
                 Instant microInstant = Instant.ofEpochSecond(microTimestamp / 1_000_000, (microTimestamp % 1_000_000) * 1_000);
                 LocalDateTime microLocalDateTime = microInstant.atOffset(ZoneOffset.UTC).toLocalDateTime();
                 zoneOffset = zoneId.getRules().getOffset(microLocalDateTime);
-                updatedFieldValue = microLocalDateTime.atOffset(zoneOffset).toInstant().toEpochMilli() * 1_000;
+                updatedFieldValue = microLocalDateTime.toEpochSecond(zoneOffset) * 1_000_000 + microLocalDateTime.getNano() / 1_000;
                 break;
             case NanoTimestamp.SCHEMA_NAME:
                 long nanoTimestamp = (long) fieldValue;
                 Instant nanoInstant = Instant.ofEpochSecond(nanoTimestamp / 1_000_000_000, (nanoTimestamp % 1_000_000_000));
                 LocalDateTime nanoLocalDateTime = nanoInstant.atOffset(ZoneOffset.UTC).toLocalDateTime();
                 zoneOffset = zoneId.getRules().getOffset(nanoLocalDateTime);
-                updatedFieldValue = nanoLocalDateTime.atOffset(zoneOffset).toInstant().toEpochMilli() * 1_000_000;
+                updatedFieldValue = nanoLocalDateTime.toEpochSecond(zoneOffset) * 1_000_000_000 + nanoLocalDateTime.getNano();
                 break;
             case Timestamp.SCHEMA_NAME:
                 Instant instant = Instant.ofEpochMilli((long) fieldValue);
