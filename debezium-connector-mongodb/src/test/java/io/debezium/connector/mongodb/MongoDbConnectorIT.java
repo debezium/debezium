@@ -640,6 +640,61 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     }
 
     @Test
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 4, minor = 4, reason = "$bsonSize aggregation operator support is officially released in Mongo 4.4.")
+    public void shouldSkipOversizedEvents() throws InterruptedException, IOException {
+        // Use the DB configuration to define the connector's configuration ...
+        config = TestHelper.getConfiguration(mongo).edit()
+                .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
+                .with(MongoDbConnectorConfig.CAPTURE_MODE, MongoDbConnectorConfig.CaptureMode.CHANGE_STREAMS_UPDATE_FULL_WITH_PRE_IMAGE)
+                .with(MongoDbConnectorConfig.CURSOR_OVERSIZE_HANDLING_MODE, MongoDbConnectorConfig.OversizeHandlingMode.SKIP)
+                .with(MongoDbConnectorConfig.CURSOR_OVERSIZE_SKIP_THRESHOLD, 40) // maximum 25 bytes
+                .build();
+
+        // Set up the replication context for connections ...
+        context = new MongoDbTaskContext(config);
+
+        // Cleanup database
+        TestHelper.cleanDatabase(mongo, "dbit");
+
+        // Start the connector ...
+        start(MongoDbConnector.class, config);
+        waitForStreamingRunning("mongodb", "mongo");
+
+        // start first document (total size is 32 bytes)
+        var doc = new Document(Map.of("_id", 1, "val", new byte[8]));
+        insertDocuments("dbit", "wrong", doc);
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.topics().size()).isEqualTo(1);
+        assertThat(records.recordsForTopic("mongo.dbit.wrong")).hasSize(1);
+
+        // this update is OK (total size is 40 bytes)
+        var updateDoc = new Document("$set", new Document("val", new byte[16]));
+        updateDocument("dbit", "wrong", new Document("_id", 1), updateDoc);
+
+        records = consumeRecordsByTopic(1);
+        assertThat(records.topics().size()).isEqualTo(1);
+        assertThat(records.recordsForTopic("mongo.dbit.wrong")).hasSize(1);
+
+        // this update is not ok (total size is 56 bytes)
+        updateDoc = new Document("$set", new Document("val", new byte[32]));
+        updateDocument("dbit", "wrong", new Document("_id", 1), updateDoc);
+        var record = consumeRecord();
+        assertThat(record).isNull();
+
+        // store another document
+        doc = new Document(Map.of("_id", 1, "var", new byte[8]));
+        insertDocuments("dbit", "right", doc);
+
+        records = consumeRecordsByTopic(1);
+        assertThat(records.topics().size()).isEqualTo(1);
+        assertThat(records.recordsForTopic("mongo.dbit.right")).hasSize(1);
+
+    }
+
+    @Test
     @FixFor("DBZ-1831")
     public void shouldConsumeAllEventsFromDatabaseWithSkippedOperations() throws InterruptedException, IOException {
         // Use the DB configuration to define the connector's configuration ...
@@ -1341,7 +1396,6 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         assertNoRecordsToConsume();
 
         stopConnector();
-
     }
 
     @Test

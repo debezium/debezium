@@ -42,8 +42,12 @@ class ChangeStreamPipelineFactory {
     }
 
     ChangeStreamPipeline create() {
-        // Resolve and combine internal and user pipelines serially
-        var effectivePipeline = mergeUserAndInternalPipeline();
+        var sizePipeline = createSizePipeline();
+
+        // Resolve and combine size, internal and user pipelines serially
+        var userAndInternalPipeline = mergeUserAndInternalPipeline();
+        var effectivePipeline = sizePipeline
+                .then(userAndInternalPipeline);
 
         LOGGER.info("Effective change stream pipeline: {}", effectivePipeline);
         return effectivePipeline;
@@ -64,6 +68,22 @@ class ChangeStreamPipelineFactory {
         }
     }
 
+    private ChangeStreamPipeline createSizePipeline() {
+        if (connectorConfig.getOversizeHandlingMode() != MongoDbConnectorConfig.OversizeHandlingMode.SKIP) {
+            return new ChangeStreamPipeline();
+        }
+        var threshold = connectorConfig.getOversizeSkipThreshold();
+        var fullDocument = expr(
+                lte(bsonSize("$fullDocument"), threshold));
+        var fullDocumentBeforeChange = expr(
+                lte(bsonSize("$fullDocumentBeforeChange"), threshold));
+
+        var stage = Aggregates.match(
+                Filters.and(fullDocument, fullDocumentBeforeChange));
+
+        return new ChangeStreamPipeline(stage);
+    }
+
     private ChangeStreamPipeline createInternalPipeline() {
         // Resolve the leaf filters
         var filters = Stream
@@ -80,8 +100,6 @@ class ChangeStreamPipelineFactory {
         // Pipeline
         // Note that change streams cannot use indexes:
         // - https://www.mongodb.com/docs/manual/administration/change-streams-production-recommendations/#indexes-and-performance
-        // Note that `$addFields` must be used over `$set`/ `$unset` to support MongoDB 4.0 which doesn't support these operators:
-        // - https://www.mongodb.com/docs/manual/changeStreams/#modify-change-stream-output
         return new ChangeStreamPipeline(
                 // Materialize a "namespace" field so that we can do qualified collection name matching per
                 // the configuration requirements
@@ -212,5 +230,17 @@ class ChangeStreamPipelineFactory {
 
     private static Bson concat(Object... expressions) {
         return new BasicDBObject("$concat", List.of(expressions));
+    }
+
+    private static Bson bsonSize(Object document) {
+        return new BasicDBObject("$bsonSize", document);
+    }
+
+    private static Bson lte(Object expr1, Object expr2) {
+        return new BasicDBObject("$lte", List.of(expr1, expr2));
+    }
+
+    private static Bson expr(Object expr) {
+        return new BasicDBObject("$expr", expr);
     }
 }

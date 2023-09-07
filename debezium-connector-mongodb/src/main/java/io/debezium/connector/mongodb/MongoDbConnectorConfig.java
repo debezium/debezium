@@ -425,6 +425,70 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         }
     }
 
+    /**
+     * The set of predefined OversizeHandlingMode options or aliases.
+     */
+    public enum OversizeHandlingMode implements EnumeratedValue {
+        /**
+         * Connect individually to each replica set
+         */
+        FAIL("fail"),
+
+        /**
+         * Connect to sharded cluster with single connection via mongos
+         */
+        SKIP("skip");
+
+        private String value;
+
+        OversizeHandlingMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static OversizeHandlingMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+
+            for (OversizeHandlingMode option : OversizeHandlingMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static OversizeHandlingMode parse(String value, String defaultValue) {
+            OversizeHandlingMode mode = parse(value);
+
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+
+            return mode;
+        }
+    }
+
     protected static final int DEFAULT_SNAPSHOT_FETCH_SIZE = 0;
 
     /**
@@ -738,6 +802,27 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                     + "'internal_first' (the default) Internal stages defined by the connector are applied first; "
                     + "'user_first' Stages defined by the 'cursor.pipeline' property are applied first; ");
 
+    public static final Field CURSOR_OVERSIZE_HANDLING_MODE = Field.create("cursor.oversize.handling.mode")
+            .withDisplayName("Oversize document handling mode")
+            .withEnum(OversizeHandlingMode.class, OversizeHandlingMode.FAIL)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("The strategy used to handle change events for documents exceeding specified BSON size. "
+                    + "Options include: "
+                    + "'fail' (the default) the connector fails if the total size of change event exceed the maximum BSON size"
+                    + "'skip' any change events for documents exceeding the maximum size will be ignored ");
+
+    public static final Field CURSOR_OVERSIZE_SKIP_THRESHOLD = Field.create("cursor.oversize.skip.threshold")
+            .withDisplayName("Oversize document skip threshold")
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(0)
+            .withValidation(MongoDbConnectorConfig::validateOversizeSkipThreshold)
+            .withDescription("The maximum allowed size of the stored document for which change events are processed. "
+                    + "This includes the both, the size before and after database operation, "
+                    + "more specifically this limits the size of fullDocument and fullDocumentBeforeChange filed of MongoDB change events.");
+
     public static final Field TOPIC_NAMING_STRATEGY = Field.create("topic.naming.strategy")
             .withDisplayName("Topic naming strategy class")
             .withType(Type.CLASS)
@@ -833,6 +918,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     private final int cursorMaxAwaitTimeMs;
     private final ReplicaSets replicaSets;
     private final CursorPipelineOrder cursorPipelineOrder;
+    private final OversizeHandlingMode oversizeHandlingMode;
+    private final int oversizeSkipThreshold;
 
     public MongoDbConnectorConfig(Configuration config) {
         super(config, DEFAULT_SNAPSHOT_FETCH_SIZE);
@@ -853,6 +940,10 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
         String cursorPipelineOrderValue = config.getString(MongoDbConnectorConfig.CURSOR_PIPELINE_ORDER);
         this.cursorPipelineOrder = CursorPipelineOrder.parse(cursorPipelineOrderValue, MongoDbConnectorConfig.CURSOR_PIPELINE_ORDER.defaultValueAsString());
+
+        String oversizeHandlingModeValue = config.getString(MongoDbConnectorConfig.CURSOR_OVERSIZE_HANDLING_MODE);
+        this.oversizeHandlingMode = OversizeHandlingMode.parse(oversizeHandlingModeValue, MongoDbConnectorConfig.CURSOR_OVERSIZE_HANDLING_MODE.defaultValueAsString());
+        this.oversizeSkipThreshold = config.getInteger(CURSOR_OVERSIZE_SKIP_THRESHOLD);
 
         this.snapshotMaxThreads = resolveSnapshotMaxThreads(config);
         this.cursorMaxAwaitTimeMs = config.getInteger(MongoDbConnectorConfig.CURSOR_MAX_AWAIT_TIME_MS, 0);
@@ -893,6 +984,18 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             problems.accept(field, value, "Change stream pipeline JSON is invalid: " + e.getMessage());
             return 1;
         }
+        return 0;
+    }
+
+    private static int validateOversizeSkipThreshold(Configuration config, Field field, ValidationOutput problems) {
+        String mode = config.getString(CURSOR_OVERSIZE_HANDLING_MODE);
+        int value = config.getInteger(CURSOR_OVERSIZE_SKIP_THRESHOLD);
+
+        if (OversizeHandlingMode.SKIP.getValue().equals(mode) && value <= 0) {
+            problems.accept(field, value, "Invalid threshold value for skipped document size");
+            return 1;
+        }
+
         return 0;
     }
 
@@ -1026,6 +1129,14 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
     public CursorPipelineOrder getCursorPipelineOrder() {
         return cursorPipelineOrder;
+    }
+
+    public OversizeHandlingMode getOversizeHandlingMode() {
+        return oversizeHandlingMode;
+    }
+
+    public int getOversizeSkipThreshold() {
+        return oversizeSkipThreshold;
     }
 
     @Override
