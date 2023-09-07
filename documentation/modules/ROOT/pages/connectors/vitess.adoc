@@ -711,6 +711,16 @@ In the `source` object, `ts_ms` indicates the time that the change was made in t
 Updating the columns for a row's primary key changes the value of the row's key. When a key changes, {prodname} outputs _three_ events: a `DELETE` event and a xref:vitess-tombstone-events[tombstone event] with the old key for the row, followed by an event with the new key for the row. Details are in the next section.
 ====
 
+[id="vitess-primary-key-updates"]
+=== Primary key updates
+
+An `UPDATE` operation that changes a row's primary key field(s) is known
+as a primary key change. For a primary key change, in place of an `UPDATE` event record, the connector emits a `DELETE` event record for the old key and a `CREATE` event record for the new (updated) key. These events have the usual structure and content, and in addition, each one has a message header related to the primary key change:
+
+* The `DELETE` event record has `__debezium.newkey` as a message header. The value of this header is the new primary key for the updated row.
+
+* The `CREATE` event record has `__debezium.oldkey` as a message header. The value of this header is the previous (old) primary key that the updated row had.
+
 [[vitess-delete-events]]
 === _delete_ events
 
