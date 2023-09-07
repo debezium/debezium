@@ -31,7 +31,6 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnector;
 import io.debezium.connector.mysql.MySqlConnectorConfig;
 import io.debezium.connector.mysql.MySqlTestConnection;
-import io.debezium.connector.mysql.UniqueDatabase;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.junit.SkipWhenDatabaseVersion;
@@ -46,8 +45,6 @@ import io.debezium.util.Testing;
  */
 @SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 6, reason = "DDL uses fractional second data types, not supported until MySQL 5.6")
 public class JdbcOffsetBackingStoreIT extends AbstractConnectorTest {
-    private final UniqueDatabase DATABASE = new UniqueDatabase("myServer1", "connector_test")
-            .withDbHistoryPath(SCHEMA_HISTORY_PATH);
     private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("schema-history.db").toAbsolutePath();
 
     private static final String USER = "debezium";
@@ -161,7 +158,7 @@ public class JdbcOffsetBackingStoreIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void shouldStartCorrectlyWithJDBCOffsetStorage() throws InterruptedException, IOException {
+    public void shouldStartCorrectlyWithJdbcOffsetStorage() throws InterruptedException, IOException {
         String masterPort = System.getProperty("database.port", "3306");
         String replicaPort = System.getProperty("database.replica.port", "3306");
         boolean replicaIsMaster = masterPort.equals(replicaPort);

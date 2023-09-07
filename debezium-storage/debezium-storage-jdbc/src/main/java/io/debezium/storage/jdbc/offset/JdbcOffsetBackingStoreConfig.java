@@ -21,17 +21,16 @@ import io.debezium.util.Collect;
 public class JdbcOffsetBackingStoreConfig extends JdbcCommonConfig {
 
     public static final String OFFSET_STORAGE_PREFIX = "offset.storage.";
-    public static final String PROP_PREFIX = OFFSET_STORAGE_PREFIX + CONFIGURATION_FIELD_PREFIX_STRING;
 
     public static final String DEFAULT_TABLE_NAME = "debezium_offset_storage";
-    public static final Field PROP_TABLE_NAME = Field.create(PROP_PREFIX + "offset.table.name")
+    public static final Field PROP_TABLE_NAME = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "offset.table.name")
             .withDescription("Name of the table to store offsets")
             .withDefault(DEFAULT_TABLE_NAME);
 
     /**
      * JDBC Offset storage CREATE TABLE syntax.
      */
-    public static final String DEFAULT_TABLE_DDL = "CREATE TABLE %s(id VARCHAR(36) NOT NULL, " +
+    public static final String DEFAULT_TABLE_DDL = "CREATE TABLE %s (id VARCHAR(36) NOT NULL, " +
             "offset_key VARCHAR(1255), offset_val VARCHAR(1255)," +
             "record_insert_ts TIMESTAMP NOT NULL," +
             "record_insert_seq INTEGER NOT NULL" +
@@ -45,7 +44,7 @@ public class JdbcOffsetBackingStoreConfig extends JdbcCommonConfig {
      * record_insert_ts - Timestamp when the record was inserted
      * record_insert_seq - Sequence number of record
      */
-    public static final Field PROP_TABLE_DDL = Field.create(PROP_PREFIX + "offset.table.ddl")
+    public static final Field PROP_TABLE_DDL = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "offset.table.ddl")
             .withDescription("Create table syntax for offset jdbc table")
             .withDefault(DEFAULT_TABLE_DDL);
 
@@ -56,15 +55,15 @@ public class JdbcOffsetBackingStoreConfig extends JdbcCommonConfig {
 
     public static final String DEFAULT_TABLE_INSERT = "INSERT INTO %s(id, offset_key, offset_val, record_insert_ts, record_insert_seq) " +
             "VALUES ( ?, ?, ?, ?, ? )";
-    public static final Field PROP_TABLE_SELECT = Field.create(PROP_PREFIX + "offset.table.select")
+    public static final Field PROP_TABLE_SELECT = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "offset.table.select")
             .withDescription("Select syntax to get offset data from jdbc table")
             .withDefault(DEFAULT_TABLE_SELECT);
 
-    public static final Field PROP_TABLE_DELETE = Field.create(PROP_PREFIX + "offset.table.delete")
+    public static final Field PROP_TABLE_DELETE = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "offset.table.delete")
             .withDescription("Delete syntax to delete offset data from jdbc table")
             .withDefault(DEFAULT_TABLE_DELETE);
 
-    public static final Field PROP_TABLE_INSERT = Field.create(PROP_PREFIX + "offset.table.insert")
+    public static final Field PROP_TABLE_INSERT = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "offset.table.insert")
             .withDescription("Insert syntax to add offset data to the jdbc table")
             .withDefault(DEFAULT_TABLE_INSERT);
 
