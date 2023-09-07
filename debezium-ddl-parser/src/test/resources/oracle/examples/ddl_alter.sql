@@ -31,6 +31,7 @@ alter table AbsTDDesc add constraint F_AbsTDDesc_AbstractTr_1vl7ewo foreign key 
 -- Alter table add primary key using index
 ALTER TABLE "IDENTITYDB"."CHANGE_NUMBERS" ADD CONSTRAINT "IDX_CHANGENUMBERS_PK" PRIMARY KEY ("CHANGE_NO", "EXPIRY_TIME") USING INDEX "IDENTITYDB"."IDX_CHANGENUMBERS_PK"  ENABLE NOVALIDATE;
 ALTER TABLE "MYSCHEMA"."MY_PLANT" DROP PRIMARY KEY DROP INDEX;
+alter table PTY_PD_IVSM_MAGR_INFO drop constraint PK_PTY_PD_IVSM_MAGR_INFO cascade drop index;
 -- Alter table truncate subpartition
 alter table tdo_001 truncate subpartition inbound_full_pwork update indexes;
 alter table tcd_abc_int truncate partition (p1);
