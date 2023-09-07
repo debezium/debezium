@@ -62,7 +62,7 @@ public class TimezoneConverterTest {
         before.put("id", (byte) 1);
         before.put("name", "Srikanth");
         before.put("order_date_micros", 1529507596945104L);
-        before.put("order_date_nanos", 1531481025340000000L);
+        before.put("order_date_nanos", 1531481025340000104L);
         before.put("order_date_timestamp", 1514908810123L);
         before.put("order_date_zoned_timestamp", "2018-01-02T11:15:30.123456789+00:00");
         before.put("order_date_zoned_time", "11:15:30.123456789+00:00");
@@ -91,8 +91,8 @@ public class TimezoneConverterTest {
         final Struct transformedValue = (Struct) transformedRecord.value();
         final Struct transformedAfter = transformedValue.getStruct(Envelope.FieldName.AFTER);
 
-        assertThat(transformedAfter.get("order_date_micros")).isEqualTo(1529487796945000L);
-        assertThat(transformedAfter.get("order_date_nanos")).isEqualTo(1531461225340000000L);
+        assertThat(transformedAfter.get("order_date_micros")).isEqualTo(1529487796945104L);
+        assertThat(transformedAfter.get("order_date_nanos")).isEqualTo(1531461225340000104L);
         assertThat(transformedAfter.get("order_date_timestamp")).isEqualTo(1514889010123L);
         assertThat(transformedAfter.get("order_date_zoned_timestamp")).isEqualTo("2018-01-02T16:45:30.123456789+05:30");
         assertThat(transformedAfter.get("order_date_zoned_time")).isEqualTo("16:45:30.123456789+05:30");
@@ -457,7 +457,7 @@ public class TimezoneConverterTest {
     @Test
     public void testExcludeListWithNoPrefix() {
         final Map<String, String> props = new HashMap<>();
-        props.put("converted.timezone", "+08:00");
+        props.put("converted.timezone", "+08:00:00");
         props.put("exclude.list", "db.server1.table1:order_time");
         converter.configure(props);
 
@@ -794,8 +794,8 @@ public class TimezoneConverterTest {
 
     @Test
     public void testDayLightSavings() {
-        String withDayLightSavingsInstant = "2014-12-22T10:15:30Z"; // DST is in effect
-        String withoutDayLightSavingsInstant = "2015-06-22T10:15:30Z"; // DST is not in effect
+        String withDayLightSavingsInstant = "2014-06-22T10:15:30Z"; // DST is in effect
+        String withoutDayLightSavingsInstant = "2014-12-22T10:15:30Z"; // DST is not in effect
         Clock clockWithDayLightSavings = Clock.fixed(Instant.parse(withDayLightSavingsInstant), ZoneId.of("UTC"));
         Clock clockWithoutDayLightSavings = Clock.fixed(Instant.parse(withoutDayLightSavingsInstant), ZoneId.of("UTC"));
 
@@ -842,7 +842,7 @@ public class TimezoneConverterTest {
         final Struct transformedValue = (Struct) transformedRecord.value();
         final Struct transformedAfter = transformedValue.getStruct(Envelope.FieldName.AFTER);
 
-        assertThat(transformedAfter.get("order_date")).isEqualTo("2014-12-22T11:15:30+01:00");
-        assertThat(transformedAfter.get("shipping_date")).isEqualTo("2015-06-22T12:15:30+02:00");
+        assertThat(transformedAfter.get("order_date")).isEqualTo("2014-06-22T12:15:30+02:00");
+        assertThat(transformedAfter.get("shipping_date")).isEqualTo("2014-12-22T11:15:30+01:00");
     }
 }
