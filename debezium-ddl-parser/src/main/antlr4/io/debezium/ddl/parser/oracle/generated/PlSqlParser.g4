@@ -3391,12 +3391,10 @@ new_constraint_name
     ;
 
 drop_constraint_clause
-    : DROP  drop_primary_key_or_unique_or_generic_clause
-    ;
-
-drop_primary_key_or_unique_or_generic_clause
-    : (PRIMARY KEY | UNIQUE '(' column_name (',' column_name)* ')') CASCADE? ((KEEP | DROP) INDEX)? ONLINE?
-    | CONSTRAINT constraint_name CASCADE?
+    : DROP ( PRIMARY KEY
+           | UNIQUE '(' column_name (',' column_name)* ')'
+           | CONSTRAINT constraint_name
+           ) CASCADE? ((KEY | DROP) INDEX)? ONLINE?
     ;
 
 add_constraint
