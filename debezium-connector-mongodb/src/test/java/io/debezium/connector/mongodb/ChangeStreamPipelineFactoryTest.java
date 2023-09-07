@@ -31,6 +31,17 @@ import io.debezium.data.Envelope;
 @RunWith(MockitoJUnitRunner.class)
 public class ChangeStreamPipelineFactoryTest {
 
+    private static final List<String> SIZE_PIPELINE = List.of(
+            "" +
+                    "{\n" +
+                    "   \"$match\": {\n" +
+                    "       \"$and\": [ {\n" +
+                    "           \"$expr\": {\n \"$lte\": [{\"$bsonSize\": \"$fullDocument\"}, 42]}\n" +
+                    "       }, {\n" +
+                    "           \"$expr\": { \"$lte\": [{\"$bsonSize\": \"$fullDocumentBeforeChange\"}, 42]}}" +
+                    "   ] }\n" +
+                    "}");
+
     private static final List<String> INTERNAL_PIPELINE = List.of(
             "" +
                     "{\n" +
@@ -87,13 +98,23 @@ public class ChangeStreamPipelineFactoryTest {
     private FilterConfig filterConfig;
 
     @Test
-    public void testCreateWithInternalFirst() {
+    public void testCreateWithInternalFirstAndOversizeHandlingFail() {
         testCreate(CursorPipelineOrder.INTERNAL_FIRST, mergeStages(INTERNAL_PIPELINE, USER_PIPELINE));
     }
 
     @Test
-    public void testCreateWithUserFirst() {
+    public void testCreateWithUserFirstAndOversizeHandlingFail() {
         testCreate(CursorPipelineOrder.USER_FIRST, mergeStages(USER_PIPELINE, INTERNAL_PIPELINE));
+    }
+
+    @Test
+    public void testCreateWithInternalFirstAndOversizeHandlingSkip() {
+        testCreateWithSkipOversized(CursorPipelineOrder.INTERNAL_FIRST, mergeStages(INTERNAL_PIPELINE, USER_PIPELINE));
+    }
+
+    @Test
+    public void testCreateWithUserFirstAndOversizeHandlingSkip() {
+        testCreateWithSkipOversized(CursorPipelineOrder.USER_FIRST, mergeStages(USER_PIPELINE, INTERNAL_PIPELINE));
     }
 
     @SafeVarargs
@@ -111,6 +132,7 @@ public class ChangeStreamPipelineFactoryTest {
         // Given:
         given(connectorConfig.getCursorPipelineOrder())
                 .willReturn(pipelineOrder);
+
         given(connectorConfig.getSkippedOperations())
                 .willReturn(EnumSet.of(Envelope.Operation.TRUNCATE)); // The default
         given(filterConfig.getCollectionIncludeList())
@@ -123,6 +145,16 @@ public class ChangeStreamPipelineFactoryTest {
 
         // Then:
         assertPipelineStagesEquals(pipeline.getStages(), expectedStageJsons);
+    }
+
+    public void testCreateWithSkipOversized(CursorPipelineOrder pipelineOrder, List<String> expectedStageJsons) {
+        // Given:
+        given(connectorConfig.getOversizeHandlingMode())
+                .willReturn(MongoDbConnectorConfig.OversizeHandlingMode.SKIP);
+        given(connectorConfig.getOversizeSkipThreshold())
+                .willReturn(42);
+
+        testCreate(pipelineOrder, mergeStages(SIZE_PIPELINE, expectedStageJsons));
     }
 
     private static void assertPipelineStagesEquals(List<? extends Bson> stages, List<String> expectedStageJsons) {
@@ -148,5 +180,4 @@ public class ChangeStreamPipelineFactoryTest {
             throw new RuntimeException(e);
         }
     }
-
 }
