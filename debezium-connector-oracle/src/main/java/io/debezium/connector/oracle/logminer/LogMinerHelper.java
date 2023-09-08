@@ -140,18 +140,18 @@ public class LogMinerHelper {
                     // archive log record
                     LogFile logFile = new LogFile(fileName, firstScn, nextScn, sequence, LogFile.Type.ARCHIVE, thread);
                     if (logFile.getNextScn().compareTo(offsetScn) >= 0) {
-                        LOGGER.trace("Archive log {} with SCN range {} to {} sequence {} to be added.", fileName, firstScn, nextScn, sequence);
+                        LOGGER.debug("Archive log {} with SCN range {} to {} sequence {} to be added.", fileName, firstScn, nextScn, sequence);
                         archivedLogFiles.add(logFile);
                     }
                 }
                 else if ("ONLINE".equals(type)) {
                     LogFile logFile = new LogFile(fileName, firstScn, nextScn, sequence, LogFile.Type.REDO, CURRENT.equalsIgnoreCase(status), thread);
                     if (logFile.isCurrent() || logFile.getNextScn().compareTo(offsetScn) >= 0) {
-                        LOGGER.trace("Online redo log {} with SCN range {} to {} ({}) sequence {} to be added.", fileName, firstScn, nextScn, status, sequence);
+                        LOGGER.debug("Online redo log {} with SCN range {} to {} ({}) sequence {} to be added.", fileName, firstScn, nextScn, status, sequence);
                         onlineLogFiles.add(logFile);
                     }
                     else {
-                        LOGGER.trace("Online redo log {} with SCN range {} to {} ({}) sequence {} to be excluded.", fileName, firstScn, nextScn, status, sequence);
+                        LOGGER.debug("Online redo log {} with SCN range {} to {} ({}) sequence {} to be excluded.", fileName, firstScn, nextScn, status, sequence);
                     }
                 }
             }
@@ -163,7 +163,7 @@ public class LogMinerHelper {
         for (LogFile redoLog : onlineLogFiles) {
             archivedLogFiles.removeIf(f -> {
                 if (f.getSequence().equals(redoLog.getSequence())) {
-                    LOGGER.trace("Removing archive log {} with duplicate sequence {} to {}", f.getFileName(), f.getSequence(), redoLog.getFileName());
+                    LOGGER.debug("Removing archive log {} with duplicate sequence {} to {}", f.getFileName(), f.getSequence(), redoLog.getFileName());
                     return true;
                 }
                 return false;
