@@ -397,7 +397,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         final T transaction = getAndRemoveTransactionFromCache(transactionId);
         if (transaction == null) {
             handleCommitNotFoundInBuffer(row);
-            LOGGER.trace("Transaction {} not found, commit skipped.", transactionId);
+            LOGGER.debug("Transaction {} not found, commit skipped.", transactionId);
             return;
         }
 
@@ -596,7 +596,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                 return false;
             }
             else if (connectorConfig.getLogMiningUsernameExcludes().contains(transaction.getUserName())) {
-                LOGGER.trace("Skipped transaction with excluded username {}", transaction);
+                LOGGER.debug("Skipped transaction with excluded username {}", transaction);
                 return true;
             }
         }
@@ -610,7 +610,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
      */
     protected void handleRollback(LogMinerEventRow row) {
         if (getTransactionCache().containsKey(row.getTransactionId())) {
-            LOGGER.trace("Transaction {} was rolled back.", row.getTransactionId());
+            LOGGER.debug("Transaction {} was rolled back.", row.getTransactionId());
             finalizeTransactionRollback(row.getTransactionId(), row.getScn());
             metrics.setActiveTransactions(getTransactionCache().size());
             metrics.incrementRolledBackTransactions();
@@ -618,7 +618,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
             counters.rollbackCount++;
         }
         else {
-            LOGGER.trace("Could not rollback transaction {}, was not found in cache.", row.getTransactionId());
+            LOGGER.debug("Could not rollback transaction {}, was not found in cache.", row.getTransactionId());
             handleRollbackNotFoundInBuffer(row);
         }
     }
@@ -750,7 +750,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
             return;
         }
 
-        LOGGER.trace("SEL_LOB_LOCATOR: {}", row);
+        LOGGER.debug("SEL_LOB_LOCATOR: {}", row);
         final TableId tableId = row.getTableId();
         final Table table = getSchema().tableFor(tableId);
         if (table == null) {
@@ -785,7 +785,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
             return;
         }
 
-        LOGGER.trace("LOB_WRITE: scn={}, tableId={}, changeTime={}, transactionId={}",
+        LOGGER.debug("LOB_WRITE: scn={}, tableId={}, changeTime={}, transactionId={}",
                 row.getScn(), row.getTableId(), row.getChangeTime(), row.getTransactionId());
 
         final TableId tableId = row.getTableId();
@@ -814,7 +814,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
             return;
         }
 
-        LOGGER.trace("LOB_ERASE: {}", row);
+        LOGGER.debug("LOB_ERASE: {}", row);
         final TableId tableId = row.getTableId();
         final Table table = getSchema().tableFor(tableId);
         if (table == null) {
@@ -837,7 +837,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
             return;
         }
 
-        LOGGER.trace("DML: {}", row);
+        LOGGER.debug("DML: {}", row);
         LOGGER.trace("\t{}", row.getRedoSql());
 
         // Oracle LogMiner reports LONG data types as STATUS=2 on UPDATE statements but there is no

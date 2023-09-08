@@ -127,7 +127,7 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
             for (String eventKey : eventKeys) {
                 final LogMinerEvent event = getEventCache().get(eventKey);
                 if (event != null && event.getRowId().equals(row.getRowId())) {
-                    LOGGER.trace("Undo applied for event {}.", event);
+                    LOGGER.debug("Undo applied for event {}.", event);
                     getEventCache().remove(eventKey);
                     return;
                 }
@@ -145,7 +145,7 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
     protected void processRow(OraclePartition partition, LogMinerEventRow row) throws SQLException, InterruptedException {
         final String transactionId = row.getTransactionId();
         if (isRecentlyProcessed(transactionId)) {
-            LOGGER.trace("Transaction {} has been seen by connector, skipped.", transactionId);
+            LOGGER.debug("Transaction {} has been seen by connector, skipped.", transactionId);
             return;
         }
         super.processRow(partition, row);
@@ -195,7 +195,7 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
                 while (index < count) {
                     nextEvent = getEventCache().get(transaction.getEventId(index));
                     if (nextEvent == null) {
-                        LOGGER.trace("Event {} must have been undone, skipped.", index);
+                        LOGGER.debug("Event {} must have been undone, skipped.", index);
                         // There are situations where an event will be removed from the cache when it is
                         // undone by the undo-row flag. The event id isn't re-used in this use case so
                         // the iterator automatically detects null entries and skips them by advancing

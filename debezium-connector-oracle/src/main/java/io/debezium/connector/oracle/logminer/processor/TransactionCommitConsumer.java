@@ -131,7 +131,7 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
 
         final Table table = schema.tableFor(event.getTableId());
         if (table == null) {
-            LOGGER.trace("Unable to locate table '{}' schema, ignoring event.", event.getTableId());
+            LOGGER.debug("Unable to locate table '{}' schema, ignoring event.", event.getTableId());
             return;
         }
 
@@ -163,7 +163,7 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
     private void acceptLobManipulationEvent(LogMinerEvent event) {
         if (null == currentLobRowId || null == currentLobColumnName) {
             // should only happen when we start streaming in the middle of a LOB transaction (DBZ-4367)
-            LOGGER.trace("Got LOB manipulation event without preceding LOB selector; ignoring {} {}.", event.getEventType(), event);
+            LOGGER.debug("Got LOB manipulation event without preceding LOB selector; ignoring {} {}.", event.getEventType(), event);
             return;
         }
 
