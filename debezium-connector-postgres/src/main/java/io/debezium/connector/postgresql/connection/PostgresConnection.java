@@ -8,10 +8,12 @@ package io.debezium.connector.postgresql.connection;
 
 import java.nio.charset.Charset;
 import java.sql.DatabaseMetaData;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Types;
 import java.time.Duration;
 import java.util.Objects;
 import java.util.Optional;
@@ -778,6 +780,20 @@ public class PostgresConnection extends JdbcConnection {
                 null,
                 null,
                 new String[]{ "TABLE", "PARTITIONED TABLE" });
+    }
+
+    @Override
+    public void setQueryColumnValue(PreparedStatement statement, Column column, int pos, Object value)
+            throws SQLException {
+        final PostgresType resolvedType = typeRegistry.get(column.nativeType());
+
+        if (resolvedType != null && resolvedType.isEnumType()) {
+            // ENUMs require explicit casting so the comparison operators can correctly work
+            statement.setObject(pos, value, Types.OTHER);
+        }
+        else {
+            super.setQueryColumnValue(statement, column, pos, value);
+        }
     }
 
     @FunctionalInterface

@@ -48,7 +48,9 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
             + "CREATE TABLE s1.a4 (pk1 integer, pk2 integer, pk3 integer, pk4 integer, aa integer, PRIMARY KEY(pk1, pk2, pk3, pk4));"
             + "CREATE TABLE s1.a42 (pk1 integer, pk2 integer, pk3 integer, pk4 integer, aa integer);"
             + "CREATE TABLE s1.anumeric (pk numeric, aa integer, PRIMARY KEY(pk));"
-            + "CREATE TABLE s1.debezium_signal (id varchar(64), type varchar(32), data varchar(2048));";
+            + "CREATE TABLE s1.debezium_signal (id varchar(64), type varchar(32), data varchar(2048));"
+            + "CREATE TYPE enum_type AS ENUM ('UP', 'DOWN', 'LEFT', 'RIGHT', 'STORY');"
+            + "CREATE TABLE s1.enumpk (pk enum_type, aa integer, PRIMARY KEY(pk));";
 
     @Before
     public void before() throws SQLException {
@@ -175,6 +177,33 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
     @Override
     protected String server() {
         return TestHelper.TEST_SERVER;
+    }
+
+    @Test
+    @FixFor("DBZ-6481")
+    public void insertsEnumPk() throws Exception {
+        Testing.Print.enable();
+        final var enumValues = List.of("UP", "DOWN", "LEFT", "RIGHT", "STORY");
+
+        try (JdbcConnection connection = databaseConnection()) {
+            connection.setAutoCommit(false);
+            for (int i = 0; i < enumValues.size(); i++) {
+                connection.executeWithoutCommitting(String.format("INSERT INTO %s (%s, aa) VALUES (%s, %s)",
+                        "s1.enumpk", connection.quotedColumnIdString(pkFieldName()), "'" + enumValues.get(i) + "'", i));
+            }
+            connection.commit();
+        }
+        startConnector();
+
+        sendAdHocSnapshotSignal("s1.enumpk");
+
+        // SNAPSHOT signal, OPEN WINDOW signal + data + CLOSE WINDOW signal
+        final var records = consumeRecordsByTopic(enumValues.size() + 3).allRecordsInOrder();
+        for (int i = 0; i < enumValues.size(); i++) {
+            var record = records.get(i + 2);
+            assertThat(((Struct) record.key()).getString("pk")).isEqualTo(enumValues.get(i));
+            assertThat(((Struct) record.value()).getStruct("after").getInt32("aa")).isEqualTo(i);
+        }
     }
 
     @Test

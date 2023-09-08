@@ -740,15 +740,16 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             final Object[] chunkEndPosition = context.chunkEndPosititon();
             // Fill boundaries placeholders
             int pos = 0;
+            final List<Column> queryColumns = getQueryColumns(currentTable);
             for (int i = 0; i < chunkEndPosition.length; i++) {
                 for (int j = 0; j < i + 1; j++) {
-                    statement.setObject(++pos, chunkEndPosition[j]);
+                    jdbcConnection.setQueryColumnValue(statement, queryColumns.get(j), ++pos, chunkEndPosition[j]);
                 }
             }
             // Fill maximum key placeholders
             for (int i = 0; i < chunkEndPosition.length; i++) {
                 for (int j = 0; j < i + 1; j++) {
-                    statement.setObject(++pos, maximumKey[j]);
+                    jdbcConnection.setQueryColumnValue(statement, queryColumns.get(j), ++pos, maximumKey[j]);
                 }
             }
         }
