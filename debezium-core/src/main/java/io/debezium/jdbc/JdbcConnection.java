@@ -1538,6 +1538,13 @@ public class JdbcConnection implements AutoCloseable {
     }
 
     /**
+     * Sets value on {@link PreparedStatement} and set explicit SQL type for it if necessary
+     */
+    public void setQueryColumnValue(PreparedStatement statement, Column column, int pos, Object value) throws SQLException {
+        statement.setObject(pos, value);
+    }
+
+    /**
      * Converts a {@link ResultSet} row to an array of Objects
      */
     public Object[] rowToArray(Table table, ResultSet rs, ColumnUtils.ColumnArray columnArray) throws SQLException {
