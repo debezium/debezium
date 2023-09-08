@@ -261,7 +261,8 @@ public class LogMinerEventRow {
                 ", rollbackFlag=" + rollbackFlag +
                 ", rsId=" + rsId +
                 ", ssn=" + ssn +
-                ", redoSql='" + redoSql + '\'' +
+                // Specifically log SQL only if TRACE is enabled; otherwise omit for others
+                ", redoSql='" + (LOGGER.isTraceEnabled() ? redoSql : "<omitted>") + '\'' +
                 '}';
     }
 }
