@@ -1058,6 +1058,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                     row.getTransactionId(),
                     row.getScn(),
                     row.getThread());
+            LOGGER.debug("\t{}", row);
         }
     }
 
