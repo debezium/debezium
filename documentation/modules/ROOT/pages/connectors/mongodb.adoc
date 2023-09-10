@@ -1526,17 +1526,28 @@ Do not change the value of this property.
 If you change the name value, after a restart, instead of continuing to emit events to the original topics, the connector emits subsequent events to topics whose names are based on the new value.
 ====
 
+|[[mongodb-property-mongodb-authentication-class]]<<mongodb-property-mongodb-authentication-class, `+mongodb.authentication.class+`>>
+|_DefaultMongoDbAuthProvider_
+|A full Java class name that is an implementation of the io.debezium.connector.mongodb.connection.MongoDbAuthProvider interface.
+This class handles setting the credentials on the MongoDB connection (called on each app boot).
+Default behavior uses the xref:mongodb-property-mongodb-user[`mongodb.user`], xref:mongodb-property-mongodb-password[`mongodb.password`], and xref:mongodb-property-mongodb-authsource[`mongodb.authsource`] properties according to each of their documentation,
+but other implementations may use them differently or ignore them altogether.
+Note that any setting in xref:mongodb-property-mongodb-connection-string[`mongodb.connection.string`] will override settings set by this class
+
 |[[mongodb-property-mongodb-user]]<<mongodb-property-mongodb-user, `+mongodb.user+`>>
 |No default
-|Name of the database user to be used when connecting to MongoDB. This is required only when MongoDB is configured to use authentication.
+|When using default xref:mongodb-property-mongodb-authentication-class[`mongodb.authentication.class`]:
+Name of the database user to be used when connecting to MongoDB. This is required only when MongoDB is configured to use authentication.
 
 |[[mongodb-property-mongodb-password]]<<mongodb-property-mongodb-password, `+mongodb.password+`>>
 |No default
-|Password to be used when connecting to MongoDB. This is required only when MongoDB is configured to use authentication.
+|When using default xref:mongodb-property-mongodb-authentication-class[`mongodb.authentication.class`]:
+Password to be used when connecting to MongoDB. This is required only when MongoDB is configured to use authentication.
 
 |[[mongodb-property-mongodb-authsource]]<<mongodb-property-mongodb-authsource, `+mongodb.authsource+`>>
 |`admin`
-|Database (authentication source) containing MongoDB credentials. This is required only when MongoDB is configured to use authentication with another authentication database than `admin`.
+|When using default xref:mongodb-property-mongodb-authentication-class[`mongodb.authentication.class`]:
+Database (authentication source) containing MongoDB credentials. This is required only when MongoDB is configured to use authentication with another authentication database than `admin`.
 
 |[[mongodb-property-mongodb-ssl-enabled]]<<mongodb-property-mongodb-ssl-enabled, `+mongodb.ssl.enabled+`>>
 |`false`
