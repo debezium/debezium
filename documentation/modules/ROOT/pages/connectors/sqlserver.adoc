@@ -2212,7 +2212,7 @@ spec:
 |The connector captures changes from the `dbo.customers` table only.
 
 |10
-|The list of Kafka brokers that this connector will use to write and recover DDL statements to the database schema history topic.
+|The list of Kafka brokers that this connector will use.
 
 |11
 |The name of the database schema history topic where the connector will write and recover DDL statements. This topic is for internal use only and should not be used by consumers.
