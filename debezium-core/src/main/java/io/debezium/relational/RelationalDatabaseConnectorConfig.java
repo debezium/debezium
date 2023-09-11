@@ -739,7 +739,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     /**
      * Returns any SELECT overrides, if present.
      */
-    public Map<DataCollectionId, String> getSnapshotSelectOverridesByTable() {
+    public Map<DataCollectionId, String> getSnapshotSelectOverridesByTable(boolean upperCase) {
 
         List<String> tableValues = getConfig().getTrimmedStrings(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, ",");
 
@@ -758,14 +758,19 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
                 continue;
             }
 
+            LOGGER.info("Found statement override {} for table {}", statementOverride, table);
+
+            if(upperCase)
+                table = table.toUpperCase();
+
             snapshotSelectOverridesByTable.put(
-                    TableId.parse(table),
-                    getConfig().getString(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + table));
+                    TableId.parse(table), statementOverride);
 
         }
 
         return Collections.unmodifiableMap(snapshotSelectOverridesByTable);
     }
+
 
     @Override
     public Heartbeat createHeartbeat(TopicNamingStrategy topicNamingStrategy, SchemaNameAdjuster schemaNameAdjuster,

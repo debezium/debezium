@@ -66,7 +66,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
         boolean snapshotData;
 
         List<String> dataCollectionsToBeSnapshotted = connectorConfig.getDataCollectionsToBeSnapshotted();
-        Map<String, String> snapshotSelectOverridesByTable = connectorConfig.getSnapshotSelectOverridesByTable().entrySet().stream()
+        Map<String, String> snapshotSelectOverridesByTable = connectorConfig.getSnapshotSelectOverridesByTable(true).entrySet().stream()
                 .collect(Collectors.toMap(e -> e.getKey().identifier(), Map.Entry::getValue));
 
         // for ALWAYS snapshot mode don't use exiting offset to have up-to-date SCN
