@@ -280,7 +280,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        version-mongo-server: ["4.4", "5.0", "6.0"]
+        version-mongo-server: ["4.4", "5.0", "6.0", "7.0"]
       fail-fast: false
     steps:
       - name: Checkout Action
