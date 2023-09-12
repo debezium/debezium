@@ -516,6 +516,7 @@ Yoann Rodière
 Yohei Yoshimuta
 Yossi Shirizli
 Yuan Zhang
+Yue Wang
 Yuiham Chan
 Zheng Wang
 Zongwen Li
