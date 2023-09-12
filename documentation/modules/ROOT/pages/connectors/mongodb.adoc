@@ -1859,6 +1859,17 @@ A value of `0` disables this behavior.
 The value of this property must be an array of permitted https://www.mongodb.com/docs/manual/changeStreams/#modify-change-stream-output[aggregation pipeline stages] in JSON format.
 Note that this is appended after the internal pipeline used to support the connector (e.g. filtering operation types, database names, collection names, etc.).
 
+|[[mongodb-property-cursor-pipeline-order]]<<mongodb-property-cursor-pipeline-order, `+cursor.pipeline.order+`>>
+|internal_first
+|The order used to construct the effective MongoDB aggregation stream pipeline.
+Set the property to one of the following values:
+
+`internal_first`::
+Internal stages defined by the connector are applied first. This means that only the events which ought to be captured by the connector are fed to the user defined stages (configured by setting `cursor.pipeline`).
+
+`user_first`::
+Stages defined by the 'cursor.pipeline' property are applied first. In this mode  all events, included those not captured by the connector, are fed to user defined pipeline stages. This mode can have negative performance impact if the value of `cursor.pipeline` contains complex operations.   
+
 |[[mongodb-property-cursor-max-await-time-ms]]<<mongodb-property-cursor-max-await-time-ms, `+cursor.max.await.time.ms+`>>
 |`0`
 |Specifies the maximum number of milliseconds the oplog/change stream cursor will wait for the server to produce a result before causing an execution timeout exception.
