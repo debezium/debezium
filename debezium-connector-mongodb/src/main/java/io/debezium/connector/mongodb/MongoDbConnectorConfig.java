@@ -805,6 +805,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     public static final Field CURSOR_OVERSIZE_HANDLING_MODE = Field.create("cursor.oversize.handling.mode")
             .withDisplayName("Oversize document handling mode")
             .withEnum(OversizeHandlingMode.class, OversizeHandlingMode.FAIL)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 6))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDescription("The strategy used to handle change events for documents exceeding specified BSON size. "
@@ -815,12 +816,13 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     public static final Field CURSOR_OVERSIZE_SKIP_THRESHOLD = Field.create("cursor.oversize.skip.threshold")
             .withDisplayName("Oversize document skip threshold")
             .withType(Type.INT)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 7))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDefault(0)
             .withValidation(MongoDbConnectorConfig::validateOversizeSkipThreshold)
             .withDescription("The maximum allowed size of the stored document for which change events are processed. "
-                    + "This includes the both, the size before and after database operation, "
+                    + "This includes both, the size before and after database operation, "
                     + "more specifically this limits the size of fullDocument and fullDocumentBeforeChange filed of MongoDB change events.");
 
     public static final Field TOPIC_NAMING_STRATEGY = Field.create("topic.naming.strategy")
