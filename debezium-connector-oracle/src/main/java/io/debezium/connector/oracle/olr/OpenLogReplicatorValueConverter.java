@@ -62,22 +62,34 @@ public class OpenLogReplicatorValueConverter extends OracleValueConverters {
 
     @Override
     protected Object convertTimestampToEpochMillis(Column column, Field fieldDefn, Object value) {
-        return super.convertTimestampToEpochMillis(column, fieldDefn, convertTimestampValue(column, value));
+        if (value instanceof Long) {
+            value = convertTimestampValue(column, value);
+        }
+        return super.convertTimestampToEpochMillis(column, fieldDefn, value);
     }
 
     @Override
     protected Object convertTimestampToEpochMicros(Column column, Field fieldDefn, Object value) {
-        return super.convertTimestampToEpochMicros(column, fieldDefn, convertTimestampValue(column, value));
+        if (value instanceof Long) {
+            value = convertTimestampValue(column, value);
+        }
+        return super.convertTimestampToEpochMicros(column, fieldDefn, value);
     }
 
     @Override
     protected Object convertTimestampToEpochNanos(Column column, Field fieldDefn, Object value) {
-        return super.convertTimestampToEpochNanos(column, fieldDefn, convertTimestampValue(column, value));
+        if (value instanceof Long) {
+            value = convertTimestampValue(column, value);
+        }
+        return super.convertTimestampToEpochNanos(column, fieldDefn, value);
     }
 
     @Override
     protected Object convertTimestampToEpochMillisAsDate(Column column, Field fieldDefn, Object value) {
-        return super.convertTimestampToEpochMillisAsDate(column, fieldDefn, convertTimestampValue(column, value));
+        if (value instanceof Long) {
+            value = convertTimestampValue(column, value);
+        }
+        return super.convertTimestampToEpochMillisAsDate(column, fieldDefn, value);
     }
 
     @Override
@@ -96,9 +108,7 @@ public class OpenLogReplicatorValueConverter extends OracleValueConverters {
             final ZoneId zoneId = getZoneIdFromTimeZone(valueBits[1]);
             return getTimestampWithTimeZoneFormatter(column).format(OffsetDateTime.ofInstant(instant, zoneId));
         }
-        else {
-            throw new DebeziumException("Unexpected timestamp with time zone value: " + value);
-        }
+        return super.convertTimestampWithZone(column, fieldDefn, value);
     }
 
     @Override
@@ -107,9 +117,7 @@ public class OpenLogReplicatorValueConverter extends OracleValueConverters {
             final Instant instant = Instant.ofEpochSecond(0, (Long) value);
             return getTimestampWithLocalTimeZoneFormatter(column).format(OffsetDateTime.ofInstant(instant, ZoneOffset.UTC));
         }
-        else {
-            throw new DebeziumException("Unexpected timestamp with local time zone value: " + value);
-        }
+        return super.convertTimestampWithLocalZone(column, fieldDefn, value);
     }
 
     @Override
@@ -121,21 +129,16 @@ public class OpenLogReplicatorValueConverter extends OracleValueConverters {
             catch (SQLException e) {
                 throw new DebeziumException("Failed to convert HEX string into byte array: " + value, e);
             }
-            return super.convertBinary(column, fieldDefn, value, mode);
         }
-        else {
-            throw new DebeziumException("Unexpected value, expected HEX-encoded string: " + value);
-        }
+        return super.convertBinary(column, fieldDefn, value, mode);
     }
 
     @Override
     protected Object convertIntervalYearMonth(Column column, Field fieldDefn, Object value) {
         if (value instanceof String) {
-            return super.convertIntervalYearMonth(column, fieldDefn, new INTERVALYM((String) value));
+            value = new INTERVALYM((String) value);
         }
-        else {
-            throw new DebeziumException("Unexpected interval year-month value: " + value);
-        }
+        return super.convertIntervalYearMonth(column, fieldDefn, value);
     }
 
     @Override
@@ -143,29 +146,22 @@ public class OpenLogReplicatorValueConverter extends OracleValueConverters {
         if (value instanceof String) {
             // Values are separated by ",", we need them separated with spaces.
             final String sanitizedValue = ((String) value).replaceAll(",", " ");
-            return super.convertIntervalDaySecond(column, fieldDefn, new INTERVALDS(sanitizedValue));
+            value = new INTERVALDS(sanitizedValue);
         }
-        else {
-            throw new DebeziumException("Unexpected interval day-second value: " + value);
-        }
+        return super.convertIntervalDaySecond(column, fieldDefn, value);
     }
 
     private Object convertTimestampValue(Column column, Object value) {
-        if (value instanceof Long) {
-            if (column.typeName().equalsIgnoreCase(COLUMN_TYPE_DATE)) {
-                // Value is being provided in nanoseconds based on OpenLogReplicator configuration
-                // We need to reduce the column's precision to milliseconds
-                value = ((Long) value) / 1_000_000L;
-            }
-            else {
-                // TIMESTAMP(n)
-                value = Instant.ofEpochSecond(0, (Long) value);
-            }
-            return value;
+        if (column.typeName().equalsIgnoreCase(COLUMN_TYPE_DATE)) {
+            // Value is being provided in nanoseconds based on OpenLogReplicator configuration
+            // We need to reduce the column's precision to milliseconds
+            value = ((Long) value) / 1_000_000L;
         }
         else {
-            throw new DebeziumException("Unexpected timestamp value: " + value);
+            // TIMESTAMP(n)
+            value = Instant.ofEpochSecond(0, (Long) value);
         }
+        return value;
     }
 
     private ZoneId getZoneIdFromTimeZone(String timeZone) {

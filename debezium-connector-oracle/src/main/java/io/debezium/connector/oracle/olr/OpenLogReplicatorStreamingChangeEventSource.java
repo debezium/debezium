@@ -120,6 +120,13 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
                     if (event != null) {
                         onEvent(event);
                     }
+
+                    if (context.isPaused()) {
+                        LOGGER.info("Streaming will now pause");
+                        context.streamingPaused();
+                        context.waitSnapshotCompletion();
+                        LOGGER.info("Streaming resumed");
+                    }
                 }
 
                 client.disconnect();
@@ -463,15 +470,18 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
     }
 
     private Object resolveColumnValue(TableId tableId, Column column, Values values) {
-        Object value = values.getValues().get(column.name());
-        if (value == null) {
+        Object value = values.getValues().getOrDefault(column.name(), OracleValueConverters.UNAVAILABLE_VALUE);
+        if (value == OracleValueConverters.UNAVAILABLE_VALUE) {
+            // If the get returned the unavailable value, the key does not exist.
+            // If the column is LOB, return the unavailable value marker.
+            // If the column is not an LOB, return null
             final List<Column> lobColumns = schema.getLobColumnsForTable(tableId);
             for (Column lobColumn : lobColumns) {
                 if (lobColumn.equals(column)) {
-                    value = OracleValueConverters.UNAVAILABLE_VALUE;
-                    break;
+                    return value;
                 }
             }
+            value = null;
         }
         return value;
     }
