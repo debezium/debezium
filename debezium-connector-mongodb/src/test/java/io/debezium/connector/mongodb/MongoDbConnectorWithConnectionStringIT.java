@@ -21,7 +21,6 @@ public class MongoDbConnectorWithConnectionStringIT extends AbstractMongoConnect
 
     private Configuration getConfig(String connectionString, boolean ssl) {
         var properties = TestHelper.getConfiguration(mongo).asProperties();
-        properties.remove(MongoDbConnectorConfig.HOSTS.name());
 
         return Configuration.from(properties).edit()
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)

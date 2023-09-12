@@ -38,10 +38,6 @@ public class Configurator {
         return with(CommonConnectorConfig.TOPIC_PREFIX, serverName);
     }
 
-    public Configurator hosts(String hosts) {
-        return with(MongoDbConnectorConfig.HOSTS, hosts);
-    }
-
     public Configurator maxBatchSize(int maxBatchSize) {
         return with(MongoDbConnectorConfig.MAX_BATCH_SIZE, maxBatchSize);
     }

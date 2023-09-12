@@ -832,35 +832,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                     "for data change, schema change, transaction, heartbeat event etc.")
             .withDefault(DefaultTopicNamingStrategy.class.getName());
 
-    /**
-     * The comma-separated list of hostname and port pairs (in the form 'host' or 'host:port') of the MongoDB servers in the
-     * replica set.
-     */
-    @Deprecated
-    public static final Field HOSTS = Field.create("mongodb.hosts")
-            .withDisplayName("Hosts")
-            .withType(Type.LIST)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 6))
-            .withWidth(Width.LONG)
-            .withImportance(Importance.HIGH)
-            .withValidation(MongoDbConnectorConfig::validateHosts)
-            .withDescription("The hostname and port pairs (in the form 'host' or 'host:port') "
-                    + "of the MongoDB server(s) in the replica set.");
-
-    @Deprecated
-    public static final Field AUTO_DISCOVER_MEMBERS = Field.create("mongodb.members.auto.discover")
-            .withDisplayName("Auto-discovery")
-            .withType(Type.BOOLEAN)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 7))
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.LOW)
-            .withDefault(true)
-            .withValidation(Field::isBoolean)
-            .withDescription("Specifies whether the addresses in 'hosts' are seeds that should be "
-                    + "used to discover all members of the cluster or replica set ('true'), "
-                    + "or whether the address(es) in 'hosts' should be used as is ('false'). "
-                    + "The default is 'true'.");
-
     public static final Field SOURCE_INFO_STRUCT_MAKER = CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER
             .withDefault(MongoDbSourceInfoStructMaker.class.getName());
 
@@ -870,7 +841,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                     TOPIC_PREFIX,
                     CONNECTION_STRING,
                     CONNECTION_MODE,
-                    HOSTS,
                     USER,
                     PASSWORD,
                     AUTH_SOURCE,
@@ -879,7 +849,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                     SOCKET_TIMEOUT_MS,
                     SERVER_SELECTION_TIMEOUT_MS,
                     MONGODB_POLL_INTERVAL_MS,
-                    AUTO_DISCOVER_MEMBERS,
                     SSL_ENABLED,
                     SSL_ALLOW_INVALID_HOSTNAMES,
                     CURSOR_MAX_AWAIT_TIME_MS)
@@ -1001,14 +970,10 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
     private static int validateConnectionString(Configuration config, Field field, ValidationOutput problems) {
         String connectionStringValue = config.getString(field);
-        String hostValue = config.getString(HOSTS);
 
         if (connectionStringValue == null) {
-            if (hostValue == null) {
-                problems.accept(field, null, "Missing connection string");
-                return 1;
-            }
-            return 0;
+            problems.accept(field, null, "Missing connection string");
+            return 1;
         }
 
         try {
