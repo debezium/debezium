@@ -214,7 +214,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         MongoDbConnector connector = new MongoDbConnector();
         Config result = connector.validate(config.asMap());
 
-        assertNoConfigurationErrors(result, MongoDbConnectorConfig.HOSTS);
+        assertNoConfigurationErrors(result, MongoDbConnectorConfig.CONNECTION_STRING);
         assertNoConfigurationErrors(result, CommonConnectorConfig.TOPIC_PREFIX);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.USER);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.PASSWORD);

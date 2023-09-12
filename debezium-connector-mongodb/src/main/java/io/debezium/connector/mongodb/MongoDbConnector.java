@@ -209,13 +209,11 @@ public class MongoDbConnector extends SourceConnector {
 
         // Get the config values for each of the connection-related fields ...
         ConfigValue connectionStringValue = results.get(MongoDbConnectorConfig.CONNECTION_STRING.name());
-        ConfigValue hostsValue = results.get(MongoDbConnectorConfig.HOSTS.name());
         ConfigValue userValue = results.get(MongoDbConnectorConfig.USER.name());
         ConfigValue passwordValue = results.get(MongoDbConnectorConfig.PASSWORD.name());
 
         // If there are no errors on any of these ...
-        if (hostsValue.errorMessages().isEmpty()
-                && userValue.errorMessages().isEmpty()
+        if (userValue.errorMessages().isEmpty()
                 && passwordValue.errorMessages().isEmpty()
                 && connectionStringValue.errorMessages().isEmpty()) {
 
@@ -225,7 +223,7 @@ public class MongoDbConnector extends SourceConnector {
                 client.listDatabaseNames();
             }
             catch (MongoException e) {
-                hostsValue.addErrorMessage("Unable to connect: " + e.getMessage());
+                connectionStringValue.addErrorMessage("Unable to connect: " + e.getMessage());
             }
         }
 

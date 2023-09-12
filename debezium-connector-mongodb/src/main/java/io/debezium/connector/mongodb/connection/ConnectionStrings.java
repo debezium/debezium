@@ -13,7 +13,6 @@ import java.util.regex.Pattern;
 
 import com.mongodb.ConnectionString;
 
-import io.debezium.DebeziumException;
 import io.debezium.util.Strings;
 
 /**
@@ -33,10 +32,6 @@ public final class ConnectionStrings {
 
     public static Optional<String> parseFromHosts(String hosts) {
         return matcher(hosts).map(m -> connectionString(m.group(2), m.group(3)));
-    }
-
-    public static String buildFromHosts(String hosts) {
-        return parseFromHosts(hosts).orElseThrow(() -> new DebeziumException("Unable to build connection string"));
     }
 
     /**

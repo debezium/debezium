@@ -82,12 +82,7 @@ public class ConnectionContext {
      * @return hosts or connection string
      */
     public String connectionSeed() {
-        String seed = config.getString(MongoDbConnectorConfig.CONNECTION_STRING);
-        if (seed == null) {
-            String hosts = config.getString(MongoDbConnectorConfig.HOSTS);
-            seed = ConnectionStrings.buildFromHosts(hosts);
-        }
-        return seed;
+        return config.getString(MongoDbConnectorConfig.CONNECTION_STRING);
     }
 
     public ConnectionString connectionString() {
