@@ -7,7 +7,10 @@ package io.debezium.connector.oracle.olr.client;
 
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+
+import io.debezium.connector.oracle.Scn;
 
 /**
  * A logical streaming event.
@@ -28,6 +31,15 @@ public class StreamingEvent {
     @JsonProperty("db")
     private String databaseName;
     private List<PayloadEvent> payload;
+    @JsonIgnore
+    private Scn eventScn;
+
+    public Scn getEventScn() {
+        if (eventScn == null) {
+            eventScn = scn == null ? Scn.NULL : Scn.valueOf(scn);
+        }
+        return eventScn;
+    }
 
     public String getScn() {
         return scn;

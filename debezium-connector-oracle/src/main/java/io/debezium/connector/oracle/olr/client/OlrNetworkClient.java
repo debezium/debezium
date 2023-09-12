@@ -129,9 +129,11 @@ public class OlrNetworkClient {
         }
 
         LOGGER.trace("Received Event: {}", event);
-
-        confirm(Long.parseLong(event.getScn()));
         return event;
+    }
+
+    public void confirm(Scn scn) {
+        confirm(scn.longValue());
     }
 
     private StreamingEvent readNextEventWithStartScnSkip() {
@@ -141,9 +143,9 @@ public class OlrNetworkClient {
         while (skipToStartScn) {
             event = readNextEvent();
             // todo: what if we restart mid-transaction?
-            if (Scn.valueOf(event.getScn()).compareTo(startScn) <= 0) {
+            if (event.getEventScn().compareTo(startScn) < 0) {
                 if (notifySkip) {
-                    LOGGER.info("Advancing change stream to SCN {}", startScn.add(Scn.ONE));
+                    LOGGER.info("Advancing change stream to SCN {}", startScn);
                     notifySkip = false;
                 }
                 continue;
@@ -166,8 +168,9 @@ public class OlrNetworkClient {
     }
 
     private void confirm(long newScn) {
-        if (prevScn != 0) {
-            send(createRequest(RequestCode.CONFIRM).setScn(prevScn).build());
+        if (prevScn != 0 && prevScn < newScn) {
+            LOGGER.debug("Confirming SCN {}", newScn);
+            send(createRequest(RequestCode.CONFIRM).setScn(newScn).build());
         }
         prevScn = newScn;
     }

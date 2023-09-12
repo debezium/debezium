@@ -1843,6 +1843,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-3151")
+    @SkipWhenAdapterNameIs(value = SkipWhenAdapterNameIs.AdapterName.OLR, reason = "XML not supported")
     public void testSnapshotCompletesWithSystemGeneratedUniqueIndexOnKeylessTable() throws Exception {
         TestHelper.dropTable(connection, "XML_TABLE");
         try {
@@ -2499,6 +2500,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-3616")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Applies only to LogMiner")
     public void shouldNotLogWarningsAboutCommittedTransactionsWhileStreamingNormally() throws Exception {
         TestHelper.dropTables(connection, "dbz3616", "dbz3616");
         try {
