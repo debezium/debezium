@@ -135,7 +135,6 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
                     // By the time the connector calls commitOffsets, the client will be disconnected.
                     // In this case, the last checkpoint SCN won't be flushable, so confirm it now.
                     confirmLastCheckpointScn();
-                    ;
                 }
 
                 client.disconnect();
