@@ -4212,6 +4212,13 @@ After the connector's commit SCN advances beyond the DDL change, to prevent unpa
 [[oracle-openlogreplicator-support]]
 == OpenLogReplicator support
 
+[NOTE]
+====
+The OpenLogReplicator ingestion adapter is currently in incubating state, i.e. exact semantics, configuration options etc. may change in future revisions, based on the feedback we receive.
+There are also several xref:#oracle-openlogreplicator-known-issues[known issues] with the current implementation.
+Please let us know if you encounter any other problems beyond those known.
+====
+
 The {prodname} Oracle connector by default ingests changes using native Oracle LogMiner.
 However, the connector can be toggled to use OpenLogReplicator, an open-source and free third-party application that reads Oracle changes directly from the redo and archive logs with low impact on the database.
 To configure the connector to use OpenLogReplicator, you must apply specific database and connector configurations that differ from those that you use with LogMiner.
@@ -4493,6 +4500,16 @@ The following configuration properties are required when using OpenLogReplicator
 |The port number that is used by the OpenLogReplicator network service.
 
 |===
+
+[[oracle-openlogreplicator-known-issues]]
+=== Known issues
+
+The following describe known problems with the OpenLogReplicator ingestion adapter.
+
+*Connector restarts may miss or re-send old events*::
+The current checkpoint confirmation logic does not correctly account for situations where transactions may interweave.
+As a result, connector restarts can cause already sent events to be re-delivered or in-progress transactions that interweave with other transactions that commit after a connector restarts to be omitted from the event stream.
+Unfortunately this is due to how OpenLogReplicator confirms redo blocks and they're actively working on a fix we hope to integrate in a future build.
 
 [[oracle-xstreams-support]]
 == XStreams support
