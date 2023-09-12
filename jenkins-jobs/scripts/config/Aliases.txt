@@ -212,6 +212,7 @@ umachi,Hidetomi Umaki
 sclarkson-zoomcare,Stephen Clarkson
 gongchanghua,Gong Chang Hua
 angsdey2,Angshuman Dey
+xidui,Yue Wang
 jehrenzweig-pi,Jesse Ehrenzweig
 TechIsCool,David Beck
 cjmencias,Christian Jacob Mencias
