@@ -38,6 +38,7 @@ public class RedisConnection {
     private boolean sslEnabled;
 
     private static final String HOST_PORT_ERROR = "Invalid host:port format in 'debezium.sink.redis.address' property.";
+
     /**
      *
      * @param address
@@ -116,7 +117,7 @@ public class RedisConnection {
     private void validateHostPort(String address) {
         LOGGER.info("Validating RDI address {}", address);
         Pattern pattern = Pattern.compile("^[\\w.-]+:\\d{1,5}+$");
-        if(!pattern.matcher(address).matches())
+        if (!pattern.matcher(address).matches())
             throw new IllegalArgumentException(HOST_PORT_ERROR);
         LOGGER.info("RDI address {} is valid", address);
     }
