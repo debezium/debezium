@@ -25,6 +25,7 @@ class TableIdParser {
     private static final String SINGLE_QUOTES = "''";
     private static final String DOUBLE_QUOTES = "\"\"";
     private static final String BACKTICKS = "``";
+    private static final String[] QUOTES = {"\"", "'", "`"};
 
     public static List<String> parse(String identifier) {
         return parse(identifier, new TableIdPredicates() {
@@ -275,4 +276,16 @@ class TableIdParser {
             this.predicates = predicates;
         }
     }
+
+    public static boolean isTableIdQuoted(String tableWithSchema) {
+        String [] parts = tableWithSchema.split("\\.");
+        for(String part: parts) {
+            for(String quote: QUOTES) {
+                if(part.startsWith(quote) || part.endsWith(quote))
+                    return true;
+            }
+        }
+        return false;
+    }
+
 }

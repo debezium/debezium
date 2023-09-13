@@ -7,15 +7,12 @@ package io.debezium.connector.oracle;
 
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import io.debezium.spi.schema.DataCollectionId;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
@@ -1860,4 +1857,32 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         return 0;
     }
 
+    public Map<DataCollectionId, String> getSnapshotSelectOverridesByTable() {
+        List<String> tableValues = getConfig().getTrimmedStrings(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, ",");
+
+        if (tableValues == null) {
+            return Collections.emptyMap();
+        }
+
+        Map<TableId, String> snapshotSelectOverridesByTable = new HashMap<>();
+
+        for (String table : tableValues) {
+            String statementOverride = getConfig().getString(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + table);
+            if (statementOverride == null) {
+                LOGGER.warn("Detected - snapshot.select.statement.overrides for {} but no statement property {} defined",
+                        SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + table, table);
+                continue;
+            }
+            if(!TableId.isTableQuoted(table)) {
+                LOGGER.info("Table {} is not quoted", table);
+                table = table.toUpperCase();
+            } else {
+                LOGGER.info("Table {} is quoted", table);
+            }
+
+            snapshotSelectOverridesByTable.put(TableId.parse(table), statementOverride);
+        }
+
+        return Collections.unmodifiableMap(snapshotSelectOverridesByTable);
+    }
 }

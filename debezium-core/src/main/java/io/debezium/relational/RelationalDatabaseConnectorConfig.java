@@ -758,9 +758,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
                 continue;
             }
 
-            snapshotSelectOverridesByTable.put(
-                    TableId.parse(table),
-                    getConfig().getString(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + table));
+            snapshotSelectOverridesByTable.put(TableId.parse(table), statementOverride);
 
         }
 

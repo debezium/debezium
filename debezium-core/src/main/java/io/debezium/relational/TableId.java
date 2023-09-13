@@ -31,6 +31,16 @@ public final class TableId implements DataCollectionId, Comparable<TableId> {
     }
 
     /**
+     * Parses the supplied string, identifies whether the table is quoted.
+     *
+     * @param tableWithSchema the string representation of the table with schema; may not be null
+     * @return true when table is quoted, false otherwise
+     */
+    public static boolean isTableQuoted(String tableWithSchema) {
+        return TableIdParser.isTableIdQuoted(tableWithSchema);
+    }
+
+    /**
      * Parse the supplied string, extracting up to the first 3 parts into a TableID.
      *
      * @param str the string representation of the table identifier; may not be null
