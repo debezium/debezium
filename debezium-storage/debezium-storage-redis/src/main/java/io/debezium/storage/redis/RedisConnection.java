@@ -16,6 +16,8 @@ import redis.clients.jedis.Jedis;
 import redis.clients.jedis.exceptions.JedisConnectionException;
 import redis.clients.jedis.exceptions.JedisDataException;
 
+import java.util.regex.Pattern;
+
 /**
  * Establishes a new connection to Redis
  *
@@ -35,6 +37,7 @@ public class RedisConnection {
     private int socketTimeout;
     private boolean sslEnabled;
 
+    private static final String HOST_PORT_ERROR = "Invalid host:port format in 'debezium.sink.redis.address' property.";
     /**
      *
      * @param address
@@ -45,6 +48,8 @@ public class RedisConnection {
      * @param sslEnabled
      */
     public RedisConnection(String address, int dbIndex, String user, String password, int connectionTimeout, int socketTimeout, boolean sslEnabled) {
+        validateHostPort(address);
+
         this.address = address;
         this.dbIndex = dbIndex;
         this.user = user;
@@ -106,5 +111,13 @@ public class RedisConnection {
         LOGGER.info("Using Redis client '{}'", redisClient);
 
         return redisClient;
+    }
+
+    private void validateHostPort(String address) {
+        LOGGER.info("Validating RDI address {}", address);
+        Pattern pattern = Pattern.compile("^[\\w.-]+:\\d{1,5}+$");
+        if(!pattern.matcher(address).matches())
+            throw new IllegalArgumentException(HOST_PORT_ERROR);
+        LOGGER.info("RDI address {} is valid", address);
     }
 }
