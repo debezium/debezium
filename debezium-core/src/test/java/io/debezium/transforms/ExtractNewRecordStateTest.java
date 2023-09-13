@@ -225,7 +225,7 @@ public class ExtractNewRecordStateTest extends AbstractExtractStateTest {
     }
 
     @Test
-    @FixFor("DBZ-1452")
+    @FixFor({ "DBZ-1452", "DBZ-6901" })
     public void testAddField() {
         try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
@@ -235,6 +235,14 @@ public class ExtractNewRecordStateTest extends AbstractExtractStateTest {
             final SourceRecord createRecord = createCreateRecord();
             final SourceRecord unwrapped = transform.apply(createRecord);
             assertThat(((Struct) unwrapped.value()).get("__op")).isEqualTo(Envelope.Operation.CREATE.code());
+
+            SourceRecord createRecordAddingColumn = createCreateRecordAddingColumn("started_at", 1694587158123L);
+            SourceRecord unwrappedAddingColumn = transform.apply(createRecordAddingColumn);
+            assertThat(((Struct) unwrappedAddingColumn.value()).get("started_at")).isEqualTo(1694587158123L);
+
+            createRecordAddingColumn = createCreateRecordAddingColumn("started_at", 1694587158789L);
+            unwrappedAddingColumn = transform.apply(createRecordAddingColumn);
+            assertThat(((Struct) unwrappedAddingColumn.value()).get("started_at")).isEqualTo(1694587158789L);
         }
     }
 

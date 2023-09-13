@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -116,7 +117,7 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
     private final ExtractField<R> beforeDelegate = new ExtractField.Value<>();
     private final InsertField<R> removedDelegate = new InsertField.Value<>();
     private final InsertField<R> updatedDelegate = new InsertField.Value<>();
-    private BoundedConcurrentHashMap<String, Schema> schemaUpdateCache;
+    private BoundedConcurrentHashMap<NewRecordValueMetadata, Schema> schemaUpdateCache;
     private SmtManager<R> smtManager;
 
     @Override
@@ -283,7 +284,7 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
         final Struct value = requireStruct(unwrappedRecord.value(), PURPOSE);
         Struct originalRecordValue = (Struct) originalRecord.value();
 
-        Schema updatedSchema = schemaUpdateCache.computeIfAbsent(buildCacheKey(value, originalRecordValue),
+        Schema updatedSchema = schemaUpdateCache.computeIfAbsent(buildCacheKey(value, originalRecord),
                 s -> makeUpdatedSchema(additionalFields, value.schema(), originalRecordValue));
 
         // Update the value with the new fields
@@ -312,13 +313,13 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
                 unwrappedRecord.timestamp());
     }
 
-    private static String buildCacheKey(Struct value, Struct originalRecordValue) {
+    private NewRecordValueMetadata buildCacheKey(Struct value, R originalRecord) {
         // This is needed because in case using this SMT after ExtractChangedRecordState and HeaderToValue
         // If we only use the value schema as cache key, it will be calculated only on `read` record and any other event will use the value in cache.
         // But since ExtractChangedRecordState generates changed field with `update` or `delete` operation and then eventually copied to the payload with HeaderToValue SMT,
         // the schema in that case will never be updated since cached on the first `read` operation.
         // Using also the operation in the cache key will solve the problem.
-        return value.schema() + originalRecordValue.getString(OPERATION);
+        return new NewRecordValueMetadata(value.schema(), ((Struct) originalRecord.value()).getString(OPERATION));
     }
 
     private R dropFields(R record) {
@@ -545,6 +546,39 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
 
         private boolean isInSchema(Schema originalRecordSchema) {
             return originalRecordSchema.field(field) != null;
+        }
+    }
+
+    private static class NewRecordValueMetadata {
+        private final Schema schema;
+        private final String operation;
+
+        public NewRecordValueMetadata(Schema schema, String operation) {
+            this.schema = schema;
+            this.operation = operation;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            NewRecordValueMetadata metadata = (NewRecordValueMetadata) o;
+            return Objects.equals(schema, metadata.schema) &&
+                    Objects.equals(operation, metadata.operation);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(schema, operation);
+        }
+
+        @Override
+        public String toString() {
+            return "NewRecordValueMetadata{" + schema + ":" + operation + "}";
         }
     }
 }
