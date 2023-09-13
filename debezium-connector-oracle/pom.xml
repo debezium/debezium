@@ -159,6 +159,8 @@
         <log.mining.read.only.mode>false</log.mining.read.only.mode>
         <version.oracle.server>19.3.0</version.oracle.server>
 
+        <protobuf.output.directory>${project.basedir}/generated-sources</protobuf.output.directory>
+
         <!--
         By default, the Oracle module's tests are not executed but only compiled.
         In order to execute tests, the profile "oracle-tests" must be explicitly toggled.
