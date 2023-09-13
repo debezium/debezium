@@ -5,6 +5,8 @@
  */
 package io.debezium.storage.redis;
 
+import java.util.regex.Pattern;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,8 +17,6 @@ import redis.clients.jedis.HostAndPort;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.exceptions.JedisConnectionException;
 import redis.clients.jedis.exceptions.JedisDataException;
-
-import java.util.regex.Pattern;
 
 /**
  * Establishes a new connection to Redis
