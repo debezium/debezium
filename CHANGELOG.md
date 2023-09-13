@@ -2,6 +2,62 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.4.0.Beta2
+September 13rd 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12412109)
+
+### New features since 2.4.0.Beta1
+
+* Ingest changes via OpenLogReplicator [DBZ-2543](https://issues.redhat.com/browse/DBZ-2543)
+* Only publish deltas instead of full snapshots to reduce size of sync event messages [DBZ-6458](https://issues.redhat.com/browse/DBZ-6458)
+* SMT for handling timezone conversions [DBZ-6567](https://issues.redhat.com/browse/DBZ-6567)
+* Support custom authentication on MongoDB connector [DBZ-6741](https://issues.redhat.com/browse/DBZ-6741)
+* Document `mongodb.authentication.class` [DBZ-6788](https://issues.redhat.com/browse/DBZ-6788)
+* Support truncating large columns [DBZ-6844](https://issues.redhat.com/browse/DBZ-6844)
+* Always reset VStream grpc channel when max size is exceeded [DBZ-6852](https://issues.redhat.com/browse/DBZ-6852)
+* Add an overview page for Connector detail [DBZ-6856](https://issues.redhat.com/browse/DBZ-6856)
+* Avoid getting NPE when executing the arrived method in ExecuteSnapshot [DBZ-6865](https://issues.redhat.com/browse/DBZ-6865)
+* Configurable order of user defined and internal aggregation pipeline  [DBZ-6872](https://issues.redhat.com/browse/DBZ-6872)
+* Add support for MongoDB 7 [DBZ-6882](https://issues.redhat.com/browse/DBZ-6882)
+
+
+### Breaking changes since 2.4.0.Beta1
+
+* Deprecate support for MongoDB 4.0 and 4.2 [DBZ-6151](https://issues.redhat.com/browse/DBZ-6151)
+* Remove deprecated mongodb.hosts and  mongodb.members.autodiscover properties [DBZ-6892](https://issues.redhat.com/browse/DBZ-6892)
+
+
+### Fixes since 2.4.0.Beta1
+
+* Documentation content section in the debezium.io scroll over to the top header. [DBZ-5942](https://issues.redhat.com/browse/DBZ-5942)
+* Postgres - Incremental snapshot fails on tables with an enum type in the primary key [DBZ-6481](https://issues.redhat.com/browse/DBZ-6481)
+* schema.history.internal.store.only.captured.databases.ddl flag not considered while snapshot schema to history topic [DBZ-6712](https://issues.redhat.com/browse/DBZ-6712)
+* ExtractNewDocumentState for MongoDB ignore previous document state when handling delete event's with REWRITE [DBZ-6725](https://issues.redhat.com/browse/DBZ-6725)
+* MongoDB New Document State Extraction: original name overriding does not work [DBZ-6773](https://issues.redhat.com/browse/DBZ-6773)
+* Error with propagation source column name [DBZ-6831](https://issues.redhat.com/browse/DBZ-6831)
+* Kafka offset store fails with NPE [DBZ-6853](https://issues.redhat.com/browse/DBZ-6853)
+* JDBC Offset storage - configuration of table name does not work [DBZ-6855](https://issues.redhat.com/browse/DBZ-6855)
+* JDBC sink insert fails with Oracle target database due to semicolon [DBZ-6857](https://issues.redhat.com/browse/DBZ-6857)
+* Oracle test shouldContinueToUpdateOffsetsEvenWhenTableIsNotChanged fails with NPE [DBZ-6860](https://issues.redhat.com/browse/DBZ-6860)
+* Tombstone events causes NPE on JDBC connector [DBZ-6862](https://issues.redhat.com/browse/DBZ-6862)
+* Debezium-MySQL not filtering AWS RDS internal events [DBZ-6864](https://issues.redhat.com/browse/DBZ-6864)
+* errors.max.retries = 0 Causes retrievable error to be ignored [DBZ-6866](https://issues.redhat.com/browse/DBZ-6866)
+* Streaming aggregation pipeline broken for combination of database filter and signal collection [DBZ-6867](https://issues.redhat.com/browse/DBZ-6867)
+* ChangeStream aggregation pipeline fails on large documents which should be excluded [DBZ-6871](https://issues.redhat.com/browse/DBZ-6871)
+* Oracle alter table drop constraint fails when cascading index [DBZ-6876](https://issues.redhat.com/browse/DBZ-6876)
+
+
+### Other changes since 2.4.0.Beta1
+
+* Docs for Timezone SMT [DBZ-6835](https://issues.redhat.com/browse/DBZ-6835)
+* Write a blog post for custom properties step in DBZ UI [DBZ-6838](https://issues.redhat.com/browse/DBZ-6838)
+* Improve website/documentation artifact links [DBZ-6850](https://issues.redhat.com/browse/DBZ-6850)
+* Add possibility to add on-demand adjusted testing farm execution [DBZ-6854](https://issues.redhat.com/browse/DBZ-6854)
+* Oracle connector test suite logging no longer works [DBZ-6859](https://issues.redhat.com/browse/DBZ-6859)
+* Increase Oracle log level to DEBUG for several key important log messages [DBZ-6880](https://issues.redhat.com/browse/DBZ-6880)
+* Document cursor pipeline ordering and oversize document handling mode [DBZ-6883](https://issues.redhat.com/browse/DBZ-6883)
+
+
+
 ## 2.4.0.Beta1
 August 29th 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12411390)
 
