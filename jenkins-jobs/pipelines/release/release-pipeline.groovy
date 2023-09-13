@@ -248,7 +248,7 @@ def mvnRelease(repoDir, repoName, branchName, buildArgs = '') {
             repoId = match[0][1]
             echo "Using staging repository $repoId"
         }
-        sh "mvn install -DskipTests -DskipITs -Passembly $buildArgs"
+        sh "mvn clean install -DskipTests -DskipITs -Passembly $buildArgs"
     }
     return repoId
 }
