@@ -38,6 +38,8 @@ public class RedisConnection {
     private int socketTimeout;
     private boolean sslEnabled;
 
+    private static final String HOST_PORT_ERROR = "Invalid host:port format in 'debezium.sink.redis.address' property.";
+
     /**
      *
      * @param address
