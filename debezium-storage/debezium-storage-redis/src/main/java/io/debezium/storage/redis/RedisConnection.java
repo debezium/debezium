@@ -5,6 +5,8 @@
  */
 package io.debezium.storage.redis;
 
+import java.util.regex.Pattern;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,6 +28,7 @@ public class RedisConnection {
 
     public static final String DEBEZIUM_OFFSETS_CLIENT_NAME = "debezium:offsets";
     public static final String DEBEZIUM_SCHEMA_HISTORY = "debezium:schema_history";
+    private static final String HOST_PORT_ERROR = "Invalid host:port format in 'debezium.sink.redis.address' property.";
 
     private String address;
     private int dbIndex;
@@ -45,6 +48,8 @@ public class RedisConnection {
      * @param sslEnabled
      */
     public RedisConnection(String address, int dbIndex, String user, String password, int connectionTimeout, int socketTimeout, boolean sslEnabled) {
+        validateHostPort(address);
+
         this.address = address;
         this.dbIndex = dbIndex;
         this.user = user;
@@ -106,5 +111,11 @@ public class RedisConnection {
         LOGGER.info("Using Redis client '{}'", redisClient);
 
         return redisClient;
+    }
+
+    private void validateHostPort(String address) {
+        Pattern pattern = Pattern.compile("^[\\w.-]+:\\d{1,5}+$");
+        if (!pattern.matcher(address).matches())
+            throw new IllegalArgumentException(HOST_PORT_ERROR);
     }
 }
