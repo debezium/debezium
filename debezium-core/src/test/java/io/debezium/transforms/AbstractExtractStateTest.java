@@ -75,14 +75,40 @@ public abstract class AbstractExtractStateTest {
     }
 
     protected SourceRecord createCreateRecord() {
-        final Struct before = new Struct(recordSchema);
+        final Struct after = new Struct(recordSchema);
         final Struct source = new Struct(sourceSchema);
 
-        before.put("id", (byte) 1);
-        before.put("name", "myRecord");
+        after.put("id", (byte) 1);
+        after.put("name", "myRecord");
         source.put("lsn", 1234);
         source.put("ts_ms", 12836);
-        final Struct payload = envelope.create(before, source, Instant.now());
+        final Struct payload = envelope.create(after, source, Instant.now());
+        return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", envelope.schema(), payload);
+    }
+
+    protected SourceRecord createCreateRecordAddingColumn(String columnName, long columnValue) {
+        final Schema recordSchema = SchemaBuilder.struct()
+                .field("id", Schema.INT8_SCHEMA)
+                .field("name", Schema.STRING_SCHEMA)
+                .field(columnName, Schema.OPTIONAL_INT64_SCHEMA)
+                .build();
+
+        final Struct after = new Struct(recordSchema);
+        final Struct source = new Struct(sourceSchema);
+
+        after.put("id", (byte) 1);
+        after.put("name", "myRecord");
+        after.put(columnName, columnValue);
+
+        source.put("lsn", 1234);
+        source.put("ts_ms", 12836);
+
+        final Envelope envelope = Envelope.defineSchema()
+                .withName("dummy.Envelope")
+                .withRecord(recordSchema)
+                .withSource(sourceSchema)
+                .build();
+        final Struct payload = envelope.create(after, source, Instant.now());
         return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", envelope.schema(), payload);
     }
 
