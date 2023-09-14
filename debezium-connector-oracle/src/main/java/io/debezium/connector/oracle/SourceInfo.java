@@ -25,6 +25,7 @@ public class SourceInfo extends BaseSourceInfo {
     public static final String LCR_POSITION_KEY = "lcr_position";
     public static final String SNAPSHOT_KEY = "snapshot";
     public static final String USERNAME_KEY = "user_name";
+    public static final String SCN_INDEX_KEY = "scn_idx";
 
     private Scn scn;
     private CommitScn commitScn;
@@ -37,6 +38,7 @@ public class SourceInfo extends BaseSourceInfo {
     private Integer redoThread;
     private String rsId;
     private long ssn;
+    private Long scnIndex;
 
     protected SourceInfo(OracleConnectorConfig connectorConfig) {
         super(connectorConfig);
@@ -145,6 +147,14 @@ public class SourceInfo extends BaseSourceInfo {
 
     public void setRedoThread(Integer redoThread) {
         this.redoThread = redoThread;
+    }
+
+    public Long getScnIndex() {
+        return scnIndex;
+    }
+
+    public void setScnIndex(Long scnIndex) {
+        this.scnIndex = scnIndex;
     }
 
     @Override

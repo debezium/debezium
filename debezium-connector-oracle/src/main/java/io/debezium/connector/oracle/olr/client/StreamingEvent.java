@@ -30,15 +30,28 @@ public class StreamingEvent {
     private String xid;
     @JsonProperty("db")
     private String databaseName;
+    @JsonProperty("c_scn")
+    private String checkpointScn;
+    @JsonProperty("c_idx")
+    private Long checkpointIndex;
     private List<PayloadEvent> payload;
     @JsonIgnore
     private Scn eventScn;
+    @JsonIgnore
+    private Scn eventCheckpointScn;
 
     public Scn getEventScn() {
         if (eventScn == null) {
             eventScn = scn == null ? Scn.NULL : Scn.valueOf(scn);
         }
         return eventScn;
+    }
+
+    public Scn getEventCheckpointScn() {
+        if (eventCheckpointScn == null) {
+            eventCheckpointScn = checkpointScn == null ? Scn.NULL : Scn.valueOf(checkpointScn);
+        }
+        return eventCheckpointScn;
     }
 
     public String getScn() {
@@ -57,6 +70,14 @@ public class StreamingEvent {
         return databaseName;
     }
 
+    public String getCheckpointScn() {
+        return checkpointScn;
+    }
+
+    public Long getCheckpointIndex() {
+        return checkpointIndex;
+    }
+
     public List<PayloadEvent> getPayload() {
         return payload;
     }
@@ -68,7 +89,10 @@ public class StreamingEvent {
                 ", timestamp='" + timestamp + '\'' +
                 ", xid='" + xid + '\'' +
                 ", databaseName='" + databaseName + '\'' +
+                ", checkpointScn='" + checkpointScn + '\'' +
+                ", checkpointIndex=" + checkpointIndex +
                 ", payload=" + payload +
+                ", eventScn=" + eventScn +
                 '}';
     }
 

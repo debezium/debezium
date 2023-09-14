@@ -45,7 +45,7 @@ public class XStreamOracleOffsetContextLoader implements OffsetContext.Loader<Or
 
         final Map<String, Scn> snapshotPendingTransactions = OracleOffsetContext.loadSnapshotPendingTransactions(offset);
         final Scn snapshotScn = OracleOffsetContext.loadSnapshotScn(offset);
-        return new OracleOffsetContext(connectorConfig, scn, lcrPosition, snapshotScn, snapshotPendingTransactions,
+        return new OracleOffsetContext(connectorConfig, scn, null, lcrPosition, snapshotScn, snapshotPendingTransactions,
                 snapshot, snapshotCompleted, TransactionContext.load(offset), SignalBasedIncrementalSnapshotContext.load(offset));
     }
 }
