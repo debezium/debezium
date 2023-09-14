@@ -35,8 +35,10 @@ public class OpenLogReplicatorOracleOffsetContextLoader implements OffsetContext
         boolean snapshotCompleted = Boolean.TRUE.equals(offset.get(OracleOffsetContext.SNAPSHOT_COMPLETED_KEY));
 
         Scn scn = OracleOffsetContext.getScnFromOffsetMapByKey(offset, SourceInfo.SCN_KEY);
+        Long scnIndex = (Long) offset.get(SourceInfo.SCN_INDEX_KEY);
         CommitScn commitScn = CommitScn.valueOf((String) null);
-        return new OracleOffsetContext(connectorConfig, scn, commitScn, null, null, null, snapshot, snapshotCompleted,
+        return new OracleOffsetContext(connectorConfig, scn, scnIndex, commitScn, null, null, null,
+                snapshot, snapshotCompleted,
                 TransactionContext.load(offset),
                 SignalBasedIncrementalSnapshotContext.load(offset));
     }

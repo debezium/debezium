@@ -36,7 +36,8 @@ public class LogMinerOracleOffsetContextLoader implements OffsetContext.Loader<O
         CommitScn commitScn = CommitScn.load(offset);
         Map<String, Scn> snapshotPendingTransactions = OracleOffsetContext.loadSnapshotPendingTransactions(offset);
         Scn snapshotScn = OracleOffsetContext.loadSnapshotScn(offset);
-        return new OracleOffsetContext(connectorConfig, scn, commitScn, null, snapshotScn, snapshotPendingTransactions, snapshot, snapshotCompleted,
+        return new OracleOffsetContext(connectorConfig, scn, null, commitScn, null, snapshotScn,
+                snapshotPendingTransactions, snapshot, snapshotCompleted,
                 TransactionContext.load(offset),
                 SignalBasedIncrementalSnapshotContext.load(offset));
     }

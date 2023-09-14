@@ -6,9 +6,7 @@
 package io.debezium.connector.oracle.olr;
 
 import java.time.Instant;
-import java.time.format.DateTimeFormatter;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -55,8 +53,6 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OpenLogReplicatorStreamingChangeEventSource.class);
 
-    private final Map<Integer, DateTimeFormatter> timestampWithTimeZoneFormatterCache = new HashMap<>();
-    private final Map<Integer, DateTimeFormatter> timestampWithLocalTimeZoneFormatterCache = new HashMap<>();
     private final OracleConnectorConfig connectorConfig;
     private final OracleConnection jdbcConnection;
     private final EventDispatcher<OraclePartition, TableId> dispatcher;
@@ -70,6 +66,7 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
     private OracleOffsetContext offsetContext;
     private long transactionEvents = 0;
     private Scn lastCheckpointScn = Scn.NULL;
+    private long lastCheckpointIndex;
 
     public OpenLogReplicatorStreamingChangeEventSource(OracleConnectorConfig connectorConfig, OracleConnection connection,
                                                        EventDispatcher<OraclePartition, TableId> dispatcher,
@@ -114,8 +111,10 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
             this.jdbcConnection.setAutoCommit(false);
 
             final Scn startScn = offsetContext.getScn();
+            final Long startScnIndex = offsetContext.getScnIndex();
+
             this.client = new OlrNetworkClient(connectorConfig);
-            if (client.connect(startScn)) {
+            if (client.connect(startScn, startScnIndex)) {
                 // Start read loop
                 while (client.isConnected() && context.isRunning()) {
                     final StreamingEvent event = client.readEvent();
@@ -160,8 +159,8 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
     }
 
     private void confirmLastCheckpointScn() {
-        if (!lastCheckpointScn.isNull() && client != null && client.isConnected()) {
-            client.confirm(lastCheckpointScn);
+        if (!lastCheckpointScn.isNull() && lastCheckpointIndex > 0 && client != null && client.isConnected()) {
+            client.confirm(lastCheckpointScn, lastCheckpointIndex);
         }
         else if (lastCheckpointScn.isNull()) {
             LOGGER.warn("Cannot flush latest offset SCN as no checkpoint event was received.");
@@ -195,17 +194,18 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
     }
 
     private void onBeginEvent(StreamingEvent event) {
-        final String transactionId = event.getXid();
         final Instant timestamp = Instant.ofEpochMilli(Long.parseLong(event.getTimestamp()));
 
-        // offsetContext.setScn(event.getEventScn());
-        // offsetContext.setEventScn(event.getEventScn());
-        offsetContext.setTransactionId(transactionId);
+        offsetContext.setScn(event.getEventCheckpointScn());
+        offsetContext.setScnIndex(event.getCheckpointIndex());
+        offsetContext.setEventScn(event.getEventCheckpointScn());
+        offsetContext.setTransactionId(event.getXid());
         offsetContext.setSourceTime(timestamp);
         transactionEvents = 0;
 
         streamingMetrics.setOffsetScn(offsetContext.getScn());
         streamingMetrics.setActiveTransactions(1);
+        streamingMetrics.addProcessedRows(1L);
 
         // We do not specifically start a transaction boundary here.
         //
@@ -215,17 +215,17 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
     }
 
     private void onCommitEvent(StreamingEvent event) throws InterruptedException {
-        final String transactionId = event.getXid();
         final Instant timestamp = Instant.ofEpochMilli(Long.parseLong(event.getTimestamp()));
-
-        // offsetContext.setScn(event.getEventScn());
-        offsetContext.setEventScn(event.getEventScn());
-        offsetContext.setTransactionId(transactionId);
+        offsetContext.setScn(event.getEventCheckpointScn());
+        offsetContext.setScnIndex(event.getCheckpointIndex());
+        offsetContext.setEventScn(event.getEventCheckpointScn());
+        offsetContext.setTransactionId(event.getXid());
         offsetContext.setSourceTime(timestamp);
 
-        // streamingMetrics.setOffsetScn(offsetContext.getScn());
+        streamingMetrics.setOffsetScn(offsetContext.getScn());
         streamingMetrics.setCommittedScn(offsetContext.getScn());
         streamingMetrics.setActiveTransactions(0);
+        streamingMetrics.addProcessedRows(1L);
         streamingMetrics.incrementCommittedTransactions();
 
         // We may see empty transactions and in this case we don't want to emit a transaction boundary
@@ -236,20 +236,15 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
     }
 
     private void onCheckpointEvent(StreamingEvent event) {
-        final String transactionId = event.getXid();
         final Instant timestamp = Instant.ofEpochMilli(Long.parseLong(event.getTimestamp()));
-
-        offsetContext.setScn(event.getEventScn());
-        offsetContext.setEventScn(event.getEventScn());
-        offsetContext.setTransactionId(transactionId);
+        offsetContext.setScn(event.getEventCheckpointScn());
+        offsetContext.setScnIndex(event.getCheckpointIndex());
+        offsetContext.setEventScn(event.getEventCheckpointScn());
+        offsetContext.setTransactionId(event.getXid());
         offsetContext.setSourceTime(timestamp);
-        offsetContext.getCommitScn().setCommitScnOnAllThreads(event.getEventScn());
 
         streamingMetrics.setOffsetScn(offsetContext.getScn());
         streamingMetrics.setCommittedScn(offsetContext.getScn());
-
-        // this will be flushed when commit scns is called
-        lastCheckpointScn = event.getEventScn();
     }
 
     private void onMutationEvent(StreamingEvent event, AbstractMutationEvent mutationEvent) throws Exception {
@@ -290,8 +285,9 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
         }
 
         // Update offsets
-        offsetContext.setScn(event.getEventScn());
-        offsetContext.setEventScn(event.getEventScn());
+        offsetContext.setScn(event.getEventCheckpointScn());
+        offsetContext.setScnIndex(event.getCheckpointIndex());
+        offsetContext.setEventScn(event.getEventCheckpointScn());
         offsetContext.setTransactionId(event.getXid());
         offsetContext.tableEvent(tableId, timestamp);
 
@@ -299,6 +295,8 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
         streamingMetrics.addProcessedRows(1L);
         streamingMetrics.setLastCapturedDmlCount(1);
         streamingMetrics.incrementRegisteredDmlCount();
+
+        updateCheckpoint(event);
 
         transactionEvents++;
 
@@ -336,8 +334,9 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
 
         final Instant timestamp = Instant.ofEpochMilli(Long.parseLong(event.getTimestamp()));
 
-        // offsetContext.setScn(event.getEventScn());
-        // offsetContext.setEventScn(event.getEventScn());
+        offsetContext.setScn(event.getEventCheckpointScn());
+        offsetContext.setScnIndex(event.getCheckpointIndex());
+        offsetContext.setEventScn(event.getEventCheckpointScn());
         offsetContext.setTransactionId(event.getXid());
         offsetContext.tableEvent(tableId, timestamp);
 
@@ -362,6 +361,8 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
             return;
         }
 
+        updateCheckpoint(event);
+
         LOGGER.trace("Dispatching DDL (SCN {}): [{}]", event.getScn(), schemaEvent.getSql());
         dispatcher.dispatchSchemaChangeEvent(
                 partition,
@@ -376,7 +377,7 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
                         tableId.schema(),
                         schemaEvent.getSql(),
                         schema,
-                        Instant.ofEpochMilli(Long.parseLong(event.getTimestamp())),
+                        timestamp,
                         streamingMetrics,
                         () -> processTruncateEvent(event, schemaEvent)));
     }
@@ -515,6 +516,11 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
             value = null;
         }
         return value;
+    }
+
+    private void updateCheckpoint(StreamingEvent event) {
+        this.lastCheckpointScn = event.getEventCheckpointScn();
+        this.lastCheckpointIndex = event.getCheckpointIndex();
     }
 
 }

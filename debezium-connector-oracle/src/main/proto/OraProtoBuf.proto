@@ -63,16 +63,16 @@ service OpenLogReplicator {
 enum RequestCode {
     INFO = 0;
     START = 1;
-    REDO = 2;
+    CONTINUE = 2;
     CONFIRM = 3;
 }
 
 enum ResponseCode {
     READY = 0;
     FAILED_START = 1;
-    STARTED = 2;
+    STARTING = 2;
     ALREADY_STARTED = 3;
-    STREAMING = 4;
+    REPLICATE = 4;
     PAYLOAD = 5;
     INVALID_DATABASE = 6;
     INVALID_COMMAND = 7;
@@ -137,6 +137,8 @@ message RedoRequest {
     }
     optional uint64 seq = 6;
     repeated SchemaRequest schema = 7;
+    optional uint64 c_scn = 8;
+    optional uint64 c_idx = 9;
 }
 
 message RedoResponse {
@@ -154,4 +156,6 @@ message RedoResponse {
         uint64 xidn = 7;
     }
     repeated Payload payload = 8;
+    uint64 c_scn = 10;
+    uint64 c_idx = 11;
 }

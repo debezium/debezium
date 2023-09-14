@@ -58,10 +58,11 @@ public class OlrNetworkClient {
     /**
      * Connect to the OpenLogReplicator process.
      *
-     * @param scn the system change number to begin streaming from, should not be {@code null}
+     * @param scn the checkpoint commit to begin streaming from
+     * @param index the checkpoint commit sequence index to begin streaming from
      * @return true if the connection was established, false if the connection failed
      */
-    public boolean connect(Scn scn) {
+    public boolean connect(Scn scn, Long index) {
         if (scn == null || scn.isNull()) {
             throw new OlrNetworkClientException("Cannot connect and start with a null system change number");
         }
@@ -70,7 +71,7 @@ public class OlrNetworkClient {
             channel.configureBlocking(true);
             if (channel.connect(new InetSocketAddress(hostName, port))) {
                 this.startScn = scn;
-                return startFrom(scn);
+                return startFrom(scn, index);
             }
             return false;
         }
@@ -132,8 +133,8 @@ public class OlrNetworkClient {
         return event;
     }
 
-    public void confirm(Scn scn) {
-        confirm(scn.longValue());
+    public void confirm(Scn scn, Long index) {
+        confirm(scn.longValue(), index);
     }
 
     private StreamingEvent readNextEventWithStartScnSkip() {
@@ -167,58 +168,38 @@ public class OlrNetworkClient {
         }
     }
 
-    private void confirm(long newScn) {
-        if (prevScn != 0 && prevScn < newScn) {
-            LOGGER.debug("Confirming SCN {}", newScn);
-            send(createRequest(RequestCode.CONFIRM).setScn(newScn).build());
+    private void confirm(long newScn, Long index) {
+        if (prevScn != 0 && prevScn < newScn && index != null) {
+            LOGGER.info("Confirming SCN {} with index {}", newScn, index);
+            send(createRequest(RequestCode.CONFIRM).setCScn(newScn).setCIdx(index).build());
         }
         prevScn = newScn;
     }
 
-    private boolean startFrom(Scn scn) {
-        LOGGER.info("Streaming will start at SCN {}.", scn);
+    private boolean startFrom(Scn scn, Long index) {
+        if (index != null) {
+            LOGGER.info("Streaming will start at SCN {} with index {}.", scn, index);
+        }
+        else {
+            LOGGER.info("Streaming will start at SCN {}.", scn);
+            skipToStartScn = true;
+        }
         send(createRequest(RequestCode.INFO).build());
 
         RedoResponse response = readResponse();
-        if (response.getCode() == ResponseCode.READY) {
+        if (response.getCode() == ResponseCode.REPLICATE) {
+            LOGGER.info("OpenLogReplicator has already started, continue from SCN {}", scn);
+            if (index != null) {
+                send(createRequest(RequestCode.CONTINUE).setCScn(scn.longValue()).setCIdx(index).build());
+            }
+            else {
+                send(createRequest(RequestCode.CONTINUE).setScn(scn.longValue()).build());
+            }
+        }
+        else if (response.getCode() == ResponseCode.READY) {
+            // todo: add support for continue index (c_idx)??
             LOGGER.info("OpenLogReplicator ready, streaming from SCN {}.", scn);
             send(createRequest(RequestCode.START).setScn(scn.longValue()).build());
-
-            int attempts = 5;
-            while (attempts >= 0) {
-                response = readResponse();
-                if (response.getCode() == ResponseCode.STARTED || response.getCode() == ResponseCode.ALREADY_STARTED) {
-                    if (response.getCode() == ResponseCode.ALREADY_STARTED) {
-                        LOGGER.info("OpenLogReplicator already started at {}.", response.getScn());
-                        if (Scn.valueOf(response.getScn()).compareTo(scn) < 0) {
-                            skipToStartScn = true;
-                        }
-                    }
-                    send(createRequest(RequestCode.REDO).build());
-                    break;
-                }
-                else if (attempts == 0) {
-                    LOGGER.error("Failed to restart, OpenLogReplicator client shutting down.");
-                    return false;
-                }
-                else if (response.getCode() == ResponseCode.FAILED_START) {
-                    LOGGER.warn("OpenLogReplicator failed to start, attempting to start again.");
-                    send(createRequest(RequestCode.START).setScn(scn.longValue()).build());
-                    attempts--;
-                }
-                else {
-                    throw new OlrNetworkClientException("Unexpected response: " + response.getCode());
-                }
-            }
-
-        }
-        else if (response.getCode() == ResponseCode.STARTED) {
-            Scn startScn = Scn.valueOf(response.getScn());
-            if (startScn.compareTo(scn) < 0) {
-                skipToStartScn = true;
-            }
-            LOGGER.info("OpenLogReplicator already started, SCN {}.", startScn);
-            send(createRequest(RequestCode.REDO).build());
         }
         else {
             LOGGER.warn("Failed to get proper response from INFO request.");
@@ -226,7 +207,7 @@ public class OlrNetworkClient {
         }
 
         response = readResponse();
-        if (response.getCode() != ResponseCode.STREAMING) {
+        if (response.getCode() != ResponseCode.REPLICATE) {
             LOGGER.warn("Server failed to enter streaming mode, OpenLogReplicator client shutting down.");
             return false;
         }
