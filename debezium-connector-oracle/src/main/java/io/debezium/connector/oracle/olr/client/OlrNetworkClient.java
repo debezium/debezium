@@ -144,7 +144,7 @@ public class OlrNetworkClient {
         while (skipToStartScn) {
             event = readNextEvent();
             // todo: what if we restart mid-transaction?
-            if (event.getEventScn().compareTo(startScn) < 0) {
+            if (event.getScn().compareTo(startScn) < 0) {
                 if (notifySkip) {
                     LOGGER.info("Advancing change stream to SCN {}", startScn);
                     notifySkip = false;
