@@ -28,7 +28,7 @@ public class RedisConnection {
 
     public static final String DEBEZIUM_OFFSETS_CLIENT_NAME = "debezium:offsets";
     public static final String DEBEZIUM_SCHEMA_HISTORY = "debezium:schema_history";
-    private static final String HOST_PORT_ERROR = "Invalid host:port format in 'debezium.sink.redis.address' property.";
+    private static final String HOST_PORT_ERROR = "Invalid host:port format in '<...>.redis.address' property.";
 
     private String address;
     private int dbIndex;
@@ -116,7 +116,7 @@ public class RedisConnection {
     private void validateHostPort(String address) {
         Pattern pattern = Pattern.compile("^[\\w.-]+:\\d{1,5}+$");
         if (!pattern.matcher(address).matches()) {
-            throw new IllegalArgumentException(HOST_PORT_ERROR);
+            throw new DebeziumException(HOST_PORT_ERROR);
         }
     }
 }
