@@ -5,10 +5,15 @@
  */
 package io.debezium.connector.oracle.olr.client;
 
+import java.io.IOException;
+import java.time.Instant;
 import java.util.List;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 
 import io.debezium.connector.oracle.Scn;
 
@@ -24,41 +29,26 @@ import io.debezium.connector.oracle.Scn;
  */
 public class StreamingEvent {
 
-    private String scn;
+    @JsonDeserialize(using = ScnDeserializer.class)
+    private Scn scn;
     @JsonProperty("tm")
-    private String timestamp;
+    @JsonDeserialize(using = TimestampAsInstantDeserializer.class)
+    private Instant timestamp;
     private String xid;
     @JsonProperty("db")
     private String databaseName;
     @JsonProperty("c_scn")
-    private String checkpointScn;
+    @JsonDeserialize(using = ScnDeserializer.class)
+    private Scn checkpointScn;
     @JsonProperty("c_idx")
     private Long checkpointIndex;
     private List<PayloadEvent> payload;
-    @JsonIgnore
-    private Scn eventScn;
-    @JsonIgnore
-    private Scn eventCheckpointScn;
 
-    public Scn getEventScn() {
-        if (eventScn == null) {
-            eventScn = scn == null ? Scn.NULL : Scn.valueOf(scn);
-        }
-        return eventScn;
-    }
-
-    public Scn getEventCheckpointScn() {
-        if (eventCheckpointScn == null) {
-            eventCheckpointScn = checkpointScn == null ? Scn.NULL : Scn.valueOf(checkpointScn);
-        }
-        return eventCheckpointScn;
-    }
-
-    public String getScn() {
+    public Scn getScn() {
         return scn;
     }
 
-    public String getTimestamp() {
+    public Instant getTimestamp() {
         return timestamp;
     }
 
@@ -70,7 +60,7 @@ public class StreamingEvent {
         return databaseName;
     }
 
-    public String getCheckpointScn() {
+    public Scn getCheckpointScn() {
         return checkpointScn;
     }
 
@@ -92,8 +82,42 @@ public class StreamingEvent {
                 ", checkpointScn='" + checkpointScn + '\'' +
                 ", checkpointIndex=" + checkpointIndex +
                 ", payload=" + payload +
-                ", eventScn=" + eventScn +
                 '}';
     }
 
+    static class ScnDeserializer extends StdDeserializer<Scn> {
+        ScnDeserializer() {
+            super(Scn.class);
+        }
+
+        @Override
+        public Scn deserialize(JsonParser jsonParser, DeserializationContext deserializationContext)
+                throws IOException {
+            final String scn = jsonParser.getText();
+            try {
+                return scn == null ? Scn.NULL : Scn.valueOf(scn);
+            }
+            catch (Exception e) {
+                throw new IOException("Failed to deserialize SCN: " + scn);
+            }
+        }
+    }
+
+    static class TimestampAsInstantDeserializer extends StdDeserializer<Instant> {
+        TimestampAsInstantDeserializer() {
+            super(Instant.class);
+        }
+
+        @Override
+        public Instant deserialize(JsonParser jsonParser, DeserializationContext deserializationContext)
+                throws IOException {
+            final String timestamp = jsonParser.getText();
+            try {
+                return Instant.ofEpochMilli(Long.parseLong(timestamp));
+            }
+            catch (NumberFormatException e) {
+                throw new IOException("Failed to deserialize timestamp as instant: " + timestamp);
+            }
+        }
+    }
 }
