@@ -384,7 +384,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        postgres-plugin: ["assembly", "assembly,postgres-15,pgoutput-decoder"]
+        postgres-plugin: ["assembly", "assembly,postgres-16,pgoutput-decoder"]
       fail-fast: false
     steps:
       - name: Checkout Action

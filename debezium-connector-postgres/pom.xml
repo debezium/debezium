@@ -456,6 +456,12 @@
             </properties>
         </profile>
         <profile>
+            <id>postgres-16</id>
+            <properties>
+                <version.postgres.server>16</version.postgres.server>
+            </properties>
+        </profile>
+        <profile>
             <id>pgoutput-decoder</id>
             <properties>
                 <decoder.plugin.name>pgoutput</decoder.plugin.name>
