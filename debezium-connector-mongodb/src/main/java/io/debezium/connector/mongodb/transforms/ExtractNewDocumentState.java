@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.mongodb.transforms;
 
+import static io.debezium.transforms.ExtractNewRecordStateConfigDefinition.CONFIG_FIELDS;
+import static io.debezium.transforms.ExtractNewRecordStateConfigDefinition.DELETED_FIELD;
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 
 import java.util.Arrays;
@@ -13,8 +15,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.Set;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigDef;
@@ -22,34 +24,25 @@ import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.header.ConnectHeaders;
 import org.apache.kafka.connect.header.Headers;
 import org.apache.kafka.connect.transforms.ExtractField;
 import org.apache.kafka.connect.transforms.Flatten;
-import org.apache.kafka.connect.transforms.Transformation;
-import org.apache.kafka.connect.transforms.util.SchemaUtil;
 import org.bson.BsonBoolean;
 import org.bson.BsonDocument;
 import org.bson.BsonValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.CommonConnectorConfig.FieldNameAdjustmentMode;
-import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.connector.mongodb.MongoDbFieldName;
 import io.debezium.data.Envelope;
-import io.debezium.data.Envelope.FieldName;
-import io.debezium.data.Envelope.Operation;
-import io.debezium.pipeline.txmetadata.TransactionMonitor;
 import io.debezium.schema.FieldNameSelector;
 import io.debezium.schema.SchemaNameAdjuster;
-import io.debezium.transforms.ExtractNewRecordStateConfigDefinition;
+import io.debezium.transforms.AbstractExtractNewRecordState;
 import io.debezium.transforms.ExtractNewRecordStateConfigDefinition.DeleteHandling;
-import io.debezium.transforms.SmtManager;
 import io.debezium.util.Strings;
 
 /**
@@ -61,7 +54,7 @@ import io.debezium.util.Strings;
  * @author Sairam Polavarapu
  * @author Renato mefi
  */
-public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Transformation<R> {
+public class ExtractNewDocumentState<R extends ConnectRecord<R>> extends AbstractExtractNewRecordState<R> {
 
     public enum ArrayEncoding implements EnumeratedValue {
         ARRAY("array"),
@@ -114,8 +107,6 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
     }
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ExtractNewDocumentState.class);
-    private static final Pattern FIELD_SEPARATOR = Pattern.compile("\\.");
-    private static final Pattern NEW_FIELD_SEPARATOR = Pattern.compile(":");
 
     private static final Field ARRAY_ENCODING = Field.create("array.encoding")
             .withDisplayName("Array encoding")
@@ -144,34 +135,45 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
             .withDescription("Delimiter to concat between field names from the input record when generating field names for the"
                     + "output record.");
 
-    private final ExtractField<R> beforeExtractor = new ExtractField.Value<>();
-    private final ExtractField<R> afterExtractor = new ExtractField.Value<>();
     private final ExtractField<R> updateDescriptionExtractor = new ExtractField.Value<>();
     private final ExtractField<R> keyExtractor = new ExtractField.Key<>();
-
-    private MongoDataConverter converter;
     private final Flatten<R> recordFlattener = new Flatten.Value<>();
-
-    private List<FieldReference> additionalHeaders;
-    private List<FieldReference> additionalFields;
+    private MongoDataConverter converter;
     private boolean flattenStruct;
     private String delimiter;
 
-    private boolean dropTombstones;
-    private DeleteHandling handleDeletes;
-
-    private SmtManager<R> smtManager;
-
-    private final Field.Set configFields = Field.setOf(ARRAY_ENCODING, FLATTEN_STRUCT, DELIMITER,
-            ExtractNewRecordStateConfigDefinition.HANDLE_DELETES,
-            ExtractNewRecordStateConfigDefinition.DROP_TOMBSTONES,
-            ExtractNewRecordStateConfigDefinition.ADD_HEADERS,
-            ExtractNewRecordStateConfigDefinition.ADD_HEADERS_PREFIX,
-            ExtractNewRecordStateConfigDefinition.ADD_FIELDS,
-            ExtractNewRecordStateConfigDefinition.ADD_FIELDS_PREFIX);
+    private final Field.Set configFields = CONFIG_FIELDS.with(ARRAY_ENCODING, FLATTEN_STRUCT, DELIMITER);
 
     @Override
-    public R apply(R record) {
+    public void configure(final Map<String, ?> configs) {
+        super.configure(configs);
+
+        FieldNameAdjustmentMode fieldNameAdjustmentMode = FieldNameAdjustmentMode.parse(
+                config.getString(CommonConnectorConfig.FIELD_NAME_ADJUSTMENT_MODE));
+        SchemaNameAdjuster fieldNameAdjuster = fieldNameAdjustmentMode.createAdjuster();
+        converter = new MongoDataConverter(
+                ArrayEncoding.parse(config.getString(ARRAY_ENCODING)),
+                FieldNameSelector.defaultNonRelationalSelector(fieldNameAdjuster),
+                fieldNameAdjustmentMode != FieldNameAdjustmentMode.NONE);
+
+        flattenStruct = config.getBoolean(FLATTEN_STRUCT);
+        delimiter = config.getString(DELIMITER);
+
+        final Map<String, String> updateDescriptionExtractorConfig = new HashMap<>();
+        updateDescriptionExtractorConfig.put("field", MongoDbFieldName.UPDATE_DESCRIPTION);
+        updateDescriptionExtractor.configure(updateDescriptionExtractorConfig);
+
+        final Map<String, String> keyExtractorConfig = new HashMap<>();
+        keyExtractorConfig.put("field", "id");
+        keyExtractor.configure(keyExtractorConfig);
+
+        final Map<String, String> delegateConfig = new HashMap<>();
+        delegateConfig.put("delimiter", delimiter);
+        recordFlattener.configure(delegateConfig);
+    }
+
+    @Override
+    public R doApply(R record) {
         if (!smtManager.isValidKey(record)) {
             return record;
         }
@@ -198,8 +200,8 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
             return record;
         }
 
-        final R beforeRecord = beforeExtractor.apply(record);
-        final R afterRecord = afterExtractor.apply(record);
+        final R beforeRecord = beforeDelegate.apply(record);
+        final R afterRecord = afterDelegate.apply(record);
         final R updateDescriptionRecord = updateDescriptionExtractor.apply(record);
 
         if (!additionalHeaders.isEmpty()) {
@@ -233,10 +235,30 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
         }
 
         if (handleDeletes.equals(DeleteHandling.REWRITE)) {
-            valueDocument.append(ExtractNewRecordStateConfigDefinition.DELETED_FIELD, new BsonBoolean(isDeletion));
+            valueDocument.append(DELETED_FIELD, new BsonBoolean(isDeletion));
         }
 
         return newRecord(record, keyDocument, valueDocument);
+    }
+
+    @Override
+    public Iterable<Field> validateConfigFields() {
+        return configFields;
+    }
+
+    @Override
+    public ConfigDef config() {
+        final ConfigDef config = new ConfigDef();
+        Field.group(config, null, configFields.asArray());
+        return config;
+    }
+
+    @Override
+    public void close() {
+        super.close();
+        updateDescriptionExtractor.close();
+        keyExtractor.close();
+        recordFlattener.close();
     }
 
     private R newRecord(R record, BsonDocument keyDocument, BsonDocument valueDocument) {
@@ -256,7 +278,7 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
         Schema finalValueSchema = null;
         Struct finalValueStruct = null;
 
-        if (valueDocument.size() > 0) {
+        if (!valueDocument.isEmpty()) {
             String newValueSchemaName = record.valueSchema().name();
             if (Envelope.isEnvelopeSchema(newValueSchemaName)) {
                 newValueSchemaName = newValueSchemaName.substring(0, newValueSchemaName.length() - 9);
@@ -297,7 +319,8 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
     private void addAdditionalFieldsSchema(List<FieldReference> additionalFields, R originalRecord, SchemaBuilder valueSchemaBuilder) {
         Schema sourceSchema = originalRecord.valueSchema();
         for (FieldReference fieldReference : additionalFields) {
-            valueSchemaBuilder.field(fieldReference.newFieldName, fieldReference.getSchema(sourceSchema));
+            Optional<Schema> fieldSchema = fieldReference.getSchema(sourceSchema);
+            fieldSchema.ifPresent(schema -> valueSchemaBuilder.field(fieldReference.getNewField(), schema));
         }
     }
 
@@ -306,7 +329,7 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
 
         // Update the value with the new fields
         for (FieldReference fieldReference : additionalFields) {
-            value.put(fieldReference.newFieldName, fieldReference.getValue(originalRecordValue));
+            value.put(fieldReference.getNewField(), fieldReference.getValue(originalRecordValue));
         }
     }
 
@@ -352,188 +375,10 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
         return BsonDocument.parse(record.value().toString());
     }
 
-    private Headers makeHeaders(List<FieldReference> additionalHeaders, Struct originalRecordValue) {
-        Headers headers = new ConnectHeaders();
-
-        for (FieldReference fieldReference : additionalHeaders) {
-            // add "d" operation header to tombstone events
-            if (originalRecordValue == null) {
-                if (Envelope.FieldName.OPERATION.equals(fieldReference.field)) {
-                    headers.addString(fieldReference.newFieldName, Operation.DELETE.code());
-                }
-                continue;
-            }
-            if (fieldReference.exists(originalRecordValue.schema())) {
-                headers.add(fieldReference.getNewFieldName(), fieldReference.getValue(originalRecordValue),
-                        fieldReference.getSchema(originalRecordValue.schema()));
-            }
-        }
-
-        return headers;
-    }
-
-    @Override
-    public ConfigDef config() {
-        final ConfigDef config = new ConfigDef();
-        Field.group(config, null, configFields.asArray());
-        return config;
-    }
-
-    @Override
-    public void close() {
-    }
-
-    @Override
-    public void configure(final Map<String, ?> map) {
-        final Configuration config = Configuration.from(map);
-        smtManager = new SmtManager<>(config);
-
-        if (!config.validateAndRecord(configFields, LOGGER::error)) {
-            throw new DebeziumException("Unable to validate config.");
-        }
-
-        FieldNameAdjustmentMode fieldNameAdjustmentMode = FieldNameAdjustmentMode.parse(
-                config.getString(CommonConnectorConfig.FIELD_NAME_ADJUSTMENT_MODE));
-        SchemaNameAdjuster fieldNameAdjuster = fieldNameAdjustmentMode.createAdjuster();
-        converter = new MongoDataConverter(
-                ArrayEncoding.parse(config.getString(ARRAY_ENCODING)),
-                FieldNameSelector.defaultNonRelationalSelector(fieldNameAdjuster),
-                fieldNameAdjustmentMode != FieldNameAdjustmentMode.NONE);
-
-        String addFieldsPrefix = config.getString(ExtractNewRecordStateConfigDefinition.ADD_FIELDS_PREFIX);
-        String addHeadersPrefix = config.getString(ExtractNewRecordStateConfigDefinition.ADD_HEADERS_PREFIX);
-        additionalHeaders = FieldReference.fromConfiguration(addHeadersPrefix, config.getString(ExtractNewRecordStateConfigDefinition.ADD_HEADERS));
-        additionalFields = FieldReference.fromConfiguration(addFieldsPrefix, config.getString(ExtractNewRecordStateConfigDefinition.ADD_FIELDS));
-
-        flattenStruct = config.getBoolean(FLATTEN_STRUCT);
-        delimiter = config.getString(DELIMITER);
-
-        dropTombstones = config.getBoolean(ExtractNewRecordStateConfigDefinition.DROP_TOMBSTONES);
-        handleDeletes = DeleteHandling.parse(config.getString(ExtractNewRecordStateConfigDefinition.HANDLE_DELETES));
-
-        final Map<String, String> beforeExtractorConfig = new HashMap<>();
-        beforeExtractorConfig.put("field", FieldName.BEFORE);
-        final Map<String, String> afterExtractorConfig = new HashMap<>();
-        afterExtractorConfig.put("field", FieldName.AFTER);
-        final Map<String, String> updateDescriptionExtractorConfig = new HashMap<>();
-        updateDescriptionExtractorConfig.put("field", MongoDbFieldName.UPDATE_DESCRIPTION);
-        final Map<String, String> keyExtractorConfig = new HashMap<>();
-        keyExtractorConfig.put("field", "id");
-
-        beforeExtractor.configure(beforeExtractorConfig);
-        afterExtractor.configure(afterExtractorConfig);
-        updateDescriptionExtractor.configure(updateDescriptionExtractorConfig);
-        keyExtractor.configure(keyExtractorConfig);
-
-        final Map<String, String> delegateConfig = new HashMap<>();
-        delegateConfig.put("delimiter", delimiter);
-        recordFlattener.configure(delegateConfig);
-    }
-
     private static List<String> determineAdditionalSourceField(String addSourceFieldsConfig) {
         if (Strings.isNullOrEmpty(addSourceFieldsConfig)) {
             return Collections.emptyList();
         }
         return Arrays.stream(addSourceFieldsConfig.split(",")).map(String::trim).collect(Collectors.toList());
-    }
-
-    /**
-     * Represents a field that should be added to the outgoing record as a header attribute or struct field.
-     */
-    // todo: refactor with ExtractNewRecordState
-    private static class FieldReference {
-        /**
-         * The struct ("source", "transaction") hosting the given field, or {@code null} for "op" and "ts_ms".
-         */
-        private final String struct;
-
-        /**
-         * The simple field name.
-         */
-        private final String field;
-
-        /**
-         * The name for the outgoing attribute/field, e.g. "__op" or "__source_ts_ms".
-         */
-        private final String newFieldName;
-
-        private FieldReference(String prefix, String field) {
-            String[] parts = NEW_FIELD_SEPARATOR.split(field);
-            String[] splits = FIELD_SEPARATOR.split(parts[0]);
-            this.field = splits.length == 1 ? splits[0] : splits[1];
-            this.struct = (splits.length == 1) ? determineStruct(this.field) : splits[0];
-
-            if (parts.length == 1) {
-                this.newFieldName = prefix + (splits.length == 1 ? this.field : this.struct + "_" + this.field);
-            }
-            else if (parts.length == 2) {
-                this.newFieldName = prefix + parts[1];
-            }
-            else {
-                throw new IllegalArgumentException("Unexpected field name: " + field);
-            }
-        }
-
-        /**
-         * Determine the struct hosting the given unqualified field.
-         */
-        private static String determineStruct(String simpleFieldName) {
-            switch (simpleFieldName) {
-                case FieldName.OPERATION:
-                case FieldName.TIMESTAMP:
-                    return null;
-                case TransactionMonitor.DEBEZIUM_TRANSACTION_ID_KEY:
-                case TransactionMonitor.DEBEZIUM_TRANSACTION_DATA_COLLECTION_ORDER_KEY:
-                case TransactionMonitor.DEBEZIUM_TRANSACTION_TOTAL_ORDER_KEY:
-                    return FieldName.TRANSACTION;
-                case MongoDbFieldName.UPDATE_DESCRIPTION:
-                    return MongoDbFieldName.UPDATE_DESCRIPTION;
-                default:
-                    return FieldName.SOURCE;
-            }
-        }
-
-        static List<FieldReference> fromConfiguration(String fieldPrefix, String addHeadersConfig) {
-            if (Strings.isNullOrEmpty(addHeadersConfig)) {
-                return Collections.emptyList();
-            }
-            else {
-                return Arrays.stream(addHeadersConfig.split(","))
-                        .map(String::trim)
-                        .map(field -> new FieldReference(fieldPrefix, field))
-                        .collect(Collectors.toList());
-            }
-        }
-
-        String getNewFieldName() {
-            return newFieldName;
-        }
-
-        Object getValue(Struct originalRecordValue) {
-            Struct parentStruct = struct != null ? (Struct) originalRecordValue.get(struct) : originalRecordValue;
-
-            // transaction is optional; e.g. not present during snapshotting atm.
-            return parentStruct != null ? parentStruct.get(field) : null;
-        }
-
-        Schema getSchema(Schema originalRecordSchema) {
-            Schema parentSchema = struct != null ? originalRecordSchema.field(struct).schema() : originalRecordSchema;
-
-            org.apache.kafka.connect.data.Field schemaField = parentSchema.field(field);
-
-            if (schemaField == null) {
-                throw new IllegalArgumentException("Unexpected field name: " + field);
-            }
-
-            return SchemaUtil.copySchemaBasics(schemaField.schema()).optional().build();
-        }
-
-        private boolean exists(Schema originalRecordSchema) {
-            Schema parentSchema = struct != null ? originalRecordSchema.field(struct).schema() : originalRecordSchema;
-
-            org.apache.kafka.connect.data.Field schemaField = parentSchema.field(field);
-
-            return schemaField != null;
-        }
     }
 }
