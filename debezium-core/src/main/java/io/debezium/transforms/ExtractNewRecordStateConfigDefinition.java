@@ -133,4 +133,6 @@ public class ExtractNewRecordStateConfigDefinition {
                     + "Optionally one can also map new field name like version:VERSION,connector:CONNECTOR,source.ts_ms:EVENT_TIMESTAMP."
                     + "Please note that the new field name is case-sensitive.");
 
+    public static final Field.Set CONFIG_FIELDS = Field.setOf(
+            DROP_TOMBSTONES, HANDLE_DELETES, ROUTE_BY_FIELD, ADD_FIELDS_PREFIX, ADD_FIELDS, ADD_HEADERS_PREFIX, ADD_HEADERS);
 }
