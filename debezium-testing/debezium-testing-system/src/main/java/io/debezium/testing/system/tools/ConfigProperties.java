@@ -65,6 +65,8 @@ public final class ConfigProperties {
     public static final String APICURIO_LOG_LEVEL = System.getProperty("test.apicurio.log.level", "INFO");
     public static final String APICURIO_OPERATOR_CHANNEL = System.getProperty("test.apicurio.operator.channel", "2.x");
 
+    public static final boolean APICURIO_TLS_ENABLED = booleanProperty("test.apicurio.tls.enabled", false);
+
     // MySql Configuration
     public static final String DATABASE_MYSQL_USERNAME = System.getProperty("test.database.mysql.username", "mysqluser");
     public static final String DATABASE_MYSQL_PASSWORD = System.getProperty("test.database.mysql.password", "mysqlpw");

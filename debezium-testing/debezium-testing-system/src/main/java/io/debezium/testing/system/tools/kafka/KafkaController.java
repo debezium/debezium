@@ -31,6 +31,8 @@ public interface KafkaController {
      */
     String getBootstrapAddress();
 
+    String getTlsBootstrapAddress();
+
     /**
      * Undeploy this Kafka cluster
      *
