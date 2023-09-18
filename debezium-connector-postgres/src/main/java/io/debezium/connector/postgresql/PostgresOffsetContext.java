@@ -31,7 +31,7 @@ import io.debezium.time.Conversions;
 import io.debezium.util.Clock;
 
 public class PostgresOffsetContext extends CommonOffsetContext<SourceInfo> {
-    private static final Logger LOGGER = LoggerFactory.getLogger(PostgresSnapshotChangeEventSource.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(PostgresOffsetContext.class);
 
     public static final String LAST_COMPLETELY_PROCESSED_LSN_KEY = "lsn_proc";
     public static final String LAST_COMMIT_LSN_KEY = "lsn_commit";
