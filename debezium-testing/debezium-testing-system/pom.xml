@@ -71,6 +71,7 @@
     <apicurio.crd.version>v1</apicurio.crd.version>
     <apicurio.log.level>INFO</apicurio.log.level>
     <apicurio.operator.channel>2.x</apicurio.operator.channel>
+    <apicurio.tls.enabled>false</apicurio.tls.enabled>
 
     <!--MySQL configuration-->
     <database.mysql.port>3306</database.mysql.port>
@@ -500,6 +501,7 @@
                 <test.apicurio.crd.version>${apicurio.crd.version}</test.apicurio.crd.version>
                 <test.apicurio.log.level>${apicurio.log.level}</test.apicurio.log.level>
                 <test.apicurio.operator.channel>${apicurio.operator.channel}</test.apicurio.operator.channel>
+                <test.apicurio.tls.enabled>${apicurio.tls.enabled}</test.apicurio.tls.enabled>
 
                 <!--MySQL configuration-->
                 <test.database.mysql.host>${database.mysql.host}</test.database.mysql.host>

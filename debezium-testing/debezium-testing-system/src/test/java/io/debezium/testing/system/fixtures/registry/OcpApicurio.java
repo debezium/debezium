@@ -5,7 +5,11 @@
  */
 package io.debezium.testing.system.fixtures.registry;
 
+import static io.debezium.testing.system.tools.ConfigProperties.APICURIO_TLS_ENABLED;
+import static io.debezium.testing.system.tools.ConfigProperties.OCP_PROJECT_DBZ;
 import static io.debezium.testing.system.tools.ConfigProperties.OCP_PROJECT_REGISTRY;
+import static io.debezium.testing.system.tools.kafka.builders.FabricKafkaConnectBuilder.KAFKA_CERT_SECRET;
+import static io.debezium.testing.system.tools.kafka.builders.FabricKafkaConnectBuilder.KAFKA_CLIENT_CERT_SECRET;
 
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -20,6 +24,8 @@ import io.debezium.testing.system.tools.registry.OcpApicurioController;
 import io.debezium.testing.system.tools.registry.OcpApicurioDeployer;
 import io.debezium.testing.system.tools.registry.RegistryController;
 import io.debezium.testing.system.tools.registry.builders.FabricApicurioBuilder;
+import io.fabric8.kubernetes.api.model.Secret;
+import io.fabric8.kubernetes.api.model.SecretBuilder;
 import io.fabric8.openshift.client.OpenShiftClient;
 
 import fixture5.TestFixture;
@@ -42,8 +48,18 @@ public class OcpApicurio extends TestFixture {
 
     @Override
     public void setup() throws Exception {
+        String kafkaAddress = kafkaController.getBootstrapAddress();
+
+        if (APICURIO_TLS_ENABLED) {
+            LOGGER.info("Apicurio TLS enabled");
+            // Copy kafka certificate secrets created with strimzi to apicurio registry namespace
+            prepareCertificateSecrets();
+
+            kafkaAddress = kafkaController.getTlsBootstrapAddress();
+        }
+
         FabricApicurioBuilder fabricBuilder = FabricApicurioBuilder
-                .baseKafkaSql(kafkaController.getBootstrapAddress());
+                .baseKafkaSql(kafkaAddress);
 
         OcpApicurioDeployer deployer = new OcpApicurioDeployer(OCP_PROJECT_REGISTRY, fabricBuilder, ocp, new OkHttpClient());
 
@@ -56,5 +72,19 @@ public class OcpApicurio extends TestFixture {
     public void teardown() {
         // no-op: apicurio is reused across tests
         LOGGER.debug("Skipping apicurio tear down");
+    }
+
+    private void prepareCertificateSecrets() {
+        LOGGER.debug("Copying Kafka certificate secrets to Apicurio namespace");
+        Secret kafkaSecret = ocp.secrets().inNamespace(OCP_PROJECT_DBZ).withName(KAFKA_CERT_SECRET).get();
+        var kafkaClientSecretData = ocp.secrets().inNamespace(OCP_PROJECT_DBZ).withName(KAFKA_CLIENT_CERT_SECRET).get().getData();
+
+        Secret secretNewMetadata = new SecretBuilder(kafkaSecret).withNewMetadata().withNamespace(OCP_PROJECT_REGISTRY).withName(KAFKA_CERT_SECRET).endMetadata()
+                .build();
+        Secret clientSecretRenamedCerts = new SecretBuilder().withNewMetadata().withNamespace(OCP_PROJECT_REGISTRY).withName(KAFKA_CLIENT_CERT_SECRET)
+                .endMetadata().addToData("user.p12", kafkaClientSecretData.get("ca.p12")).addToData("user.password", kafkaClientSecretData.get("ca.password"))
+                .build();
+        ocp.secrets().inNamespace(OCP_PROJECT_REGISTRY).createOrReplace(secretNewMetadata);
+        ocp.secrets().inNamespace(OCP_PROJECT_REGISTRY).createOrReplace(clientSecretRenamedCerts);
     }
 }

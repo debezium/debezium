@@ -38,6 +38,8 @@ public class FabricKafkaConnectBuilder extends
         FabricBuilderWrapper<FabricKafkaConnectBuilder, KafkaConnectBuilder, KafkaConnect> {
     public static String DEFAULT_KC_NAME = "debezium-kafka-connect-cluster";
     public static String KAFKA_CERT_SECRET = DEFAULT_KAFKA_NAME + "-cluster-ca-cert";
+
+    public static String KAFKA_CLIENT_CERT_SECRET = DEFAULT_KAFKA_NAME + "-clients-ca-cert";
     public static String KAFKA_CERT_FILENAME = "ca.crt";
     public static String DEFAULT_BOOSTRAP_SERVER = DEFAULT_KAFKA_NAME + "-kafka-bootstrap:9093";
 
