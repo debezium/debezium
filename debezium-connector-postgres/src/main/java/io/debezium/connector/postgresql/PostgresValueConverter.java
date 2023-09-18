@@ -1095,17 +1095,17 @@ public class PostgresValueConverter extends JdbcValueConverters {
         if (data == null) {
             return null;
         }
+        if (POSITIVE_INFINITY_TIMESTAMP.equals(data)) {
+            return POSITIVE_INFINITY_LOCAL_DATE_TIME;
+        }
+        else if (NEGATIVE_INFINITY_TIMESTAMP.equals(data)) {
+            return NEGATIVE_INFINITY_LOCAL_DATE_TIME;
+        }
+
         if (!(data instanceof Timestamp)) {
             return data;
         }
         final Timestamp timestamp = (Timestamp) data;
-
-        if (POSITIVE_INFINITY_TIMESTAMP.equals(timestamp)) {
-            return POSITIVE_INFINITY_LOCAL_DATE_TIME;
-        }
-        else if (NEGATIVE_INFINITY_TIMESTAMP.equals(timestamp)) {
-            return NEGATIVE_INFINITY_LOCAL_DATE_TIME;
-        }
 
         final Instant instant = timestamp.toInstant();
 
