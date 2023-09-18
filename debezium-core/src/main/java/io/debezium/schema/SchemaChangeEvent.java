@@ -126,6 +126,24 @@ public class SchemaChangeEvent {
     }
 
     @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        SchemaChangeEvent that = (SchemaChangeEvent) o;
+        return Objects.equals(database, that.database) && Objects.equals(schema, that.schema) && Objects.equals(ddl,
+                that.ddl) && type == that.type;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(database, schema, ddl, type);
+    }
+
+    @Override
     public String toString() {
         return "SchemaChangeEvent [database=" + database + ", schema=" + schema + ", ddl=" + ddl + ", tables=" + tables
                 + ", type=" + type + ", ts_ms=" + timestamp.toEpochMilli() + "]";

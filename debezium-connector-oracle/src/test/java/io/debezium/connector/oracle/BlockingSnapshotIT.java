@@ -127,13 +127,19 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
                 .with(OracleConnectorConfig.SIGNAL_DATA_COLLECTION, TestHelper.getDatabaseName() + ".DEBEZIUM.DEBEZIUM_SIGNAL")
                 .with(OracleConnectorConfig.SCHEMA_INCLUDE_LIST, "DEBEZIUM")
                 .with(OracleConnectorConfig.SNAPSHOT_MODE_TABLES, TestHelper.getDatabaseName() + ".DEBEZIUM.A")
-                .with(OracleConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true);
+                .with(OracleConnectorConfig.INCLUDE_SCHEMA_CHANGES, false);
     }
 
     @Override
     protected Configuration.Builder mutableConfig(boolean signalTableOnly, boolean storeOnlyCapturedDdl) {
         return config();
+    }
+
+    @Override
+    protected Configuration.Builder historizedMutableConfig(boolean signalTableOnly, boolean storeOnlyCapturedDdl) {
+        return config()
+                .with(OracleConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true);
     }
 
     @Override
