@@ -150,6 +150,7 @@ public class SqlUtils {
             sb.append("LEFT JOIN ").append(ARCHIVED_LOG_VIEW).append(" A ");
             sb.append("ON A.FIRST_CHANGE# = L.FIRST_CHANGE# AND A.NEXT_CHANGE# = L.NEXT_CHANGE# ");
             sb.append("WHERE (A.STATUS <> 'A' OR A.FIRST_CHANGE# IS NULL) ");
+            sb.append("AND L.STATUS != 'UNUSED' ");
             sb.append("AND F.GROUP# = L.GROUP# ");
             sb.append("GROUP BY F.GROUP#, L.FIRST_CHANGE#, L.NEXT_CHANGE#, L.STATUS, L.ARCHIVED, L.SEQUENCE#, L.THREAD# ");
             sb.append("UNION ");
