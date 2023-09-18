@@ -14,6 +14,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -100,7 +101,15 @@ public class LogMinerHelper {
     }
 
     private static boolean hasLogFilesStartingBeforeOrAtScn(List<LogFile> logs, Scn scn) {
-        return logs.stream().anyMatch(l -> l.getFirstScn().compareTo(scn) <= 0);
+        final Map<Integer, List<LogFile>> threadLogs = logs.stream().collect(Collectors.groupingBy(LogFile::getThread));
+        for (Map.Entry<Integer, List<LogFile>> entry : threadLogs.entrySet()) {
+            if (!entry.getValue().stream().anyMatch(l -> l.getFirstScn().compareTo(scn) <= 0)) {
+                LOGGER.debug("Redo thread {} does not yet have any logs before or at SCN {}.", entry.getKey(), scn);
+                return false;
+            }
+        }
+        LOGGER.debug("Redo threads {} have logs before or at SCN {}.", threadLogs.keySet(), scn);
+        return true;
     }
 
     private static Scn getMinimumScn(List<LogFile> logs) {
