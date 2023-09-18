@@ -151,7 +151,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
             if (snapshottingTask.snapshotSchema()) {
                 LOGGER.info("Snapshot step 6 - Persisting schema history");
 
-                createSchemaChangeEventsForTables(context, ctx, snapshottingTask); // TODO check
+                createSchemaChangeEventsForTables(context, ctx, snapshottingTask);
 
                 // if we've been interrupted before, the TX rollback will cause any locks to be released
                 releaseSchemaSnapshotLocks(ctx);

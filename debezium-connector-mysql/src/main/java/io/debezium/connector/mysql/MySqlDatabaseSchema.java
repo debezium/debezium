@@ -309,6 +309,7 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
                     ((TableAlteredEvent) event).previousTableId());
         }
         else {
+            Table table = getTable(tableId, type);
             schemaChangeEvent = SchemaChangeEvent.of(
                     type,
                     partition,
@@ -316,10 +317,24 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
                     sanitizedDbName,
                     null,
                     event.statement(),
-                    tableId != null ? tables().forTable(tableId) : null,
+                    table,
                     snapshot);
         }
         schemaChangeEvents.add(schemaChangeEvent);
+    }
+
+    private Table getTable(TableId tableId, SchemaChangeEventType type) {
+
+        if (tableId == null) {
+            return null;
+        }
+
+        if (SchemaChangeEventType.DROP == type) {
+            // DROP events don't have information about tableChanges, so we are creating a Table object with just the tableId to be use
+            // during blocking snapshot to filter out drop events not related to table to be snapshotted.
+            return Table.editor().tableId(tableId).create();
+        }
+        return tables().forTable(tableId);
     }
 
     private boolean acceptableDatabase(final String databaseName) {

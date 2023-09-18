@@ -40,7 +40,6 @@ import io.debezium.junit.SkipWhenConnectorUnderTest;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.source.AbstractSnapshotChangeEventSource;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractSnapshotTest;
-import io.debezium.util.Testing;
 
 public abstract class AbstractBlockingSnapshotTest extends AbstractSnapshotTest {
     private int signalingRecords;
@@ -63,6 +62,10 @@ public abstract class AbstractBlockingSnapshotTest extends AbstractSnapshotTest 
     @Override
     protected abstract String server();
 
+    protected Configuration.Builder historizedMutableConfig(boolean signalTableOnly, boolean storeOnlyCapturedDdl) {
+        return mutableConfig(signalTableOnly, storeOnlyCapturedDdl);
+    }
+
     @Test
     public void executeBlockingSnapshot() throws Exception {
         // Testing.Print.enable();
@@ -75,7 +78,8 @@ public abstract class AbstractBlockingSnapshotTest extends AbstractSnapshotTest 
 
         insertRecords(ROW_COUNT, ROW_COUNT);
 
-        assertRecordsFromSnapshotAndStreamingArePresent(ROW_COUNT * 2, consumeRecordsByTopic(ROW_COUNT * 2, 10));
+        SourceRecords consumedRecordsByTopic = consumeRecordsByTopic(ROW_COUNT * 2, 10);
+        assertRecordsFromSnapshotAndStreamingArePresent(ROW_COUNT * 2, consumedRecordsByTopic);
 
         sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey("", "", BLOCKING, tableDataCollectionId());
 
@@ -119,8 +123,9 @@ public abstract class AbstractBlockingSnapshotTest extends AbstractSnapshotTest 
 
         signalingRecords = 1; // from streaming
 
+        SourceRecords consumeRecordsByTopic = consumeRecordsByTopic((int) ((ROW_COUNT * 3) + totalSnapshotRecords + signalingRecords), 10);
         assertRecordsWithValuesPresent((int) ((ROW_COUNT * 3) + totalSnapshotRecords),
-                getExpectedValues(totalSnapshotRecords), topicName(), consumeRecordsByTopic((int) ((ROW_COUNT * 3) + totalSnapshotRecords + signalingRecords), 10));
+                getExpectedValues(totalSnapshotRecords), topicName(), consumeRecordsByTopic);
     }
 
     @Test
@@ -141,8 +146,9 @@ public abstract class AbstractBlockingSnapshotTest extends AbstractSnapshotTest 
 
         signalingRecords = 1; // from streaming
 
+        SourceRecords consumedRecordsByTopic = consumeRecordsByTopic(500 + signalingRecords, 10);
         assertRecordsWithValuesPresent(500, IntStream.rangeClosed(0, 499).boxed().collect(Collectors.toList()), topicNames().get(1).toString(),
-                consumeRecordsByTopic(500 + signalingRecords, 10));
+                consumedRecordsByTopic);
 
     }
 
@@ -151,11 +157,11 @@ public abstract class AbstractBlockingSnapshotTest extends AbstractSnapshotTest 
     @SkipWhenConnectorUnderTest(check = EqualityCheck.EQUAL, value = SkipWhenConnectorUnderTest.Connector.SQL_SERVER)
     @SkipWhenConnectorUnderTest(check = EqualityCheck.EQUAL, value = SkipWhenConnectorUnderTest.Connector.DB2)
     public void readsSchemaOnlyForSignaledTables() throws Exception {
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         populateTable(tableNames().get(1).toString());
 
-        startConnectorWithSnapshot(x -> mutableConfig(false, false));
+        startConnectorWithSnapshot(x -> historizedMutableConfig(false, false));
 
         waitForStreamingRunning(connector(), server(), getStreamingNamespace(), task());
 
@@ -175,8 +181,6 @@ public abstract class AbstractBlockingSnapshotTest extends AbstractSnapshotTest 
         List<String> ddls = recordsByTopic.recordsForTopic(server()).stream()
                 .map(sourceRecord -> ((Struct) sourceRecord.value()).getString("ddl"))
                 .collect(Collectors.toList());
-
-        Testing.print(ddls);
 
         assertDdl(ddls);
     }

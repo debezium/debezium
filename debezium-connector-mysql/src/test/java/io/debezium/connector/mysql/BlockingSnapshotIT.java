@@ -11,11 +11,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.sql.SQLException;
 import java.util.List;
 
+import org.jetbrains.annotations.NotNull;
 import org.junit.After;
 import org.junit.Before;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.connector.mysql.junit.MySqlDatabaseVersionResolver;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.AbstractBlockingSnapshotTest;
 import io.debezium.relational.TableId;
@@ -25,7 +27,9 @@ import io.debezium.util.Testing;
 public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
 
     protected static final String SERVER_NAME = "is_test";
+    public static final int MYSQL8 = 8;
     protected final UniqueDatabase DATABASE = new UniqueDatabase(SERVER_NAME, "blocking_snapshot_test", "1", null).withDbHistoryPath(SCHEMA_HISTORY_PATH);
+    private final MySqlDatabaseVersionResolver databaseVersionResolver = new MySqlDatabaseVersionResolver();
 
     @Before
     public void before() throws SQLException {
@@ -71,12 +75,19 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
                 .with(MySqlConnectorConfig.USER, "mysqluser")
                 .with(MySqlConnectorConfig.PASSWORD, "mysqlpw")
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL.getValue())
-                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                 .with(MySqlConnectorConfig.SIGNAL_DATA_COLLECTION, DATABASE.qualifiedTableName("debezium_signal"))
                 .with(CommonConnectorConfig.SIGNAL_POLL_INTERVAL_MS, 5)
                 .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, storeOnlyCapturedDdl)
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE_TABLES, DATABASE.qualifiedTableName("a"))
                 .with(CommonConnectorConfig.SCHEMA_NAME_ADJUSTMENT_MODE, CommonConnectorConfig.SchemaNameAdjustmentMode.AVRO);
+    }
+
+    @Override
+    protected Configuration.Builder historizedMutableConfig(boolean signalTableOnly, boolean storeOnlyCapturedDdl) {
+
+        return mutableConfig(signalTableOnly, storeOnlyCapturedDdl)
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true);
     }
 
     @Override
@@ -158,11 +169,24 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
     protected void assertDdl(List<String> schemaChangesDdls) {
 
         assertThat(schemaChangesDdls.get(schemaChangesDdls.size() - 2)).isEqualTo("DROP TABLE IF EXISTS `blocking_snapshot_test_1`.`b`");
-        assertThat(schemaChangesDdls.get(schemaChangesDdls.size() - 1)).isEqualTo("\"CREATE TABLE `b` (\n" +
-                "  `pk` int NOT NULL AUTO_INCREMENT,\n" +
-                "  `aa` int DEFAULT NULL,\n" +
-                "  PRIMARY KEY (`pk`)\n" +
-                ") ENGINE=InnoDB AUTO_INCREMENT=1001 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci\"");
 
+        assertThat(schemaChangesDdls.get(schemaChangesDdls.size() - 1)).isEqualTo(getDdlString(databaseVersionResolver));
+
+    }
+
+    @NotNull
+    private static String getDdlString(MySqlDatabaseVersionResolver databaseVersionResolver) {
+
+        return databaseVersionResolver.getVersion().getMajor() < MYSQL8 ? "CREATE TABLE `b` (\n" +
+                "  `pk` int(11) NOT NULL AUTO_INCREMENT,\n" +
+                "  `aa` int(11) DEFAULT NULL,\n" +
+                "  PRIMARY KEY (`pk`)\n" +
+                ") ENGINE=InnoDB AUTO_INCREMENT=1001 DEFAULT CHARSET=latin1"
+
+                : "CREATE TABLE `b` (\n" +
+                        "  `pk` int NOT NULL AUTO_INCREMENT,\n" +
+                        "  `aa` int DEFAULT NULL,\n" +
+                        "  PRIMARY KEY (`pk`)\n" +
+                        ") ENGINE=InnoDB AUTO_INCREMENT=1001 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci";
     }
 }
