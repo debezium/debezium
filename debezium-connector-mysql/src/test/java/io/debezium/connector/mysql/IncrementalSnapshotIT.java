@@ -347,4 +347,22 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
         assertThat(dbChanges).contains(entry(1, Arrays.asList(0, null)));
         assertFalse(logInterceptor.containsWarnMessage("Invalid length when read MySQL DATE value. BIN_LEN_DATE is 0."));
     }
+
+    @Test
+    @FixFor("DBZ-6937")
+    public void incrementalSnapshotOnly() throws Exception {
+        // Testing.Print.enable();
+
+        populateTable();
+        final Configuration config = config().with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER).build();
+        start(connectorClass(), config, loggingCompletion());
+
+        sendAdHocSnapshotSignal();
+
+        final int expectedRecordCount = ROW_COUNT;
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
+        for (int i = 0; i < expectedRecordCount; i++) {
+            assertThat(dbChanges).contains(entry(i + 1, i));
+        }
+    }
 }
