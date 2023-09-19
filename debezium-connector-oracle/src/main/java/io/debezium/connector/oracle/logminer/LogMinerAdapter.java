@@ -174,8 +174,18 @@ public class LogMinerAdapter extends AbstractStreamingAdapter {
                     }
                     final String pendingTxStartScn = rs.getString(3);
                     if (!Strings.isNullOrEmpty(pendingTxStartScn)) {
-                        // There is a pending transaction, capture state
-                        transactions.put(HexConverter.convertToHexString(rs.getBytes(2)), Scn.valueOf(pendingTxStartScn));
+                        final String transactionId = HexConverter.convertToHexString(rs.getBytes(2));
+                        final Scn transactionStartScn = Scn.valueOf(pendingTxStartScn);
+                        // There is a use case where if the archive logs do not contain sufficient logs where the
+                        // transaction started, LogMiner will return a value of 0 as the START_SCN and this can
+                        // unintentionally cause starting from the beginning of time.
+                        if (transactionStartScn.compareTo(Scn.ONE) > 0) {
+                            // There is a pending transaction, capture state
+                            transactions.put(transactionId, transactionStartScn);
+                        }
+                        else {
+                            LOGGER.warn("Unable to determine the start SCN, transaction {} will not be included", transactionId);
+                        }
                     }
                 }
             }
