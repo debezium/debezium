@@ -140,6 +140,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
 
     @Override
     public void processSchemaChange(P partition, OffsetContext offsetContext, DataCollectionId dataCollectionId) throws InterruptedException {
+        context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
         if (dataCollectionId != null && (context.currentDataCollectionId() != null) &&
                 dataCollectionId.equals(context.currentDataCollectionId().getId())) {
             rereadChunk(partition, offsetContext);
