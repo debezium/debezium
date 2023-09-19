@@ -553,7 +553,7 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
         private final Schema schema;
         private final String operation;
 
-        public NewRecordValueMetadata(Schema schema, String operation) {
+        NewRecordValueMetadata(Schema schema, String operation) {
             this.schema = schema;
             this.operation = operation;
         }
