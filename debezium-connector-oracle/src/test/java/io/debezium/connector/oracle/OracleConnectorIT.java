@@ -5752,7 +5752,52 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         assertThat(ids).doesNotHaveDuplicates();
         assertThat(ids).hasSize(expectedRecordCount);
     }
-    
+
+    @Test
+    @FixFor("DBZ-6176")
+    public void shouldNotDuplicateEventsInMultipleMiningLoops() throws Exception {
+        TestHelper.dropTable(connection, "DBZ6176");
+        Testing.Debug.enable();
+        try {
+            LogInterceptor logInterceptor = new LogInterceptor(LogMinerStreamingChangeEventSource.class);
+            logInterceptor.setLoggerLevel(LogMinerStreamingChangeEventSource.class, Level.DEBUG);
+
+            setConsumeTimeout(10, TimeUnit.SECONDS);
+
+            connection.execute("CREATE TABLE DBZ6176 (id INT primary key, data VARCHAR2(50))");
+            TestHelper.streamTable(connection, "DBZ6176");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ6176")
+                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                    .with(OracleConnectorConfig.LOG_MINING_BATCH_SIZE_DEFAULT, 10)
+                    .with(OracleConnectorConfig.LOG_MINING_SLEEP_TIME_DEFAULT_MS, 100)
+                    .build();
+
+            start(OracleConnector.class, config);
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // Start transaction, but don't commit it
+            connection.executeWithoutCommitting("INSERT INTO DBZ6176 (id, data) values (1, 'test value 1')");
+
+            LOGGER.info("Waiting for several mining loops to finish");
+            Awaitility.await().atMost(Duration.ofSeconds(10)).until(() -> logInterceptor.countOccurrences("Starting mining session") > 10);
+
+            // Insert one more record and commit it
+            connection.executeWithoutCommitting("INSERT INTO DBZ6176 (id,data) values (1001, 'test value 1001')");
+            connection.commit();
+
+            waitForAvailableRecords(5, TimeUnit.SECONDS);
+            SourceRecords sourceRecords = consumeAvailableRecordsByTopic();
+
+            List<SourceRecord> records = sourceRecords.recordsForTopic("server1.DEBEZIUM.DBZ6176");
+            assertThat(records).hasSize(2);
+        }
+        finally {
+            TestHelper.dropTable(connection, "DBZ6176");
+        }
+    }
+
     private void waitForCurrentScnToHaveBeenSeenByConnector() throws SQLException {
         try (OracleConnection admin = TestHelper.adminConnection(true)) {
             final Scn scn = admin.getCurrentScn();
