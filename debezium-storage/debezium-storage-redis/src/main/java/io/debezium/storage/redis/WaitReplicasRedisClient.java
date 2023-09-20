@@ -117,4 +117,8 @@ public class WaitReplicasRedisClient implements RedisClient {
         return delegate.info(section);
     }
 
+    @Override
+    public String clientList() {
+        return delegate.clientList();
+    }
 }
