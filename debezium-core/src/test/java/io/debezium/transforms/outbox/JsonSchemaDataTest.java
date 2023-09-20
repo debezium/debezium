@@ -43,6 +43,40 @@ public class JsonSchemaDataTest {
     }
 
     @Test
+    @FixFor("DBZ-6910")
+    public void shouldCreateCorrectSchemaFromArrayJson() throws Exception {
+        String key = "test_arr";
+        // remove description value from array json
+        JsonNode testNode = mapper
+                .readTree("[{\"code\":\"100\",\"description\":\"some description\"},{\"code\":\"200\",\"description\":\"another description\"},{\"code\":\"300\"}]");
+        Schema arraySchema = jsonSchemaData.toConnectSchema(key, testNode);
+
+        assertThat(arraySchema.valueSchema().field("code")).isNotNull();
+        assertThat(arraySchema.valueSchema().field("description").schema().type()).isEqualTo(Schema.Type.STRING);
+
+        // set null value for description
+        testNode = mapper.readTree("[{\"code\":\"100\",\"description\": null},{\"code\":\"200\",\"description\":\"another description\"},{\"code\":\"300\"}]");
+        arraySchema = jsonSchemaData.toConnectSchema(key, testNode);
+
+        assertThat(arraySchema.valueSchema().field("code")).isNotNull();
+        assertThat(arraySchema.valueSchema().field("description").schema().type()).isEqualTo(Schema.Type.STRING);
+
+        // treat null value as bytes type
+        jsonSchemaData = new JsonSchemaData(JsonPayloadNullFieldBehavior.OPTIONAL_BYTES);
+        testNode = mapper.readTree("[{\"code\":\"100\",\"description\": null},{\"code\":\"200\",\"description\": null},{\"code\":\"300\"}]");
+        arraySchema = jsonSchemaData.toConnectSchema(key, testNode);
+
+        assertThat(arraySchema.valueSchema().field("code")).isNotNull();
+        assertThat(arraySchema.valueSchema().field("description").schema().type()).isEqualTo(Schema.Type.BYTES);
+
+        testNode = mapper.readTree("[{\"code\":\"100\",\"description\": null},{\"code\":\"200\",\"description\": \"another description\"},{\"code\":\"300\"}]");
+        arraySchema = jsonSchemaData.toConnectSchema(key, testNode);
+
+        assertThat(arraySchema.valueSchema().field("code")).isNotNull();
+        assertThat(arraySchema.valueSchema().field("description").schema().type()).isEqualTo(Schema.Type.STRING);
+    }
+
+    @Test
     @FixFor("DBZ-5475")
     public void failSchemaCheckForArrayWithDifferentNumberTypes() throws Exception {
         JsonNode testNode = mapper.readTree("{\"test\": [1, 2.0, 3.0]}");
