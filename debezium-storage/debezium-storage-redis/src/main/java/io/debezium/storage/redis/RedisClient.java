@@ -90,4 +90,9 @@ public interface RedisClient {
      */
     String info(String section);
 
+    /**
+     * @return
+     * @throws RedisClientConnectionException
+     */
+    String clientList();
 }
