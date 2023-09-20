@@ -11,7 +11,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-import io.debezium.doc.FixFor;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.assertj.db.api.TableAssert;
@@ -27,6 +26,7 @@ import io.debezium.connector.jdbc.junit.TestHelper;
 import io.debezium.connector.jdbc.junit.jupiter.Sink;
 import io.debezium.connector.jdbc.junit.jupiter.SinkRecordFactoryArgumentsProvider;
 import io.debezium.connector.jdbc.util.SinkRecordFactory;
+import io.debezium.doc.FixFor;
 
 /**
  * Common insert mode tests.
@@ -369,9 +369,9 @@ public abstract class AbstractJdbcSinkInsertModeTest extends AbstractJdbcSinkTes
 
         final SinkRecord createRecord = factory.createRecordWithSchemaValue(topicName,
                 (byte) 1,
-                List.of( "optional_with_default_null_value"),
+                List.of("optional_with_default_null_value"),
                 List.of(SchemaBuilder.string().defaultValue("default").optional().build()),
-                Arrays.asList(new Object[]{null}));
+                Arrays.asList(new Object[]{ null }));
 
         consume(createRecord);
 
