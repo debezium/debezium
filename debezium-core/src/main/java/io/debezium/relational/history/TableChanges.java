@@ -50,8 +50,8 @@ public class TableChanges implements Iterable<TableChange> {
         return this;
     }
 
-    public TableChanges drop(Table table) {
-        changes.add(new TableChange(TableChangeType.DROP, table));
+    public TableChanges drop(TableId id) {
+        changes.add(new TableChange(TableChangeType.DROP, id));
         return this;
     }
 
@@ -98,6 +98,13 @@ public class TableChanges implements Iterable<TableChange> {
 
         public TableChange(TableChangeType type, Table table) {
             this(type, table, null);
+        }
+
+        public TableChange(TableChangeType type, TableId id) {
+            this.type = type;
+            this.id = id;
+            this.table = null;
+            this.previousId = null;
         }
 
         public TableChange(TableChangeType type, Table table, TableId previousId) {

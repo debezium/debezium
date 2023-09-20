@@ -49,8 +49,11 @@ public class JsonTableChangeSerializer implements TableChanges.TableChangesSeria
         if (tableChange.getPreviousId() != null) {
             document.setString("previousId", tableChange.getPreviousId().toDoubleQuotedString());
         }
-        document.setDocument("table", toDocument(tableChange.getTable()));
-        document.setString("comment", tableChange.getTable().comment());
+
+        if (tableChange.getTable() != null) {
+            document.setDocument("table", toDocument(tableChange.getTable()));
+            document.setString("comment", tableChange.getTable().comment());
+        }
 
         return document;
     }
@@ -135,7 +138,7 @@ public class JsonTableChangeSerializer implements TableChanges.TableChangesSeria
                 tableChanges.alter(change);
             }
             else if (change.getType() == TableChangeType.DROP) {
-                tableChanges.drop(change.getTable());
+                tableChanges.drop(change.getId());
             }
         }
 

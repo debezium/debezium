@@ -186,6 +186,7 @@ public class SchemaFactory {
                 .field(ConnectTableChangeSerializer.PRIMARY_KEY_COLUMN_NAMES_KEY, SchemaBuilder.array(Schema.STRING_SCHEMA).optional().build())
                 .field(ConnectTableChangeSerializer.COLUMNS_KEY, SchemaBuilder.array(schemaHistoryColumnSchema(adjuster)).build())
                 .field(ConnectTableChangeSerializer.COMMENT_KEY, Schema.OPTIONAL_STRING_SCHEMA)
+                .optional()
                 .build();
     }
 

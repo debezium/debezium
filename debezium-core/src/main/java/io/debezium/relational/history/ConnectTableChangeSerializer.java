@@ -76,7 +76,9 @@ public class ConnectTableChangeSerializer implements TableChanges.TableChangesSe
 
         struct.put(TYPE_KEY, tableChange.getType().name());
         struct.put(ID_KEY, tableChange.getId().toDoubleQuotedString());
-        struct.put(TABLE_KEY, toStruct(tableChange.getTable()));
+        if (tableChange.getTable() != null) {
+            struct.put(TABLE_KEY, toStruct(tableChange.getTable()));
+        }
         return struct;
     }
 
