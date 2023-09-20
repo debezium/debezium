@@ -124,7 +124,8 @@ public class RecordWriter {
             Object value;
             if (field.getSchema().isOptional()) {
                 value = source.getWithoutDefault(fieldName);
-            } else {
+            }
+            else {
                 value = source.get(fieldName);
             }
             List<ValueBindDescriptor> boundValues = dialect.bindValue(field, index, value);
