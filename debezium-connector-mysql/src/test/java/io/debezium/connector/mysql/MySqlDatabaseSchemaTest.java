@@ -9,6 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.file.Path;
 import java.time.Instant;
+import java.util.List;
 import java.util.Set;
 
 import org.apache.kafka.connect.data.Field;
@@ -30,7 +31,9 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
 import io.debezium.relational.history.AbstractSchemaHistory;
 import io.debezium.relational.history.SchemaHistory;
+import io.debezium.relational.history.TableChanges;
 import io.debezium.schema.DefaultTopicNamingStrategy;
+import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.text.ParsingException;
@@ -400,6 +403,31 @@ public class MySqlDatabaseSchemaTest {
 
         assertTableSchemaComments("captured.ct", "id", null);
         assertTableSchemaComments("captured.ct", "code", "order code");
+    }
+
+    @Test
+    @FixFor("DBZ-6945")
+    public void shouldProduceCorrectTableChangesForDropStatement() {
+        // Testing.Print.enable();
+        final Configuration config = DATABASE.defaultConfig().build();
+        mysql = getSchema(config);
+        mysql.initializeStorage();
+        final MySqlPartition partition = initializePartition(connectorConfig, config);
+        final MySqlOffsetContext offset = initializeOffset(connectorConfig);
+
+        // Set up the server ...
+        offset.setBinlogStartPoint("binlog.001", 400);
+        List<SchemaChangeEvent> schemaChangeEvents = mysql.parseStreamingDdl(partition, "DROP TABLE IF EXISTS connector_test.products", "db1",
+                offset, Instant.now());
+
+        mysql.close();
+
+        assertThat(schemaChangeEvents.size()).isEqualTo(1);
+        TableChanges.TableChange tableChange = schemaChangeEvents.get(0).getTableChanges().iterator().next();
+        assertThat(tableChange.getTable()).isEqualTo(null);
+        assertThat(tableChange.getType()).isEqualTo(TableChanges.TableChangeType.DROP);
+        assertThat(tableChange.getId()).isEqualTo(TableId.parse("connector_test.products"));
+
     }
 
     protected void assertTableSchemaComments(String tableName, String column, String comments) {

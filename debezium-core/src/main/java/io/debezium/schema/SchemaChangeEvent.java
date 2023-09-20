@@ -38,7 +38,7 @@ public class SchemaChangeEvent {
     private final Struct source;
     private final boolean isFromSnapshot;
     private final Instant timestamp;
-    private TableChanges tableChanges = new TableChanges();
+    private final TableChanges tableChanges = new TableChanges();
 
     private SchemaChangeEvent(Map<String, ?> partition, Map<String, ?> offset, Struct source, String database, String schema, String ddl, Table table,
                               SchemaChangeEventType type, boolean isFromSnapshot, TableId previousTableId) {
@@ -74,7 +74,7 @@ public class SchemaChangeEvent {
                 }
                 break;
             case DROP:
-                tables.forEach(tableChanges::drop);
+                tables.stream().map(Table::id).forEach(tableChanges::drop);
                 break;
             case DATABASE:
                 break;
