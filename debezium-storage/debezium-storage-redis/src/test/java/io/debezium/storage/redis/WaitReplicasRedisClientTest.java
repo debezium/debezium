@@ -165,6 +165,11 @@ public class WaitReplicasRedisClientTest {
             return "";
         }
 
+        @Override
+        public String clientList() {
+            return null;
+        }
+
     }
 
 }
