@@ -27,6 +27,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.jdbc.SinkRecordDescriptor.FieldDescriptor;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
+import io.debezium.connector.jdbc.filter.ColumnFilter;
 import io.debezium.connector.jdbc.naming.TableNamingStrategy;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
 import io.debezium.connector.jdbc.relational.TableId;
@@ -49,6 +50,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
     private final StatelessSession session;
     private final TableNamingStrategy tableNamingStrategy;
     private final RecordWriter recordWriter;
+    private final Map<String, List<String>> columnFilter;
 
     public JdbcChangeEventSink(JdbcSinkConnectorConfig config, StatelessSession session, DatabaseDialect dialect, RecordWriter recordWriter) {
 
@@ -57,6 +59,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
         this.dialect = dialect;
         this.session = session;
         this.recordWriter = recordWriter;
+        this.columnFilter = ColumnFilter.parse(config.getColumnFiltersList());
         final DatabaseVersion version = this.dialect.getVersion();
         LOGGER.info("Database version {}.{}.{}", version.getMajor(), version.getMinor(), version.getMicro());
     }
@@ -167,6 +170,8 @@ public class JdbcChangeEventSink implements ChangeEventSink {
             sinkRecordDescriptor = SinkRecordDescriptor.builder()
                     .withPrimaryKeyMode(config.getPrimaryKeyMode())
                     .withPrimaryKeyFields(config.getPrimaryKeyFields())
+                    .withColumnFilters(columnFilter)
+                    .withColumnFilterType(config.getColumnFilterType())
                     .withSinkRecord(record)
                     .withDialect(dialect)
                     .build();

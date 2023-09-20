@@ -25,6 +25,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.annotation.Immutable;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.PrimaryKeyMode;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
+import io.debezium.connector.jdbc.filter.ColumnFilter;
 import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 import io.debezium.connector.jdbc.type.Type;
 import io.debezium.connector.jdbc.util.SchemaUtils;
@@ -38,7 +39,7 @@ import io.debezium.data.Envelope.Operation;
  */
 @Immutable
 public class SinkRecordDescriptor {
-
+    private static final Logger LOGGER = LoggerFactory.getLogger(SinkRecordDescriptor.class);
     private final SinkRecord record;
     private final String topicName;
     private final List<String> keyFieldNames;
@@ -267,6 +268,8 @@ public class SinkRecordDescriptor {
         // External contributed builder state
         private PrimaryKeyMode primaryKeyMode;
         private Set<String> primaryKeyFields;
+        private Map<String, List<String>> columnFilter;
+        private JdbcSinkConnectorConfig.ColumnFilterType columnFilterType;
         private SinkRecord sinkRecord;
         private DatabaseDialect dialect;
 
@@ -292,6 +295,16 @@ public class SinkRecordDescriptor {
 
         public Builder withSinkRecord(SinkRecord record) {
             this.sinkRecord = record;
+            return this;
+        }
+
+        public Builder withColumnFilters(Map<String, List<String>> columnFilter) {
+            this.columnFilter = columnFilter;
+            return this;
+        }
+
+        public Builder withColumnFilterType(JdbcSinkConnectorConfig.ColumnFilterType columnFilterType) {
+            this.columnFilterType = columnFilterType;
             return this;
         }
 
@@ -365,10 +378,10 @@ public class SinkRecordDescriptor {
                 throw new ConnectException("Configured primary key mode 'record_key' cannot have null schema");
             }
             else if (keySchema.type().isPrimitive()) {
-                applyPrimitiveRecordKeyAsPrimaryKey(keySchema);
+                applyPrimitiveRecordKeyAsPrimaryKey(record, keySchema);
             }
             else if (Schema.Type.STRUCT.equals(keySchema.type())) {
-                applyRecordKeyAsPrimaryKey(keySchema);
+                applyRecordKeyAsPrimaryKey(record, keySchema);
             }
             else {
                 throw new ConnectException("An unsupported record key schema type detected: " + keySchema.type());
@@ -383,7 +396,7 @@ public class SinkRecordDescriptor {
             final SchemaBuilder headerSchemaBuilder = SchemaBuilder.struct();
             record.headers().forEach((Header header) -> headerSchemaBuilder.field(header.key(), header.schema()));
             final Schema headerSchema = headerSchemaBuilder.build();
-            applyRecordKeyAsPrimaryKey(headerSchema);
+            applyRecordKeyAsPrimaryKey(record, headerSchema);
 
         }
 
@@ -400,7 +413,7 @@ public class SinkRecordDescriptor {
             else if (flattened) {
                 for (Field field : record.valueSchema().fields()) {
                     if (primaryKeyFields.contains(field.name())) {
-                        addKeyField(field);
+                        addKeyField(record, field);
                     }
                 }
             }
@@ -408,13 +421,13 @@ public class SinkRecordDescriptor {
                 final Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
                 for (Field field : after.schema().fields()) {
                     if (primaryKeyFields.contains(field.name())) {
-                        addKeyField(field);
+                        addKeyField(record, field);
                     }
                 }
             }
         }
 
-        private void applyPrimitiveRecordKeyAsPrimaryKey(Schema keySchema) {
+        private void applyPrimitiveRecordKeyAsPrimaryKey(SinkRecord record, Schema keySchema) {
             if (primaryKeyFields.isEmpty()) {
                 throw new ConnectException("The " + JdbcSinkConnectorConfig.PRIMARY_KEY_FIELDS +
                         " configuration must be specified when using a primitive key.");
@@ -422,16 +435,39 @@ public class SinkRecordDescriptor {
             addKeyField(primaryKeyFields.iterator().next(), keySchema);
         }
 
-        private void applyRecordKeyAsPrimaryKey(Schema keySchema) {
+        private void applyRecordKeyAsPrimaryKey(SinkRecord record, Schema keySchema) {
             for (Field field : keySchema.fields()) {
                 if (primaryKeyFields.isEmpty() || primaryKeyFields.contains(field.name())) {
-                    addKeyField(field);
+                    addKeyField(record, field);
                 }
             }
         }
 
-        private void addKeyField(Field field) {
-            addKeyField(field.name(), field.schema());
+        private void addKeyField(SinkRecord record, Field field) {
+            String topic = record.topic();
+            switch (columnFilterType) {
+                case INCLUDE:
+                    if (columnFilter.containsKey(topic)) {
+                        if (ColumnFilter.isColumnIncluded(topic, field.name(), columnFilter)) {
+                            LOGGER.trace("Including field {} to the list of key fields", field.name());
+                            addKeyField(field.name(), field.schema());
+                        }
+                    }
+                    break;
+                case EXCLUDE:
+                    if (columnFilter.containsKey(topic)) {
+                        if (ColumnFilter.isColumnExcluded(topic, field.name(), columnFilter)) {
+                            LOGGER.warn("Excluding field {} which is a key field. " +
+                                    "This may cause unexpected behavior.", field.name());
+                        }
+                        else {
+                            addKeyField(field.name(), field.schema());
+                        }
+                    }
+                    break;
+                case NONE:
+                    addKeyField(field.name(), field.schema());
+            }
         }
 
         private void addKeyField(String name, Schema schema) {
@@ -446,7 +482,7 @@ public class SinkRecordDescriptor {
                 if (flattened) {
                     // In a flattened event type, it's safe to read the field names directly
                     // from the schema as this isn't a complex Debezium message type.
-                    applyNonKeyFields(valueSchema);
+                    applyNonKeyFields(record, valueSchema);
                 }
                 else {
                     // In a non-flattened event type, this is a complex Debezium type.
@@ -455,19 +491,46 @@ public class SinkRecordDescriptor {
                     if (after == null) {
                         throw new ConnectException("Received an unexpected message type that does not have an 'after' Debezium block");
                     }
-                    applyNonKeyFields(after.schema());
+                    applyNonKeyFields(record, after.schema());
                 }
             }
         }
 
-        private void applyNonKeyFields(Schema schema) {
+        private void applyNonKeyFields(SinkRecord record, Schema schema) {
+            String topic = record.topic();
             for (Field field : schema.fields()) {
                 if (!keyFieldNames.contains(field.name())) {
-                    FieldDescriptor fieldDescriptor = new FieldDescriptor(field.schema(), field.name(), false, dialect);
-                    nonKeyFieldNames.add(fieldDescriptor.getName());
-                    allFields.put(fieldDescriptor.getName(), fieldDescriptor);
+                    switch (columnFilterType) {
+                        case NONE:
+                            applyNonKeyFields(field.name(), field.schema());
+                            break;
+                        case INCLUDE:
+                            if (columnFilter.containsKey(topic)) {
+                                if (ColumnFilter.isColumnIncluded(topic, field.name(), columnFilter)) {
+                                    LOGGER.trace("Including field {} to the list of non-key fields", field.name());
+                                    applyNonKeyFields(field.name(), field.schema());
+                                }
+                            }
+                            break;
+                        case EXCLUDE:
+                            if (columnFilter.containsKey(topic)) {
+                                if (ColumnFilter.isColumnExcluded(topic, field.name(), columnFilter)) {
+                                    LOGGER.warn("Excluding field {} which is a non-key field. ", field.name());
+                                }
+                                else {
+                                    applyNonKeyFields(field.name(), field.schema());
+                                }
+                            }
+                            break;
+                    }
                 }
             }
+        }
+
+        private void applyNonKeyFields(String name, Schema schema) {
+            FieldDescriptor fieldDescriptor = new FieldDescriptor(schema, name, false, dialect);
+            nonKeyFieldNames.add(fieldDescriptor.getName());
+            allFields.put(fieldDescriptor.getName(), fieldDescriptor);
         }
     }
 }
