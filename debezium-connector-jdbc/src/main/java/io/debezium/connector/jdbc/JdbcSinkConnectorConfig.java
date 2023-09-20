@@ -64,6 +64,8 @@ public class JdbcSinkConnectorConfig {
     public static final String POSTGRES_POSTGIS_SCHEMA = "dialect.postgres.postgis.schema";
     public static final String SQLSERVER_IDENTITY_INSERT = "dialect.sqlserver.identity.insert";
     public static final String BATCH_SIZE = "batch.size";
+    public static final String COLUMN_INCLUDE_LIST = "column.include.list";
+    public static final String COLUMN_EXCLUDE_LIST = "column.exclude.list";
 
     // todo add support for the ValueConverter contract
 
@@ -274,6 +276,26 @@ public class JdbcSinkConnectorConfig {
             .withDescription("Specifies how many records to attempt to batch together into the destination table, when possible. " +
                     "You can also configure the connector’s underlying consumer’s max.poll.records using consumer.override.max.poll.records in the connector configuration.");
 
+    public static final Field COLUMN_INCLUDE_LIST_FIELD = Field.create(COLUMN_INCLUDE_LIST)
+            .withDisplayName("Include Columns")
+            .withType(Type.LIST)
+            .withGroup(Field.createGroupEntry(Field.Group.FILTERS, 1))
+            .withWidth(ConfigDef.Width.LONG)
+            .withImportance(ConfigDef.Importance.MEDIUM)
+            .withValidation(Field::isListOfRegex)
+            .withDescription("A comma-separated list of regular expressions matching fully-qualified names of columns that "
+                    + "should be included in change events. The column names must be delimited by the format <topic>.<column> ");
+
+    public static final Field COLUMN_EXCLUDE_LIST_FIELD = Field.create(COLUMN_EXCLUDE_LIST)
+            .withDisplayName("Exclude Columns")
+            .withType(Type.LIST)
+            .withGroup(Field.createGroupEntry(Field.Group.FILTERS, 2))
+            .withWidth(ConfigDef.Width.LONG)
+            .withImportance(ConfigDef.Importance.MEDIUM)
+            .withValidation(Field::isListOfRegex)
+            .withDescription("A comma-separated list of regular expressions matching fully-qualified names of columns that "
+                    + "should be excluded from change events.  The column names must be delimited by the format <topic>.<column> ");
+
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
             .connector(
                     CONNECTION_URL_FIELD,
@@ -297,13 +319,24 @@ public class JdbcSinkConnectorConfig {
                     DATABASE_TIME_ZONE_FIELD,
                     POSTGRES_POSTGIS_SCHEMA_FIELD,
                     SQLSERVER_IDENTITY_INSERT_FIELD,
-                    BATCH_SIZE_FIELD)
+                    BATCH_SIZE_FIELD,
+                    COLUMN_INCLUDE_LIST_FIELD,
+                    COLUMN_EXCLUDE_LIST_FIELD)
             .create();
 
     /**
      * The set of {@link Field}s defined as part of this configuration.
      */
     public static Field.Set ALL_FIELDS = Field.setOf(CONFIG_DEFINITION.all());
+
+    /**
+     * Defines the column filter type.
+     */
+    public enum ColumnFilterType {
+        INCLUDE,
+        EXCLUDE,
+        NONE
+    }
 
     /**
      * Defines the various different insertion modes supported.
@@ -503,6 +536,13 @@ public class JdbcSinkConnectorConfig {
                 LOGGER.info("   {} = {}", propName, propValue);
             });
         }
+
+        String columnExcludeList = config.getString(COLUMN_EXCLUDE_LIST);
+        String columnIncludeList = config.getString(COLUMN_INCLUDE_LIST);
+
+        if (!Strings.isNullOrEmpty(columnExcludeList) && !Strings.isNullOrEmpty(columnIncludeList)) {
+            throw new ConnectException("Cannot define both column.exclude.list and column.include.list. Please specify only one.");
+        }
     }
 
     public boolean validateAndRecord(Iterable<Field> fields, Consumer<String> problems) {
@@ -562,6 +602,32 @@ public class JdbcSinkConnectorConfig {
 
     public ColumnNamingStrategy getColumnNamingStrategy() {
         return columnNamingStrategy;
+    }
+
+    public String getColumnFiltersList() {
+        String columnExcludeList = config.getString(COLUMN_EXCLUDE_LIST);
+        String columnIncludeList = config.getString(COLUMN_INCLUDE_LIST);
+
+        if (!Strings.isNullOrEmpty(columnIncludeList)) {
+            return columnIncludeList;
+        }
+        else if (!Strings.isNullOrEmpty(columnExcludeList)) {
+            return columnExcludeList;
+        }
+        return null;
+    }
+
+    public ColumnFilterType getColumnFilterType() {
+        String columnExcludeList = config.getString(COLUMN_EXCLUDE_LIST);
+        String columnIncludeList = config.getString(COLUMN_INCLUDE_LIST);
+
+        if (!Strings.isNullOrEmpty(columnIncludeList)) {
+            return ColumnFilterType.INCLUDE;
+        }
+        else if (!Strings.isNullOrEmpty(columnExcludeList)) {
+            return ColumnFilterType.EXCLUDE;
+        }
+        return ColumnFilterType.NONE;
     }
 
     public String getDatabaseTimeZone() {
