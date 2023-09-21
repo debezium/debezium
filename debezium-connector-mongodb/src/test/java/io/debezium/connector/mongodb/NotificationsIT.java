@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.pipeline.notification;
+package io.debezium.connector.mongodb;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -30,45 +30,76 @@ import javax.management.ObjectName;
 import javax.management.ReflectionException;
 
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.connector.mongodb.MongoDbConnectorConfig.SnapshotMode;
+import io.debezium.engine.DebeziumEngine;
 import io.debezium.junit.logging.LogInterceptor;
+import io.debezium.pipeline.notification.AbstractNotificationsIT;
+import io.debezium.pipeline.notification.Notification;
 import io.debezium.pipeline.notification.channels.SinkNotificationChannel;
 import io.debezium.pipeline.notification.channels.jmx.JmxNotificationChannelMXBean;
 
-public abstract class AbstractNotificationsIT<T extends SourceConnector> extends AbstractConnectorTest {
+/**
+ * Test to verify notifications for MongoDB.
+ *
+ * @author Mario Fiore Vitale
+ */
+public class NotificationsIT extends AbstractMongoConnectorIT {
 
-    protected abstract Class<T> connectorClass();
+    protected static final int ROW_COUNT = 1_000;
 
-    protected abstract Configuration.Builder config();
+    private static final String DATABASE_NAME = "dbA";
+    private static final String COLLECTION_NAME = "c1";
+    private static final String FULL_COLLECTION_NAME = DATABASE_NAME + "." + COLLECTION_NAME;
 
-    protected abstract String connector();
+    @Before
+    public void before() {
+        // Set up the replication context for connections ...
+        context = new MongoDbTaskContext(config().build());
 
-    protected abstract String server();
-
-    protected String task() {
-        return null;
+        TestHelper.cleanDatabase(mongo, DATABASE_NAME);
     }
 
-    protected String database() {
-        return null;
+    @After
+    public void after() {
+        TestHelper.cleanDatabase(mongo, DATABASE_NAME);
+    }
+
+    protected Class<MongoDbConnector> connectorClass() {
+        return MongoDbConnector.class;
+    }
+
+    protected Configuration.Builder config() {
+        return TestHelper.getConfiguration(mongo)
+                .edit()
+                .with(MongoDbConnectorConfig.DATABASE_INCLUDE_LIST, DATABASE_NAME)
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, fullDataCollectionName() + ",dbA.c1,dbA.c2")
+                .with(MongoDbConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 10)
+                .with(MongoDbConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL);
+    }
+
+    protected String fullDataCollectionName() {
+        return FULL_COLLECTION_NAME;
     }
 
     protected void startConnector(Function<Configuration.Builder, Configuration.Builder> custConfig) {
-
-        final Configuration config = custConfig.apply(config()).build();
-
-        start(connectorClass(), config);
+        startConnector(custConfig, loggingCompletion());
     }
 
-    protected abstract String snapshotStatusResult();
+    protected void startConnector(Function<Configuration.Builder, Configuration.Builder> custConfig, DebeziumEngine.CompletionCallback callback) {
+        final Configuration config = custConfig.apply(config()).build();
+        start(connectorClass(), config, callback);
+
+        waitForAvailableRecords(5, TimeUnit.SECONDS);
+    }
 
     @Test
     public void notificationCorrectlySentOnItsTopic() {
@@ -80,7 +111,7 @@ public abstract class AbstractNotificationsIT<T extends SourceConnector> extends
 
         assertConnectorIsRunning();
 
-        waitForAvailableRecords(100, TimeUnit.MILLISECONDS);
+        waitForAvailableRecords(500, TimeUnit.MILLISECONDS);
 
         List<SourceRecord> notifications = new ArrayList<>();
 
@@ -91,14 +122,18 @@ public abstract class AbstractNotificationsIT<T extends SourceConnector> extends
                     notifications.add(r);
                 }
             });
-            return !notifications.isEmpty();
+            return notifications.size() == 2;
         });
 
-        assertThat(notifications).hasSize(1);
+        assertThat(notifications).hasSize(2);
         SourceRecord sourceRecord = notifications.get(0);
         Assertions.assertThat(sourceRecord.topic()).isEqualTo("io.debezium.notification");
         Assertions.assertThat(((Struct) sourceRecord.value()).getString("aggregate_type")).isEqualTo("Initial Snapshot");
-        Assertions.assertThat(((Struct) sourceRecord.value()).getString("type")).isEqualTo("Status " + snapshotStatusResult());
+        Assertions.assertThat(((Struct) sourceRecord.value()).getString("type")).isEqualTo("STARTED");
+        sourceRecord = notifications.get(1);
+        Assertions.assertThat(sourceRecord.topic()).isEqualTo("io.debezium.notification");
+        Assertions.assertThat(((Struct) sourceRecord.value()).getString("aggregate_type")).isEqualTo("Initial Snapshot");
+        Assertions.assertThat(((Struct) sourceRecord.value()).getString("type")).isEqualTo("COMPLETED");
     }
 
     @Test
@@ -130,7 +165,7 @@ public abstract class AbstractNotificationsIT<T extends SourceConnector> extends
     @Test
     public void notificationCorrectlySentOnJmx()
             throws ReflectionException, MalformedObjectNameException, InstanceNotFoundException, IntrospectionException, AttributeNotFoundException,
-            MBeanException, InterruptedException {
+            MBeanException {
 
         // Testing.Print.enable();
 
@@ -139,7 +174,7 @@ public abstract class AbstractNotificationsIT<T extends SourceConnector> extends
 
         assertConnectorIsRunning();
 
-        waitForSnapshotToBeCompleted(connector(), server(), task(), database());
+        // waitForSnapshotToBeCompleted("mongodb", "mongo1", "0", null);
 
         Awaitility.await().atMost(30, TimeUnit.SECONDS)
                 .pollDelay(1, TimeUnit.SECONDS)
@@ -148,10 +183,13 @@ public abstract class AbstractNotificationsIT<T extends SourceConnector> extends
 
         List<Notification> notifications = readNotificationFromJmx();
 
-        assertThat(notifications).hasSize(1);
+        assertThat(notifications).hasSize(2);
         assertThat(notifications.get(0))
                 .hasFieldOrPropertyWithValue("aggregateType", "Initial Snapshot")
-                .hasFieldOrPropertyWithValue("type", "Status " + snapshotStatusResult());
+                .hasFieldOrPropertyWithValue("type", "STARTED");
+        assertThat(notifications.get(1))
+                .hasFieldOrPropertyWithValue("aggregateType", "Initial Snapshot")
+                .hasFieldOrPropertyWithValue("type", "COMPLETED");
 
         resetNotifications();
 
@@ -167,24 +205,26 @@ public abstract class AbstractNotificationsIT<T extends SourceConnector> extends
         // Testing.Print.enable();
 
         startConnector(config -> config
-                .with(CommonConnectorConfig.SNAPSHOT_DELAY_MS, 2000)
+                .with(CommonConnectorConfig.SNAPSHOT_DELAY_MS, 10000)
                 .with(CommonConnectorConfig.NOTIFICATION_ENABLED_CHANNELS, "jmx"));
 
         List<javax.management.Notification> jmxNotifications = registerJmxNotificationListener();
 
         assertConnectorIsRunning();
 
-        waitForSnapshotToBeCompleted(connector(), server(), task(), database());
+        waitForSnapshotToBeCompleted("mongodb", "mongo1", "0", null);
 
         MBeanNotificationInfo[] notifications = readJmxNotifications();
 
-        assertThat(notifications)
-                .hasOnlyOneElementSatisfying(mBeanNotificationInfo -> assertThat(mBeanNotificationInfo.getName()).isEqualTo(Notification.class.getName()));
+        assertThat(notifications).allSatisfy(mBeanNotificationInfo -> assertThat(mBeanNotificationInfo.getName()).isEqualTo(Notification.class.getName()));
 
-        assertThat(jmxNotifications).hasSize(1);
+        assertThat(jmxNotifications).hasSize(2);
         assertThat(jmxNotifications.get(0)).hasFieldOrPropertyWithValue("message", "Initial Snapshot generated a notification");
         assertThat(jmxNotifications.get(0).getUserData())
-                .isEqualTo("{aggregateType='Initial Snapshot', type='Status COMPLETED', additionalData=null}");
+                .isEqualTo("{\"aggregateType\":\"Initial Snapshot\",\"type\":\"STARTED\",\"additionalData\":{\"connector_name\":\"mongo1\"}}");
+        assertThat(jmxNotifications.get(1)).hasFieldOrPropertyWithValue("message", "Initial Snapshot generated a notification");
+        assertThat(jmxNotifications.get(1).getUserData())
+                .isEqualTo("{\"aggregateType\":\"Initial Snapshot\",\"type\":\"COMPLETED\",\"additionalData\":{\"connector_name\":\"mongo1\"}}");
     }
 
     private List<Notification> readNotificationFromJmx()
@@ -219,7 +259,7 @@ public abstract class AbstractNotificationsIT<T extends SourceConnector> extends
 
     private ObjectName getObjectName() throws MalformedObjectNameException {
 
-        return new ObjectName(String.format("debezium.%s:type=management,context=notifications,server=%s", connector(), server()));
+        return new ObjectName(String.format("debezium.%s:type=management, context=notifications, server=%s", "mongodb", "mongo1"));
     }
 
     private List<javax.management.Notification> registerJmxNotificationListener()
@@ -229,8 +269,9 @@ public abstract class AbstractNotificationsIT<T extends SourceConnector> extends
         MBeanServer server = ManagementFactory.getPlatformMBeanServer();
 
         List<javax.management.Notification> receivedNotifications = new ArrayList<>();
-        server.addNotificationListener(notificationBean, new ClientListener(), null, receivedNotifications);
+        server.addNotificationListener(notificationBean, new AbstractNotificationsIT.ClientListener(), null, receivedNotifications);
 
+        System.out.println("Added listener");
         return receivedNotifications;
     }
 
@@ -251,5 +292,10 @@ public abstract class AbstractNotificationsIT<T extends SourceConnector> extends
 
             ((List<javax.management.Notification>) handback).add(notification);
         }
+    }
+
+    @Override
+    protected int getMaximumEnqueuedRecordCount() {
+        return ROW_COUNT * 3;
     }
 }
