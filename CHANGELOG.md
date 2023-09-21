@@ -2,6 +2,37 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.3.4.Final
+September 21st 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12412661)
+
+### New features since 2.3.3.Final
+
+* Configurable order of user defined and internal aggregation pipeline  [DBZ-6872](https://issues.redhat.com/browse/DBZ-6872)
+
+
+### Breaking changes since 2.3.3.Final
+
+None
+
+
+### Fixes since 2.3.3.Final
+
+* MongoDB New Document State Extraction: original name overriding does not work [DBZ-6773](https://issues.redhat.com/browse/DBZ-6773)
+* errors.max.retries = 0 Causes retrievable error to be ignored [DBZ-6866](https://issues.redhat.com/browse/DBZ-6866)
+* Oracle alter table drop constraint fails when cascading index [DBZ-6876](https://issues.redhat.com/browse/DBZ-6876)
+* ExtractNewRecordState's schema cache is not updated with arrival of the ddl change event [DBZ-6901](https://issues.redhat.com/browse/DBZ-6901)
+* Clean log printout in Redis Debezium Sink [DBZ-6908](https://issues.redhat.com/browse/DBZ-6908)
+* MySql connector get NPE when snapshot.mode is set to never and signal data collection configured [DBZ-6937](https://issues.redhat.com/browse/DBZ-6937)
+* Sanity check / retry for redo logs does not work per Oracle RAC thread [DBZ-6938](https://issues.redhat.com/browse/DBZ-6938)
+
+
+### Other changes since 2.3.3.Final
+
+* Increase Oracle log level to DEBUG for several key important log messages [DBZ-6880](https://issues.redhat.com/browse/DBZ-6880)
+* Document cursor pipeline ordering and oversize document handling mode [DBZ-6883](https://issues.redhat.com/browse/DBZ-6883)
+
+
+
 ## 2.3.3.Final
 September 4th 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12411366)
 
