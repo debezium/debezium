@@ -259,7 +259,7 @@ public class NotificationsIT extends AbstractMongoConnectorIT {
 
     private ObjectName getObjectName() throws MalformedObjectNameException {
 
-        return new ObjectName(String.format("debezium.%s:type=management, context=notifications, server=%s", "mongodb", "mongo1"));
+        return new ObjectName(String.format("debezium.%s:type=management,context=notifications,server=%s", "mongodb", "mongo1"));
     }
 
     private List<javax.management.Notification> registerJmxNotificationListener()
