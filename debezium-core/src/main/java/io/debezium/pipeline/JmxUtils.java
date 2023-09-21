@@ -27,7 +27,7 @@ import io.debezium.util.Metronome;
 public class JmxUtils {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JmxUtils.class);
-    private static final String JMX_OBJECT_NAME_FORMAT = "debezium.%s:type=%s, context=%s, server=%s";
+    private static final String JMX_OBJECT_NAME_FORMAT = "debezium.%s:type=%s,context=%s,server=%s";
 
     // Total 1 minute attempting to retry metrics registration in case of errors
     private static final int REGISTRATION_RETRIES = 12;
