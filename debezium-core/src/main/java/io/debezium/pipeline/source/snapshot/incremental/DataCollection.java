@@ -42,7 +42,9 @@ public class DataCollection<T> {
     }
 
     public Optional<String> getAdditionalCondition() {
-        return Strings.isNullOrEmpty(additionalCondition) ? Optional.empty() : Optional.of(additionalCondition);
+        // Encapsulate additional condition into parenthesis to make sure its own logical operators
+        // do not interfere with the built query
+        return Strings.isNullOrEmpty(additionalCondition) ? Optional.empty() : Optional.of("(" + additionalCondition + ")");
     }
 
     public Optional<String> getSurrogateKey() {
