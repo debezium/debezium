@@ -216,6 +216,9 @@ public class UniqueDatabase {
             builder.with(FileSchemaHistory.FILE_PATH, dbHistoryPath);
         }
 
+        // enable database DDL capture
+        builder.with(MySqlConnectorConfig.STORE_ONLY_CAPTURED_DATABASES_DDL, true);
+
         return builder;
     }
 
