@@ -1044,11 +1044,7 @@ public class OracleSchemaMigrationIT extends AbstractConnectorTest {
         tableChanges = ((Struct) record.value()).getArray("tableChanges");
         assertThat(tableChanges).hasSize(1);
         assertTableChange(tableChanges.get(0), "DROP", "DEBEZIUM", "tableC");
-        assertTableChangePrimaryKeyNames(tableChanges.get(0), "id");
-        assertTableChangeColumn(tableChanges.get(0), 0, "id");
-        assertTableChangeColumn(tableChanges.get(0), 1, "data");
-        assertTableChangeColumn(tableChanges.get(0), 2, "data2");
-        assertTableChangeColumn(tableChanges.get(0), 3, "Data3");
+        assertThat(tableChanges.get(0).getStruct("table")).isNull();
     }
 
     @Test
