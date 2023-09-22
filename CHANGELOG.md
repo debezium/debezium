@@ -2,6 +2,46 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.4.0.CR1
+September 22nd 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12413673)
+
+### New features since 2.4.0.Beta2
+
+* Update mongodb incremental snapshot to allow multiple threads reading chunks [DBZ-6518](https://issues.redhat.com/browse/DBZ-6518)
+* Support for GKE workload identities [DBZ-6885](https://issues.redhat.com/browse/DBZ-6885)
+* Support for PostgreSQL 16 [DBZ-6911](https://issues.redhat.com/browse/DBZ-6911)
+* Vitess connector should retry on not found errors [DBZ-6939](https://issues.redhat.com/browse/DBZ-6939)
+
+
+### Breaking changes since 2.4.0.Beta2
+
+* Retry all status runtime exceptions by default [DBZ-6944](https://issues.redhat.com/browse/DBZ-6944)
+
+
+### Fixes since 2.4.0.Beta2
+
+* Ad-hoc blocking snaps trigger emits schema changes of all tables [DBZ-6828](https://issues.redhat.com/browse/DBZ-6828)
+* When the start_scn corresponding to the existence of a transaction in V$TRANSACTION is 0, log mining starts from the oldest scn when the oracle connector is started for the first time [DBZ-6869](https://issues.redhat.com/browse/DBZ-6869)
+* Ensure that the connector can handle rebalance events robustly [DBZ-6870](https://issues.redhat.com/browse/DBZ-6870)
+* OpenLogReplicator confirmation can resend or omit events on restarts [DBZ-6895](https://issues.redhat.com/browse/DBZ-6895)
+* ExtractNewRecordState's schema cache is not updated with arrival of the ddl change event [DBZ-6901](https://issues.redhat.com/browse/DBZ-6901)
+* Misleading Debezium error message when RDI port is not specified in application.properties [DBZ-6902](https://issues.redhat.com/browse/DBZ-6902)
+* Generting protobuf files to target/generated-sources breaks build [DBZ-6903](https://issues.redhat.com/browse/DBZ-6903)
+* Clean log printout in Redis Debezium Sink [DBZ-6908](https://issues.redhat.com/browse/DBZ-6908)
+* Values being omitted from list of JSON object [DBZ-6910](https://issues.redhat.com/browse/DBZ-6910)
+* fix logger named [DBZ-6935](https://issues.redhat.com/browse/DBZ-6935)
+* MySql connector get NPE when snapshot.mode is set to never and signal data collection configured [DBZ-6937](https://issues.redhat.com/browse/DBZ-6937)
+* Sanity check / retry for redo logs does not work per Oracle RAC thread [DBZ-6938](https://issues.redhat.com/browse/DBZ-6938)
+* Drop events has wrong table changes information [DBZ-6945](https://issues.redhat.com/browse/DBZ-6945)
+* Remove spaces from Signal and Notification MBean's ObjectName [DBZ-6957](https://issues.redhat.com/browse/DBZ-6957)
+
+
+### Other changes since 2.4.0.Beta2
+
+* Migrate all examples from mongodb.hosts to mongodb.connection.string [DBZ-6893](https://issues.redhat.com/browse/DBZ-6893)
+
+
+
 ## 2.4.0.Beta2
 September 13rd 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12412109)
 
