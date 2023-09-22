@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ 20 ]
+        feature: [ 22 ]
     name: SQL Server - Java ${{ matrix.feature }}
     steps:
       - uses: actions/checkout@v4
@@ -31,7 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ 20 ]
+        feature: [ 22 ]
     name: MySQL - Java ${{ matrix.feature }}
     steps:
       - uses: actions/checkout@v4
@@ -48,7 +48,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ 20 ]
+        feature: [ 22 ]
     name: PostgreSQL Pgoutput - Java ${{ matrix.feature }}
     steps:
       - uses: actions/checkout@v4
@@ -60,13 +60,13 @@ jobs:
           website: jdk.java.net
           release: ${{ matrix.feature }}
       - name: Maven Build
-        run: ./mvnw clean install -B -pl debezium-bom,debezium-connector-postgres -am -Passembly,pgoutput-decoder,postgres-10 -Ddebezium.test.records.waittime=5 -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dversion.postgres.server=10-devel -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        run: ./mvnw clean install -B -pl debezium-bom,debezium-connector-postgres -am -Passembly,pgoutput-decoder,postgres-15 -Ddebezium.test.records.waittime=5 -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
   mongodb-40:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ 20 ]
-    name: MongoDB 4.0 - Java ${{ matrix.feature }}
+        feature: [ 22 ]
+    name: MongoDB 4.4 - Java ${{ matrix.feature }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -77,12 +77,12 @@ jobs:
           website: jdk.java.net
           release: ${{ matrix.feature }}
       - name: Maven Build
-        run: ./mvnw clean install -B -pl debezium-bom,debezium-connector-mongodb -am -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dversion.mongo.server=4.0 -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        run: ./mvnw clean install -B -pl debezium-bom,debezium-connector-mongodb -am -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dversion.mongo.server=4.4 -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
   oracle:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ 20 ]
+        feature: [ 22 ]
     name: Oracle - Java ${{ matrix.feature }}
     steps:
       - uses: actions/checkout@v4
@@ -99,7 +99,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ 20 ]
+        feature: [ 22 ]
     name: Cassandra - Java ${{ matrix.feature }}
     steps:
       - name: Checkout Core
@@ -127,7 +127,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ 20 ]
+        feature: [ 22 ]
     name: Db2 - Java ${{ matrix.feature }}
     steps:
       - name: Checkout Core
@@ -152,7 +152,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ 20 ]
+        feature: [ 22 ]
     name: Spanner - Java ${{ matrix.feature }}
     steps:
       - name: Checkout Core
@@ -177,7 +177,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ 20 ]
+        feature: [ 22 ]
     name: Vitess - Java ${{ matrix.feature }}
     steps:
       - name: Checkout Core
@@ -202,7 +202,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ 20 ]
+        feature: [ 22 ]
     name: Quarkus Outbox Extension - Java ${{ matrix.feature }}
     steps:
       - uses: actions/checkout@v4
@@ -219,7 +219,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ 20 ]
+        feature: [ 22 ]
     name: Rest Extension - Java ${{ matrix.feature }}
     steps:
       - uses: actions/checkout@v4
@@ -236,7 +236,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ 20 ]
+        feature: [ 22 ]
     name: Testing - Java ${{ matrix.feature }}
     steps:
       - uses: actions/checkout@v4
@@ -253,7 +253,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ 20 ]
+        feature: [ 22 ]
     name: Server - Java ${{ matrix.feature }}
     steps:
       - name: Checkout Core
