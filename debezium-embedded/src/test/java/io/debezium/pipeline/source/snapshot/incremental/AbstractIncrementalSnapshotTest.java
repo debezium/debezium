@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -408,6 +409,24 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         for (int i = 0; i < expectedRecordCount; i++) {
             assertThat(dbChanges).contains(entry(i + 1, i));
         }
+    }
+
+    @Test
+    @FixFor("DBZ-6945")
+    public void snapshotWithDuplicateDataCollections() throws Exception {
+        populateTable();
+        startConnector();
+        sendAdHocSnapshotSignal(tableDataCollectionId(), tableDataCollectionId());
+
+        final int expectedRecordCount = ROW_COUNT;
+        Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
+        for (int i = 0; i < expectedRecordCount; i++) {
+            assertThat(dbChanges).contains(entry(i + 1, i));
+        }
+
+        SourceRecords sourceRecords = consumeRecordsByTopic(1, 1);
+        assertTrue(Objects.isNull(sourceRecords.recordsForTopic(topicName())));
+
     }
 
     @Test

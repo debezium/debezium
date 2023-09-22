@@ -501,7 +501,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
         boolean shouldReadChunk = !context.snapshotRunning();
 
-        List<String> expandedDataCollectionIds = expandDataCollectionIds(snapshotConfiguration.getDataCollections());
+        List<String> expandedDataCollectionIds = expandAndDedupeDataCollectionIds(snapshotConfiguration.getDataCollections());
         if (expandedDataCollectionIds.size() > snapshotConfiguration.getDataCollections().size()) {
             LOGGER.info("Data-collections to snapshot have been expanded from {} to {}", snapshotConfiguration.getDataCollections(), expandedDataCollectionIds);
         }
@@ -549,7 +549,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                 }
             }
             else {
-                final List<String> expandedDataCollectionIds = expandDataCollectionIds(dataCollectionIds);
+                final List<String> expandedDataCollectionIds = expandAndDedupeDataCollectionIds(dataCollectionIds);
                 LOGGER.info("Removing '{}' collections from incremental snapshot", expandedDataCollectionIds);
                 // Iterate and remove any collections that are not current.
                 // If current is marked for removal, delay that until after others have been removed.
@@ -606,7 +606,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
      * Expands the string-based list of data collection ids if supplied using regex to a list of
      * all matching explicit data collection ids.
      */
-    private List<String> expandDataCollectionIds(List<String> dataCollectionIds) {
+    private List<String> expandAndDedupeDataCollectionIds(List<String> dataCollectionIds) {
 
         return dataCollectionIds
                 .stream()
@@ -618,8 +618,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                             .filter(t -> Pattern.compile(x).matcher(t).matches())
                             .collect(Collectors.toList());
                     return ids.isEmpty() ? Stream.of(x) : ids.stream();
-                })
-                .collect(Collectors.toList());
+                }).distinct().collect(Collectors.toList());
     }
 
     /**
