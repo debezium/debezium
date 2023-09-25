@@ -260,6 +260,7 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
             try {
                 this.lock.lock();
                 List<T> records = new ArrayList<>(Math.min(maxBatchSize, queue.size()));
+                throwProducerExceptionIfPresent();
                 while (drainRecords(records, maxBatchSize - records.size()) < maxBatchSize
                         && (maxQueueSizeInBytes == 0 || currentQueueSizeInBytes < maxQueueSizeInBytes)
                         && !timeout.expired()) {
