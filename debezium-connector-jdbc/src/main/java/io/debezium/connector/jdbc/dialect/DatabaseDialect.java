@@ -168,6 +168,14 @@ public interface DatabaseDialect {
     String getDeleteStatement(TableDescriptor table, SinkRecordDescriptor record);
 
     /**
+     * Construct a {@code TRUNCATE} statement specific for this dialect.
+     *
+     * @param table the current relational table model, should not be {@code null}
+     * @return the truncate SQL statement to be executed, never {@code null}
+     */
+    String getTruncateStatement(TableDescriptor table);
+
+    /**
      * Returns the SQL binding fragment for a column, schema, and type mapping.
      *
      * @param column the relational column type, never {@code null}
