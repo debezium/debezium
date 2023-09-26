@@ -43,6 +43,10 @@ public class SinkRecordBuilder {
         return new SinkRecordTypeBuilder(Type.TOMBSTONE);
     }
 
+    public static SinkRecordTypeBuilder truncate() {
+        return new SinkRecordTypeBuilder(Type.TRUNCATE);
+    }
+
     public static class SinkRecordTypeBuilder {
         private final Type type;
 
@@ -133,6 +137,8 @@ public class SinkRecordBuilder {
                     return buildDeleteSinkRecord();
                 case TOMBSTONE:
                     return buildTombstoneSinkRecord();
+                case TRUNCATE:
+                    return buildTruncateSinkRecord();
             }
             return null;
         }
@@ -197,6 +203,18 @@ public class SinkRecordBuilder {
             return new SinkRecord(topicName, partition, keySchema, key, null, null, offset);
         }
 
+        private SinkRecord buildTruncateSinkRecord() {
+            if (!flat) {
+                final Struct source = populateStructFromMap(new Struct(sourceSchema), sourceValues);
+                final Envelope envelope = createEnvelope();
+                final Struct payload = envelope.truncate(source, Instant.now());
+                return new SinkRecord(topicName, partition, null, null, envelope.schema(), payload, offset);
+            }
+            else {
+                return null;
+            }
+        }
+
         private Envelope createEnvelope() {
             return Envelope.defineSchema()
                     .withRecord(recordSchema)
@@ -224,6 +242,7 @@ public class SinkRecordBuilder {
         CREATE,
         UPDATE,
         DELETE,
-        TOMBSTONE
+        TOMBSTONE,
+        TRUNCATE
     }
 }
