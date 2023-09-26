@@ -53,7 +53,7 @@ public class RecordAndMetadataBaseImpl implements RecordAndMetadata {
     }
 
     @Override
-    public SchemaAndValue ts_ms() {
+    public SchemaAndValue timestamp() {
         String ts_ms = record.getInt64(Envelope.FieldName.TIMESTAMP).toString();
         Schema ts_msSchema = dataSchema.field(Envelope.FieldName.TIMESTAMP).schema();
         return new SchemaAndValue(ts_msSchema, ts_ms);

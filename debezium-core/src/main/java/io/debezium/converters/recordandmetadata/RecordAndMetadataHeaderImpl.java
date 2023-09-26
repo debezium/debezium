@@ -61,7 +61,7 @@ public class RecordAndMetadataHeaderImpl implements RecordAndMetadata {
     }
 
     @Override
-    public SchemaAndValue ts_ms() {
+    public SchemaAndValue timestamp() {
         return this.ts_ms;
     }
 
