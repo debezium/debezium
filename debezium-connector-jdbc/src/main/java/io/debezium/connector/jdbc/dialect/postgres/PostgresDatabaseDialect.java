@@ -154,6 +154,7 @@ public class PostgresDatabaseDialect extends GeneralDatabaseDialect {
         registerType(IntervalType.INSTANCE);
         registerType(SerialType.INSTANCE);
         registerType(BitType.INSTANCE);
+        registerType(BytesType.INSTANCE);
         registerType(JsonType.INSTANCE);
         registerType(UuidType.INSTANCE);
         registerType(EnumType.INSTANCE);
