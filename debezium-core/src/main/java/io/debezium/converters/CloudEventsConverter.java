@@ -483,6 +483,10 @@ public class CloudEventsConverter implements Converter {
             ceSchemaBuilder.withSchema(CloudEventsMaker.FieldName.DATASCHEMA, Schema.STRING_SCHEMA);
         }
 
+        if (maker.cePartitionKey() != null) {
+            ceSchemaBuilder.withSchema(CloudEventsMaker.FieldName.PARTITIONKEY, Schema.STRING_SCHEMA);
+        }
+
         ceSchemaBuilder.withSchema(adjustExtensionName(Envelope.FieldName.OPERATION), Schema.STRING_SCHEMA);
 
         ceSchemaFromSchema(sourceSchema, ceSchemaBuilder, CloudEventsConverter::adjustExtensionName, false);
@@ -502,8 +506,13 @@ public class CloudEventsConverter implements Converter {
                 .withValue(CloudEventsMaker.FieldName.TYPE, maker.ceType())
                 .withValue(CloudEventsMaker.FieldName.TIME, maker.ceTime())
                 .withValue(CloudEventsMaker.FieldName.DATACONTENTTYPE, maker.ceDatacontenttype());
+
         if (dataSchema != null) {
             ceValueBuilder.withValue(CloudEventsMaker.FieldName.DATASCHEMA, dataSchema);
+        }
+
+        if (maker.cePartitionKey() != null) {
+            ceValueBuilder.withValue(CloudEventsMaker.FieldName.PARTITIONKEY, maker.cePartitionKey());
         }
 
         ceValueBuilder.withValue(adjustExtensionName(Envelope.FieldName.OPERATION), parser.op());

@@ -5,7 +5,11 @@
  */
 package io.debezium.connector.mysql.converters;
 
+import java.util.Map;
+import java.util.stream.Collectors;
+
 import io.debezium.connector.AbstractSourceInfo;
+import io.debezium.connector.mysql.MySqlPartition;
 import io.debezium.converters.spi.CloudEventsMaker;
 import io.debezium.converters.spi.RecordParser;
 import io.debezium.converters.spi.SerializerType;
@@ -26,5 +30,14 @@ public class MySqlCloudEventsMaker extends CloudEventsMaker {
         return "name:" + recordParser.getMetadata(AbstractSourceInfo.SERVER_NAME_KEY)
                 + ";file:" + recordParser.getMetadata(MySqlRecordParser.BINLOG_FILENAME_OFFSET_KEY)
                 + ";pos:" + recordParser.getMetadata(MySqlRecordParser.BINLOG_POSITION_OFFSET_KEY);
+    }
+
+    @Override
+    public String cePartitionKey() {
+        Map<String, String> partitionKeys = new MySqlPartition(
+                recordParser.getMetadata(AbstractSourceInfo.SERVER_NAME_KEY).toString(),
+                recordParser.getMetadata(AbstractSourceInfo.DATABASE_NAME_KEY).toString()).getSourcePartition();
+
+        return partitionKeys.keySet().stream().sorted().map(k -> k + ":" + partitionKeys.get(k)).collect(Collectors.joining(";"));
     }
 }

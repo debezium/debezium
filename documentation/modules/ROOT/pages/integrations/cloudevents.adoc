@@ -71,8 +71,9 @@ The following example shows what a CloudEvents change event record emitted by a 
   "type" : "io.debezium.postgresql.datachangeevent", <4>
   "time" : "2020-01-13T13:55:39.738Z",               <5>
   "datacontenttype" : "application/json",            <6>
-  "iodebeziumop" : "r",                              <7>
-  "iodebeziumversion" : "{debezium-version}",        <8>
+  "partitionkey": "server:test_server",              <7>
+  "iodebeziumop" : "r",                              <8>
+  "iodebeziumversion" : "{debezium-version}",        <9>
   "iodebeziumconnector" : "postgresql",
   "iodebeziumname" : "test_server",
   "iodebeziumtsms" : "1578923739738",
@@ -82,10 +83,10 @@ The following example shows what a CloudEvents change event record emitted by a 
   "iodebeziumtable" : "a",
   "iodebeziumlsn" : "29274832",
   "iodebeziumxmin" : null,
-  "iodebeziumtxid": "565",                           <9>
+  "iodebeziumtxid": "565",                           <10>
   "iodebeziumtxtotalorder": "1",
   "iodebeziumtxdatacollectionorder": "1",
-  "data" : {                                         <10>
+  "data" : {                                         <11>
     "before" : null,
     "after" : {
       "pk" : 1,
@@ -101,10 +102,11 @@ The following example shows what a CloudEvents change event record emitted by a 
 <5> Time of the change in the source database.
 <6> Describes the content type of the `data` attribute, which is JSON in this example.
 The only alternative is Avro.
-<7> An operation identifier. Possible values are `r` for read, `c` for create, `u` for update, or `d` for delete.
-<8> All `source` attributes that are known from {prodname} change events are mapped to CloudEvents extension attributes by using the `iodebezium` prefix for the attribute name.
-<9> When enabled in the connector, each `transaction` attribute that is known from {prodname} change events is mapped to a CloudEvents extension attribute by using the `iodebeziumtx` prefix for the attribute name.
-<10> The actual data change itself. Depending on the operation and the connector, the data might contain `before`, `after` and/or `patch` fields.
+<7> Partition key used to sort changes in processing buckets.
+<8> An operation identifier. Possible values are `r` for read, `c` for create, `u` for update, or `d` for delete.
+<9> All `source` attributes that are known from {prodname} change events are mapped to CloudEvents extension attributes by using the `iodebezium` prefix for the attribute name.
+<10> When enabled in the connector, each `transaction` attribute that is known from {prodname} change events is mapped to a CloudEvents extension attribute by using the `iodebeziumtx` prefix for the attribute name.
+<11> The actual data change itself. Depending on the operation and the connector, the data might contain `before`, `after` and/or `patch` fields.
 
 The following example also shows what a CloudEvents change event record emitted by a PostgreSQL connector looks like. In this example, the PostgreSQL connector is again configured to use JSON as the CloudEvents format envelope, but this time the connector is configured to use Avro for the `data` format.
 
@@ -118,6 +120,7 @@ The following example also shows what a CloudEvents change event record emitted 
   "time" : "2020-01-13T14:04:18.597Z",
   "datacontenttype" : "application/avro",            <1>
   "dataschema" : "http://my-registry/schemas/ids/1", <2>
+  "partitionkey": "server:test_server",
   "iodebeziumop" : "r",
   "iodebeziumversion" : "{debezium-version}",
   "iodebeziumconnector" : "postgresql",
