@@ -398,6 +398,15 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
     }
 
     @Override
+    public String getTruncateStatement(TableDescriptor table) {
+        final SqlStatementBuilder builder = new SqlStatementBuilder();
+        builder.append("TRUNCATE TABLE ");
+        builder.append(getQualifiedTableName(table.getId()));
+
+        return builder.build();
+    }
+
+    @Override
     public String getQueryBindingWithValueCast(ColumnDescriptor column, Schema schema, Type type) {
         return "?";
     }
