@@ -100,6 +100,14 @@ public class SinkRecordDescriptor {
         return false;
     }
 
+    public boolean isTruncate() {
+        if (isDebeziumSinkRecord()) {
+            final Struct value = (Struct) record.value();
+            return Operation.TRUNCATE.equals(Operation.forCode(value.getString(Envelope.FieldName.OPERATION)));
+        }
+        return false;
+    }
+
     public Struct getKeyStruct(PrimaryKeyMode primaryKeyMode) {
         if (!getKeyFieldNames().isEmpty()) {
             switch (primaryKeyMode) {
@@ -281,9 +289,12 @@ public class SinkRecordDescriptor {
             Objects.requireNonNull(primaryKeyMode, "The primary key mode must be provided.");
             Objects.requireNonNull(sinkRecord, "The sink record must be provided.");
 
-            final boolean flattened = !isTombstone(sinkRecord) && isFlattened(sinkRecord);
-            readSinkRecordKeyData(sinkRecord, flattened);
-            readSinkRecordNonKeyData(sinkRecord, flattened);
+            boolean flattened = false;
+            if (!isTruncateEvent(sinkRecord)) {
+                flattened = !isTombstone(sinkRecord) && isFlattened(sinkRecord);
+                readSinkRecordKeyData(sinkRecord, flattened);
+                readSinkRecordNonKeyData(sinkRecord, flattened);
+            }
 
             return new SinkRecordDescriptor(sinkRecord, sinkRecord.topic(), keyFieldNames, nonKeyFieldNames, allFields, flattened);
         }
@@ -295,6 +306,14 @@ public class SinkRecordDescriptor {
         private boolean isTombstone(SinkRecord record) {
 
             return record.value() == null && record.valueSchema() == null;
+        }
+
+        private boolean isTruncateEvent(SinkRecord record) {
+            if (!isFlattened(record)) {
+                final Struct value = (Struct) record.value();
+                return Operation.TRUNCATE.equals(Operation.forCode(value.getString(Envelope.FieldName.OPERATION)));
+            }
+            return false;
         }
 
         private void readSinkRecordKeyData(SinkRecord record, boolean flattened) {

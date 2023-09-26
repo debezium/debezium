@@ -51,6 +51,7 @@ public class JdbcSinkConnectorConfig {
 
     public static final String INSERT_MODE = "insert.mode";
     public static final String DELETE_ENABLED = "delete.enabled";
+    public static final String TRUNCATE_ENABLED = "truncate.enabled";
     public static final String TABLE_NAME_FORMAT = "table.name.format";
     public static final String PRIMARY_KEY_MODE = "primary.key.mode";
     public static final String PRIMARY_KEY_FIELDS = "primary.key.fields";
@@ -149,6 +150,16 @@ public class JdbcSinkConnectorConfig {
             .withDefault(false)
             .withValidation(JdbcSinkConnectorConfig::validateDeleteEnabled)
             .withDescription("Whether to treat `null` record values as deletes. Requires primary.key.mode to be `record.key`.");
+
+    public static final Field TRUNCATE_ENABLED_FIELD = Field.create(TRUNCATE_ENABLED)
+            .withDisplayName("Controls whether records can be truncated by the connector")
+            .withType(Type.BOOLEAN)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 2))
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDefault(false)
+            .withValidation(JdbcSinkConnectorConfig::validateDeleteEnabled)
+            .withDescription("Whether to process debezium event `t` as truncate statement.");
 
     public static final Field TABLE_NAME_FORMAT_FIELD = Field.create(TABLE_NAME_FORMAT)
             .withDisplayName("A format string for the table")
@@ -262,6 +273,7 @@ public class JdbcSinkConnectorConfig {
                     CONNECTION_POOL_TIMEOUT_FIELD,
                     INSERT_MODE_FIELD,
                     DELETE_ENABLED_FIELD,
+                    TRUNCATE_ENABLED_FIELD,
                     TABLE_NAME_FORMAT_FIELD,
                     PRIMARY_KEY_MODE_FIELD,
                     PRIMARY_KEY_FIELDS_FIELD,
@@ -432,6 +444,7 @@ public class JdbcSinkConnectorConfig {
 
     private final InsertMode insertMode;
     private final boolean deleteEnabled;
+    private final boolean truncateEnabled;
     private final String tableNameFormat;
     private final PrimaryKeyMode primaryKeyMode;
     private final Set<String> primaryKeyFields;
@@ -449,6 +462,7 @@ public class JdbcSinkConnectorConfig {
         config = Configuration.from(props);
         this.insertMode = InsertMode.parse(config.getString(INSERT_MODE));
         this.deleteEnabled = config.getBoolean(DELETE_ENABLED_FIELD);
+        this.truncateEnabled = config.getBoolean(TRUNCATE_ENABLED_FIELD);
         this.tableNameFormat = config.getString(TABLE_NAME_FORMAT_FIELD);
         this.primaryKeyMode = PrimaryKeyMode.parse(config.getString(PRIMARY_KEY_MODE_FIELD));
         this.primaryKeyFields = Strings.setOf(config.getString(PRIMARY_KEY_FIELDS_FIELD), String::new);
@@ -489,6 +503,10 @@ public class JdbcSinkConnectorConfig {
 
     public boolean isDeleteEnabled() {
         return deleteEnabled;
+    }
+
+    public boolean isTruncateEnabled() {
+        return truncateEnabled;
     }
 
     public String getTableNameFormat() {
