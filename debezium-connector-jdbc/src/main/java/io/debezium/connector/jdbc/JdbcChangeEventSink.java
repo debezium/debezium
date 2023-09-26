@@ -219,7 +219,13 @@ public class JdbcChangeEventSink implements ChangeEventSink {
     }
 
     private void write(TableDescriptor table, SinkRecordDescriptor record) throws SQLException {
-        if (!record.isDelete()) {
+        if (record.isDelete()) {
+            writeDelete(dialect.getDeleteStatement(table, record), record);
+        }
+        else if (record.isTruncate()) {
+            writeTruncate(dialect.getTruncateStatement(table), record);
+        }
+        else {
             switch (config.getInsertMode()) {
                 case INSERT:
                     writeInsert(dialect.getInsertStatement(table, record), record);
@@ -234,9 +240,6 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                     writeUpdate(dialect.getUpdateStatement(table, record), record);
                     break;
             }
-        }
-        else {
-            writeDelete(dialect.getDeleteStatement(table, record), record);
         }
     }
 
@@ -305,6 +308,25 @@ public class JdbcChangeEventSink implements ChangeEventSink {
             LOGGER.trace("SQL: {}", sql);
             final NativeQuery<?> query = session.createNativeQuery(sql, Object.class);
             bindKeyValuesToQuery(record, query, 1);
+
+            query.executeUpdate();
+            transaction.commit();
+        }
+        catch (Exception e) {
+            transaction.rollback();
+            throw e;
+        }
+    }
+
+    private void writeTruncate(String sql, SinkRecordDescriptor record) throws SQLException {
+        if (!config.isTruncateEnabled()) {
+            LOGGER.debug("Truncates are not enabled, skipping truncate for topic '{}'", record.getTopicName());
+            return;
+        }
+        final Transaction transaction = session.beginTransaction();
+        try {
+            LOGGER.trace("SQL: {}", sql);
+            final NativeQuery<?> query = session.createNativeQuery(sql);
 
             query.executeUpdate();
             transaction.commit();
