@@ -45,8 +45,8 @@ public abstract class RecordParser {
         this.transaction = recordAndMetadata.transaction();
         this.op = recordAndMetadata.operation();
         this.opSchema = Schema.STRING_SCHEMA;
-        this.ts_ms = (String) recordAndMetadata.ts_ms().value();
-        this.ts_msSchema = recordAndMetadata.ts_ms().schema();
+        this.ts_ms = (String) recordAndMetadata.timestamp().value();
+        this.ts_msSchema = recordAndMetadata.timestamp().schema();
         this.connectorType = source.getString(AbstractSourceInfo.DEBEZIUM_CONNECTOR_KEY);
         this.dataSchema = recordAndMetadata.dataSchema(dataFields);
     }

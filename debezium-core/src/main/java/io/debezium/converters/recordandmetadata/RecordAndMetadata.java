@@ -27,5 +27,5 @@ public interface RecordAndMetadata {
 
     Struct transaction();
 
-    SchemaAndValue ts_ms();
+    SchemaAndValue timestamp();
 }
