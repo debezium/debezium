@@ -36,12 +36,12 @@ import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleDefaultValueConverter;
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OraclePartition;
-import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.OracleTaskContext;
 import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.StreamingAdapter.TableNameCaseSensitivity;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
+import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
 import io.debezium.connector.oracle.util.TestHelper;
@@ -74,7 +74,7 @@ public abstract class AbstractProcessorUnitTest<T extends AbstractLogMinerEventP
     protected ChangeEventSourceContext context;
     protected EventDispatcher<OraclePartition, TableId> dispatcher;
     protected OracleDatabaseSchema schema;
-    protected OracleStreamingChangeEventSourceMetrics metrics;
+    protected LogMinerStreamingChangeEventSourceMetrics metrics;
     protected OraclePartition partition;
     protected OracleOffsetContext offsetContext;
     protected OracleConnection connection;
@@ -361,7 +361,7 @@ public abstract class AbstractProcessorUnitTest<T extends AbstractLogMinerEventP
         return connection;
     }
 
-    private OracleStreamingChangeEventSourceMetrics createMetrics(OracleDatabaseSchema schema) throws Exception {
+    private LogMinerStreamingChangeEventSourceMetrics createMetrics(OracleDatabaseSchema schema) throws Exception {
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(getConfig().build());
         final OracleTaskContext taskContext = new OracleTaskContext(connectorConfig, schema);
 
@@ -371,7 +371,7 @@ public abstract class AbstractProcessorUnitTest<T extends AbstractLogMinerEventP
                 .maxQueueSize(DEFAULT_MAX_QUEUE_SIZE)
                 .build();
 
-        return new OracleStreamingChangeEventSourceMetrics(taskContext, queue, null, connectorConfig);
+        return new LogMinerStreamingChangeEventSourceMetrics(taskContext, queue, null, connectorConfig);
     }
 
     private LogMinerEventRow getStartLogMinerEventRow(Scn scn, String transactionId) {

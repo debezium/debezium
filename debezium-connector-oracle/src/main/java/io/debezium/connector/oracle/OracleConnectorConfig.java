@@ -33,6 +33,7 @@ import io.debezium.config.Field.ValidationOutput;
 import io.debezium.config.Instantiator;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
+import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.logminer.logwriter.LogWriterFlushStrategy;
 import io.debezium.connector.oracle.logminer.processor.LogMinerEventProcessor;
 import io.debezium.connector.oracle.logminer.processor.infinispan.EmbeddedInfinispanLogMinerEventProcessor;
@@ -1307,7 +1308,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                                                           OraclePartition partition,
                                                           OracleOffsetContext offsetContext,
                                                           OracleDatabaseSchema schema,
-                                                          OracleStreamingChangeEventSourceMetrics metrics) {
+                                                          LogMinerStreamingChangeEventSourceMetrics metrics) {
                 return new MemoryLogMinerEventProcessor(context, connectorConfig, connection, dispatcher, partition,
                         offsetContext, schema, metrics);
             }
@@ -1322,7 +1323,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                                                           OraclePartition partition,
                                                           OracleOffsetContext offsetContext,
                                                           OracleDatabaseSchema schema,
-                                                          OracleStreamingChangeEventSourceMetrics metrics) {
+                                                          LogMinerStreamingChangeEventSourceMetrics metrics) {
                 return new EmbeddedInfinispanLogMinerEventProcessor(context, connectorConfig, connection, dispatcher,
                         partition, offsetContext, schema, metrics);
             }
@@ -1337,7 +1338,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                                                           OraclePartition partition,
                                                           OracleOffsetContext offsetContext,
                                                           OracleDatabaseSchema schema,
-                                                          OracleStreamingChangeEventSourceMetrics metrics) {
+                                                          LogMinerStreamingChangeEventSourceMetrics metrics) {
                 return new RemoteInfinispanLogMinerEventProcessor(context, connectorConfig, connection, dispatcher,
                         partition, offsetContext, schema, metrics);
             }
@@ -1352,7 +1353,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                                                                OracleConnection connection, EventDispatcher<OraclePartition, TableId> dispatcher,
                                                                OraclePartition partition,
                                                                OracleOffsetContext offsetContext, OracleDatabaseSchema schema,
-                                                               OracleStreamingChangeEventSourceMetrics metrics);
+                                                               LogMinerStreamingChangeEventSourceMetrics metrics);
 
         LogMiningBufferType(String value) {
             this.value = value;

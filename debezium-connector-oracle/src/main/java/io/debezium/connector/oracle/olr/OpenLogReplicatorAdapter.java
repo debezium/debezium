@@ -13,13 +13,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.oracle.AbstractStreamingAdapter;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OraclePartition;
-import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.OracleTaskContext;
 import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.connector.oracle.Scn;
@@ -27,6 +27,7 @@ import io.debezium.document.Document;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotContext;
+import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
@@ -40,7 +41,7 @@ import io.debezium.util.Clock;
  *
  * @author Chris Cranford
  */
-public class OpenLogReplicatorAdapter extends AbstractStreamingAdapter {
+public class OpenLogReplicatorAdapter extends AbstractStreamingAdapter<OpenLogReplicatorStreamingChangeEventSourceMetrics> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OpenLogReplicatorAdapter.class);
     private static final String TYPE = "olr";
@@ -77,7 +78,7 @@ public class OpenLogReplicatorAdapter extends AbstractStreamingAdapter {
                                                                                       OracleDatabaseSchema schema,
                                                                                       OracleTaskContext taskContext,
                                                                                       Configuration jdbcConfig,
-                                                                                      OracleStreamingChangeEventSourceMetrics streamingMetrics) {
+                                                                                      OpenLogReplicatorStreamingChangeEventSourceMetrics streamingMetrics) {
         return new OpenLogReplicatorStreamingChangeEventSource(
                 connectorConfig,
                 connection,
@@ -86,6 +87,14 @@ public class OpenLogReplicatorAdapter extends AbstractStreamingAdapter {
                 clock,
                 schema,
                 streamingMetrics);
+    }
+
+    @Override
+    public OpenLogReplicatorStreamingChangeEventSourceMetrics getStreamingMetrics(OracleTaskContext taskContext,
+                                                                                  ChangeEventQueueMetrics changeEventQueueMetrics,
+                                                                                  EventMetadataProvider metadataProvider,
+                                                                                  OracleConnectorConfig connectorConfig) {
+        return new OpenLogReplicatorStreamingChangeEventSourceMetrics(taskContext, changeEventQueueMetrics, metadataProvider);
     }
 
     @Override

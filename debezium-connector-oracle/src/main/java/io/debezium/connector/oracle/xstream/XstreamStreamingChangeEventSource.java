@@ -19,7 +19,6 @@ import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleDatabaseVersion;
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OraclePartition;
-import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.SourceInfo;
 import io.debezium.connector.oracle.StreamingAdapter.TableNameCaseSensitivity;
@@ -52,7 +51,7 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
     private final ErrorHandler errorHandler;
     private final Clock clock;
     private final OracleDatabaseSchema schema;
-    private final OracleStreamingChangeEventSourceMetrics streamingMetrics;
+    private final XStreamStreamingChangeEventSourceMetrics streamingMetrics;
     private final String xStreamServerName;
     private volatile XStreamOut xsOut;
     private final int posVersion;
@@ -69,7 +68,7 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
     public XstreamStreamingChangeEventSource(OracleConnectorConfig connectorConfig, OracleConnection jdbcConnection,
                                              EventDispatcher<OraclePartition, TableId> dispatcher, ErrorHandler errorHandler,
                                              Clock clock, OracleDatabaseSchema schema,
-                                             OracleStreamingChangeEventSourceMetrics streamingMetrics) {
+                                             XStreamStreamingChangeEventSourceMetrics streamingMetrics) {
         this.connectorConfig = connectorConfig;
         this.jdbcConnection = jdbcConnection;
         this.dispatcher = dispatcher;

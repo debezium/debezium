@@ -27,8 +27,8 @@ import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OraclePartition;
-import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.Scn;
+import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.logminer.SqlUtils;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
@@ -53,7 +53,7 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
     private final EventDispatcher<OraclePartition, TableId> dispatcher;
     private final OraclePartition partition;
     private final OracleOffsetContext offsetContext;
-    private final OracleStreamingChangeEventSourceMetrics metrics;
+    private final LogMinerStreamingChangeEventSourceMetrics metrics;
 
     /**
      * Cache of transactions, keyed based on the transaction's unique identifier
@@ -73,13 +73,13 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
                                         OraclePartition partition,
                                         OracleOffsetContext offsetContext,
                                         OracleDatabaseSchema schema,
-                                        OracleStreamingChangeEventSourceMetrics metrics) {
+                                        LogMinerStreamingChangeEventSourceMetrics metrics) {
         super(context, connectorConfig, schema, partition, offsetContext, dispatcher, metrics);
         this.jdbcConnection = jdbcConnection;
         this.dispatcher = dispatcher;
         this.partition = partition;
         this.offsetContext = offsetContext;
-        this.metrics = metrics;
+        this.metrics = (LogMinerStreamingChangeEventSourceMetrics) metrics;
     }
 
     @Override
@@ -160,19 +160,18 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
                             iterator.remove();
 
                             metrics.addAbandonedTransactionId(entry.getKey());
-                            metrics.setActiveTransactions(transactionCache.size());
+                            metrics.setActiveTransactionCount(transactionCache.size());
                         }
                     }
 
                     // Update the oldest scn metric are transaction abandonment
                     final Optional<MemoryTransaction> oldestTransaction = getOldestTransactionInCache();
                     if (oldestTransaction.isPresent()) {
-                        metrics.setOldestScn(oldestTransaction.get().getStartScn());
-                        metrics.setOldestScnAge(oldestTransaction.get().getChangeTime());
+                        final MemoryTransaction transaction = oldestTransaction.get();
+                        metrics.setOldestScnDetails(transaction.getStartScn(), transaction.getChangeTime());
                     }
                     else {
-                        metrics.setOldestScn(Scn.NULL);
-                        metrics.setOldestScnAge(null);
+                        metrics.setOldestScnDetails(Scn.NULL, null);
                     }
 
                     offsetContext.setScn(thresholdScn);
@@ -273,10 +272,10 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
                 // Add new event at eventId offset
                 LOGGER.trace("Transaction {}, adding event reference at index {}", transactionId, eventId);
                 transaction.getEvents().add(eventSupplier.get());
-                metrics.calculateLagMetrics(row.getChangeTime());
+                metrics.calculateLagFromSource(row.getChangeTime());
             }
 
-            metrics.setActiveTransactions(getTransactionCache().size());
+            metrics.setActiveTransactionCount(getTransactionCache().size());
         }
         else if (!getConfig().isLobEnabled()) {
             // Explicitly only log this warning when LobEnabled is false because its commonplace for a
