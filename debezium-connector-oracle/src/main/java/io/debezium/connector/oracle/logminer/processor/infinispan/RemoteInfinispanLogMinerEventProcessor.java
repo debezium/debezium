@@ -33,8 +33,8 @@ import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OraclePartition;
-import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.Scn;
+import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.connector.oracle.logminer.processor.infinispan.marshalling.LogMinerEventMarshallerImpl;
 import io.debezium.connector.oracle.logminer.processor.infinispan.marshalling.TransactionMarshallerImpl;
@@ -75,7 +75,7 @@ public class RemoteInfinispanLogMinerEventProcessor extends AbstractInfinispanLo
                                                   OraclePartition partition,
                                                   OracleOffsetContext offsetContext,
                                                   OracleDatabaseSchema schema,
-                                                  OracleStreamingChangeEventSourceMetrics metrics) {
+                                                  LogMinerStreamingChangeEventSourceMetrics metrics) {
         super(context, connectorConfig, jdbcConnection, dispatcher, partition, offsetContext, schema, metrics);
 
         Configuration config = new ConfigurationBuilder()

@@ -35,8 +35,8 @@ import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OraclePartition;
-import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.Scn;
+import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
@@ -70,7 +70,7 @@ public class EmbeddedInfinispanLogMinerEventProcessor extends AbstractInfinispan
                                                     OraclePartition partition,
                                                     OracleOffsetContext offsetContext,
                                                     OracleDatabaseSchema schema,
-                                                    OracleStreamingChangeEventSourceMetrics metrics) {
+                                                    LogMinerStreamingChangeEventSourceMetrics metrics) {
         super(context, connectorConfig, jdbcConnection, dispatcher, partition, offsetContext, schema, metrics);
 
         LOGGER.info("Using Infinispan in embedded mode.");

@@ -9,6 +9,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
@@ -24,8 +25,8 @@ import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OraclePartition;
-import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.Scn;
+import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
 import io.debezium.connector.oracle.logminer.processor.AbstractLogMinerEventProcessor;
@@ -45,7 +46,7 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractInfinispanLogMinerEventProcessor.class);
 
     private final OracleConnection jdbcConnection;
-    private final OracleStreamingChangeEventSourceMetrics metrics;
+    private final LogMinerStreamingChangeEventSourceMetrics metrics;
     private final OraclePartition partition;
     private final OracleOffsetContext offsetContext;
     private final EventDispatcher<OraclePartition, TableId> dispatcher;
@@ -57,10 +58,10 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
                                                     OraclePartition partition,
                                                     OracleOffsetContext offsetContext,
                                                     OracleDatabaseSchema schema,
-                                                    OracleStreamingChangeEventSourceMetrics metrics) {
+                                                    LogMinerStreamingChangeEventSourceMetrics metrics) {
         super(context, connectorConfig, schema, partition, offsetContext, dispatcher, metrics);
         this.jdbcConnection = jdbcConnection;
-        this.metrics = metrics;
+        this.metrics = (LogMinerStreamingChangeEventSourceMetrics) metrics;
         this.partition = partition;
         this.offsetContext = offsetContext;
         this.dispatcher = dispatcher;
@@ -268,11 +269,11 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
                 // Add new event at eventId offset
                 LOGGER.trace("Transaction {}, adding event reference at key {}", transactionId, eventKey);
                 getEventCache().put(eventKey, eventSupplier.get());
-                metrics.calculateLagMetrics(row.getChangeTime());
+                metrics.calculateLagFromSource(row.getChangeTime());
             }
             // When using Infinispan, this extra put is required so that the state is properly synchronized
             getTransactionCache().put(transactionId, transaction);
-            metrics.setActiveTransactions(getTransactionCache().size());
+            metrics.setActiveTransactionCount(getTransactionCache().size());
         }
         else {
             LOGGER.warn("Event for transaction {} skipped as transaction has been processed.", transactionId);
@@ -303,11 +304,14 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
         // Cleanup caches based on current state of the transaction cache
         final Optional<InfinispanTransaction> oldestTransaction = getOldestTransactionInCache();
         final Scn minCacheScn;
+        final Instant minCacheScnChangeTime;
         if (oldestTransaction.isPresent()) {
             minCacheScn = oldestTransaction.get().getStartScn();
+            minCacheScnChangeTime = oldestTransaction.get().getChangeTime();
         }
         else {
             minCacheScn = Scn.NULL;
+            minCacheScnChangeTime = null;
         }
 
         if (!minCacheScn.isNull()) {
@@ -342,7 +346,7 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
 
             // update offsets
             offsetContext.setScn(endScn);
-            metrics.setOldestScn(minCacheScn);
+            metrics.setOldestScnDetails(minCacheScn, minCacheScnChangeTime);
             metrics.setOffsetScn(endScn);
 
             // optionally dispatch a heartbeat event

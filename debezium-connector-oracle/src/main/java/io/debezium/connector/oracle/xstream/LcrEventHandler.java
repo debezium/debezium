@@ -22,7 +22,6 @@ import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.connector.oracle.OracleSchemaChangeEventEmitter;
-import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.connector.oracle.xstream.XstreamStreamingChangeEventSource.PositionAndScn;
 import io.debezium.pipeline.ErrorHandler;
@@ -60,7 +59,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
     private final OracleOffsetContext offsetContext;
     private final boolean tablenameCaseInsensitive;
     private final XstreamStreamingChangeEventSource eventSource;
-    private final OracleStreamingChangeEventSourceMetrics streamingMetrics;
+    private final XStreamStreamingChangeEventSourceMetrics streamingMetrics;
     private final Map<String, ChunkColumnValues> columnChunks;
     private RowLCR currentRow;
 
@@ -68,7 +67,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
                     EventDispatcher<OraclePartition, TableId> dispatcher, Clock clock,
                     OracleDatabaseSchema schema, OraclePartition partition, OracleOffsetContext offsetContext,
                     boolean tablenameCaseInsensitive, XstreamStreamingChangeEventSource eventSource,
-                    OracleStreamingChangeEventSourceMetrics streamingMetrics) {
+                    XStreamStreamingChangeEventSourceMetrics streamingMetrics) {
         this.connectorConfig = connectorConfig;
         this.errorHandler = errorHandler;
         this.dispatcher = dispatcher;

@@ -22,7 +22,6 @@ import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.connector.oracle.OracleSchemaChangeEventEmitter;
-import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.olr.client.OlrNetworkClient;
@@ -59,7 +58,7 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
     private final ErrorHandler errorHandler;
     private final Clock clock;
     private final OracleDatabaseSchema schema;
-    private final OracleStreamingChangeEventSourceMetrics streamingMetrics;
+    private final OpenLogReplicatorStreamingChangeEventSourceMetrics streamingMetrics;
 
     private OlrNetworkClient client;
     private OraclePartition partition;
@@ -72,7 +71,7 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
                                                        EventDispatcher<OraclePartition, TableId> dispatcher,
                                                        ErrorHandler errorHandler, Clock clock,
                                                        OracleDatabaseSchema schema,
-                                                       OracleStreamingChangeEventSourceMetrics streamingMetrics) {
+                                                       OpenLogReplicatorStreamingChangeEventSourceMetrics streamingMetrics) {
         this.connectorConfig = connectorConfig;
         this.dispatcher = dispatcher;
         this.jdbcConnection = connection;
@@ -185,6 +184,9 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
                     throw new DebeziumException("Unexpected event type detected: " + payloadEvent.getType());
             }
         }
+
+        streamingMetrics.incrementProcessedEventsCount();
+        streamingMetrics.setCheckpointDetails(event.getCheckpointScn(), event.getCheckpointIndex());
     }
 
     private void onBeginEvent(StreamingEvent event) {
@@ -194,10 +196,6 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
         offsetContext.setTransactionId(event.getXid());
         offsetContext.setSourceTime(event.getTimestamp());
         transactionEvents = false;
-
-        streamingMetrics.setOffsetScn(offsetContext.getScn());
-        streamingMetrics.setActiveTransactions(1);
-        streamingMetrics.addProcessedRows(1L);
 
         // We do not specifically start a transaction boundary here.
         //
@@ -213,11 +211,7 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
         offsetContext.setTransactionId(event.getXid());
         offsetContext.setSourceTime(event.getTimestamp());
 
-        streamingMetrics.setOffsetScn(offsetContext.getScn());
-        streamingMetrics.setCommittedScn(offsetContext.getScn());
-        streamingMetrics.setActiveTransactions(0);
-        streamingMetrics.addProcessedRows(1L);
-        streamingMetrics.incrementCommittedTransactions();
+        streamingMetrics.incrementCommittedTransactionCount();
 
         // We may see empty transactions and in this case we don't want to emit a transaction boundary
         // record for these cases. Only trigger commit when there are valid changes.
@@ -241,9 +235,6 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
         offsetContext.setEventScn(event.getCheckpointScn());
         offsetContext.setTransactionId(event.getXid());
         offsetContext.setSourceTime(event.getTimestamp());
-
-        streamingMetrics.setOffsetScn(offsetContext.getScn());
-        streamingMetrics.setCommittedScn(offsetContext.getScn());
 
         // For checkpoints, we do not emit any type of normal event, so while we do update
         // the checkpoint details, these won't be flushed until the next commit flush.
@@ -291,10 +282,7 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
         offsetContext.setTransactionId(event.getXid());
         offsetContext.tableEvent(tableId, event.getTimestamp());
 
-        streamingMetrics.setOffsetScn(offsetContext.getScn());
-        streamingMetrics.addProcessedRows(1L);
         streamingMetrics.setLastCapturedDmlCount(1);
-        streamingMetrics.incrementRegisteredDmlCount();
 
         updateCheckpoint(event);
 
@@ -341,10 +329,6 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
         offsetContext.setEventScn(event.getCheckpointScn());
         offsetContext.setTransactionId(event.getXid());
         offsetContext.tableEvent(tableId, event.getTimestamp());
-
-        streamingMetrics.setOffsetScn(offsetContext.getScn());
-        streamingMetrics.setCommittedScn(offsetContext.getScn());
-        streamingMetrics.addProcessedRows(1L);
 
         final String sqlStatement = schemaEvent.getSql().toLowerCase().trim();
 

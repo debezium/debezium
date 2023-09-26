@@ -19,8 +19,8 @@ import org.slf4j.LoggerFactory;
 import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.OracleConnectorConfig;
-import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.Scn;
+import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
@@ -42,7 +42,7 @@ public class RacCommitLogWriterFlushStrategy implements LogWriterFlushStrategy {
     private static final Logger LOGGER = LoggerFactory.getLogger(RacCommitLogWriterFlushStrategy.class);
 
     private final Map<String, CommitLogWriterFlushStrategy> flushStrategies = new HashMap<>();
-    private final OracleStreamingChangeEventSourceMetrics streamingMetrics;
+    private final LogMinerStreamingChangeEventSourceMetrics streamingMetrics;
     private final JdbcConfiguration jdbcConfiguration;
     private final OracleConnectorConfig connectorConfig;
     private final Set<String> hosts;
@@ -55,7 +55,7 @@ public class RacCommitLogWriterFlushStrategy implements LogWriterFlushStrategy {
      * @param streamingMetrics the streaming metrics, must not be {@code null}
      */
     public RacCommitLogWriterFlushStrategy(OracleConnectorConfig connectorConfig, JdbcConfiguration jdbcConfig,
-                                           OracleStreamingChangeEventSourceMetrics streamingMetrics) {
+                                           LogMinerStreamingChangeEventSourceMetrics streamingMetrics) {
         this.jdbcConfiguration = jdbcConfig;
         this.streamingMetrics = streamingMetrics;
         this.connectorConfig = connectorConfig;

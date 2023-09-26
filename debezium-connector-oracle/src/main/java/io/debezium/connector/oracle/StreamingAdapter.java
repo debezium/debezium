@@ -8,8 +8,10 @@ package io.debezium.connector.oracle;
 import java.sql.SQLException;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.RelationalSnapshotChangeEventSource.RelationalSnapshotContext;
@@ -22,7 +24,7 @@ import io.debezium.util.Clock;
  *
  * @author Chris Cranford
  */
-public interface StreamingAdapter {
+public interface StreamingAdapter<T extends AbstractOracleStreamingChangeEventSourceMetrics> {
 
     /**
      * Controls whether table names are viewed as case-sensitive or not.
@@ -57,7 +59,12 @@ public interface StreamingAdapter {
                                                                                OracleDatabaseSchema schema,
                                                                                OracleTaskContext taskContext,
                                                                                Configuration jdbcConfig,
-                                                                               OracleStreamingChangeEventSourceMetrics streamingMetrics);
+                                                                               T streamingMetrics);
+
+    T getStreamingMetrics(OracleTaskContext taskContext,
+                          ChangeEventQueueMetrics changeEventQueueMetrics,
+                          EventMetadataProvider metadataProvider,
+                          OracleConnectorConfig connectorConfig);
 
     /**
      * Returns whether table names are case sensitive.

@@ -47,13 +47,13 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
     private final String objectOwner;
     private final String ddlText;
     private final TableFilter filters;
-    private final OracleStreamingChangeEventSourceMetrics streamingMetrics;
+    private final AbstractOracleStreamingChangeEventSourceMetrics streamingMetrics;
     private final TruncateReceiver truncateReceiver;
 
     public OracleSchemaChangeEventEmitter(OracleConnectorConfig connectorConfig, OraclePartition partition,
                                           OracleOffsetContext offsetContext, TableId tableId, String sourceDatabaseName,
                                           String objectOwner, String ddlText, OracleDatabaseSchema schema,
-                                          Instant changeTime, OracleStreamingChangeEventSourceMetrics streamingMetrics,
+                                          Instant changeTime, AbstractOracleStreamingChangeEventSourceMetrics streamingMetrics,
                                           TruncateReceiver truncateReceiver) {
         this.partition = partition;
         this.offsetContext = offsetContext;
@@ -85,9 +85,9 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
         }
         catch (ParsingException | MultipleParsingExceptions e) {
             if (schema.skipUnparseableDdlStatements()) {
-                LOGGER.warn("Ignoring unparsable DDL statement '{}': {}", ddlText, e);
+                LOGGER.warn("Ignoring unparsable DDL statement '{}':", ddlText, e);
                 streamingMetrics.incrementWarningCount();
-                streamingMetrics.incrementUnparsableDdlCount();
+                streamingMetrics.incrementSchemaChangeParseErrorCount();
             }
             else {
                 throw e;

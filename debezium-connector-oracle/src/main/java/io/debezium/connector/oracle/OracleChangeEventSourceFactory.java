@@ -33,12 +33,12 @@ public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory<
     private final OracleDatabaseSchema schema;
     private final Configuration jdbcConfig;
     private final OracleTaskContext taskContext;
-    private final OracleStreamingChangeEventSourceMetrics streamingMetrics;
+    private final AbstractOracleStreamingChangeEventSourceMetrics streamingMetrics;
 
     public OracleChangeEventSourceFactory(OracleConnectorConfig configuration, MainConnectionProvidingConnectionFactory<OracleConnection> connectionFactory,
                                           ErrorHandler errorHandler, EventDispatcher<OraclePartition, TableId> dispatcher, Clock clock, OracleDatabaseSchema schema,
                                           Configuration jdbcConfig, OracleTaskContext taskContext,
-                                          OracleStreamingChangeEventSourceMetrics streamingMetrics) {
+                                          AbstractOracleStreamingChangeEventSourceMetrics streamingMetrics) {
         this.configuration = configuration;
         this.connectionFactory = connectionFactory;
         this.errorHandler = errorHandler;

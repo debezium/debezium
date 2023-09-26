@@ -23,6 +23,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
+import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.oracle.AbstractStreamingAdapter;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
@@ -30,13 +31,13 @@ import io.debezium.connector.oracle.OracleConnectorConfig.TransactionSnapshotBou
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OraclePartition;
-import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.OracleTaskContext;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.document.Document;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotContext;
+import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
@@ -50,7 +51,7 @@ import io.debezium.util.Strings;
 /**
  * @author Chris Cranford
  */
-public class LogMinerAdapter extends AbstractStreamingAdapter {
+public class LogMinerAdapter extends AbstractStreamingAdapter<LogMinerStreamingChangeEventSourceMetrics> {
 
     private static final Duration GET_TRANSACTION_SCN_PAUSE = Duration.ofSeconds(1);
 
@@ -92,7 +93,7 @@ public class LogMinerAdapter extends AbstractStreamingAdapter {
                                                                                       OracleDatabaseSchema schema,
                                                                                       OracleTaskContext taskContext,
                                                                                       Configuration jdbcConfig,
-                                                                                      OracleStreamingChangeEventSourceMetrics streamingMetrics) {
+                                                                                      LogMinerStreamingChangeEventSourceMetrics streamingMetrics) {
         return new LogMinerStreamingChangeEventSource(
                 connectorConfig,
                 connection,
@@ -102,6 +103,14 @@ public class LogMinerAdapter extends AbstractStreamingAdapter {
                 schema,
                 jdbcConfig,
                 streamingMetrics);
+    }
+
+    @Override
+    public LogMinerStreamingChangeEventSourceMetrics getStreamingMetrics(OracleTaskContext taskContext,
+                                                                         ChangeEventQueueMetrics changeEventQueueMetrics,
+                                                                         EventMetadataProvider metadataProvider,
+                                                                         OracleConnectorConfig connectorConfig) {
+        return new LogMinerStreamingChangeEventSourceMetrics(taskContext, changeEventQueueMetrics, metadataProvider, connectorConfig);
     }
 
     @Override

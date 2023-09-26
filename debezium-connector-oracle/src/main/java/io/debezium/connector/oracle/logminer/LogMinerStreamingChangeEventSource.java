@@ -35,7 +35,6 @@ import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningBufferType;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OraclePartition;
-import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.logwriter.CommitLogWriterFlushStrategy;
 import io.debezium.connector.oracle.logminer.logwriter.LogWriterFlushStrategy;
@@ -75,7 +74,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     private final OracleConnectorConfig.LogMiningStrategy strategy;
     private final ErrorHandler errorHandler;
     private final boolean isContinuousMining;
-    private final OracleStreamingChangeEventSourceMetrics streamingMetrics;
+    private final LogMinerStreamingChangeEventSourceMetrics streamingMetrics;
     private final OracleConnectorConfig connectorConfig;
     private final Duration archiveLogRetention;
     private final boolean archiveLogOnlyMode;
@@ -90,11 +89,13 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     private List<LogFile> currentLogFiles;
     private List<BigInteger> currentRedoLogSequences;
     private OracleOffsetContext effectiveOffset;
+    private int currentBatchSize;
+    private long currentSleepTime;
 
     public LogMinerStreamingChangeEventSource(OracleConnectorConfig connectorConfig,
                                               OracleConnection jdbcConnection, EventDispatcher<OraclePartition, TableId> dispatcher,
                                               ErrorHandler errorHandler, Clock clock, OracleDatabaseSchema schema,
-                                              Configuration jdbcConfig, OracleStreamingChangeEventSourceMetrics streamingMetrics) {
+                                              Configuration jdbcConfig, LogMinerStreamingChangeEventSourceMetrics streamingMetrics) {
         this.jdbcConnection = jdbcConnection;
         this.dispatcher = dispatcher;
         this.clock = clock;
@@ -111,6 +112,11 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
         this.logFileQueryMaxRetries = connectorConfig.getMaximumNumberOfLogQueryRetries();
         this.initialDelay = connectorConfig.getLogMiningInitialDelay();
         this.maxDelay = connectorConfig.getLogMiningMaxDelay();
+        this.currentBatchSize = connectorConfig.getLogMiningBatchSizeDefault();
+        this.currentSleepTime = connectorConfig.getLogMiningSleepTimeDefault().toMillis();
+
+        this.streamingMetrics.setBatchSize(this.currentBatchSize);
+        this.streamingMetrics.setSleepTime(this.currentSleepTime);
     }
 
     @Override
@@ -176,7 +182,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                     Stopwatch sw = Stopwatch.accumulating().start();
                     while (context.isRunning()) {
                         // Calculate time difference before each mining session to detect time zone offset changes (e.g. DST) on database server
-                        streamingMetrics.calculateTimeDifference(getDatabaseSystemTime(jdbcConnection));
+                        streamingMetrics.setDatabaseTimeDifference(getDatabaseSystemTime(jdbcConnection));
 
                         if (archiveLogOnlyMode && !waitForStartScnInArchiveLogs(context, startScn)) {
                             break;
@@ -239,7 +245,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                             else {
                                 retryAttempts = 1;
                                 startScn = processor.process(startScn, endScn);
-                                streamingMetrics.setCurrentBatchProcessingTime(Duration.between(start, Instant.now()));
+                                streamingMetrics.setLastBatchProcessingDuration(Duration.between(start, Instant.now()));
                                 captureSessionMemoryStatistics(jdbcConnection);
                             }
                             pauseBetweenMiningSessions();
@@ -530,8 +536,8 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
         });
 
         final Set<String> fileNames = getCurrentRedoLogFiles(jdbcConnection);
-        streamingMetrics.setCurrentLogFileName(fileNames);
-        streamingMetrics.setRedoLogStatus(logStatuses);
+        streamingMetrics.setCurrentLogFileNames(fileNames);
+        streamingMetrics.setRedoLogStatuses(logStatuses);
     }
 
     /**
@@ -573,7 +579,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     }
 
     private void pauseBetweenMiningSessions() throws InterruptedException {
-        Duration period = Duration.ofMillis(streamingMetrics.getMillisecondToSleepBetweenMiningQuery());
+        Duration period = Duration.ofMillis(streamingMetrics.getSleepTimeInMilliseconds());
         Metronome.sleeper(period, clock).pause();
     }
 
@@ -628,7 +634,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
             // NOTE: we treat startSCN as the _exclusive_ lower bound for mining,
             // whereas START_LOGMNR takes an _inclusive_ lower bound, hence the increment.
             connection.executeWithoutCommitting(SqlUtils.startLogMinerStatement(startScn.add(Scn.ONE), endScn, strategy, isContinuousMining));
-            streamingMetrics.addCurrentMiningSessionStart(Duration.between(start, Instant.now()));
+            streamingMetrics.setLastMiningSessionStartDuration(Duration.between(start, Instant.now()));
             return true;
         }
         catch (SQLException e) {
@@ -672,6 +678,38 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
         }
     }
 
+    private void updateBatchSize(boolean increment) {
+        if (increment && currentBatchSize < connectorConfig.getLogMiningBatchSizeMin()) {
+            currentBatchSize += connectorConfig.getLogMiningBatchSizeMin();
+            if (currentBatchSize == connectorConfig.getLogMiningBatchSizeMax()) {
+                LOGGER.info("The connector is now using the maximum batch size {} when querying the LogMiner view.{}",
+                        currentBatchSize,
+                        connectorConfig.isLobEnabled() ? "" : " This could be indicate of a large SCN gap.");
+            }
+        }
+        else if (!increment && currentBatchSize > connectorConfig.getLogMiningBatchSizeMin()) {
+            currentBatchSize -= connectorConfig.getLogMiningBatchSizeMin();
+        }
+
+        if (currentBatchSize != connectorConfig.getLogMiningBatchSizeMax()) {
+            LOGGER.debug("Updated batch size window, using batch size {}", currentBatchSize);
+        }
+
+        streamingMetrics.setBatchSize(currentBatchSize);
+    }
+
+    private void updateSleepTime(boolean increment) {
+        if (increment && currentSleepTime < connectorConfig.getLogMiningSleepTimeMax().toMillis()) {
+            currentSleepTime += connectorConfig.getLogMiningSleepTimeIncrement().toMillis();
+        }
+        else if (currentSleepTime > connectorConfig.getLogMiningSleepTimeMin().toMillis()) {
+            currentSleepTime -= connectorConfig.getLogMiningSleepTimeIncrement().toMillis();
+        }
+
+        LOGGER.debug("Updated sleep time window, using sleep time {}.", currentSleepTime);
+        streamingMetrics.setSleepTime(currentSleepTime);
+    }
+
     /**
      * Calculates the mining session's end system change number.
      *
@@ -704,17 +742,17 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
         boolean topMiningScnInFarFuture = false;
         final Scn defaultBatchScn = Scn.valueOf(connectorConfig.getLogMiningBatchSizeDefault());
         if (topScnToMine.subtract(currentScn).compareTo(defaultBatchScn) > 0) {
-            streamingMetrics.changeBatchSize(false, connectorConfig.isLobEnabled());
+            updateBatchSize(false);
             topMiningScnInFarFuture = true;
         }
         if (currentScn.subtract(topScnToMine).compareTo(defaultBatchScn) > 0) {
-            streamingMetrics.changeBatchSize(true, connectorConfig.isLobEnabled());
+            updateBatchSize(true);
         }
 
         // Control sleep time to reduce database impact
         if (currentScn.compareTo(topScnToMine) < 0) {
             if (!topMiningScnInFarFuture) {
-                streamingMetrics.changeSleepingTime(true);
+                updateSleepTime(true);
             }
             LOGGER.debug("Using current SCN {} as end SCN.", currentScn);
             return currentScn;
@@ -724,7 +762,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                 LOGGER.debug("Max batch size too small, using current SCN {} as end SCN.", currentScn);
                 return currentScn;
             }
-            streamingMetrics.changeSleepingTime(false);
+            updateSleepTime(false);
             if (topScnToMine.compareTo(startScn) < 0) {
                 LOGGER.debug("Top SCN calculation resulted in end before start SCN, using current SCN {} as end SCN.", currentScn);
                 return currentScn;
