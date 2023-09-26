@@ -14,7 +14,7 @@ ifdef::community[]
 
 toc::[]
 endif::community[]
-Use the `SchemaChangeEventFilter`single message transformation (SMT) to filter schema change events that the connector captures from a table and sends to Kafka.
+Use the `SchemaChangeEventFilter` single message transformation (SMT) to filter schema change events that the connector captures from a table and sends to Kafka.
 After you enable the SMT, the connector synchronizes only the unfiltered DDL events to Kafka, giving you control over which DDL operations are exposed to consuming applications.
 
 // Type: concept

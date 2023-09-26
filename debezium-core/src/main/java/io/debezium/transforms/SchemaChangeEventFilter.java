@@ -37,7 +37,7 @@ public class SchemaChangeEventFilter<R extends ConnectRecord<R>> implements Tran
             .withDisplayName("Schema change event exclude list")
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.SHORT)
-            .withImportance(ConfigDef.Importance.LOW)
+            .withImportance(ConfigDef.Importance.HIGH)
             .withDescription(
                     "Support filtering during DDL synchronization")
             .required();
@@ -51,7 +51,8 @@ public class SchemaChangeEventFilter<R extends ConnectRecord<R>> implements Tran
         smtManager = new SmtManager<>(config);
         smtManager.validate(config, Field.setOf(SCHEMA_CHANGE_EVENT_EXCLUDE_LIST));
         final String excludeSchemaChangeEvents = config.getString(SCHEMA_CHANGE_EVENT_EXCLUDE_LIST);
-        this.excludeSchemaChangeEvents = Arrays.stream(excludeSchemaChangeEvents.split(",")).map(typeName -> SchemaChangeEvent.SchemaChangeEventType.valueOf(typeName))
+        this.excludeSchemaChangeEvents = Arrays.stream(excludeSchemaChangeEvents.split(","))
+                .map(typeName -> SchemaChangeEvent.SchemaChangeEventType.valueOf(typeName.trim()))
                 .collect(Collectors.toSet());
 
     }
@@ -65,21 +66,19 @@ public class SchemaChangeEventFilter<R extends ConnectRecord<R>> implements Tran
 
         List<Struct> tableChanges = recordValue.getArray(HistoryRecord.Fields.TABLE_CHANGES);
         if (tableChanges == null) {
-            LOGGER.debug("Table changes is empty, excluded it.");
+            LOGGER.debug("Table changes field is null, excluding it");
             return null;
         }
         SchemaChangeEvent.SchemaChangeEventType schemaChangeEventType;
         if (tableChanges.isEmpty()) {
+            LOGGER.debug("Table changes field is empty, expecting {} event type", SchemaChangeEvent.SchemaChangeEventType.DATABASE);
             schemaChangeEventType = SchemaChangeEvent.SchemaChangeEventType.DATABASE;
         }
         else {
             schemaChangeEventType = SchemaChangeEvent.SchemaChangeEventType.valueOf((String) tableChanges.get(0).get(ConnectTableChangeSerializer.TYPE_KEY));
         }
 
-        if (excludeSchemaChangeEvents.contains(schemaChangeEventType)) {
-            return record;
-        }
-        return null;
+        return excludeSchemaChangeEvents.contains(schemaChangeEventType) ? null : record;
     }
 
     @Override
@@ -92,5 +91,4 @@ public class SchemaChangeEventFilter<R extends ConnectRecord<R>> implements Tran
     @Override
     public void close() {
     }
-
 }

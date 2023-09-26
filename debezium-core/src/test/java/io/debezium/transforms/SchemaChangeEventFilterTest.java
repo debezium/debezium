@@ -46,10 +46,10 @@ public class SchemaChangeEventFilterTest extends AbstractExtractStateTest {
     public void testSchemaChangeContainsEventTypeFilter() {
         try (SchemaChangeEventFilter<SourceRecord> transform = new SchemaChangeEventFilter<>()) {
             final Map<String, String> props = new HashMap<>();
-            props.put(SCHEMA_CHANGE_EVENT_EXCLUDE_LIST, "ALTER,CREATE");
+            props.put(SCHEMA_CHANGE_EVENT_EXCLUDE_LIST, "ALTER, CREATE");
             transform.configure(props);
             final SourceRecord record = createSchemaChangeRecordContainsEventType();
-            assertThat(transform.apply(record));
+            assertThat(transform.apply(record)).isNull();
         }
     }
 
@@ -60,7 +60,7 @@ public class SchemaChangeEventFilterTest extends AbstractExtractStateTest {
             props.put(SCHEMA_CHANGE_EVENT_EXCLUDE_LIST, "ALTER,CREATE");
             transform.configure(props);
             final SourceRecord record = createSchemaChangeRecordNonEventType();
-            assertThat(transform.apply(record)).isNull();
+            assertThat(transform.apply(record)).isSameAs(record);
         }
     }
 
@@ -71,7 +71,7 @@ public class SchemaChangeEventFilterTest extends AbstractExtractStateTest {
             props.put(SCHEMA_CHANGE_EVENT_EXCLUDE_LIST, "ALTER,CREATE");
             transform.configure(props);
             final SourceRecord record = createSchemaChangeRecordNonContainsEventType();
-            assertThat(transform.apply(record)).isNull();
+            assertThat(transform.apply(record)).isSameAs(record);
         }
     }
 
