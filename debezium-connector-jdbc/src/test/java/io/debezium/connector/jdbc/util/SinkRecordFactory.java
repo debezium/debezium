@@ -393,4 +393,15 @@ public interface SinkRecordFactory {
                 .build();
     }
 
+    default SinkRecord truncateRecord(String topicName) {
+        return SinkRecordBuilder.truncate()
+                .flat(isFlattened())
+                .topic(topicName)
+                .offset(1)
+                .partition(0)
+                .recordSchema(basicRecordSchema())
+                .sourceSchema(basicSourceSchema())
+                .build();
+    }
+
 }

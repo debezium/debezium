@@ -186,4 +186,60 @@ public abstract class AbstractJdbcSinkDeleteEnabledTest extends AbstractJdbcSink
         getSink().assertColumnType(tableAssert, "name", ValueType.TEXT);
     }
 
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("DBZ-6970")
+    public void testShouldSkipTruncateRecord(SinkRecordFactory factory) {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_KEY.getValue());
+        properties.put(JdbcSinkConnectorConfig.TRUNCATE_ENABLED, "false");
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server1", "schema", tableName);
+
+        final SinkRecord createRecord = factory.createRecord(topicName);
+        consume(createRecord);
+        consume(factory.truncateRecord(topicName));
+
+        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName(createRecord));
+        tableAssert.exists().hasNumberOfRows(1).hasNumberOfColumns(3);
+
+        getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1);
+        getSink().assertColumnType(tableAssert, "name", ValueType.TEXT, "John Doe");
+        getSink().assertColumnType(tableAssert, "nick_name$", ValueType.TEXT, "John Doe$");
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("DBZ-6970")
+    public void testShouldHandleTruncateRecord(SinkRecordFactory factory) {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_KEY.getValue());
+        properties.put(JdbcSinkConnectorConfig.TRUNCATE_ENABLED, "true");
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server1", "schema", tableName);
+
+        final SinkRecord createRecord = factory.createRecord(topicName);
+        consume(createRecord);
+        consume(factory.truncateRecord(topicName));
+
+        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName(createRecord));
+        // will skip truncate event since there is no operation "t" in flatten value
+        if (factory.isFlattened()) {
+            tableAssert.exists().hasNumberOfRows(1).hasNumberOfColumns(3);
+            getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1);
+            getSink().assertColumnType(tableAssert, "name", ValueType.TEXT, "John Doe");
+            getSink().assertColumnType(tableAssert, "nick_name$", ValueType.TEXT, "John Doe$");
+        }
+        else {
+            tableAssert.exists().hasNumberOfRows(0).hasNumberOfColumns(3);
+        }
+    }
 }
