@@ -152,7 +152,7 @@ public class JdbcSinkConnectorConfig {
             .withDescription("Whether to treat `null` record values as deletes. Requires primary.key.mode to be `record.key`.");
 
     public static final Field TRUNCATE_ENABLED_FIELD = Field.create(TRUNCATE_ENABLED)
-            .withDisplayName("Controls whether records can be truncated by the connector")
+            .withDisplayName("Controls whether tables can be truncated by the connector")
             .withType(Type.BOOLEAN)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 2))
             .withWidth(ConfigDef.Width.SHORT)

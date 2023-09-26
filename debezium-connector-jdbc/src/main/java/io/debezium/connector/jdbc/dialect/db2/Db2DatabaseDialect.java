@@ -187,4 +187,14 @@ public class Db2DatabaseDialect extends GeneralDatabaseDialect {
         }
         return columnName;
     }
+
+    @Override
+    public String getTruncateStatement(TableDescriptor table) {
+        String truncateStatement = super.getTruncateStatement(table);
+        final SqlStatementBuilder builder = new SqlStatementBuilder();
+        builder.append(truncateStatement);
+        builder.append(" IMMEDIATE");
+
+        return builder.build();
+    }
 }
