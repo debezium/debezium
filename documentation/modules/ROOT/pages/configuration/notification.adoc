@@ -56,6 +56,9 @@ In domain-driven design, exported events should always refer to an aggregate.
 |additional_data
 |A Map<String,String> with detailed information about the notification.
 For an example, see xref:debezium-notifications-about-the-progress-of-incremental-snapshots[{prodname} notifications about the progress of incremental snapshots].
+
+|timestamp
+|The time when the notification has been created. Epoch unix timestamp in milliseconds
 |===
 
 // Type: assembly
@@ -77,7 +80,11 @@ The following example shows a typical notification that provides the status of a
 {
     "id": "5563ae14-49f8-4579-9641-c1bbc2d76f99",
     "aggregate_type": "Initial Snapshot",
-    "type": "COMPLETED" <1>
+    "type": "COMPLETED" <1>,
+    "additional_data" : {
+        "connector_name": "myConnector"
+    },
+    "timestamp": "1695817046353"
 }
 ----
 <1> The type field can contain one of the following values:
@@ -106,7 +113,8 @@ a|[source, json]
       "additional_data":{
          "connector_name":"my-connector",
          "data_collections":"table1, table2"
-      }
+      },
+      "timestamp": "1695817046353"
 }
 ----
 |Paused
@@ -119,7 +127,8 @@ a|[source, json]
       "additional_data":{
          "connector_name":"my-connector",
          "data_collections":"table1, table2"
-      }
+      },
+      "timestamp": "1695817046353"
 }
 ----
 |Resumed
@@ -132,7 +141,8 @@ a|[source, json]
    "additional_data":{
       "connector_name":"my-connector",
       "data_collections":"table1, table2"
-   }
+   },
+   "timestamp": "1695817046353"
 }
 ----
 |Stopped
@@ -144,7 +154,8 @@ a|[source, json]
    "type":"ABORTED",
    "additional_data":{
       "connector_name":"my-connector"
-   }
+   },
+   "timestamp": "1695817046353"
 }
 ----
 |Processing chunk
@@ -160,7 +171,8 @@ a|[source, json]
       "current_collection_in_progress":"table1",
       "maximum_key":"100",
       "last_processed_key":"50"
-   }
+   },
+   "timestamp": "1695817046353"
 }
 ----
 |Snapshot completed for a table
@@ -176,7 +188,8 @@ a|[source, json]
       "scanned_collection":"table1",
       "total_rows_scanned":"100",
       "status":"SUCCEEDED" // <1>
-   }
+   },
+   "timestamp": "1695817046353"
 }
 ----
 <1> The possible values are:
@@ -195,7 +208,8 @@ a|[source, json]
    "type":"COMPLETED",
    "additional_data":{
       "connector_name":"my-connector"
-   }
+   },
+   "timestamp": "1695817046353"
 }
 ----
 |===
