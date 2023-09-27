@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mongodb;
 
+import static java.util.function.Predicate.not;
 import static java.util.stream.Collectors.toList;
 
 import java.util.ArrayList;
@@ -31,6 +32,7 @@ import io.debezium.data.Envelope;
  */
 class ChangeStreamPipelineFactory {
 
+    public static final String LIST_DELIMITER = ",";
     private static final Logger LOGGER = LoggerFactory.getLogger(ChangeStreamPipelineFactory.class);
 
     private final MongoDbConnectorConfig connectorConfig;
@@ -62,6 +64,8 @@ class ChangeStreamPipelineFactory {
                 return internalPipeline.then(userPipeline);
             case USER_FIRST:
                 return userPipeline.then(internalPipeline);
+            case USER_ONLY:
+                return userPipeline;
             default:
                 // this should never happen
                 throw new DebeziumException("Unknown aggregation pipeline order");
@@ -89,7 +93,7 @@ class ChangeStreamPipelineFactory {
         var filters = Stream
                 .of(
                         createCollectionFilter(filterConfig),
-                        createOperationTypeFilter(connectorConfig))
+                        createOperationTypeFilter(connectorConfig, filterConfig))
                 .flatMap(Optional::stream)
                 .collect(toList());
 
@@ -97,11 +101,21 @@ class ChangeStreamPipelineFactory {
         var andFilter = Filters.and(filters);
         var matchFilter = Aggregates.match(andFilter);
 
-        // Pipeline
+        // Done if matching databases and collections as literals
+        if (filterConfig.isLiteralsMatchMode()) {
+            return new ChangeStreamPipeline(matchFilter);
+        }
+
+        // To match databases and collections as regexes we need the following transformations
+        return createRegexMatchingInternalPipeline(matchFilter);
+    }
+
+    private ChangeStreamPipeline createRegexMatchingInternalPipeline(Bson matchFilter) {
+        // TODO: $replaceRoot has performance impact. We should provide different implementations based on MongoDB version
         // Note that change streams cannot use indexes:
         // - https://www.mongodb.com/docs/manual/administration/change-streams-production-recommendations/#indexes-and-performance
         return new ChangeStreamPipeline(
-                // Materialize a "namespace" field so that we can do qualified collection name matching per
+                // Materialize a "namespace" field so that we can do qualified collection name matching with regexes per
                 // the configuration requirements
                 // We can't use $addFields nor $set as there is no way to unset the filed for AWS DocumentDB
                 // Note that per the docs, if `$ns` doesn't exist, `$concat` will return `null`
@@ -120,42 +134,79 @@ class ChangeStreamPipelineFactory {
         return filterConfig.getUserPipeline();
     }
 
-    private static Optional<Bson> createCollectionFilter(FilterConfig filterConfig) {
+    private static Optional<Bson> createDatabaseAndCollectionRegexFilters(FilterConfig filterConfig) {
         // Database filters
         // Note: No need to exclude `filterConfig.getBuiltInDbNames()` since these are not streamed per
         // https://www.mongodb.com/docs/manual/changeStreams/#watch-a-collection--database--or-deployment
-        var dbFilters = Optional.<Bson> empty();
-        if (filterConfig.getDbIncludeList() != null) {
-            dbFilters = Optional.of(Filters.regex("event.ns.db", filterConfig.getDbIncludeList().replaceAll(",", "|"), "i"));
-        }
-        else if (filterConfig.getDbExcludeList() != null) {
-            dbFilters = Optional.of(Filters.regex("event.ns.db", "(?!" + filterConfig.getDbExcludeList().replaceAll(",", "|") + ")", "i"));
-        }
+        var dbFilters = Optional.<Bson> empty()
+                .or(() -> filterConfig.getDbIncludeList()
+                        .map(value -> Filters.regex("event.ns.db", value.replaceAll(",", "|"), "i")))
+                .or(() -> filterConfig.getDbExcludeList()
+                        .map(value -> Filters.regex("event.ns.db", "(?!" + value.replaceAll(",", "|") + ")", "i")));
 
         // Collection filters
-        var collectionsFilters = Optional.<Bson> empty();
-        if (filterConfig.getCollectionIncludeList() != null) {
-            collectionsFilters = Optional
-                    .of(Filters.regex("namespace", filterConfig.getCollectionIncludeList().replaceAll(",", "|"), "i"));
-        }
-        else if (filterConfig.getCollectionExcludeList() != null) {
-            collectionsFilters = Optional
-                    .of(Filters.regex("namespace", "(?!" + filterConfig.getCollectionExcludeList().replaceAll(",", "|") + ")", "i"));
-        }
+        var collectionsFilters = Optional.<Bson> empty()
+                .or(() -> filterConfig.getCollectionIncludeList()
+                        .map(value -> Filters.regex("namespace", value.replaceAll(",", "|"), "i")))
+                .or(() -> filterConfig.getCollectionExcludeList()
+                        .map(value -> Filters.regex("namespace", "(?!" + value.replaceAll(",", "|") + ")", "i")));
+
+        return andFilters(
+                dbFilters,
+                collectionsFilters);
+    }
+
+    private static Optional<Bson> createDatabaseAndCollectionLiteralFilters(FilterConfig filterConfig) {
+        // Database filters
+        // Note: No need to exclude `filterConfig.getBuiltInDbNames()` since these are not streamed per
+        // https://www.mongodb.com/docs/manual/changeStreams/#watch-a-collection--database--or-deployment
+        var dbFilters = Optional.<Bson> empty()
+                .or(() -> filterConfig.getDbIncludeList()
+                        .map(ChangeStreamPipelineFactory::splitList)
+                        .map(dbs -> Filters.in("ns.db", dbs)))
+                .or(() -> filterConfig.getDbExcludeList()
+                        .map(ChangeStreamPipelineFactory::splitList)
+                        .map(dbs -> Filters.nin("ns.db", dbs)));
+
+        // Collection filters
+        var collectionsFilters = Optional.<Bson> empty()
+                .or(() -> filterConfig.getCollectionIncludeList()
+                        .map(ChangeStreamPipelineFactory::splitNamespaceList)
+                        .map(nss -> Filters.in("ns", nss)))
+                .or(() -> filterConfig.getCollectionExcludeList()
+                        .map(ChangeStreamPipelineFactory::splitNamespaceList)
+                        .map(nss -> Filters.nin("ns", nss)));
+
+        return andFilters(
+                dbFilters,
+                collectionsFilters);
+    }
+
+    private static Optional<Bson> createCollectionFilter(FilterConfig filterConfig) {
+        var dbAndCollectionFilters = Optional.<Bson> empty();
         var includedSignalCollectionFilters = Optional.<Bson> empty();
-        if (filterConfig.getSignalDataCollection() != null) {
-            includedSignalCollectionFilters = Optional.of(Filters.eq("namespace", filterConfig.getSignalDataCollection()));
+
+        if (filterConfig.isLiteralsMatchMode()) {
+            dbAndCollectionFilters = createDatabaseAndCollectionLiteralFilters(filterConfig);
+            includedSignalCollectionFilters = filterConfig
+                    .getSignalDataCollection()
+                    .map(ChangeStreamPipelineFactory::namespaceBson)
+                    .map(ns -> Filters.eq("ns", ns));
+        }
+        else {
+            dbAndCollectionFilters = createDatabaseAndCollectionRegexFilters(filterConfig);
+            includedSignalCollectionFilters = filterConfig
+                    .getSignalDataCollection()
+                    .map(col -> Filters.eq("namespace", col));
         }
 
         // Combined filters
         return orFilters(
-                includedSignalCollectionFilters,
-                andFilters(
-                        dbFilters,
-                        collectionsFilters));
+                dbAndCollectionFilters,
+                includedSignalCollectionFilters);
     }
 
-    private static Optional<Bson> createOperationTypeFilter(MongoDbConnectorConfig connectorConfig) {
+    private static Optional<Bson> createOperationTypeFilter(MongoDbConnectorConfig connectorConfig, FilterConfig filterConfig) {
         // Per https://debezium.io/documentation/reference/stable/connectors/mongodb.html#mongodb-property-skipped-operations
         // > The supported operations include:
         // > - 'c' for inserts/create
@@ -188,7 +239,12 @@ class ChangeStreamPipelineFactory {
             includedOperations.remove(OperationType.DELETE);
         }
 
-        return Optional.of(Filters.in("event.operationType", includedOperations.stream()
+        // for regexes the original change event doc is placed under event field
+        var field = filterConfig.isLiteralsMatchMode()
+                ? "operationType"
+                : "event.operationType";
+
+        return Optional.of(Filters.in(field, includedOperations.stream()
                 .map(OperationType::getValue)
                 .collect(toList())));
     }
@@ -196,28 +252,36 @@ class ChangeStreamPipelineFactory {
     @SafeVarargs
     private static Optional<Bson> andFilters(Optional<Bson>... filters) {
         var resolved = resolveFilters(filters);
-        if (resolved.isEmpty()) {
+        return andFilters(resolved);
+    }
+
+    private static Optional<Bson> andFilters(List<Bson> filters) {
+        if (filters.isEmpty()) {
             return Optional.empty();
         }
-        else if (resolved.size() == 1) {
-            return Optional.of(resolved.get(0));
+        else if (filters.size() == 1) {
+            return Optional.of(filters.get(0));
         }
         else {
-            return Optional.of(Filters.and(resolved));
+            return Optional.of(Filters.and(filters));
         }
     }
 
     @SafeVarargs
     private static Optional<Bson> orFilters(Optional<Bson>... filters) {
         var resolved = resolveFilters(filters);
-        if (resolved.isEmpty()) {
+        return orFilters(resolved);
+    }
+
+    private static Optional<Bson> orFilters(List<Bson> filters) {
+        if (filters.isEmpty()) {
             return Optional.empty();
         }
-        else if (resolved.size() == 1) {
-            return Optional.of(resolved.get(0));
+        else if (filters.size() == 1) {
+            return Optional.of(filters.get(0));
         }
         else {
-            return Optional.of(Filters.or(resolved));
+            return Optional.of(Filters.or(filters));
         }
     }
 
@@ -242,5 +306,31 @@ class ChangeStreamPipelineFactory {
 
     private static Bson expr(Object expr) {
         return new BasicDBObject("$expr", expr);
+    }
+
+    private static Bson namespaceBson(String namespace) {
+        var nsAndCol = namespace.trim().split("\\.", 2);
+        return new BasicDBObject()
+                .append("db", nsAndCol[0])
+                .append("coll", nsAndCol[1]);
+    }
+
+    private static List<String> splitList(String input) {
+        var parts = input.split(LIST_DELIMITER);
+
+        return Stream.of(parts)
+                .map(String::trim)
+                .filter(not(String::isEmpty))
+                .collect(toList());
+    }
+
+    private static List<Bson> splitNamespaceList(String input) {
+        var parts = input.split(LIST_DELIMITER);
+
+        return Stream.of(parts)
+                .map(String::trim)
+                .filter(not(String::isEmpty))
+                .map(ChangeStreamPipelineFactory::namespaceBson)
+                .collect(toList());
     }
 }

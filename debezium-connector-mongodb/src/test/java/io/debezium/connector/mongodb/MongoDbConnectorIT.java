@@ -52,6 +52,7 @@ import com.mongodb.client.model.InsertOneOptions;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
+import io.debezium.connector.mongodb.MongoDbConnectorConfig.FiltersMatchMode;
 import io.debezium.converters.CloudEventsConverterTest;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
@@ -873,12 +874,23 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
 
     @Test
     @FixFor("DBZ-4575")
-    public void shouldConsumeEventsOnlyFromIncludedDatabases() throws InterruptedException, IOException {
+    public void shouldConsumeEventsOnlyFromIncludedDatabasesWithRegexFilter() throws IOException, InterruptedException {
+        shouldConsumeEventsOnlyFromIncludedDatabases(FiltersMatchMode.REGEX);
+    }
+
+    @Test
+    @FixFor("DBZ-4575")
+    public void shouldConsumeEventsOnlyFromIncludedDatabasesWithLiteralFilter() throws IOException, InterruptedException {
+        shouldConsumeEventsOnlyFromIncludedDatabases(FiltersMatchMode.LITERAL);
+    }
+
+    public void shouldConsumeEventsOnlyFromIncludedDatabases(FiltersMatchMode filtersMatchMode) throws InterruptedException, IOException {
 
         // Use the DB configuration to define the connector's configuration ...
         config = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MongoDbConnectorConfig.DATABASE_INCLUDE_LIST, "inc")
+                .with(MongoDbConnectorConfig.FILTERS_MATCH_MODE, filtersMatchMode)
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
                 .build();
 
@@ -925,6 +937,94 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         SourceRecords records2 = consumeRecordsByTopic(4);
         assertThat(records2.recordsForTopic("mongo.exc.restaurants")).isNull();
         assertThat(records2.recordsForTopic("mongo.inc.restaurants").size()).isEqualTo(4);
+        assertThat(records2.topics().size()).isEqualTo(1);
+        records2.forEach(record -> {
+            // Check that all records are valid, and can be serialized and deserialized ...
+            validate(record);
+            verifyNotFromInitialSync(record);
+            verifyCreateOperation(record);
+        });
+        // ---------------------------------------------------------------------------------------------------------------
+        // Stop the connector
+        // ---------------------------------------------------------------------------------------------------------------
+        stopConnector();
+    }
+
+    @Test
+    public void shouldConsumeEventsOnlyFromNonExcludedCollectionsWithRegexFilter() throws IOException, InterruptedException {
+        shouldConsumeEventsOnlyFromNonExcludedCollections(FiltersMatchMode.REGEX);
+    }
+
+    @Test
+    public void shouldConsumeEventsOnlyFromNonExcludedCollectionsWithLiteralFilter() throws IOException, InterruptedException {
+        shouldConsumeEventsOnlyFromNonExcludedCollections(FiltersMatchMode.LITERAL);
+    }
+
+    public void shouldConsumeEventsOnlyFromNonExcludedCollections(FiltersMatchMode matchMode) throws InterruptedException, IOException {
+
+        var dbIncludeList = (matchMode == FiltersMatchMode.REGEX) ? "db.*" : "dbA,dbB";
+        var collExcludeList = (matchMode == FiltersMatchMode.REGEX) ? ".*simpletons" : "dbA.simpletons,dbB.simpletons";
+
+        // Use the DB configuration to define the connector's configuration ...
+        config = TestHelper.getConfiguration(mongo).edit()
+                .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
+                .with(MongoDbConnectorConfig.DATABASE_INCLUDE_LIST, dbIncludeList)
+                .with(MongoDbConnectorConfig.COLLECTION_EXCLUDE_LIST, collExcludeList)
+                .with(MongoDbConnectorConfig.FILTERS_MATCH_MODE, matchMode)
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
+                .build();
+
+        // Set up the replication context for connections ...
+        context = new MongoDbTaskContext(config);
+
+        // Cleanup database
+        TestHelper.cleanDatabase(mongo, "dbA");
+        TestHelper.cleanDatabase(mongo, "dbB");
+        TestHelper.cleanDatabase(mongo, "cDB");
+
+        // Before starting the connector, add data to the databases ...
+        storeDocuments("dbA", "restaurants", "restaurants1.json");
+        storeDocuments("dbB", "restaurants", "restaurants1.json");
+        storeDocuments("cDB", "restaurants", "restaurants1.json");
+        storeDocuments("dbA", "simpletons", "simple_objects.json");
+        storeDocuments("dbB", "simpletons", "simple_objects.json");
+
+        // Start the connector ...
+        start(MongoDbConnector.class, config);
+
+        // ---------------------------------------------------------------------------------------------------------------
+        // Consume all of the events due to startup and initialization of the database
+        // ---------------------------------------------------------------------------------------------------------------
+        SourceRecords records = consumeRecordsByTopic(5 * 6);
+        records.topics().forEach(System.out::println);
+        assertThat(records.topics().size()).isEqualTo(2);
+        assertThat(records.recordsForTopic("mongo.dbA.restaurants").size()).isEqualTo(6);
+        assertThat(records.recordsForTopic("mongo.dbB.restaurants").size()).isEqualTo(6);
+        assertThat(records.recordsForTopic("mongo.dbA.simpletons")).isNull();
+        assertThat(records.recordsForTopic("mongo.dbB.simpletons")).isNull();
+        assertThat(records.recordsForTopic("mongo.cDB.restaurants")).isNull();
+
+        AtomicBoolean foundLast = new AtomicBoolean(false);
+        records.forEach(record -> {
+            // Check that all records are valid, and can be serialized and deserialized ...
+            validate(record);
+            verifyFromInitialSync(record, foundLast);
+            verifyReadOperation(record);
+        });
+        assertThat(foundLast.get()).isTrue();
+
+        // At this point, the connector has performed the initial sync and awaits changes ...
+
+        // ---------------------------------------------------------------------------------------------------------------
+        // Store more documents while the connector is still running
+        // ---------------------------------------------------------------------------------------------------------------
+        storeDocuments("dbA", "restaurants", "restaurants2.json");
+        storeDocuments("cDB", "restaurants", "restaurants2.json");
+
+        // Wait until we can consume the 4 documents we just added ...
+        SourceRecords records2 = consumeRecordsByTopic(4);
+        assertThat(records2.recordsForTopic("mongo.dbA.restaurants").size()).isEqualTo(4);
+        assertThat(records2.recordsForTopic("mongo.cDB.restaurants")).isNull();
         assertThat(records2.topics().size()).isEqualTo(1);
         records2.forEach(record -> {
             // Check that all records are valid, and can be serialized and deserialized ...

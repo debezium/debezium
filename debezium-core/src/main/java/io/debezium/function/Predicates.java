@@ -6,7 +6,6 @@
 package io.debezium.function;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -18,6 +17,8 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import io.debezium.util.Strings;
 
@@ -135,18 +136,37 @@ public class Predicates {
     }
 
     /**
+     * Same as {@link #includesLiterals(String, Function, boolean)} without trimming
+     */
+    public static <T> Predicate<T> includesLiterals(String literals, Function<T, String> conversion) {
+        return includesLiterals(literals, conversion, false);
+    }
+
+    /**
      * Generate a predicate function that for any supplied string returns {@code true} if <i>any</i> of the literals in
      * the supplied comma-separated list case insensitively matches the predicate parameter.
      *
      * @param literals the comma-separated literal strings; may not be null
      * @param conversion the function that converts each predicate-supplied value to a string that can be matched against the
      *            regular expressions; may not be null
+     * @param trim whether literals in provided list should be trimmed
      * @return the predicate function that performs the matching
      */
-    public static <T> Predicate<T> includesLiterals(String literals, Function<T, String> conversion) {
+    public static <T> Predicate<T> includesLiterals(String literals, Function<T, String> conversion, boolean trim) {
         String[] literalValues = LITERAL_SEPARATOR_PATTERN.split(literals.toLowerCase());
-        Set<String> literalSet = new HashSet<>(Arrays.asList(literalValues));
+        var stream = Stream.of(literalValues);
+        if (trim) {
+            stream = stream.map(String::trim);
+        }
+        Set<String> literalSet = stream.collect(Collectors.toCollection(HashSet::new));
         return includedInLiterals(literalSet, conversion);
+    }
+
+    /**
+     * Same as {@link #excludesLiterals(String, Function, boolean)} without trimming
+     */
+    public static <T> Predicate<T> excludesLiterals(String literals, Function<T, String> conversion) {
+        return excludesLiterals(literals, conversion, false).negate();
     }
 
     /**
@@ -156,10 +176,11 @@ public class Predicates {
      * @param literals the comma-separated literal strings; may not be null
      * @param conversion the function that converts each predicate-supplied value to a string that can be matched against the
      *            regular expressions; may not be null
+     * @param trim whether literals in provided list should be trimmed
      * @return the predicate function that performs the matching
      */
-    public static <T> Predicate<T> excludesLiterals(String literals, Function<T, String> conversion) {
-        return includesLiterals(literals, conversion).negate();
+    public static <T> Predicate<T> excludesLiterals(String literals, Function<T, String> conversion, boolean trim) {
+        return includesLiterals(literals, conversion, trim).negate();
     }
 
     /**
