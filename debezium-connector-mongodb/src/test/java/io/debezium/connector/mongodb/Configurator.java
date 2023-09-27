@@ -42,6 +42,11 @@ public class Configurator {
         return with(MongoDbConnectorConfig.MAX_BATCH_SIZE, maxBatchSize);
     }
 
+    public Configurator useLiteralFilters() {
+        Testing.debug("Using \"" + MongoDbConnectorConfig.FILTERS_MATCH_MODE.name() + "\" config property");
+        return with(MongoDbConnectorConfig.FILTERS_MATCH_MODE, MongoDbConnectorConfig.FiltersMatchMode.LITERAL.getValue());
+    }
+
     public Configurator includeDatabases(String regexList) {
         Testing.debug("Using \"" + MongoDbConnectorConfig.DATABASE_INCLUDE_LIST.name() + "\" config property");
         return with(MongoDbConnectorConfig.DATABASE_INCLUDE_LIST, regexList);

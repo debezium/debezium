@@ -37,6 +37,7 @@ import io.debezium.connector.mongodb.connection.ReplicaSet;
 import io.debezium.data.Envelope;
 import io.debezium.schema.DefaultTopicNamingStrategy;
 import io.debezium.spi.schema.DataCollectionId;
+import io.debezium.util.Strings;
 
 /**
  * The configuration properties.
@@ -366,14 +367,19 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
      */
     public enum CursorPipelineOrder implements EnumeratedValue {
         /**
-         * Connect individually to each replica set
+         * Internal stages first, then user stages
          */
         INTERNAL_FIRST("internal_first"),
 
         /**
-         * Connect to sharded cluster with single connection via mongos
+         * User stages first, then internal stages
          */
-        USER_FIRST("user_first");
+        USER_FIRST("user_first"),
+
+        /**
+         * Only user stages (replacing internal stages)
+         */
+        USER_ONLY("user_only");
 
         private String value;
 
@@ -416,6 +422,70 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
          */
         public static CursorPipelineOrder parse(String value, String defaultValue) {
             CursorPipelineOrder mode = parse(value);
+
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+
+            return mode;
+        }
+    }
+
+    /**
+     * The set of predefined CursorPipelineOrder options or aliases.
+     */
+    public enum FiltersMatchMode implements EnumeratedValue {
+        /**
+         * Match by regex (use fully qualified name for collections)
+         */
+        REGEX("regex"),
+
+        /**
+         * Match by simple comparison (use simple name for collections)
+         */
+        LITERAL("literal");
+
+        private String value;
+
+        FiltersMatchMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static FiltersMatchMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+
+            for (FiltersMatchMode option : FiltersMatchMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static FiltersMatchMode parse(String value, String defaultValue) {
+            FiltersMatchMode mode = parse(value);
 
             if (mode == null && defaultValue != null) {
                 mode = parse(defaultValue);
@@ -639,8 +709,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withGroup(Field.createGroupEntry(Field.Group.FILTERS, 0))
             .withWidth(Width.LONG)
             .withImportance(Importance.HIGH)
-            .withValidation(Field::isListOfRegex)
-            .withDescription("A comma-separated list of regular expressions that match the database names for which changes are to be captured");
+            .withValidation(MongoDbConnectorConfig::validateListOfRegexesOrLiterals)
+            .withDescription("A comma-separated list of regular expressions or literals that match the database names for which changes are to be captured");
 
     /**
      * A comma-separated list of regular expressions that match the databases to be excluded.
@@ -652,8 +722,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withGroup(Field.createGroupEntry(Field.Group.FILTERS, 1))
             .withWidth(Width.LONG)
             .withImportance(Importance.HIGH)
-            .withValidation(Field::isListOfRegex, MongoDbConnectorConfig::validateDatabaseExcludeList)
-            .withDescription("A comma-separated list of regular expressions that match the database names for which changes are to be excluded");
+            .withValidation(MongoDbConnectorConfig::validateListOfRegexesOrLiterals, MongoDbConnectorConfig::validateDatabaseExcludeList)
+            .withDescription("A comma-separated list of regular expressions or literals that match the database names for which changes are to be excluded");
 
     /**
      * A comma-separated list of regular expressions that match the fully-qualified namespaces of collections to be monitored.
@@ -666,8 +736,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withGroup(Field.createGroupEntry(Field.Group.FILTERS, 2))
             .withWidth(Width.LONG)
             .withImportance(Importance.HIGH)
-            .withValidation(Field::isListOfRegex)
-            .withDescription("A comma-separated list of regular expressions that match the collection names for which changes are to be captured");
+            .withValidation(MongoDbConnectorConfig::validateListOfRegexesOrLiterals)
+            .withDescription("A comma-separated list of regular expressions or literals that match the collection names for which changes are to be captured");
 
     /**
      * A comma-separated list of regular expressions that match the fully-qualified namespaces of collections to be excluded from
@@ -676,9 +746,20 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
      */
     public static final Field COLLECTION_EXCLUDE_LIST = Field.create("collection.exclude.list")
             .withGroup(Field.createGroupEntry(Field.Group.FILTERS, 3))
-            .withValidation(Field::isListOfRegex, MongoDbConnectorConfig::validateCollectionExcludeList)
+            .withValidation(MongoDbConnectorConfig::validateListOfRegexesOrLiterals, MongoDbConnectorConfig::validateCollectionExcludeList)
             .withInvisibleRecommender()
-            .withDescription("A comma-separated list of regular expressions that match the collection names for which changes are to be excluded");
+            .withDescription("A comma-separated list of regular expressions or literals that match the collection names for which changes are to be excluded");
+
+    public static final Field FILTERS_MATCH_MODE = Field.create("filters.match.mode")
+            .withDisplayName("Database and collection include/exclude match mode")
+            .withEnum(FiltersMatchMode.class, FiltersMatchMode.REGEX)
+            .withGroup(Field.createGroupEntry(Field.Group.FILTERS, 6))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("The mode used by the aggregation pipeline to match events based on included/excluded database and collection names"
+                    + "Options include: "
+                    + "'regex' (the default) Database and collection includes/excludes are evaluated as regular expressions; "
+                    + "'literal' Database and collection includes/excludes are evaluated as comma-separated list of string literals; ");
 
     /**
      * A comma-separated list of the fully-qualified names of fields that should be excluded from change event message values.
@@ -800,7 +881,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withDescription("The order used to construct the effective MongoDB aggregation stream pipeline "
                     + "Options include: "
                     + "'internal_first' (the default) Internal stages defined by the connector are applied first; "
-                    + "'user_first' Stages defined by the 'cursor.pipeline' property are applied first; ");
+                    + "'user_first' Stages defined by the 'cursor.pipeline' property are applied first; "
+                    + "'user_only' Stages defined by the 'cursor.pipeline' property will replace internal stages defined by the connector; ");
 
     public static final Field CURSOR_OVERSIZE_HANDLING_MODE = Field.create("cursor.oversize.handling.mode")
             .withDisplayName("Oversize document handling mode")
@@ -890,6 +972,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     private final ReplicaSets replicaSets;
     private final CursorPipelineOrder cursorPipelineOrder;
     private final OversizeHandlingMode oversizeHandlingMode;
+    private final FiltersMatchMode filtersMatchMode;
     private final int oversizeSkipThreshold;
 
     public MongoDbConnectorConfig(Configuration config) {
@@ -915,6 +998,9 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         String oversizeHandlingModeValue = config.getString(MongoDbConnectorConfig.CURSOR_OVERSIZE_HANDLING_MODE);
         this.oversizeHandlingMode = OversizeHandlingMode.parse(oversizeHandlingModeValue, MongoDbConnectorConfig.CURSOR_OVERSIZE_HANDLING_MODE.defaultValueAsString());
         this.oversizeSkipThreshold = config.getInteger(CURSOR_OVERSIZE_SKIP_THRESHOLD);
+
+        String filterMatchModeValue = config.getString(MongoDbConnectorConfig.FILTERS_MATCH_MODE);
+        this.filtersMatchMode = FiltersMatchMode.parse(filterMatchModeValue, MongoDbConnectorConfig.FILTERS_MATCH_MODE.defaultValueAsString());
 
         this.snapshotMaxThreads = resolveSnapshotMaxThreads(config);
         this.cursorMaxAwaitTimeMs = config.getInteger(MongoDbConnectorConfig.CURSOR_MAX_AWAIT_TIME_MS, 0);
@@ -1018,6 +1104,24 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         return problemCount;
     }
 
+    private static int validateListOfRegexesOrLiterals(Configuration configuration, Field field, ValidationOutput problems) {
+        var matchMode = configuration.getString(FILTERS_MATCH_MODE);
+
+        if (matchMode != null && matchMode.equals(FiltersMatchMode.REGEX.getValue())) {
+            return Field.isListOfRegex(configuration, field, problems);
+        }
+
+        var value = configuration.getString(field);
+        var list = Strings.listOf(value, v -> v.split(","), String::trim);
+
+        if (list.stream().anyMatch(String::isEmpty)) {
+            problems.accept(field, value, field.name() + " contains empty values");
+            return 1;
+        }
+
+        return 0;
+    }
+
     private static int validateCollectionExcludeList(Configuration config, Field field, ValidationOutput problems) {
         String includeList = config.getString(COLLECTION_INCLUDE_LIST);
         String excludeList = config.getString(COLLECTION_EXCLUDE_LIST);
@@ -1104,6 +1208,10 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
     public int getOversizeSkipThreshold() {
         return oversizeSkipThreshold;
+    }
+
+    public FiltersMatchMode getFiltersMatchMode() {
+        return filtersMatchMode;
     }
 
     @Override

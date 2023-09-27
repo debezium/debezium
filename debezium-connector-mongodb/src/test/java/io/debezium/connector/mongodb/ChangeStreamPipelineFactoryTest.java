@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -78,6 +79,23 @@ public class ChangeStreamPipelineFactoryTest {
                     "  }\n" +
                     "}");
 
+    private static final List<String> INTERNAL_PIPELINE_LITERALS = List.of(
+            "" +
+                    "{\n" +
+                    "  \"$match\": {\n" +
+                    "    \"$and\": [{\n" +
+                    "        \"$or\": [\n" +
+                    "          { \"ns\": { \"$in\": [ { \"db\": \"dbit\", \"coll\": \"col1\" }, { \"db\": \"dbit\", \"coll\": \"col2\" } ] } },\n" +
+                    "          { \"ns\": { \"db\": \"signal\", \"coll\": \"col\" } }\n" +
+                    "        ]\n" +
+                    "      }, {\n" +
+                    "        \"operationType\": {\n" +
+                    "          \"$in\": [\"insert\", \"update\", \"replace\", \"delete\" ]\n" +
+                    "        }\n" +
+                    "      }]\n" +
+                    "  }\n" +
+                    "}");
+
     private static final List<String> USER_PIPELINE = List.of(
             "{\n" +
                     "  \"$match\" : {\n" +
@@ -100,21 +118,44 @@ public class ChangeStreamPipelineFactoryTest {
     @Test
     public void testCreateWithInternalFirstAndOversizeHandlingFail() {
         testCreate(CursorPipelineOrder.INTERNAL_FIRST, mergeStages(INTERNAL_PIPELINE, USER_PIPELINE));
+        testCreateLiterals(CursorPipelineOrder.INTERNAL_FIRST, mergeStages(INTERNAL_PIPELINE_LITERALS, USER_PIPELINE));
     }
 
     @Test
     public void testCreateWithUserFirstAndOversizeHandlingFail() {
         testCreate(CursorPipelineOrder.USER_FIRST, mergeStages(USER_PIPELINE, INTERNAL_PIPELINE));
+        testCreateLiterals(CursorPipelineOrder.USER_FIRST, mergeStages(USER_PIPELINE, INTERNAL_PIPELINE_LITERALS));
     }
 
     @Test
     public void testCreateWithInternalFirstAndOversizeHandlingSkip() {
         testCreateWithSkipOversized(CursorPipelineOrder.INTERNAL_FIRST, mergeStages(INTERNAL_PIPELINE, USER_PIPELINE));
+        testCreateLiteralsWithSkipOversized(CursorPipelineOrder.INTERNAL_FIRST, mergeStages(INTERNAL_PIPELINE_LITERALS, USER_PIPELINE));
     }
 
     @Test
     public void testCreateWithUserFirstAndOversizeHandlingSkip() {
         testCreateWithSkipOversized(CursorPipelineOrder.USER_FIRST, mergeStages(USER_PIPELINE, INTERNAL_PIPELINE));
+        testCreateLiteralsWithSkipOversized(CursorPipelineOrder.USER_FIRST, mergeStages(USER_PIPELINE, INTERNAL_PIPELINE_LITERALS));
+    }
+
+    @Test
+    public void testCreateWithUserOnly() {
+        // Given:
+        given(connectorConfig.getCursorPipelineOrder())
+                .willReturn(CursorPipelineOrder.USER_ONLY);
+        given(connectorConfig.getSkippedOperations())
+                .willReturn(EnumSet.of(Envelope.Operation.TRUNCATE)); // The default
+        given(filterConfig.getCollectionIncludeList())
+                .willReturn(Optional.of("dbit.*"));
+        given(filterConfig.getUserPipeline())
+                .willReturn(new ChangeStreamPipeline(asJsonArray(USER_PIPELINE)));
+
+        // When:
+        var pipeline = sut.create();
+
+        // Then:
+        assertPipelineStagesEquals(pipeline.getStages(), USER_PIPELINE);
     }
 
     @SafeVarargs
@@ -132,11 +173,32 @@ public class ChangeStreamPipelineFactoryTest {
         // Given:
         given(connectorConfig.getCursorPipelineOrder())
                 .willReturn(pipelineOrder);
-
         given(connectorConfig.getSkippedOperations())
                 .willReturn(EnumSet.of(Envelope.Operation.TRUNCATE)); // The default
         given(filterConfig.getCollectionIncludeList())
-                .willReturn("dbit.*");
+                .willReturn(Optional.of("dbit.*"));
+        given(filterConfig.getUserPipeline())
+                .willReturn(new ChangeStreamPipeline(asJsonArray(USER_PIPELINE)));
+
+        // When:
+        var pipeline = sut.create();
+
+        // Then:
+        assertPipelineStagesEquals(pipeline.getStages(), expectedStageJsons);
+    }
+
+    public void testCreateLiterals(CursorPipelineOrder pipelineOrder, List<String> expectedStageJsons) {
+        // Given:
+        given(connectorConfig.getCursorPipelineOrder())
+                .willReturn(pipelineOrder);
+        given(connectorConfig.getSkippedOperations())
+                .willReturn(EnumSet.of(Envelope.Operation.TRUNCATE)); // The default
+        given(filterConfig.isLiteralsMatchMode())
+                .willReturn(true);
+        given(filterConfig.getCollectionIncludeList())
+                .willReturn(Optional.of("dbit.col1,dbit.col2"));
+        given(filterConfig.getSignalDataCollection())
+                .willReturn(Optional.of("signal.col"));
         given(filterConfig.getUserPipeline())
                 .willReturn(new ChangeStreamPipeline(asJsonArray(USER_PIPELINE)));
 
@@ -157,9 +219,18 @@ public class ChangeStreamPipelineFactoryTest {
         testCreate(pipelineOrder, mergeStages(SIZE_PIPELINE, expectedStageJsons));
     }
 
+    public void testCreateLiteralsWithSkipOversized(CursorPipelineOrder pipelineOrder, List<String> expectedStageJsons) {
+        // Given:
+        given(connectorConfig.getOversizeHandlingMode())
+                .willReturn(MongoDbConnectorConfig.OversizeHandlingMode.SKIP);
+        given(connectorConfig.getOversizeSkipThreshold())
+                .willReturn(42);
+
+        testCreateLiterals(pipelineOrder, mergeStages(SIZE_PIPELINE, expectedStageJsons));
+    }
+
     private static void assertPipelineStagesEquals(List<? extends Bson> stages, List<String> expectedStageJsons) {
-        assertThat(stages)
-                .hasSameSizeAs(expectedStageJsons);
+        assertThat(stages).hasSameSizeAs(expectedStageJsons);
 
         for (int i = 0; i < stages.size(); i++) {
             var expectedStageJson = expectedStageJsons.get(i);

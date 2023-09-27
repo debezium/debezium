@@ -5,12 +5,15 @@
  */
 package io.debezium.connector.mongodb;
 
+import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.mongodb.FieldSelector.FieldFilter;
+import io.debezium.connector.mongodb.MongoDbConnectorConfig.FiltersMatchMode;
 import io.debezium.function.Predicates;
 import io.debezium.util.Collect;
 
@@ -33,46 +36,44 @@ public final class Filters {
      */
     public Filters(Configuration configuration) {
         this.config = new FilterConfig(configuration);
+        this.databaseFilter = createDatabaseFilter();
+        this.collectionFilter = createCollectionFilter();
+        this.fieldSelector = createFieldSelector();
+    }
 
-        String dbIncludeList = config.getDbIncludeList();
-        String dbExcludeList = config.getDbExcludeList();
-        if (dbIncludeList != null) {
-            databaseFilter = Predicates.includes(dbIncludeList);
-        }
-        else if (dbExcludeList != null) {
-            databaseFilter = Predicates.excludes(dbExcludeList);
-        }
-        else {
-            databaseFilter = (db) -> true;
-        }
+    private Predicate<String> createDatabaseFilter() {
+        var dbIncludeList = config.getDbIncludeList();
+        var dbExcludeList = config.getDbExcludeList();
 
-        String collectionIncludeList = config.getCollectionIncludeList();
-        String collectionExcludeList = config.getCollectionExcludeList();
-        final Predicate<CollectionId> collectionFilter;
-        if (collectionIncludeList != null) {
-            collectionFilter = Predicates.includes(collectionIncludeList, CollectionId::namespace);
-        }
-        else if (collectionExcludeList != null) {
-            collectionFilter = Predicates.excludes(collectionExcludeList, CollectionId::namespace);
-        }
-        else {
-            collectionFilter = (id) -> true;
-        }
+        return Optional.<Predicate<String>> empty()
+                .or(() -> dbIncludeList.map(value -> includes(value, s -> s)))
+                .or(() -> dbExcludeList.map(value -> excludes(value, s -> s)))
+                .orElse((db) -> true);
+    }
 
-        Predicate<CollectionId> isNotBuiltIn = this::isNotBuiltIn;
-        Predicate<CollectionId> finalCollectionFilter = isNotBuiltIn.and(collectionFilter);
-        String signalDataCollection = config.getSignalDataCollection();
-        if (signalDataCollection != null) {
-            CollectionId signalDataCollectionId = CollectionId.parse("UNUSED", signalDataCollection);
-            if (!finalCollectionFilter.test(signalDataCollectionId)) {
-                final Predicate<CollectionId> signalDataCollectionPredicate = Predicates.includes(signalDataCollectionId.namespace(), CollectionId::namespace);
-                finalCollectionFilter = finalCollectionFilter.or(signalDataCollectionPredicate);
-            }
-        }
-        this.collectionFilter = finalCollectionFilter;
+    private Predicate<CollectionId> createCollectionFilter() {
+        var collectionIncludeList = config.getCollectionIncludeList();
+        var collectionExcludeList = config.getCollectionExcludeList();
 
+        final Predicate<CollectionId> collectionFilter = Optional.<Predicate<CollectionId>> empty()
+                .or(() -> collectionIncludeList.map(list -> includes(list, CollectionId::namespace)))
+                .or(() -> collectionExcludeList.map(list -> excludes(list, CollectionId::namespace)))
+                .orElse((id) -> true)
+                .and(this::isNotBuiltIn);
+
+        // Create signal collection filter if specified and not included
+        Optional<Predicate<CollectionId>> signalCollectionFilter = config.getSignalDataCollection()
+                .map(id -> CollectionId.parse("UNUSED", id))
+                .filter(id -> !collectionFilter.test(id))
+                .map(id -> Predicates.includes(id.namespace(), CollectionId::namespace));
+
+        // Combine signal filter and collection filter
+        return signalCollectionFilter.map(collectionFilter::or).orElse(collectionFilter);
+    }
+
+    private FieldSelector createFieldSelector() {
         // Define the field selector that provides the field filter to exclude or rename fields in a document ...
-        fieldSelector = FieldSelector.builder()
+        return FieldSelector.builder()
                 .excludeFields(config.getFieldExcludeList())
                 .renameFields(config.getFieldRenames())
                 .build();
@@ -110,6 +111,20 @@ public final class Filters {
         return !config.getBuiltInDbNames().contains(id.dbName());
     }
 
+    private <T> Predicate<T> includes(String literalsOrPatterns, Function<T, String> conversion) {
+        if (config.isLiteralsMatchMode()) {
+            return Predicates.includesLiterals(literalsOrPatterns, conversion, true);
+        }
+        return Predicates.includes(literalsOrPatterns, conversion);
+    }
+
+    private <T> Predicate<T> excludes(String literalsOrPatterns, Function<T, String> conversion) {
+        if (config.isLiteralsMatchMode()) {
+            return Predicates.excludesLiterals(literalsOrPatterns, conversion, true);
+        }
+        return Predicates.excludes(literalsOrPatterns, conversion);
+    }
+
     public FilterConfig getConfig() {
         return config;
     }
@@ -126,8 +141,11 @@ public final class Filters {
         private final String fieldExcludeList;
         private final String signalDataCollection;
         private final ChangeStreamPipeline userPipeline;
+        private final FiltersMatchMode filtersMatchMode;
+        private final boolean literalMatchMode;
 
         public FilterConfig(Configuration config) {
+            var connectorConfig = new MongoDbConnectorConfig(config);
             this.dbIncludeList = resolveString(config, MongoDbConnectorConfig.DATABASE_INCLUDE_LIST);
             this.dbExcludeList = resolveString(config, MongoDbConnectorConfig.DATABASE_EXCLUDE_LIST);
             this.collectionIncludeList = resolveString(config, MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST);
@@ -136,22 +154,24 @@ public final class Filters {
             this.fieldExcludeList = resolveString(config, MongoDbConnectorConfig.FIELD_EXCLUDE_LIST);
             this.signalDataCollection = resolveString(config, MongoDbConnectorConfig.SIGNAL_DATA_COLLECTION);
             this.userPipeline = resolveChangeStreamPipeline(config, MongoDbConnectorConfig.CURSOR_PIPELINE);
+            this.filtersMatchMode = connectorConfig.getFiltersMatchMode();
+            this.literalMatchMode = FiltersMatchMode.LITERAL.equals(filtersMatchMode);
         }
 
-        public String getDbIncludeList() {
-            return dbIncludeList;
+        public Optional<String> getDbIncludeList() {
+            return Optional.ofNullable(dbIncludeList);
         }
 
-        public String getDbExcludeList() {
-            return dbExcludeList;
+        public Optional<String> getDbExcludeList() {
+            return Optional.ofNullable(dbExcludeList);
         }
 
-        public String getCollectionIncludeList() {
-            return collectionIncludeList;
+        public Optional<String> getCollectionIncludeList() {
+            return Optional.ofNullable(collectionIncludeList);
         }
 
-        public String getCollectionExcludeList() {
-            return collectionExcludeList;
+        public Optional<String> getCollectionExcludeList() {
+            return Optional.ofNullable(collectionExcludeList);
         }
 
         public String getFieldRenames() {
@@ -162,8 +182,8 @@ public final class Filters {
             return fieldExcludeList;
         }
 
-        public String getSignalDataCollection() {
-            return signalDataCollection;
+        public Optional<String> getSignalDataCollection() {
+            return Optional.ofNullable(signalDataCollection);
         }
 
         public Set<String> getBuiltInDbNames() {
@@ -172,6 +192,14 @@ public final class Filters {
 
         public ChangeStreamPipeline getUserPipeline() {
             return userPipeline;
+        }
+
+        public FiltersMatchMode getFiltersMatchMode() {
+            return filtersMatchMode;
+        }
+
+        public boolean isLiteralsMatchMode() {
+            return literalMatchMode;
         }
 
         private static String resolveString(Configuration config, Field key) {
