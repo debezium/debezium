@@ -7,6 +7,7 @@ package io.debezium.pipeline.notification;
 
 import static io.debezium.function.Predicates.not;
 
+import java.time.Clock;
 import java.util.List;
 import java.util.function.Predicate;
 
@@ -48,8 +49,8 @@ public class NotificationService<P extends Partition, O extends OffsetContext> {
                 .filter(isConnectChannel())
                 .forEach(channel -> ((ConnectChannel) channel).initConnectChannel(schemaFactory, consumer));
 
-        incrementalSnapshotNotificationService = new IncrementalSnapshotNotificationService<>(this, config);
-        initialSnapshotNotificationService = new InitialSnapshotNotificationService<>(this, config);
+        incrementalSnapshotNotificationService = new IncrementalSnapshotNotificationService<>(this, config, Clock.systemUTC());
+        initialSnapshotNotificationService = new InitialSnapshotNotificationService<>(this, config, Clock.systemUTC());
     }
 
     /**

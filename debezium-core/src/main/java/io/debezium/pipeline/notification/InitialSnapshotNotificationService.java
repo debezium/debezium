@@ -5,6 +5,8 @@
  */
 package io.debezium.pipeline.notification;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -25,10 +27,12 @@ public class InitialSnapshotNotificationService<P extends Partition, O extends O
 
     private final NotificationService<P, O> notificationService;
     private final CommonConnectorConfig connectorConfig;
+    private final Clock clock;
 
-    public InitialSnapshotNotificationService(NotificationService<P, O> notificationService, CommonConnectorConfig connectorConfig) {
+    public InitialSnapshotNotificationService(NotificationService<P, O> notificationService, CommonConnectorConfig connectorConfig, Clock clock) {
         this.notificationService = notificationService;
         this.connectorConfig = connectorConfig;
+        this.clock = clock;
     }
 
     public <T extends DataCollectionId> void notifyStarted(P partition, OffsetContext offsetContext) {
@@ -71,6 +75,7 @@ public class InitialSnapshotNotificationService<P extends Partition, O extends O
                 .withAggregateType(INITIAL_SNAPSHOT)
                 .withType(type.name())
                 .withAdditionalData(fullMap)
+                .withTimestamp(Instant.now(clock).toEpochMilli())
                 .build();
     }
 

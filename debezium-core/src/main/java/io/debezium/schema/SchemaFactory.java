@@ -239,6 +239,7 @@ public class SchemaFactory {
                 .field(Notification.TYPE, Schema.STRING_SCHEMA)
                 .field(Notification.AGGREGATE_TYPE, Schema.STRING_SCHEMA)
                 .field(Notification.ADDITIONAL_DATA, SchemaBuilder.map(Schema.STRING_SCHEMA, Schema.STRING_SCHEMA).optional().build())
+                .field(Notification.TIMESTAMP, Schema.INT64_SCHEMA)
                 .build();
     }
 

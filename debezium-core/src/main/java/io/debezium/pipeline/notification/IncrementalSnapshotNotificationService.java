@@ -5,6 +5,8 @@
  */
 package io.debezium.pipeline.notification;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,6 +39,8 @@ public class IncrementalSnapshotNotificationService<P extends Partition, O exten
 
     private final CommonConnectorConfig connectorConfig;
 
+    public Clock clock;
+
     public enum TableScanCompletionStatus {
         EMPTY,
         NO_PRIMARY_KEY,
@@ -46,9 +50,10 @@ public class IncrementalSnapshotNotificationService<P extends Partition, O exten
         UNKNOWN_SCHEMA
     }
 
-    public IncrementalSnapshotNotificationService(NotificationService<P, O> notificationService, CommonConnectorConfig config) {
+    public IncrementalSnapshotNotificationService(NotificationService<P, O> notificationService, CommonConnectorConfig config, Clock clock) {
         this.notificationService = notificationService;
-        connectorConfig = config;
+        this.connectorConfig = config;
+        this.clock = clock;
     }
 
     public <T extends DataCollectionId> void notifyStarted(IncrementalSnapshotContext<T> incrementalSnapshotContext, P partition, OffsetContext offsetContext) {
@@ -151,6 +156,7 @@ public class IncrementalSnapshotNotificationService<P extends Partition, O exten
                 .withAggregateType(INCREMENTAL_SNAPSHOT)
                 .withType(type.name())
                 .withAdditionalData(fullMap)
+                .withTimestamp(Instant.now(clock).toEpochMilli())
                 .build();
     }
 

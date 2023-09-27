@@ -94,7 +94,8 @@ public class SinkNotificationChannel implements NotificationChannel, ConnectChan
                 .put(Notification.ID_KEY, notification.getId())
                 .put(Notification.TYPE, notification.getType())
                 .put(Notification.AGGREGATE_TYPE, notification.getAggregateType())
-                .put(Notification.ADDITIONAL_DATA, notification.getAdditionalData());
+                .put(Notification.ADDITIONAL_DATA, notification.getAdditionalData())
+                .put(Notification.TIMESTAMP, notification.getTimestamp());
 
         // When connector is started for the first time and SnapshotMode.NEVER
         Map<String, ?> offset = offsets.getTheOnlyOffset() == null ? Map.of() : offsets.getTheOnlyOffset().getOffset();
