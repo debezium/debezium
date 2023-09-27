@@ -11,6 +11,9 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -18,7 +21,6 @@ import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
@@ -44,7 +46,8 @@ public class IncrementalSnapshotNotificationServiceTest {
 
     @Mock
     private CommonConnectorConfig connectorConfig;
-    @InjectMocks
+    private final Clock clock = Clock.fixed(Instant.parse("2023-05-17T01:25:00.00Z"), ZoneId.of("UTC"));
+
     private IncrementalSnapshotNotificationService<Partition, OffsetContext> incrementalSnapshotNotificationService;
 
     @Before
@@ -57,6 +60,8 @@ public class IncrementalSnapshotNotificationServiceTest {
         when(incrementalSnapshotContext.currentDataCollectionId()).thenReturn(new DataCollection<>(new TableId("db", "inventory", "product")));
         when(incrementalSnapshotContext.maximumKey()).thenReturn(Optional.of(new Object[]{ 100, 0, 0 }));
         when(incrementalSnapshotContext.chunkEndPosititon()).thenReturn(new Object[]{ 50, 0, 0 });
+
+        incrementalSnapshotNotificationService = new IncrementalSnapshotNotificationService<>(notificationService, connectorConfig, clock);
     }
 
     @Test
@@ -66,7 +71,7 @@ public class IncrementalSnapshotNotificationServiceTest {
 
         Notification expectedNotification = new Notification("12345", "Incremental Snapshot", "STARTED", Map.of(
                 "connector_name", "connector-test",
-                "data_collections", "db.inventory.product,db.inventory.customer"));
+                "data_collections", "db.inventory.product,db.inventory.customer"), clock.millis());
 
         verify(notificationService).notify(eq(expectedNotification), any(Offsets.class));
     }
@@ -78,7 +83,7 @@ public class IncrementalSnapshotNotificationServiceTest {
 
         Notification expectedNotification = new Notification("12345", "Incremental Snapshot", "PAUSED", Map.of(
                 "connector_name", "connector-test",
-                "data_collections", "db.inventory.product,db.inventory.customer"));
+                "data_collections", "db.inventory.product,db.inventory.customer"), clock.millis());
 
         verify(notificationService).notify(eq(expectedNotification), any(Offsets.class));
     }
@@ -90,7 +95,7 @@ public class IncrementalSnapshotNotificationServiceTest {
 
         Notification expectedNotification = new Notification("12345", "Incremental Snapshot", "RESUMED", Map.of(
                 "connector_name", "connector-test",
-                "data_collections", "db.inventory.product,db.inventory.customer"));
+                "data_collections", "db.inventory.product,db.inventory.customer"), clock.millis());
 
         verify(notificationService).notify(eq(expectedNotification), any(Offsets.class));
     }
@@ -101,7 +106,7 @@ public class IncrementalSnapshotNotificationServiceTest {
         incrementalSnapshotNotificationService.notifyAborted(incrementalSnapshotContext, partition, offsetContext);
 
         Notification expectedNotification = new Notification("12345", "Incremental Snapshot", "ABORTED", Map.of(
-                "connector_name", "connector-test"));
+                "connector_name", "connector-test"), clock.millis());
 
         verify(notificationService).notify(eq(expectedNotification), any(Offsets.class));
     }
@@ -113,7 +118,7 @@ public class IncrementalSnapshotNotificationServiceTest {
 
         Notification expectedNotification = new Notification("12345", "Incremental Snapshot", "ABORTED", Map.of(
                 "connector_name", "connector-test",
-                "data_collections", "db.inventory.product"));
+                "data_collections", "db.inventory.product"), clock.millis());
 
         verify(notificationService).notify(eq(expectedNotification), any(Offsets.class));
     }
@@ -128,7 +133,7 @@ public class IncrementalSnapshotNotificationServiceTest {
                 "data_collections", "db.inventory.product,db.inventory.customer",
                 "scanned_collection", "db.inventory.product",
                 "total_rows_scanned", "100",
-                "status", "SUCCEEDED"));
+                "status", "SUCCEEDED"), clock.millis());
 
         verify(notificationService).notify(eq(expectedNotification), any(Offsets.class));
     }
@@ -143,7 +148,7 @@ public class IncrementalSnapshotNotificationServiceTest {
                 "data_collections", "db.inventory.product,db.inventory.customer",
                 "current_collection_in_progress", "db.inventory.product",
                 "maximum_key", "100",
-                "last_processed_key", "50"));
+                "last_processed_key", "50"), clock.millis());
 
         verify(notificationService).notify(eq(expectedNotification), any(Offsets.class));
     }
@@ -154,7 +159,7 @@ public class IncrementalSnapshotNotificationServiceTest {
         incrementalSnapshotNotificationService.notifyCompleted(incrementalSnapshotContext, partition, offsetContext);
 
         Notification expectedNotification = new Notification("12345", "Incremental Snapshot", "COMPLETED", Map.of(
-                "connector_name", "connector-test"));
+                "connector_name", "connector-test"), clock.millis());
 
         verify(notificationService).notify(eq(expectedNotification), any(Offsets.class));
 

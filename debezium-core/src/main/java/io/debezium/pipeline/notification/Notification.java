@@ -26,6 +26,7 @@ public class Notification {
     public static final String TYPE = "type";
     public static final String AGGREGATE_TYPE = "aggregate_type";
     public static final String ADDITIONAL_DATA = "additional_data";
+    public static final String TIMESTAMP = "timestamp";
     public static final ObjectMapper MAPPER = new ObjectMapper();
 
     @JsonIgnore
@@ -33,13 +34,15 @@ public class Notification {
     private final String aggregateType;
     private final String type;
     private final Map<String, String> additionalData;
+    private final Long timestamp;
 
-    @ConstructorProperties({ "id", "aggregateType", "type", "additionalData" })
-    public Notification(String id, String aggregateType, String type, Map<String, String> additionalData) {
+    @ConstructorProperties({ "id", "aggregateType", "type", "additionalData", "timestamp" })
+    public Notification(String id, String aggregateType, String type, Map<String, String> additionalData, Long timestamp) {
         this.id = id;
         this.aggregateType = aggregateType;
         this.type = type;
         this.additionalData = additionalData;
+        this.timestamp = timestamp;
     }
 
     public String getId() {
@@ -58,12 +61,17 @@ public class Notification {
         return additionalData;
     }
 
+    public Long getTimestamp() {
+        return timestamp;
+    }
+
     @Override
     public String toString() {
         return "{" +
                 "aggregateType='" + aggregateType + '\'' +
                 ", type='" + type + '\'' +
                 ", additionalData=" + additionalData +
+                ", timestamp=" + timestamp +
                 '}';
     }
 
@@ -78,12 +86,12 @@ public class Notification {
         }
         Notification that = (Notification) o;
         return Objects.equals(id, that.id) && Objects.equals(aggregateType, that.aggregateType) && Objects.equals(type,
-                that.type) && Objects.equals(additionalData, that.additionalData);
+                that.type) && Objects.equals(additionalData, that.additionalData) && Objects.equals(timestamp, that.timestamp);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, aggregateType, type, additionalData);
+        return Objects.hash(id, aggregateType, type, additionalData, timestamp);
     }
 
     public String toJson() {
@@ -101,6 +109,7 @@ public class Notification {
         private String aggregateType;
         private String type;
         private Map<String, String> additionalData;
+        private Long timestamp;
 
         private Builder() {
         }
@@ -129,8 +138,13 @@ public class Notification {
             return this;
         }
 
+        public Builder withTimestamp(Long timestamp) {
+            this.timestamp = timestamp;
+            return this;
+        }
+
         public Notification build() {
-            return new Notification(id, aggregateType, type, additionalData);
+            return new Notification(id, aggregateType, type, additionalData, timestamp);
         }
     }
 }
