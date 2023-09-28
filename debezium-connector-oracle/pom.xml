@@ -222,6 +222,9 @@
                     <excludes>
                         <exclude>**/io/debezium/connector/oracle/xstream/**</exclude>
                     </excludes>
+                    <testExcludes>
+                        <exclude>**/io/debezium/connector/oracle/xstream/**</exclude>
+                    </testExcludes>
                 </configuration>
             </plugin>
             <plugin>
@@ -364,6 +367,9 @@
                             <includes>
                                 <include>**</include>
                             </includes>
+                            <testIncludes>
+                                <include>**</include>
+                            </testIncludes>
                         </configuration>
                     </plugin>
                 </plugins>
