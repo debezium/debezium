@@ -56,6 +56,7 @@ ALTER TABLE T1 ALTER CHECK C_CONS NOT ENFORCED;
 ALTER TABLE T1 ALTER I SET VISIBLE;
 ALTER TABLE T1 ALTER I SET INVISIBLE;
 ALTER TABLE IF EXISTS `add_test` ADD COLUMN IF NOT EXISTS `new_col` TEXT DEFAULT 'my_default';
+alter table user_details add index if not exists `country_id_index` (country_id), algorithm=NOCOPY;
 #end
 #begin
 -- Alter database
