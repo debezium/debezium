@@ -313,8 +313,12 @@ charSet
     | CHAR SET
     ;
 
+currentUserExpression
+    : CURRENT_USER ( '(' ')')?
+    ;
+
 ownerStatement
-    : DEFINER '=' (userName | CURRENT_USER ( '(' ')')? | CURRENT_ROLE) // CURRENT_ROLE is MariaDB-specific only
+    : DEFINER '=' (userName | currentUserExpression | CURRENT_ROLE) // CURRENT_ROLE is MariaDB-specific only
     ;
 
 scheduleExpression
@@ -968,7 +972,7 @@ withStatement
 tableStatement
   : TABLE tableName orderByClause? limitClause?
   ;
-  
+
 
 updateStatement
     : singleUpdateStatement | multipleUpdateStatement
@@ -2159,8 +2163,16 @@ indexColumnName
     : ((uid | STRING_LITERAL) ('(' decimalLiteral ')')? | expression) sortType=(ASC | DESC)?
     ;
 
+simpleUserName
+    : STRING_LITERAL
+    | ID
+    | ADMIN
+    | keywordsCanBeId;
+hostName: (LOCAL_ID | HOST_IP_ADDRESS | '@' );
 userName
-    : STRING_USER_NAME | STRING_USER_NAME_MARIADB | ID | STRING_LITERAL | ADMIN | keywordsCanBeId;
+    : simpleUserName
+    | simpleUserName hostName
+    | currentUserExpression;
 
 mysqlVariable
     : LOCAL_ID
@@ -2472,8 +2484,9 @@ specificFunction
     : (
       CURRENT_DATE | CURRENT_TIME | CURRENT_TIMESTAMP
       | CURDATE | CURTIME                                           // MariaDB-specific only
-      | CURRENT_USER | LOCALTIME | UTC_TIMESTAMP | SCHEMA
+      | LOCALTIME | UTC_TIMESTAMP | SCHEMA
       ) ('(' ')')?                                                  #simpleFunctionCall
+    | currentUserExpression                                         #currentUser
     | CONVERT '(' expression separator=',' convertedDataType ')'    #dataTypeFunctionCall
     | CONVERT '(' expression USING charsetName ')'                  #dataTypeFunctionCall
     | CAST '(' expression AS convertedDataType ')'                  #dataTypeFunctionCall
