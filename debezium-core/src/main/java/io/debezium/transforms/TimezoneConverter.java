@@ -106,6 +106,13 @@ public class TimezoneConverter<R extends ConnectRecord<R>> implements Transforma
             ZonedTimestamp.SCHEMA_NAME,
             ZonedTime.SCHEMA_NAME,
             org.apache.kafka.connect.data.Timestamp.LOGICAL_NAME);
+    private static final List<String> UNSUPPORTED_LOGICAL_NAMES = List.of(
+            io.debezium.time.Date.SCHEMA_NAME,
+            io.debezium.time.MicroTime.SCHEMA_NAME,
+            io.debezium.time.NanoTime.SCHEMA_NAME,
+            io.debezium.time.Time.SCHEMA_NAME,
+            org.apache.kafka.connect.data.Date.LOGICAL_NAME,
+            org.apache.kafka.connect.data.Time.LOGICAL_NAME);
 
     @Override
     public ConfigDef config() {
@@ -294,10 +301,6 @@ public class TimezoneConverter<R extends ConnectRecord<R>> implements Transforma
         return updatedFieldValue;
     }
 
-    private boolean isTimeField(String schemaName) {
-        return schemaName != null && SUPPORTED_TIMESTAMP_LOGICAL_NAMES.contains(schemaName);
-    }
-
     private void handleStructs(Struct value, Type type, String matchName, Set<String> fields) {
         if (type == null || matchName == null) {
             return;
@@ -317,9 +320,24 @@ public class TimezoneConverter<R extends ConnectRecord<R>> implements Transforma
     private void handleValueForFields(Struct value, Type type, Set<String> fields) {
         Schema schema = value.schema();
         for (org.apache.kafka.connect.data.Field field : schema.fields()) {
-            if ((type == Type.ALL
-                    || type == Type.INCLUDE && fields.contains(field.name())
-                    || (type == Type.EXCLUDE && !fields.contains(field.name())))) {
+            String schemaName = field.schema().name();
+
+            if (schemaName == null) {
+                continue;
+            }
+
+            boolean isUnsupportedLogicalType = UNSUPPORTED_LOGICAL_NAMES.contains(schemaName);
+            boolean supportedLogicalType = SUPPORTED_TIMESTAMP_LOGICAL_NAMES.contains(schemaName);
+            boolean shouldIncludeField = type == Type.ALL
+                    || (type == Type.INCLUDE && fields.contains(field.name()))
+                    || (type == Type.EXCLUDE && !fields.contains(field.name()));
+
+            if (isUnsupportedLogicalType && shouldIncludeField) {
+                LOGGER.warn("Skipping conversion for unsupported logical type: " + schemaName + " for field: " + field.name());
+                continue;
+            }
+
+            if (shouldIncludeField && supportedLogicalType) {
                 handleValueForField(value, field);
             }
         }
@@ -328,11 +346,8 @@ public class TimezoneConverter<R extends ConnectRecord<R>> implements Transforma
     private void handleValueForField(Struct struct, org.apache.kafka.connect.data.Field field) {
         String fieldName = field.name();
         Schema schema = field.schema();
-
-        if (isTimeField(schema.name())) {
-            Object newValue = getTimestampWithTimezone(schema.name(), struct.get(fieldName));
-            struct.put(fieldName, newValue);
-        }
+        Object newValue = getTimestampWithTimezone(schema.name(), struct.get(fieldName));
+        struct.put(fieldName, newValue);
     }
 
     private Struct handleEnvelopeValue(Schema schema, Struct value) {
