@@ -3464,7 +3464,7 @@ ifdef::community[]
 Transactions with event counts that exceed this threshold not be emitted and will be abandoned.
 The default behavior is there is no transaction event threshold.
 
-|[[oracle-property-log-mining-buffer-infinispan-cache-transactions]]<<oracle-property-log-mining-buffer-infinispan-cache-transactions, `+log.mining.buffer.infinispan.cache.global+`>>
+|[[oracle-property-log-mining-buffer-infinispan-cache-global]]<<oracle-property-log-mining-buffer-infinispan-cache-global, `+log.mining.buffer.infinispan.cache.global+`>>
 |No default
 |The XML configuration for the Infinispan global configuration.
 For more information, see xref:oracle-event-buffering-infinispan[Infinispan event buffering].
@@ -4386,7 +4386,7 @@ EOF
 ----
 ====
 
-[[selecting-the-adapter]]
+[[selecting-the-open-log-replicator-adapter]]
 === Configuring the OpenLogReplicator adapter
 
 By default, {prodname} uses Oracle LogMiner to ingest change events from Oracle.
@@ -4678,7 +4678,7 @@ A single XStream Outbound server cannot be shared by multiple {prodname} Oracle 
 Each connector requires a unique XStream Outbound connector to be configured.
 ====
 
-[[selecting-the-adapter]]
+[[selecting-the-xstream-adapter]]
 === Configuring the XStream adapter
 
 By default, {prodname} uses Oracle LogMiner to ingest change events from Oracle.
