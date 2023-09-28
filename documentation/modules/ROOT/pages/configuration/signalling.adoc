@@ -11,6 +11,7 @@ ifdef::community[]
 
 toc::[]
 
+[id="debezium-signaling-overview"]
 == Overview
 endif::community[]
 
@@ -21,6 +22,7 @@ SourceSignalChannel:: You can issue a SQL command to add a signal message to a s
 The signaling data collection, which you create on the source database, is designated exclusively for communicating with {prodname}.
 KafkaSignalChannel:: You submit signal messages to a configurable Kafka topic.
 JmxSignalChannel:: You submit signals through the JMX `signal` operation.
+FileSignalChannel:: You can use a file to send signals.
 Custom:: You submit signals to a xref:debezium-custom-signaling-channel[custom channel] that you implement.
 
 When {prodname} detects that a new xref:debezium-signaling-example-of-a-logging-record[logging record] or xref:debezium-signaling-example-of-an-ad-hoc-blocking-snapshot-signal-record[ad hoc snapshot record] is added to the channel, it reads the signal, and initiates the requested operation.
@@ -174,6 +176,7 @@ endif::community[]
 ====
 To use Kafka signaling to trigger ad hoc incremental snapshots for a connector, you must first xref:debezium-signaling-enabling-source-signaling-channel[enable a `source` signaling channel] in the connector configuration.
 The source channel implements a watermarking mechanism to deduplicate events that might be captured by an incremental snapshot and then captured again after streaming resumes.
+An exception is MySQL with GTIDs and read only mode, the `source` channel in this case is not required for incremental snapshot. See {link-prefix}:{link-mysql-connector}#mysql-read-only-incremental-snapshots[MySQL read only incremental snapshot]
 ====
 
 === Message format
