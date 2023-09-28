@@ -703,7 +703,8 @@ alterSpecification
         NOT? ENFORCED?                                              #alterByAddCheckTableConstraint
     | ALTER (CONSTRAINT name=uid?)? CHECK ( uid | stringLiteral | '(' expression ')' )
         NOT? ENFORCED?                                              #alterByAlterCheckTableConstraint
-    | ALGORITHM '='? algType=(DEFAULT | INSTANT | INPLACE | COPY)   #alterBySetAlgorithm
+    | ALGORITHM '='?
+      algType=(DEFAULT | INSTANT | INPLACE | COPY | NOCOPY)         #alterBySetAlgorithm // here NOCOPY is MariaDB-specific only
     | ALTER COLUMN? uid
       (SET DEFAULT defaultValue | DROP DEFAULT)                     #alterByChangeDefault
     | CHANGE COLUMN? ifExists? oldColumn=uid                        // here ifExists is MariaDB-specific only
