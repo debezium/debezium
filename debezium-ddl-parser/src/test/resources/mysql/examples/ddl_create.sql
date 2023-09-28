@@ -13,6 +13,7 @@ GET CURRENT DIAGNOSTICS errcount = NUMBER;
 -- Create User
 CREATE USER 'test_crm_debezium'@'%' IDENTIFIED WITH 'mysql_native_password' AS '*6BB4837EB74329105EE4568DDA7DC67ED2CA2AD9' PASSWORD EXPIRE NEVER COMMENT '-';
 CREATE USER 'jim'@'localhost' ATTRIBUTE '{"fname": "James", "lname": "Scott", "phone": "123-456-7890"}';
+CREATE USER 'jim' @'localhost' ATTRIBUTE '{"fname": "James", "lname": "Scott", "phone": "123-456-7890"}';
 -- Create Table
 create table new_t  (like t1);
 create table log_table(row varchar(512));
