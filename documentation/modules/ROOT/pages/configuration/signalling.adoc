@@ -217,10 +217,10 @@ This property is deprecated and should be replaced by the `additional-conditions
 Each additional condition is an object that specifies the criteria for filtering the data that an ad hoc snapshot captures.
 You can set the following properties for each additional condition:
 
-`data-collection`:: The fully-qualified name of the {data-collection} that the filter applies to.
-You can apply different filters to each {data-collection}.
+`data-collection`:: The fully-qualified name of the +{data-collection}+ that the filter applies to.
+You can apply different filters to each +{data-collection}+.
 `filter`:: Specifies column values that must be present in a database record for the snapshot to include it, for example,  `"color='blue'"`. +
-The snapshot process evaluates records in the {data-collection} against the `filter` value and captures only records that contain matching values. +
+The snapshot process evaluates records in the +{data-collection}+ against the `filter` value and captures only records that contain matching values. +
  +
 The specific values that you assign to the `filter` property depend on the type of ad hoc snapshot:
 
@@ -288,11 +288,11 @@ This property is deprecated and should be replaced by the `additional-conditions
 Each additional condition is an object that specifies the criteria for filtering the data that an ad hoc snapshot captures.
 You can set the following properties for each additional condition:
 
-`data-collection`:: The fully-qualified name of the {data-collection} that the filter applies to.
-You can apply different filters to each {data-collection}.
+`data-collection`:: The fully-qualified name of the +{data-collection}+ that the filter applies to.
+You can apply different filters to each +{data-collection}+.
 
 `filter`:: Specifies column values that must be present in a database record for the snapshot to include it, for example,  `"color='blue'"`. +
-The snapshot process evaluates records in the {data-collection} against the `filter` value and captures only records that contain matching values. +
+The snapshot process evaluates records in the +{data-collection}+ against the `filter` value and captures only records that contain matching values. +
  +
 The specific values that you assign to the `filter` property depend on the type of ad hoc snapshot:
 
