@@ -10,6 +10,7 @@ import static org.assertj.core.api.AssertionsForClassTypes.catchThrowable;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
@@ -26,6 +27,7 @@ import org.junit.Test;
 
 import io.debezium.DebeziumException;
 import io.debezium.data.Envelope;
+import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.time.MicroTimestamp;
 import io.debezium.time.NanoTimestamp;
 import io.debezium.time.Timestamp;
@@ -844,5 +846,53 @@ public class TimezoneConverterTest {
 
         assertThat(transformedAfter.get("order_date")).isEqualTo("2014-06-22T12:15:30+02:00");
         assertThat(transformedAfter.get("shipping_date")).isEqualTo("2014-12-22T11:15:30+01:00");
+    }
+
+    @Test
+    public void testUnsupportedLogicalTypes() {
+        final LogInterceptor logInterceptor = new LogInterceptor(TimezoneConverter.class);
+
+        Map<String, String> props = new HashMap<>();
+        props.put("converted.timezone", "Europe/Moscow");
+        props.put("include.list", "source:customers:order_date");
+        converter.configure(props);
+
+        Schema recordSchema = SchemaBuilder.struct()
+                .field("id", Schema.INT8_SCHEMA)
+                .field("name", Schema.STRING_SCHEMA)
+                .field("order_date", io.debezium.time.Date.builder().optional().build())
+                .field("shipping_date", io.debezium.time.Date.builder().optional().build())
+                .build();
+
+        final Struct before = new Struct(recordSchema);
+        final Struct source = new Struct(sourceSchema);
+
+        before.put("id", (byte) 1);
+        before.put("name", "Amy Rose");
+        before.put("order_date", io.debezium.time.Date.toEpochDay(LocalDate.parse("2016-11-04"), null));
+        before.put("shipping_date", io.debezium.time.Date.toEpochDay(LocalDate.parse("2016-11-06"), null));
+
+        source.put("table", "customers");
+        source.put("lsn", 1);
+        source.put("ts_ms", 123456789);
+
+        final Envelope envelope = Envelope.defineSchema()
+                .withName("dummy.Envelope")
+                .withRecord(recordSchema)
+                .withSource(sourceSchema)
+                .build();
+
+        final Struct payload = envelope.create(before, source, Instant.now());
+
+        SourceRecord record = new SourceRecord(
+                new HashMap<>(),
+                new HashMap<>(),
+                "db.server1.table1",
+                envelope.schema(),
+                payload);
+
+        converter.apply(record);
+        assertThat(logInterceptor.containsMessage("Skipping conversion for unsupported logical type: io.debezium.time.Date for field: order_date")).isTrue();
+
     }
 }
