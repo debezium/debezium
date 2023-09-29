@@ -2367,7 +2367,18 @@ Without these grants, the connector cannot operate.
 [id="support-for-oracle-standby-databases"]
 === Standby databases
 ifdef::product[]
-The {prodname} Oracle connector cannot be used with Oracle physical or logical standby databases.
+[IMPORTANT]
+====
+The ability for the {prodname} Oracle connector to ingest changes from a read-only logical standby database is a Developer Preview feature.
+Developer Preview features are not supported by Red{nbsp}Hat in any way and are not functionally complete or production-ready.
+Do not use Developer Preview software for production or business-critical workloads.
+Developer Preview software provides early access to upcoming product software in advance of its possible inclusion in a Red{nbsp}Hat product offering.
+Customers can use this software to test functionality and provide feedback during the development process.
+This software might not have any documentation, is subject to change or removal at any time, and has received limited testing.
+Red{nbsp}Hat might provide ways to submit feedback on Developer Preview software without an associated SLA.
+
+For more information about the support scope of Red{nbsp}Hat Developer Preview software, see link:https://access.redhat.com/support/offerings/devpreview/[Developer Preview Support Scope].
+====
 endif::product[]
 ifdef::community[]
 An Oracle database can be configured with either a physical or a logical standby environment to provide for recovery after of a production failure.
@@ -3679,9 +3690,9 @@ By default, the following channels are available:
 * `kafka`
 * `file`
 * `jmx`
-
+ifdef::community[]
 Optionally, you can also implement a {link-prefix}:{link-signalling}#debezium-signaling-enabling-custom-signaling-channel[custom signaling channel].
-
+endif::community[]
 |[[oracle-property-notification-enabled-channels]]<<oracle-property-notification-enabled-channels, `+notification.enabled.channels+`>>
 |No default
 | List of notification channel names that are enabled for the connector.
@@ -3690,9 +3701,9 @@ By default, the following channels are available:
 * `sink`
 * `log`
 * `jmx`
-
+ifdef::community[]
 Optionally, you can also implement a {link-prefix}:{link-notification}#debezium-notification-custom-channel[custom notification channel].
-
+endif::community[]
 |[[oracle-property-incremental-snapshot-chunk-size]]<<oracle-property-incremental-snapshot-chunk-size, `+incremental.snapshot.chunk.size+`>>
 |`1024`
 |The maximum number of rows that the connector fetches and reads into memory during an incremental snapshot chunk.
