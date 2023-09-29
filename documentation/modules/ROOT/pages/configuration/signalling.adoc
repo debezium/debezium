@@ -21,8 +21,9 @@ SourceSignalChannel:: You can issue a SQL command to add a signal message to a s
 The signaling data collection, which you create on the source database, is designated exclusively for communicating with {prodname}.
 KafkaSignalChannel:: You submit signal messages to a configurable Kafka topic.
 JmxSignalChannel:: You submit signals through the JMX `signal` operation.
+ifdef::community[]
 Custom:: You submit signals to a xref:debezium-custom-signaling-channel[custom channel] that you implement.
-
+endif::community[]
 When {prodname} detects that a new xref:debezium-signaling-example-of-a-logging-record[logging record] or xref:debezium-signaling-example-of-an-ad-hoc-signal-record[ad hoc snapshot record] is added to the channel, it reads the signal, and initiates the requested operation.
 
 Signaling is available for use with the following {prodname} connectors:
@@ -258,7 +259,8 @@ The following image shows an example of how to use JConsole to send a signal:
 +
 image::jmx-signal-operation.png[Using JConsole to send an `execute-snapshot` signal]
 
-// Type: concept
+ifdef::community[]
+//   Type: concept
 [id="debezium-custom-signaling-channel"]
 == Custom signaling channel
 The signaling mechanism is designed to be extensible.
@@ -270,9 +272,9 @@ Adding a signaling channel involves several steps:
 2. xref:deploying-a-debezium-custom-signaling-channel[Deploy the custom signaling channel].
 3. xref:configuring-connectors-to-use-a-custom-signaling-channel[Enable connectors to use the custom signaling channel by modifying the connector configuration].
 
-// Type: procedure
-// Title: Providing a custom {prodname} signaling channel
-// ModuleID: debezium-signaling-providing-a-custom-signaling-channel
+//   Type: procedure
+//   Title: Providing a custom {prodname} signaling channel
+//   ModuleID: debezium-signaling-providing-a-custom-signaling-channel
 [id="debezium-signaling-enabling-custom-signaling-channel"]
 === Provide custom signaling channel
 
@@ -300,7 +302,7 @@ The `SignalProcessor` class calls this method to retrieve the signal to process.
 <4> Closes all allocated resources.
 {prodname} calls this methods when the connector is stopped.
 
-// Type: concept
+//   Type: concept
 [id="debezium-signaling-core-module-dependencies"]
 === {prodname} core module dependencies
 
@@ -319,7 +321,7 @@ You must include these compile dependencies in your project's `pom.xml` file, as
 
 Declare your implementation in the `META-INF/services/io.debezium.pipeline.signal.channels.SignalChannelReader` file.
 
-// Type: procedure
+//   Type: procedure
 [id="deploying-a-debezium-custom-signaling-channel"]
 === Deploying a custom signaling channel
 
@@ -333,11 +335,12 @@ For example, in a typical deployment, the {prodname} connector files are stored 
 
 NOTE: To use a custom signaling channel with multiple connectors, you must place a copy of the custom signaling channel JAR file in the subdirectory for each connector.
 
-// Type: procedure
+//   Type: procedure
 [id="configuring-connectors-to-use-a-custom-signaling-channel"]
 === Configuring connectors to use a custom signaling channel
 
 Add the name of the custom signaling channel to the `signal.enabled.channels` configuration property.
+endif::community[]
 
 // Type: concept
 // ModuleID: debezium-signaling-types-of-signal-actions
@@ -545,9 +548,7 @@ After processing the signal, the connector will resume previously paused snapsho
 You can resume incremental snapshots for the following {prodname} connectors:
 
 * Db2
-ifdef::community[]
 * MongoDB
-endif::community[]
 * MySQL
 * Oracle
 * PostgreSQL
@@ -575,9 +576,7 @@ For more information about incremental snapshots, see the _Snapshots_ topic in t
 .Additional resources
 
 * {link-prefix}:{link-db2-connector}#db2-incremental-snapshots[Db2 connector incremental snapshots]
-ifdef::community[]
 * {link-prefix}:{link-mongodb-connector}#mongodb-incremental-snapshots[MongoDB connector incremental snapshots]
-endif::community[]
 * {link-prefix}:{link-mysql-connector}#mysql-incremental-snapshots[MySQL connector incremental snapshots]
 * {link-prefix}:{link-oracle-connector}#oracle-incremental-snapshots[Oracle connector incremental snapshots]
 * {link-prefix}:{link-postgresql-connector}#postgresql-incremental-snapshots[PostgreSQL connector incremental snapshots]
