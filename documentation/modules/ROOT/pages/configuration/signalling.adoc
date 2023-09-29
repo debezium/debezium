@@ -174,9 +174,10 @@ endif::community[]
 
 [NOTE]
 ====
-To use Kafka signaling to trigger ad hoc incremental snapshots for a connector, you must first xref:debezium-signaling-enabling-source-signaling-channel[enable a `source` signaling channel] in the connector configuration.
+To use Kafka signaling to trigger ad hoc incremental snapshots for most connectors, you must first xref:debezium-signaling-enabling-source-signaling-channel[enable a `source` signaling channel] in the connector configuration.
 The source channel implements a watermarking mechanism to deduplicate events that might be captured by an incremental snapshot and then captured again after streaming resumes.
-An exception is MySQL with GTIDs and read only mode, the `source` channel in this case is not required for incremental snapshot. See {link-prefix}:{link-mysql-connector}#mysql-read-only-incremental-snapshots[MySQL read only incremental snapshot]
+Enabling the source channel is not required when using any of others available signaling channels to trigger an incremental snapshot of a read-only MySQL database with {link-prefix}:link-mysql-connector}#enable-mysql-gtids[GTIDs enabled]. 
+For more information, see {link-prefix}:{link-mysql-connector}#mysql-read-only-incremental-snapshots[MySQL read only incremental snapshot]
 ====
 
 === Message format

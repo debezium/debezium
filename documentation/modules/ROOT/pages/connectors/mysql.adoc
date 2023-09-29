@@ -762,7 +762,7 @@ you must set one of the following options:
 
 ==== Ad hoc read-only incremental snapshots
 
-When the MySQL connection is read-only, you can use any of the {link-prefix}:{link-signalling}#overview[available signaling channels] without the requirement to use the `source` channel.
+When the MySQL connection is read-only, you can use any of the {link-prefix}:{link-signalling}#sending-signals-to-a-debezium-connector[available signaling channels] without the requirement to use the `source` channel.
 
 // Type: continue
 [id="mysql-snapshot-events"]
