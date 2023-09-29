@@ -305,7 +305,7 @@ include::{partialsdir}/modules/all-connectors/con-connector-ad-hoc-snapshots.ado
 ifdef::product[]
 [IMPORTANT]
 ====
-Incremental snapshots are a Technology Preview feature for the {prodname} MongoDB connector.
+Incremental snapshots and incremental snapshots for sharded clusters are Technology Preview features for the {prodname} MongoDB connector.
 Technology Preview features are not supported with Red Hat production service-level agreements (SLAs) and might not be functionally complete;
 therefore, Red Hat does not recommend implementing any Technology Preview features in production environments.
 This Technology Preview feature provides early access to upcoming product innovations, enabling you to test functionality and provide feedback during the development process.
@@ -1926,9 +1926,9 @@ By default, the following channels are available:
 * `kafka`
 * `file`
 * `jmx`
-
+ifdef::community[]
 Optionally, you can also implement a {link-prefix}:{link-signalling}#debezium-signaling-enabling-custom-signaling-channel[custom signaling channel].
-
+endif::community[]
 |[[mongodb-property-notification-enabled-channels]]<<mongodb-property-notification-enabled-channels, `+notification.enabled.channels+`>>
 |No default
 | List of notification channel names that are enabled for the connector.
@@ -1937,9 +1937,9 @@ By default, the following channels are available:
 * `sink`
 * `log`
 * `jmx`
-
+ifdef::community[]
 Optionally, you can also implement a {link-prefix}:{link-notification}#debezium-notification-custom-channel[custom notification channel].
-
+endif::community[]
 |[[mongodb-property-incremental-snapshot-chunk-size]]<<mongodb-property-incremental-snapshot-chunk-size, `+incremental.snapshot.chunk.size+`>>
 |`1024`
 |The maximum number of documents that the connector fetches and reads into memory during an incremental snapshot chunk.

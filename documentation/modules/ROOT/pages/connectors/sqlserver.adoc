@@ -2888,8 +2888,9 @@ By default, the following channels are available:
 * `kafka`
 * `file`
 * `jmx`
-
+ifdef::community[]
 Optionally, you can also implement a {link-prefix}:{link-signalling}#debezium-signaling-enabling-custom-signaling-channel[custom signaling channel].
+endif::community[]
 
 |[[sqlserver-property-notification-enabled-channels]]<<sqlserver-property-notification-enabled-channels, `+notification.enabled.channels+`>>
 |No default
@@ -2899,9 +2900,9 @@ By default, the following channels are available:
 * `sink`
 * `log`
 * `jmx`
-
+ifdef::community[]
 Optionally, you can also implement a {link-prefix}:{link-notification}#debezium-notification-custom-channel[custom notification channel].
-
+endif::community[]
 |[[sqlserver-property-incremental-snapshot-allow-schema-changes]]<<sqlserver-property-incremental-snapshot-allow-schema-changes, `+incremental.snapshot.allow.schema.changes+`>>
 |`false`
 | Allow schema changes during an incremental snapshot. When enabled the connector will detect schema change during an incremental snapshot and re-select a current chunk to avoid locking DDLs. +
