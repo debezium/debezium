@@ -262,7 +262,7 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
         // First handle key columns
         builder.appendLists(", ", record.getKeyFieldNames(), record.getNonKeyFieldNames(), (name) -> {
             final FieldDescriptor field = record.getFields().get(name);
-            final String columnName = toIdentifier(columnNamingStrategy.resolveColumnName(field.getColumnName()));
+            final String columnName = toIdentifier(resolveColumnName(field));
 
             final String columnType = field.getTypeName();
 
@@ -633,7 +633,7 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
 
     protected String columnQueryBindingFromField(String fieldName, TableDescriptor table, SinkRecordDescriptor record) {
         final FieldDescriptor field = record.getFields().get(fieldName);
-        final String columnName = resolveColumnNameFromField(field.getColumnName());
+        final String columnName = resolveColumnName(field);
         final ColumnDescriptor column = table.getColumnByName(columnName);
         if (column == null) {
             throw new DebeziumException("Failed to find column " + columnName + " in table " + table.getId().getTableName());
@@ -680,8 +680,7 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
 
     protected String columnNameFromField(String fieldName, SinkRecordDescriptor record) {
         final FieldDescriptor field = record.getFields().get(fieldName);
-        final String columnName = getColumnNamingStrategy().resolveColumnName(field.getColumnName());
-        return getIdentifierHelper().toIdentifier(columnName, getConfig().isQuoteIdentifiers()).render(dialect);
+        return toIdentifier(resolveColumnName(field));
     }
 
     protected String columnNameFromField(String fieldName, String prefix, SinkRecordDescriptor record) {
