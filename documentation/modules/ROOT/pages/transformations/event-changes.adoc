@@ -1,4 +1,8 @@
 :page-aliases: configuration/event-changes.adoc
+// Category: debezium-using
+// Type: assembly
+// Title: Extracting field-level changes from {prodname} event records
+// ModuleID: extracting-field-level-changes-from-debezium-event-records
 [id="event-record-changes"]
 = Event Record Changes
 
@@ -24,21 +28,23 @@ To enhance event messages with details about how a database operation modifies f
 The event changes transformation is a
 link:https://kafka.apache.org/documentation/#connect_transforms[Kafka Connect SMT].
 
+// Type: concept
+// ModuleID: event-changes-smt-description-of-debezium-change-event-structure
+// Title: Description of {prodname} change event structure
 == Change event structure
 
-
 {prodname} generates data change events that have a complex structure.
-Each event consists of three parts:
+Each event consists of the following parts:
 
-* Metadata, which includes but is not limited to:
+* Metadata, which includes but is not limited to the following types:
 
 ** The type of operation that changed the data.
 ** Source information, such as the names of the database and the table in which the change occurred.
 ** Timestamp that identifies when the change was made.
 ** Optional transaction information.
 
-* Row data before the change
-* Row data after the change
+* Row data before a change.
+* Row data after a change.
 
 The following example shows part of the structure of a typical {prodname} `UPDATE` change event:
 
@@ -71,6 +77,9 @@ However, the format might not be suitable for some downstream consumers.
 Sink connectors, or other parts of the Kafka ecosystem might expect the message to explicitly identify the fields that a database operation changes or leaves unchanged.
 The `ExtractChangedRecordState` SMT adds headers to the change event message to identify the fields that are modified by a database operation, and the fields that remain unchanged.
 
+// Type: concept
+// ModuleID: behavior-of-the-debezium-event-changes-smt
+// Title: Behavior of the {prodname} event changes SMT
 [[event-changes-behavior]]
 == Behavior
 
@@ -88,10 +97,13 @@ Depending on your use case, you can configure the transformation to modify the o
 * Identify the fields that are changed by an `UPDATE` event by listing them in the user-configured xref:extract-changes-header-changed-name[`header.changed.name`] header.
 * Identify the fields that are not changed by an `UPDATE` event by listing them in the user-configured xref:extract-changes-header-unchanged-name[`header.unchanged.name`] header.
 
+// Type: concept
+// ModuleID: configuration-of-the-debezium-event-changes-smt
+// Title: Configuration of the {prodname} event changes SMT
 == Configuration
 
-Configure the {prodname} event changes SMT in a Kafka Connect source or sink connector by adding the SMT configuration details to your connector's configuration.
-To obtain the default behavior, which doesn't add any headers, add the transformation to the connector configuration as in the following example:
+You configure the {prodname} event changes SMT for a Kafka Connect source or sink connector by adding the SMT configuration details to your connector's configuration.
+To obtain the default behavior, which doesn't add any headers, add the transformation to the connector configuration, as in the following example:
 
 [source]
 ----
@@ -126,8 +138,10 @@ Because the structure of these other messages differs from the structure of the 
 
 For more information about how to apply the SMT selectively, see {link-prefix}:{link-smt-predicates}#applying-transformations-selectively[Configure an SMT predicate for the transformation].
 
+// Type: reference
+// ModuleID: descriptions-of-the-configuration-options-for-the-debezium-event-changes-smt
+// Title: Descriptions of the configuration options for the {prodname} event changes SMT
 [id="configuration-options"]
-
 == Configuration options
 
 The following table describes the options that you can specify to configure the event changes SMT.
