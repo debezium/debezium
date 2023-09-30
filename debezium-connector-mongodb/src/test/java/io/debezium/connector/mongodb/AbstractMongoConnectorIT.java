@@ -75,6 +75,7 @@ public abstract class AbstractMongoConnectorIT extends AbstractConnectorTest {
     @After
     public void afterEach() {
         stopConnector();
+        TestHelper.cleanDatabases(mongo);
     }
 
     @BeforeClass

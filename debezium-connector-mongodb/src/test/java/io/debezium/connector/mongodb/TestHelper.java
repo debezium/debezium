@@ -10,6 +10,7 @@ import static org.junit.Assert.fail;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -34,6 +35,7 @@ import io.debezium.connector.mongodb.connection.ConnectionStrings;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.connector.mongodb.connection.ReplicaSet;
 import io.debezium.testing.testcontainers.MongoDbDeployment;
+import io.debezium.util.Collect;
 
 /**
  * A common test configuration options
@@ -46,6 +48,9 @@ public class TestHelper {
 
     public static final List<Integer> MONGO_VERSION = getMongoVersion();
     private static final String TEST_PROPERTY_PREFIX = "debezium.test.";
+
+    private static final Set<String> BUILT_IN_DB_NAMES = Collect.unmodifiableSet("local", "admin", "config");
+
     private static final ObjectMapper mapper = new ObjectMapper();
 
     private static List<Integer> getMongoVersion() {
@@ -99,6 +104,16 @@ public class TestHelper {
             db1.listCollectionNames().forEach((String x) -> {
                 logger.info("Removing collection '{}' from database '{}'", x, dbName);
                 db1.getCollection(x).drop();
+            });
+        }
+    }
+
+    public static void cleanDatabases(MongoDbDeployment mongo) {
+        try (var client = connect(mongo)) {
+            client.listDatabaseNames().forEach(name -> {
+                if (!BUILT_IN_DB_NAMES.contains(name)) {
+                    client.getDatabase(name).drop();
+                }
             });
         }
     }
