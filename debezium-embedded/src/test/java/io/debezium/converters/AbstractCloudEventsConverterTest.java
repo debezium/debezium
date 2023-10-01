@@ -32,10 +32,6 @@ import io.debezium.transforms.outbox.EventRouter;
  */
 public abstract class AbstractCloudEventsConverterTest<T extends SourceConnector> extends AbstractConnectorTest {
 
-    protected EventRouter<SourceRecord> outboxEventRouter;
-
-    protected HeaderFrom<SourceRecord> headerFrom;
-
     protected abstract Class<T> getConnectorClass();
 
     protected abstract String getConnectorName();
@@ -48,32 +44,21 @@ public abstract class AbstractCloudEventsConverterTest<T extends SourceConnector
 
     protected abstract String topicName();
 
-    protected abstract String tableName();
+    protected abstract String topicNameOutbox();
 
     protected abstract void createTable() throws Exception;
 
-    protected abstract String createInsert(String eventId, String eventType, String aggregateType,
-                                           String aggregateId, String payloadJson, String additional);
+    protected abstract void createOutboxTable() throws Exception;
+
+    protected abstract String createInsert();
+
+    protected abstract String createInsertToOutbox(String eventId, String eventType, String aggregateType,
+                                                   String aggregateId, String payloadJson, String additional);
 
     protected abstract void waitForStreamingStarted() throws InterruptedException;
 
     @Before
     public void beforeEach() throws Exception {
-        createTable();
-
-        headerFrom = new HeaderFrom.Value<>();
-        Map<String, String> headerFromConfig = new LinkedHashMap<>();
-        headerFromConfig.put("fields", "source,op,transaction");
-        headerFromConfig.put("headers", "source,op,transaction");
-        headerFromConfig.put("operation", "copy");
-        headerFromConfig.put("header.converter.schemas.enable", "true");
-        headerFrom.configure(headerFromConfig);
-
-        outboxEventRouter = new EventRouter<>();
-        Map<String, String> outboxEventRouterConfig = new LinkedHashMap<>();
-        outboxEventRouterConfig.put("table.expand.json.payload", "true");
-        outboxEventRouter.configure(outboxEventRouterConfig);
-
         startConnector();
     }
 
@@ -82,14 +67,45 @@ public abstract class AbstractCloudEventsConverterTest<T extends SourceConnector
         stopConnector();
         assertNoRecordsToConsume();
         databaseConnection().close();
-        headerFrom.close();
-        outboxEventRouter.close();
+    }
+
+    @Test
+    @FixFor({ "DBZ-6982" })
+    public void shouldConvertToCloudEventsInJsonWithoutExtensionAttributes() throws Exception {
+        createTable();
+
+        databaseConnection().execute(createInsert());
+
+        SourceRecords streamingRecords = consumeRecordsByTopic(1);
+        assertThat(streamingRecords.allRecordsInOrder()).hasSize(1);
+
+        SourceRecord record = streamingRecords.recordsForTopic(topicName()).get(0);
+
+        assertThat(record).isNotNull();
+        assertThat(record.value()).isInstanceOf(Struct.class);
+
+        CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithoutExtensionAttributes(record);
     }
 
     @Test
     @FixFor({ "DBZ-3642" })
     public void shouldConvertToCloudEventsInJsonWithMetadataInHeadersAfterOutboxEventRouter() throws Exception {
-        databaseConnection().execute(createInsert(
+        HeaderFrom<SourceRecord> headerFrom = new HeaderFrom.Value<>();
+        Map<String, String> headerFromConfig = new LinkedHashMap<>();
+        headerFromConfig.put("fields", "source,op,transaction");
+        headerFromConfig.put("headers", "source,op,transaction");
+        headerFromConfig.put("operation", "copy");
+        headerFromConfig.put("header.converter.schemas.enable", "true");
+        headerFrom.configure(headerFromConfig);
+
+        EventRouter<SourceRecord> outboxEventRouter = new EventRouter<>();
+        Map<String, String> outboxEventRouterConfig = new LinkedHashMap<>();
+        outboxEventRouterConfig.put("table.expand.json.payload", "true");
+        outboxEventRouter.configure(outboxEventRouterConfig);
+
+        createOutboxTable();
+
+        databaseConnection().execute(createInsertToOutbox(
                 "59a42efd-b015-44a9-9dde-cb36d9002425",
                 "UserCreated",
                 "User",
@@ -103,7 +119,7 @@ public abstract class AbstractCloudEventsConverterTest<T extends SourceConnector
         SourceRecords streamingRecords = consumeRecordsByTopic(1);
         assertThat(streamingRecords.allRecordsInOrder()).hasSize(1);
 
-        SourceRecord record = streamingRecords.recordsForTopic(topicName()).get(0);
+        SourceRecord record = streamingRecords.recordsForTopic(topicNameOutbox()).get(0);
         SourceRecord recordWithMetadataHeaders = headerFrom.apply(record);
         SourceRecord routedEvent = outboxEventRouter.apply(recordWithMetadataHeaders);
 
@@ -114,6 +130,9 @@ public abstract class AbstractCloudEventsConverterTest<T extends SourceConnector
         assertThat(routedEvent.value()).isInstanceOf(Struct.class);
 
         CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithMetadataInHeaders(routedEvent, getConnectorName(), getServerName());
+
+        headerFrom.close();
+        outboxEventRouter.close();
     }
 
     private void startConnector() throws Exception {

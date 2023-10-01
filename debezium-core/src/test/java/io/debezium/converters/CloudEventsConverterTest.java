@@ -387,6 +387,65 @@ public class CloudEventsConverterTest {
         }
     }
 
+    public static void shouldConvertToCloudEventsInJsonWithoutExtensionAttributes(SourceRecord record) throws Exception {
+        Map<String, Object> config = new HashMap<>();
+        config.put("serializer.type", "json");
+        config.put("data.serializer.type", "json");
+        config.put("extension-attributes.enable", false);
+
+        CloudEventsConverter cloudEventsConverter = new CloudEventsConverter();
+        cloudEventsConverter.configure(config, false);
+
+        JsonNode valueJson = null;
+        JsonNode dataJson;
+        String msg = null;
+
+        try {
+            // Convert the value and inspect it ...
+            msg = "converting value using CloudEvents JSON converter";
+            byte[] valueBytes = cloudEventsConverter.fromConnectData(record.topic(), convertHeadersFor(record), record.valueSchema(), record.value());
+            msg = "deserializing value using CE deserializer";
+            final SchemaAndValue ceValue = cloudEventsConverter.toConnectData(record.topic(), valueBytes);
+            msg = "deserializing value using JSON deserializer";
+
+            try (JsonDeserializer jsonDeserializer = new JsonDeserializer()) {
+                jsonDeserializer.configure(Collections.emptyMap(), false);
+                valueJson = jsonDeserializer.deserialize(record.topic(), valueBytes);
+            }
+
+            msg = "inspecting all required CloudEvents fields in the value";
+            assertThat(valueJson.get(CloudEventsMaker.FieldName.ID)).isNotNull();
+            assertThat(valueJson.get(CloudEventsMaker.FieldName.SOURCE).asText()).isNotNull();
+            assertThat(valueJson.get(CloudEventsMaker.FieldName.SPECVERSION).asText()).isEqualTo("1.0");
+            assertThat(valueJson.get(CloudEventsMaker.FieldName.DATASCHEMA)).isNull();
+            assertThat(valueJson.get(CloudEventsMaker.FieldName.TYPE).asText()).isNotNull();
+            assertThat(valueJson.get(CloudEventsMaker.FieldName.DATACONTENTTYPE).asText()).isEqualTo("application/json");
+            assertThat(valueJson.get(CloudEventsMaker.FieldName.TIME)).isNotNull();
+            assertThat(valueJson.get(CloudEventsMaker.FieldName.DATA)).isNotNull();
+
+            msg = "inspecting the data field in the value";
+            dataJson = valueJson.get(CloudEventsMaker.FieldName.DATA);
+            assertThat(dataJson.get(CloudEventsMaker.FieldName.SCHEMA_FIELD_NAME)).isNotNull();
+            assertThat(dataJson.get(CloudEventsMaker.FieldName.PAYLOAD_FIELD_NAME)).isNotNull();
+            // before field may be null
+            assertThat(dataJson.get(CloudEventsMaker.FieldName.PAYLOAD_FIELD_NAME).get(Envelope.FieldName.AFTER)).isNotNull();
+
+            assertThat(valueJson.fieldNames()).noneMatch(fieldName -> fieldName.startsWith("iodebezium"));
+        }
+        catch (Throwable t) {
+            Testing.Print.enable();
+            Testing.print("Problem with message on topic '" + record.topic() + "':");
+            Testing.printError(t);
+            Testing.print("error " + msg);
+            Testing.print("  value: " + SchemaUtil.asString(record.value()));
+            Testing.print("  value deserialized from CloudEvents in JSON: " + prettyJson(valueJson));
+            if (t instanceof AssertionError) {
+                throw t;
+            }
+            fail("error " + msg + ": " + t.getMessage());
+        }
+    }
+
     private static RecordHeaders convertHeadersFor(SourceRecord record) throws IOException {
         try (HeaderConverter jsonHeaderConverter = new JsonConverter()) {
             Map<String, Object> jsonHeaderConverterConfig = new HashMap<>();
