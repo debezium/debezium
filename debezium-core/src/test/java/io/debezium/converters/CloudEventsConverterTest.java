@@ -391,7 +391,7 @@ public class CloudEventsConverterTest {
         Map<String, Object> config = new HashMap<>();
         config.put("serializer.type", "json");
         config.put("data.serializer.type", "json");
-        config.put("extension-attributes.enable", false);
+        config.put("extension.attributes.enable", false);
 
         CloudEventsConverter cloudEventsConverter = new CloudEventsConverter();
         cloudEventsConverter.configure(config, false);
