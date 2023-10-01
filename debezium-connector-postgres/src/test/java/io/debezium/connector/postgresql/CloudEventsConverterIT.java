@@ -22,6 +22,11 @@ import io.debezium.jdbc.JdbcConnection;
  */
 public class CloudEventsConverterIT extends AbstractCloudEventsConverterTest<PostgresConnector> {
 
+    private static final String SETUP_SCHEMA = "DROP SCHEMA IF EXISTS s1 CASCADE;" +
+            "CREATE SCHEMA s1;";
+
+    private static final String SETUP_TABLE = "CREATE TABLE s1.a (pk SERIAL, aa integer, PRIMARY KEY(pk));";
+
     private static final String SETUP_OUTBOX_SCHEMA = "DROP SCHEMA IF EXISTS outboxsmtit CASCADE;" +
             "CREATE SCHEMA outboxsmtit;";
 
@@ -34,6 +39,8 @@ public class CloudEventsConverterIT extends AbstractCloudEventsConverterTest<Pos
             "  type          varchar(255) not null," +
             "  payload       jsonb" +
             ");";
+
+    private static final String INSERT_STMT = "INSERT INTO s1.a (aa) VALUES (1);";
 
     @Before
     @Override
@@ -68,33 +75,44 @@ public class CloudEventsConverterIT extends AbstractCloudEventsConverterTest<Pos
         return TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
-                .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "outboxsmtit")
-                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "outboxsmtit\\.outbox");
-    }
-
-    @Override
-    protected String tableName() {
-        return "outboxsmtit.outbox";
+                .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "outboxsmtit,s1")
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "outboxsmtit.outbox,s1.a");
     }
 
     @Override
     protected String topicName() {
+        return TestHelper.topicName("s1.a");
+    }
+
+    @Override
+    protected String topicNameOutbox() {
         return TestHelper.topicName("outboxsmtit.outbox");
     }
 
     @Override
     protected void createTable() throws Exception {
+        TestHelper.execute(SETUP_SCHEMA);
+        TestHelper.execute(SETUP_TABLE);
+    }
+
+    @Override
+    protected void createOutboxTable() throws Exception {
         TestHelper.execute(SETUP_OUTBOX_SCHEMA);
         TestHelper.execute(SETUP_OUTBOX_TABLE);
     }
 
     @Override
-    protected String createInsert(String eventId,
-                                  String eventType,
-                                  String aggregateType,
-                                  String aggregateId,
-                                  String payloadJson,
-                                  String additional) {
+    protected String createInsert() {
+        return INSERT_STMT;
+    }
+
+    @Override
+    protected String createInsertToOutbox(String eventId,
+                                          String eventType,
+                                          String aggregateType,
+                                          String aggregateId,
+                                          String payloadJson,
+                                          String additional) {
         StringBuilder insert = new StringBuilder();
         insert.append("INSERT INTO outboxsmtit.outbox VALUES (");
         insert.append("'").append(UUID.fromString(eventId)).append("'");

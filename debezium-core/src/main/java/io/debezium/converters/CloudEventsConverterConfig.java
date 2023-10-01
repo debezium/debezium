@@ -27,6 +27,10 @@ public class CloudEventsConverterConfig extends ConverterConfig {
     public static final String CLOUDEVENTS_DATA_SERIALIZER_TYPE_DEFAULT = "json";
     private static final String CLOUDEVENTS_DATA_SERIALIZER_TYPE_DOC = "Specify a serializer to serialize the data field of CloudEvents values";
 
+    public static final String CLOUDEVENTS_EXTENSION_ATTRIBUTES_ENABLE_CONFIG = "extension-attributes.enable";
+    public static final boolean CLOUDEVENTS_EXTENSION_ATTRIBUTES_ENABLE_DEFAULT = true;
+    private static final String CLOUDEVENTS_EXTENSION_ATTRIBUTES_ENABLE_DOC = "Specify whether to include extension attributes to a cloud event";
+
     public static final String CLOUDEVENTS_SCHEMA_NAME_ADJUSTMENT_MODE_CONFIG = "schema.name.adjustment.mode";
     public static final String CLOUDEVENTS_SCHEMA_NAME_ADJUSTMENT_MODE_DEFAULT = "avro";
     private static final String CLOUDEVENTS_SCHEMA_NAME_ADJUSTMENT_MODE_DOC = "Specify how schema names should be adjusted for compatibility with the message converter used by the connector, including:"
@@ -46,6 +50,8 @@ public class CloudEventsConverterConfig extends ConverterConfig {
                 CLOUDEVENTS_SERIALIZER_TYPE_DOC);
         CONFIG.define(CLOUDEVENTS_DATA_SERIALIZER_TYPE_CONFIG, ConfigDef.Type.STRING, CLOUDEVENTS_DATA_SERIALIZER_TYPE_DEFAULT, ConfigDef.Importance.HIGH,
                 CLOUDEVENTS_DATA_SERIALIZER_TYPE_DOC);
+        CONFIG.define(CLOUDEVENTS_EXTENSION_ATTRIBUTES_ENABLE_CONFIG, ConfigDef.Type.BOOLEAN, CLOUDEVENTS_EXTENSION_ATTRIBUTES_ENABLE_DEFAULT, ConfigDef.Importance.HIGH,
+                CLOUDEVENTS_EXTENSION_ATTRIBUTES_ENABLE_DOC);
         CONFIG.define(CLOUDEVENTS_SCHEMA_NAME_ADJUSTMENT_MODE_CONFIG, ConfigDef.Type.STRING, CLOUDEVENTS_SCHEMA_NAME_ADJUSTMENT_MODE_DEFAULT, ConfigDef.Importance.LOW,
                 CLOUDEVENTS_SCHEMA_NAME_ADJUSTMENT_MODE_DOC);
         CONFIG.define(CLOUDEVENTS_METADATA_LOCATION_CONFIG, ConfigDef.Type.STRING, CLOUDEVENTS_METADATA_LOCATION_DEFAULT, ConfigDef.Importance.HIGH,
@@ -76,6 +82,15 @@ public class CloudEventsConverterConfig extends ConverterConfig {
      */
     public SerializerType cloudeventsDataSerializerTypeConfig() {
         return SerializerType.withName(getString(CLOUDEVENTS_DATA_SERIALIZER_TYPE_CONFIG));
+    }
+
+    /**
+     * Return whether to include extension attributes in a cloud event.
+     *
+     * @return whether to enable extension attributes
+     */
+    public boolean extensionAttributesEnable() {
+        return getBoolean(CLOUDEVENTS_EXTENSION_ATTRIBUTES_ENABLE_CONFIG);
     }
 
     /**

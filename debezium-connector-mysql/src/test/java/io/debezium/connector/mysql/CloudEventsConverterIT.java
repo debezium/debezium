@@ -33,6 +33,12 @@ public class CloudEventsConverterIT extends AbstractCloudEventsConverterTest<MyS
 
     private JdbcConnection connection;
 
+    private static final String SETUP_TABLE = "CREATE TABLE a " +
+            "(" +
+            "  pk            integer      not null," +
+            "  aa            integer      not null," +
+            "  CONSTRAINT a_pk PRIMARY KEY (pk));";
+
     private static final String SETUP_OUTBOX_TABLE = "CREATE TABLE outbox " +
             "(" +
             "  id            varchar(36)  not null," +
@@ -41,6 +47,8 @@ public class CloudEventsConverterIT extends AbstractCloudEventsConverterTest<MyS
             "  type          varchar(255) not null," +
             "  payload       json," +
             "  CONSTRAINT outbox_pk PRIMARY KEY (id));";
+
+    private static final String INSERT_STMT = "INSERT INTO a VALUES (1, 1);";
 
     @Before
     @Override
@@ -93,27 +101,37 @@ public class CloudEventsConverterIT extends AbstractCloudEventsConverterTest<MyS
     }
 
     @Override
-    protected String tableName() {
-        return tableNameId().toQuotedString('`');
+    protected String topicName() {
+        return DATABASE.topicForTable("a");
     }
 
     @Override
-    protected String topicName() {
+    protected String topicNameOutbox() {
         return DATABASE.topicForTable("outbox");
     }
 
     @Override
     protected void createTable() throws Exception {
+        this.connection.execute(SETUP_TABLE);
+    }
+
+    @Override
+    protected void createOutboxTable() throws Exception {
         this.connection.execute(SETUP_OUTBOX_TABLE);
     }
 
     @Override
-    protected String createInsert(String eventId,
-                                  String eventType,
-                                  String aggregateType,
-                                  String aggregateId,
-                                  String payloadJson,
-                                  String additional) {
+    protected String createInsert() {
+        return INSERT_STMT;
+    }
+
+    @Override
+    protected String createInsertToOutbox(String eventId,
+                                          String eventType,
+                                          String aggregateType,
+                                          String aggregateId,
+                                          String payloadJson,
+                                          String additional) {
         StringBuilder insert = new StringBuilder();
         insert.append("INSERT INTO outbox VALUES (");
         insert.append("'").append(UUID.fromString(eventId)).append("'");

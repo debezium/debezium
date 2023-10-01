@@ -152,6 +152,8 @@ public class CloudEventsConverter implements Converter {
     private List<String> schemaRegistryUrls;
     private SchemaNameAdjuster schemaNameAdjuster;
 
+    private boolean extensionAttributesEnable;
+
     private MetadataLocation metadataLocation;
 
     public CloudEventsConverter() {
@@ -173,6 +175,7 @@ public class CloudEventsConverter implements Converter {
         ceSerializerType = ceConfig.cloudeventsSerializerType();
         dataSerializerType = ceConfig.cloudeventsDataSerializerTypeConfig();
         schemaNameAdjuster = ceConfig.schemaNameAdjustmentMode().createAdjuster();
+        extensionAttributesEnable = ceConfig.extensionAttributesEnable();
         metadataLocation = ceConfig.metadataLocation();
 
         Map<String, Object> jsonHeaderConverterConfig = new HashMap<>();
@@ -483,12 +486,12 @@ public class CloudEventsConverter implements Converter {
             ceSchemaBuilder.withSchema(CloudEventsMaker.FieldName.DATASCHEMA, Schema.STRING_SCHEMA);
         }
 
-        ceSchemaBuilder.withSchema(adjustExtensionName(Envelope.FieldName.OPERATION), Schema.STRING_SCHEMA);
-
-        ceSchemaFromSchema(sourceSchema, ceSchemaBuilder, CloudEventsConverter::adjustExtensionName, false);
-
-        // transaction attributes
-        ceSchemaFromSchema(TransactionMonitor.TRANSACTION_BLOCK_SCHEMA, ceSchemaBuilder, CloudEventsConverter::txExtensionName, true);
+        if (this.extensionAttributesEnable) {
+            ceSchemaBuilder.withSchema(adjustExtensionName(Envelope.FieldName.OPERATION), Schema.STRING_SCHEMA);
+            ceSchemaFromSchema(sourceSchema, ceSchemaBuilder, CloudEventsConverter::adjustExtensionName, false);
+            // transaction attributes
+            ceSchemaFromSchema(TransactionMonitor.TRANSACTION_BLOCK_SCHEMA, ceSchemaBuilder, CloudEventsConverter::txExtensionName, true);
+        }
 
         ceSchemaBuilder.withSchema(CloudEventsMaker.FieldName.DATA, dataSchemaType);
 
@@ -502,16 +505,17 @@ public class CloudEventsConverter implements Converter {
                 .withValue(CloudEventsMaker.FieldName.TYPE, maker.ceType())
                 .withValue(CloudEventsMaker.FieldName.TIME, maker.ceTime())
                 .withValue(CloudEventsMaker.FieldName.DATACONTENTTYPE, maker.ceDatacontenttype());
+
         if (dataSchema != null) {
             ceValueBuilder.withValue(CloudEventsMaker.FieldName.DATASCHEMA, dataSchema);
         }
 
-        ceValueBuilder.withValue(adjustExtensionName(Envelope.FieldName.OPERATION), parser.op());
-
-        ceValueFromStruct(source, sourceSchema, ceValueBuilder, CloudEventsConverter::adjustExtensionName);
-
-        if (transaction != null) {
-            ceValueFromStruct(transaction, TransactionMonitor.TRANSACTION_BLOCK_SCHEMA, ceValueBuilder, CloudEventsConverter::txExtensionName);
+        if (this.extensionAttributesEnable) {
+            ceValueBuilder.withValue(adjustExtensionName(Envelope.FieldName.OPERATION), parser.op());
+            ceValueFromStruct(source, sourceSchema, ceValueBuilder, CloudEventsConverter::adjustExtensionName);
+            if (transaction != null) {
+                ceValueFromStruct(transaction, TransactionMonitor.TRANSACTION_BLOCK_SCHEMA, ceValueBuilder, CloudEventsConverter::txExtensionName);
+            }
         }
 
         ceValueBuilder.withValue(CloudEventsMaker.FieldName.DATA, serializedData);

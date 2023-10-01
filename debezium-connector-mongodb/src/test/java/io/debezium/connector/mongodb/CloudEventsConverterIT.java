@@ -92,6 +92,27 @@ public class CloudEventsConverterIT extends AbstractMongoConnectorIT {
     }
 
     @Test
+    @FixFor({ "DBZ-6982" })
+    public void shouldConvertToCloudEventsInJsonWithoutExtensionAttributes() throws Exception {
+        try (var client = connect()) {
+            client.getDatabase(DB_NAME).getCollection(COLLECTION_NAME)
+                    .insertOne(new Document()
+                            .append("pk", 1)
+                            .append("aa", 1));
+        }
+
+        SourceRecords streamingRecords = consumeRecordsByTopic(1);
+        assertThat(streamingRecords.allRecordsInOrder()).hasSize(1);
+
+        SourceRecord record = streamingRecords.recordsForTopic("mongo1.dbA.c1").get(0);
+
+        assertThat(record).isNotNull();
+        assertThat(record.value()).isInstanceOf(Struct.class);
+
+        CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithoutExtensionAttributes(record);
+    }
+
+    @Test
     @FixFor({ "DBZ-3642" })
     public void shouldConvertToCloudEventsInJsonWithMetadataInHeadersAfterOutboxEventRouter() throws Exception {
         HeaderFrom<SourceRecord> headerFrom = new HeaderFrom.Value<>();
