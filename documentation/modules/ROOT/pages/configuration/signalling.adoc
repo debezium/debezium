@@ -32,7 +32,7 @@ When {prodname} detects that a new xref:debezium-signaling-example-of-a-logging-
 Signaling is available for use with the following {prodname} connectors:
 
 * Db2
-* MongoDB (Technology Preview)
+* MongoDB
 * MySQL
 * Oracle
 * PostgreSQL
@@ -166,9 +166,7 @@ After you enable the signaling channel, a Kafka consumer is created to consume s
 .Additional configuration available for the consumer
 
 * {link-prefix}:{link-db2-connector}#debezium-db2-connector-kafka-signals-configuration-properties[Db2 connector Kafka signal configuration properties]
-ifdef::community[]
 * {link-prefix}:{link-mongodb-connector}#debezium-mongodb-connector-kafka-signals-configuration-properties[MongoDB connector Kafka signal configuration properties]
-endif::community[]
 * {link-prefix}:{link-mysql-connector}#debezium-mysql-connector-kafka-signals-configuration-properties[MySQL connector Kafka signal configuration properties]
 * {link-prefix}:{link-oracle-connector}#debezium-oracle-connector-kafka-signals-configuration-properties[Oracle connector Kafka signal configuration properties]
 * {link-prefix}:{link-postgresql-connector}#debezium-postgresql-connector-kafka-signals-configuration-properties[PostgreSQL connector Kafka signal configuration properties]
@@ -452,9 +450,7 @@ You can initiate ad hoc snapshots at any time.
 Ad hoc snapshots are available for the following {prodname} connectors:
 
 * Db2
-ifdef::community[]
 * MongoDB
-endif::community[]
 * MySQL
 * Oracle
 * PostgreSQL
@@ -503,9 +499,7 @@ For more information about ad hoc snapshots, see the _Snapshots_ topic in the do
 .Additional resources
 
 * {link-prefix}:{link-db2-connector}#db2-ad-hoc-snapshots[Db2 connector ad hoc snapshots]
-ifdef::community[]
 * {link-prefix}:{link-mongodb-connector}#mongodb-ad-hoc-snapshots[MongoDB connector ad hoc snapshots]
-endif::community[]
 * {link-prefix}:{link-mysql-connector}#mysql-ad-hoc-snapshots[MySQL connector ad hoc snapshots]
 * {link-prefix}:{link-oracle-connector}#oracle-ad-hoc-snapshots[Oracle connector ad hoc snapshots]
 * {link-prefix}:{link-postgresql-connector}#postgresql-ad-hoc-snapshots[PostgreSQL connector ad hoc snapshots]
@@ -520,9 +514,7 @@ After processing the signal, the connector will stop the current in-progress sna
 You can stop ad hoc snapshots for the following {prodname} connectors:
 
 * Db2
-ifdef::community[]
 * MongoDB
-endif::community[]
 * MySQL
 * Oracle
 * PostgreSQL
@@ -579,9 +571,7 @@ Therefor it's not possible to specify the data collection as the snapshot proces
 You can pause incremental snapshots for the following {prodname} connectors:
 
 * Db2
-ifdef::community[]
 * MongoDB
-endif::community[]
 * MySQL
 * Oracle
 * PostgreSQL
