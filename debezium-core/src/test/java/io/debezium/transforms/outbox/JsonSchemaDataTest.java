@@ -24,7 +24,10 @@ import org.junit.Test;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import io.debezium.config.CommonConnectorConfig.FieldNameAdjustmentMode;
 import io.debezium.doc.FixFor;
+import io.debezium.schema.FieldNameSelector;
+import io.debezium.schema.FieldNameSelector.FieldNamer;
 import io.debezium.transforms.outbox.EventRouterConfigDefinition.JsonPayloadNullFieldBehavior;
 
 /**
@@ -34,16 +37,19 @@ public class JsonSchemaDataTest {
     private JsonSchemaData jsonSchemaData;
     private ObjectMapper mapper;
     private String record;
+    private FieldNamer<String> avroFieldNamer;
 
     @Before
     public void setup() throws Exception {
         jsonSchemaData = new JsonSchemaData();
         mapper = new ObjectMapper();
         record = getFile("json/restaurants5.json");
+        avroFieldNamer = FieldNameSelector.defaultNonRelationalSelector(
+                FieldNameAdjustmentMode.parse("avro").createAdjuster());
     }
 
     @Test
-    @FixFor("DBZ-6910")
+    @FixFor({ "DBZ-6910", "DBZ-6983" })
     public void shouldCreateCorrectSchemaFromArrayJson() throws Exception {
         String key = "test_arr";
         // remove description value from array json
@@ -62,7 +68,7 @@ public class JsonSchemaDataTest {
         assertThat(arraySchema.valueSchema().field("description").schema().type()).isEqualTo(Schema.Type.STRING);
 
         // treat null value as bytes type
-        jsonSchemaData = new JsonSchemaData(JsonPayloadNullFieldBehavior.OPTIONAL_BYTES);
+        jsonSchemaData = new JsonSchemaData(JsonPayloadNullFieldBehavior.OPTIONAL_BYTES, avroFieldNamer);
         testNode = mapper.readTree("[{\"code\":\"100\",\"description\": null},{\"code\":\"200\",\"description\": null},{\"code\":\"300\"}]");
         arraySchema = jsonSchemaData.toConnectSchema(key, testNode);
 
@@ -74,6 +80,13 @@ public class JsonSchemaDataTest {
 
         assertThat(arraySchema.valueSchema().field("code")).isNotNull();
         assertThat(arraySchema.valueSchema().field("description").schema().type()).isEqualTo(Schema.Type.STRING);
+
+        // adjust the property name with non-avro supported character
+        testNode = mapper.readTree(
+                "[{\"code\":\"100\",\"description\":\"some description\", \"test$\":\"test\"},{\"code\":\"200\",\"description\":\"another description\"},{\"code\":\"300\"}]");
+        arraySchema = jsonSchemaData.toConnectSchema(key, testNode);
+
+        assertThat(arraySchema.valueSchema().field("test_")).isNotNull();
     }
 
     @Test
@@ -136,7 +149,7 @@ public class JsonSchemaDataTest {
     @Test
     @FixFor("DBZ-5796")
     public void shouldConvertNullNodeToOptionalBytes() throws Exception {
-        jsonSchemaData = new JsonSchemaData(JsonPayloadNullFieldBehavior.OPTIONAL_BYTES);
+        jsonSchemaData = new JsonSchemaData(JsonPayloadNullFieldBehavior.OPTIONAL_BYTES, avroFieldNamer);
         String json = "{\"heartbeat\": 1, \"email\": null}";
         JsonNode testNode = mapper.readTree(json);
         Schema payloadSchema = jsonSchemaData.toConnectSchema("payload", testNode);

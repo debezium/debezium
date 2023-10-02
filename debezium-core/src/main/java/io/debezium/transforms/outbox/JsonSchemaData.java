@@ -6,9 +6,9 @@
 package io.debezium.transforms.outbox;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -26,17 +26,23 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeType;
 import com.fasterxml.jackson.databind.node.NullNode;
 
+import io.debezium.schema.FieldNameSelector;
+import io.debezium.schema.FieldNameSelector.FieldNamer;
+import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.transforms.outbox.EventRouterConfigDefinition.JsonPayloadNullFieldBehavior;
 
 public class JsonSchemaData {
     private final JsonPayloadNullFieldBehavior jsonPayloadNullFieldBehavior;
+    private final FieldNamer<String> fieldNamer;
 
     public JsonSchemaData() {
         this.jsonPayloadNullFieldBehavior = JsonPayloadNullFieldBehavior.IGNORE;
+        this.fieldNamer = FieldNameSelector.defaultNonRelationalSelector(SchemaNameAdjuster.NO_OP);
     }
 
-    public JsonSchemaData(JsonPayloadNullFieldBehavior jsonPayloadNullFieldBehavior) {
+    public JsonSchemaData(JsonPayloadNullFieldBehavior jsonPayloadNullFieldBehavior, FieldNamer<String> fieldNamer) {
         this.jsonPayloadNullFieldBehavior = jsonPayloadNullFieldBehavior;
+        this.fieldNamer = fieldNamer;
     }
 
     /**
@@ -61,17 +67,13 @@ public class JsonSchemaData {
                 return arrayNode.isEmpty() ? null : SchemaBuilder.array(toConnectSchemaWithCycles(key, arrayNode)).optional().build();
             case OBJECT:
                 final SchemaBuilder schemaBuilder = SchemaBuilder.struct().name(key).optional();
-                if (node != null) {
-                    Iterator<Map.Entry<String, JsonNode>> fieldsEntries = node.fields();
-                    while (fieldsEntries.hasNext()) {
-                        final Map.Entry<String, JsonNode> fieldEntry = fieldsEntries.next();
-                        final String fieldName = fieldEntry.getKey();
-                        final Schema fieldSchema = toConnectSchema(key + "." + fieldName, fieldEntry.getValue());
-                        if (fieldSchema != null && !hasField(schemaBuilder, fieldName)) {
-                            schemaBuilder.field(fieldName, fieldSchema);
-                        }
+                node.fields().forEachRemaining(entry -> {
+                    final String fieldName = fieldNamer.fieldNameFor(entry.getKey());
+                    final Schema fieldSchema = toConnectSchema(key + "." + fieldName, entry.getValue());
+                    if (fieldSchema != null && !hasField(schemaBuilder, fieldName)) {
+                        schemaBuilder.field(fieldName, fieldSchema);
                     }
-                }
+                });
                 return schemaBuilder.build();
             case NULL:
                 if (jsonPayloadNullFieldBehavior.equals(JsonPayloadNullFieldBehavior.OPTIONAL_BYTES)) {
@@ -116,7 +118,7 @@ public class JsonSchemaData {
             return right;
         }
 
-        Map<String, Field> fields = new HashMap<>();
+        Map<String, Field> fields = new LinkedHashMap<>();
         left.fields().forEach(field -> fields.put(field.name(), field));
         right.fields().forEach(field -> {
             Field oldField = fields.get(field.name());
@@ -234,8 +236,8 @@ public class JsonSchemaData {
         }
     }
 
-    private List getArrayAsList(ArrayNode array, Schema schema) {
-        List arrayObjects = new ArrayList(array.size());
+    private List<Object> getArrayAsList(ArrayNode array, Schema schema) {
+        List<Object> arrayObjects = new ArrayList<>(array.size());
         Iterator<JsonNode> elements = array.elements();
         while (elements.hasNext()) {
             arrayObjects.add(getStructFieldValue(elements.next(), schema.valueSchema()));
