@@ -20,20 +20,6 @@ The process of routing messages based on their content is described in the https
 To apply this pattern in {prodname}, you use the content-based routing link:https://cwiki.apache.org/confluence/display/KAFKA/KIP-66%3A+Single+Message+Transforms+for+Kafka+Connect[single message transform] (SMT) to write expressions that are evaluated for each event.
 Depending how an event is evaluated, the SMT either routes the event message to the original destination topic, or reroutes it to the topic that you specify in the expression.
 
-ifdef::community[]
-[NOTE]
-====
-The content-based routing SMT is under active development. The structure of the emitted message or other details might change as development progresses.
-====
-endif::community[]
-
-ifdef::product[]
-[IMPORTANT]
-====
-The {prodname} content-based routing SMT is a Technology Preview feature. Technology Preview features are not supported with Red Hat production service-level agreements (SLAs) and might not be functionally complete; therefore, Red Hat does not recommend implementing any Technology Preview features in production environments. This Technology Preview feature provides early access to upcoming product innovations, enabling you to test functionality and provide feedback during the development process. For more information about support scope, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
-====
-endif::product[]
-
 While it is possible to use Java to create a custom SMT to encode routing logic, using a custom-coded SMT has its drawbacks.
 For example:
 
