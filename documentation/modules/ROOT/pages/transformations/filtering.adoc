@@ -18,20 +18,6 @@ By default, {prodname} delivers every data change event that it receives to the 
 However, in many cases, you might be interested in only a subset of the events emitted by the producer.
 To enable you to process only the records that are relevant to you, {prodname} provides the _filter_ link:https://cwiki.apache.org/confluence/display/KAFKA/KIP-66%3A+Single+Message+Transforms+for+Kafka+Connect[single message transform] (SMT).
 
-ifdef::community[]
-[NOTE]
-====
-The filter SMT is under active development. The structure of the emitted message or other details might change as development progresses.
-====
-endif::community[]
-
-ifdef::product[]
-[IMPORTANT]
-====
-The {prodname} filter SMT is a Technology Preview feature. Technology Preview features are not supported with Red Hat production service-level agreements (SLAs) and might not be functionally complete; therefore, Red Hat does not recommend implementing any Technology Preview features in production environments. This Technology Preview feature provides early access to upcoming product innovations, enabling you to test functionality and provide feedback during the development process. For more information about support scope, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
-====
-endif::product[]
-
 While it is possible to use Java to create a custom SMT to encode filtering logic, using a custom-coded SMT has its drawbacks.
 For example:
 
