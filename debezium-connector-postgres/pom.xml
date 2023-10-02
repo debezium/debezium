@@ -24,7 +24,7 @@
         <postgres.db.name>postgres</postgres.db.name>
         <postgres.encoding>UTF8</postgres.encoding>
         <postgres.system.lang>en_US.utf8</postgres.system.lang>
-        <postgres.image>debezium/postgres:${version.postgres.server}</postgres.image>
+        <postgres.image>quay.io/debezium/postgres:${version.postgres.server}</postgres.image>
         <postgres.config.file>/usr/share/postgresql/postgresql.conf.sample</postgres.config.file>
         <docker.skip>false</docker.skip>
         <docker.showLogs>true</docker.showLogs>
