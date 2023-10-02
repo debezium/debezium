@@ -3479,6 +3479,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     public void shouldAddNewFieldToSourceInfo() throws InterruptedException {
         TestHelper.execute(
                 "DROP TABLE IF EXISTS s1.DBZ6076;",
+                "CREATE SCHEMA IF NOT EXISTS s1;",
                 "CREATE TABLE s1.DBZ6076 (pk SERIAL, aa integer, PRIMARY KEY(pk));",
                 "INSERT INTO s1.DBZ6076 (aa) VALUES (1);");
         start(PostgresConnector.class, TestHelper.defaultConfig()
