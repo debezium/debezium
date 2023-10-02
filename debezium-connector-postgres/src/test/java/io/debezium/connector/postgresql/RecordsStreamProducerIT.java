@@ -12,7 +12,7 @@ import static io.debezium.connector.postgresql.TestHelper.TYPE_NAME_PARAMETER_KE
 import static io.debezium.connector.postgresql.TestHelper.TYPE_SCALE_PARAMETER_KEY;
 import static io.debezium.connector.postgresql.TestHelper.topicName;
 import static io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIs.DecoderPluginName.PGOUTPUT;
-import static io.debezium.junit.EqualityCheck.LESS_THAN_OR_EQUAL;
+import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertTrue;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -1159,7 +1159,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
     @Test
     @FixFor("DBZ-6758")
-    @SkipWhenDatabaseVersion(check = LESS_THAN_OR_EQUAL, major = 10, reason = "Database version less than or equal 10.0")
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 14, reason = "Database version less than or equal 14.0")
     public void shouldReceiveChangesForInfinityNumericWithInfinity() throws Exception {
         TestHelper.executeDDL("postgres_create_tables.ddl");
 
