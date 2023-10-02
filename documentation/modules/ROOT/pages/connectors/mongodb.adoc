@@ -1552,46 +1552,75 @@ Database (authentication source) containing MongoDB credentials. This is require
 |`false`
 |When SSL is enabled this setting controls whether strict hostname checking is disabled during connection phase. If `true` the connection will not prevent man-in-the-middle attacks.
 
+|[[mongodb-property-filters-match-mode]]<<mongodb-property-filters-match-mode, `+filters.match.mode+`>>
+|regex
+|The mode used to match events based on included/excluded database and collection names.
+Set the property to one of the following values:
+
+`regex`::
+Database and collection includes/excludes are evaluated as comma-separated list of regular expressions.
+
+`literal`::
+Database and collection includes/excludes are evaluated as comma-separated list of string literals. Whitespace characters surrounding these literals are stripped.
+
 |[[mongodb-property-database-include-list]]<<mongodb-property-database-include-list, `+database.include.list+`>>
 |_empty string_
-|An optional comma-separated list of regular expressions that match database names to be monitored.
+|An optional comma-separated list of regular expressions or literals that match database names to be monitored.
 By default, all databases are monitored. +
 When `database.include.list` is set, the connector monitors only the databases that the property specifies.
 Other databases are excluded from monitoring.
 
-To match the name of a database, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
-That is, the specified expression is matched against the entire name string of the database; it does not match substrings that might be present in a database name. +
+To match the name of a database, {prodname} performs one of the following actions based on the value of xref:mongodb-property-filters-match-mode[`filters.match.mode`] property
+
+- applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the database; it does not match substrings that might be present in a database name.
+- compares the literals that you specify with the entire name string of the database +
+
+
 If you include this property in the configuration, do not also set the `database.exclude.list` property.
 
 |[[mongodb-property-database-exclude-list]]<<mongodb-property-database-exclude-list, `+database.exclude.list+`>>
 |_empty string_
-|An optional comma-separated list of regular expressions that match database names to be excluded from monitoring.
+|An optional comma-separated list of regular expressions or literals that match database names to be excluded from monitoring.
 When `database.exclude.list` is set, the connector monitors every database except the ones that the property specifies.
 
-To match the name of a database, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
-That is, the specified expression is matched against the entire name string of the database; it does not match substrings that might be present in a database name. +
+To match the name of a database, {prodname} performs one of the following actions based on the value of xref:mongodb-property-filters-match-mode[`filters.match.mode`] property
+
+- applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the database; it does not match substrings that might be present in a database name.
+- compares the literals that you specify with the entire name string of the database +
+
 If you include this property in the configuration, do not set the `database.include.list` property.
 
 |[[mongodb-property-collection-include-list]]<<mongodb-property-collection-include-list, `+collection.include.list+`>>
 |_empty string_
-|An optional comma-separated list of regular expressions that match fully-qualified namespaces for MongoDB collections to be monitored.
+|An optional comma-separated list of regular expressions or literals that match fully-qualified namespaces for MongoDB collections to be monitored.
 By default, the connector monitors all collections except those in the `local` and `admin` databases.
 When `collection.include.list` is set, the connector monitors only the collections that the property specifies.
 Other collections are excluded from monitoring.
 Collection identifiers are of the form _databaseName_._collectionName_.
 
-To match the name of a namespace, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
-That is, the specified expression is matched against the entire name string of the namespace; it does not match substrings in the name. +
+To match the name of a namespace, {prodname} performs one of the following actions based on the value of xref:mongodb-property-filters-match-mode[`filters.match.mode`] property
+
+- applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the namespace; it does not match substrings in the name.
+- compares the literals that you specify with the entire name string of the namespace +
+
+
 If you include this property in the configuration, do not also set the `collection.exclude.list` property.
 
 |[[mongodb-property-collection-exclude-list]]<<mongodb-property-collection-exclude-list, `+collection.exclude.list+`>>
 |_empty string_
-|An optional comma-separated list of regular expressions that match fully-qualified namespaces for MongoDB collections to be excluded from monitoring.
+|An optional comma-separated list of regular expressions or literals that match fully-qualified namespaces for MongoDB collections to be excluded from monitoring.
 When `collection.exclude.list` is set, the connector monitors every collection except the ones that the property specifies.
 Collection identifiers are of the form _databaseName_._collectionName_. +
 
-To match the name of a namespace, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
-That is, the specified expression is matched against the entire name string of the namespace; it does not match substrings that might be present in a database name. +
+To match the name of a namespace, {prodname} performs one of the following actions based on the value of xref:mongodb-property-filters-match-mode[`filters.match.mode`] property
+
+- applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the namespace; it does not match substrings that might be present in a database name.
+- compares the literals that you specify with the entire name string of the namespace +
+
 If you include this property in the configuration, do not set the `collection.include.list` property.
 
 |[[mongodb-property-capture-mode]]<<mongodb-property-capture-mode, `+capture.mode+`>>
@@ -1854,7 +1883,10 @@ Set the property to one of the following values:
 Internal stages defined by the connector are applied first. This means that only the events which ought to be captured by the connector are fed to the user defined stages (configured by setting `cursor.pipeline`).
 
 `user_first`::
-Stages defined by the 'cursor.pipeline' property are applied first. In this mode  all events, included those not captured by the connector, are fed to user defined pipeline stages. This mode can have negative performance impact if the value of `cursor.pipeline` contains complex operations.   
+Stages defined by the 'cursor.pipeline' property are applied first. In this mode  all events, included those not captured by the connector, are fed to user defined pipeline stages. This mode can have negative performance impact if the value of `cursor.pipeline` contains complex operations.
+
+`user_only`::
+Stages defined by the 'cursor.pipeline' property will replace internal stages defined by the connector. This mode is **intended only for expert users** since  all events are processed only by user defined pipeline stages. **This mode can have negative impact on performance and overall functionality of the connector!**
 
 |[[mongodb-property-cursor-oversize-handling-mode]]<<mongodb-property-cursor-oversize-handling-mode, `+cursor.oversize.handling.mode+`>>
 |fail
