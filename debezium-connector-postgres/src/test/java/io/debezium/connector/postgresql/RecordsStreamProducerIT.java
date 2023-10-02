@@ -1157,7 +1157,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
     @Test
     @FixFor("DBZ-6758")
-    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 14, reason = "Database version less than or equal 14.0")
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 14, reason = "Infinity support for numeric type was added in Postgres 14")
     public void shouldReceiveChangesForInfinityNumericWithInfinity() throws Exception {
         TestHelper.executeDDL("postgres_create_tables.ddl");
 
