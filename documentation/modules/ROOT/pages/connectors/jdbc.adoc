@@ -636,6 +636,16 @@ Do not use this property in combination with the xref:jdbc-property-connection-t
 |Specifies whether the connector processes `DELETE` or _tombstone_ events and removes the corresponding row from the database.
 Use of this option requires that you set the xref:jdbc-property-primary-key-mode[`primary.key.mode`] to `record.key`.
 
+|[[jdbc-property-truncate-enabled]]<<jdbc-property-truncate-enabled, `+truncate.enabled+`>>
+|`false`
+|Specifies whether the connector processes `TRUNCATE` events and truncate the corresponding tables from the database.
+[NOTE]
+====
+Currently, for some reason the `TRUNCATE` statement doesn't work for DB2 even if it is supported from link:https://www.ibm.com/support/pages/apar/JR37942/[9.7]. The problem verifies with Hibernate, plain JDBC works good.
+
+Db2 dialects have to utilize `ALTER TABLE table_name ACTIVATE NOT LOGGED INITIALLY WITH EMPTY TABLE` statement instead of traditional `TRUNCATE TABLE` syntax, make sure grant related `ALTER` privileges to user account.
+====
+
 |[[jdbc-property-insert-mode]]<<jdbc-property-insert-mode, `+insert.mode+`>>
 |`insert`
 |Specifies the strategy used to insert events into the database.
