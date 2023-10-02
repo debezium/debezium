@@ -1,6 +1,7 @@
 // Category: debezium-using
 // Type: assembly
-// Title: Using notifications to report on connector status
+// Title: Configuring notifications to report connector status
+// ModuleID: configuring-notifications-to-report-connector-status
 [id="debezium-notification"]
 = {prodname} notifications
 ifdef::community[]
