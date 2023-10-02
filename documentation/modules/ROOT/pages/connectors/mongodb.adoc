@@ -286,32 +286,12 @@ To provide for the greatest control, run a separate Kafka Connect cluster for ea
 [id="mongodb-ad-hoc-snapshots"]
 ==== Ad hoc snapshots
 
-ifdef::product[]
-[IMPORTANT]
-====
-Ad hoc snapshots are a Technology Preview feature for the {prodname} MongoDB connector.
-Technology Preview features are not supported with Red Hat production service-level agreements (SLAs) and might not be functionally complete;
-therefore, Red Hat does not recommend implementing any Technology Preview features in production environments.
-This Technology Preview feature provides early access to upcoming product innovations, enabling you to test functionality and provide feedback during the development process.
-For more information about support scope, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
-====
-endif::product[]
 include::{partialsdir}/modules/all-connectors/con-connector-ad-hoc-snapshots.adoc[leveloffset=+3]
 
 // Type: concept
 [id="mongodb-incremental-snapshots"]
 ==== Incremental snapshots
 
-ifdef::product[]
-[IMPORTANT]
-====
-Incremental snapshots and incremental snapshots for sharded clusters are Technology Preview features for the {prodname} MongoDB connector.
-Technology Preview features are not supported with Red Hat production service-level agreements (SLAs) and might not be functionally complete;
-therefore, Red Hat does not recommend implementing any Technology Preview features in production environments.
-This Technology Preview feature provides early access to upcoming product innovations, enabling you to test functionality and provide feedback during the development process.
-For more information about support scope, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
-====
-endif::product[]
 include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+3]
 
 [WARNING]
@@ -321,13 +301,23 @@ can lead to unexpected behaviour (https://www.mongodb.com/docs/manual/reference/
 Please consider using other types for the primary key when performing incremental snapshots.
 ====
 
-[NOTE]
+.Incremental snapshots for sharded clusters
+
+ifdef::product[]
+[IMPORTANT]
 ====
+Incremental snapshots for sharded clusters is a Technology Preview feature for the {prodname} MongoDB connector.
+Technology Preview features are not supported with Red Hat production service-level agreements (SLAs) and might not be functionally complete;
+therefore, Red Hat does not recommend implementing any Technology Preview features in production environments.
+This Technology Preview feature provides early access to upcoming product innovations, enabling you to test functionality and provide feedback during the development process.
+For more information about support scope, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
+endif::product[]
+
 To use incremental snapshots with sharded MongoDB clusters, you must set specific values for the following properties:
 
 * Set xref:mongodb-property-mongodb-connection-mode[`mongodb.connection.mode`] to `sharded`.
 * Set xref:mongodb-property-incremental-snapshot-chunk-size[`incremental.snapshot.chunk.size`] to a value that is high enough to compensate for the link:https://www.mongodb.com/docs/manual/administration/change-streams-production-recommendations/#sharded-clusters[increased complexity] of change stream pipelines.
-====
 
 // Type: procedure
 [id="mongodb-triggering-an-incremental-snapshot"]
@@ -1913,9 +1903,6 @@ A value of `0` indicates using the server/driver default wait timeout.
 | Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}#debezium-signaling-enabling-source-signaling-channel[signals] to the connector.
 Use the following format to specify the collection name: +
 `_<databaseName>_._<collectionName>_` +
-ifdef::product[]
-Signaling is a Technology Preview feature for the {prodname} MongoDB connector.
-endif::product[]
 
 |[[mongodb-property-signal-enabled-channels]]<<mongodb-property-signal-enabled-channels, `+signal.enabled.channels+`>>
 |source
