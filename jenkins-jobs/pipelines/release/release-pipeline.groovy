@@ -428,6 +428,7 @@ node('release-node') {
             ADDITIONAL_REPOSITORIES.each { id, repo ->
                 // Additional repositories (like Debezium Server) can have their own BOM
                 def repoBom = "debezium-${id}-bom/pom.xml"
+                def buildArgs = "-Dversion.debezium=$RELEASE_VERSION"
                 dir(id) {
                     sh "git checkout -b $CANDIDATE_BRANCH"
                     modifyFile("pom.xml") {
@@ -439,16 +440,27 @@ node('release-node') {
                         }
                     }
                     if(id == "operator") {
-                        sh "mvn clean install -Pstable,k8update -DskipTests -DskipITs"
+                        // Update k8 resources and  generate manifests for operator
+                        def profiles = "stable,k8update"
+                        def releaseProfiles = "stable"
+                        if (LATEST_SERIES) {
+                            profiles += ",olmLatest"
+                            releaseProfiles += ",olmLatest"
+                        }
+                        buildArgs +=" -P$releaseProfiles"
+                        sh "mvn clean install -P$profiles -DskipTests -DskipITs"
                     }
                     sh "git commit -a -m '[release] Stable parent $RELEASE_VERSION for release'"
                     // Obtain dependecies not available in Maven Central (introduced for Cassandra Enerprise)
                     if (fileExists(INSTALL_ARTIFACTS_SCRIPT)) {
                         sh "./$INSTALL_ARTIFACTS_SCRIPT"
                     }
-                    sh "mvn clean install -DskipTests -DskipITs"
+                    if(id != "operator") {
+                        // Don't repeat build for operator
+                        sh "mvn clean install -DskipTests -DskipITs"
+                    }
                 }
-                ADDITIONAL_REPOSITORIES[id].mavenRepoId = mvnRelease(id, repo.git, CANDIDATE_BRANCH, "-Dversion.debezium=$RELEASE_VERSION")
+                ADDITIONAL_REPOSITORIES[id].mavenRepoId = mvnRelease(id, repo.git, CANDIDATE_BRANCH, buildArgs)
                 dir(id) {
                     modifyFile("pom.xml") {
                         it.replaceFirst('<version>.+</version>\n    </parent>', "<version>$DEVELOPMENT_VERSION</version>\n    </parent>")
@@ -457,9 +469,6 @@ node('release-node') {
                         modifyFile(repoBom) {
                             it.replaceFirst('<version>.+</version>\n    </parent>', "<version>$DEVELOPMENT_VERSION</version>\n    </parent>")
                         }
-                    }
-                    if(id == "operator") {
-                        sh "mvn clean install -Pk8update -DskipTests -DskipITs"
                     }
                     sh "git commit -a -m '[release] New parent $DEVELOPMENT_VERSION for development'"
                     if (!DRY_RUN) {
