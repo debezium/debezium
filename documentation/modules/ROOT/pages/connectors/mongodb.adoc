@@ -259,13 +259,23 @@ To use incremental snapshots with sharded MongoDB clusters, you must set specifi
 [id="mongodb-triggering-an-incremental-snapshot"]
 ==== Triggering an incremental snapshot
 
-include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-nosql.adoc[leveloffset=+3]
+include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-nosql.adoc[leveloffset=+1]
+
+// Type: procedure
+[id="mongodb-triggering-an-incremental-snapshot-kafka"]
+==== Using the Kafka signaling channel to trigger an incremental snapshot
+include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-kafka.adoc[leveloffset=+1]
 
 // Type: procedure
 [id="mongodb-stopping-an-incremental-snapshot"]
 ==== Stopping an incremental snapshot
 
-include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot-nosql.adoc[leveloffset=+3]
+include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot-nosql.adoc[leveloffset=+1]
+
+// Type: procedure
+[id="mongodb-stopping-an-incremental-snapshot-kafka"]
+==== Using the Kafka signaling channel to stop an incremental snapshot
+include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot-kafka.adoc[leveloffset=+1]
 
 // Type: concept
 // ModuleID: how-the-debezium-mongodb-connector-streams-change-event-records

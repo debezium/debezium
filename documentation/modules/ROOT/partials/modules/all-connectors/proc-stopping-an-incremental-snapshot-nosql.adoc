@@ -67,5 +67,3 @@ If this component of the `data` field is omitted, the signal stops the entire in
 Currently, the only valid option is `incremental`. +
 If you do not specify a `type` value, the signal fails to stop the incremental snapshot.
 |===
-
-include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot-kafka.adoc[leveloffset=+3]
