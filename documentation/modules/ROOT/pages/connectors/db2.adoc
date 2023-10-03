@@ -374,6 +374,7 @@ include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-sna
 // Type: procedure
 [id="db2-triggering-an-incremental-snapshot-kafka"]
 ==== Using the Kafka signaling channel to trigger an incremental snapshot
+
 include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-kafka.adoc[leveloffset=+1]
 
 // Type: procedure
@@ -385,6 +386,7 @@ include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snaps
 // Type: procedure
 [id="db2-stopping-an-incremental-snapshot-kafka"]
 ==== Using the Kafka signaling channel to stop an incremental snapshot
+
 include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot-kafka.adoc[leveloffset=+1]
 
 // Type: concept
