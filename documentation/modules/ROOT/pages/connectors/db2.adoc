@@ -352,13 +352,13 @@ After the snapshot completes, the connector transitions to streaming.
 [id="db2-ad-hoc-snapshots"]
 ==== Ad hoc snapshots
 
-include::{partialsdir}/modules/all-connectors/con-connector-ad-hoc-snapshots.adoc[leveloffset=+3]
+include::{partialsdir}/modules/all-connectors/con-connector-ad-hoc-snapshots.adoc[leveloffset=+1]
 
 // Type: concept
 [id="db2-incremental-snapshots"]
 ==== Incremental snapshots
 
-include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+3]
+include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+1]
 
 [WARNING]
 ====
@@ -369,13 +369,23 @@ The {prodname} connector for Db2 does not support schema changes while an increm
 [id="db2-triggering-an-incremental-snapshot"]
 ==== Triggering an incremental snapshot
 
-include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-sql.adoc[leveloffset=+3]
+include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-sql.adoc[leveloffset=+1]
+
+// Type: procedure
+[id="triggering-an-incremental-snapshot-kafka"]
+==== Using the Kafka signaling channel to trigger an incremental snapshot
+include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-kafka.adoc[leveloffset=+1]
 
 // Type: procedure
 [id="db2-stopping-an-incremental-snapshot"]
 ==== Stopping an incremental snapshot
 
-include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot-sql.adoc[leveloffset=+3]
+include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot-sql.adoc[leveloffset=+1]
+
+// Type: procedure
+[id="db2-stopping-an-incremental-snapshot-kafka"]
+==== Using the Kafka signaling channel to stop an incremental snapshot
+include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot-kafka.adoc[leveloffset=+1]
 
 // Type: concept
 // Title: How {prodname} Db2 connectors read change-data tables
