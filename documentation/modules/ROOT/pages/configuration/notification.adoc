@@ -335,10 +335,10 @@ For example, in a typical deployment, the {prodname} connector files are stored 
 To use a signaling channel with a connector, add the converter JAR file to the connector's subdirectory.
 
 NOTE: To use a custom notification channel with multiple connectors, you must place a copy of the notification channel JAR file in each connector subdirectory.
-endif::community[]
 
 //   Type: procedure
 [id="configuring-connectors-to-use-a-custom-notification-channel"]
 === Configuring connectors to use a custom notification channel
 
 In the connector configuration, add the name of the custom notification channel to the `notification.enabled.channels` property.
+endif::community[]
