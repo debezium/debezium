@@ -1,5 +1,3 @@
-.Procedure using kafka signaling channel
-
 You can send a message to the {link-prefix}:{link-signalling}#debezium-signaling-enabling-kafka-signaling-channel[configured Kafka topic] to request the connector to run an ad hoc incremental snapshot.
 
 The key of the Kafka message must match the value of the `topic.prefix` connector configuration option.
@@ -37,7 +35,7 @@ Key = `test_connector`
 Value = `{"type":"execute-snapshot","data": {"data-collections": ["schema1.table1", "schema1.table2"], "type": "INCREMENTAL"}}`
 ----
 
-==== Ad hoc incremental snapshots with additional-condition
+.Ad hoc incremental snapshots with additional-condition
 
 {prodname} uses the `additional-condition` field to select a subset of a {data-collection}'s content.
 
