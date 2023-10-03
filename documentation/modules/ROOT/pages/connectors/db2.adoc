@@ -372,7 +372,7 @@ The {prodname} connector for Db2 does not support schema changes while an increm
 include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-sql.adoc[leveloffset=+1]
 
 // Type: procedure
-[id="triggering-an-incremental-snapshot-kafka"]
+[id="db2-triggering-an-incremental-snapshot-kafka"]
 ==== Using the Kafka signaling channel to trigger an incremental snapshot
 include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-kafka.adoc[leveloffset=+1]
 

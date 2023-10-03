@@ -121,5 +121,3 @@ If you do not specify a value, the connector runs an incremental snapshot.
 The value for snapshot events is `r`, signifying a `READ` operation.
 
 |===
-
-include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-kafka.adoc[leveloffset=+3]
