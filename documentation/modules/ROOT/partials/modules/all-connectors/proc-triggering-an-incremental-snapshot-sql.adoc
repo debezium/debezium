@@ -44,8 +44,8 @@ INSERT INTO myschema.debezium_signal (id, type, data) // <1>
 values ('ad-hoc-1',   // <2>
     'execute-snapshot',  // <3>
     '{"data-collections": ["schema1.table1", "schema2.table2"], // <4>
-    "type":"incremental"}, // <5>
-    "additional-conditions":[{"data-collection": "schema1.table1" ,"filter":"color='blue'"}]}'); // <6>
+    "type":"incremental", // <5>
+    "additional-conditions":[{"data-collection": "schema1.table1" ,"filter":"color=\'blue\'"}]}'); // <6>
 ----
 +
 The values of the `id`,`type`, and `data` parameters in the command correspond to the {link-prefix}:{link-signalling}#debezium-signaling-description-of-required-structure-of-a-signaling-data-collection[fields of the signaling {data-collection}].
