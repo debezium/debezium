@@ -39,14 +39,14 @@ public class JdbcSinkConnectorTask extends SinkTask {
 
     private enum State {
         RUNNING,
-        STOPPED;
+        STOPPED
     }
 
     private final AtomicReference<State> state = new AtomicReference<>(State.STOPPED);
     private final ReentrantLock stateLock = new ReentrantLock();
 
     private ChangeEventSink changeEventSink;
-    private Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
+    private final Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
     private Throwable previousPutException;
 
     @Override
@@ -117,7 +117,9 @@ public class JdbcSinkConnectorTask extends SinkTask {
     }
 
     private static boolean isSchemaChange(SinkRecord record) {
-        return record.valueSchema() != null && !Strings.isNullOrEmpty(record.valueSchema().name()) && SCHEMA_CHANGE_VALUE.contains(record.valueSchema().name());
+        return record.valueSchema() != null
+                && !Strings.isNullOrEmpty(record.valueSchema().name())
+                && record.valueSchema().name().contains(SCHEMA_CHANGE_VALUE);
     }
 
     @Override
