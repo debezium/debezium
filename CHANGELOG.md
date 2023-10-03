@@ -2,6 +2,43 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.4.0.Final
+October 3rd 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12411356)
+
+### New features since 2.4.0.CR1
+
+* Add timestamp to Notification [DBZ-6793](https://issues.redhat.com/browse/DBZ-6793)
+* Add MongoDB Connector support for `filtering.match.mode=regex|literal` property [DBZ-6973](https://issues.redhat.com/browse/DBZ-6973)
+
+
+### Breaking changes since 2.4.0.CR1
+
+None
+
+
+### Fixes since 2.4.0.CR1
+
+* Debezium Outbox not working with CloudEventsConverter [DBZ-3642](https://issues.redhat.com/browse/DBZ-3642)
+* Incremental snapshot data-collections are not deduplicated [DBZ-6787](https://issues.redhat.com/browse/DBZ-6787)
+* MongoDB connector no longer requires cluster-wide privileges [DBZ-6888](https://issues.redhat.com/browse/DBZ-6888)
+* Timezone Transformation can't work [DBZ-6940](https://issues.redhat.com/browse/DBZ-6940)
+* MySQL Kafka Signalling documentation is incorrect [DBZ-6941](https://issues.redhat.com/browse/DBZ-6941)
+* Infinite loop when using OR condition in additional-condition [DBZ-6956](https://issues.redhat.com/browse/DBZ-6956)
+* Filter out specified DDL events logic is reverted [DBZ-6966](https://issues.redhat.com/browse/DBZ-6966)
+* DDL parser does not support NOCOPY keyword [DBZ-6971](https://issues.redhat.com/browse/DBZ-6971)
+* Decrease time spent in handling rebalance events [DBZ-6974](https://issues.redhat.com/browse/DBZ-6974)
+* ParsingException (MySQL/MariaDB): User specification with whitespace [DBZ-6978](https://issues.redhat.com/browse/DBZ-6978)
+* RecordsStreamProducerIT#shouldReceiveChangesForInfinityNumericWithInfinity fails on Postgres < 14 [DBZ-6986](https://issues.redhat.com/browse/DBZ-6986)
+* PostgresConnectorIT#shouldAddNewFieldToSourceInfo may fail as the schema may not exists [DBZ-6987](https://issues.redhat.com/browse/DBZ-6987)
+
+
+### Other changes since 2.4.0.CR1
+
+* Add option to use apicurio with TLS to system level testsuite [DBZ-6954](https://issues.redhat.com/browse/DBZ-6954)
+* Documentation for cursor.oversize.skip.threshold is missing units [DBZ-6968](https://issues.redhat.com/browse/DBZ-6968)
+
+
+
 ## 2.4.0.CR1
 September 22nd 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12413673)
 
