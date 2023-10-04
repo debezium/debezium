@@ -44,15 +44,10 @@ public interface ElapsedTimeStrategy {
             throw new IllegalArgumentException("Initial delay must be positive");
         }
         return new ElapsedTimeStrategy() {
-            private long nextTimestamp = 0L;
+            private long nextTimestamp = clock.currentTimeInMillis() + delayInMilliseconds;
 
             @Override
             public boolean hasElapsed() {
-                if (nextTimestamp == 0L) {
-                    // Initialize ...
-                    nextTimestamp = clock.currentTimeInMillis() + delayInMilliseconds;
-                    return true;
-                }
                 long current = clock.currentTimeInMillis();
                 if (current >= nextTimestamp) {
                     do {
@@ -96,19 +91,12 @@ public interface ElapsedTimeStrategy {
             throw new IllegalArgumentException("Post-step delay must be positive");
         }
         return new ElapsedTimeStrategy() {
-            private long nextTimestamp = 0L;
-            private boolean elapsed = false;
-            private long delta = 0L;
+            private boolean elapsed = stepFunction.getAsBoolean();
+            private long delta = elapsed ? postStepDelayinMillis : preStepDelayinMillis;
+            private long nextTimestamp = clock.currentTimeInMillis() + delta;
 
             @Override
             public boolean hasElapsed() {
-                if (nextTimestamp == 0L) {
-                    // Initialize ...
-                    elapsed = stepFunction.getAsBoolean();
-                    delta = elapsed ? postStepDelayinMillis : preStepDelayinMillis;
-                    nextTimestamp = clock.currentTimeInMillis() + delta;
-                    return true;
-                }
                 if (!elapsed) {
                     elapsed = stepFunction.getAsBoolean();
                     if (elapsed) {
@@ -142,17 +130,11 @@ public interface ElapsedTimeStrategy {
             throw new IllegalArgumentException("Initial delay must be positive");
         }
         return new ElapsedTimeStrategy() {
-            private long nextTimestamp = 0L;
+            private long nextTimestamp = clock.currentTimeInMillis() + delayInMilliseconds;
             private long counter = 1L;
 
             @Override
             public boolean hasElapsed() {
-                if (nextTimestamp == 0L) {
-                    // Initialize ...
-                    nextTimestamp = clock.currentTimeInMillis() + delayInMilliseconds;
-                    counter = 1L;
-                    return true;
-                }
                 long current = clock.currentTimeInMillis();
                 if (current >= nextTimestamp) {
                     do {
@@ -205,17 +187,11 @@ public interface ElapsedTimeStrategy {
             throw new IllegalArgumentException("Maximum delay must be greater than initial delay");
         }
         return new ElapsedTimeStrategy() {
-            private long nextTimestamp = 0L;
-            private long previousDelay = 0L;
+            private long previousDelay = initialDelayInMilliseconds;
+            private long nextTimestamp = clock.currentTimeInMillis() + initialDelayInMilliseconds;
 
             @Override
             public boolean hasElapsed() {
-                if (nextTimestamp == 0L) {
-                    // Initialize ...
-                    nextTimestamp = clock.currentTimeInMillis() + initialDelayInMilliseconds;
-                    previousDelay = initialDelayInMilliseconds;
-                    return true;
-                }
                 long current = clock.currentTimeInMillis();
                 if (current >= nextTimestamp) {
                     do {

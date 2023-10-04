@@ -31,8 +31,8 @@ public class ElapsedTimeStrategyTest {
     public void testConstantDelay() {
         clock.advanceTo(100);
         delay = ElapsedTimeStrategy.constant(clock, 10);
-        // Initial call should always be true ...
-        assertElapsed();
+        // Initial call should always be false ...
+        assertNotElapsed();
         // next stop at 100+10=110
 
         assertNotElapsed();
@@ -66,8 +66,8 @@ public class ElapsedTimeStrategyTest {
     public void testLinearDelay() {
         clock.advanceTo(100);
         delay = ElapsedTimeStrategy.linear(clock, Duration.ofMillis(100));
-        // Initial call should always be true ...
-        assertElapsed();
+        // Initial call should always be false ...
+        assertNotElapsed();
         // next stop at 100+(100*1)=200
         assertNotElapsed();
         clock.advanceTo(199);
@@ -109,8 +109,8 @@ public class ElapsedTimeStrategyTest {
         AtomicBoolean step = new AtomicBoolean(false);
         delay = ElapsedTimeStrategy.step(clock, Duration.ofMillis(10), step::get, Duration.ofMillis(100));
 
-        // Initial call should always be true ...
-        assertElapsed();
+        // Initial call should always be false ...
+        assertNotElapsed();
         // next stop at 100+(10)=110
         assertNotElapsed();
         clock.advanceTo(109);
@@ -172,8 +172,8 @@ public class ElapsedTimeStrategyTest {
         AtomicBoolean step = new AtomicBoolean(true);
         delay = ElapsedTimeStrategy.step(clock, Duration.ofMillis(10), step::get, Duration.ofMillis(100));
 
-        // Initial call should always be true ...
-        assertElapsed();
+        // Initial call should always be false ...
+        assertNotElapsed();
         // next stop at 100+(100)=200
         assertNotElapsed();
         clock.advanceTo(109);
@@ -231,8 +231,8 @@ public class ElapsedTimeStrategyTest {
     public void testExponentialDelay() {
         clock.advanceTo(100);
         delay = ElapsedTimeStrategy.exponential(clock, Duration.ofMillis(100), Duration.ofMillis(4000));
-        // Initial call should always be true ...
-        assertElapsed();
+        // Initial call should always be false ...
+        assertNotElapsed();
         // next stop at 100+(100)=200
 
         assertNotElapsed();

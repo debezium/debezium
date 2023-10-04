@@ -105,9 +105,6 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
     protected BaseSourceTask() {
         // Use exponential delay to log the progress frequently at first, but the quickly tapering off to once an hour...
         pollOutputDelay = ElapsedTimeStrategy.exponential(clock, INITIAL_POLL_PERIOD_IN_MILLIS, MAX_POLL_PERIOD_IN_MILLIS);
-
-        // Initial our poll output delay logic ...
-        pollOutputDelay.hasElapsed();
         previousOutputInstant = clock.currentTimeAsInstant();
 
         this.notificationChannels = StreamSupport.stream(ServiceLoader.load(NotificationChannel.class).spliterator(), false)
@@ -145,7 +142,6 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             catch (RetriableException e) {
                 LOGGER.warn("Failed to start connector, will re-attempt during polling.", e);
                 restartDelay = ElapsedTimeStrategy.constant(Clock.system(), retriableRestartWait);
-                restartDelay.hasElapsed();
                 setTaskState(State.RESTARTING);
             }
         }
@@ -302,7 +298,6 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
                 setTaskState(State.RESTARTING);
                 if (restartDelay == null) {
                     restartDelay = ElapsedTimeStrategy.constant(Clock.system(), retriableRestartWait);
-                    restartDelay.hasElapsed();
                 }
             }
             else {
