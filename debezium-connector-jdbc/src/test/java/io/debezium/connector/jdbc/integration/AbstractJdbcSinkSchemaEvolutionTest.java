@@ -191,7 +191,8 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
                 .recordSchema(SchemaBuilder.struct()
                         .field("id", Schema.INT8_SCHEMA)
                         .field("name", Schema.OPTIONAL_STRING_SCHEMA)
-                        .field("age", Schema.OPTIONAL_INT32_SCHEMA))
+                        .field("age", Schema.OPTIONAL_INT32_SCHEMA)
+                        .field("weight", Schema.OPTIONAL_INT32_SCHEMA))
                 .sourceSchema(factory.basicSourceSchema())
                 .key("id", (byte) 1)
                 .before("id", (byte) 1)
@@ -199,17 +200,19 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
                 .after("id", (byte) 1)
                 .after("name", "John Doe")
                 .after("age", 25)
+                .after("weight", 150)
                 .source("ts_ms", (int) Instant.now().getEpochSecond())
                 .build();
         consume(updateRecord);
 
         final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName(createRecord));
-        tableAssert.hasNumberOfRows(2).hasNumberOfColumns(4);
+        tableAssert.hasNumberOfRows(2).hasNumberOfColumns(5);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER);
         getSink().assertColumnType(tableAssert, "name", ValueType.TEXT);
         getSink().assertColumnType(tableAssert, "nick_name$", ValueType.TEXT, "John Doe$", null);
         getSink().assertColumnType(tableAssert, "age", ValueType.NUMBER, null, 25);
+        getSink().assertColumnType(tableAssert, "weight", ValueType.NUMBER, null, 150);
     }
 
     @ParameterizedTest

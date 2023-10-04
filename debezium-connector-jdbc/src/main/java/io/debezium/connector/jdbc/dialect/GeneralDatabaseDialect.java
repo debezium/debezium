@@ -295,23 +295,51 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
     }
 
     @Override
+    public String getAlterTablePrefix() {
+        return "ADD (";
+    }
+
+    @Override
+    public String getAlterTableSuffix() {
+        return ")";
+    }
+
+    @Override
+    public String getAlterTableColumnPrefix() {
+        return "";
+    }
+
+    @Override
+    public String getAlterTableColumnSuffix() {
+        return "";
+    }
+
+    @Override
+    public String getAlterTableColumnDelimiter() {
+        return ", ";
+    }
+
+    @Override
     public String getAlterTableStatement(TableDescriptor table, SinkRecordDescriptor record, Set<String> missingFields) {
         final SqlStatementBuilder builder = new SqlStatementBuilder();
         builder.append("ALTER TABLE ");
         builder.append(getQualifiedTableName(table.getId()));
         builder.append(" ");
-        builder.appendList(getAlterTableStatementFieldDelimiter(), missingFields, (name) -> {
+        builder.append(getAlterTablePrefix());
+        builder.appendList(getAlterTableColumnDelimiter(), missingFields, (name) -> {
             final FieldDescriptor field = record.getFields().get(name);
             final StringBuilder addColumnSpec = new StringBuilder();
-            addColumnSpec.append("ADD ");
+            addColumnSpec.append(getAlterTableColumnPrefix());
+            addColumnSpec.append(" ");
             addColumnSpec.append(toIdentifier(columnNamingStrategy.resolveColumnName(field.getColumnName())));
             addColumnSpec.append(" ").append(field.getTypeName());
             addColumnDefaultValue(field, addColumnSpec);
 
             addColumnSpec.append(field.getSchema().isOptional() ? " NULL" : " NOT NULL");
+            addColumnSpec.append(getAlterTableColumnSuffix());
             return addColumnSpec.toString();
         });
-
+        builder.append(getAlterTableSuffix());
         return builder.build();
     }
 
