@@ -86,6 +86,41 @@ public interface DatabaseDialect {
     String getCreateTableStatement(SinkRecordDescriptor record, TableId tableId);
 
     /**
+     * Gets the prefix used before adding column-clauses in {@code ALTER TABLE} statements.
+     *
+     * @return the alter table column-clauses prefix
+     */
+    String getAlterTablePrefix();
+
+    /**
+     * Gets the suffix used after adding the column-clauses in {@code ALTER TABLE} statements.
+     *
+     * @return the alter table column-clauses suffix
+     */
+    String getAlterTableSuffix();
+
+    /**
+     * Gets the prefix used before adding each column-clause to {@code ALTER TABLE} statements.
+     *
+     * @return the alter table prefix just before each column-clause
+     */
+    String getAlterTableColumnPrefix();
+
+    /**
+     * Gets the suffix used after adding each column-clause to {@code ALTER TABLE statements}.
+     *
+     * @return the alter table suffix just after each column-clause
+     */
+    String getAlterTableColumnSuffix();
+
+    /**
+     * Gets the field delimiter used when constructing {@code ALTER TABLE} statements.
+     *
+     * @return the field delimiter for alter table SQL statement
+     */
+    String getAlterTableColumnDelimiter();
+
+    /**
      * Construct a {@code ALTER TABLE} statement specific for this dialect.
      *
      * @param table the current relational table model, should not be {@code null}
@@ -95,15 +130,6 @@ public interface DatabaseDialect {
      * @throws IllegalArgumentException if called with an empty set of missing fields
      */
     String getAlterTableStatement(TableDescriptor table, SinkRecordDescriptor record, Set<String> missingFields);
-
-    /**
-     * Gets the field delimeter used when contructing {@code ALTER TABLE} statements.
-     *
-     * @return the field delimeter for alter table SQL statement
-     */
-    default String getAlterTableStatementFieldDelimiter() {
-        return " ";
-    }
 
     /**
      * Construct a {@code INSERT INTO} statement specific for this dialect.
