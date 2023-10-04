@@ -108,7 +108,6 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                 DEFAULT_INTERVAL_BETWEEN_COMMITS.compareTo(intervalBetweenCommitsBasedOnPoll) > 0
                         ? DEFAULT_INTERVAL_BETWEEN_COMMITS.toMillis()
                         : intervalBetweenCommitsBasedOnPoll.toMillis());
-        this.pauseBetweenCommits.hasElapsed();
         this.streamingExecutionContexts = new HashMap<>();
         this.checkAgent = true;
     }

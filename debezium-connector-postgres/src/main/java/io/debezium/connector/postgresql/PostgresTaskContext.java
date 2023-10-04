@@ -76,7 +76,7 @@ public class PostgresTaskContext extends CdcSourceTaskContext {
         }
         assert (this.refreshXmin != null);
 
-        if (this.refreshXmin.hasElapsed()) {
+        if (this.refreshXmin.hasElapsed() || lastXmin == null) {
             lastXmin = getCurrentSlotState(connection).slotCatalogXmin();
             if (LOGGER.isDebugEnabled()) {
                 LOGGER.debug("Fetched new xmin from slot of {}", lastXmin);
