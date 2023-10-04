@@ -79,6 +79,21 @@ public class PostgresDatabaseDialect extends GeneralDatabaseDialect {
     }
 
     @Override
+    public String getAlterTablePrefix() {
+        return "";
+    }
+
+    @Override
+    public String getAlterTableSuffix() {
+        return "";
+    }
+
+    @Override
+    public String getAlterTableColumnPrefix() {
+        return "ADD COLUMN ";
+    }
+
+    @Override
     public String getUpsertStatement(TableDescriptor table, SinkRecordDescriptor record) {
         final SqlStatementBuilder builder = new SqlStatementBuilder();
         builder.append("INSERT INTO ");
