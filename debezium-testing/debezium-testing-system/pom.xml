@@ -105,6 +105,8 @@
     <database.mongo.dbz.password>dbz</database.mongo.dbz.password>
     <database.mongo.dbz.dbname>inventory</database.mongo.dbz.dbname>
     <database.mongo.dbz.login.dbname>admin</database.mongo.dbz.login.dbname>
+    <database.mongo.docker.desktop.ports>27017:27117</database.mongo.docker.desktop.ports>
+    <database.mongo.docker.replica.size>1</database.mongo.docker.replica.size>
 
     <!--DB2 configuration -->
     <database.db2.port>50000</database.db2.port>
@@ -206,6 +208,11 @@
   </dependencyManagement>
 
   <dependencies>
+    <dependency>
+      <groupId>io.debezium</groupId>
+      <artifactId>debezium-testing-testcontainers</artifactId>
+      <version>${project.version}</version>
+    </dependency>
     <dependency>
       <groupId>io.fabric8</groupId>
       <artifactId>openshift-client</artifactId>
@@ -457,6 +464,8 @@
               <enableAssertions>true</enableAssertions>
               <trimStackTrace>false</trimStackTrace>
               <runOrder>${runOrder}</runOrder>
+              <!-- Idea not picking up and emitting a warning not sure why, it works in other modules just fine -->
+              <argLine>--add-opens java.base/java.net=ALL-UNNAMED</argLine>
               <systemPropertyVariables>
                 <test.wait.scale>1</test.wait.scale>
                 <test.product.build>${product.build}</test.product.build>
@@ -538,6 +547,8 @@
                 <test.database.mongo.dbz.password>${database.mongo.dbz.password}</test.database.mongo.dbz.password>
                 <test.database.mongo.dbz.dbname>${database.mongo.dbz.dbname}</test.database.mongo.dbz.dbname>
                 <test.database.mongo.dbz.login.dbname>${database.mongo.dbz.login.dbname}</test.database.mongo.dbz.login.dbname>
+                <test.database.mongo.docker.desktop.ports>${database.mongo.docker.desktop.ports}</test.database.mongo.docker.desktop.ports>
+                <test.database.mongo.docker.replica.size>${database.mongo.docker.replica.size}</test.database.mongo.docker.replica.size>
 
                 <!--DB2 configuration-->
                 <test.database.db2.host>${database.db2.host}</test.database.db2.host>
