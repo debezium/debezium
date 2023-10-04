@@ -24,15 +24,6 @@ public interface ElapsedTimeStrategy {
     boolean hasElapsed();
 
     /**
-     * Create an elapsed time strategy that always is elapsed.
-     *
-     * @return the strategy; never null
-     */
-    static ElapsedTimeStrategy none() {
-        return () -> true;
-    }
-
-    /**
      * Create a strategy whose time periods are constant.
      *
      * @param clock the clock used to determine if sufficient time has elapsed; may not be null
