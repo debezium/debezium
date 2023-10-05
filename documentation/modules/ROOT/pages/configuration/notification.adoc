@@ -22,16 +22,16 @@ Notifications can be sent to the following channels:
 SinkNotificationChannel:: Sends notifications through the Connect API to a configured topic.
 LogNotificationChannel:: Notifications are appended to the log.
 JmxNotificationChannel:: Notifications are exposed as an attribute in a JMX bean.
+ifdef::community[]
 Custom:: Notifications are sent to a xref:debezium-notification-custom-channel[custom channel] that you implement.
-
+endif::community[]
 ifdef::product[]
 For details about {prodname} notifications, see the following topics::
 
 * xref:debezium-notifications-description-of-the-format-of-debezium-notifications[]
 * xref:debezium-notifications-types-of-debezium-notifications[]
 * xref:debezium-notifications-enabling-debezium-to-emit-events-to-notification-channels[]
-* xref:debezium-notification-custom-channel[]
-
+//   * xref:debezium-notification-custom-channel[]
 endif::product[]
 
 // Type: concept
