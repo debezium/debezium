@@ -433,7 +433,7 @@ a|Start a transaction with link:https://dev.mysql.com/doc/refman/{mysql-version}
 [NOTE]
 ====
 The use of these isolation semantics can slow the progress of the snapshot.
-If the snapshot takes too long to complete, consider using a different isolation configuration, or skip the initial snapshot and run an xref:{context}-incremental-snapshots[incremental snapshot] instead.
+If the snapshot takes too long to complete, consider using a different isolation configuration, or skip the initial snapshot and run an xref:mysql-incremental-snapshots[incremental snapshot] instead.
 ====
 
 |5
@@ -622,7 +622,7 @@ For information about capturing data from a new table that has undergone structu
 This guarantees that in the future, the connector can reconstruct the schema history for all tables.
 4. Restart the connector.
 The snapshot recovery process rebuilds the schema history based on the current structure of the tables.
-5. (Optional) After the snapshot completes, initiate an xref:{context}-incremental-snapshots[incremental snapshot] to capture existing data for newly added tables along with changes to other tables that occurred while that connector was off-line.
+5. (Optional) After the snapshot completes, initiate an xref:mysql-incremental-snapshots[incremental snapshot] to capture existing data for newly added tables along with changes to other tables that occurred while that connector was off-line.
 6. (Optional) Reset the `snapshot.mode` back to `schema_only` to prevent the connector from initiating recovery after a future restart.
 
 // Type: procedure
@@ -645,7 +645,7 @@ You can add the schema by running a new schema snapshot, or by running an initia
 Initial snapshot captured the schema for all tables (`store.only.captured.tables.ddl` was set to `false`)::
 1. Edit the xref:{context}-property-table-include-list[`table.include.list`] property to specify the tables that you want to capture.
 2. Restart the connector.
-3. Initiate an xref:{context}-incremental-snapshots[incremental snapshot] if you want to capture existing data from the newly added tables.
+3. Initiate an xref:mysql-incremental-snapshots[incremental snapshot] if you want to capture existing data from the newly added tables.
 
 Initial snapshot did not capture the schema for all tables (`store.only.captured.tables.ddl` was set to `true`)::
 If the initial snapshot did not save the schema of the table that you want to capture, complete one of the following procedures:
@@ -669,7 +669,7 @@ This operation is potentially destructive, and should be performed only as a las
 5. Restart the connector.
 6. Wait for {prodname} to capture the schema of the new and existing tables.
 Data changes that occurred any tables after the connector stopped are not captured.
-7. To ensure that no data is lost, initiate an xref:{context}-incremental-snapshots[incremental snapshot].
+7. To ensure that no data is lost, initiate an xref:mysql-incremental-snapshots[incremental snapshot].
 
 Procedure 2: Initial snapshot, followed by optional incremental snapshot:::
 In this procedure the connector performs a full initial snapshot of the database.
@@ -693,7 +693,7 @@ This operation is potentially destructive, and should be performed only as a las
 6. Restart the connector.
 The connector takes a full database snapshot.
 After the snapshot completes, the connector transitions to streaming.
-7. (Optional) To capture any data that changed while the connector was off-line, initiate an xref:{context}-incremental-snapshots[incremental snapshot].
+7. (Optional) To capture any data that changed while the connector was off-line, initiate an xref:mysql-incremental-snapshots[incremental snapshot].
 
 // Type: concept
 // ModuleID: debezium-mysql-ad-hoc-snapshots
