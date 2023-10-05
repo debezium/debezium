@@ -416,19 +416,30 @@ The snapshot mode is determined by the xref:mysql-property-snapshot-mode[`snapsh
 The default value of the property is `initial`.
 You can customize the way that the connector creates snapshots by changing the value of the `snapshot.mode` property.
 
+ifdef::product[]
+You can find more information about snapshots in the following sections:
+
+* xref:debezium-mysql-ad-hoc-snapshots[]
+* xref:debezium-mysql-incremental-snapshots[]
+endif::product[]
+
+
 The connector completes a series of tasks when it performs the snapshot.
 The exact steps vary with the snapshot mode and with the table locking policy that is in effect for the database.
 The {prodname} MySQL connector completes different steps when it performs an initial snapshot that uses a xref:initial-snapshot-workflow-with-global-read-lock[global read lock] or xref:initial-snapshot-workflow-with-table-level-locks[table-level locks].
 
 // Type: concept
+// ModuleID: debezium-mysql-description-of-the-workflow-for-initial-snapshots-that-use-a-global-read-lock
 [id="initial-snapshot-workflow-with-global-read-lock"]
 ==== Initial snapshots that use a global read lock
-The following workflow lists the steps that {prodname} takes to create a snapshot with a global read lock.
+
 You can customize the way that the connector creates snapshots by changing the value of the `snapshot.mode` property.
 If you configure a different snapshot mode, the connector completes the snapshot by using a modified version of this workflow.
 For information about the snapshot process in environments that do not permit global read locks, see the xref:snapshot-workflow-with-table-level-locks[snapshot workflow for table-level locks].
 
 .Default workflow that the {prodname} MySQL connector uses to perform an initial snapshot with a global read lock
+The following table shows the steps in the workflow that {prodname} follows to create a snapshot with a global read lock.
+
 [cols="1a,9a",options="header",subs="+attributes"]
 |===
 |Step |Action
@@ -585,7 +596,7 @@ a|Record the successful completion of the snapshot in the connector offsets.
 
 |===
 
-// ModuleID: {context}-description-of-why-initial-snapshots-capture-the-schema-history-for-all-tables
+// ModuleID: mysql-description-of-why-initial-snapshots-capture-the-schema-history-for-all-tables
 // Title: Description of why initial snapshots capture the schema history for all tables
 // Type: concept
 [id="understanding-why-initial-snapshots-capture-the-schema-history-for-all-tables"]
@@ -719,28 +730,33 @@ After the snapshot completes, the connector transitions to streaming.
 // Type: concept
 // ModuleID: debezium-mysql-ad-hoc-snapshots
 [id="mysql-ad-hoc-snapshots"]
-==== Ad hoc snapshots
+=== Ad hoc snapshots
+
 include::{partialsdir}/modules/all-connectors/con-connector-ad-hoc-snapshots.adoc[leveloffset=+1]
 
-
-
-// Type: concept
+// Type: assembly
+// ModuleID: debezium-mysql-incremental-snapshots
 [id="mysql-incremental-snapshots"]
-==== Incremental snapshots
+=== Incremental snapshots
+
 include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+1]
 
 // Type: procedure
+// ModuleID: debezium-mysql-triggering-an-incremental-snapshot
 [id="mysql-triggering-an-incremental-snapshot"]
 ==== Triggering an incremental snapshot
 
 include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-sql.adoc[leveloffset=+1]
 
 // Type: procedure
+// ModuleID: debezium-mysql-using-the-kafka-signaling-channel-to-trigger-an-incremental-snapshot
 [id="mysql-triggering-an-incremental-snapshot-kafka"]
 ==== Using the Kafka signaling channel to trigger an incremental snapshot
+
 include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-kafka.adoc[leveloffset=+1]
 
 // Type: procedure
+// ModuleID: debezium-mysql-stopping-an-incremental-snapshot
 [id="mysql-stopping-an-incremental-snapshot"]
 ==== Stopping an incremental snapshot
 

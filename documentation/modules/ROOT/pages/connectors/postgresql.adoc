@@ -134,6 +134,15 @@ For more information about PostgreSQL logical replication security, see the link
 Most PostgreSQL servers are configured to not retain the complete history of the database in the WAL segments.
 This means that the PostgreSQL connector would be unable to see the entire history of the database by reading only the WAL.
 Consequently, the first time that the connector starts, it performs an initial _consistent snapshot_ of the database.
+
+ifdef::product[]
+You can find more information about snapshots in the following sections:
+
+* xref:debezium-postgresql-ad-hoc-snapshots[]
+* xref:debezium-postgresql-incremental-snapshots[]
+endif::product[]
+
+.Default workflow behavior of initial snapshots
 The default behavior for performing a snapshot consists of the following steps.
 You can change this behavior by setting the xref:postgresql-property-snapshot-mode[`snapshot.mode` connector configuration property] to a value other than `initial`.
 
@@ -180,12 +189,15 @@ endif::community[]
 // Type: concept
 // ModuleID: debezium-postgresql-ad-hoc-snapshots
 [id="postgresql-ad-hoc-snapshots"]
-==== Ad hoc snapshots
+=== Ad hoc snapshots
+
 include::{partialsdir}/modules/all-connectors/con-connector-ad-hoc-snapshots.adoc[leveloffset=+3]
 
-// Type: concept
+// Type: assembly
+// ModuleID: debezium-postgresql-incremental-snapshots
 [id="postgresql-incremental-snapshots"]
-==== Incremental snapshots
+=== Incremental snapshots
+
 include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+1]
 
 [WARNING]
@@ -195,24 +207,28 @@ If a schema change is performed _before_ the incremental snapshot start but _aft
 ====
 
 // Type: procedure
+// ModuleID: debezium-postgresql-triggering-an-incremental-snapshot
 [id="postgresql-triggering-an-incremental-snapshot"]
 ==== Triggering an incremental snapshot
 
 include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-sql.adoc[leveloffset=+1]
 
 // Type: procedure
+// ModuleID: debezium-postgresql-using-the-kafka-signaling-channel-to-trigger-an-incremental-snapshot
 [id="postgresql-triggering-an-incremental-snapshot-kafka"]
 ==== Using the Kafka signaling channel to trigger an incremental snapshot
 
 include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-kafka.adoc[leveloffset=+1]
 
 // Type: procedure
+// ModuleID: debezium-postgresql-stopping-an-incremental-snapshot
 [id="postgresql-stopping-an-incremental-snapshot"]
 ==== Stopping an incremental snapshot
 
 include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot-sql.adoc[leveloffset=+1]
 
 // Type: procedure
+// ModuleID: debezium-postgresql-using-the-kafka-signaling-channel-to-stop-an-incremental-snapshot
 [id="postgresql-stopping-an-incremental-snapshot-kafka"]
 ==== Using the Kafka signaling channel to stop an incremental snapshot
 
