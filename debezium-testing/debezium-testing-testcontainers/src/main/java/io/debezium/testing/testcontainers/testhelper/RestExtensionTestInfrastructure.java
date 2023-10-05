@@ -28,13 +28,14 @@ import org.testcontainers.utility.DockerImageName;
 import io.debezium.testing.testcontainers.Connector;
 import io.debezium.testing.testcontainers.DebeziumContainer;
 import io.debezium.testing.testcontainers.MongoDbReplicaSet;
+import io.debezium.testing.testcontainers.OracleContainer;
 import io.debezium.testing.testcontainers.util.MoreStartables;
 
 public class RestExtensionTestInfrastructure {
 
-    private static final String DEBEZIUM_CONTAINER_IMAGE_VERSION_LATEST = "latest";
     public static final String KAFKA_HOSTNAME = "kafka-dbz-ui";
     public static final int CI_CONTAINER_STARTUP_TIME = 90;
+    private static final String DEBEZIUM_CONTAINER_IMAGE_VERSION_LATEST = "latest";
 
     public enum DATABASE {
         POSTGRES,
@@ -89,6 +90,11 @@ public class RestExtensionTestInfrastructure {
             .withInitScript("initialize-sqlserver-database.sql")
             .acceptLicense();
 
+    private static final OracleContainer ORACLE_CONTAINER = (OracleContainer) new OracleContainer()
+            .withNetwork(NETWORK)
+            .withNetworkAliases("oracledb")
+            .withLogConsumer(new Slf4jLogConsumer(LOGGER));
+
     private static Supplier<Stream<Startable>> getContainers(DATABASE database) {
         final Startable dbStartable;
         switch (database) {
@@ -103,6 +109,9 @@ public class RestExtensionTestInfrastructure {
                 break;
             case SQLSERVER:
                 dbStartable = SQL_SERVER_CONTAINER;
+                break;
+            case ORACLE:
+                dbStartable = ORACLE_CONTAINER;
                 break;
             case NONE:
             default:
@@ -133,10 +142,7 @@ public class RestExtensionTestInfrastructure {
                     ((GenericContainer<?>) container).withStartupTimeout(Duration.ofSeconds(CI_CONTAINER_STARTUP_TIME));
                 }
                 if (container instanceof MongoDbReplicaSet) {
-                    // This could be added to MongoDbReplicaSet
-                    ((MongoDbReplicaSet) container).getMembers().forEach(member -> {
-                        member.withStartupTimeout(Duration.ofSeconds(CI_CONTAINER_STARTUP_TIME));
-                    });
+                    ((MongoDbReplicaSet) container).withStartupTimeout(Duration.ofSeconds(CI_CONTAINER_STARTUP_TIME));
                 }
             });
         }
@@ -155,8 +161,8 @@ public class RestExtensionTestInfrastructure {
         final String debeziumVersion = debeziumContainerImageVersion.startsWith("1.2") ? "1.2.5.Final" : connectorVersion;
         String baseImageName = registry + "debezium/connect-base:" + debeziumContainerImageVersion;
         DEBEZIUM_CONTAINER = new DebeziumContainer(new ImageFromDockerfile("debezium/connect-rest-test:" + debeziumVersion)
-                .withFileFromPath(".", Paths.get("target/"))
-                .withFileFromPath("Dockerfile", Paths.get("src/test/resources/Dockerfile.rest.test"))
+                .withFileFromPath(".", Paths.get(System.getProperty("user.dir") + "/target/"))
+                .withFileFromPath("Dockerfile", Paths.get(System.getProperty("user.dir") + "/src/test/resources/Dockerfile.rest.test"))
                 .withBuildArg("BASE_IMAGE", baseImageName)
                 .withBuildArg("DEBEZIUM_VERSION", debeziumVersion))
                 .withEnv("ENABLE_DEBEZIUM_SCRIPTING", "true")
@@ -169,7 +175,7 @@ public class RestExtensionTestInfrastructure {
                 .dependsOn(KAFKA_CONTAINER);
     }
 
-    public static GenericContainer getKafkaContainer() {
+    public static GenericContainer<?> getKafkaContainer() {
         return KAFKA_CONTAINER;
     }
 
@@ -191,6 +197,10 @@ public class RestExtensionTestInfrastructure {
 
     public static MSSQLServerContainer<?> getSqlServerContainer() {
         return SQL_SERVER_CONTAINER;
+    }
+
+    public static OracleContainer getOracleContainer() {
+        return ORACLE_CONTAINER;
     }
 
     public static void waitForConnectorTaskStatus(String connectorName, int taskNumber, Connector.State state) {
