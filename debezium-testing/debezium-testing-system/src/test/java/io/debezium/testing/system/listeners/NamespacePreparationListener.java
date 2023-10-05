@@ -35,8 +35,8 @@ public class NamespacePreparationListener implements TestExecutionListener {
     private List<String> projectNames;
 
     public void testPlanExecutionStarted(TestPlan testPlan) {
-        // execute only before integration tests
-        if (ConfigProperties.OCP_PROJECT_DBZ != null) {
+        // execute only before OCP system tests
+        if (ConfigProperties.OCP_PROJECT_DBZ != null && OpenShiftUtils.isRunningFromOcp()) {
             projectNames = List.of(ConfigProperties.OCP_PROJECT_DBZ,
                     ConfigProperties.OCP_PROJECT_ORACLE,
                     ConfigProperties.OCP_PROJECT_MONGO,
@@ -48,52 +48,24 @@ public class NamespacePreparationListener implements TestExecutionListener {
             client = OpenShiftUtils.createOcpClient();
 
             validateSystemParameters();
-            prepareNamespaces();
+            if (ConfigProperties.PREPARE_NAMESPACES_AND_STRIMZI) {
+                prepareNamespaces();
+            }
         }
     }
 
     public void testPlanExecutionFinished(TestPlan testPlan) {
-        // execute only after integration tests
-        if (ConfigProperties.OCP_PROJECT_DBZ != null && ConfigProperties.PREPARE_NAMESPACES_AND_STRIMZI) {
-            LOGGER.info("Cleaning namespaces");
-
-            // delete projects if project names are set
-            projectNames.forEach(name -> {
-                Project project = client.projects().withName(name).get();
-                if (project != null) {
-                    client.projects().delete(project);
-                }
-            });
-
+        // execute only after OCP system tests
+        if (ConfigProperties.OCP_PROJECT_DBZ != null && ConfigProperties.PREPARE_NAMESPACES_AND_STRIMZI && OpenShiftUtils.isRunningFromOcp()) {
+            deleteNamespaces();
             client.close();
         }
     }
 
     private void prepareNamespaces() {
-        if (!ConfigProperties.PREPARE_NAMESPACES_AND_STRIMZI) {
-            return;
-        }
-
         LOGGER.info("Preparing namespaces");
-        ClusterRoleBindingBuilder anyUidBindingBuilder = new ClusterRoleBindingBuilder()
-                .withApiVersion("authorization.openshift.io/v1")
-                .withKind("ClusterRoleBinding")
-                .withMetadata(new ObjectMetaBuilder()
-                        .withName("system:openshift:scc:anyuid")
-                        .build())
-                .withRoleRef(new ObjectReferenceBuilder()
-                        .withName("system:openshift:scc:anyuid")
-                        .build());
-
-        ClusterRoleBindingBuilder privilegedBindingBuilder = new ClusterRoleBindingBuilder()
-                .withApiVersion("authorization.openshift.io/v1")
-                .withKind("ClusterRoleBinding")
-                .withMetadata(new ObjectMetaBuilder()
-                        .withName("system:openshift:scc:privileged")
-                        .build())
-                .withRoleRef(new ObjectReferenceBuilder()
-                        .withName("system:openshift:scc:privileged")
-                        .build());
+        ClusterRoleBindingBuilder anyUidBindingBuilder = prepareAnyUidBindingBuilder();
+        ClusterRoleBindingBuilder privilegedBindingBuilder = preparePrivilegedBindingBuilder();
 
         for (String project : projectNames) {
             processNamespace(project, anyUidBindingBuilder, privilegedBindingBuilder);
@@ -137,14 +109,47 @@ public class NamespacePreparationListener implements TestExecutionListener {
      * Check for invalid states of test parameters related to namespace preparation
      */
     private void validateSystemParameters() {
-        if (!ConfigProperties.PREPARE_NAMESPACES_AND_STRIMZI && !namespacesExist()) {
+        LOGGER.trace("Validating OCP namespace environment");
+        assertThat(projectNames).isNotEmpty();
+        assertThat(client).isNotNull();
+        boolean namespacesExist = client.projects().withName(projectNames.get(0)).get() != null;
+        if (!ConfigProperties.PREPARE_NAMESPACES_AND_STRIMZI && !namespacesExist) {
             throw new IllegalArgumentException("Should not prepare strimzi/namespace but namespace is missing");
         }
     }
 
-    private boolean namespacesExist() {
-        assertThat(projectNames).isNotEmpty();
-        assertThat(client).isNotNull();
-        return client.projects().withName(projectNames.get(0)).get() != null;
+    private ClusterRoleBindingBuilder prepareAnyUidBindingBuilder() {
+        return new ClusterRoleBindingBuilder()
+                .withApiVersion("authorization.openshift.io/v1")
+                .withKind("ClusterRoleBinding")
+                .withMetadata(new ObjectMetaBuilder()
+                        .withName("system:openshift:scc:anyuid")
+                        .build())
+                .withRoleRef(new ObjectReferenceBuilder()
+                        .withName("system:openshift:scc:anyuid")
+                        .build());
+    }
+
+    private ClusterRoleBindingBuilder preparePrivilegedBindingBuilder() {
+        return new ClusterRoleBindingBuilder()
+                .withApiVersion("authorization.openshift.io/v1")
+                .withKind("ClusterRoleBinding")
+                .withMetadata(new ObjectMetaBuilder()
+                        .withName("system:openshift:scc:privileged")
+                        .build())
+                .withRoleRef(new ObjectReferenceBuilder()
+                        .withName("system:openshift:scc:privileged")
+                        .build());
+    }
+
+    private void deleteNamespaces() {
+        LOGGER.info("Cleaning namespaces");
+        // delete projects if project names are set
+        projectNames.forEach(name -> {
+            Project project = client.projects().withName(name).get();
+            if (project != null) {
+                client.projects().delete(project);
+            }
+        });
     }
 }
