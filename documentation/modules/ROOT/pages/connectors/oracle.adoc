@@ -83,19 +83,27 @@ Typically, the redo logs on an Oracle server are configured to not retain the co
 As a result, the {prodname} Oracle connector cannot retrieve the entire history of the database from the logs.
 To enable the connector to establish a baseline for the current state of the database, the first time that the connector starts, it performs an initial _consistent snapshot_ of the database.
 
-The following workflow lists the steps that {prodname} takes to create a snapshot.
-These steps describe the process for a snapshot when the xref:{context}-property-snapshot-mode[`snapshot.mode`]  configuration property is set to its default value, which is `initial`.
-You can customize the way that the connector creates snapshots by changig the value of the `snapshot.mode` property.
-If you configure a different snapshot mode, the connector completes the snapshot by using a modified version of this workflow.
-
 [NOTE]
 ====
 If the time needed to complete the initial snapshot exceeds the `UNDO_RETENTION` time that is set for the database (fifteen minutes, by default), an ORA-01555 exception can occur.
 For more information about the error, and about the steps that you can take to recover from it, see the xref:what-causes-ora-01555-and-how-to-handle-it"[Frequently asked questions].
 ====
 
+ifdef::product[]
+You can find more information about snapshots in the following sections:
+
+* xref:debezium-oracle-ad-hoc-snapshots[]
+* xref:debezium-oracle-incremental-snapshots[]
+endif::product[]
+
+
 [[default-workflow-for-performing-an-initial-snapshot]]
 .Default workflow that the Oracle connector uses to perform an initial snapshot
+The following workflow lists the steps that {prodname} takes to create a snapshot.
+These steps describe the process for a snapshot when the xref:{context}-property-snapshot-mode[`snapshot.mode`]  configuration property is set to its default value, which is `initial`.
+You can customize the way that the connector creates snapshots by changig the value of the `snapshot.mode` property.
+If you configure a different snapshot mode, the connector completes the snapshot by using a modified version of this workflow.
+
 When the snapshot mode is set to the default, the connector completes the following tasks to create a snapshot:
 
 1. Establish a connection to the database.
@@ -177,7 +185,7 @@ WARNING: Do not use this mode to perform a snapshot if schema changes were commi
 
 For more information, see xref:oracle-property-snapshot-mode[`snapshot.mode`] in the table of connector configuration properties.
 
-// ModuleID: {context}-description-of-why-initial-snapshots-capture-the-schema-history-for-all-tables
+// ModuleID: oracle-description-of-why-initial-snapshots-capture-the-schema-history-for-all-tables
 // Title: Description of why initial snapshots capture the schema history for all tables
 // Type: concept
 [id="understanding-why-initial-snapshots-capture-the-schema-history-for-all-tables"]
@@ -309,12 +317,13 @@ After the snapshot completes, the connector transitions to streaming.
 // Type: concept
 // ModuleID: debezium-oracle-ad-hoc-snapshots
 [id="oracle-ad-hoc-snapshots"]
-==== Ad hoc snapshots
+=== Ad hoc snapshots
 include::{partialsdir}/modules/all-connectors/con-connector-ad-hoc-snapshots.adoc[leveloffset=+3]
 
-// Type: concept
+// Type: assembly
+// ModuleID: debezium-oracle-incremental-snapshots
 [id="oracle-incremental-snapshots"]
-==== Incremental snapshots
+=== Incremental snapshots
 include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+3]
 
 [WARNING]
@@ -323,24 +332,28 @@ The {prodname} connector for Oracle does not support schema changes while an inc
 ====
 
 // Type: procedure
+// ModuleID: debezium-oracle-triggering-an-incremental-snapshot
 [id="oracle-triggering-an-incremental-snapshot"]
 ==== Triggering an incremental snapshot
 
 include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-sql.adoc[leveloffset=+3]
 
 // Type: procedure
+
 [id="oracle-triggering-an-incremental-snapshot-kafka"]
 ==== Using the Kafka signaling channel to trigger an incremental snapshot
-
+// ModuleID: debezium-oracle-using-the-kafka-signaling-channel-to-trigger-an-incremental-snapshot
 include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-kafka.adoc[leveloffset=+1]
 
 // Type: procedure
+// ModuleID: debezium-oracle-stopping-an-incremental-snapshot
 [id="oracle-stopping-an-incremental-snapshot"]
 ==== Stopping an incremental snapshot
 
 include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot-sql.adoc[leveloffset=+3]
 
 // Type: procedure
+// ModuleID: debezium-oracle-using-the-kafka-signaling-channel-to-stop-an-incremental-snapshot
 [id="oracle-stopping-an-incremental-snapshot-kafka"]
 ==== Using the Kafka signaling channel to stop an incremental snapshot
 
