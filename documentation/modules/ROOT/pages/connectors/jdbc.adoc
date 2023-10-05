@@ -639,7 +639,6 @@ Do not use this property in combination with the xref:jdbc-property-connection-t
 Internally, the regular expression is compiled to a `java.util.regex.Pattern`.
 Do not use this property in combination with the xref:jdbc-property-connection-topics[`topics`] property.
 
-
 |===
 
 [[jdbc-connector-properties-connection]]
