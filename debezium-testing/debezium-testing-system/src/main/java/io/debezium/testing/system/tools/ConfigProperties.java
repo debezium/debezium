@@ -115,7 +115,7 @@ public final class ConfigProperties {
 
     // Oracle Configuration
     public static final boolean DATABASE_ORACLE = booleanProperty("test.database.oracle", true);
-    public static final String DATABASE_ORACLE_USERNAME = System.getProperty("test.database.oracle..username", "debezium");
+    public static final String DATABASE_ORACLE_USERNAME = System.getProperty("test.database.oracle.username", "debezium");
     public static final String DATABASE_ORACLE_PASSWORD = System.getProperty("test.database.oracle.password", "dbz");
     public static final String DATABASE_ORACLE_DBZ_USERNAME = System.getProperty("test.database.oracle.dbz.username", "c##dbzuser");
     public static final String DATABASE_ORACLE_DBZ_PASSWORD = System.getProperty("test.database.oracle.dbz.password", "dbz");

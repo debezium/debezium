@@ -125,6 +125,26 @@
             <artifactId>mockito-core</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-testing-testcontainers</artifactId>
+            <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.junit.platform</groupId>
+                    <artifactId>junit-platform-launcher</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.junit.jupiter</groupId>
+                    <artifactId>junit-jupiter</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>io.rest-assured</groupId>
+            <artifactId>rest-assured</artifactId>
+            <scope>test</scope>
+        </dependency>
 
         <!-- Required by VerifyRecord -->
         <dependency>
@@ -168,9 +188,9 @@
         <skipITs>true</skipITs>
 
         <!--
-        Specify properties that will be used for setting up the integration tests' Docker container.
-        Note that the `dockerhost.ip` property is computed from the IP addrses of DOCKER_HOST, which will
-        work on all platforms.  We'll set some of these system properties during integration testing.
+        Specify properties used for setting up the Oracle DB container instance/s for integration tests.
+        Note that the `docker.host.address` property is computed from the IP address of DOCKER_HOST, which will
+        work on all platforms.
         -->
 
         <!-- This should be kept in sync with the infinispan dependencies used -->
@@ -232,20 +252,11 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <argLine>-Djavax.xml.parsers.SAXParserFactory=com.sun.org.apache.xerces.internal.jaxp.SAXParserFactoryImpl</argLine>
-                    <systemProperties combine.children="append">
-                        <property>
-                            <name>database.connection.adapter</name>
-                            <value>${adapter.name}</value>
-                        </property>
-                        <property>
-                            <name>log.mining.buffer.type</name>
-                            <value>${log.mining.buffer.type.name}</value>
-                        </property>
-                        <property>
-                            <name>internal.log.mining.read.only</name>
-                            <value>${log.mining.read.only.mode}</value>
-                        </property>
-                    </systemProperties>
+                    <systemPropertyVariables combine.children="append">
+                        <database.connection.adapter>${adapter.name}</database.connection.adapter>
+                        <log.mining.buffer.type>${log.mining.buffer.type.name}</log.mining.buffer.type>
+                        <internal.log.mining.read.only>${log.mining.read.only.mode}</internal.log.mining.read.only>
+                    </systemPropertyVariables>
                 </configuration>
             </plugin>
             <plugin>
@@ -275,6 +286,7 @@
                         <log.mining.buffer.type>${log.mining.buffer.type.name}</log.mining.buffer.type>
                         <internal.log.mining.read.only>${log.mining.read.only.mode}</internal.log.mining.read.only>
                         <javax.xml.parsers.SAXParserFactory>com.sun.org.apache.xerces.internal.jaxp.SAXParserFactoryImpl</javax.xml.parsers.SAXParserFactory>
+                        <version.oracle.server>${version.oracle.server}</version.oracle.server>
                     </systemPropertyVariables>
                     <runOrder>${runOrder}</runOrder>
                 </configuration>
@@ -469,6 +481,83 @@
                                 </configuration>
                             </execution>
                         </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <version>${version.failsafe.plugin}</version>
+                        <configuration>
+                            <systemPropertyVariables>
+                                <isAssemblyProfileActive>true</isAssemblyProfileActive>
+                            </systemPropertyVariables>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <!--// Testing a connect REST extension in a Debezium Kafka Connect container requires a `-plugin.tar.gz` assembly package without a dependency to XStreams. //-->
+            <id>rest-assembly</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <configuration combine.self="override">
+                            <excludes>
+                                <exclude>**/io/debezium/connector/oracle/xstream/**</exclude>
+                            </excludes>
+                            <testExcludes>
+                                <exclude>**/*IT</exclude>
+                            </testExcludes>
+                            <testIncludes>
+                                <include>**/io/debezium/connector/oracle/rest/**</include>
+                            </testIncludes>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-assembly-plugin</artifactId>
+                        <dependencies>
+                            <dependency>
+                                <groupId>io.debezium</groupId>
+                                <artifactId>debezium-assembly-descriptors</artifactId>
+                                <version>${project.version}</version>
+                            </dependency>
+                        </dependencies>
+                        <executions>
+                            <execution>
+                                <id>default</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>single</goal>
+                                </goals>
+                                <configuration>
+                                    <finalName>${project.artifactId}-${project.version}</finalName>
+                                    <attach>false</attach>
+                                    <descriptorRefs>
+                                        <descriptorRef>${connector.assembly.ref}</descriptorRef>
+                                    </descriptorRefs>
+                                    <tarLongFileMode>posix</tarLongFileMode>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <version>${version.failsafe.plugin}</version>
+                        <configuration>
+                            <systemPropertyVariables>
+                                <isAssemblyProfileActive>true</isAssemblyProfileActive>
+                                <database.username>${database.username}</database.username>
+                                <database.password>${database.password}</database.password>
+                                <database.dbname>${database.dbname}</database.dbname>
+                            </systemPropertyVariables>
+                        </configuration>
                     </plugin>
                 </plugins>
             </build>
