@@ -5,10 +5,15 @@
  */
 package io.debezium.connector.jdbc.integration.db2;
 
+import java.sql.SQLException;
+
+import org.assertj.db.api.TableAssert;
 import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 import io.debezium.connector.jdbc.integration.AbstractJdbcSinkDeleteEnabledTest;
+import io.debezium.connector.jdbc.junit.TestHelper;
 import io.debezium.connector.jdbc.junit.jupiter.Db2SinkDatabaseContextProvider;
 import io.debezium.connector.jdbc.junit.jupiter.Sink;
 
@@ -25,6 +30,20 @@ public class JdbcSinkDeleteEnabledIT extends AbstractJdbcSinkDeleteEnabledTest {
 
     public JdbcSinkDeleteEnabledIT(Sink sink) {
         super(sink);
+    }
+
+    @Test
+    public void testShouldHandleTruncateTableStatementWithoutHibernate() throws SQLException {
+        Sink sink = getSink();
+        sink.execute("create table DB2INST1.TEST_TRUNCATE_DB2_TABLE(id int not null, name varchar(255), primary key(id))");
+        sink.execute("insert into DB2INST1.TEST_TRUNCATE_DB2_TABLE(id,name) values(1,'jdbc')");
+
+        TableAssert tableAssert = TestHelper.assertTable(dataSource(), "DB2INST1.TEST_TRUNCATE_DB2_TABLE");
+        tableAssert.exists().hasNumberOfRows(1).hasNumberOfColumns(2);
+
+        sink.execute("truncate table DB2INST1.TEST_TRUNCATE_DB2_TABLE");
+        tableAssert = TestHelper.assertTable(dataSource(), "DB2INST1.TEST_TRUNCATE_DB2_TABLE");
+        tableAssert.exists().hasNumberOfRows(0).hasNumberOfColumns(2);
     }
 
 }
