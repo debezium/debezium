@@ -125,12 +125,19 @@ SQL Server CDC is not designed to store a complete history of database changes.
 For the {prodname} SQL Server connector to establish a baseline for the current state of the database, it uses a process called _snapshotting_.
 The initial snapshot captures the structure and data of the tables in the database.
 
+ifdef::product[]
+You can find more information about snapshots in the following sections:
+
+* xref:debezium-sqlserver-ad-hoc-snapshots[]
+* xref:debezium-sqlserver-incremental-snapshots[]
+endif::product[]
+
+.Default workflow that the {prodname} SQL Server connector uses to perform an initial snapshot
+
 The following workflow lists the steps that {prodname} takes to create a snapshot.
 These steps describe the process for a snapshot when the xref:{context}-property-snapshot-mode[`snapshot.mode`] configuration property is set to its default value, which is `initial`.
 You can customize the way that the connector creates snapshots by changing the value of the `snapshot.mode` property.
 If you configure a different snapshot mode, the connector completes the snapshot by using a modified version of this workflow.
-
-.Default workflow that the {prodname} SQL Server connector uses to perform an initial snapshot
 
 1.  Establish a connection to the database.
 
@@ -180,7 +187,7 @@ After the connector completes the initial snapshot, it continues streaming from 
 
 If the connector stops again for any reason, after it restarts, it resumes streaming changes from where it previously left off.
 
-// ModuleID: {context}-description-of-why-initial-snapshots-capture-the-schema-history-for-all-tables
+// ModuleID: sqlserver-description-of-why-initial-snapshots-capture-the-schema-history-for-all-tables
 // Title: Description of why initial snapshots capture the schema history for all tables
 // Type: concept
 [id="understanding-why-initial-snapshots-capture-the-schema-history-for-all-tables"]
@@ -336,12 +343,13 @@ After the snapshot completes, the connector transitions to streaming.
 // Type: concept
 // ModuleID: debezium-sqlserver-ad-hoc-snapshots
 [id="sqlserver-ad-hoc-snapshots"]
-==== Ad hoc snapshots
+=== Ad hoc snapshots
 include::{partialsdir}/modules/all-connectors/con-connector-ad-hoc-snapshots.adoc[leveloffset=+1]
 
-// Type: concept
+// Type: assembly
+// ModuleID: debezium-sqlserver-incremental-snapshots
 [id="sqlserver-incremental-snapshots"]
-==== Incremental snapshots
+=== Incremental snapshots
 include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+1]
 
 [WARNING]
@@ -350,24 +358,28 @@ The {prodname} connector for SQL Server does not support schema changes while an
 ====
 
 // Type: procedure
+// ModuleID: debezium-sqlserver-triggering-an-incremental-snapshot
 [id="sqlserver-triggering-an-incremental-snapshot"]
 ==== Triggering an incremental snapshot
 
 include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-sql.adoc[leveloffset=+1]
 
 // Type: procedure
+// ModuleID: debezium-sqlserver-using-the-kafka-signaling-channel-to-trigger-an-incremental-snapshot
 [id="sqlserver-triggering-an-incremental-snapshot-kafka"]
 ==== Using the Kafka signaling channel to trigger an incremental snapshot
 
 include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-kafka.adoc[leveloffset=+1]
 
 // Type: procedure
+// ModuleID: debezium-sqlserver-stopping-an-incremental-snapshot
 [id="sqlserver-stopping-an-incremental-snapshot"]
 ==== Stopping an incremental snapshot
 
 include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot-sql.adoc[leveloffset=+1]
 
 // Type: procedure
+// ModuleID: debezium-sqlserver-using-the-kafka-signaling-channel-to-stop-an-incremental-snapshot
 [id="sqlserver-stopping-an-incremental-snapshot-kafka"]
 ==== Using the Kafka signaling channel to stop an incremental snapshot
 
