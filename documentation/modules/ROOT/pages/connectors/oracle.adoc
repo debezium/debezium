@@ -86,7 +86,7 @@ To enable the connector to establish a baseline for the current state of the dat
 [NOTE]
 ====
 If the time needed to complete the initial snapshot exceeds the `UNDO_RETENTION` time that is set for the database (fifteen minutes, by default), an ORA-01555 exception can occur.
-For more information about the error, and about the steps that you can take to recover from it, see the xref:what-causes-ora-01555-and-how-to-handle-it"[Frequently asked questions].
+For more information about the error, and about the steps that you can take to recover from it, see the xref:what-causes-ora-01555-and-how-to-handle-it[Frequently asked questions].
 ====
 
 ifdef::product[]
