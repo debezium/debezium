@@ -1807,8 +1807,6 @@ include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-s
 
 include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-notification-configuration-properties.adoc[leveloffset=+1]
 
-include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-notification-configuration-properties.adoc[leveloffset=+1]
-
 // Type: assembly
 // ModuleID: monitoring-debezium-mongodb-connector-performance
 // Title: Monitoring {prodname} MongoDB connector performance
