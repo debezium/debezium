@@ -2000,12 +2000,12 @@ For example, if the topic prefix is `fulfillment`, the default topic name is `fu
 
 |===
 
-[id="debezium-{context}-connector-kafka-signals-configuration-properties"]
+[id="debezium-mongodb-connector-kafka-signals-configuration-properties"]
 ==== {prodname} connector Kafka signals configuration properties
 
 include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-signals-configuration-properties.adoc[leveloffset=+1]
 
-[id="debezium-{context}-connector-kafka-notifications-configuration-properties"]
+[id="debezium-mongodb-connector-kafka-notifications-configuration-properties"]
 ==== {prodname} connector sink notifications configuration properties
 
 include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-notification-configuration-properties.adoc[leveloffset=+1]

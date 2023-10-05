@@ -209,7 +209,7 @@ This can be useful when you want to reduce the time required to complete a snaps
 Or when {prodname} connects to the database instance through a user account that has access to multiple logical databases, but you want the connector to capture changes only from tables in a specific logic database.
 
 .Additional information
-* xref:oracle-capturing-data-from-tables-not-captured-by-the-initial-snapshot[Capturing data from tables not captured by the initial snapshot (no schema change)]
+* xref:oracle-capturing-data-from-tables-not-captured-by-the-initial-snapshot-no-schema-change[Capturing data from tables not captured by the initial snapshot (no schema change)]
 * xref:oracle-capturing-data-from-new-tables-with-schema-changes[Capturing data from tables not captured by the initial snapshot (schema change)]
 * Setting the xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.store.only.captured.tables.ddl`] property to specify the tables from which to capture schema information.
 * Setting the xref:{context}-property-database-history-store-only-captured-databases-ddl[`schema.history.internal.store.only.captured.databases.ddl`] property to specify the logical databases from which to capture schema changes.
@@ -240,7 +240,7 @@ For information about capturing data from a new table that has undergone structu
 This guarantees that in the future, the connector can reconstruct the schema history for all tables.
 4. Restart the connector.
 The snapshot recovery process rebuilds the schema history based on the current structure of the tables.
-5. (Optional) After the snapshot completes, initiate an xref:{context}-incremental-snapshots[incremental snapshot] to capture existing data for newly added tables along with changes to other tables that occurred while that connector was off-line.
+5. (Optional) After the snapshot completes, initiate an xref:oracle-incremental-snapshots[incremental snapshot] to capture existing data for newly added tables along with changes to other tables that occurred while that connector was off-line.
 6. (Optional) Reset the `snapshot.mode` back to `schema_only` to prevent the connector from initiating recovery after a future restart.
 
 // Type: procedure
@@ -261,9 +261,9 @@ You can add the schema by running a new schema snapshot, or by running an initia
 .Procedure
 
 Initial snapshot captured the schema for all tables (`store.only.captured.tables.ddl` was set to `false`)::
-1. Edit the xref:{context}-property-table-include-list[`table.include.list`] property to specify the tables that you want to capture.
+1. Edit the xref:oracle-property-table-include-list[`table.include.list`] property to specify the tables that you want to capture.
 2. Restart the connector.
-3. Initiate an xref:{context}-incremental-snapshots[incremental snapshot] if you want to capture existing data from the newly added tables.
+3. Initiate an xref:oracle-incremental-snapshots[incremental snapshot] if you want to capture existing data from the newly added tables.
 
 Initial snapshot did not capture the schema for all tables (`store.only.captured.tables.ddl` was set to `true`)::
 If the initial snapshot did not save the schema of the table that you want to capture, complete one of the following procedures:
@@ -282,12 +282,12 @@ Removing offsets should be performed only by advanced users who have experience 
 This operation is potentially destructive, and should be performed only as a last resort.
 ====
 4. Set values for properties in the connector configuration as described in the following steps:
-.. Set the value of the xref:{context}-property-snapshot-mode[`snapshot.mode`] property to `schema_only`.
-.. Edit the xref:{context}-property-table-include-list[`table.include.list`] to add the tables that you want to capture.
+.. Set the value of the xref:oracle-property-snapshot-mode[`snapshot.mode`] property to `schema_only`.
+.. Edit the xref:oracle-property-table-include-list[`table.include.list`] to add the tables that you want to capture.
 5. Restart the connector.
 6. Wait for {prodname} to capture the schema of the new and existing tables.
 Data changes that occurred any tables after the connector stopped are not captured.
-7. To ensure that no data is lost, initiate an xref:{context}-incremental-snapshots[incremental snapshot].
+7. To ensure that no data is lost, initiate an xref:oracle-incremental-snapshots[incremental snapshot].
 
 Procedure 2: Initial snapshot, followed by optional incremental snapshot:::
 In this procedure the connector performs a full initial snapshot of the database.
@@ -295,7 +295,7 @@ As with any initial snapshot, in a database with many large tables, running an i
 After the snapshot completes, you can optionally trigger an incremental snapshot to capture any changes that occur while the connector is off-line.
 
 1. Stop the connector.
-2. Remove the internal database schema history topic that is specified by the xref:{context}-property-database-history-kafka-topic[`schema.history.internal.kafka.topic property`].
+2. Remove the internal database schema history topic that is specified by the xref:oracle-property-database-history-kafka-topic[`schema.history.internal.kafka.topic property`].
 3. Clear the offsets in the configured Kafka Connect link:{link-kafka-docs}/#connectconfigs_offset.storage.topic[`offset.storage.topic`].
 For more information about how to remove offsets, see the link:https://debezium.io/documentation/faq/#how_to_remove_committed_offsets_for_a_connector[{prodname} community FAQ].
 +
@@ -311,7 +311,7 @@ This operation is potentially destructive, and should be performed only as a las
 6. Restart the connector.
 The connector takes a full database snapshot.
 After the snapshot completes, the connector transitions to streaming.
-7. (Optional) To capture any data that changed while the connector was off-line, initiate an xref:{context}-incremental-snapshots[incremental snapshot].
+7. (Optional) To capture any data that changed while the connector was off-line, initiate an xref:oracle-incremental-snapshots[incremental snapshot].
 
 // Type: concept
 // ModuleID: debezium-oracle-ad-hoc-snapshots
@@ -4922,7 +4922,7 @@ database.url=jdbc:oracle:thin:username/password!@(DESCRIPTION=(ENABLE=broken)(AD
 The preceding steps configure the TCP network stack to send keep-alive packets every 60 seconds.
 As a result, the AWS Gateway Load Balancer does not timeout when JDBC calls to the LogMiner API take more than 350 seconds to complete, enabling the connector to continue to read changes from the database's transaction logs.
 
-[id="what-causes-ora-0155-and-how-to-handle-it"]
+[id="what-causes-ora-01555-and-how-to-handle-it"]
 *What's the cause for ORA-01555 and how to handle it?*::
 The {prodname} Oracle connector uses flashback queries when the initial snapshot phase executes.
 A flashback query is a special type of query that relies on the flashback area, maintained by the database's `UNDO_RETENTION` database parameter, to return the results of a query based on what the contents of the table had at a given time, or in our case at a given SCN.
