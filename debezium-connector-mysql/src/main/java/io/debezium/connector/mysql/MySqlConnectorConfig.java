@@ -872,17 +872,13 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     public static final Field SOURCE_INFO_STRUCT_MAKER = CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER
             .withDefault(MySqlSourceInfoStructMaker.class.getName());
 
-    public static final Field STORE_ONLY_CAPTURED_DATABASES_DDL = HistorizedRelationalDatabaseConnectorConfig.STORE_ONLY_CAPTURED_DATABASES_DDL
-            .withDefault(false);
-
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("MySQL")
             .excluding(
                     SCHEMA_INCLUDE_LIST,
                     SCHEMA_EXCLUDE_LIST,
                     RelationalDatabaseConnectorConfig.TIME_PRECISION_MODE,
-                    RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN,
-                    HistorizedRelationalDatabaseConnectorConfig.STORE_ONLY_CAPTURED_DATABASES_DDL)
+                    RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN)
             .type(
                     HOSTNAME,
                     PORT,
@@ -911,8 +907,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
                     SCHEMA_NAME_ADJUSTMENT_MODE,
                     ROW_COUNT_FOR_STREAMING_RESULT_SETS,
                     INCREMENTAL_SNAPSHOT_CHUNK_SIZE,
-                    INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES,
-                    STORE_ONLY_CAPTURED_DATABASES_DDL)
+                    INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES)
             .events(
                     INCLUDE_SQL_QUERY,
                     TABLE_IGNORE_BUILTIN,
