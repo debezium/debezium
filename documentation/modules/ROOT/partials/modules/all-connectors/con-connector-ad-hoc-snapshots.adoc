@@ -62,11 +62,11 @@ Each additional condition is an object that specifies the criteria for filtering
 You can set the following parameters for each additional condition:
 
 `data-collection`:: The fully-qualified name of the {data-collection} that the filter applies to.
-You can apply different filters to each {data-collection}. 
+You can apply different filters to each {data-collection}.
 `filter`:: Specifies column values that must be present in a database record for the snapshot to include it, for example,  `"color='blue'"`. +
  +
 The values that you assign to the `filter` parameter are the same types of values that you might specify in the `WHERE` clause of `SELECT` statements when you set the `snapshot.select.statement.overrides` property for a blocking snapshot.
-In earlier {prodname} releases, an explicit `filter` parameter was not defined for snapshot signals; instead, filter criteria were implied by the values that were specified for the now deprecated  `additional-condition` parameter. 
+In earlier {prodname} releases, an explicit `filter` parameter was not defined for snapshot signals; instead, filter criteria were implied by the values that were specified for the now deprecated  `additional-condition` parameter.
 endif::[]
 
 ifeval::['{context}' != 'mongodb']
@@ -84,7 +84,8 @@ After the connector processes the message, it begins the snapshot operation.
 The snapshot process reads the first and last primary key values and uses those values as the start and end point for each {data-collection}.
 Based on the number of entries in the {data-collection}, and the configured chunk size, {prodname} divides the {data-collection} into chunks, and proceeds to snapshot each chunk, in succession, one at a time.
 
-For more information, see xref:#{context}-incremental-snapshots[Incremental snapshots].
+For more information, see xref:{context}-incremental-snapshots[Incremental snapshots].
+
 ////
 .Prerequisites
 
