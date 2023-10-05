@@ -199,14 +199,15 @@ We recommend logical names begin with an alphabetic or underscore character, and
 [[mongodb-performing-a-snapshot]]
 === Performing a snapshot
 
-When a task starts up using a replica set, it uses the connector's logical name and the replica set name to find an _offset_ that describes the position where the connector previously stopped reading changes.
+When a {prodname} task starts to use a replica set, it uses the connector's logical name and the replica set name to find an _offset_ that describes the position where the connector previously stopped reading changes.
 If an offset can be found and it still exists in the oplog, then the task immediately proceeds with xref:mongodb-streaming-changes[streaming changes], starting at the recorded offset position.
 
-However, if no offset is found or if the oplog no longer contains that position, the task must first obtain the current state of the replica set contents by performing a _snapshot_.
+However, if no offset is found, or if the oplog no longer contains that position, the task must first obtain the current state of the replica set contents by performing a _snapshot_.
 This process starts by recording the current position of the oplog and recording that as the offset (along with a flag that denotes a snapshot has been started).
-The task will then proceed to copy each collection, spawning as many threads as possible (up to the value of the `snapshot.max.threads` configuration property) to perform this work in parallel.
-The connector will record a separate _read event_ for each document it sees, and that read event will contain the object's identifier, the complete state of the object, and _source_ information about the MongoDB replica set where the object was found.
-The source information will also include a flag that denotes the event was produced during a snapshot.
+The task then proceeds to copy each collection, spawning as many threads as possible (up to the value of the `snapshot.max.threads` configuration property) to perform this work in parallel.
+The connector records a separate _read event_ for each document it sees.
+Each read event contains the object's identifier, the complete state of the object, and _source_ information about the MongoDB replica set where the object was found.
+The source information also includes a flag that denotes that the event was produced during a snapshot.
 
 This snapshot will continue until it has copied all collections that match the connector's filters.
 If the connector is stopped before the tasks' snapshots are completed, upon restart the connector begins the snapshot again.
@@ -218,15 +219,24 @@ The connector generates log messages to report on the progress of the snapshot.
 To provide for the greatest control, run a separate Kafka Connect cluster for each connector.
 ====
 
+ifdef::product[]
+You can find more information about snapshots in the following sections:
+
+* xref:debezium-postgresql-ad-hoc-snapshots[]
+* xref:debezium-postgresql-incremental-snapshots[]
+endif::product[]
+
 // Type: concept
+// ModuleID: debezium-mongodb-ad-hoc-snapshots
 [id="mongodb-ad-hoc-snapshots"]
-==== Ad hoc snapshots
+=== Ad hoc snapshots
 
 include::{partialsdir}/modules/all-connectors/con-connector-ad-hoc-snapshots.adoc[leveloffset=+3]
 
-// Type: concept
+// Type: assembly
+// ModuleID: debezium-mongodb-incremental-snapshots
 [id="mongodb-incremental-snapshots"]
-==== Incremental snapshots
+=== Incremental snapshots
 
 include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+3]
 
@@ -256,23 +266,28 @@ To use incremental snapshots with sharded MongoDB clusters, you must set specifi
 * Set xref:mongodb-property-incremental-snapshot-chunk-size[`incremental.snapshot.chunk.size`] to a value that is high enough to compensate for the link:https://www.mongodb.com/docs/manual/administration/change-streams-production-recommendations/#sharded-clusters[increased complexity] of change stream pipelines.
 
 // Type: procedure
+// ModuleID: debezium-mongodb-triggering-an-incremental-snapshot
 [id="mongodb-triggering-an-incremental-snapshot"]
 ==== Triggering an incremental snapshot
 
 include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-nosql.adoc[leveloffset=+1]
 
 // Type: procedure
+// ModuleID: debezium-mongdb-using-the-kafka-signaling-channel-to-trigger-an-incremental-snapshot
 [id="mongodb-triggering-an-incremental-snapshot-kafka"]
 ==== Using the Kafka signaling channel to trigger an incremental snapshot
+
 include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-kafka.adoc[leveloffset=+1]
 
 // Type: procedure
+// ModuleID: debezium-mongodb-stopping-an-incremental-snapshot
 [id="mongodb-stopping-an-incremental-snapshot"]
 ==== Stopping an incremental snapshot
 
 include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot-nosql.adoc[leveloffset=+1]
 
 // Type: procedure
+// ModuleID: debezium-mongodb-using-the-kafka-signaling-channel-to-stop-an-incremental-snapshot
 [id="mongodb-stopping-an-incremental-snapshot-kafka"]
 ==== Using the Kafka signaling channel to stop an incremental snapshot
 include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot-kafka.adoc[leveloffset=+1]
