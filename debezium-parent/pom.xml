@@ -77,6 +77,10 @@
                     <configuration>
                         <argLine>${debug.argline} ${modules.argline} ${test.argline}</argLine>
                         <useSystemClassLoader>${useSystemClassLoader}</useSystemClassLoader>
+                        <systemPropertyVariables combine.children="append">
+                            <project.basedir>${project.basedir}</project.basedir>
+                            <project.build.directory>${project.build.directory}</project.build.directory>
+                        </systemPropertyVariables>
                     </configuration>
                 </plugin>
                 <plugin>
@@ -200,20 +204,11 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
-                    <systemProperties combine.children="append">
-                        <property>
-                            <name>java.io.tmpdir</name>
-                            <value>${project.build.directory}</value>
-                        </property>
-                        <property>
-                            <name>skipLongRunningTests</name>
-                            <value>${skipLongRunningTests}</value>
-                        </property>
-                        <property>
-                            <name>dbz.test.data.dir</name>
-                            <value>${project.build.directory}/data</value>
-                        </property>
-                    </systemProperties>
+                    <systemPropertyVariables combine.children="append">
+                        <java.io.tmpdir>${project.build.directory}</java.io.tmpdir>
+                        <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
+                        <dbz.test.data.dir>${project.build.directory}/data</dbz.test.data.dir>
+                    </systemPropertyVariables>
                     <argLine>-Djava.awt.headless=true ${debug.argline} ${modules.argline}</argLine>
                     <!--runOrder>alphabetical</runOrder-->
                     <useFile>false</useFile>
