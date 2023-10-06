@@ -60,6 +60,7 @@ import io.debezium.document.DocumentReader;
 import io.debezium.document.Value;
 import io.debezium.embedded.EmbeddedEngine.CompletionCallback;
 import io.debezium.embedded.EmbeddedEngine.CompletionResult;
+import io.debezium.engine.StopEngineException;
 import io.debezium.util.Clock;
 import io.debezium.util.Collect;
 import io.debezium.util.IoUtil;
@@ -899,7 +900,7 @@ public abstract class ConnectorOutputTest {
                             result.stop();
                             String msg = "Stopping connector after no more expected records found";
                             Testing.debug(msg);
-                            throw new StopConnectorException(msg);
+                            throw new StopEngineException(msg);
                         }
 
                         // Peek at the next record to see if it is a command ...
@@ -1025,14 +1026,14 @@ public abstract class ConnectorOutputTest {
                 result.restartRequested();
                 String msg = "Stopping connector after record as requested";
                 Testing.debug(msg);
-                throw new StopConnectorException(msg);
+                throw new StopEngineException(msg);
             }
             else if (CONTROL_STOP.equalsIgnoreCase(command)) {
                 // We're supposed to restart the connector, so stop it ...
                 result.stop();
                 String msg = "Stopping connector after record as requested";
                 Testing.debug(msg);
-                throw new StopConnectorException(msg);
+                throw new StopEngineException(msg);
             }
         }
     }
