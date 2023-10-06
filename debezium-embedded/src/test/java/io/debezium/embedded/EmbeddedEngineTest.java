@@ -192,11 +192,11 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
     public void interruptedTaskShutsDown() throws Exception {
 
         Configuration config = Configuration.create()
-                .with(EmbeddedEngine.ENGINE_NAME, "testing-connector")
-                .with(EmbeddedEngine.CONNECTOR_CLASS, InterruptedConnector.class)
+                .with(EmbeddedEngineConfig.ENGINE_NAME, "testing-connector")
+                .with(EmbeddedEngineConfig.CONNECTOR_CLASS, InterruptedConnector.class)
                 .with(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH)
-                .with(EmbeddedEngine.OFFSET_FLUSH_INTERVAL_MS, 0)
-                .with(EmbeddedEngine.OFFSET_STORAGE, InterruptingOffsetStore.class)
+                .with(EmbeddedEngineConfig.OFFSET_FLUSH_INTERVAL_MS, 0)
+                .with(EmbeddedEngineConfig.OFFSET_STORAGE, InterruptingOffsetStore.class)
                 .build();
 
         CountDownLatch firstLatch = new CountDownLatch(1);
@@ -229,10 +229,10 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
 
         Configuration config = Configuration.create()
                 .with(SimpleSourceConnector.BATCH_COUNT, 1)
-                .with(EmbeddedEngine.ENGINE_NAME, "testing-connector")
-                .with(EmbeddedEngine.CONNECTOR_CLASS, SimpleSourceConnector.class)
+                .with(EmbeddedEngineConfig.ENGINE_NAME, "testing-connector")
+                .with(EmbeddedEngineConfig.CONNECTOR_CLASS, SimpleSourceConnector.class)
                 .with(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH)
-                .with(EmbeddedEngine.OFFSET_STORAGE, InterruptingOffsetStore.class)
+                .with(EmbeddedEngineConfig.OFFSET_STORAGE, InterruptingOffsetStore.class)
                 .build();
 
         CountDownLatch firstLatch = new CountDownLatch(1);
@@ -307,10 +307,10 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
         appendLinesToSource(NUMBER_OF_LINES);
 
         Configuration config = Configuration.copy(connectorConfig)
-                .with(EmbeddedEngine.ENGINE_NAME, "testing-connector")
-                .with(EmbeddedEngine.CONNECTOR_CLASS, FileStreamSourceConnector.class)
+                .with(EmbeddedEngineConfig.ENGINE_NAME, "testing-connector")
+                .with(EmbeddedEngineConfig.CONNECTOR_CLASS, FileStreamSourceConnector.class)
                 .with(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH)
-                .with(EmbeddedEngine.OFFSET_FLUSH_INTERVAL_MS, 0)
+                .with(EmbeddedEngineConfig.OFFSET_FLUSH_INTERVAL_MS, 0)
                 .build();
 
         CountDownLatch firstLatch = new CountDownLatch(1);
@@ -734,10 +734,10 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
     public void verifyBadCommitPolicyClassName() {
 
         Configuration config = Configuration.create()
-                .with(EmbeddedEngine.ENGINE_NAME, "testing-connector")
-                .with(EmbeddedEngine.CONNECTOR_CLASS, SimpleSourceConnector.class)
+                .with(EmbeddedEngineConfig.ENGINE_NAME, "testing-connector")
+                .with(EmbeddedEngineConfig.CONNECTOR_CLASS, SimpleSourceConnector.class)
                 .with(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH)
-                .with(EmbeddedEngine.OFFSET_COMMIT_POLICY, "badclassname") // force ClassNotFoundException
+                .with(EmbeddedEngineConfig.OFFSET_COMMIT_POLICY, "badclassname") // force ClassNotFoundException
                 .build();
 
         final AtomicBoolean exceptionCaught = new AtomicBoolean(false);

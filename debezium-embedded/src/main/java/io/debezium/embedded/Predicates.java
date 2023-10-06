@@ -32,7 +32,7 @@ public class Predicates implements Closeable {
     private final Map<String, Predicate<SourceRecord>> predicates = new HashMap<>();
 
     public Predicates(Configuration config) {
-        final String predicateList = config.getString(EmbeddedEngine.PREDICATES);
+        final String predicateList = config.getString(EmbeddedEngineConfig.PREDICATES);
         if (predicateList == null) {
             return;
         }
@@ -70,7 +70,7 @@ public class Predicates implements Closeable {
     }
 
     private static String predicateConfigNamespace(final String name) {
-        return EmbeddedEngine.PREDICATES.name() + "." + name;
+        return EmbeddedEngineConfig.PREDICATES.name() + "." + name;
     }
 
     @Override
