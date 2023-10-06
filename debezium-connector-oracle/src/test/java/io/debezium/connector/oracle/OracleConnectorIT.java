@@ -90,7 +90,7 @@ import io.debezium.data.VariableScaleDecimal;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
-import io.debezium.embedded.EmbeddedEngine;
+import io.debezium.embedded.EmbeddedEngineConfig;
 import io.debezium.heartbeat.DatabaseHeartbeatImpl;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConnection;
@@ -2971,7 +2971,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
                     .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ3986")
                     .with(OracleConnectorConfig.SCHEMA_HISTORY, MemorySchemaHistory.class.getName())
-                    .with(EmbeddedEngine.OFFSET_STORAGE, FileOffsetBackingStore.class.getName());
+                    .with(EmbeddedEngineConfig.OFFSET_STORAGE, FileOffsetBackingStore.class.getName());
             Configuration config = builder.build();
             consumeRecords(config);
 
@@ -3004,7 +3004,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
                     .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ3986")
                     .with(OracleConnectorConfig.SCHEMA_HISTORY, MemorySchemaHistory.class.getName())
-                    .with(EmbeddedEngine.OFFSET_STORAGE, FileOffsetBackingStore.class.getName());
+                    .with(EmbeddedEngineConfig.OFFSET_STORAGE, FileOffsetBackingStore.class.getName());
             Configuration config = builder.build();
             consumeRecords(config);
 
@@ -3025,7 +3025,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
                     .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ3986")
                     .with(OracleConnectorConfig.SCHEMA_HISTORY, MemorySchemaHistory.class.getName())
-                    .with(EmbeddedEngine.OFFSET_STORAGE, MemoryOffsetBackingStore.class.getName());
+                    .with(EmbeddedEngineConfig.OFFSET_STORAGE, MemoryOffsetBackingStore.class.getName());
             Configuration config = builder.build();
             consumeRecords(config);
 

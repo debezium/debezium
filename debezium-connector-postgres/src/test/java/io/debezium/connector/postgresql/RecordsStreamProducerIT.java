@@ -82,7 +82,7 @@ import io.debezium.data.VariableScaleDecimal;
 import io.debezium.data.VerifyRecord;
 import io.debezium.data.geometry.Point;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.EmbeddedEngine;
+import io.debezium.embedded.EmbeddedEngineConfig;
 import io.debezium.heartbeat.DatabaseHeartbeatImpl;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConnection;
@@ -2323,7 +2323,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         startConnector(config -> config
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, false)
-                .with(EmbeddedEngine.OFFSET_STORAGE, MemoryOffsetBackingStore.class), true);
+                .with(EmbeddedEngineConfig.OFFSET_STORAGE, MemoryOffsetBackingStore.class), true);
         waitForStreamingToStart();
 
         consumer = testConsumer(1);
@@ -2337,7 +2337,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         startConnector(config -> config
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, true)
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.NEVER)
-                .with(EmbeddedEngine.OFFSET_STORAGE, MemoryOffsetBackingStore.class), false);
+                .with(EmbeddedEngineConfig.OFFSET_STORAGE, MemoryOffsetBackingStore.class), false);
 
         consumer.expects(3);
         consumer.await(TestHelper.waitTimeForRecords() * 5, TimeUnit.SECONDS);

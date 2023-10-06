@@ -28,7 +28,7 @@ import io.debezium.document.ArrayReader;
 import io.debezium.document.ArrayWriter;
 import io.debezium.document.Document;
 import io.debezium.embedded.ConnectorOutputTest;
-import io.debezium.embedded.EmbeddedEngine;
+import io.debezium.embedded.EmbeddedEngineConfig;
 import io.debezium.util.IoUtil;
 import io.debezium.util.Testing;
 
@@ -66,7 +66,7 @@ public class SimpleSourceConnectorOutputTest extends ConnectorOutputTest {
         config.put(SimpleSourceConnector.BATCH_COUNT, Integer.toString(numBatches));
         config.put(SimpleSourceConnector.RECORD_COUNT_PER_BATCH, Integer.toString(numRecordsPerBatch));
         config.put(SimpleSourceConnector.TOPIC_NAME, TOPIC_NAME);
-        config.put(EmbeddedEngine.WAIT_FOR_COMPLETION_BEFORE_INTERRUPT_MS.name(), String.valueOf(Duration.ofSeconds(1).toMillis()));
+        config.put(EmbeddedEngineConfig.WAIT_FOR_COMPLETION_BEFORE_INTERRUPT_MS.name(), String.valueOf(Duration.ofSeconds(1).toMillis()));
         writeConfigurationFileWithDefaultName(dir, config);
 
         Properties env = new Properties();

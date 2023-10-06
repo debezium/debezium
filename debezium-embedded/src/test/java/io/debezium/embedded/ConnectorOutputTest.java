@@ -921,9 +921,9 @@ public abstract class ConnectorOutputTest {
             // the environment and engine parameters ...
             Configuration engineConfig = Configuration.copy(connectorConfig)
                     .withDefault(environmentConfig)
-                    .withDefault(EmbeddedEngine.ENGINE_NAME, spec.name())
+                    .withDefault(EmbeddedEngineConfig.ENGINE_NAME, spec.name())
                     .withDefault(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH)
-                    .withDefault(EmbeddedEngine.OFFSET_FLUSH_INTERVAL_MS, 0)
+                    .withDefault(EmbeddedEngineConfig.OFFSET_FLUSH_INTERVAL_MS, 0)
                     .build();
 
             // Create the engine ...

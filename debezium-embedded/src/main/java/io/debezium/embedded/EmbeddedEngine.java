@@ -28,9 +28,6 @@ import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.common.config.ConfigDef;
-import org.apache.kafka.common.config.ConfigDef.Importance;
-import org.apache.kafka.common.config.ConfigDef.Type;
-import org.apache.kafka.common.config.ConfigDef.Width;
 import org.apache.kafka.connect.connector.ConnectorContext;
 import org.apache.kafka.connect.connector.Task;
 import org.apache.kafka.connect.errors.RetriableException;
@@ -38,9 +35,7 @@ import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kafka.connect.json.JsonConverterConfig;
 import org.apache.kafka.connect.runtime.AbstractHerder;
 import org.apache.kafka.connect.runtime.WorkerConfig;
-import org.apache.kafka.connect.runtime.distributed.DistributedConfig;
 import org.apache.kafka.connect.runtime.rest.entities.ConfigInfos;
-import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceConnectorContext;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -65,7 +60,6 @@ import io.debezium.config.Instantiator;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.StopEngineException;
 import io.debezium.engine.spi.OffsetCommitPolicy;
-import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.util.Clock;
 import io.debezium.util.DelayStrategy;
 import io.debezium.util.VariableLatch;
@@ -88,174 +82,7 @@ import io.debezium.util.VariableLatch;
  * @author Randall Hauch
  */
 @ThreadSafe
-public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
-
-    /**
-     * A required field for an embedded connector that specifies the unique name for the connector instance.
-     */
-    public static final Field ENGINE_NAME = Field.create("name")
-            .withDescription("Unique name for this connector instance.")
-            .required();
-
-    /**
-     * A required field for an embedded connector that specifies the name of the normal Debezium connector's Java class.
-     */
-    public static final Field CONNECTOR_CLASS = Field.create("connector.class")
-            .withDescription("The Java class for the connector")
-            .required();
-
-    /**
-     * An optional field that specifies the name of the class that implements the {@link OffsetBackingStore} interface,
-     * and that will be used to store offsets recorded by the connector.
-     */
-    public static final Field OFFSET_STORAGE = Field.create("offset.storage")
-            .withDescription("The Java class that implements the `OffsetBackingStore` "
-                    + "interface, used to periodically store offsets so that, upon "
-                    + "restart, the connector can resume where it last left off.")
-            .withDefault(FileOffsetBackingStore.class.getName());
-
-    /**
-     * An optional field that specifies the file location for the {@link FileOffsetBackingStore}.
-     *
-     * @see #OFFSET_STORAGE
-     */
-    public static final Field OFFSET_STORAGE_FILE_FILENAME = Field.create(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG)
-            .withDescription("The file where offsets are to be stored. Required when "
-                    + "'offset.storage' is set to the " +
-                    FileOffsetBackingStore.class.getName() + " class.")
-            .withDefault("");
-
-    /**
-     * An optional field that specifies the topic name for the {@link KafkaOffsetBackingStore}.
-     *
-     * @see #OFFSET_STORAGE
-     */
-    public static final Field OFFSET_STORAGE_KAFKA_TOPIC = Field.create(DistributedConfig.OFFSET_STORAGE_TOPIC_CONFIG)
-            .withDescription("The name of the Kafka topic where offsets are to be stored. "
-                    + "Required with other properties when 'offset.storage' is set to the "
-                    + KafkaOffsetBackingStore.class.getName() + " class.")
-            .withDefault("");
-
-    /**
-     * An optional field that specifies the number of partitions for the {@link KafkaOffsetBackingStore}.
-     *
-     * @see #OFFSET_STORAGE
-     */
-    public static final Field OFFSET_STORAGE_KAFKA_PARTITIONS = Field.create(DistributedConfig.OFFSET_STORAGE_PARTITIONS_CONFIG)
-            .withType(ConfigDef.Type.INT)
-            .withDescription("The number of partitions used when creating the offset storage topic. "
-                    + "Required with other properties when 'offset.storage' is set to the "
-                    + KafkaOffsetBackingStore.class.getName() + " class.");
-
-    /**
-     * An optional field that specifies the replication factor for the {@link KafkaOffsetBackingStore}.
-     *
-     * @see #OFFSET_STORAGE
-     */
-    public static final Field OFFSET_STORAGE_KAFKA_REPLICATION_FACTOR = Field.create(DistributedConfig.OFFSET_STORAGE_REPLICATION_FACTOR_CONFIG)
-            .withType(ConfigDef.Type.SHORT)
-            .withDescription("Replication factor used when creating the offset storage topic. "
-                    + "Required with other properties when 'offset.storage' is set to the "
-                    + KafkaOffsetBackingStore.class.getName() + " class.");
-
-    /**
-     * An optional advanced field that specifies the maximum amount of time that the embedded connector should wait
-     * for an offset commit to complete.
-     */
-    public static final Field OFFSET_FLUSH_INTERVAL_MS = Field.create("offset.flush.interval.ms")
-            .withDescription("Interval at which to try committing offsets, given in milliseconds. Defaults to 1 minute (60,000 ms).")
-            .withDefault(60000L)
-            .withValidation(Field::isNonNegativeInteger);
-
-    /**
-     * An optional advanced field that specifies the maximum amount of time that the embedded connector should wait
-     * for an offset commit to complete.
-     */
-    public static final Field OFFSET_COMMIT_TIMEOUT_MS = Field.create("offset.flush.timeout.ms")
-            .withDescription("Time to wait for records to flush and partition offset data to be"
-                    + " committed to offset storage before cancelling the process and restoring the offset "
-                    + "data to be committed in a future attempt, given in milliseconds. Defaults to 5 seconds (5000 ms).")
-            .withDefault(5000L)
-            .withValidation(Field::isPositiveInteger);
-
-    public static final Field OFFSET_COMMIT_POLICY = Field.create("offset.commit.policy")
-            .withDescription("The fully-qualified class name of the commit policy type. This class must implement the interface "
-                    + OffsetCommitPolicy.class.getName()
-                    + ". The default is a periodic commit policy based upon time intervals.")
-            .withDefault(OffsetCommitPolicy.PeriodicCommitOffsetPolicy.class.getName())
-            .withValidation(Field::isClassName);
-
-    /**
-     * A list of Predicates that can be assigned to transformations.
-     */
-    public static final Field PREDICATES = Field.create("predicates")
-            .withDisplayName("List of prefixes defining predicates.")
-            .withType(Type.STRING)
-            .withWidth(Width.MEDIUM)
-            .withImportance(Importance.LOW)
-            .withDescription("Optional list of predicates that can be assigned to transformations. "
-                    + "The predicates are defined using '<predicate.prefix>.type' config option and configured using options '<predicate.prefix>.<option>'");
-
-    /**
-     * A list of SMTs to be applied on the messages generated by the engine.
-     */
-    public static final Field TRANSFORMS = Field.create("transforms")
-            .withDisplayName("List of prefixes defining transformations.")
-            .withType(Type.STRING)
-            .withWidth(Width.MEDIUM)
-            .withImportance(Importance.LOW)
-            .withDescription("Optional list of single message transformations applied on the messages. "
-                    + "The transforms are defined using '<transform.prefix>.type' config option and configured using options '<transform.prefix>.<option>'");
-
-    private static final int DEFAULT_ERROR_MAX_RETRIES = -1;
-
-    public static final Field ERRORS_MAX_RETRIES = Field.create("errors.max.retries")
-            .withDisplayName("The maximum number of retries")
-            .withType(Type.INT)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.MEDIUM)
-            .withDefault(DEFAULT_ERROR_MAX_RETRIES)
-            .withValidation(Field::isInteger)
-            .withDescription("The maximum number of retries on connection errors before failing (-1 = no limit, 0 = disabled, > 0 = num of retries).");
-
-    public static final Field ERRORS_RETRY_DELAY_INITIAL_MS = Field.create("errors.retry.delay.initial.ms")
-            .withDisplayName("Initial delay for retries")
-            .withType(Type.INT)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.MEDIUM)
-            .withDefault(300)
-            .withValidation(Field::isPositiveInteger)
-            .withDescription("Initial delay (in ms) for retries when encountering connection errors."
-                    + " This value will be doubled upon every retry but won't exceed 'errors.retry.delay.max.ms'.");
-
-    public static final Field ERRORS_RETRY_DELAY_MAX_MS = Field.create("errors.retry.delay.max.ms")
-            .withDisplayName("Max delay between retries")
-            .withType(Type.INT)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.MEDIUM)
-            .withDefault(10000)
-            .withValidation(Field::isPositiveInteger)
-            .withDescription("Max delay (in ms) between retries when encountering connection errors.");
-
-    public static final Field WAIT_FOR_COMPLETION_BEFORE_INTERRUPT_MS = Field.create("debezium.embedded.shutdown.pause.before.interrupt.ms")
-            .withDisplayName("Time to wait to engine completion before interrupt")
-            .withType(Type.LONG)
-            .withDefault(Duration.ofMinutes(5).toMillis())
-            .withValidation(Field::isPositiveInteger)
-            .withDescription(String.format("How long we wait before forcefully stopping the connector thread when shutting down. " +
-                    "Must be bigger than the time it takes two polling loops to finish ({} ms)", ChangeEventSourceCoordinator.SHUTDOWN_WAIT_TIMEOUT.toMillis() * 2));
-
-    /**
-     * The array of fields that are required by each connectors.
-     */
-    public static final Field.Set CONNECTOR_FIELDS = Field.setOf(ENGINE_NAME, CONNECTOR_CLASS);
-
-    /**
-     * The array of all exposed fields.
-     */
-    protected static final Field.Set ALL_FIELDS = CONNECTOR_FIELDS.with(OFFSET_STORAGE, OFFSET_STORAGE_FILE_FILENAME,
-            OFFSET_FLUSH_INTERVAL_MS, OFFSET_COMMIT_TIMEOUT_MS,
-            ERRORS_MAX_RETRIES, ERRORS_RETRY_DELAY_INITIAL_MS, ERRORS_RETRY_DELAY_MAX_MS);
+public final class EmbeddedEngine implements DebeziumEngine<SourceRecord>, EmbeddedEngineConfig {
 
     public static final class BuilderImpl implements Builder {
         private Configuration config;
@@ -636,7 +463,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
 
         // Create the worker config, adding extra fields that are required for validation of a worker config
         // but that are not used within the embedded engine (since the source records are never serialized) ...
-        Map<String, String> embeddedConfig = config.asMap(ALL_FIELDS);
+        Map<String, String> embeddedConfig = config.asMap(EmbeddedEngineConfig.ALL_FIELDS);
         embeddedConfig.put(WorkerConfig.KEY_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
         embeddedConfig.put(WorkerConfig.VALUE_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
         workerConfig = new EmbeddedConfig(embeddedConfig);
@@ -696,13 +523,13 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
     public void run() {
         if (runningThread.compareAndSet(null, Thread.currentThread())) {
 
-            final String engineName = config.getString(ENGINE_NAME);
-            final String connectorClassName = config.getString(CONNECTOR_CLASS);
+            final String engineName = config.getString(EmbeddedEngineConfig.ENGINE_NAME);
+            final String connectorClassName = config.getString(EmbeddedEngineConfig.CONNECTOR_CLASS);
             final Optional<DebeziumEngine.ConnectorCallback> connectorCallback = Optional.ofNullable(this.connectorCallback);
             // Only one thread can be in this part of the method at a time ...
             latch.countUp();
             try {
-                if (!config.validateAndRecord(CONNECTOR_FIELDS, LOGGER::error)) {
+                if (!config.validateAndRecord(EmbeddedEngineConfig.CONNECTOR_FIELDS, LOGGER::error)) {
                     failAndThrow("Failed to start connector with invalid configuration (see logs for actual errors)", null);
                 }
 
@@ -717,7 +544,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                 setOffsetCommitPolicy();
 
                 // Set up offset reader and writer
-                final Duration commitTimeout = Duration.ofMillis(config.getLong(OFFSET_COMMIT_TIMEOUT_MS));
+                final Duration commitTimeout = Duration.ofMillis(config.getLong(EmbeddedEngineConfig.OFFSET_COMMIT_TIMEOUT_MS));
                 final OffsetStorageReader offsetReader = new OffsetStorageReaderImpl(offsetStore, engineName, keyConverter, valueConverter);
                 final OffsetStorageWriter offsetWriter = new OffsetStorageWriter(offsetStore, engineName, keyConverter, valueConverter);
                 initializeConnector(connector, offsetReader);
@@ -812,7 +639,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
      * Determines, which offset backing store should be used, instantiate it and start the offset store.
      */
     private OffsetBackingStore initializeOffsetStore(final Map<String, String> connectorConfig) throws EmbeddedEngineRuntimeException {
-        final String offsetStoreClassName = config.getString(OFFSET_STORAGE);
+        final String offsetStoreClassName = config.getString(EmbeddedEngineConfig.OFFSET_STORAGE);
         OffsetBackingStore offsetStore = null;
         try {
             // Kafka 3.5 no longer provides offset stores with non-parametric constructors
@@ -852,11 +679,11 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
     private void setOffsetCommitPolicy() throws EmbeddedEngineRuntimeException {
         if (offsetCommitPolicy == null) {
             try {
-                offsetCommitPolicy = Instantiator.getInstanceWithProperties(config.getString(EmbeddedEngine.OFFSET_COMMIT_POLICY),
+                offsetCommitPolicy = Instantiator.getInstanceWithProperties(config.getString(EmbeddedEngineConfig.OFFSET_COMMIT_POLICY),
                         config.asProperties());
             }
             catch (Throwable t) {
-                failAndThrow("Unable to instantiate OffsetCommitPolicy class '" + config.getString(OFFSET_STORAGE) + "'", t);
+                failAndThrow("Unable to instantiate OffsetCommitPolicy class '" + config.getString(EmbeddedEngineConfig.OFFSET_STORAGE) + "'", t);
             }
         }
     }
@@ -935,9 +762,9 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
         if (maxRetries == 0) {
             retryError = e;
         }
-        else if (maxRetries < DEFAULT_ERROR_MAX_RETRIES) {
-            LOGGER.warn("Setting {}={} is deprecated. To disable retries on connection errors, set {}=0", ERRORS_MAX_RETRIES.name(), maxRetries,
-                    ERRORS_MAX_RETRIES.name());
+        else if (maxRetries < EmbeddedEngineConfig.DEFAULT_ERROR_MAX_RETRIES) {
+            LOGGER.warn("Setting {}={} is deprecated. To disable retries on connection errors, set {}=0", EmbeddedEngineConfig.ERRORS_MAX_RETRIES.name(), maxRetries,
+                    EmbeddedEngineConfig.ERRORS_MAX_RETRIES.name());
             retryError = e;
         }
         else {
@@ -1080,7 +907,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
     }
 
     private int getErrorsMaxRetries() {
-        int maxRetries = config.getInteger(ERRORS_MAX_RETRIES);
+        int maxRetries = config.getInteger(EmbeddedEngineConfig.ERRORS_MAX_RETRIES);
         return maxRetries;
     }
 
@@ -1241,7 +1068,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
         if (thread != null) {
             try {
                 // Making sure the event source coordinator has enough time to shut down before forcefully stopping it
-                Duration timeout = Duration.ofMillis(config.getLong(WAIT_FOR_COMPLETION_BEFORE_INTERRUPT_MS));
+                Duration timeout = Duration.ofMillis(config.getLong(EmbeddedEngineConfig.WAIT_FOR_COMPLETION_BEFORE_INTERRUPT_MS));
                 LOGGER.info("Waiting for {} for connector to stop", timeout);
                 latch.await(timeout.toMillis(), TimeUnit.MILLISECONDS);
             }
@@ -1277,7 +1104,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
 
     @Override
     public String toString() {
-        return "EmbeddedEngine{id=" + config.getString(ENGINE_NAME) + '}';
+        return "EmbeddedEngine{id=" + config.getString(EmbeddedEngineConfig.ENGINE_NAME) + '}';
     }
 
     public void runWithTask(Consumer<SourceTask> consumer) {
@@ -1285,8 +1112,8 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
     }
 
     private DelayStrategy delayStrategy(Configuration config) {
-        return DelayStrategy.exponential(Duration.ofMillis(config.getInteger(ERRORS_RETRY_DELAY_INITIAL_MS)),
-                Duration.ofMillis(config.getInteger(ERRORS_RETRY_DELAY_MAX_MS)));
+        return DelayStrategy.exponential(Duration.ofMillis(config.getInteger(EmbeddedEngineConfig.ERRORS_RETRY_DELAY_INITIAL_MS)),
+                Duration.ofMillis(config.getInteger(EmbeddedEngineConfig.ERRORS_RETRY_DELAY_MAX_MS)));
     }
 
     protected static class EmbeddedConfig extends WorkerConfig {
@@ -1294,10 +1121,10 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
 
         static {
             ConfigDef config = baseConfigDef();
-            Field.group(config, "file", OFFSET_STORAGE_FILE_FILENAME);
-            Field.group(config, "kafka", OFFSET_STORAGE_KAFKA_TOPIC);
-            Field.group(config, "kafka", OFFSET_STORAGE_KAFKA_PARTITIONS);
-            Field.group(config, "kafka", OFFSET_STORAGE_KAFKA_REPLICATION_FACTOR);
+            Field.group(config, "file", EmbeddedEngineConfig.OFFSET_STORAGE_FILE_FILENAME);
+            Field.group(config, "kafka", EmbeddedEngineConfig.OFFSET_STORAGE_KAFKA_TOPIC);
+            Field.group(config, "kafka", EmbeddedEngineConfig.OFFSET_STORAGE_KAFKA_PARTITIONS);
+            Field.group(config, "kafka", EmbeddedEngineConfig.OFFSET_STORAGE_KAFKA_REPLICATION_FACTOR);
             CONFIG = config;
         }
 

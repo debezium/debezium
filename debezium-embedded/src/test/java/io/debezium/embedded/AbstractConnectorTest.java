@@ -360,10 +360,10 @@ public abstract class AbstractConnectorTest implements Testing {
                          DebeziumEngine.CompletionCallback callback, Predicate<SourceRecord> isStopRecord,
                          Consumer<SourceRecord> recordArrivedListener, boolean ignoreRecordsAfterStop, DebeziumEngine.ChangeConsumer changeConsumer) {
         Configuration config = Configuration.copy(connectorConfig)
-                .with(EmbeddedEngine.ENGINE_NAME, "testing-connector")
-                .with(EmbeddedEngine.CONNECTOR_CLASS, connectorClass.getName())
+                .with(EmbeddedEngineConfig.ENGINE_NAME, "testing-connector")
+                .with(EmbeddedEngineConfig.CONNECTOR_CLASS, connectorClass.getName())
                 .with(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH)
-                .with(EmbeddedEngine.OFFSET_FLUSH_INTERVAL_MS, 0)
+                .with(EmbeddedEngineConfig.OFFSET_FLUSH_INTERVAL_MS, 0)
                 .build();
         latch = new CountDownLatch(1);
         CompletionCallback wrapperCallback = (success, msg, error) -> {
@@ -1148,12 +1148,12 @@ public abstract class AbstractConnectorTest implements Testing {
      */
     protected <T> Map<Map<String, T>, Map<String, Object>> readLastCommittedOffsets(Configuration config,
                                                                                     Collection<Map<String, T>> partitions) {
-        config = config.edit().with(EmbeddedEngine.ENGINE_NAME, "testing-connector")
+        config = config.edit().with(EmbeddedEngineConfig.ENGINE_NAME, "testing-connector")
                 .with(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH)
-                .with(EmbeddedEngine.OFFSET_FLUSH_INTERVAL_MS, 0)
+                .with(EmbeddedEngineConfig.OFFSET_FLUSH_INTERVAL_MS, 0)
                 .build();
 
-        final String engineName = config.getString(EmbeddedEngine.ENGINE_NAME);
+        final String engineName = config.getString(EmbeddedEngineConfig.ENGINE_NAME);
         Map<String, String> internalConverterConfig = Collections.singletonMap(JsonConverterConfig.SCHEMAS_ENABLE_CONFIG, "false");
         Converter keyConverter = Instantiator.getInstance(JsonConverter.class.getName());
         keyConverter.configure(internalConverterConfig, true);
@@ -1162,7 +1162,7 @@ public abstract class AbstractConnectorTest implements Testing {
 
         // Create the worker config, adding extra fields that are required for validation of a worker config
         // but that are not used within the embedded engine (since the source records are never serialized) ...
-        Map<String, String> embeddedConfig = config.asMap(EmbeddedEngine.ALL_FIELDS);
+        Map<String, String> embeddedConfig = config.asMap(EmbeddedEngineConfig.ALL_FIELDS);
         embeddedConfig.put(WorkerConfig.KEY_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
         embeddedConfig.put(WorkerConfig.VALUE_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
         WorkerConfig workerConfig = new EmbeddedConfig(embeddedConfig);
