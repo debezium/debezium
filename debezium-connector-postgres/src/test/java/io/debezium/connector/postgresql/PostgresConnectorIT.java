@@ -87,7 +87,6 @@ import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
-import io.debezium.embedded.EmbeddedEngine;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConfiguration;
@@ -106,7 +105,7 @@ import io.debezium.util.Strings;
 import io.debezium.util.Testing;
 
 /**
- * Integration test for {@link PostgresConnector} using an {@link io.debezium.embedded.EmbeddedEngine}
+ * Integration test for {@link PostgresConnector} using an {@link io.debezium.engine.DebeziumEngine}
  *
  * @author Horia Chiorean (hchiorea@redhat.com)
  */
@@ -1018,7 +1017,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE);
-        EmbeddedEngine.CompletionCallback completionCallback = (success, message, error) -> {
+        DebeziumEngine.CompletionCallback completionCallback = (success, message, error) -> {
             if (error != null) {
                 latch.countDown();
             }
@@ -3383,7 +3382,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE_CLASS, CustomLifecycleHookTestSnapshot.class.getName())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE);
 
-        EmbeddedEngine.CompletionCallback completionCallback = (success, message, error) -> {
+        DebeziumEngine.CompletionCallback completionCallback = (success, message, error) -> {
             if (error != null) {
                 latch.countDown();
             }
