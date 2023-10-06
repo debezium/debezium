@@ -182,7 +182,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
             .withDescription("The fully-qualified class name of the commit policy type. This class must implement the interface "
                     + OffsetCommitPolicy.class.getName()
                     + ". The default is a periodic commit policy based upon time intervals.")
-            .withDefault(io.debezium.embedded.spi.OffsetCommitPolicy.PeriodicCommitOffsetPolicy.class.getName())
+            .withDefault(OffsetCommitPolicy.PeriodicCommitOffsetPolicy.class.getName())
             .withValidation(Field::isClassName);
 
     /**
@@ -505,7 +505,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
              * the default implementation that is compatible with the old Consumer api.
              *
              * On every record, it calls the consumer, and then only marks the record
-             * as processed when accept returns, additionally, it handles StopConnectorExceptions
+             * as processed when accept returns, additionally, it handles StopEngineException
              * and ensures that we all ways try and mark a batch as finished, even with exceptions
              * @param records the records to be processed
              * @param committer the committer that indicates to the system that we are finished
@@ -519,7 +519,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                         consumer.accept(record);
                         committer.markProcessed(record);
                     }
-                    catch (StopConnectorException | StopEngineException ex) {
+                    catch (StopEngineException ex) {
                         // ensure that we mark the record as finished
                         // in this case
                         committer.markProcessed(record);
@@ -1007,7 +1007,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                     try {
                         handler.handleBatch(changeRecords, committer);
                     }
-                    catch (StopConnectorException e) {
+                    catch (StopEngineException e) {
                         break;
                     }
                 }
