@@ -18,7 +18,7 @@ public class RecordAndMetadataBaseImpl implements RecordAndMetadata {
 
     private final Struct record;
 
-    private final Schema dataSchema;
+    protected final Schema dataSchema;
 
     public RecordAndMetadataBaseImpl(Struct record, Schema dataSchema) {
         this.record = record;
@@ -35,6 +35,16 @@ public class RecordAndMetadataBaseImpl implements RecordAndMetadata {
         Struct source = record.getStruct(Envelope.FieldName.SOURCE);
         String connectorType = source.getString(AbstractSourceInfo.DEBEZIUM_CONNECTOR_KEY);
         return getDataSchema(this.dataSchema, connectorType, dataFields);
+    }
+
+    @Override
+    public String id() {
+        return null;
+    }
+
+    @Override
+    public String type() {
+        return null;
     }
 
     @Override

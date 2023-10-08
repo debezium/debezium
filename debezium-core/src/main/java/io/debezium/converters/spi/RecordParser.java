@@ -9,7 +9,6 @@ import java.util.Set;
 
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.connector.AbstractSourceInfo;
@@ -22,6 +21,8 @@ import io.debezium.util.Collect;
 public abstract class RecordParser {
 
     private final Struct record;
+    private final String id;
+    private final String type;
     private final Struct source;
     private final Struct transaction;
     private final String op;
@@ -41,6 +42,8 @@ public abstract class RecordParser {
 
     protected RecordParser(RecordAndMetadata recordAndMetadata, String... dataFields) {
         this.record = recordAndMetadata.record();
+        this.id = recordAndMetadata.id();
+        this.type = recordAndMetadata.type();
         this.source = recordAndMetadata.source();
         this.transaction = recordAndMetadata.transaction();
         this.op = recordAndMetadata.operation();
@@ -49,17 +52,6 @@ public abstract class RecordParser {
         this.ts_msSchema = recordAndMetadata.timestamp().schema();
         this.connectorType = source.getString(AbstractSourceInfo.DEBEZIUM_CONNECTOR_KEY);
         this.dataSchema = recordAndMetadata.dataSchema(dataFields);
-    }
-
-    private static Schema getDataSchema(Schema schema, String connectorType, String... fields) {
-        String dataSchemaName = "io.debezium.connector." + connectorType + ".Data";
-        SchemaBuilder builder = SchemaBuilder.struct().name(dataSchemaName);
-
-        for (String field : fields) {
-            builder.field(field, schema.field(field).schema());
-        }
-
-        return builder.build();
     }
 
     /**
@@ -73,6 +65,24 @@ public abstract class RecordParser {
         }
 
         return data;
+    }
+
+    /**
+     * Get id of a message
+     *.
+     * @return id of a message
+     */
+    public String id() {
+        return id;
+    }
+
+    /**
+     * Get type of a message
+     *.
+     * @return type of a message
+     */
+    public String type() {
+        return type;
     }
 
     /**

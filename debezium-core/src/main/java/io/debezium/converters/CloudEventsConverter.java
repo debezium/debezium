@@ -48,7 +48,10 @@ import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.Configuration;
 import io.debezium.config.Instantiator;
 import io.debezium.connector.AbstractSourceInfo;
+import io.debezium.converters.CloudEventsConverterConfig.IdSource;
 import io.debezium.converters.CloudEventsConverterConfig.MetadataLocation;
+import io.debezium.converters.CloudEventsConverterConfig.TypeSource;
+import io.debezium.converters.recordandmetadata.CloudEventFieldsSources;
 import io.debezium.converters.recordandmetadata.RecordAndMetadata;
 import io.debezium.converters.recordandmetadata.RecordAndMetadataBaseImpl;
 import io.debezium.converters.recordandmetadata.RecordAndMetadataHeaderImpl;
@@ -154,6 +157,8 @@ public class CloudEventsConverter implements Converter {
 
     private boolean extensionAttributesEnable;
 
+    private IdSource idSource;
+    private TypeSource typeSource;
     private MetadataLocation metadataLocation;
 
     public CloudEventsConverter() {
@@ -176,6 +181,8 @@ public class CloudEventsConverter implements Converter {
         dataSerializerType = ceConfig.cloudeventsDataSerializerTypeConfig();
         schemaNameAdjuster = ceConfig.schemaNameAdjustmentMode().createAdjuster();
         extensionAttributesEnable = ceConfig.extensionAttributesEnable();
+        idSource = ceConfig.idSource();
+        typeSource = ceConfig.typeSource();
         metadataLocation = ceConfig.metadataLocation();
 
         Map<String, Object> jsonHeaderConverterConfig = new HashMap<>();
@@ -269,11 +276,12 @@ public class CloudEventsConverter implements Converter {
         CloudEventsProvider provider = lookupCloudEventsProvider(source);
 
         RecordAndMetadata recordAndMetadata;
-        if (this.metadataLocation == MetadataLocation.VALUE) {
-            recordAndMetadata = new RecordAndMetadataBaseImpl(record, schema);
+        if (idSource == IdSource.HEADER || typeSource == TypeSource.HEADER || metadataLocation == MetadataLocation.HEADER) {
+            recordAndMetadata = new RecordAndMetadataHeaderImpl(record, schema, headers, jsonHeaderConverter,
+                    new CloudEventFieldsSources(idSource, typeSource, metadataLocation));
         }
         else {
-            recordAndMetadata = new RecordAndMetadataHeaderImpl(record, schema, headers, jsonHeaderConverter);
+            recordAndMetadata = new RecordAndMetadataBaseImpl(record, schema);
         }
 
         RecordParser parser = provider.createParser(recordAndMetadata);
@@ -497,12 +505,15 @@ public class CloudEventsConverter implements Converter {
 
         Schema ceSchema = ceSchemaBuilder.build();
 
+        String ceId = this.idSource == IdSource.GENERATE ? maker.ceId() : parser.id();
+        String ceType = this.typeSource == TypeSource.GENERATE ? maker.ceType() : parser.type();
+
         // construct value of CloudEvents Envelope
         CEValueBuilder ceValueBuilder = withValue(ceSchema)
-                .withValue(CloudEventsMaker.FieldName.ID, maker.ceId())
+                .withValue(CloudEventsMaker.FieldName.ID, ceId)
                 .withValue(CloudEventsMaker.FieldName.SOURCE, maker.ceSource(source.getString("name")))
                 .withValue(CloudEventsMaker.FieldName.SPECVERSION, maker.ceSpecversion())
-                .withValue(CloudEventsMaker.FieldName.TYPE, maker.ceType())
+                .withValue(CloudEventsMaker.FieldName.TYPE, ceType)
                 .withValue(CloudEventsMaker.FieldName.TIME, maker.ceTime())
                 .withValue(CloudEventsMaker.FieldName.DATACONTENTTYPE, maker.ceDatacontenttype());
 
