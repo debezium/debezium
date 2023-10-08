@@ -15,6 +15,7 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.transforms.HeaderFrom;
+import org.apache.kafka.connect.transforms.InsertHeader;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -88,8 +89,8 @@ public abstract class AbstractCloudEventsConverterTest<T extends SourceConnector
     }
 
     @Test
-    @FixFor({ "DBZ-3642" })
-    public void shouldConvertToCloudEventsInJsonWithMetadataInHeadersAfterOutboxEventRouter() throws Exception {
+    @FixFor({ "DBZ-3642", "DBZ-7016" })
+    public void shouldConvertToCloudEventsInJsonWithIdAndTypeAndMetadataInHeadersAfterOutboxEventRouter() throws Exception {
         HeaderFrom<SourceRecord> headerFrom = new HeaderFrom.Value<>();
         Map<String, String> headerFromConfig = new LinkedHashMap<>();
         headerFromConfig.put("fields", "source,op,transaction");
@@ -101,6 +102,8 @@ public abstract class AbstractCloudEventsConverterTest<T extends SourceConnector
         EventRouter<SourceRecord> outboxEventRouter = new EventRouter<>();
         Map<String, String> outboxEventRouterConfig = new LinkedHashMap<>();
         outboxEventRouterConfig.put("table.expand.json.payload", "true");
+        // this adds `type` header with value from the DB column. `id` header is added by Outbox Event Router by default
+        outboxEventRouterConfig.put("table.fields.additional.placement", "event_type:header:type");
         outboxEventRouter.configure(outboxEventRouterConfig);
 
         createOutboxTable();
@@ -129,10 +132,38 @@ public abstract class AbstractCloudEventsConverterTest<T extends SourceConnector
         assertThat(routedEvent.key()).isEqualTo("10711fa5");
         assertThat(routedEvent.value()).isInstanceOf(Struct.class);
 
-        CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithMetadataInHeaders(routedEvent, getConnectorName(), getServerName());
+        CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithIdAndTypeAndMetadataInHeaders(routedEvent, getConnectorName(), getServerName());
 
         headerFrom.close();
         outboxEventRouter.close();
+    }
+
+    @Test
+    @FixFor({ "DBZ-7016" })
+    public void shouldConvertToCloudEventsInJsonWithTypeInHeader() throws Exception {
+        InsertHeader<SourceRecord> insertHeader = new InsertHeader<>();
+        Map<String, String> insertHeaderConfig = new LinkedHashMap<>();
+        insertHeaderConfig.put("header", "type");
+        insertHeaderConfig.put("value.literal", "someType");
+        insertHeader.configure(insertHeaderConfig);
+
+        createTable();
+
+        databaseConnection().execute(createInsert());
+
+        SourceRecords streamingRecords = consumeRecordsByTopic(1);
+        assertThat(streamingRecords.allRecordsInOrder()).hasSize(1);
+
+        SourceRecord record = streamingRecords.recordsForTopic(topicName()).get(0);
+        SourceRecord recordWithTypeInHeader = insertHeader.apply(record);
+
+        assertThat(recordWithTypeInHeader).isNotNull();
+        assertThat(recordWithTypeInHeader.topic()).isEqualTo(topicName());
+        assertThat(recordWithTypeInHeader.value()).isInstanceOf(Struct.class);
+
+        CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithTypeInHeader(recordWithTypeInHeader, getConnectorName(), getServerName());
+
+        insertHeader.close();
     }
 
     private void startConnector() throws Exception {

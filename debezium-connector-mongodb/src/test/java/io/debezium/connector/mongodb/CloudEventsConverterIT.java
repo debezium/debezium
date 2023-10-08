@@ -15,6 +15,7 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.transforms.HeaderFrom;
+import org.apache.kafka.connect.transforms.InsertHeader;
 import org.bson.Document;
 import org.bson.types.ObjectId;
 import org.junit.Before;
@@ -114,7 +115,7 @@ public class CloudEventsConverterIT extends AbstractMongoConnectorIT {
 
     @Test
     @FixFor({ "DBZ-3642" })
-    public void shouldConvertToCloudEventsInJsonWithMetadataInHeadersAfterOutboxEventRouter() throws Exception {
+    public void shouldConvertToCloudEventsInJsonWithIdAndTypeAndMetadataInHeadersAfterOutboxEventRouter() throws Exception {
         HeaderFrom<SourceRecord> headerFrom = new HeaderFrom.Value<>();
         Map<String, String> headerFromConfig = new LinkedHashMap<>();
         headerFromConfig.put("fields", "source,op,transaction");
@@ -126,14 +127,17 @@ public class CloudEventsConverterIT extends AbstractMongoConnectorIT {
         MongoEventRouter<SourceRecord> outboxEventRouter = new MongoEventRouter<>();
         Map<String, String> outboxEventRouterConfig = new LinkedHashMap<>();
         outboxEventRouterConfig.put("collection.expand.json.payload", "true");
+        // this adds `id` and `type` headers with value from the DB column
+        outboxEventRouterConfig.put("collection.fields.additional.placement", "event_type:header:type,id:header:id");
         outboxEventRouter.configure(outboxEventRouterConfig);
 
         try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(COLLECTION_NAME)
                     .insertOne(new Document()
+                            .append("id", "59a42efd-b015-44a9-9dde-cb36d9002425")
                             .append("aggregateid", "10711fa5")
                             .append("aggregatetype", "User")
-                            .append("type", "UserCreated")
+                            .append("event_type", "UserCreated")
                             .append("payload", new Document()
                                     .append("_id", new ObjectId("000000000000000000000000"))
                                     .append("someField1", "some value 1")
@@ -153,10 +157,40 @@ public class CloudEventsConverterIT extends AbstractMongoConnectorIT {
         assertThat(routedEvent.key()).isEqualTo("10711fa5");
         assertThat(routedEvent.value()).isInstanceOf(Struct.class);
 
-        CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithMetadataInHeaders(routedEvent, "mongodb", "mongo1");
+        CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithIdAndTypeAndMetadataInHeaders(routedEvent, "mongodb", "mongo1");
 
         headerFrom.close();
         outboxEventRouter.close();
+    }
+
+    @Test
+    @FixFor({ "DBZ-7016" })
+    public void shouldConvertToCloudEventsInJsonWithTypeInHeader() throws Exception {
+        InsertHeader<SourceRecord> insertHeader = new InsertHeader<>();
+        Map<String, String> insertHeaderConfig = new LinkedHashMap<>();
+        insertHeaderConfig.put("header", "type");
+        insertHeaderConfig.put("value.literal", "someType");
+        insertHeader.configure(insertHeaderConfig);
+
+        try (var client = connect()) {
+            client.getDatabase(DB_NAME).getCollection(COLLECTION_NAME)
+                    .insertOne(new Document()
+                            .append("pk", 1)
+                            .append("aa", 1));
+        }
+
+        SourceRecords streamingRecords = consumeRecordsByTopic(1);
+        assertThat(streamingRecords.allRecordsInOrder()).hasSize(1);
+
+        SourceRecord record = streamingRecords.recordsForTopic("mongo1.dbA.c1").get(0);
+        SourceRecord recordWithTypeInHeader = insertHeader.apply(record);
+
+        assertThat(recordWithTypeInHeader).isNotNull();
+        assertThat(recordWithTypeInHeader.value()).isInstanceOf(Struct.class);
+
+        CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithTypeInHeader(recordWithTypeInHeader, "mongodb", "mongo1");
+
+        insertHeader.close();
     }
 
     private Configuration getConfiguration() {

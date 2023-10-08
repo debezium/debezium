@@ -21,6 +21,10 @@ public interface RecordAndMetadata {
 
     Schema dataSchema(String... dataFields);
 
+    String id();
+
+    String type();
+
     Struct source();
 
     String operation();
