@@ -183,7 +183,7 @@ public class LogMinerEventRowTest {
         char[] chars = new char[4000];
         Arrays.fill(chars, 'a');
         when(resultSet.getString(2)).thenReturn(new String(chars));
-        when(resultSet.getInt(6)).thenReturn(1);
+        when(resultSet.getInt(6)).thenReturn(1, 1, 1, 1, 1, 1, 1, 1, 1, 0);
 
         row = LogMinerEventRow.fromResultSet(resultSet, CATALOG_NAME, true);
         assertThat(row.getRedoSql().length()).isEqualTo(40_000);
