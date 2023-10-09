@@ -36,7 +36,7 @@ import io.debezium.time.ZonedTimestamp;
 
 public class TimezoneConverterTest {
     private final TimezoneConverter<SourceRecord> converter = new TimezoneConverter();
-    protected final Schema sourceSchema = SchemaBuilder.struct()
+    protected final Schema sourceSchema = SchemaBuilder.struct().optional()
             .field("table", Schema.STRING_SCHEMA)
             .field("lsn", Schema.INT32_SCHEMA)
             .field("ts_ms", Schema.OPTIONAL_INT32_SCHEMA)
@@ -48,7 +48,7 @@ public class TimezoneConverterTest {
         props.put("converted.timezone", "+05:30");
         converter.configure(props);
 
-        Schema recordSchema = SchemaBuilder.struct()
+        Schema recordSchema = SchemaBuilder.struct().optional()
                 .field("id", Schema.INT8_SCHEMA)
                 .field("name", Schema.STRING_SCHEMA)
                 .field("order_date_micros", MicroTimestamp.builder().optional().build())
@@ -106,7 +106,7 @@ public class TimezoneConverterTest {
         props.put("converted.timezone", "Pacific/Easter");
         converter.configure(props);
 
-        Schema recordSchema = SchemaBuilder.struct()
+        Schema recordSchema = SchemaBuilder.struct().optional()
                 .field("id", Schema.INT8_SCHEMA)
                 .field("name", Schema.STRING_SCHEMA)
                 .field("created_at", ZonedTimestamp.builder().optional().build())
@@ -158,7 +158,7 @@ public class TimezoneConverterTest {
         props.put("converted.timezone", "Africa/Cairo");
         converter.configure(props);
 
-        Schema recordSchema = SchemaBuilder.struct()
+        Schema recordSchema = SchemaBuilder.struct().optional()
                 .field("id", Schema.INT8_SCHEMA)
                 .field("name", Schema.STRING_SCHEMA)
                 .field("created_at", org.apache.kafka.connect.data.Timestamp.builder().optional().build())
@@ -206,7 +206,7 @@ public class TimezoneConverterTest {
         props.put("include.list", "source:customers:order_time,customers:created_at");
         converter.configure(props);
 
-        Schema recordSchema = SchemaBuilder.struct()
+        Schema recordSchema = SchemaBuilder.struct().optional()
                 .field("id", Schema.INT8_SCHEMA)
                 .field("name", Schema.STRING_SCHEMA)
                 .field("created_at", ZonedTimestamp.builder().optional().build())
@@ -259,7 +259,7 @@ public class TimezoneConverterTest {
         props.put("include.list", "topic:db.server1.table1:order_time");
         converter.configure(props);
 
-        Schema recordSchema = SchemaBuilder.struct()
+        Schema recordSchema = SchemaBuilder.struct().optional()
                 .field("id", Schema.INT8_SCHEMA)
                 .field("name", Schema.STRING_SCHEMA)
                 .field("created_at", ZonedTime.builder().optional().build())
@@ -309,7 +309,7 @@ public class TimezoneConverterTest {
         props.put("include.list", "db.server1.table1:order_time");
         converter.configure(props);
 
-        Schema recordSchema = SchemaBuilder.struct()
+        Schema recordSchema = SchemaBuilder.struct().optional()
                 .field("id", Schema.INT8_SCHEMA)
                 .field("name", Schema.STRING_SCHEMA)
                 .field("created_at", ZonedTime.builder().optional().build())
@@ -360,7 +360,7 @@ public class TimezoneConverterTest {
         props.put("exclude.list", "source:customers:order_time");
         converter.configure(props);
 
-        Schema recordSchema = SchemaBuilder.struct()
+        Schema recordSchema = SchemaBuilder.struct().optional()
                 .field("id", Schema.INT8_SCHEMA)
                 .field("name", Schema.STRING_SCHEMA)
                 .field("created_at", ZonedTime.builder().optional().build())
@@ -413,7 +413,7 @@ public class TimezoneConverterTest {
         props.put("exclude.list", "topic:db.server1.table1:order_time");
         converter.configure(props);
 
-        Schema recordSchema = SchemaBuilder.struct()
+        Schema recordSchema = SchemaBuilder.struct().optional()
                 .field("id", Schema.INT8_SCHEMA)
                 .field("name", Schema.STRING_SCHEMA)
                 .field("created_at", ZonedTime.builder().optional().build())
@@ -463,7 +463,7 @@ public class TimezoneConverterTest {
         props.put("exclude.list", "db.server1.table1:order_time");
         converter.configure(props);
 
-        Schema recordSchema = SchemaBuilder.struct()
+        Schema recordSchema = SchemaBuilder.struct().optional()
                 .field("id", Schema.INT8_SCHEMA)
                 .field("name", Schema.STRING_SCHEMA)
                 .field("created_at", ZonedTime.builder().optional().build())
@@ -805,7 +805,7 @@ public class TimezoneConverterTest {
         props.put("converted.timezone", "Europe/Paris");
         converter.configure(props);
 
-        Schema recordSchema = SchemaBuilder.struct()
+        Schema recordSchema = SchemaBuilder.struct().optional()
                 .field("id", Schema.INT8_SCHEMA)
                 .field("name", Schema.STRING_SCHEMA)
                 .field("order_date", ZonedTimestamp.builder().optional().build())
@@ -857,7 +857,7 @@ public class TimezoneConverterTest {
         props.put("include.list", "source:customers:order_date");
         converter.configure(props);
 
-        Schema recordSchema = SchemaBuilder.struct()
+        Schema recordSchema = SchemaBuilder.struct().optional()
                 .field("id", Schema.INT8_SCHEMA)
                 .field("name", Schema.STRING_SCHEMA)
                 .field("order_date", io.debezium.time.Date.builder().optional().build())
