@@ -5636,6 +5636,67 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         }
     }
 
+    @Test
+    @FixFor("DBZ-6975")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "LogMiner performs DML parsing")
+    public void shouldHandleEscapedSingleQuotesInCharacterFields() throws Exception {
+        TestHelper.dropTable(connection, "dbz6975");
+        try {
+            connection.execute("CREATE TABLE dbz6975 (c0 varchar2(50), c1 nvarchar2(50), c2 char(10), c3 nchar(10))");
+            TestHelper.streamTable(connection, "dbz6975");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ6975")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            // This is only an issue during LogMiner Streaming as we do not use the parser
+            // during the snapshot phase.
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            String v = "UNISTR('\\0412') || 'a''b\\c'";
+            connection.execute("INSERT INTO dbz6975 values (" + String.join(",", v, v, v, v) + ")");
+            String u = "UNISTR('\\041D') || 'bc''d'";
+            connection.execute("UPDATE dbz6975 set c0=" + u + ", c1=" + u + ",c2=" + u + ",c3=" + u);
+            connection.execute("DELETE FROM dbz6975");
+
+            SourceRecords records = consumeRecordsByTopic(3);
+            List<SourceRecord> tableRecords = records.recordsForTopic("server1.DEBEZIUM.DBZ6975");
+            assertThat(tableRecords).hasSize(3);
+
+            // Insert
+            SourceRecord record = tableRecords.get(0);
+            VerifyRecord.isValidInsert(record);
+            assertThat(getAfter(record).get("C0")).isEqualTo("Вa'b\\c");
+            assertThat(getAfter(record).get("C1")).isEqualTo("Вa'b\\c");
+            assertThat(getAfter(record).get("C2")).isEqualTo("Вa'b\\c    "); // CHAR is padded
+            assertThat(getAfter(record).get("C3")).isEqualTo("Вa'b\\c    "); // NCHAR is padded
+
+            // Update
+            record = tableRecords.get(1);
+            VerifyRecord.isValidUpdate(record);
+            assertThat(getAfter(record).get("C0")).isEqualTo("Нbc'd");
+            assertThat(getAfter(record).get("C1")).isEqualTo("Нbc'd");
+            assertThat(getAfter(record).get("C2")).isEqualTo("Нbc'd     "); // CHAR is padded
+            assertThat(getAfter(record).get("C3")).isEqualTo("Нbc'd     "); // NCHAR is padded
+
+            // Delete
+            record = tableRecords.get(2);
+            VerifyRecord.isValidDelete(record);
+            assertThat(getBefore(record).get("C0")).isEqualTo("Нbc'd");
+            assertThat(getBefore(record).get("C1")).isEqualTo("Нbc'd");
+            assertThat(getBefore(record).get("C2")).isEqualTo("Нbc'd     "); // CHAR is padded
+            assertThat(getBefore(record).get("C3")).isEqualTo("Нbc'd     "); // NCHAR is padded
+
+            stopConnector();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz6975");
+        }
+    }
+
     private void waitForCurrentScnToHaveBeenSeenByConnector() throws SQLException {
         try (OracleConnection admin = TestHelper.adminConnection(true)) {
             final Scn scn = admin.getCurrentScn();
@@ -5653,5 +5714,9 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
     private Struct getAfter(SourceRecord record) {
         return ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+    }
+
+    private Struct getBefore(SourceRecord record) {
+        return ((Struct) record.value()).getStruct(Envelope.FieldName.BEFORE);
     }
 }

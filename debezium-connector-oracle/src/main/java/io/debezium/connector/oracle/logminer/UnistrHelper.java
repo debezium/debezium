@@ -27,6 +27,11 @@ public class UnistrHelper {
             return data;
         }
 
+        // If the UNISTR contains an escaped single-quote, we should clean that up first.
+        if (data.contains("''")) {
+            data = data.replaceAll("''", "'");
+        }
+
         // Multiple UNISTR function calls maybe concatenated together using "||".
         // We split the values into their respective parts before parsing each one separately.
         final String[] parts = CONCATENATION_PATTERN.split(data);
