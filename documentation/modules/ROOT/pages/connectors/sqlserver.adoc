@@ -107,6 +107,8 @@ ifdef::product[]
 For details about how the connector works, see the following sections:
 
 * xref:how-debezium-sql-server-connectors-perform-database-snapshots[]
+* xref:debezium-sqlserver-ad-hoc-snapshots[]
+* xref:debezium-sqlserver-incremental-snapshots[]
 * xref:how-the-debezium-sql-server-connector-reads-change-data-tables[]
 * xref:default-names-of-kafka-topics-that-receive-debezium-sql-server-change-event-records[]
 * xref:how-the-debezium-sql-server-connector-uses-the-schema-change-topic[]
