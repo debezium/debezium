@@ -352,8 +352,12 @@ public class TimezoneConverter<R extends ConnectRecord<R>> implements Transforma
 
     private Struct handleEnvelopeValue(Schema schema, Struct value) {
         final Struct updatedEnvelopeValue = new Struct(schema);
+        Struct updatedSourceValue = getStruct(value, Envelope.FieldName.SOURCE);
         Struct updatedAfterValue = getStruct(value, Envelope.FieldName.AFTER);
         Struct updatedBeforeValue = getStruct(value, Envelope.FieldName.BEFORE);
+        if (updatedSourceValue != null) {
+            updatedEnvelopeValue.put(Envelope.FieldName.SOURCE, updatedSourceValue);
+        }
         if (updatedAfterValue != null) {
             updatedEnvelopeValue.put(Envelope.FieldName.AFTER, updatedAfterValue);
         }
