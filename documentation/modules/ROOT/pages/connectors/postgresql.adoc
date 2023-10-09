@@ -106,6 +106,8 @@ ifdef::product[]
 Details are in the following topics:
 
 * xref:how-debezium-postgresql-connectors-perform-database-snapshots[]
+* xref:debezium-postgresql-ad-hoc-snapshots[]
+* xref:debezium-postgresql-incremental-snapshots[]
 * xref:how-debezium-postgresql-connectors-stream-change-event-records[]
 * xref:default-names-of-kafka-topics-that-receive-debezium-postgresql-change-event-records[]
 * xref:debezium-postgresql-connector-generated-events-that-represent-transaction-boundaries[]

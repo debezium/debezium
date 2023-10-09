@@ -116,6 +116,8 @@ ifdef::product[]
 Details are in the following topics:
 
 * xref:how-debezium-db2-connectors-perform-database-snapshots[]
+* xref:debezium-db2-ad-hoc-snapshots[]
+* xref:debezium-db2-incremental-snapshots[]
 * xref:how-debezium-db2-connectors-read-change-data-tables[]
 * xref:default-names-of-kafka-topics-that-receive-db2-change-event-records[]
 * xref:about-the-debezium-db2-connector-schema-change-topic[]
@@ -279,7 +281,7 @@ Use this option if you want to restart the connector more quickly than with a fu
 
 5. Restart the connector.
 The connector completes the type of snapshot specified by the `snapshot.mode`.
-6. (Optional) If the connector performed a `schema_only` snapshot, after the snapshot completes, initiate an xref:db2-incremental-snapshots[incremental snapshot] to capture data from the tables that you added.
+6. (Optional) If the connector performed a `schema_only` snapshot, after the snapshot completes, initiate an xref:debezium-db2-incremental-snapshots[incremental snapshot] to capture data from the tables that you added.
 The connector runs the snapshot while it continues to stream real-time changes from the tables.
 Running an incremental snapshot captures the following data changes:
 +
@@ -330,7 +332,7 @@ This operation is potentially destructive, and should be performed only as a las
 5. Restart the connector.
 6. Wait for {prodname} to capture the schema of the new and existing tables.
 Data changes that occurred any tables after the connector stopped are not captured.
-7. To ensure that no data is lost, initiate an xref:db2-incremental-snapshots[incremental snapshot].
+7. To ensure that no data is lost, initiate an xref:debezium-db2-incremental-snapshots[incremental snapshot].
 
 Procedure 2: Initial snapshot, followed by optional incremental snapshot:::
 In this procedure the connector performs a full initial snapshot of the database.
@@ -354,7 +356,7 @@ This operation is potentially destructive, and should be performed only as a las
 6. Restart the connector.
 The connector takes a full database snapshot.
 After the snapshot completes, the connector transitions to streaming.
-7. (Optional) To capture any data that changed while the connector was off-line, initiate an xref:db2-incremental-snapshots[incremental snapshot].
+7. (Optional) To capture any data that changed while the connector was off-line, initiate an xref:debezium-db2-incremental-snapshots[incremental snapshot].
 
 // Type: concept
 // ModuleID: debezium-db2-ad-hoc-snapshots
@@ -365,7 +367,7 @@ include::{partialsdir}/modules/all-connectors/con-connector-ad-hoc-snapshots.ado
 
 // Type: assembly
 // ModuleID: debezium-db2-incremental-snapshots
-[id="db2-incremental-snapshots"]
+[id="debezium-db2-incremental-snapshots"]
 === Incremental snapshots
 
 include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+1]

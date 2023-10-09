@@ -70,6 +70,8 @@ Details are in the following topics:
 * xref:how-debezium-mysql-connectors-handle-database-schema-changes[]
 * xref:how-debezium-mysql-connectors-expose-database-schema-changes[]
 * xref:how-debezium-mysql-connectors-perform-database-snapshots[]
+* xref:debezium-mysql-ad-hoc-snapshots[]
+* xref:debezium-mysql-incremental-snapshots[]
 * xref:default-names-of-kafka-topics-that-receive-debezium-mysql-change-event-records[]
 
 endif::product[]
@@ -465,7 +467,7 @@ a|Start a transaction with link:https://dev.mysql.com/doc/refman/{mysql-version}
 [NOTE]
 ====
 The use of these isolation semantics can slow the progress of the snapshot.
-If the snapshot takes too long to complete, consider using a different isolation configuration, or skip the initial snapshot and run an xref:mysql-incremental-snapshots[incremental snapshot] instead.
+If the snapshot takes too long to complete, consider using a different isolation configuration, or skip the initial snapshot and run an xref:debezium-mysql-incremental-snapshots[incremental snapshot] instead.
 ====
 
 |5
@@ -532,7 +534,7 @@ For the connector to perform a snapshot that uses table-level locks, the databas
 
 .Default workflow that the {prodname} MySQL connector uses to perform an initial snapshot with table-level locks
 The following workflow lists the steps that {prodname} takes to create a snapshot with table-level read locks.
-For information about the snapshot process in environments that do not permit global read locks, see the xref:default-snapshot-workflow-with-global-read-lock[snapshot workflow for global read locks].
+For information about the snapshot process in environments that do not permit global read locks, see the xref:initial-snapshot-workflow-with-global-read-lock[snapshot workflow for global read locks].
 
 [id="snapshot-workflow-with-table-level-locks"]
 [cols="1,9",options="header",subs="+attributes"]
@@ -621,7 +623,7 @@ This can be useful when you want to reduce the time required to complete a snaps
 Or when {prodname} connects to the database instance through a user account that has access to multiple logical databases, but you want the connector to capture changes only from tables in a specific logic database.
 
 .Additional information
-* xref:{context}-capturing-data-from-tables-not-captured-by-the-initial-snapshot[Capturing data from tables not captured by the initial snapshot (no schema change)]
+* xref:{context}-capturing-data-from-tables-not-captured-by-the-initial-snapshot-no-schema-change[Capturing data from tables not captured by the initial snapshot (no schema change)]
 * xref:{context}-capturing-data-from-new-tables-with-schema-changes[Capturing data from tables not captured by the initial snapshot (schema change)]
 * Setting the xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.store.only.captured.tables.ddl`] property to specify the tables from which to capture schema information.
 * Setting the xref:{context}-property-database-history-store-only-captured-databases-ddl[`schema.history.internal.store.only.captured.databases.ddl`] property to specify the logical databases from which to capture schema changes.
@@ -654,7 +656,7 @@ For information about capturing data from a new table that has undergone structu
 This guarantees that in the future, the connector can reconstruct the schema history for all tables.
 4. Restart the connector.
 The snapshot recovery process rebuilds the schema history based on the current structure of the tables.
-5. (Optional) After the snapshot completes, initiate an xref:mysql-incremental-snapshots[incremental snapshot] to capture existing data for newly added tables along with changes to other tables that occurred while that connector was off-line.
+5. (Optional) After the snapshot completes, initiate an xref:debezium-mysql-incremental-snapshots[incremental snapshot] to capture existing data for newly added tables along with changes to other tables that occurred while that connector was off-line.
 6. (Optional) Reset the `snapshot.mode` back to `schema_only` to prevent the connector from initiating recovery after a future restart.
 
 // Type: procedure
@@ -677,7 +679,7 @@ You can add the schema by running a new schema snapshot, or by running an initia
 Initial snapshot captured the schema for all tables (`store.only.captured.tables.ddl` was set to `false`)::
 1. Edit the xref:{context}-property-table-include-list[`table.include.list`] property to specify the tables that you want to capture.
 2. Restart the connector.
-3. Initiate an xref:mysql-incremental-snapshots[incremental snapshot] if you want to capture existing data from the newly added tables.
+3. Initiate an xref:debezium-mysql-incremental-snapshots[incremental snapshot] if you want to capture existing data from the newly added tables.
 
 Initial snapshot did not capture the schema for all tables (`store.only.captured.tables.ddl` was set to `true`)::
 If the initial snapshot did not save the schema of the table that you want to capture, complete one of the following procedures:
@@ -701,7 +703,7 @@ This operation is potentially destructive, and should be performed only as a las
 5. Restart the connector.
 6. Wait for {prodname} to capture the schema of the new and existing tables.
 Data changes that occurred any tables after the connector stopped are not captured.
-7. To ensure that no data is lost, initiate an xref:mysql-incremental-snapshots[incremental snapshot].
+7. To ensure that no data is lost, initiate an xref:debezium-mysql-incremental-snapshots[incremental snapshot].
 
 Procedure 2: Initial snapshot, followed by optional incremental snapshot:::
 In this procedure the connector performs a full initial snapshot of the database.
@@ -736,7 +738,7 @@ include::{partialsdir}/modules/all-connectors/con-connector-ad-hoc-snapshots.ado
 
 // Type: assembly
 // ModuleID: debezium-mysql-incremental-snapshots
-[id="mysql-incremental-snapshots"]
+[id="debezium-mysql-incremental-snapshots"]
 === Incremental snapshots
 
 include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+1]
