@@ -32,6 +32,9 @@ public class LogMinerEventRow {
 
     private static final Calendar UTC_CALENDAR = Calendar.getInstance(TimeZone.getTimeZone(ZoneOffset.UTC));
 
+    /* Allows for up to 100KB worth of SQL */
+    private static final Integer MAX_SQL_CONTINUATIONS = 25;
+
     private static final int SCN = 1;
     private static final int SQL_REDO = 2;
     private static final int OPERATION_CODE = 3;
@@ -205,8 +208,6 @@ public class LogMinerEventRow {
     }
 
     private String getSqlRedo(ResultSet rs) throws SQLException {
-        int lobLimitCounter = 9; // todo : decide on approach (XStream chunk option) and Lob limit
-
         String redoSql = rs.getString(SQL_REDO);
         if (redoSql == null) {
             return null;
@@ -219,14 +220,35 @@ public class LogMinerEventRow {
         // 0 - indicates SQL_REDO is contained within the same row
         // 1 - indicates that either SQL_REDO is greater than 4000 bytes in size and is continued in
         // the next row returned by the ResultSet
+        long sqlLimitCounter = 0;
         while (csf == 1) {
+
             rs.next();
-            // Combine all XML_WRITE that have a continuation signal flag
-            if (operationCode != EventType.XML_WRITE.getValue()) {
-                if (lobLimitCounter-- == 0) {
-                    LOGGER.warn("LOB value was truncated due to the connector limitation of {} MB", 40);
-                    break;
+            sqlLimitCounter++;
+
+            // The old behavior would break the loop and this could leave the connector in an obscure place
+            // during the result-set traversal. this new code instead simply logs a warning and continues
+            // to append the data to the buffer, with a warning when MAX_SQL_CONTINUATIONS happens. This
+            // should give some indication in the logs if an OOM occurs as to the result.
+            if (sqlLimitCounter == MAX_SQL_CONTINUATIONS) {
+                // We specifically only log warnings for LOB_WRITE and XML_WRITE operations because in theory
+                // a standard SQL statement with text columns shouldn't be 100KB+ in length generally and if
+                // so, the SQL statement will be trimmed down to its unique column name/values during the
+                // parsing phase anyway. This issue is typically more problematic with LOB and XML.
+                if (operationCode == EventType.LOB_WRITE.getValue()) {
+                    LOGGER.warn("A large LOB write operation for table '{}' has been detected that exceeds {}kb.",
+                            tableName, MAX_SQL_CONTINUATIONS * 4000);
                 }
+                else if (operationCode == EventType.XML_WRITE.getValue()) {
+                    LOGGER.warn("A large XML write operation for table '{}' has been detected that exceeds {}kb.",
+                            tableName, MAX_SQL_CONTINUATIONS * 4000);
+                }
+            }
+            else if (sqlLimitCounter > Integer.MAX_VALUE) {
+                // If we have gotten to this point we have reached a SQL statement that exceeds a length of
+                // 8.589934588x10^12, which frankly likely isn't supported by the database engine, but we
+                // have added this as a safeguard.
+                throw new LogMinerEventRowTooLargeException(tableName, sqlLimitCounter * 4000, scn);
             }
 
             redoSql = rs.getString(SQL_REDO);
