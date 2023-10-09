@@ -38,15 +38,15 @@ The connector supports idempotent write operations by using upsert semantics and
 
 The {prodname} JDBC connector provides the following features:
 
-  * xref:jdbc-consume-complex-debezium-events[]
-  * xref:jdbc-at-least-once-delivery[]
-  * xref:jdbc-multiple-tasks[]
-  * xref:jdbc-data-and-type-mappings[]
-  * xref:jdbc-primary-key-handling[]
-  * xref:jdbc-delete-mode[]
-  * xref:jdbc-idempotent-writes[]
-  * xref:jdbc-schema-evolution[]
-  * xref:jdbc-quoting-case-sensitivity[]
+* xref:jdbc-consume-complex-debezium-events[]
+* xref:jdbc-at-least-once-delivery[]
+* xref:jdbc-multiple-tasks[]
+* xref:jdbc-data-and-type-mappings[]
+* xref:jdbc-primary-key-handling[]
+* xref:jdbc-delete-mode[]
+* xref:jdbc-idempotent-writes[]
+* xref:jdbc-schema-evolution[]
+* xref:jdbc-quoting-case-sensitivity[]
 
 // Type: concept
 // Title: Description of how the {prodname} JDBC connector consumes complex change events
