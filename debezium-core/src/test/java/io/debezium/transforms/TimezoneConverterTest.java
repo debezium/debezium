@@ -92,12 +92,16 @@ public class TimezoneConverterTest {
 
         final Struct transformedValue = (Struct) transformedRecord.value();
         final Struct transformedAfter = transformedValue.getStruct(Envelope.FieldName.AFTER);
+        final Struct transformedSource = transformedValue.getStruct(Envelope.FieldName.SOURCE);
 
         assertThat(transformedAfter.get("order_date_micros")).isEqualTo(1529487796945104L);
         assertThat(transformedAfter.get("order_date_nanos")).isEqualTo(1531461225340000104L);
         assertThat(transformedAfter.get("order_date_timestamp")).isEqualTo(1514889010123L);
         assertThat(transformedAfter.get("order_date_zoned_timestamp")).isEqualTo("2018-01-02T16:45:30.123456789+05:30");
         assertThat(transformedAfter.get("order_date_zoned_time")).isEqualTo("16:45:30.123456789+05:30");
+
+        assertThat(transformedSource.get("table")).isEqualTo("orders");
+        assertThat(transformedSource.get("ts_ms")).isEqualTo(123456789);
     }
 
     @Test
