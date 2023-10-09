@@ -152,6 +152,8 @@ The following topics provide details about how the {prodname} MongoDB connector 
 * xref:mongodb-topologies-supported-by-debezium-connectors[]
 * xref:how-debezium-mongodb-connectors-use-logical-names-for-replica-sets-and-sharded-clusters[]
 * xref:how-debezium-mongodb-connectors-perform-snapshots[]
+* xref:debezium-mongodb-ad-hoc-snapshots[]
+* xref:debezium-mongodb-incremental-snapshots[]
 * xref:how-the-debezium-mongodb-connector-streams-change-event-records[]
 * xref:default-names-of-kafka-topics-that-receive-debezium-mongodb-change-event-records[]
 * xref:how-event-keys-control-topic-partitioning-for-the-debezium-mongodb-connector[]
@@ -299,7 +301,7 @@ include::{partialsdir}/modules/all-connectors/con-connector-ad-hoc-snapshots.ado
 
 // Type: assembly
 // ModuleID: debezium-mongodb-incremental-snapshots
-[id="mongodb-incremental-snapshots"]
+[id="debezium-mongodb-incremental-snapshots"]
 === Incremental snapshots
 
 include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+3]

@@ -630,13 +630,12 @@ For more information about incremental snapshots, see the _Snapshots_ topic in t
 
 .Additional resources
 
-* {link-prefix}:{link-db2-connector}#db2-incremental-snapshots[Db2 connector incremental snapshots]
-* {link-prefix}:{link-mongodb-connector}#mongodb-incremental-snapshots[MongoDB connector incremental snapshots]
-* {link-prefix}:{link-mysql-connector}#mysql-incremental-snapshots[MySQL connector incremental snapshots]
-* {link-prefix}:{link-oracle-connector}#oracle-incremental-snapshots[Oracle connector incremental snapshots]
-* {link-prefix}:{link-postgresql-connector}#postgresql-incremental-snapshots[PostgreSQL connector incremental snapshots]
-* {link-prefix}:{link-sqlserver-connector}#sqlserver-incremental-snapshots[SQL Server connector incremental snapshots]
-
+* {link-prefix}:{link-db2-connector}#debezium-db2-incremental-snapshots[Db2 connector incremental snapshots]
+* {link-prefix}:{link-mongodb-connector}#debezium-mongodb-incremental-snapshots[MongoDB connector incremental snapshots]
+* {link-prefix}:{link-mysql-connector}#debezium-mysql-incremental-snapshots[MySQL connector incremental snapshots]
+* {link-prefix}:{link-oracle-connector}#debezium-oracle-incremental-snapshots[Oracle connector incremental snapshots]
+* {link-prefix}:{link-postgresql-connector}#debezium-postgresql-incremental-snapshots[PostgreSQL connector incremental snapshots]
+* {link-prefix}:{link-sqlserver-connector}#debezium-sqlserver-incremental-snapshots[SQL Server connector incremental snapshots]
 
 // Type: concept
 [id="debezium-signaling-ad-hoc-blocking-snapshots"]
