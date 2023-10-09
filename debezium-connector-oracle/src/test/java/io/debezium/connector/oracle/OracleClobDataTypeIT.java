@@ -20,6 +20,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
@@ -2300,6 +2301,76 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
         finally {
             TestHelper.dropTable(connection, "dbz5581");
         }
+    }
+
+    @Test
+    @FixFor("DBZ-7006")
+    public void shouldStreamClobDataDataThatContainsSingleQuotesAtSpecificBoundaries() throws Exception {
+        TestHelper.dropTable(connection, "dbz7006");
+        try {
+            // Test data
+            final String insertData = replaceCharAt(createRandomStringWithAlphaNumeric(2000), 999, '\'');
+            final String updateData = replaceCharAt(createRandomStringWithAlphaNumeric(2000), 999, '\'');
+
+            connection.execute("CREATE TABLE dbz7006 (id numeric(9,0) primary key, data clob)");
+            TestHelper.streamTable(connection, "dbz7006");
+
+            final Clob snapshotClob = createClob(insertData);
+            connection.prepareQuery("INSERT INTO dbz7006 values (1,?)", ps -> ps.setClob(1, snapshotClob), null);
+            connection.commit();
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ7006")
+                    .with(OracleConnectorConfig.LOB_ENABLED, "true")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // Insert - streaming
+            final Clob insertClob = createClob(insertData);
+            connection.prepareQuery("INSERT INTO dbz7006 values (2,?)", ps -> ps.setClob(1, insertClob), null);
+            connection.commit();
+
+            // Update - streaming
+            final Clob updateClob = createClob(updateData);
+            connection.prepareQuery("UPDATE dbz7006 set data = ? WHERE id = 2", ps -> ps.setClob(1, updateClob), null);
+            connection.commit();
+
+            final SourceRecords records = consumeRecordsByTopic(3);
+            final List<SourceRecord> tableRecords = records.recordsForTopic(topicName("DBZ7006"));
+
+            // Snapshot
+            SourceRecord snapshot = tableRecords.get(0);
+            VerifyRecord.isValidRead(snapshot, "ID", (byte) 1);
+            assertThat(getAfterField(snapshot, "DATA")).isEqualTo(insertData);
+
+            // Streaming
+            SourceRecord insert = tableRecords.get(1);
+            VerifyRecord.isValidInsert(insert, "ID", (byte) 2);
+            assertThat(getAfterField(insert, "DATA")).isEqualTo(insertData);
+
+            SourceRecord update = tableRecords.get(2);
+            VerifyRecord.isValidUpdate(update, "ID", (byte) 2);
+            assertThat(getAfterField(update, "DATA")).isEqualTo(updateData);
+
+            stopConnector();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz7006");
+        }
+    }
+
+    private String createRandomStringWithAlphaNumeric(int length) {
+        return RandomStringUtils.randomAlphabetic(length);
+    }
+
+    private String replaceCharAt(String data, int index, char ch) {
+        StringBuilder sb = new StringBuilder(data);
+        sb.setCharAt(index, ch);
+        return sb.toString();
     }
 
     private Clob createClob(String data) throws SQLException {

@@ -1143,6 +1143,14 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         }
         int length = Integer.parseInt(m.group(2));
         int offset = Integer.parseInt(m.group(3)) - 1; // Oracle uses 1-based offsets
+
+        // Double check whether Oracle may have escaped single-quotes in the SQL data.
+        // This avoids unintended truncation during the LOB merge phase during the commit
+        // logic handled by TransactionCommitConsumer.
+        if (data.contains("''")) {
+            data = data.replaceAll("''", "'");
+        }
+
         return new ParsedLobWriteSql(offset, length, data);
     }
 
