@@ -326,7 +326,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
         final Transaction transaction = session.beginTransaction();
         try {
             LOGGER.trace("SQL: {}", sql);
-            final NativeQuery<?> query = session.createNativeQuery(sql);
+            final NativeQuery<?> query = session.createNativeQuery(sql, Object.class);
 
             query.executeUpdate();
             transaction.commit();
