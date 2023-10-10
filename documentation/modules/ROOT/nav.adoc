@@ -37,6 +37,7 @@
 ** xref:transformations/partition-routing.adoc[Partition Routing]
 ** xref:transformations/header-to-value.adoc[HeaderToValue]
 ** xref:transformations/timezone-converter.adoc[Timezone Converter]
+** xref:transformations/timescaledb.adoc[TimescaleDB Integration]
 * API and SPI
 ** xref:development/engine.adoc[Debezium Engine]
 ** xref:development/converters.adoc[Custom Converters]
