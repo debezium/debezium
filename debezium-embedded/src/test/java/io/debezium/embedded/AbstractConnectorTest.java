@@ -8,6 +8,7 @@ package io.debezium.embedded;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.fail;
 
+import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -154,10 +155,14 @@ public abstract class AbstractConnectorTest implements Testing {
             // Try to stop the connector ...
             if (engine != null && engine.isRunning()) {
                 logger.info("Stopping the engine");
-                engine.stop();
                 try {
+                    engine.close();
                     // Oracle connector needs longer time to complete shutdown
                     engine.await(60, TimeUnit.SECONDS);
+                }
+                catch (IOException e) {
+                    logger.warn("Failed during engine stop", e);
+                    Thread.currentThread().interrupt();
                 }
                 catch (InterruptedException e) {
                     logger.warn("Engine has not stopped on time");
