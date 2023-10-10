@@ -190,11 +190,13 @@ public class Db2DatabaseDialect extends GeneralDatabaseDialect {
 
     @Override
     public String getTruncateStatement(TableDescriptor table) {
-        String truncateStatement = super.getTruncateStatement(table);
+        // For some reason the TRUNCATE statement doesn't work for DB2 even if it is supported from 9.7 https://www.ibm.com/support/pages/apar/JR37942
+        // The problem verifies with Hibernate, plain JDBC works good.
+        // Qlik uses the below approach https://community.qlik.com/t5/Qlik-Replicate/Using-Qlik-for-DB2-TRUNCATE-option/td-p/1989498
         final SqlStatementBuilder builder = new SqlStatementBuilder();
-        builder.append(truncateStatement);
-        builder.append(" IMMEDIATE");
-
+        builder.append("ALTER TABLE ");
+        builder.append(getQualifiedTableName(table.getId()));
+        builder.append(" ACTIVATE NOT LOGGED INITIALLY WITH EMPTY TABLE");
         return builder.build();
     }
 }
