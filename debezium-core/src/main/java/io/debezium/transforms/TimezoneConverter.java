@@ -338,7 +338,9 @@ public class TimezoneConverter<R extends ConnectRecord<R>> implements Transforma
             }
 
             if (shouldIncludeField && supportedLogicalType) {
-                handleValueForField(value, field);
+                if (value.get(field) != null) {
+                    handleValueForField(value, field);
+                }
             }
         }
     }
