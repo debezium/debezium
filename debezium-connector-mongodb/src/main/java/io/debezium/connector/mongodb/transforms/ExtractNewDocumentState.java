@@ -9,15 +9,12 @@ import static io.debezium.transforms.ExtractNewRecordStateConfigDefinition.CONFI
 import static io.debezium.transforms.ExtractNewRecordStateConfigDefinition.DELETED_FIELD;
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectRecord;
@@ -43,7 +40,6 @@ import io.debezium.schema.FieldNameSelector;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.transforms.AbstractExtractNewRecordState;
 import io.debezium.transforms.ExtractNewRecordStateConfigDefinition.DeleteHandling;
-import io.debezium.util.Strings;
 
 /**
  * Debezium Mongo Connector generates the CDC records in String format. Sink connectors usually are not able to parse
@@ -373,12 +369,5 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> extends Abstrac
 
     private BsonDocument getFullDocument(R record, BsonDocument key) {
         return BsonDocument.parse(record.value().toString());
-    }
-
-    private static List<String> determineAdditionalSourceField(String addSourceFieldsConfig) {
-        if (Strings.isNullOrEmpty(addSourceFieldsConfig)) {
-            return Collections.emptyList();
-        }
-        return Arrays.stream(addSourceFieldsConfig.split(",")).map(String::trim).collect(Collectors.toList());
     }
 }
