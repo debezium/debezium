@@ -42,6 +42,9 @@ The following SMTs are provided by {prodname}:
 |xref:transformations/timezone-converter.adoc[Timezone Converter]
 |Converts {prodname} and Kafka Connect timestamp fields in event records to a specified timezone.
 
+|xref:transformations/timescaledb.adoc[TimescaleDB Integration]
+|Routes and enriches messages from TimescaleDB captured by {prodname} PostgreSQL connector.
+
 |===
 
 By means of xref:transformations/applying-transformations-selectively.adoc[SMT Predicates] you can apply any of the transformations selectively, so that it modifies only that subset of change event messages that share a common characteristic.
