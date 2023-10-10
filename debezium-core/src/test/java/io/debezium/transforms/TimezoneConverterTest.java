@@ -27,6 +27,7 @@ import org.junit.Test;
 
 import io.debezium.DebeziumException;
 import io.debezium.data.Envelope;
+import io.debezium.data.VerifyRecord;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.time.MicroTimestamp;
 import io.debezium.time.NanoTimestamp;
@@ -41,22 +42,25 @@ public class TimezoneConverterTest {
             .field("lsn", Schema.INT32_SCHEMA)
             .field("ts_ms", Schema.OPTIONAL_INT32_SCHEMA)
             .build();
+    protected final Schema recordSchema = SchemaBuilder.struct().optional()
+            .field("id", Schema.INT8_SCHEMA)
+            .field("name", Schema.STRING_SCHEMA)
+            .field("order_date", io.debezium.time.Date.builder().optional().build())
+            .field("ship_date", io.debezium.time.Date.builder().optional().build())
+            .field("order_date_micros", MicroTimestamp.builder().optional().build())
+            .field("order_date_nanos", NanoTimestamp.builder().optional().build())
+            .field("order_date_timestamp", Timestamp.builder().optional().build())
+            .field("order_date_zoned_timestamp", ZonedTimestamp.builder().optional().build())
+            .field("shipping_date_zoned_timestamp", ZonedTimestamp.builder().optional().build())
+            .field("order_date_zoned_time", ZonedTime.builder().optional().build())
+            .field("order_date_kc_timestamp", org.apache.kafka.connect.data.Timestamp.builder().optional().build())
+            .build();
 
     @Test
     public void testMultipleDebeziumTimestamps() {
         final Map<String, String> props = new HashMap<>();
         props.put("converted.timezone", "+05:30");
         converter.configure(props);
-
-        Schema recordSchema = SchemaBuilder.struct().optional()
-                .field("id", Schema.INT8_SCHEMA)
-                .field("name", Schema.STRING_SCHEMA)
-                .field("order_date_micros", MicroTimestamp.builder().optional().build())
-                .field("order_date_nanos", NanoTimestamp.builder().optional().build())
-                .field("order_date_timestamp", Timestamp.builder().optional().build())
-                .field("order_date_zoned_timestamp", ZonedTimestamp.builder().optional().build())
-                .field("order_date_zoned_time", ZonedTime.builder().optional().build())
-                .build();
 
         final Struct before = new Struct(recordSchema);
         final Struct source = new Struct(sourceSchema);
@@ -88,6 +92,7 @@ public class TimezoneConverterTest {
                 envelope.schema(),
                 payload);
 
+        VerifyRecord.isValid(record);
         final SourceRecord transformedRecord = converter.apply(record);
 
         final Struct transformedValue = (Struct) transformedRecord.value();
@@ -110,22 +115,13 @@ public class TimezoneConverterTest {
         props.put("converted.timezone", "Pacific/Easter");
         converter.configure(props);
 
-        Schema recordSchema = SchemaBuilder.struct().optional()
-                .field("id", Schema.INT8_SCHEMA)
-                .field("name", Schema.STRING_SCHEMA)
-                .field("created_at", ZonedTimestamp.builder().optional().build())
-                .field("updated_at", ZonedTimestamp.builder().optional().build())
-                .field("order_date", ZonedTimestamp.builder().optional().build())
-                .build();
-
         final Struct before = new Struct(recordSchema);
         final Struct source = new Struct(sourceSchema);
 
         before.put("id", (byte) 1);
         before.put("name", "Srikanth");
-        before.put("created_at", "2011-01-11T16:40:30.123456789+00:00");
-        before.put("updated_at", "2011-02-02T11:04:30.123456789+00:00");
-        before.put("order_date", "2011-04-09T13:00:30.123456789+00:00");
+        before.put("order_date_zoned_timestamp", "2011-01-11T16:40:30.123456789+00:00");
+        before.put("shipping_date_zoned_timestamp", "2011-02-02T11:04:30.123456789+00:00");
 
         source.put("table", "orders");
         source.put("lsn", 1);
@@ -146,14 +142,14 @@ public class TimezoneConverterTest {
                 envelope.schema(),
                 payload);
 
+        VerifyRecord.isValid(record);
         final SourceRecord transformedRecord = converter.apply(record);
 
         final Struct transformedValue = (Struct) transformedRecord.value();
         final Struct transformedAfter = transformedValue.getStruct(Envelope.FieldName.AFTER);
 
-        assertThat(transformedAfter.get("created_at")).isEqualTo("2011-01-11T11:40:30.123456789-05:00");
-        assertThat(transformedAfter.get("updated_at")).isEqualTo("2011-02-02T06:04:30.123456789-05:00");
-        assertThat(transformedAfter.get("order_date")).isEqualTo("2011-04-09T08:00:30.123456789-05:00");
+        assertThat(transformedAfter.get("order_date_zoned_timestamp")).isEqualTo("2011-01-11T11:40:30.123456789-05:00");
+        assertThat(transformedAfter.get("shipping_date_zoned_timestamp")).isEqualTo("2011-02-02T06:04:30.123456789-05:00");
     }
 
     @Test
@@ -162,18 +158,12 @@ public class TimezoneConverterTest {
         props.put("converted.timezone", "Africa/Cairo");
         converter.configure(props);
 
-        Schema recordSchema = SchemaBuilder.struct().optional()
-                .field("id", Schema.INT8_SCHEMA)
-                .field("name", Schema.STRING_SCHEMA)
-                .field("created_at", org.apache.kafka.connect.data.Timestamp.builder().optional().build())
-                .build();
-
         final Struct before = new Struct(recordSchema);
         final Struct source = new Struct(sourceSchema);
 
         before.put("id", (byte) 1);
         before.put("name", "Pierre Wright");
-        before.put("created_at", Date.from(LocalDateTime.of(2018, 3, 27, 2, 0, 0).toInstant(ZoneOffset.UTC)));
+        before.put("order_date_kc_timestamp", Date.from(LocalDateTime.of(2018, 3, 27, 2, 0, 0).toInstant(ZoneOffset.UTC)));
 
         source.put("table", "orders");
         source.put("lsn", 1);
@@ -194,38 +184,30 @@ public class TimezoneConverterTest {
                 envelope.schema(),
                 payload);
 
+        VerifyRecord.isValid(record);
         final SourceRecord transformedRecord = converter.apply(record);
 
         final Struct transformedValue = (Struct) transformedRecord.value();
         final Struct transformedAfter = transformedValue.getStruct(Envelope.FieldName.AFTER);
 
-        assertThat(transformedAfter.get("created_at")).isInstanceOf(Date.class);
-        assertThat(transformedAfter.get("created_at")).isEqualTo(Date.from(LocalDateTime.of(2018, 3, 27, 0, 0, 0).toInstant(ZoneOffset.UTC)));
+        assertThat(transformedAfter.get("order_date_kc_timestamp")).isInstanceOf(Date.class);
+        assertThat(transformedAfter.get("order_date_kc_timestamp")).isEqualTo(Date.from(LocalDateTime.of(2018, 3, 27, 0, 0, 0).toInstant(ZoneOffset.UTC)));
     }
 
     @Test
     public void testIncludeListWithTablePrefix() {
         final Map<String, String> props = new HashMap<>();
         props.put("converted.timezone", "Atlantic/Azores");
-        props.put("include.list", "source:customers:order_time,customers:created_at");
+        props.put("include.list", "source:customers:order_date_zoned_timestamp");
         converter.configure(props);
-
-        Schema recordSchema = SchemaBuilder.struct().optional()
-                .field("id", Schema.INT8_SCHEMA)
-                .field("name", Schema.STRING_SCHEMA)
-                .field("created_at", ZonedTimestamp.builder().optional().build())
-                .field("updated_at", ZonedTimestamp.builder().optional().build())
-                .field("order_time", ZonedTimestamp.builder().optional().build())
-                .build();
 
         final Struct before = new Struct(recordSchema);
         final Struct source = new Struct(sourceSchema);
 
         before.put("id", (byte) 1);
         before.put("name", "John Doe");
-        before.put("created_at", "2020-01-01T11:55:30+00:00");
-        before.put("updated_at", "2020-05-01T11:55:30+00:00");
-        before.put("order_time", "2020-06-20T11:55:30+00:00");
+        before.put("order_date_zoned_timestamp", "2020-01-01T11:55:30+00:00");
+        before.put("shipping_date_zoned_timestamp", "2020-05-01T11:55:30+00:00");
 
         source.put("table", "customers");
         source.put("lsn", 1);
@@ -246,37 +228,29 @@ public class TimezoneConverterTest {
                 envelope.schema(),
                 payload);
 
+        VerifyRecord.isValid(record);
         final SourceRecord transformedRecord = converter.apply(record);
 
         final Struct transformedValue = (Struct) transformedRecord.value();
         final Struct transformedAfter = transformedValue.getStruct(Envelope.FieldName.AFTER);
 
-        assertThat(transformedAfter.get("created_at")).isEqualTo("2020-01-01T10:55:30-01:00");
-        assertThat(transformedAfter.get("updated_at")).isEqualTo("2020-05-01T11:55:30+00:00");
-        assertThat(transformedAfter.get("order_time")).isEqualTo("2020-06-20T11:55:30Z");
+        assertThat(transformedAfter.get("order_date_zoned_timestamp")).isEqualTo("2020-01-01T10:55:30-01:00");
+        assertThat(transformedAfter.get("shipping_date_zoned_timestamp")).isEqualTo("2020-05-01T11:55:30+00:00");
     }
 
     @Test
     public void testIncludeListWithTopicPrefix() {
         final Map<String, String> props = new HashMap<>();
         props.put("converted.timezone", "+05:30");
-        props.put("include.list", "topic:db.server1.table1:order_time");
+        props.put("include.list", "topic:db.server1.table1:order_date_zoned_time");
         converter.configure(props);
-
-        Schema recordSchema = SchemaBuilder.struct().optional()
-                .field("id", Schema.INT8_SCHEMA)
-                .field("name", Schema.STRING_SCHEMA)
-                .field("created_at", ZonedTime.builder().optional().build())
-                .field("order_time", ZonedTime.builder().optional().build())
-                .build();
 
         final Struct before = new Struct(recordSchema);
         final Struct source = new Struct(sourceSchema);
 
         before.put("id", (byte) 1);
         before.put("name", "John Doe");
-        before.put("created_at", "11:55:30+00:00");
-        before.put("order_time", "12:10:10+00:00");
+        before.put("order_date_zoned_time", "11:55:30+00:00");
 
         source.put("table", "customers");
         source.put("lsn", 1);
@@ -297,36 +271,28 @@ public class TimezoneConverterTest {
                 envelope.schema(),
                 payload);
 
+        VerifyRecord.isValid(record);
         final SourceRecord transformedRecord = converter.apply(record);
 
         final Struct transformedValue = (Struct) transformedRecord.value();
         final Struct transformedAfter = transformedValue.getStruct(Envelope.FieldName.AFTER);
 
-        assertThat(transformedAfter.get("created_at")).isEqualTo("11:55:30+00:00");
-        assertThat(transformedAfter.get("order_time")).isEqualTo("17:40:10+05:30");
+        assertThat(transformedAfter.get("order_date_zoned_time")).isEqualTo("17:25:30+05:30");
     }
 
     @Test
     public void testIncludeListWithNoPrefix() {
         final Map<String, String> props = new HashMap<>();
         props.put("converted.timezone", "Asia/Kolkata");
-        props.put("include.list", "db.server1.table1:order_time");
+        props.put("include.list", "db.server1.table1:order_date_zoned_time");
         converter.configure(props);
-
-        Schema recordSchema = SchemaBuilder.struct().optional()
-                .field("id", Schema.INT8_SCHEMA)
-                .field("name", Schema.STRING_SCHEMA)
-                .field("created_at", ZonedTime.builder().optional().build())
-                .field("order_time", ZonedTime.builder().optional().build())
-                .build();
 
         final Struct before = new Struct(recordSchema);
         final Struct source = new Struct(sourceSchema);
 
         before.put("id", (byte) 1);
         before.put("name", "John Doe");
-        before.put("created_at", "11:55:30+00:00");
-        before.put("order_time", "12:10:10+00:00");
+        before.put("order_date_zoned_time", "11:55:30+00:00");
 
         source.put("table", "customers");
         source.put("lsn", 1);
@@ -347,39 +313,28 @@ public class TimezoneConverterTest {
                 envelope.schema(),
                 payload);
 
+        VerifyRecord.isValid(record);
         final SourceRecord transformedRecord = converter.apply(record);
 
         final Struct transformedValue = (Struct) transformedRecord.value();
         final Struct transformedAfter = transformedValue.getStruct(Envelope.FieldName.AFTER);
 
-        assertThat(transformedAfter.get("order_time")).isEqualTo("17:40:10+05:30");
-        assertThat(transformedAfter.get("created_at")).isEqualTo("11:55:30+00:00");
-
+        assertThat(transformedAfter.get("order_date_zoned_time")).isEqualTo("17:25:30+05:30");
     }
 
     @Test
     public void testExcludeListWithTablePrefix() {
         final Map<String, String> props = new HashMap<>();
         props.put("converted.timezone", "+05:30");
-        props.put("exclude.list", "source:customers:order_time");
+        props.put("exclude.list", "source:customers:order_date_zoned_timestamp");
         converter.configure(props);
-
-        Schema recordSchema = SchemaBuilder.struct().optional()
-                .field("id", Schema.INT8_SCHEMA)
-                .field("name", Schema.STRING_SCHEMA)
-                .field("created_at", ZonedTime.builder().optional().build())
-                .field("updated_at", ZonedTime.builder().optional().build())
-                .field("order_time", ZonedTime.builder().optional().build())
-                .build();
 
         final Struct before = new Struct(recordSchema);
         final Struct source = new Struct(sourceSchema);
 
         before.put("id", (byte) 1);
         before.put("name", "John Doe");
-        before.put("created_at", "11:55:30+00:00");
-        before.put("updated_at", "12:10:10+00:00");
-        before.put("order_time", "15:40:10+00:00");
+        before.put("order_date_zoned_time", "11:55:30+00:00");
 
         source.put("table", "customers");
         source.put("lsn", 1);
@@ -400,37 +355,29 @@ public class TimezoneConverterTest {
                 envelope.schema(),
                 payload);
 
+        VerifyRecord.isValid(record);
         final SourceRecord transformedRecord = converter.apply(record);
 
         final Struct transformedValue = (Struct) transformedRecord.value();
         final Struct transformedAfter = transformedValue.getStruct(Envelope.FieldName.AFTER);
 
-        assertThat(transformedAfter.get("created_at")).isEqualTo("17:25:30+05:30");
-        assertThat(transformedAfter.get("updated_at")).isEqualTo("17:40:10+05:30");
-        assertThat(transformedAfter.get("order_time")).isEqualTo("15:40:10+00:00");
+        assertThat(transformedAfter.get("order_date_zoned_time")).isEqualTo("17:25:30+05:30");
     }
 
     @Test
     public void testExcludeListWithTopicPrefix() {
         final Map<String, String> props = new HashMap<>();
         props.put("converted.timezone", "America/Chicago");
-        props.put("exclude.list", "topic:db.server1.table1:order_time");
+        props.put("exclude.list", "topic:db.server1.table1:order_date_zoned_time");
         converter.configure(props);
-
-        Schema recordSchema = SchemaBuilder.struct().optional()
-                .field("id", Schema.INT8_SCHEMA)
-                .field("name", Schema.STRING_SCHEMA)
-                .field("created_at", ZonedTime.builder().optional().build())
-                .field("order_time", ZonedTime.builder().optional().build())
-                .build();
 
         final Struct before = new Struct(recordSchema);
         final Struct source = new Struct(sourceSchema);
 
         before.put("id", (byte) 1);
         before.put("name", "John Doe");
-        before.put("created_at", "11:55:30+00:00");
-        before.put("order_time", "15:40:10+00:00");
+        before.put("order_date_zoned_time", "11:55:30+00:00");
+        before.put("order_date", io.debezium.time.Date.toEpochDay(LocalDate.parse("2016-11-04"), null));
 
         source.put("table", "customers");
         source.put("lsn", 1);
@@ -451,36 +398,29 @@ public class TimezoneConverterTest {
                 envelope.schema(),
                 payload);
 
+        VerifyRecord.isValid(record);
         final SourceRecord transformedRecord = converter.apply(record);
 
         final Struct transformedValue = (Struct) transformedRecord.value();
         final Struct transformedAfter = transformedValue.getStruct(Envelope.FieldName.AFTER);
 
-        assertThat(transformedAfter.get("created_at")).isEqualTo("06:55:30-05:00");
-        assertThat(transformedAfter.get("order_time")).isEqualTo("15:40:10+00:00");
+        assertThat(transformedAfter.get("order_date_zoned_time")).isEqualTo("11:55:30+00:00");
+        assertThat(transformedAfter.get("order_date")).isEqualTo(io.debezium.time.Date.toEpochDay(LocalDate.parse("2016-11-04"), null));
     }
 
     @Test
     public void testExcludeListWithNoPrefix() {
         final Map<String, String> props = new HashMap<>();
         props.put("converted.timezone", "+08:00:00");
-        props.put("exclude.list", "db.server1.table1:order_time");
+        props.put("exclude.list", "db.server1.table1:ship_date");
         converter.configure(props);
-
-        Schema recordSchema = SchemaBuilder.struct().optional()
-                .field("id", Schema.INT8_SCHEMA)
-                .field("name", Schema.STRING_SCHEMA)
-                .field("created_at", ZonedTime.builder().optional().build())
-                .field("order_time", ZonedTime.builder().optional().build())
-                .build();
 
         final Struct before = new Struct(recordSchema);
         final Struct source = new Struct(sourceSchema);
 
         before.put("id", (byte) 1);
         before.put("name", "John Doe");
-        before.put("created_at", "11:55:30+00:00");
-        before.put("order_time", "15:40:10+00:00");
+        before.put("order_date_zoned_time", "11:55:30+00:00");
 
         source.put("table", "customers");
         source.put("lsn", 1);
@@ -501,13 +441,13 @@ public class TimezoneConverterTest {
                 envelope.schema(),
                 payload);
 
+        VerifyRecord.isValid(record);
         final SourceRecord transformedRecord = converter.apply(record);
 
         final Struct transformedValue = (Struct) transformedRecord.value();
         final Struct transformedAfter = transformedValue.getStruct(Envelope.FieldName.AFTER);
 
-        assertThat(transformedAfter.get("created_at")).isEqualTo("19:55:30+08:00");
-        assertThat(transformedAfter.get("order_time")).isEqualTo("15:40:10+00:00");
+        assertThat(transformedAfter.get("order_date_zoned_time")).isEqualTo("19:55:30+08:00");
     }
 
     @Test
@@ -517,20 +457,13 @@ public class TimezoneConverterTest {
         props.put("include.list", "source:customers1,orders1,public1");
         converter.configure(props);
 
-        Schema customersRecordSchema = SchemaBuilder.struct()
-                .field("id", Schema.INT8_SCHEMA)
-                .field("name", Schema.STRING_SCHEMA)
-                .field("created_at", ZonedTimestamp.builder().optional().build())
-                .field("updated_at", ZonedTimestamp.builder().optional().build())
-                .build();
-
-        final Struct customersBefore = new Struct(customersRecordSchema);
+        final Struct customersBefore = new Struct(recordSchema);
         final Struct customersSource = new Struct(sourceSchema);
 
         customersBefore.put("id", (byte) 1);
         customersBefore.put("name", "John Doe");
-        customersBefore.put("created_at", "2020-01-01T11:55:30+00:00");
-        customersBefore.put("updated_at", "2020-01-01T15:40:10+00:00");
+        customersBefore.put("order_date_zoned_timestamp", "2020-01-01T11:55:30+00:00");
+        customersBefore.put("shipping_date_zoned_timestamp", "2020-01-01T15:40:10+00:00");
 
         customersSource.put("table", "customers1");
         customersSource.put("lsn", 1);
@@ -538,7 +471,7 @@ public class TimezoneConverterTest {
 
         final Envelope customersEnvelope = Envelope.defineSchema()
                 .withName("dummy.Envelope")
-                .withRecord(customersRecordSchema)
+                .withRecord(recordSchema)
                 .withSource(sourceSchema)
                 .build();
 
@@ -550,26 +483,20 @@ public class TimezoneConverterTest {
                 customersEnvelope.schema(),
                 customersPayload);
 
+        VerifyRecord.isValid(customersRecord);
         final SourceRecord transformedCustomersRecord = converter.apply(customersRecord);
         final Struct transformedCustomersValue = (Struct) transformedCustomersRecord.value();
         final Struct transformedCustomersAfter = transformedCustomersValue.getStruct(Envelope.FieldName.AFTER);
-        assertThat(transformedCustomersAfter.get("created_at")).isEqualTo("2020-01-01T14:55:30+03:00");
-        assertThat(transformedCustomersAfter.get("updated_at")).isEqualTo("2020-01-01T18:40:10+03:00");
+        assertThat(transformedCustomersAfter.get("order_date_zoned_timestamp")).isEqualTo("2020-01-01T14:55:30+03:00");
+        assertThat(transformedCustomersAfter.get("shipping_date_zoned_timestamp")).isEqualTo("2020-01-01T18:40:10+03:00");
 
-        Schema ordersRecordSchema = SchemaBuilder.struct()
-                .field("id", Schema.INT8_SCHEMA)
-                .field("customer_id", Schema.INT8_SCHEMA)
-                .field("created_at", ZonedTimestamp.builder().optional().build())
-                .field("order_time", ZonedTimestamp.builder().optional().build())
-                .build();
-
-        final Struct ordersBefore = new Struct(ordersRecordSchema);
+        final Struct ordersBefore = new Struct(recordSchema);
         final Struct ordersSource = new Struct(sourceSchema);
 
         ordersBefore.put("id", (byte) 1);
-        ordersBefore.put("customer_id", (byte) 1);
-        ordersBefore.put("created_at", "2023-08-01T11:50:45+00:00");
-        ordersBefore.put("order_time", "2023-09-01T11:55:30+00:00");
+        ordersBefore.put("name", "John Doe");
+        ordersBefore.put("order_date_zoned_timestamp", "2023-08-01T11:50:45+00:00");
+        ordersBefore.put("shipping_date_zoned_timestamp", "2023-09-01T11:55:30+00:00");
 
         ordersSource.put("table", "orders1");
         ordersSource.put("lsn", 1);
@@ -577,7 +504,7 @@ public class TimezoneConverterTest {
 
         final Envelope ordersEnvelope = Envelope.defineSchema()
                 .withName("dummy.Envelope")
-                .withRecord(ordersRecordSchema)
+                .withRecord(recordSchema)
                 .withSource(sourceSchema)
                 .build();
 
@@ -589,11 +516,12 @@ public class TimezoneConverterTest {
                 ordersEnvelope.schema(),
                 ordersPayload);
 
+        VerifyRecord.isValid(ordersRecord);
         final SourceRecord transformedOrdersRecord = converter.apply(ordersRecord);
         final Struct transformedOrdersValue = (Struct) transformedOrdersRecord.value();
         final Struct transformedOrdersAfter = transformedOrdersValue.getStruct(Envelope.FieldName.AFTER);
-        assertThat(transformedOrdersAfter.get("created_at")).isEqualTo("2023-08-01T14:50:45+03:00");
-        assertThat(transformedOrdersAfter.get("order_time")).isEqualTo("2023-09-01T14:55:30+03:00");
+        assertThat(transformedOrdersAfter.get("order_date_zoned_timestamp")).isEqualTo("2023-08-01T14:50:45+03:00");
+        assertThat(transformedOrdersAfter.get("shipping_date_zoned_timestamp")).isEqualTo("2023-09-01T14:55:30+03:00");
     }
 
     @Test
@@ -603,20 +531,13 @@ public class TimezoneConverterTest {
         props.put("exclude.list", "topic:db.server1.customers,db.server1.public");
         converter.configure(props);
 
-        Schema customersRecordSchema = SchemaBuilder.struct()
-                .field("id", Schema.INT8_SCHEMA)
-                .field("name", Schema.STRING_SCHEMA)
-                .field("created_at", ZonedTimestamp.builder().optional().build())
-                .field("updated_at", ZonedTimestamp.builder().optional().build())
-                .build();
-
-        final Struct customersBefore = new Struct(customersRecordSchema);
+        final Struct customersBefore = new Struct(recordSchema);
         final Struct customersSource = new Struct(sourceSchema);
 
         customersBefore.put("id", (byte) 1);
         customersBefore.put("name", "John Doe");
-        customersBefore.put("created_at", "2020-01-01T11:55:30+00:00");
-        customersBefore.put("updated_at", "2020-01-01T15:40:10+00:00");
+        customersBefore.put("order_date_zoned_timestamp", "2020-01-01T11:55:30+00:00");
+        customersBefore.put("shipping_date_zoned_timestamp", "2020-01-01T15:40:10+00:00");
 
         customersSource.put("table", "customers1");
         customersSource.put("lsn", 1);
@@ -624,7 +545,7 @@ public class TimezoneConverterTest {
 
         final Envelope customersEnvelope = Envelope.defineSchema()
                 .withName("dummy.Envelope")
-                .withRecord(customersRecordSchema)
+                .withRecord(recordSchema)
                 .withSource(sourceSchema)
                 .build();
 
@@ -636,26 +557,20 @@ public class TimezoneConverterTest {
                 customersEnvelope.schema(),
                 customersPayload);
 
+        VerifyRecord.isValid(customersRecord);
         final SourceRecord transformedCustomersRecord = converter.apply(customersRecord);
         final Struct transformedCustomersValue = (Struct) transformedCustomersRecord.value();
         final Struct transformedCustomersAfter = transformedCustomersValue.getStruct(Envelope.FieldName.AFTER);
-        assertThat(transformedCustomersAfter.get("created_at")).isEqualTo("2020-01-01T11:55:30+00:00");
-        assertThat(transformedCustomersAfter.get("updated_at")).isEqualTo("2020-01-01T15:40:10+00:00");
+        assertThat(transformedCustomersAfter.get("order_date_zoned_timestamp")).isEqualTo("2020-01-01T11:55:30+00:00");
+        assertThat(transformedCustomersAfter.get("shipping_date_zoned_timestamp")).isEqualTo("2020-01-01T15:40:10+00:00");
 
-        Schema ordersRecordSchema = SchemaBuilder.struct()
-                .field("id", Schema.INT8_SCHEMA)
-                .field("customer_id", Schema.INT8_SCHEMA)
-                .field("created_at", ZonedTimestamp.builder().optional().build())
-                .field("order_time", ZonedTimestamp.builder().optional().build())
-                .build();
-
-        final Struct ordersBefore = new Struct(ordersRecordSchema);
+        final Struct ordersBefore = new Struct(recordSchema);
         final Struct ordersSource = new Struct(sourceSchema);
 
         ordersBefore.put("id", (byte) 1);
-        ordersBefore.put("customer_id", (byte) 1);
-        ordersBefore.put("created_at", "2023-08-01T11:50:45+00:00");
-        ordersBefore.put("order_time", "2023-09-01T11:55:30+00:00");
+        ordersBefore.put("name", "John Doe");
+        ordersBefore.put("order_date_zoned_timestamp", "2023-08-01T11:50:45+00:00");
+        ordersBefore.put("shipping_date_zoned_timestamp", "2023-09-01T11:55:30+00:00");
 
         ordersSource.put("table", "orders1");
         ordersSource.put("lsn", 1);
@@ -663,7 +578,7 @@ public class TimezoneConverterTest {
 
         final Envelope ordersEnvelope = Envelope.defineSchema()
                 .withName("dummy.Envelope")
-                .withRecord(ordersRecordSchema)
+                .withRecord(recordSchema)
                 .withSource(sourceSchema)
                 .build();
 
@@ -675,11 +590,12 @@ public class TimezoneConverterTest {
                 ordersEnvelope.schema(),
                 ordersPayload);
 
+        VerifyRecord.isValid(ordersRecord);
         final SourceRecord transformedOrdersRecord = converter.apply(ordersRecord);
         final Struct transformedOrdersValue = (Struct) transformedOrdersRecord.value();
         final Struct transformedOrdersAfter = transformedOrdersValue.getStruct(Envelope.FieldName.AFTER);
-        assertThat(transformedOrdersAfter.get("created_at")).isEqualTo("2023-08-01T05:50:45-06:00");
-        assertThat(transformedOrdersAfter.get("order_time")).isEqualTo("2023-09-01T05:55:30-06:00");
+        assertThat(transformedOrdersAfter.get("order_date_zoned_timestamp")).isEqualTo("2023-08-01T05:50:45-06:00");
+        assertThat(transformedOrdersAfter.get("shipping_date_zoned_timestamp")).isEqualTo("2023-09-01T05:55:30-06:00");
     }
 
     @Test
@@ -719,19 +635,13 @@ public class TimezoneConverterTest {
     public void testExcludeListWithMultipleFields() {
         Map<String, String> props = new HashMap<>();
         props.put("converted.timezone", "Europe/Moscow");
-        props.put("exclude.list", "topic:db.server1.customers:order_time,db.server1.inventory:order_time");
+        props.put("exclude.list", "topic:db.server1.customers:order_date_zoned_time,db.server1.inventory:order_date");
         converter.configure(props);
 
-        Schema customersRecordSchema = SchemaBuilder.struct()
-                .field("id", Schema.INT8_SCHEMA)
-                .field("name", Schema.STRING_SCHEMA)
-                .field("order_time", ZonedTime.builder().optional().build())
-                .build();
-
-        final Struct customersBefore = new Struct(customersRecordSchema);
+        final Struct customersBefore = new Struct(recordSchema);
         customersBefore.put("id", (byte) 1);
         customersBefore.put("name", "Amy Rose");
-        customersBefore.put("order_time", "10:19:25+00:00");
+        customersBefore.put("order_date_zoned_time", "10:19:25+00:00");
 
         final Struct customersSource = new Struct(sourceSchema);
         customersSource.put("table", "customers");
@@ -740,7 +650,7 @@ public class TimezoneConverterTest {
 
         final Envelope customersEnvelope = Envelope.defineSchema()
                 .withName("dummy.Envelope")
-                .withRecord(customersRecordSchema)
+                .withRecord(recordSchema)
                 .withSource(sourceSchema)
                 .build();
 
@@ -752,24 +662,17 @@ public class TimezoneConverterTest {
                 customersEnvelope.schema(),
                 customersPayload);
 
+        VerifyRecord.isValid(customersRecord);
         final SourceRecord transformedCustomersRecord = converter.apply(customersRecord);
         final Struct transformedCustomersValue = (Struct) transformedCustomersRecord.value();
         final Struct transformedCustomersAfter = transformedCustomersValue.getStruct(Envelope.FieldName.AFTER);
         assertThat(transformedCustomersAfter.get("name")).isEqualTo("Amy Rose");
-        assertThat(transformedCustomersAfter.get("order_time")).isEqualTo("10:19:25+00:00");
+        assertThat(transformedCustomersAfter.get("order_date_zoned_time")).isEqualTo("10:19:25+00:00");
 
-        Schema inventoryRecordSchema = SchemaBuilder.struct()
-                .field("id", Schema.INT8_SCHEMA)
-                .field("name", Schema.STRING_SCHEMA)
-                .field("shipping_time", ZonedTime.builder().optional().build())
-                .field("order_time", ZonedTime.builder().optional().build())
-                .build();
-
-        final Struct inventoryBefore = new Struct(inventoryRecordSchema);
+        final Struct inventoryBefore = new Struct(recordSchema);
         inventoryBefore.put("id", (byte) 1);
         inventoryBefore.put("name", "Amy Rose");
-        inventoryBefore.put("shipping_time", "19:19:25+00:00");
-        inventoryBefore.put("order_time", "10:19:25+00:00");
+        inventoryBefore.put("order_date_zoned_time", "19:19:25+00:00");
 
         final Struct inventorySource = new Struct(sourceSchema);
         inventorySource.put("table", "inventory");
@@ -778,7 +681,7 @@ public class TimezoneConverterTest {
 
         final Envelope inventoryEnvelope = Envelope.defineSchema()
                 .withName("dummy.Envelope")
-                .withRecord(inventoryRecordSchema)
+                .withRecord(recordSchema)
                 .withSource(sourceSchema)
                 .build();
 
@@ -790,12 +693,12 @@ public class TimezoneConverterTest {
                 inventoryEnvelope.schema(),
                 inventoryPayload);
 
+        VerifyRecord.isValid(inventoryRecord);
         final SourceRecord transformedInventoryRecord = converter.apply(inventoryRecord);
         final Struct transformedInventoryValue = (Struct) transformedInventoryRecord.value();
         final Struct transformedInventoryAfter = transformedInventoryValue.getStruct(Envelope.FieldName.AFTER);
         assertThat(transformedInventoryAfter.get("name")).isEqualTo("Amy Rose");
-        assertThat(transformedInventoryAfter.get("shipping_time")).isEqualTo("22:19:25+03:00");
-        assertThat(transformedInventoryAfter.get("order_time")).isEqualTo("10:19:25+00:00");
+        assertThat(transformedInventoryAfter.get("order_date_zoned_time")).isEqualTo("22:19:25+03:00");
     }
 
     @Test
@@ -809,20 +712,13 @@ public class TimezoneConverterTest {
         props.put("converted.timezone", "Europe/Paris");
         converter.configure(props);
 
-        Schema recordSchema = SchemaBuilder.struct().optional()
-                .field("id", Schema.INT8_SCHEMA)
-                .field("name", Schema.STRING_SCHEMA)
-                .field("order_date", ZonedTimestamp.builder().optional().build())
-                .field("shipping_date", ZonedTimestamp.builder().optional().build())
-                .build();
-
         final Struct before = new Struct(recordSchema);
         final Struct source = new Struct(sourceSchema);
 
         before.put("id", (byte) 1);
         before.put("name", "Amy Rose");
-        before.put("order_date", Instant.now(clockWithDayLightSavings).toString());
-        before.put("shipping_date", Instant.now(clockWithoutDayLightSavings).toString());
+        before.put("order_date_zoned_timestamp", Instant.now(clockWithDayLightSavings).toString());
+        before.put("shipping_date_zoned_timestamp", Instant.now(clockWithoutDayLightSavings).toString());
 
         source.put("table", "customers");
         source.put("lsn", 1);
@@ -843,13 +739,14 @@ public class TimezoneConverterTest {
                 envelope.schema(),
                 payload);
 
+        VerifyRecord.isValid(record);
         final SourceRecord transformedRecord = converter.apply(record);
 
         final Struct transformedValue = (Struct) transformedRecord.value();
         final Struct transformedAfter = transformedValue.getStruct(Envelope.FieldName.AFTER);
 
-        assertThat(transformedAfter.get("order_date")).isEqualTo("2014-06-22T12:15:30+02:00");
-        assertThat(transformedAfter.get("shipping_date")).isEqualTo("2014-12-22T11:15:30+01:00");
+        assertThat(transformedAfter.get("order_date_zoned_timestamp")).isEqualTo("2014-06-22T12:15:30+02:00");
+        assertThat(transformedAfter.get("shipping_date_zoned_timestamp")).isEqualTo("2014-12-22T11:15:30+01:00");
     }
 
     @Test
@@ -861,20 +758,13 @@ public class TimezoneConverterTest {
         props.put("include.list", "source:customers:order_date");
         converter.configure(props);
 
-        Schema recordSchema = SchemaBuilder.struct().optional()
-                .field("id", Schema.INT8_SCHEMA)
-                .field("name", Schema.STRING_SCHEMA)
-                .field("order_date", io.debezium.time.Date.builder().optional().build())
-                .field("shipping_date", io.debezium.time.Date.builder().optional().build())
-                .build();
-
         final Struct before = new Struct(recordSchema);
         final Struct source = new Struct(sourceSchema);
 
         before.put("id", (byte) 1);
         before.put("name", "Amy Rose");
         before.put("order_date", io.debezium.time.Date.toEpochDay(LocalDate.parse("2016-11-04"), null));
-        before.put("shipping_date", io.debezium.time.Date.toEpochDay(LocalDate.parse("2016-11-06"), null));
+        before.put("ship_date", io.debezium.time.Date.toEpochDay(LocalDate.parse("2016-11-06"), null));
 
         source.put("table", "customers");
         source.put("lsn", 1);
@@ -895,6 +785,7 @@ public class TimezoneConverterTest {
                 envelope.schema(),
                 payload);
 
+        VerifyRecord.isValid(record);
         converter.apply(record);
         assertThat(logInterceptor.containsMessage("Skipping conversion for unsupported logical type: io.debezium.time.Date for field: order_date")).isTrue();
 
