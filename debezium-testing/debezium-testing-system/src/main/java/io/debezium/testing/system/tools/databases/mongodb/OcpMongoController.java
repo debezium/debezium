@@ -5,7 +5,6 @@
  */
 package io.debezium.testing.system.tools.databases.mongodb;
 
-import static io.debezium.testing.system.tools.OpenShiftUtils.isRunningFromOcp;
 import static io.debezium.testing.system.tools.WaitConditions.scaled;
 
 import java.util.List;
@@ -40,13 +39,10 @@ public class OcpMongoController
 
     @Override
     public String getPublicDatabaseUrl() {
-        return "mongodb://" + getPublicDatabaseHostname() + ":" + getPublicDatabasePort();
+        return "mongodb://" + getPublicDatabaseHostname() + ":" + getPublicDatabasePort() + "/?replicaSet=rs0";
     }
 
     public void initialize() throws InterruptedException {
-        if (!isRunningFromOcp()) {
-            forwardDatabasePorts();
-        }
         Pod pod = ocp.pods().inNamespace(project).withLabel("deployment", name).list().getItems().get(0);
         String svcName = deployment.getMetadata().getName();
         CountDownLatch latch = new CountDownLatch(1);
