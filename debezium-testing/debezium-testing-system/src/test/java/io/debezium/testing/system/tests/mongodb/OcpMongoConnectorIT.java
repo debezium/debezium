@@ -34,7 +34,7 @@ import fixture5.annotations.Fixture;
 @Fixture(OcpMongo.class)
 @Fixture(MongoConnector.class)
 @ExtendWith(FixtureExtension.class)
-public class OcpMongoConnectorIT extends OcpShardedMongoConnectorIT {
+public class OcpMongoConnectorIT extends MongoTests {
 
     public OcpMongoConnectorIT(KafkaController kafkaController,
                                KafkaConnectController connectController,
