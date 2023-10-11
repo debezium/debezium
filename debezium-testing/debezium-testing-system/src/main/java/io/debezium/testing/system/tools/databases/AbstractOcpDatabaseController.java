@@ -40,7 +40,6 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
     protected String name;
     protected List<Service> services;
 
-
     public AbstractOcpDatabaseController(
                                          Deployment deployment, List<Service> services, OpenShiftClient ocp) {
         this.deployment = deployment;

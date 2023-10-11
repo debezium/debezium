@@ -20,6 +20,9 @@ db.createUser({
     user: 'debezium',
     pwd: 'dbz',
     roles: [
+        { role: "listDatabases", db: "admin" },
+        { role: "readChangeStream", db: "admin" },
         { role: "readAnyDatabase", db: "admin" },
+        { role: "readWriteAnyDatabase", db: "admin" }
     ]
 });
