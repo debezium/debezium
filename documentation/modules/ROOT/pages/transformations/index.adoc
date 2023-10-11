@@ -43,7 +43,7 @@ The following SMTs are provided by {prodname}:
 |Converts {prodname} and Kafka Connect timestamp fields in event records to a specified timezone.
 
 |xref:transformations/timescaledb.adoc[TimescaleDB Integration]
-|Routes and enriches messages from TimescaleDB captured by {prodname} PostgreSQL connector.
+|Routes and enriches messages that the {prodname} PostgreSQL connector captures from a TimescaleDB.
 
 |===
 
