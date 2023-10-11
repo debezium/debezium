@@ -102,33 +102,34 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> extends AbstractE
 
     @Override
     public R doApply(final R record) {
+        // Add headers if needed
+        if (!additionalHeaders.isEmpty()) {
+            Headers headersToAdd = makeHeaders(additionalHeaders, (Struct) record.value());
+            headersToAdd.forEach(h -> record.headers().add(h));
+        }
+
+        // Handling tombstone record
         if (record.value() == null) {
-            if (dropTombstones) {
-                LOGGER.trace("Tombstone {} arrived and requested to be dropped", record.key());
-                return null;
-            }
-            if (!additionalHeaders.isEmpty()) {
-                Headers headersToAdd = makeHeaders(additionalHeaders, (Struct) record.value());
-                headersToAdd.forEach(h -> record.headers().add(h));
-            }
-            return record;
+            return extractRecordStrategy.handleTruncateRecord(record);
         }
 
         if (!smtManager.isValidEnvelope(record)) {
             return record;
         }
 
-        if (!additionalHeaders.isEmpty()) {
-            Headers headersToAdd = makeHeaders(additionalHeaders, (Struct) record.value());
-            headersToAdd.forEach(h -> record.headers().add(h));
-        }
-
-        R newRecord = afterDelegate.apply(record);
-        if (newRecord.value() == null && beforeDelegate.apply(record).value() == null) {
+        R newRecord = extractRecordStrategy.afterDelegate().apply(record);
+        if (newRecord.value() == null && extractRecordStrategy.beforeDelegate().apply(record).value() == null) {
             LOGGER.trace("Truncate event arrived and requested to be dropped");
             return null;
         }
+
         if (newRecord.value() == null) {
+            // Handling delete records
+            newRecord = extractRecordStrategy.handleDeleteRecord(record);
+            if (newRecord == null) {
+                return null;
+            }
+
             if (routeByField != null) {
                 Struct recordValue = requireStruct(record.value(), "Read record to set topic routing for DELETE");
                 String newTopicName = recordValue.getStruct("before").getString(routeByField);
@@ -139,22 +140,13 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> extends AbstractE
                 newRecord = dropFields(newRecord);
             }
 
-            // Handling delete records
-            switch (handleDeletes) {
-                case DROP:
-                    LOGGER.trace("Delete message {} requested to be dropped", record.key());
-                    return null;
-                case REWRITE:
-                    LOGGER.trace("Delete message {} requested to be rewritten", record.key());
-                    R oldRecord = beforeDelegate.apply(record);
-                    oldRecord = addFields(additionalFields, record, oldRecord);
-
-                    return removedDelegate.apply(oldRecord);
-                default:
-                    return newRecord;
+            if (newRecord.value() != null) {
+                newRecord = addFields(additionalFields, record, newRecord);
             }
         }
         else {
+            // Handling insert and update records
+            newRecord = extractRecordStrategy.handleRecord(record);
             // Add on any requested source fields from the original record to the new unwrapped record
             if (routeByField != null) {
                 Struct recordValue = requireStruct(newRecord.value(), "Read record to set topic routing for CREATE / UPDATE");
@@ -167,16 +159,8 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> extends AbstractE
             if (!Strings.isNullOrEmpty(dropFieldsHeaderName)) {
                 newRecord = dropFields(newRecord);
             }
-
-            // Handling insert and update records
-            switch (handleDeletes) {
-                case REWRITE:
-                    LOGGER.trace("Insert/update message {} requested to be rewritten", record.key());
-                    return updatedDelegate.apply(newRecord);
-                default:
-                    return newRecord;
-            }
         }
+        return newRecord;
     }
 
     @Override
