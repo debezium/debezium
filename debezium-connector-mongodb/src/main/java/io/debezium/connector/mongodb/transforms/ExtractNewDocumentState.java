@@ -39,7 +39,6 @@ import io.debezium.data.Envelope;
 import io.debezium.schema.FieldNameSelector;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.transforms.AbstractExtractNewRecordState;
-import io.debezium.transforms.ExtractNewRecordStateConfigDefinition.DeleteHandling;
 
 /**
  * Debezium Mongo Connector generates the CDC records in String format. Sink connectors usually are not able to parse
@@ -131,7 +130,6 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> extends Abstrac
             .withDescription("Delimiter to concat between field names from the input record when generating field names for the"
                     + "output record.");
 
-    private final ExtractField<R> updateDescriptionExtractor = new ExtractField.Value<>();
     private final ExtractField<R> keyExtractor = new ExtractField.Key<>();
     private final Flatten<R> recordFlattener = new Flatten.Value<>();
     private MongoDataConverter converter;
@@ -155,15 +153,11 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> extends Abstrac
         flattenStruct = config.getBoolean(FLATTEN_STRUCT);
         delimiter = config.getString(DELIMITER);
 
-        final Map<String, String> updateDescriptionExtractorConfig = new HashMap<>();
-        updateDescriptionExtractorConfig.put("field", MongoDbFieldName.UPDATE_DESCRIPTION);
-        updateDescriptionExtractor.configure(updateDescriptionExtractorConfig);
+        Map<String, String> delegateConfig = new HashMap<>();
+        delegateConfig.put("field", "id");
+        keyExtractor.configure(delegateConfig);
 
-        final Map<String, String> keyExtractorConfig = new HashMap<>();
-        keyExtractorConfig.put("field", "id");
-        keyExtractor.configure(keyExtractorConfig);
-
-        final Map<String, String> delegateConfig = new HashMap<>();
+        delegateConfig = new HashMap<>();
         delegateConfig.put("delimiter", delimiter);
         recordFlattener.configure(delegateConfig);
     }
@@ -173,6 +167,11 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> extends Abstrac
         if (!smtManager.isValidKey(record)) {
             return record;
         }
+        // Add headers if needed
+        if (!additionalHeaders.isEmpty()) {
+            Headers headersToAdd = makeHeaders(additionalHeaders, (Struct) record.value());
+            headersToAdd.forEach(h -> record.headers().add(h));
+        }
 
         final R keyRecord = keyExtractor.apply(record);
 
@@ -181,13 +180,9 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> extends Abstrac
 
         // Tombstone message
         if (record.value() == null) {
-            if (dropTombstones) {
-                LOGGER.trace("Tombstone {} arrived and requested to be dropped", record.key());
+            R newRecord = extractRecordStrategy.handleTruncateRecord(record);
+            if (newRecord == null) {
                 return null;
-            }
-            if (!additionalHeaders.isEmpty()) {
-                Headers headersToAdd = makeHeaders(additionalHeaders, (Struct) record.value());
-                headersToAdd.forEach(h -> record.headers().add(h));
             }
             return newRecord(record, keyDocument, valueDocument);
         }
@@ -196,41 +191,35 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> extends Abstrac
             return record;
         }
 
-        final R beforeRecord = beforeDelegate.apply(record);
-        final R afterRecord = afterDelegate.apply(record);
-        final R updateDescriptionRecord = updateDescriptionExtractor.apply(record);
-
-        if (!additionalHeaders.isEmpty()) {
-            Headers headersToAdd = makeHeaders(additionalHeaders, (Struct) record.value());
-            headersToAdd.forEach(h -> record.headers().add(h));
+        final R afterRecord = extractRecordStrategy.afterDelegate().apply(record);
+        final R updateDescriptionRecord = extractRecordStrategy.updateDescriptionDelegate().apply(record);
+        boolean isDeletion = false;
+        R newRecord;
+        if (afterRecord.value() == null && updateDescriptionRecord.value() == null) {
+            // Handling delete records
+            isDeletion = true;
+            newRecord = extractRecordStrategy.handleDeleteRecord(record);
+            if (newRecord == null) {
+                return null;
+            }
+        }
+        else {
+            // Handling insert and update records
+            newRecord = extractRecordStrategy.handleRecord(record);
         }
 
         // insert || replace || update with capture.mode="change_streams_update_full" or "change_streams_update_full_with_pre_image"
-        if (afterRecord.value() != null) {
-            valueDocument = getFullDocument(afterRecord, keyDocument);
+        if (newRecord.value() != null) {
+            valueDocument = getFullDocument(newRecord, keyDocument);
         }
 
         // update
-        if (afterRecord.value() == null && updateDescriptionRecord.value() != null) {
-            valueDocument = getPartialUpdateDocument(beforeRecord, updateDescriptionRecord, keyDocument);
+        if (newRecord.value() == null && updateDescriptionRecord.value() != null) {
+            valueDocument = getPartialUpdateDocument(newRecord, updateDescriptionRecord, keyDocument);
         }
 
-        boolean isDeletion = false;
-        // delete
-        if (afterRecord.value() == null && updateDescriptionRecord.value() == null) {
-            if (handleDeletes.equals(DeleteHandling.DROP)) {
-                LOGGER.trace("Delete {} arrived and requested to be dropped", record.key());
-                return null;
-            }
-
-            if (beforeRecord.value() != null && handleDeletes.equals(DeleteHandling.REWRITE)) {
-                valueDocument = getFullDocument(beforeRecord, keyDocument);
-            }
-
-            isDeletion = true;
-        }
-
-        if (handleDeletes.equals(DeleteHandling.REWRITE)) {
+        // add rewrite field
+        if (extractRecordStrategy.isRewriteMode()) {
             valueDocument.append(DELETED_FIELD, new BsonBoolean(isDeletion));
         }
 
@@ -252,7 +241,6 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> extends Abstrac
     @Override
     public void close() {
         super.close();
-        updateDescriptionExtractor.close();
         keyExtractor.close();
         recordFlattener.close();
     }

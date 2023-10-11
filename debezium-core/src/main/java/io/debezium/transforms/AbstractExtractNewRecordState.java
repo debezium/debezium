@@ -5,8 +5,6 @@
  */
 package io.debezium.transforms;
 
-import static io.debezium.data.Envelope.FieldName.AFTER;
-import static io.debezium.data.Envelope.FieldName.BEFORE;
 import static io.debezium.data.Envelope.FieldName.OPERATION;
 import static io.debezium.data.Envelope.FieldName.SOURCE;
 import static io.debezium.data.Envelope.FieldName.TIMESTAMP;
@@ -18,15 +16,13 @@ import static io.debezium.transforms.ExtractNewRecordStateConfigDefinition.ADD_F
 import static io.debezium.transforms.ExtractNewRecordStateConfigDefinition.ADD_FIELDS_PREFIX;
 import static io.debezium.transforms.ExtractNewRecordStateConfigDefinition.ADD_HEADERS;
 import static io.debezium.transforms.ExtractNewRecordStateConfigDefinition.ADD_HEADERS_PREFIX;
-import static io.debezium.transforms.ExtractNewRecordStateConfigDefinition.DELETED_FIELD;
 import static io.debezium.transforms.ExtractNewRecordStateConfigDefinition.DROP_TOMBSTONES;
 import static io.debezium.transforms.ExtractNewRecordStateConfigDefinition.HANDLE_DELETES;
+import static io.debezium.transforms.ExtractNewRecordStateConfigDefinition.HANDLE_TOMBSTONE_DELETES;
 import static io.debezium.transforms.ExtractNewRecordStateConfigDefinition.ROUTE_BY_FIELD;
 
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -41,8 +37,6 @@ import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.header.ConnectHeaders;
 import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.header.Headers;
-import org.apache.kafka.connect.transforms.ExtractField;
-import org.apache.kafka.connect.transforms.InsertField;
 import org.apache.kafka.connect.transforms.Transformation;
 import org.apache.kafka.connect.transforms.util.SchemaUtil;
 import org.slf4j.Logger;
@@ -52,6 +46,10 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.data.Envelope;
 import io.debezium.transforms.ExtractNewRecordStateConfigDefinition.DeleteHandling;
+import io.debezium.transforms.ExtractNewRecordStateConfigDefinition.DeleteTombstoneHandling;
+import io.debezium.transforms.strategy.DeleteExtractRecordStrategy;
+import io.debezium.transforms.strategy.DeleteTombstoneExtractRecordStrategy;
+import io.debezium.transforms.strategy.ExtractRecordStrategy;
 import io.debezium.util.Strings;
 
 /**
@@ -68,15 +66,9 @@ public abstract class AbstractExtractNewRecordState<R extends ConnectRecord<R>> 
     private static final String UPDATE_DESCRIPTION = "updateDescription";
     protected static final String PURPOSE = "source field insertion";
 
-    protected final ExtractField<R> afterDelegate = new ExtractField.Value<>();
-    protected final ExtractField<R> beforeDelegate = new ExtractField.Value<>();
-    protected final InsertField<R> removedDelegate = new InsertField.Value<>();
-    protected final InsertField<R> updatedDelegate = new InsertField.Value<>();
-
     protected Configuration config;
     protected SmtManager<R> smtManager;
-    protected boolean dropTombstones;
-    protected DeleteHandling handleDeletes;
+    protected ExtractRecordStrategy<R> extractRecordStrategy;
     protected List<FieldReference> additionalHeaders;
     protected List<FieldReference> additionalFields;
     protected String routeByField;
@@ -90,33 +82,26 @@ public abstract class AbstractExtractNewRecordState<R extends ConnectRecord<R>> 
             throw new ConnectException("Unable to validate config.");
         }
 
-        dropTombstones = config.getBoolean(DROP_TOMBSTONES);
-        handleDeletes = DeleteHandling.parse(config.getString(HANDLE_DELETES));
-
         String addFieldsPrefix = config.getString(ADD_FIELDS_PREFIX);
         String addHeadersPrefix = config.getString(ADD_HEADERS_PREFIX);
         additionalFields = FieldReference.fromConfiguration(addFieldsPrefix, config.getString(ADD_FIELDS));
         additionalHeaders = FieldReference.fromConfiguration(addHeadersPrefix, config.getString(ADD_HEADERS));
         String routeFieldConfig = config.getString(ROUTE_BY_FIELD);
         routeByField = routeFieldConfig.isEmpty() ? null : routeFieldConfig;
-
-        Map<String, String> delegateConfig = new LinkedHashMap<>();
-        delegateConfig.put("field", BEFORE);
-        beforeDelegate.configure(delegateConfig);
-
-        delegateConfig = new HashMap<>();
-        delegateConfig.put("field", AFTER);
-        afterDelegate.configure(delegateConfig);
-
-        delegateConfig = new HashMap<>();
-        delegateConfig.put("static.field", DELETED_FIELD);
-        delegateConfig.put("static.value", "true");
-        removedDelegate.configure(delegateConfig);
-
-        delegateConfig = new HashMap<>();
-        delegateConfig.put("static.field", DELETED_FIELD);
-        delegateConfig.put("static.value", "false");
-        updatedDelegate.configure(delegateConfig);
+        // handle deleted records
+        if (!Strings.isNullOrBlank(config.getString(HANDLE_TOMBSTONE_DELETES))) {
+            DeleteTombstoneHandling deleteTombstoneHandling = DeleteTombstoneHandling.parse(config.getString(HANDLE_TOMBSTONE_DELETES));
+            extractRecordStrategy = new DeleteTombstoneExtractRecordStrategy<>(deleteTombstoneHandling);
+        }
+        else {
+            // will be removed in further release
+            boolean dropTombstones = config.getBoolean(DROP_TOMBSTONES);
+            DeleteHandling handleDeletes = DeleteHandling.parse(config.getString(HANDLE_DELETES));
+            extractRecordStrategy = new DeleteExtractRecordStrategy<>(handleDeletes, dropTombstones);
+            LOGGER.warn(
+                    "The deleted record handling configs \"drop.tombstones\" and \"delete.handling.mode\" have been deprecated, " +
+                            "please use \"delete.tombstone.handling.mode\" instead of.");
+        }
     }
 
     @Override
@@ -130,10 +115,9 @@ public abstract class AbstractExtractNewRecordState<R extends ConnectRecord<R>> 
 
     @Override
     public void close() {
-        beforeDelegate.close();
-        afterDelegate.close();
-        removedDelegate.close();
-        updatedDelegate.close();
+        if (extractRecordStrategy != null) {
+            extractRecordStrategy.close();
+        }
     }
 
     /**
