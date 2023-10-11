@@ -30,7 +30,6 @@ public class DockerMongo extends DockerDatabaseFixture<MongoDatabaseController> 
 
     @Override
     protected MongoDatabaseController databaseController() throws Exception {
-        // Creating a deployer class for this is probably not worth it
 
         var portResolver = new ParsingPortResolver(DATABASE_MONGO_DOCKER_DESKTOP_PORTS);
         mongo = MongoDbReplicaSet.replicaSet()

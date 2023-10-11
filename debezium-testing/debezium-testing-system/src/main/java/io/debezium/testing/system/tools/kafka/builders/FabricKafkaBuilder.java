@@ -97,7 +97,7 @@ public final class FabricKafkaBuilder extends FabricBuilderWrapper<FabricKafkaBu
 
         return new KafkaClusterSpecBuilder()
                 .withConfig(config)
-                .withReplicas(1)
+                .withReplicas(3)
                 .withVersion(STRIMZI_VERSION_KAFKA)
                 .withListeners(listeners)
                 .withStorage(new EphemeralStorage())

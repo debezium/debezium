@@ -17,6 +17,7 @@ spec:
         deployment: sqlserver
     spec:
       hostname: sqlserver
+      serviceAccountName: default
       securityContext:
         runAsUser: 10001
       containers:

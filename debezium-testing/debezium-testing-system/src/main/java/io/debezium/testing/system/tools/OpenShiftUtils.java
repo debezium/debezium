@@ -284,10 +284,6 @@ public class OpenShiftUtils {
                 .until(() -> podListSupplier.get().getItems().isEmpty());
     }
 
-    public static boolean isRunningFromOcp() {
-        return ConfigProperties.OCP_URL.isEmpty();
-    }
-
     /**
      * Finds the first deployment with name matching given prefixes
      *
@@ -332,11 +328,6 @@ public class OpenShiftUtils {
 
     public static OpenShiftClient createOcpClient() {
         ConfigBuilder configBuilder = new ConfigBuilder();
-        if (!isRunningFromOcp()) {
-            configBuilder.withMasterUrl(ConfigProperties.OCP_URL.get())
-                    .withUsername(ConfigProperties.OCP_USERNAME.get())
-                    .withPassword(ConfigProperties.OCP_PASSWORD.get());
-        }
         configBuilder.withRequestRetryBackoffLimit(ConfigProperties.OCP_REQUEST_RETRY_BACKOFF_LIMIT)
                 .withTrustCerts(true);
 
