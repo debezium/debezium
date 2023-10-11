@@ -201,7 +201,7 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
 
         CountDownLatch firstLatch = new CountDownLatch(1);
 
-        engine = EmbeddedEngine.create()
+        final DebeziumEngine<ChangeEvent<String, String>> engine = DebeziumEngine.create(Json.class)
                 .using(props)
                 .notifying((records, committer) -> {
                 })
@@ -237,12 +237,12 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
 
         CountDownLatch firstLatch = new CountDownLatch(1);
 
-        engine = EmbeddedEngine.create()
+        final DebeziumEngine engine = DebeziumEngine.create(ChangeEventFormat.of(Connect.class))
                 .using(props)
                 .using(OffsetCommitPolicy.always())
                 .notifying((records, committer) -> {
 
-                    for (SourceRecord record : records) {
+                    for (RecordChangeEvent<SourceRecord> record : records) {
                         committer.markProcessed(record);
                     }
                     committer.markBatchFinished();
@@ -319,13 +319,13 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
         CountDownLatch allLatch = new CountDownLatch(6);
 
         // create an engine with our custom class
-        engine = EmbeddedEngine.create()
+        final DebeziumEngine engine = DebeziumEngine.create(ChangeEventFormat.of(Connect.class))
                 .using(props)
                 .notifying((records, committer) -> {
                     assertThat(records.size()).isGreaterThanOrEqualTo(NUMBER_OF_LINES);
                     Integer groupCount = records.size() / NUMBER_OF_LINES;
 
-                    for (SourceRecord r : records) {
+                    for (RecordChangeEvent<SourceRecord> r : records) {
                         committer.markProcessed(r);
                     }
 
@@ -744,7 +744,7 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
 
         final AtomicBoolean exceptionCaught = new AtomicBoolean(false);
 
-        engine = EmbeddedEngine.create()
+        final DebeziumEngine<ChangeEvent<String, String>> engine = DebeziumEngine.create(Json.class)
                 .using(props)
                 .notifying((records, committer) -> {
                 })
