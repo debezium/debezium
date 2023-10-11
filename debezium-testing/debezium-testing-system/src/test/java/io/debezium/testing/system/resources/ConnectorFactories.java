@@ -9,7 +9,6 @@ import java.util.Random;
 
 import io.debezium.testing.system.tools.ConfigProperties;
 import io.debezium.testing.system.tools.databases.SqlDatabaseController;
-import io.debezium.testing.system.tools.databases.mongodb.DockerMongoController;
 import io.debezium.testing.system.tools.databases.mongodb.MongoDatabaseController;
 import io.debezium.testing.system.tools.kafka.ConnectorConfigBuilder;
 import io.debezium.testing.system.tools.kafka.KafkaController;
@@ -94,20 +93,38 @@ public class ConnectorFactories {
                 .put("task.max", 1)
                 .put("mongodb.user", ConfigProperties.DATABASE_MONGO_DBZ_USERNAME)
                 .put("mongodb.password", ConfigProperties.DATABASE_MONGO_DBZ_PASSWORD)
+                .addOperationRouterForTable("u", "customers")
+                .put("mongodb.connection.string", controller.getPublicDatabaseUrl());
+        return cb;
+    }
+
+    public ConnectorConfigBuilder shardedMongo(MongoDatabaseController controller, String connectorName) {
+        ConnectorConfigBuilder cb = new ConnectorConfigBuilder(connectorName);
+        cb
+                .put("topic.prefix", connectorName)
+                .put("connector.class", "io.debezium.connector.mongodb.MongoDbConnector")
+                .put("task.max", 1)
+                .put("mongodb.user", ConfigProperties.DATABASE_MONGO_DBZ_USERNAME)
+                .put("mongodb.password", ConfigProperties.DATABASE_MONGO_DBZ_PASSWORD)
+                .put("mongodb.connection.string", controller.getPublicDatabaseUrl())
+                .put("mongodb.connection.mode", "sharded")
                 .addOperationRouterForTable("u", "customers");
+        return cb;
+    }
 
-        // Ugly, needs refactoring so that all mongo controllers use connection string
-        if (controller instanceof DockerMongoController) {
-            // We should be always using this config
-            // for OCP public and internal URLs might be different though
-            cb.put("mongodb.connection.string", controller.getPublicDatabaseUrl());
-        }
-        else {
-            String dbHost = controller.getDatabaseHostname();
-            int dbPort = controller.getDatabasePort();
-            cb.put("mongodb.hosts", "rs0/" + dbHost + ":" + dbPort);
-        }
+    public ConnectorConfigBuilder shardedReplicaMongo(MongoDatabaseController controller, String connectorName) {
 
+        // String connectionUrl =;
+        ConnectorConfigBuilder cb = new ConnectorConfigBuilder(connectorName);
+        cb
+                .put("topic.prefix", connectorName)
+                .put("connector.class", "io.debezium.connector.mongodb.MongoDbConnector")
+                .put("task.max", 4)
+                .put("mongodb.user", ConfigProperties.DATABASE_MONGO_DBZ_USERNAME)
+                .put("mongodb.password", ConfigProperties.DATABASE_MONGO_DBZ_PASSWORD)
+                .put("mongodb.connection.string", controller.getPublicDatabaseUrl())
+                .put("mongodb.connection.mode", "replica_set")
+                .addOperationRouterForTable("u", "customers");
         return cb;
     }
 

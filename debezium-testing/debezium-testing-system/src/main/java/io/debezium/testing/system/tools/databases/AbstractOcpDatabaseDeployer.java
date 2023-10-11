@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.testing.system.tools.Deployer;
 import io.debezium.testing.system.tools.OpenShiftUtils;
 import io.debezium.testing.system.tools.YAML;
+import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
@@ -87,6 +88,7 @@ public abstract class AbstractOcpDatabaseDeployer<T> implements Deployer<T> {
 
         protected String project;
         protected Deployment deployment;
+        protected PersistentVolumeClaim pvc;
         protected List<Service> services;
         protected OpenShiftClient ocpClient;
         protected Secret pullSecret;

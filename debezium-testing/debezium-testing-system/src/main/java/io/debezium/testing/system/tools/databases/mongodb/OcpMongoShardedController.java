@@ -5,9 +5,6 @@
  */
 package io.debezium.testing.system.tools.databases.mongodb;
 
-import static io.debezium.testing.system.tools.OpenShiftUtils.isRunningFromOcp;
-
-import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -52,15 +49,8 @@ public class OcpMongoShardedController extends AbstractOcpDatabaseController<Mon
 
     @Override
     public void reload() throws InterruptedException {
-        if (!isRunningFromOcp()) {
-            try {
-                closeDatabasePortForwards();
-            }
-            catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }
         // restart every sharded mongo component
+        LOGGER.info("Restarting all mongo shards and mongos");
         List<Deployment> deployments = ocp
                 .apps()
                 .deployments()
@@ -78,9 +68,6 @@ public class OcpMongoShardedController extends AbstractOcpDatabaseController<Mon
             ocpUtils.scaleDeploymentToZero(deployment1);
             ocp.apps().deployments().inNamespace(project).withName(deployment1.getMetadata().getName()).scale(1);
         });
-        if (!isRunningFromOcp()) {
-            forwardDatabasePorts();
-        }
     }
 
     public void executeCommandOnComponent(String componentName, String... commands) throws InterruptedException {
@@ -95,6 +82,7 @@ public class OcpMongoShardedController extends AbstractOcpDatabaseController<Mon
     @Override
     public void initialize() throws InterruptedException {
         // init config
+        LOGGER.info("Initializing replica-set");
         executeCommandOnComponent("mongo-config",
                 "mongosh",
                 "localhost:" + OcpMongoShardedConstants.MONGO_CONFIG_PORT,
@@ -104,6 +92,7 @@ public class OcpMongoShardedController extends AbstractOcpDatabaseController<Mon
         uploadAndExecuteMongoScript(CREATE_DBZ_USER_SCRIPT_LOCATION, "mongo-config", OcpMongoShardedConstants.MONGO_CONFIG_PORT);
 
         // init shards
+        LOGGER.info("Initializing all the shards");
         List<Integer> shardRange = IntStream.rangeClosed(1, OcpMongoShardedConstants.SHARD_COUNT).boxed().collect(Collectors.toList());
         shardRange.parallelStream().forEach(s -> {
             try {
@@ -117,14 +106,11 @@ public class OcpMongoShardedController extends AbstractOcpDatabaseController<Mon
         });
 
         // init mongos
+        LOGGER.info("Adding shards to mongos");
         addShard(1, "ONE", 1000, 1003);
         addShard(2, "TWO", 1003, 1004);
 
         uploadAndExecuteMongoScript(INIT_MONGOS_SCRIPT_LOCATION, "mongo-mongos", OcpMongoShardedConstants.MONGO_MONGOS_PORT);
-
-        if (!isRunningFromOcp()) {
-            forwardDatabasePorts();
-        }
     }
 
     public void addShard(int shardNumber, String zoneName, int rangeStart, int rangeEnd) throws InterruptedException {
@@ -180,9 +166,7 @@ public class OcpMongoShardedController extends AbstractOcpDatabaseController<Mon
         return new String[]{ "mongosh", "localhost:27018", "--eval",
                 "rs.initiate({ _id: \"shard" + shardNum + "rs\", members: [" + replicaRange
                         .stream()
-                        .map(replicaNum -> {
-                            return "{_id : " + (replicaNum - 1) + ", host : \"" + getShardReplicaServiceName(shardNum, replicaNum) + "\" }";
-                        })
+                        .map(replicaNum -> "{_id : " + (replicaNum - 1) + ", host : \"" + getShardReplicaServiceName(shardNum, replicaNum) + "\" }")
                         .collect(Collectors.joining(",")) + "]});" +
                         "let isPrimary = false;\n" +
                         "let count = 0;\n" +
