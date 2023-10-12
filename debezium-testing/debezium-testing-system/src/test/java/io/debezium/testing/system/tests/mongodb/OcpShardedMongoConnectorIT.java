@@ -14,7 +14,6 @@ import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_MONGO_D
 
 import java.io.IOException;
 
-import io.debezium.testing.system.fixtures.databases.ocp.OcpMongo;
 import io.debezium.testing.system.fixtures.databases.ocp.OcpMongoSharded;
 import org.bson.Document;
 import org.bson.conversions.Bson;
@@ -54,7 +53,7 @@ import fixture5.annotations.Fixture;
 @Fixture(OcpMongoSharded.class)
 @Fixture(MongoConnector.class)
 @ExtendWith(FixtureExtension.class)
-public abstract class OcpShardedMongoConnectorIT extends ConnectorTest {
+public class OcpShardedMongoConnectorIT extends ConnectorTest {
     public OcpShardedMongoConnectorIT(KafkaController kafkaController, KafkaConnectController connectController, ConnectorConfigBuilder connectorConfig,
                                       KafkaAssertions<?, ?> assertions) {
         super(kafkaController, connectController, connectorConfig, assertions);
