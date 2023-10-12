@@ -8,7 +8,7 @@ import io.debezium.testing.system.tools.kafka.KafkaConnectController;
 import io.debezium.testing.system.tools.kafka.KafkaController;
 import org.junit.jupiter.api.extension.ExtensionContext;
 
-@FixtureContext(requires = { KafkaController.class, KafkaConnectController.class, OcpMongoShardedController.class }, provides = { ShardedReplicaMongoConnector.class })
+@FixtureContext(requires = { KafkaController.class, KafkaConnectController.class, OcpMongoShardedController.class }, provides = { ConnectorConfigBuilder.class })
 public class ShardedReplicaMongoConnector extends ConnectorFixture<OcpMongoShardedController> {
     private static final String CONNECTOR_NAME = "inventory-connector-mongo";
 
