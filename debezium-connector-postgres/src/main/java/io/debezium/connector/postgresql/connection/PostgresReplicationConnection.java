@@ -404,7 +404,9 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         int tryCount = 0;
         while (true) {
             try {
-                validateSlotIsInExpectedState(walPosition);
+                if (connectorConfig.slotSeekToKnownOffsetOnStart()) {
+                    validateSlotIsInExpectedState(walPosition);
+                }
                 return createReplicationStream(lsn, walPosition);
             }
             catch (Exception e) {

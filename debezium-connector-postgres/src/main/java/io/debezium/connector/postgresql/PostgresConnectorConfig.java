@@ -523,6 +523,16 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     "Whether or not to drop the logical replication slot when the connector finishes orderly. " +
                             "By default the replication is kept so that on restart progress can resume from the last recorded location");
 
+    public static final Field SLOT_SEEK_TO_KNOWN_OFFSET = Field.createInternal("slot.seek.to.known.offset.on.start")
+            .withDisplayName("Seek to last known offset on the replication slot")
+            .withType(Type.BOOLEAN)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION, 3))
+            .withDefault(false)
+            .withImportance(Importance.HIGH)
+            .withDescription(
+                    "Whether or not to seek to the last known offset on the replication slot." +
+                            "Enabling this option results in startup failure if the slot is re-created instead of data loss.");
+
     public static final Field PUBLICATION_NAME = Field.create("publication.name")
             .withDisplayName("Publication")
             .withType(Type.STRING)
@@ -950,6 +960,10 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         }
         // Return default value
         return getConfig().getBoolean(DROP_SLOT_ON_STOP);
+    }
+
+    public boolean slotSeekToKnownOffsetOnStart() {
+        return getConfig().getBoolean(SLOT_SEEK_TO_KNOWN_OFFSET);
     }
 
     public String publicationName() {
