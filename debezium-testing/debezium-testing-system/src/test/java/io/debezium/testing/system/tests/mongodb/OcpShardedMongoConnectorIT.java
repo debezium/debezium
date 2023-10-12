@@ -14,6 +14,8 @@ import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_MONGO_D
 
 import java.io.IOException;
 
+import io.debezium.testing.system.fixtures.databases.ocp.OcpMongo;
+import io.debezium.testing.system.fixtures.databases.ocp.OcpMongoSharded;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.junit.jupiter.api.MethodOrderer;
@@ -27,7 +29,6 @@ import io.debezium.testing.system.TestUtils;
 import io.debezium.testing.system.assertions.KafkaAssertions;
 import io.debezium.testing.system.fixtures.OcpClient;
 import io.debezium.testing.system.fixtures.connectors.MongoConnector;
-import io.debezium.testing.system.fixtures.databases.ocp.OcpMongoSharded;
 import io.debezium.testing.system.fixtures.kafka.OcpKafka;
 import io.debezium.testing.system.fixtures.operator.OcpStrimziOperator;
 import io.debezium.testing.system.resources.ConnectorFactories;
@@ -43,9 +44,10 @@ import fixture5.FixtureExtension;
 import fixture5.annotations.Fixture;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+@Tag("acceptance")
 @Tag("mongo")
-@Tag("mongo-sharded")
 @Tag("openshift")
+@Tag("mongo-sharded")
 @Fixture(OcpClient.class)
 @Fixture(OcpStrimziOperator.class)
 @Fixture(OcpKafka.class)
