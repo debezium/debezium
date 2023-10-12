@@ -2130,7 +2130,8 @@ mysql> SELECT variable_value as "BINARY LOGGING STATUS (log-bin) ::"
 FROM performance_schema.global_variables WHERE variable_name='log_bin';
 ----
 
-. If you are running MySQL on Amazon RDS, make sure to enable automated backups for your database instance. Otherwise, the binlog will not be enabled, despite of the settings described above.
+. If you run MySQL on Amazon RDS, you must enable automated backups for your database instance for binary logging to occur. 
+If the database instance is not configured to perform automated backups , the binlog is disabled, even if you apply the settings described in the previous steps.
 
 
 [[binlog-configuration-properties-mysql-connector]]
