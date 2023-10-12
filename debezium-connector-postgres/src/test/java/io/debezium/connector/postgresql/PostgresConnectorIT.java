@@ -3317,7 +3317,8 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
         configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.name())
-                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE);
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
+                .with(PostgresConnectorConfig.SLOT_SEEK_TO_KNOWN_OFFSET, Boolean.TRUE);
 
         start(PostgresConnector.class, configBuilder.build());
         Awaitility.await().atMost(TestHelper.waitTimeForRecords() * 5, TimeUnit.SECONDS)
@@ -3349,7 +3350,8 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
         configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.name())
-                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE);
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
+                .with(PostgresConnectorConfig.SLOT_SEEK_TO_KNOWN_OFFSET, Boolean.TRUE);
 
         start(PostgresConnector.class, configBuilder.build());
         consumeRecordsByTopic(1);
