@@ -1,34 +1,14 @@
-/*
- * Copyright Debezium Authors.
- *
- * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
- */
 package io.debezium.testing.system.tests.mongodb;
 
-import static com.mongodb.client.model.Filters.eq;
-import static io.debezium.testing.system.assertions.KafkaAssertions.awaitAssert;
-import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_MONGO_DBZ_DBNAME;
-import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_MONGO_DBZ_LOGIN_DBNAME;
-import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_MONGO_DBZ_PASSWORD;
-import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_MONGO_DBZ_USERNAME;
 
-import java.io.IOException;
-
-import io.debezium.testing.system.fixtures.connectors.ShardedMongoConnector;
-import io.debezium.testing.system.fixtures.databases.ocp.OcpMongoSharded;
-import org.bson.Document;
-import org.bson.conversions.Bson;
-import org.junit.jupiter.api.MethodOrderer;
-import org.junit.jupiter.api.Order;
-import org.junit.jupiter.api.Tag;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestMethodOrder;
-import org.junit.jupiter.api.extension.ExtendWith;
-
+import fixture5.FixtureExtension;
+import fixture5.annotations.Fixture;
 import io.debezium.testing.system.TestUtils;
 import io.debezium.testing.system.assertions.KafkaAssertions;
 import io.debezium.testing.system.fixtures.OcpClient;
-import io.debezium.testing.system.fixtures.connectors.MongoConnector;
+import io.debezium.testing.system.fixtures.connectors.ShardedMongoConnector;
+import io.debezium.testing.system.fixtures.connectors.ShardedReplicaMongoConnector;
+import io.debezium.testing.system.fixtures.databases.ocp.OcpMongoSharded;
 import io.debezium.testing.system.fixtures.kafka.OcpKafka;
 import io.debezium.testing.system.fixtures.operator.OcpStrimziOperator;
 import io.debezium.testing.system.resources.ConnectorFactories;
@@ -39,9 +19,23 @@ import io.debezium.testing.system.tools.databases.mongodb.OcpMongoShardedControl
 import io.debezium.testing.system.tools.kafka.ConnectorConfigBuilder;
 import io.debezium.testing.system.tools.kafka.KafkaConnectController;
 import io.debezium.testing.system.tools.kafka.KafkaController;
+import org.bson.Document;
+import org.bson.conversions.Bson;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.extension.ExtendWith;
 
-import fixture5.FixtureExtension;
-import fixture5.annotations.Fixture;
+import java.io.IOException;
+
+import static com.mongodb.client.model.Filters.eq;
+import static io.debezium.testing.system.assertions.KafkaAssertions.awaitAssert;
+import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_MONGO_DBZ_DBNAME;
+import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_MONGO_DBZ_LOGIN_DBNAME;
+import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_MONGO_DBZ_PASSWORD;
+import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_MONGO_DBZ_USERNAME;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Tag("acceptance")
@@ -52,10 +46,11 @@ import fixture5.annotations.Fixture;
 @Fixture(OcpStrimziOperator.class)
 @Fixture(OcpKafka.class)
 @Fixture(OcpMongoSharded.class)
-@Fixture(ShardedMongoConnector.class)
+@Fixture(ShardedReplicaMongoConnector.class)
 @ExtendWith(FixtureExtension.class)
-public class OcpShardedMongoConnectorIT extends ConnectorTest {
-    public OcpShardedMongoConnectorIT(KafkaController kafkaController, KafkaConnectController connectController, ConnectorConfigBuilder connectorConfig,
+public class OcpShardedReplicaMongoConnectorIT extends ConnectorTest {
+
+    public OcpShardedReplicaMongoConnectorIT(KafkaController kafkaController, KafkaConnectController connectController, ConnectorConfigBuilder connectorConfig,
                                       KafkaAssertions<?, ?> assertions) {
         super(kafkaController, connectController, connectorConfig, assertions);
     }
@@ -121,23 +116,26 @@ public class OcpShardedMongoConnectorIT extends ConnectorTest {
         connectController.deployConnector(connectorConfig);
     }
 
+
+
     @Test
-    @Order(100)
-    public void shouldStreamInShardedMode(OcpMongoShardedController dbController) throws IOException, InterruptedException {
-        insertCustomer(dbController, "Adam", "Sharded", "ashard@test.com", 1005);
-
+    @Order(110)
+    public void shouldStreamInReplicaSetMode(OcpMongoShardedController dbController) throws IOException, InterruptedException {
         String topic = connectorConfig.getConnectorName() + ".inventory.customers";
-        awaitAssert(() -> assertions.assertRecordsContain(topic, "ashard@test.com"));
-        awaitAssert(() -> assertions.assertRecordsCount(topic, 5));
+        assertions.assertTopicsExist(
+                connectorConfig.getConnectorName() + ".inventory.customers");
 
-        insertProduct(dbController, "sharded product", "demonstrates, that sharded connector mode works", "12.5", 3);
-        awaitAssert(() -> assertions.assertRecordsContain(connectorConfig.getConnectorName() + ".inventory.products", "sharded product"));
+        insertCustomer(dbController, "Eve", "Sharded", "eshard@test.com", 1007);
+
+        awaitAssert(() -> assertions.assertRecordsContain(topic, "eshard@test.com"));
+        awaitAssert(() -> assertions.assertMinimalRecordsCount(topic, 7));
+
+        insertProduct(dbController, "replicaset product", "demonstrates that replicaset connector mode works", "12.5", 3);
+        awaitAssert(() -> assertions.assertRecordsContain(connectorConfig.getConnectorName() + ".inventory.products", "replicaset product"));
 
         addAndRemoveShardTest(dbController, connectorConfig.getConnectorName());
 
-        insertCustomer(dbController, "David", "Duck", "duck@test.com", 1006);
-        awaitAssert(() -> assertions.assertRecordsContain(topic, "duck@test.com"));
+        insertCustomer(dbController, "Eric", "Eh", "ee@test.com", 1008);
+        awaitAssert(() -> assertions.assertRecordsContain(topic, "ee@test.com"));
     }
-
-
 }

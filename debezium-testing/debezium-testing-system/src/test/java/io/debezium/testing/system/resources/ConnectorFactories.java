@@ -100,6 +100,36 @@ public class ConnectorFactories {
         return cb;
     }
 
+    public ConnectorConfigBuilder shardedMongo(MongoDatabaseController controller, String connectorName) {
+        ConnectorConfigBuilder cb = new ConnectorConfigBuilder(connectorName);
+        cb
+                .put("topic.prefix", connectorName)
+                .put("connector.class", "io.debezium.connector.mongodb.MongoDbConnector")
+                .put("task.max", 1)
+                .put("mongodb.user", ConfigProperties.DATABASE_MONGO_DBZ_USERNAME)
+                .put("mongodb.password", ConfigProperties.DATABASE_MONGO_DBZ_PASSWORD)
+                .put("mongodb.connection.string", controller.getPublicDatabaseUrl())
+                .put("mongodb.connection.mode", "sharded")
+                .addOperationRouterForTable("u", "customers");
+        return cb;
+    }
+
+    public ConnectorConfigBuilder shardedReplicaMongo(MongoDatabaseController controller, String connectorName) {
+
+        //String connectionUrl =;
+        ConnectorConfigBuilder cb = new ConnectorConfigBuilder(connectorName);
+        cb
+                .put("topic.prefix", connectorName)
+                .put("connector.class", "io.debezium.connector.mongodb.MongoDbConnector")
+                .put("task.max", 4)
+                .put("mongodb.user", ConfigProperties.DATABASE_MONGO_DBZ_USERNAME)
+                .put("mongodb.password", ConfigProperties.DATABASE_MONGO_DBZ_PASSWORD)
+                .put("mongodb.connection.string", controller.getPublicDatabaseUrl())
+                .put("mongodb.connection.mode", "replica_set")
+                .addOperationRouterForTable("u", "customers");
+        return cb;
+    }
+
     public ConnectorConfigBuilder db2(SqlDatabaseController controller, String connectorName) {
         ConnectorConfigBuilder cb = new ConnectorConfigBuilder(connectorName);
         String dbHost = controller.getDatabaseHostname();
