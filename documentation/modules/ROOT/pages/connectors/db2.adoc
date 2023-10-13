@@ -275,7 +275,7 @@ Snapshots that capture the schema for all tables require more time to complete.
 If you select this option, consider setting the value of the xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.captured.tables.ddl`] property to `false` to enable the connector to capture the schema of all tables.
 `schema_only`:: When you restart the connector, it takes a snapshot that captures only the table schema.
 Unlike a full data snapshot, this option does not capture any table data.
-Use this option if ou want to restart the connector more quickly than with a full snapshot.
+Use this option if you want to restart the connector more quickly than with a full snapshot.
 
 5. Restart the connector.
 The connector completes the type of snapshot specified by the `snapshot.mode`.
