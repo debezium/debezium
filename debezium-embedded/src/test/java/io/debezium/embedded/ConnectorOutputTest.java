@@ -44,6 +44,8 @@ import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -60,7 +62,10 @@ import io.debezium.document.DocumentReader;
 import io.debezium.document.Value;
 import io.debezium.embedded.EmbeddedEngine.CompletionCallback;
 import io.debezium.embedded.EmbeddedEngine.CompletionResult;
+import io.debezium.engine.DebeziumEngine;
+import io.debezium.engine.RecordChangeEvent;
 import io.debezium.engine.StopEngineException;
+import io.debezium.engine.format.ChangeEventFormat;
 import io.debezium.util.Clock;
 import io.debezium.util.Collect;
 import io.debezium.util.IoUtil;
@@ -151,6 +156,8 @@ import io.debezium.util.Threads.TimeSince;
  * @author Randall Hauch
  */
 public abstract class ConnectorOutputTest {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(ConnectorOutputTest.class);
 
     public static final String DEFAULT_CONNECTOR_PROPERTIES_FILENAME = "connector.properties";
     public static final String DEFAULT_ENV_PROPERTIES_FILENAME = "env.properties";
@@ -825,18 +832,18 @@ public abstract class ConnectorOutputTest {
 
             // Define what happens for each record ...
             ConsumerCompletion result = new ConsumerCompletion();
-            Consumer<SourceRecord> consumer = (actualRecord) -> {
+            Consumer<RecordChangeEvent<SourceRecord>> consumer = (actualRecord) -> {
                 PreviousContext prev = LoggingContext.forConnector(getClass().getSimpleName(), "runner", spec.name());
                 try {
                     Testing.debug("actual record:    " + SchemaUtil.asString(actualRecord));
                     timeSinceLastRecord.reset();
 
                     // Record the actual in the history ...
-                    actualRecordHistory.add(actualRecord);
+                    actualRecordHistory.add(actualRecord.record());
 
                     // And possibly hand it to the test's recorder ...
                     try {
-                        Document jsonRecord = serializeSourceRecord(actualRecord, keyConverter, valueConverter);
+                        Document jsonRecord = serializeSourceRecord(actualRecord.record(), keyConverter, valueConverter);
                         if (jsonRecord != null) {
                             recorder.accept(jsonRecord);
                         }
@@ -876,12 +883,12 @@ public abstract class ConnectorOutputTest {
 
                                 // And compare the records ...
                                 try {
-                                    assertSourceRecordMatch(actualRecord, expectedRecord, ignorableFields::contains,
+                                    assertSourceRecordMatch(actualRecord.record(), expectedRecord, ignorableFields::contains,
                                             comparatorsByFieldName, comparatorsBySchemaName);
                                 }
                                 catch (AssertionError e) {
                                     result.error();
-                                    String msg = "Source record with key " + SchemaUtil.asString(actualRecord.key())
+                                    String msg = "Source record with key " + SchemaUtil.asString(actualRecord.record().key())
                                             + " did not match expected record: " + e.getMessage();
                                     Testing.debug(msg);
                                     throw new MismatchRecordException(e, msg, actualRecordHistory, expectedRecordHistory);
@@ -927,8 +934,8 @@ public abstract class ConnectorOutputTest {
                     .build();
 
             // Create the engine ...
-            EmbeddedEngine engine = EmbeddedEngine.create()
-                    .using(engineConfig)
+            final DebeziumEngine engine = DebeziumEngine.create(ChangeEventFormat.of(Connect.class))
+                    .using(engineConfig.asProperties())
                     .notifying(consumer)
                     .using(this.getClass().getClassLoader())
                     .using(problem)
@@ -941,7 +948,17 @@ public abstract class ConnectorOutputTest {
                 Thread timeoutThread = Threads.timeout(spec.name() + "-connector-output",
                         connectorTimeoutInSeconds, TimeUnit.SECONDS,
                         timeSinceLastRecord,
-                        engine::stop);
+                        new Runnable() {
+                            @Override
+                            public void run() {
+                                try {
+                                    engine.close();
+                                }
+                                catch (IOException e) {
+                                    LOGGER.warn("Failed to stop the engine: ", e);
+                                }
+                            }
+                        });
                 // But plan to stop our timeout thread as soon as the connector completes ...
                 result.uponCompletion(timeoutThread::interrupt);
                 timeoutThread.start();
