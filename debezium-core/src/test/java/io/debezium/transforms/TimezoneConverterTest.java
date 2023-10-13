@@ -94,6 +94,7 @@ public class TimezoneConverterTest {
 
         VerifyRecord.isValid(record);
         final SourceRecord transformedRecord = converter.apply(record);
+        VerifyRecord.isValid(transformedRecord);
 
         final Struct transformedValue = (Struct) transformedRecord.value();
         final Struct transformedAfter = transformedValue.getStruct(Envelope.FieldName.AFTER);
@@ -144,6 +145,7 @@ public class TimezoneConverterTest {
 
         VerifyRecord.isValid(record);
         final SourceRecord transformedRecord = converter.apply(record);
+        VerifyRecord.isValid(transformedRecord);
 
         final Struct transformedValue = (Struct) transformedRecord.value();
         final Struct transformedAfter = transformedValue.getStruct(Envelope.FieldName.AFTER);
@@ -186,6 +188,7 @@ public class TimezoneConverterTest {
 
         VerifyRecord.isValid(record);
         final SourceRecord transformedRecord = converter.apply(record);
+        VerifyRecord.isValid(transformedRecord);
 
         final Struct transformedValue = (Struct) transformedRecord.value();
         final Struct transformedAfter = transformedValue.getStruct(Envelope.FieldName.AFTER);
@@ -230,6 +233,7 @@ public class TimezoneConverterTest {
 
         VerifyRecord.isValid(record);
         final SourceRecord transformedRecord = converter.apply(record);
+        VerifyRecord.isValid(transformedRecord);
 
         final Struct transformedValue = (Struct) transformedRecord.value();
         final Struct transformedAfter = transformedValue.getStruct(Envelope.FieldName.AFTER);
@@ -273,6 +277,7 @@ public class TimezoneConverterTest {
 
         VerifyRecord.isValid(record);
         final SourceRecord transformedRecord = converter.apply(record);
+        VerifyRecord.isValid(transformedRecord);
 
         final Struct transformedValue = (Struct) transformedRecord.value();
         final Struct transformedAfter = transformedValue.getStruct(Envelope.FieldName.AFTER);
@@ -315,6 +320,7 @@ public class TimezoneConverterTest {
 
         VerifyRecord.isValid(record);
         final SourceRecord transformedRecord = converter.apply(record);
+        VerifyRecord.isValid(transformedRecord);
 
         final Struct transformedValue = (Struct) transformedRecord.value();
         final Struct transformedAfter = transformedValue.getStruct(Envelope.FieldName.AFTER);
@@ -357,6 +363,7 @@ public class TimezoneConverterTest {
 
         VerifyRecord.isValid(record);
         final SourceRecord transformedRecord = converter.apply(record);
+        VerifyRecord.isValid(transformedRecord);
 
         final Struct transformedValue = (Struct) transformedRecord.value();
         final Struct transformedAfter = transformedValue.getStruct(Envelope.FieldName.AFTER);
@@ -400,6 +407,7 @@ public class TimezoneConverterTest {
 
         VerifyRecord.isValid(record);
         final SourceRecord transformedRecord = converter.apply(record);
+        VerifyRecord.isValid(transformedRecord);
 
         final Struct transformedValue = (Struct) transformedRecord.value();
         final Struct transformedAfter = transformedValue.getStruct(Envelope.FieldName.AFTER);
@@ -443,6 +451,7 @@ public class TimezoneConverterTest {
 
         VerifyRecord.isValid(record);
         final SourceRecord transformedRecord = converter.apply(record);
+        VerifyRecord.isValid(transformedRecord);
 
         final Struct transformedValue = (Struct) transformedRecord.value();
         final Struct transformedAfter = transformedValue.getStruct(Envelope.FieldName.AFTER);
@@ -485,6 +494,8 @@ public class TimezoneConverterTest {
 
         VerifyRecord.isValid(customersRecord);
         final SourceRecord transformedCustomersRecord = converter.apply(customersRecord);
+        VerifyRecord.isValid(transformedCustomersRecord);
+
         final Struct transformedCustomersValue = (Struct) transformedCustomersRecord.value();
         final Struct transformedCustomersAfter = transformedCustomersValue.getStruct(Envelope.FieldName.AFTER);
         assertThat(transformedCustomersAfter.get("order_date_zoned_timestamp")).isEqualTo("2020-01-01T14:55:30+03:00");
@@ -518,6 +529,8 @@ public class TimezoneConverterTest {
 
         VerifyRecord.isValid(ordersRecord);
         final SourceRecord transformedOrdersRecord = converter.apply(ordersRecord);
+        VerifyRecord.isValid(transformedOrdersRecord);
+
         final Struct transformedOrdersValue = (Struct) transformedOrdersRecord.value();
         final Struct transformedOrdersAfter = transformedOrdersValue.getStruct(Envelope.FieldName.AFTER);
         assertThat(transformedOrdersAfter.get("order_date_zoned_timestamp")).isEqualTo("2023-08-01T14:50:45+03:00");
@@ -559,6 +572,8 @@ public class TimezoneConverterTest {
 
         VerifyRecord.isValid(customersRecord);
         final SourceRecord transformedCustomersRecord = converter.apply(customersRecord);
+        VerifyRecord.isValid(transformedCustomersRecord);
+
         final Struct transformedCustomersValue = (Struct) transformedCustomersRecord.value();
         final Struct transformedCustomersAfter = transformedCustomersValue.getStruct(Envelope.FieldName.AFTER);
         assertThat(transformedCustomersAfter.get("order_date_zoned_timestamp")).isEqualTo("2020-01-01T11:55:30+00:00");
@@ -592,6 +607,8 @@ public class TimezoneConverterTest {
 
         VerifyRecord.isValid(ordersRecord);
         final SourceRecord transformedOrdersRecord = converter.apply(ordersRecord);
+        VerifyRecord.isValid(transformedOrdersRecord);
+
         final Struct transformedOrdersValue = (Struct) transformedOrdersRecord.value();
         final Struct transformedOrdersAfter = transformedOrdersValue.getStruct(Envelope.FieldName.AFTER);
         assertThat(transformedOrdersAfter.get("order_date_zoned_timestamp")).isEqualTo("2023-08-01T05:50:45-06:00");
@@ -664,6 +681,8 @@ public class TimezoneConverterTest {
 
         VerifyRecord.isValid(customersRecord);
         final SourceRecord transformedCustomersRecord = converter.apply(customersRecord);
+        VerifyRecord.isValid(transformedCustomersRecord);
+
         final Struct transformedCustomersValue = (Struct) transformedCustomersRecord.value();
         final Struct transformedCustomersAfter = transformedCustomersValue.getStruct(Envelope.FieldName.AFTER);
         assertThat(transformedCustomersAfter.get("name")).isEqualTo("Amy Rose");
@@ -695,6 +714,8 @@ public class TimezoneConverterTest {
 
         VerifyRecord.isValid(inventoryRecord);
         final SourceRecord transformedInventoryRecord = converter.apply(inventoryRecord);
+        VerifyRecord.isValid(transformedInventoryRecord);
+
         final Struct transformedInventoryValue = (Struct) transformedInventoryRecord.value();
         final Struct transformedInventoryAfter = transformedInventoryValue.getStruct(Envelope.FieldName.AFTER);
         assertThat(transformedInventoryAfter.get("name")).isEqualTo("Amy Rose");
@@ -741,6 +762,7 @@ public class TimezoneConverterTest {
 
         VerifyRecord.isValid(record);
         final SourceRecord transformedRecord = converter.apply(record);
+        VerifyRecord.isValid(transformedRecord);
 
         final Struct transformedValue = (Struct) transformedRecord.value();
         final Struct transformedAfter = transformedValue.getStruct(Envelope.FieldName.AFTER);
