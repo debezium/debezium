@@ -2922,6 +2922,7 @@ alter_table_properties_1
       | table_compression
       | supplemental_table_logging
       | allocate_extent_clause
+      | inmemory_table_clause
       | deallocate_unused_clause
       | (CACHE | NOCACHE)
       | RESULT_CACHE '(' MODE (DEFAULT | FORCE) ')'
