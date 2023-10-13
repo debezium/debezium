@@ -85,7 +85,7 @@ class EventBuffer {
         // buffer was full and the end of the TX; in this case there's nothing to do
         // besides directly emitting the events
         if (isReplayingEventsBeyondBufferCapacity()) {
-            streamingChangeEventSource.handleEvent(partition, offsetContext, event);
+            streamingChangeEventSource.handleEvent(partition, offsetContext, changeEventSourceContext, event);
             return;
         }
 
@@ -164,7 +164,7 @@ class EventBuffer {
             addToBuffer(event);
         }
         else {
-            streamingChangeEventSource.handleEvent(partition, offsetContext, event);
+            streamingChangeEventSource.handleEvent(partition, offsetContext, changeEventSourceContext, event);
         }
     }
 
@@ -198,7 +198,7 @@ class EventBuffer {
         }
         LOGGER.debug("Executing events from buffer");
         for (Event e : buffer) {
-            streamingChangeEventSource.handleEvent(partition, offsetContext, e);
+            streamingChangeEventSource.handleEvent(partition, offsetContext, changeEventSourceContext, e);
         }
         LOGGER.debug("Executing events from binlog that have not fit into buffer");
         if (isInBufferFullMode()) {
