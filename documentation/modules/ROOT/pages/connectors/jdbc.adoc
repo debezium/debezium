@@ -602,7 +602,7 @@ The {prodname} JDBC sink connector has several configuration properties that you
 Many properties have default values.
 Information about the properties is organized as follows:
 
-* xref:jdbc-connector-properties-generic[]
+* xref:jdbc-connector-properties-generic[JCBC connector generic properties]
 * xref:jdbc-connector-properties-connection[JDBC connector connection properties]
 * xref:jdbc-connector-properties-runtime[JDBC connector runtime properties]
 * xref:jdbc-connector-properties-extendable[JDBC connector extendable properties]
