@@ -39,4 +39,10 @@
             level="off" additivity="false">
         <appender-ref ref="CONSOLE" />
     </logger>
+
+    <logger
+            name="io.debezium.connector.mysql.MySqlStreamingChangeEventSource"
+            level="off" additivity="false">
+        <appender-ref ref="CONSOLE" />
+    </logger>
 </configuration>

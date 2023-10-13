@@ -340,7 +340,8 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
         LOGGER.trace("Ignoring event due to missing handler: {}", event);
     }
 
-    protected void handleEvent(MySqlPartition partition, MySqlOffsetContext offsetContext, Event event) {
+    protected void handleEvent(MySqlPartition partition, MySqlOffsetContext offsetContext, ChangeEventSourceContext context, Event event) {
+
         if (event == null) {
             return;
         }
@@ -371,6 +372,9 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
 
         // If there is a handler for this event, forward the event to it ...
         try {
+
+            waitWhenStreamingPaused(context);
+
             // Forward the event to the handler ...
             eventHandlers.getOrDefault(eventType, (e) -> ignoreEvent(offsetContext, e)).accept(event);
 
@@ -927,7 +931,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
 
         BinaryLogClient.EventListener listener;
         if (connectorConfig.bufferSizeForStreamingChangeEventSource() == 0) {
-            listener = (event) -> handleEvent(partition, effectiveOffsetContext, event);
+            listener = (event) -> handleEvent(partition, effectiveOffsetContext, context, event);
         }
         else {
             EventBuffer buffer = new EventBuffer(connectorConfig.bufferSizeForStreamingChangeEventSource(), this, context);
@@ -1040,12 +1044,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
             }
             while (context.isRunning()) {
                 Thread.sleep(100);
-                if (context.isPaused()) {
-                    LOGGER.info("Streaming will now pause");
-                    context.streamingPaused();
-                    context.waitSnapshotCompletion();
-                    LOGGER.info("Streaming resumed");
-                }
+                waitWhenStreamingPaused(context);
             }
         }
         finally {
@@ -1055,6 +1054,16 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
             catch (Exception e) {
                 LOGGER.info("Exception while stopping binary log client", e);
             }
+        }
+    }
+
+    private void waitWhenStreamingPaused(ChangeEventSourceContext context) throws InterruptedException {
+
+        if (context.isPaused()) {
+            LOGGER.info("Streaming will now pause");
+            context.streamingPaused();
+            context.waitSnapshotCompletion();
+            LOGGER.info("Streaming resumed");
         }
     }
 
