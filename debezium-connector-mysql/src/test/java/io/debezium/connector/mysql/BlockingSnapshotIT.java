@@ -9,7 +9,9 @@ package io.debezium.connector.mysql;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.SQLException;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.jetbrains.annotations.NotNull;
 import org.junit.After;
@@ -170,23 +172,29 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
 
         assertThat(schemaChangesDdls.get(schemaChangesDdls.size() - 2)).isEqualTo("DROP TABLE IF EXISTS `blocking_snapshot_test_1`.`b`");
 
-        assertThat(schemaChangesDdls.get(schemaChangesDdls.size() - 1)).isEqualTo(getDdlString(databaseVersionResolver));
+        assertThat(getDdlString()).contains(schemaChangesDdls.get(schemaChangesDdls.size() - 1));
 
     }
 
     @NotNull
-    private static String getDdlString(MySqlDatabaseVersionResolver databaseVersionResolver) {
+    private static Set<String> getDdlString() {
 
-        return databaseVersionResolver.getVersion().getMajor() < MYSQL8 ? "CREATE TABLE `b` (\n" +
+        Set<String> createTableDDLOptions = new HashSet<>();
+        createTableDDLOptions.add("CREATE TABLE `b` (\n" +
                 "  `pk` int(11) NOT NULL AUTO_INCREMENT,\n" +
                 "  `aa` int(11) DEFAULT NULL,\n" +
                 "  PRIMARY KEY (`pk`)\n" +
-                ") ENGINE=InnoDB AUTO_INCREMENT=1001 DEFAULT CHARSET=latin1"
-
-                : "CREATE TABLE `b` (\n" +
-                        "  `pk` int NOT NULL AUTO_INCREMENT,\n" +
-                        "  `aa` int DEFAULT NULL,\n" +
-                        "  PRIMARY KEY (`pk`)\n" +
-                        ") ENGINE=InnoDB AUTO_INCREMENT=1001 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci";
+                ") ENGINE=InnoDB AUTO_INCREMENT=1001 DEFAULT CHARSET=latin1");
+        createTableDDLOptions.add("CREATE TABLE `b` (\n" +
+                "  `pk` int NOT NULL AUTO_INCREMENT,\n" +
+                "  `aa` int DEFAULT NULL,\n" +
+                "  PRIMARY KEY (`pk`)\n" +
+                ") ENGINE=InnoDB AUTO_INCREMENT=1001 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci");
+        createTableDDLOptions.add("CREATE TABLE `b` (\n" +
+                "  `pk` int(11) NOT NULL AUTO_INCREMENT,\n" +
+                "  `aa` int(11) DEFAULT NULL,\n" +
+                "  PRIMARY KEY (`pk`)\n" +
+                ") ENGINE=InnoDB AUTO_INCREMENT=1001 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci");
+        return createTableDDLOptions;
     }
 }

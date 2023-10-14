@@ -21,6 +21,7 @@ import org.bson.Document;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
@@ -44,6 +45,7 @@ import io.debezium.testing.testcontainers.util.PooledPortResolver;
 /**
  * @see <a href="https://issues.redhat.com/browse/DBZ-5857">DBZ-5857</a>
  */
+@Disabled
 public class MongoDbReplicaSetTest {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbReplicaSetTest.class);

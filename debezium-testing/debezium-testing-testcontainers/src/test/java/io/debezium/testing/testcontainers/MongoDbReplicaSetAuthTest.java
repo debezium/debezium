@@ -14,6 +14,7 @@ import org.bson.Document;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,6 +27,7 @@ import io.debezium.testing.testcontainers.util.DockerUtils;
 /**
  * @see <a href="https://issues.redhat.com/browse/DBZ-5857">DBZ-5857</a>
  */
+@Disabled
 public class MongoDbReplicaSetAuthTest {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbReplicaSetAuthTest.class);

@@ -114,6 +114,13 @@
                     <groupId>net.revelc.code</groupId>
                     <artifactId>impsort-maven-plugin</artifactId>
                     <version>${version.impsort}</version>
+                    <dependencies>
+                        <dependency>
+                            <groupId>org.codehaus.plexus</groupId>
+                            <artifactId>plexus-utils</artifactId>
+                            <version>3.5.1</version>
+                        </dependency>
+                    </dependencies>
                     <configuration>
                         <groups>java.,jakarta.,javax.,org.,com.,io.</groups>
                         <staticGroups>*</staticGroups>

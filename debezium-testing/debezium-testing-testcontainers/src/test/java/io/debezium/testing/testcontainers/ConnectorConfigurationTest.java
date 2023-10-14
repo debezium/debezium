@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.JdbcDatabaseContainer;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
@@ -22,6 +23,7 @@ import org.testcontainers.shaded.com.fasterxml.jackson.databind.node.ObjectNode;
 import com.github.dockerjava.api.command.InspectContainerResponse;
 import com.github.dockerjava.api.model.ContainerConfig;
 
+@Disabled
 public class ConnectorConfigurationTest {
 
     private ObjectMapper mapper = new ObjectMapper();

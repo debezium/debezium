@@ -155,13 +155,13 @@
                                     <MSSQL_AGENT_ENABLED>true</MSSQL_AGENT_ENABLED>
                                     <TZ>Asia/Kathmandu</TZ>
                                 </env>
-                                <volumes>
-                                    <bind>
-                                        <volume>${project.basedir}/src/test/docker/mssql.key:/etc/ssl/debezium/private/mssql.key</volume>
-                                        <volume>${project.basedir}/src/test/docker/mssql.pem:/etc/ssl/debezium/certs/mssql.pem</volume>
-                                        <volume>${project.basedir}/src/test/docker/mssql.conf:/var/opt/mssql/mssql.conf</volume>
-                                    </bind>
-                                </volumes>
+<!--                                <volumes>-->
+<!--                                    <bind>-->
+<!--                                        <volume>${project.basedir}/src/test/docker/mssql.key:/etc/ssl/debezium/private/mssql.key</volume>-->
+<!--                                        <volume>${project.basedir}/src/test/docker/mssql.pem:/etc/ssl/debezium/certs/mssql.pem</volume>-->
+<!--                                        <volume>${project.basedir}/src/test/docker/mssql.conf:/var/opt/mssql/mssql.conf</volume>-->
+<!--                                    </bind>-->
+<!--                                </volumes>-->
                                 <ports>
                                     <port>${sqlserver.port}:1433</port>
                                 </ports>
@@ -175,6 +175,36 @@
                                     <log>SQL Server is now ready for client connections</log>
                                 </wait>
                             </run>
+                            <build>
+                                <from>${docker.db}</from>
+                                <assembly>
+                                    <inline>
+                                        <fileSets>
+                                            <fileSet>
+                                                <directory>${project.basedir}/src/test/docker</directory>
+                                                <includes>
+                                                    <include>mssql.key</include>
+                                                </includes>
+                                                <outputDirectory>/etc/ssl/debezium/private</outputDirectory>
+                                            </fileSet>
+                                            <fileSet>
+                                                <directory>${project.basedir}/src/test/docker</directory>
+                                                <includes>
+                                                    <include>mssql.pem</include>
+                                                </includes>
+                                                <outputDirectory>/etc/ssl/debezium/certs</outputDirectory>
+                                            </fileSet>
+                                            <fileSet>
+                                                <directory>${project.basedir}/src/test/docker</directory>
+                                                <includes>
+                                                    <include>mssql.conf</include>
+                                                </includes>
+                                                <outputDirectory>/var/opt/mssql/</outputDirectory>
+                                            </fileSet>
+                                        </fileSets>
+                                    </inline>
+                                </assembly>
+                            </build>
                             <external>
                                 <type>properties</type>
                                 <mode>override</mode>

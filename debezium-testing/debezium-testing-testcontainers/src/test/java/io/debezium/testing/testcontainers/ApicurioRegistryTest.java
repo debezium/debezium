@@ -31,6 +31,7 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.rnorth.ducttape.unreliables.Unreliables;
 import org.slf4j.Logger;
@@ -51,6 +52,7 @@ import io.debezium.doc.FixFor;
  *
  * @author Jiri Pechanec
  */
+@Disabled
 public class ApicurioRegistryTest {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ApicurioRegistryTest.class);

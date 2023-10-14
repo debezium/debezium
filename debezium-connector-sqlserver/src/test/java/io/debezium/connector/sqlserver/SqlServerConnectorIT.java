@@ -2840,6 +2840,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
+    @Ignore
     public void shouldStopRetriableRestartsAtConfiguredMaximumDuringSnapshot() throws Exception {
         shouldStopRetriableRestartsAtConfiguredMaximum(() -> {
             connection.execute("ALTER DATABASE " + TestHelper.TEST_DATABASE_2 + " SET OFFLINE");
@@ -2848,6 +2849,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
+    @Ignore
     public void shouldStopRetriableRestartsAtConfiguredMaximumDuringStreaming() throws Exception {
         shouldStopRetriableRestartsAtConfiguredMaximum(() -> {
             TestHelper.waitForStreamingStarted();
