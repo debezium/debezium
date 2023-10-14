@@ -5,13 +5,18 @@
  */
 package io.debezium.converters;
 
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.connect.storage.ConverterConfig;
 
 import io.debezium.config.CommonConnectorConfig.SchemaNameAdjustmentMode;
 import io.debezium.config.EnumeratedValue;
+import io.debezium.converters.spi.CloudEventsMaker;
 import io.debezium.converters.spi.SerializerType;
 
 /**
@@ -37,16 +42,8 @@ public class CloudEventsConverterConfig extends ConverterConfig {
             + "'avro' replaces the characters that cannot be used in the Avro type name with underscore (default)"
             + "'none' does not apply any adjustment";
 
-    public static final String CLOUDEVENTS_ID_SOURCE_CONFIG = "id.source";
-    public static final String CLOUDEVENTS_ID_SOURCE_DEFAULT = "generate";
-    private static final String CLOUDEVENTS_ID_SOURCE_DOC = "Specify how to get id of CloudEvent";
-
-    public static final String CLOUDEVENTS_TYPE_SOURCE_CONFIG = "type.source";
-    public static final String CLOUDEVENTS_TYPE_SOURCE_DEFAULT = "generate";
-    private static final String CLOUDEVENTS_TYPE_SOURCE_DOC = "Specify how to get type of CloudEvent";
-
     public static final String CLOUDEVENTS_METADATA_LOCATION_CONFIG = "metadata.location";
-    public static final String CLOUDEVENTS_METADATA_LOCATION_DEFAULT = "value";
+    public static final String CLOUDEVENTS_METADATA_LOCATION_DEFAULT = "value,id:generate,type:generate";
     private static final String CLOUDEVENTS_METADATA_LOCATION_DOC = "Specify from where to retrieve metadata";
 
     private static final ConfigDef CONFIG;
@@ -62,11 +59,7 @@ public class CloudEventsConverterConfig extends ConverterConfig {
                 CLOUDEVENTS_EXTENSION_ATTRIBUTES_ENABLE_DOC);
         CONFIG.define(CLOUDEVENTS_SCHEMA_NAME_ADJUSTMENT_MODE_CONFIG, ConfigDef.Type.STRING, CLOUDEVENTS_SCHEMA_NAME_ADJUSTMENT_MODE_DEFAULT, ConfigDef.Importance.LOW,
                 CLOUDEVENTS_SCHEMA_NAME_ADJUSTMENT_MODE_DOC);
-        CONFIG.define(CLOUDEVENTS_ID_SOURCE_CONFIG, ConfigDef.Type.STRING, CLOUDEVENTS_ID_SOURCE_DEFAULT, ConfigDef.Importance.HIGH,
-                CLOUDEVENTS_ID_SOURCE_DOC);
-        CONFIG.define(CLOUDEVENTS_TYPE_SOURCE_CONFIG, ConfigDef.Type.STRING, CLOUDEVENTS_TYPE_SOURCE_DEFAULT, ConfigDef.Importance.HIGH,
-                CLOUDEVENTS_TYPE_SOURCE_DOC);
-        CONFIG.define(CLOUDEVENTS_METADATA_LOCATION_CONFIG, ConfigDef.Type.STRING, CLOUDEVENTS_METADATA_LOCATION_DEFAULT, ConfigDef.Importance.HIGH,
+        CONFIG.define(CLOUDEVENTS_METADATA_LOCATION_CONFIG, ConfigDef.Type.LIST, CLOUDEVENTS_METADATA_LOCATION_DEFAULT, ConfigDef.Importance.HIGH,
                 CLOUDEVENTS_METADATA_LOCATION_DOC);
     }
 
@@ -115,128 +108,67 @@ public class CloudEventsConverterConfig extends ConverterConfig {
     }
 
     /**
-     * Return from where to retrieve id of a CloudEvent
-     *
-     * @return source of id field of a CloudEvent
-     */
-    public IdSource idSource() {
-        return IdSource.parse(getString(CLOUDEVENTS_ID_SOURCE_CONFIG));
-    }
-
-    /**
-     * Return from where to retrieve type of a CloudEvent
-     *
-     * @return source of type field of a CloudEvent
-     */
-    public TypeSource typeSource() {
-        return TypeSource.parse(getString(CLOUDEVENTS_TYPE_SOURCE_CONFIG));
-    }
-
-    /**
      * Return from where to retrieve metadata
      *
      * @return metadata location
      */
     public MetadataLocation metadataLocation() {
-        return MetadataLocation.parse(getString(CLOUDEVENTS_METADATA_LOCATION_CONFIG));
+        List<String> metadataLocations = getList(CLOUDEVENTS_METADATA_LOCATION_CONFIG);
+
+        // get global metadata source
+        Set<MetadataLocationValue> globalMetadataLocationAllowedValues = Set.of(MetadataLocationValue.VALUE, MetadataLocationValue.HEADER);
+        MetadataLocationValue global = MetadataLocationValue.parse(metadataLocations.get(0));
+        if (!globalMetadataLocationAllowedValues.contains(global)) {
+            throw new ConfigException("Global metadata location can't be " + global.name());
+        }
+
+        // get sources for customizable fields
+        Set<String> cloudEventsFieldsAllowedToCustomizeSource = Set.of(CloudEventsMaker.FieldName.ID, CloudEventsMaker.FieldName.TYPE);
+        final Map<String, MetadataLocationValue> cloudEventsFieldsCustomSources = new HashMap<>();
+        for (int i = 1; i < metadataLocations.size(); i++) {
+            final String[] parts = metadataLocations.get(i).split(":");
+            final String fieldName = parts[0];
+            if (!cloudEventsFieldsAllowedToCustomizeSource.contains(fieldName)) {
+                throw new ConfigException("Field `" + fieldName + "` is not allowed to set custom source");
+            }
+            final MetadataLocationValue fieldSource = MetadataLocationValue.parse(parts[1]);
+            cloudEventsFieldsCustomSources.put(fieldName, fieldSource);
+        }
+
+        MetadataLocationValue idCustomSource = cloudEventsFieldsCustomSources.get(CloudEventsMaker.FieldName.ID);
+        MetadataLocationValue typeCustomSource = cloudEventsFieldsCustomSources.get(CloudEventsMaker.FieldName.TYPE);
+
+        return new MetadataLocation(global, idCustomSource != null ? idCustomSource : global, typeCustomSource != null ? typeCustomSource : global);
     }
 
-    /**
-     * The set of predefined IdSource options
-     */
-    public enum IdSource implements EnumeratedValue {
+    public class MetadataLocation {
+        private final MetadataLocationValue global;
+        private final MetadataLocationValue id;
+        private final MetadataLocationValue type;
 
-        /**
-         * Generate id of CloudEvent
-         */
-        GENERATE("generate"),
-
-        /**
-         * Get type of CloudEvent from the header
-         */
-        HEADER("header");
-
-        private final String value;
-
-        IdSource(String value) {
-            this.value = value;
+        public MetadataLocation(MetadataLocationValue global, MetadataLocationValue id, MetadataLocationValue type) {
+            this.global = global;
+            this.id = id;
+            this.type = type;
         }
 
-        @Override
-        public String getValue() {
-            return value;
+        public MetadataLocationValue global() {
+            return global;
         }
 
-        /**
-         * Determine if the supplied values is one of the predefined options
-         *
-         * @param value the configuration property value ; may not be null
-         * @return the matching option, or null if the match is not found
-         */
-        public static IdSource parse(String value) {
-            if (value == null) {
-                return null;
-            }
-            value = value.trim();
-            for (IdSource option : IdSource.values()) {
-                if (option.getValue().equalsIgnoreCase(value)) {
-                    return option;
-                }
-            }
-            return null;
-        }
-    }
-
-    /**
-     * The set of predefined TypeSource options
-     */
-    public enum TypeSource implements EnumeratedValue {
-
-        /**
-         * Generate type of CloudEvent
-         */
-        GENERATE("generate"),
-
-        /**
-         * Get type of CloudEvent from the header
-         */
-        HEADER("header");
-
-        private final String value;
-
-        TypeSource(String value) {
-            this.value = value;
+        public MetadataLocationValue id() {
+            return id;
         }
 
-        @Override
-        public String getValue() {
-            return value;
-        }
-
-        /**
-         * Determine if the supplied values is one of the predefined options
-         *
-         * @param value the configuration property value ; may not be null
-         * @return the matching option, or null if the match is not found
-         */
-        public static TypeSource parse(String value) {
-            if (value == null) {
-                return null;
-            }
-            value = value.trim();
-            for (TypeSource option : TypeSource.values()) {
-                if (option.getValue().equalsIgnoreCase(value)) {
-                    return option;
-                }
-            }
-            return null;
+        public MetadataLocationValue type() {
+            return type;
         }
     }
 
     /**
-     * The set of predefined MetadataLocation options
+     * The set of predefined MetadataLocationValue options
      */
-    public enum MetadataLocation implements EnumeratedValue {
+    public enum MetadataLocationValue implements EnumeratedValue {
 
         /**
          * Get metadata from the value
@@ -246,11 +178,16 @@ public class CloudEventsConverterConfig extends ConverterConfig {
         /**
          * Get metadata from the header
          */
-        HEADER("header");
+        HEADER("header"),
+
+        /**
+         * Generate a field's value
+         */
+        GENERATE("generate");
 
         private final String value;
 
-        MetadataLocation(String value) {
+        MetadataLocationValue(String value) {
             this.value = value;
         }
 
@@ -265,12 +202,12 @@ public class CloudEventsConverterConfig extends ConverterConfig {
          * @param value the configuration property value ; may not be null
          * @return the matching option, or null if the match is not found
          */
-        public static MetadataLocation parse(String value) {
+        public static MetadataLocationValue parse(String value) {
             if (value == null) {
                 return null;
             }
             value = value.trim();
-            for (MetadataLocation option : MetadataLocation.values()) {
+            for (MetadataLocationValue option : MetadataLocationValue.values()) {
                 if (option.getValue().equalsIgnoreCase(value)) {
                     return option;
                 }
