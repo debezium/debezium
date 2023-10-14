@@ -115,7 +115,7 @@ public class CloudEventsConverterIT extends AbstractMongoConnectorIT {
 
     @Test
     @FixFor({ "DBZ-3642" })
-    public void shouldConvertToCloudEventsInJsonWithIdAndTypeAndMetadataInHeadersAfterOutboxEventRouter() throws Exception {
+    public void shouldConvertToCloudEventsInJsonWithMetadataAndIdAndTypeInHeadersAfterOutboxEventRouter() throws Exception {
         HeaderFrom<SourceRecord> headerFrom = new HeaderFrom.Value<>();
         Map<String, String> headerFromConfig = new LinkedHashMap<>();
         headerFromConfig.put("fields", "source,op,transaction");
@@ -157,7 +157,7 @@ public class CloudEventsConverterIT extends AbstractMongoConnectorIT {
         assertThat(routedEvent.key()).isEqualTo("10711fa5");
         assertThat(routedEvent.value()).isInstanceOf(Struct.class);
 
-        CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithIdAndTypeAndMetadataInHeaders(routedEvent, "mongodb", "mongo1");
+        CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithMetadataAndIdAndTypeInHeaders(routedEvent, "mongodb", "mongo1");
 
         headerFrom.close();
         outboxEventRouter.close();
@@ -165,7 +165,7 @@ public class CloudEventsConverterIT extends AbstractMongoConnectorIT {
 
     @Test
     @FixFor({ "DBZ-7016" })
-    public void shouldConvertToCloudEventsInJsonWithTypeInHeader() throws Exception {
+    public void shouldConvertToCloudEventsInJsonWithGeneratedIdAndTypeFromHeader() throws Exception {
         InsertHeader<SourceRecord> insertHeader = new InsertHeader<>();
         Map<String, String> insertHeaderConfig = new LinkedHashMap<>();
         insertHeaderConfig.put("header", "type");
@@ -188,7 +188,7 @@ public class CloudEventsConverterIT extends AbstractMongoConnectorIT {
         assertThat(recordWithTypeInHeader).isNotNull();
         assertThat(recordWithTypeInHeader.value()).isInstanceOf(Struct.class);
 
-        CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithTypeInHeader(recordWithTypeInHeader, "mongodb", "mongo1");
+        CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithGeneratedIdAndTypeFromHeader(recordWithTypeInHeader, "mongodb", "mongo1");
 
         insertHeader.close();
     }

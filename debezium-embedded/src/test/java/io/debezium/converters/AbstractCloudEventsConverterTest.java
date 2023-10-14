@@ -90,7 +90,7 @@ public abstract class AbstractCloudEventsConverterTest<T extends SourceConnector
 
     @Test
     @FixFor({ "DBZ-3642", "DBZ-7016" })
-    public void shouldConvertToCloudEventsInJsonWithIdAndTypeAndMetadataInHeadersAfterOutboxEventRouter() throws Exception {
+    public void shouldConvertToCloudEventsInJsonWithMetadataAndIdAndTypeInHeadersAfterOutboxEventRouter() throws Exception {
         HeaderFrom<SourceRecord> headerFrom = new HeaderFrom.Value<>();
         Map<String, String> headerFromConfig = new LinkedHashMap<>();
         headerFromConfig.put("fields", "source,op,transaction");
@@ -132,7 +132,7 @@ public abstract class AbstractCloudEventsConverterTest<T extends SourceConnector
         assertThat(routedEvent.key()).isEqualTo("10711fa5");
         assertThat(routedEvent.value()).isInstanceOf(Struct.class);
 
-        CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithIdAndTypeAndMetadataInHeaders(routedEvent, getConnectorName(), getServerName());
+        CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithMetadataAndIdAndTypeInHeaders(routedEvent, getConnectorName(), getServerName());
 
         headerFrom.close();
         outboxEventRouter.close();
@@ -140,7 +140,7 @@ public abstract class AbstractCloudEventsConverterTest<T extends SourceConnector
 
     @Test
     @FixFor({ "DBZ-7016" })
-    public void shouldConvertToCloudEventsInJsonWithTypeInHeader() throws Exception {
+    public void shouldConvertToCloudEventsInJsonWithGeneratedIdAndTypeFromHeader() throws Exception {
         InsertHeader<SourceRecord> insertHeader = new InsertHeader<>();
         Map<String, String> insertHeaderConfig = new LinkedHashMap<>();
         insertHeaderConfig.put("header", "type");
@@ -161,7 +161,7 @@ public abstract class AbstractCloudEventsConverterTest<T extends SourceConnector
         assertThat(recordWithTypeInHeader.topic()).isEqualTo(topicName());
         assertThat(recordWithTypeInHeader.value()).isInstanceOf(Struct.class);
 
-        CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithTypeInHeader(recordWithTypeInHeader, getConnectorName(), getServerName());
+        CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithGeneratedIdAndTypeFromHeader(recordWithTypeInHeader, getConnectorName(), getServerName());
 
         insertHeader.close();
     }

@@ -325,12 +325,10 @@ public class CloudEventsConverterTest {
         }
     }
 
-    public static void shouldConvertToCloudEventsInJsonWithIdAndTypeAndMetadataInHeaders(SourceRecord record, String connectorName, String serverName) throws Exception {
+    public static void shouldConvertToCloudEventsInJsonWithMetadataAndIdAndTypeInHeaders(SourceRecord record, String connectorName, String serverName) throws Exception {
         Map<String, Object> config = new HashMap<>();
         config.put("serializer.type", "json");
         config.put("data.serializer.type", "json");
-        config.put("id.source", "header");
-        config.put("type.source", "header");
         config.put("metadata.location", "header");
 
         CloudEventsConverter cloudEventsConverter = new CloudEventsConverter();
@@ -390,11 +388,11 @@ public class CloudEventsConverterTest {
         }
     }
 
-    public static void shouldConvertToCloudEventsInJsonWithTypeInHeader(SourceRecord record, String connectorName, String serverName) throws Exception {
+    public static void shouldConvertToCloudEventsInJsonWithGeneratedIdAndTypeFromHeader(SourceRecord record, String connectorName, String serverName) throws Exception {
         Map<String, Object> config = new HashMap<>();
         config.put("serializer.type", "json");
         config.put("data.serializer.type", "json");
-        config.put("type.source", "header");
+        config.put("metadata.location", "value,id:generate,type:header");
 
         CloudEventsConverter cloudEventsConverter = new CloudEventsConverter();
         cloudEventsConverter.configure(config, false);
