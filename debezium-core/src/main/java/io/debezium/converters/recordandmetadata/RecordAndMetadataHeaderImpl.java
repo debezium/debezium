@@ -33,7 +33,10 @@ public class RecordAndMetadataHeaderImpl extends RecordAndMetadataBaseImpl imple
 
     @Override
     public Schema dataSchema(String... dataFields) {
-        return super.dataSchema;
+        if (metadataLocation.global() == MetadataLocationValue.HEADER) {
+            return super.dataSchema;
+        }
+        return super.dataSchema(dataFields);
     }
 
     @Override
