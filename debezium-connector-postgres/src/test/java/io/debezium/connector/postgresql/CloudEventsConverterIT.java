@@ -36,7 +36,7 @@ public class CloudEventsConverterIT extends AbstractCloudEventsConverterTest<Pos
             "    constraint outbox_pk primary key," +
             "  aggregatetype varchar(255) not null," +
             "  aggregateid   varchar(255) not null," +
-            "  event_type          varchar(255) not null," +
+            "  event_type    varchar(255) not null," +
             "  payload       jsonb" +
             ");";
 
