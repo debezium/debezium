@@ -388,11 +388,11 @@ public class CloudEventsConverterTest {
         }
     }
 
-    public static void shouldConvertToCloudEventsInJsonWithGeneratedIdAndTypeFromHeader(SourceRecord record, String connectorName, String serverName) throws Exception {
+    public static void shouldConvertToCloudEventsInJsonWithIdFromHeaderAndGeneratedType(SourceRecord record, String connectorName, String serverName) throws Exception {
         Map<String, Object> config = new HashMap<>();
         config.put("serializer.type", "json");
         config.put("data.serializer.type", "json");
-        config.put("metadata.location", "value,id:generate,type:header");
+        config.put("metadata.location", "value,id:header,type:generate");
 
         CloudEventsConverter cloudEventsConverter = new CloudEventsConverter();
         cloudEventsConverter.configure(config, false);
@@ -415,12 +415,11 @@ public class CloudEventsConverterTest {
             }
 
             msg = "inspecting all required CloudEvents fields in the value";
-            assertThat(valueJson.get(CloudEventsMaker.FieldName.ID).asText()).isNotNull();
+            assertThat(valueJson.get(CloudEventsMaker.FieldName.ID).asText()).isEqualTo("77742efd-b015-44a9-9dde-cb36d9002425");
             assertThat(valueJson.get(CloudEventsMaker.FieldName.SOURCE).asText()).isEqualTo("/debezium/" + connectorName + "/" + serverName);
             assertThat(valueJson.get(CloudEventsMaker.FieldName.SPECVERSION).asText()).isEqualTo("1.0");
             assertThat(valueJson.get(CloudEventsMaker.FieldName.DATASCHEMA)).isNull();
-            // main check
-            assertThat(valueJson.get(CloudEventsMaker.FieldName.TYPE).asText()).isEqualTo("someType");
+            assertThat(valueJson.get(CloudEventsMaker.FieldName.TYPE).asText()).isEqualTo("io.debezium." + connectorName + ".datachangeevent");
             assertThat(valueJson.get(CloudEventsMaker.FieldName.DATACONTENTTYPE).asText()).isEqualTo("application/json");
             assertThat(valueJson.get(CloudEventsMaker.FieldName.TIME)).isNotNull();
             assertThat(valueJson.get(CloudEventsMaker.FieldName.DATA)).isNotNull();

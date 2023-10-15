@@ -5,7 +5,6 @@
  */
 package io.debezium.converters;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -123,20 +122,26 @@ public class CloudEventsConverterConfig extends ConverterConfig {
         }
 
         // get sources for customizable fields
-        Set<String> cloudEventsFieldsAllowedToCustomizeSource = Set.of(CloudEventsMaker.FieldName.ID, CloudEventsMaker.FieldName.TYPE);
-        final Map<String, MetadataLocationValue> cloudEventsFieldsCustomSources = new HashMap<>();
+        MetadataLocationValue idCustomSource = null;
+        MetadataLocationValue typeCustomSource = null;
         for (int i = 1; i < metadataLocations.size(); i++) {
             final String[] parts = metadataLocations.get(i).split(":");
             final String fieldName = parts[0];
-            if (!cloudEventsFieldsAllowedToCustomizeSource.contains(fieldName)) {
-                throw new ConfigException("Field `" + fieldName + "` is not allowed to set custom source");
-            }
             final MetadataLocationValue fieldSource = MetadataLocationValue.parse(parts[1]);
-            cloudEventsFieldsCustomSources.put(fieldName, fieldSource);
+            if (fieldSource == null) {
+                throw new ConfigException("Field source `" + parts[1] + "` is not valid");
+            }
+            switch (fieldName) {
+                case CloudEventsMaker.FieldName.ID:
+                    idCustomSource = fieldSource;
+                    break;
+                case CloudEventsMaker.FieldName.TYPE:
+                    typeCustomSource = fieldSource;
+                    break;
+                default:
+                    throw new ConfigException("Field `" + fieldName + "` is not allowed to set custom source");
+            }
         }
-
-        MetadataLocationValue idCustomSource = cloudEventsFieldsCustomSources.get(CloudEventsMaker.FieldName.ID);
-        MetadataLocationValue typeCustomSource = cloudEventsFieldsCustomSources.get(CloudEventsMaker.FieldName.TYPE);
 
         return new MetadataLocation(global, idCustomSource != null ? idCustomSource : global, typeCustomSource != null ? typeCustomSource : global);
     }

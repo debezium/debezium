@@ -140,11 +140,11 @@ public abstract class AbstractCloudEventsConverterTest<T extends SourceConnector
 
     @Test
     @FixFor({ "DBZ-7016" })
-    public void shouldConvertToCloudEventsInJsonWithGeneratedIdAndTypeFromHeader() throws Exception {
+    public void shouldConvertToCloudEventsInJsonWithIdFromHeaderAndGeneratedType() throws Exception {
         InsertHeader<SourceRecord> insertHeader = new InsertHeader<>();
         Map<String, String> insertHeaderConfig = new LinkedHashMap<>();
-        insertHeaderConfig.put("header", "type");
-        insertHeaderConfig.put("value.literal", "someType");
+        insertHeaderConfig.put("header", "id");
+        insertHeaderConfig.put("value.literal", "77742efd-b015-44a9-9dde-cb36d9002425");
         insertHeader.configure(insertHeaderConfig);
 
         createTable();
@@ -161,7 +161,7 @@ public abstract class AbstractCloudEventsConverterTest<T extends SourceConnector
         assertThat(recordWithTypeInHeader.topic()).isEqualTo(topicName());
         assertThat(recordWithTypeInHeader.value()).isInstanceOf(Struct.class);
 
-        CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithGeneratedIdAndTypeFromHeader(recordWithTypeInHeader, getConnectorName(), getServerName());
+        CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithIdFromHeaderAndGeneratedType(recordWithTypeInHeader, getConnectorName(), getServerName());
 
         insertHeader.close();
     }
