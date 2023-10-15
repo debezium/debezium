@@ -44,7 +44,7 @@ public class CloudEventsConverterIT extends AbstractCloudEventsConverterTest<MyS
             "  id            varchar(36)  not null," +
             "  aggregatetype varchar(255) not null," +
             "  aggregateid   varchar(255) not null," +
-            "  event_type          varchar(255) not null," +
+            "  event_type    varchar(255) not null," +
             "  payload       json," +
             "  CONSTRAINT outbox_pk PRIMARY KEY (id));";
 
