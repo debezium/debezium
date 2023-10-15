@@ -168,8 +168,8 @@ public class CloudEventsConverterIT extends AbstractMongoConnectorIT {
     public void shouldConvertToCloudEventsInJsonWithGeneratedIdAndTypeFromHeader() throws Exception {
         InsertHeader<SourceRecord> insertHeader = new InsertHeader<>();
         Map<String, String> insertHeaderConfig = new LinkedHashMap<>();
-        insertHeaderConfig.put("header", "type");
-        insertHeaderConfig.put("value.literal", "someType");
+        insertHeaderConfig.put("header", "id");
+        insertHeaderConfig.put("value.literal", "77742efd-b015-44a9-9dde-cb36d9002425");
         insertHeader.configure(insertHeaderConfig);
 
         try (var client = connect()) {
@@ -188,7 +188,7 @@ public class CloudEventsConverterIT extends AbstractMongoConnectorIT {
         assertThat(recordWithTypeInHeader).isNotNull();
         assertThat(recordWithTypeInHeader.value()).isInstanceOf(Struct.class);
 
-        CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithGeneratedIdAndTypeFromHeader(recordWithTypeInHeader, "mongodb", "mongo1");
+        CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithIdFromHeaderAndGeneratedType(recordWithTypeInHeader, "mongodb", "mongo1");
 
         insertHeader.close();
     }
