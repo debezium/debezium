@@ -193,7 +193,7 @@
                     <imagePullPolicy>IfNotPresent</imagePullPolicy>
                     <images>
                         <!--
-                        Images based on "mysql/mysql-server" Docker image
+                        Images based on "container-registry.oracle.com/mysql/community-server" Docker image
                         -->
                         <image>
                             <!-- A Docker image using a partial MySQL installation maintained by MySQL team. -->
@@ -220,7 +220,7 @@
                                 </wait>
                             </run>
                             <build>
-                                <from>mysql/mysql-server:${version.mysql.server}</from>
+                                <from>container-registry.oracle.com/mysql/community-server:${version.mysql.server}</from>
                                 <runCmds>
                                     <run>${docker.initimage}</run>
                                 </runCmds>
@@ -279,7 +279,7 @@
                                 </wait>
                             </run>
                             <build>
-                                <from>mysql/mysql-server:${version.mysql.server}</from>
+                                <from>container-registry.oracle.com/mysql/community-server:${version.mysql.server}</from>
                                 <runCmds>
                                     <run>${docker.initimage}</run>
                                 </runCmds>
@@ -337,7 +337,7 @@
                                 </wait>
                             </run>
                             <build>
-                                <from>mysql/mysql-server:${version.mysql.server}</from>
+                                <from>container-registry.oracle.com/mysql/community-server:${version.mysql.server}</from>
                                 <runCmds>
                                     <run>${docker.initimage}</run>
                                 </runCmds>
@@ -395,7 +395,7 @@
                                 </wait>
                             </run>
                             <build>
-                                <from>mysql/mysql-server:${version.mysql.server}</from>
+                                <from>container-registry.oracle.com/mysql/community-server:${version.mysql.server}</from>
                                 <runCmds>
                                     <run>${docker.initimage}</run>
                                 </runCmds>
