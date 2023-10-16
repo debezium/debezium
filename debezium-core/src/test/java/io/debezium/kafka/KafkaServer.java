@@ -21,6 +21,7 @@ import io.debezium.util.IoUtil;
 import kafka.admin.RackAwareMode;
 import kafka.server.KafkaConfig;
 import kafka.zk.AdminZkClient;
+import scala.Option;
 import scala.collection.JavaConverters;
 
 /**
@@ -212,11 +213,12 @@ public class KafkaServer {
         // Start the server ...
         try {
             LOGGER.debug("Starting Kafka broker {} at {} with storage in {}", brokerId, getConnection(), logsDir.getAbsolutePath());
-            server = new kafka.server.KafkaServer(new KafkaConfig(config), Time.SYSTEM, scala.Option.apply(null),
+            final var kafkaConfig = new KafkaConfig(config);
+            server = new kafka.server.KafkaServer(kafkaConfig, Time.SYSTEM, scala.Option.apply(null),
                     false);
             server.startup();
             LOGGER.info("Started Kafka server {} at {} with storage in {}", brokerId, getConnection(), logsDir.getAbsolutePath());
-            adminZkClient = new AdminZkClient(server.zkClient());
+            adminZkClient = new AdminZkClient(server.zkClient(), Option.apply(kafkaConfig));
             return this;
         }
         catch (RuntimeException e) {
