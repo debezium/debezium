@@ -5,10 +5,13 @@
  */
 package io.debezium.connector.jdbc.type.connect;
 
+import java.util.List;
+
 import org.apache.kafka.connect.data.Date;
 import org.apache.kafka.connect.data.Schema;
-import org.hibernate.query.Query;
+import org.apache.kafka.connect.errors.ConnectException;
 
+import io.debezium.connector.jdbc.ValueBindDescriptor;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.type.AbstractDateType;
 import io.debezium.connector.jdbc.type.Type;
@@ -34,18 +37,17 @@ public class ConnectDateType extends AbstractDateType {
     }
 
     @Override
-    public int bind(Query<?> query, int index, Schema schema, Object value) {
+    public List<ValueBindDescriptor> bind(int index, Schema schema, Object value) {
+
         if (value == null) {
-            query.setParameter(index, null);
+            return List.of(new ValueBindDescriptor(index, null));
         }
-        else if (value instanceof java.util.Date) {
-            query.setParameter(index, DateTimeUtils.toLocalDateFromDate((java.util.Date) value));
-        }
-        else {
-            throwUnexpectedValue(value);
+        if (value instanceof java.util.Date) {
+            return List.of(new ValueBindDescriptor(index, DateTimeUtils.toLocalDateFromDate((java.util.Date) value)));
         }
 
-        return 1;
+        throw new ConnectException(String.format("Unexpected %s value '%s' with type '%s'", getClass().getSimpleName(),
+                value, value.getClass().getName()));
     }
 
 }

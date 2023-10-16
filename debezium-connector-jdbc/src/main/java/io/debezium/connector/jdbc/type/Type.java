@@ -5,10 +5,12 @@
  */
 package io.debezium.connector.jdbc.type;
 
+import java.util.List;
+
 import org.apache.kafka.connect.data.Schema;
-import org.hibernate.query.Query;
 
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
+import io.debezium.connector.jdbc.ValueBindDescriptor;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 
@@ -73,11 +75,10 @@ public interface Type {
     /**
      * Binds the value to the query.
      *
-     * @param query hibernate query, is never {@code null}
-     * @param index parameter index to bind
+     * @param index  parameter index to bind
      * @param schema field schema, never {@code null}
-     * @param value value to be bound, may be {@code null}
-     * @return the number of bound parameters
+     * @param value  value to be bound, may be {@code null}
+     * @return the list of {@link ValueBindDescriptor}
      */
-    int bind(Query<?> query, int index, Schema schema, Object value);
+    List<ValueBindDescriptor> bind(int index, Schema schema, Object value);
 }

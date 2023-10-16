@@ -69,6 +69,22 @@ public abstract class JdbcConnectionProvider implements AutoCloseable {
         }
     }
 
+    public void execute(String statement, String sta) throws SQLException {
+        final Connection connection = getConnection();
+        connection.setAutoCommit(false);
+
+        try (Statement st = connection.createStatement()) {
+            st.execute(statement);
+            st.execute(sta);
+        }
+        catch (SQLException e) {
+            throw new SQLException("Failed to execute SQL: " + statement, e);
+        }
+        if (!connection.getAutoCommit()) {
+            connection.commit();
+        }
+    }
+
     protected void queryContainer(String header, List<String> commands) throws Exception {
         // CHECKSTYLE:OFF
         System.out.println(header);

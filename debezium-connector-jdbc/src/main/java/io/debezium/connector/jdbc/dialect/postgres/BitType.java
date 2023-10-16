@@ -6,12 +6,13 @@
 package io.debezium.connector.jdbc.dialect.postgres;
 
 import java.math.BigInteger;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
 import org.apache.kafka.connect.data.Schema;
-import org.hibernate.query.Query;
 
+import io.debezium.connector.jdbc.ValueBindDescriptor;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 import io.debezium.connector.jdbc.type.AbstractType;
@@ -74,24 +75,23 @@ class BitType extends AbstractType {
     }
 
     @Override
-    public int bind(Query<?> query, int index, Schema schema, Object value) {
+    public List<ValueBindDescriptor> bind(int index, Schema schema, Object value) {
+
         if (value == null) {
-            query.setParameter(index, null);
+            return List.of(new ValueBindDescriptor(index, null));
         }
-        else if (isBitOne(schema) && (value instanceof Boolean)) {
-            query.setParameter(index, ((boolean) value) ? '1' : '0');
+
+        if (isBitOne(schema) && (value instanceof Boolean)) {
+            return List.of(new ValueBindDescriptor(index, ((boolean) value) ? '1' : '0'));
         }
-        else {
-            final int length = Integer.parseInt(schema.parameters().get(Bits.LENGTH_FIELD));
-            final String binaryBitString = new BigInteger((byte[]) value).toString(2);
-            if (length == Integer.MAX_VALUE) {
-                query.setParameter(index, binaryBitString);
-            }
-            else {
-                query.setParameter(index, Strings.justifyRight(binaryBitString, length, '0'));
-            }
+
+        final int length = Integer.parseInt(schema.parameters().get(Bits.LENGTH_FIELD));
+        final String binaryBitString = new BigInteger((byte[]) value).toString(2);
+        if (length == Integer.MAX_VALUE) {
+            return List.of(new ValueBindDescriptor(index, binaryBitString));
         }
-        return 1;
+
+        return List.of(new ValueBindDescriptor(index, Strings.justifyRight(binaryBitString, length, '0')));
     }
 
     private boolean isBitOne(Schema schema) {

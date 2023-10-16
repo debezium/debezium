@@ -22,7 +22,6 @@ class SqlServerZonedTimeType extends ZonedTimeType {
 
     public static final SqlServerZonedTimeType INSTANCE = new SqlServerZonedTimeType();
 
-    @Override
     protected void bindWithNoTimeZoneDetails(Query<?> query, int index, ZonedDateTime zonedDateTime) {
         query.setParameter(index, zonedDateTime.toLocalDateTime());
     }

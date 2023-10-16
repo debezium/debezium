@@ -5,14 +5,15 @@
  */
 package io.debezium.connector.jdbc.type;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.errors.ConnectException;
-import org.hibernate.query.Query;
 
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
+import io.debezium.connector.jdbc.ValueBindDescriptor;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 import io.debezium.connector.jdbc.util.SchemaUtils;
@@ -62,10 +63,9 @@ public abstract class AbstractType implements Type {
     }
 
     @Override
-    public int bind(Query<?> query, int index, Schema schema, Object value) {
-        query.setParameter(index, value);
+    public List<ValueBindDescriptor> bind(int index, Schema schema, Object value) {
 
-        return 1;
+        return List.of(new ValueBindDescriptor(index, value));
     }
 
     protected DatabaseDialect getDialect() {

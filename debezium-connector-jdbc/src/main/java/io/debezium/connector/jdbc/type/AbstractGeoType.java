@@ -5,23 +5,24 @@
  */
 package io.debezium.connector.jdbc.type;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
-import org.hibernate.query.Query;
+
+import io.debezium.connector.jdbc.ValueBindDescriptor;
 
 public abstract class AbstractGeoType extends AbstractType {
     public static final String SRID = "srid";
     public static final String WKB = "wkb";
 
     @Override
-    public int bind(Query<?> query, int index, Schema schema, Object value) {
+    public List<ValueBindDescriptor> bind(int index, Schema schema, Object value) {
 
         if (value == null) {
-            query.setParameter(index, null);
-            return 1;
+            return List.of(new ValueBindDescriptor(index, null));
         }
 
         if (value instanceof Struct) {
@@ -31,9 +32,7 @@ public abstract class AbstractGeoType extends AbstractType {
             final Integer srid = Optional.ofNullable(((Struct) value).getInt32(SRID)).orElse(0);
             final byte[] wkb = ((Struct) value).getBytes(WKB);
 
-            query.setParameter(index, wkb);
-            query.setParameter(index + 1, srid);
-            return 2;
+            return List.of(new ValueBindDescriptor(index, wkb), new ValueBindDescriptor(index + 1, srid));
         }
 
         throw new ConnectException(String.format("Unexpected %s value '%s' with type '%s'", getClass().getSimpleName(),

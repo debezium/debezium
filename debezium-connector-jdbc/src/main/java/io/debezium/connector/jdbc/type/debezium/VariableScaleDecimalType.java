@@ -7,12 +7,14 @@ package io.debezium.connector.jdbc.type.debezium;
 
 import java.math.BigDecimal;
 import java.sql.Types;
+import java.util.List;
 import java.util.Optional;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
-import org.hibernate.query.Query;
+import org.apache.kafka.connect.errors.ConnectException;
 
+import io.debezium.connector.jdbc.ValueBindDescriptor;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.type.AbstractType;
 import io.debezium.connector.jdbc.type.Type;
@@ -41,18 +43,18 @@ public class VariableScaleDecimalType extends AbstractType {
     }
 
     @Override
-    public int bind(Query<?> query, int index, Schema schema, Object value) {
+    public List<ValueBindDescriptor> bind(int index, Schema schema, Object value) {
+
         if (value == null) {
-            query.setParameter(index, null);
+            return List.of(new ValueBindDescriptor(index, null));
         }
-        else if (value instanceof Struct) {
+        if (value instanceof Struct) {
             Optional<BigDecimal> bigDecimalValue = VariableScaleDecimal.toLogical((Struct) value).getDecimalValue();
-            query.setParameter(index, bigDecimalValue.orElseThrow());
+            return List.of(new ValueBindDescriptor(index, bigDecimalValue.orElseThrow()));
         }
-        else {
-            throwUnexpectedValue(value);
-        }
-        return 1;
+
+        throw new ConnectException(String.format("Unexpected %s value '%s' with type '%s'", getClass().getSimpleName(),
+                value, value.getClass().getName()));
     }
 
 }

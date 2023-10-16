@@ -9,12 +9,14 @@ import java.sql.Types;
 import java.time.LocalDate;
 import java.time.OffsetTime;
 import java.time.ZonedDateTime;
+import java.util.List;
 
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.errors.ConnectException;
 import org.hibernate.engine.jdbc.Size;
-import org.hibernate.query.Query;
 import org.hibernate.type.StandardBasicTypes;
 
+import io.debezium.connector.jdbc.ValueBindDescriptor;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.type.AbstractTimeType;
 import io.debezium.connector.jdbc.type.Type;
@@ -62,33 +64,25 @@ public class ZonedTimeType extends AbstractTimeType {
     }
 
     @Override
-    public int bind(Query<?> query, int index, Schema schema, Object value) {
+    public List<ValueBindDescriptor> bind(int index, Schema schema, Object value) {
         if (value == null) {
-            query.setParameter(index, null);
+            return List.of(new ValueBindDescriptor(index, null));
         }
-        else if (value instanceof String) {
+        if (value instanceof String) {
             final ZonedDateTime zdt = OffsetTime.parse((String) value, ZonedTime.FORMATTER).atDate(LocalDate.now()).toZonedDateTime();
             if (getDialect().isTimeZoneSet()) {
                 if (getDialect().shouldBindTimeWithTimeZoneAsDatabaseTimeZone()) {
-                    query.setParameter(index, zdt.withZoneSameInstant(getDatabaseTimeZone().toZoneId()));
+                    return List.of(new ValueBindDescriptor(index, zdt.withZoneSameInstant(getDatabaseTimeZone().toZoneId())));
                 }
-                else {
-                    query.setParameter(index, zdt, StandardBasicTypes.ZONED_DATE_TIME_WITH_TIMEZONE);
-                }
+                // TODO check if this works with PreparedStatement
+                return List
+                        .of(new ValueBindDescriptor(index, zdt.withZoneSameInstant(getDatabaseTimeZone().toZoneId()), StandardBasicTypes.ZONED_DATE_TIME_WITH_TIMEZONE));
             }
-            else {
-                bindWithNoTimeZoneDetails(query, index, zdt);
-            }
-        }
-        else {
-            throwUnexpectedValue(value);
+            return List.of(new ValueBindDescriptor(index, zdt));
         }
 
-        return 1;
-    }
-
-    protected void bindWithNoTimeZoneDetails(Query<?> query, int index, ZonedDateTime zonedDateTime) {
-        query.setParameter(index, zonedDateTime);
+        throw new ConnectException(String.format("Unexpected %s value '%s' with type '%s'", getClass().getSimpleName(),
+                value, value.getClass().getName()));
     }
 
     protected int getJdbcType(DatabaseDialect dialect) {
