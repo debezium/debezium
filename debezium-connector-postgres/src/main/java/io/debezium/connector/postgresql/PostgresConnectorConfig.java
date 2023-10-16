@@ -528,7 +528,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withType(Type.BOOLEAN)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION, 3))
             .withDefault(false)
-            .withImportance(Importance.HIGH)
+            .withImportance(Importance.LOW)
+            .withInvisibleRecommender()
             .withDescription(
                     "Whether or not to seek to the last known offset on the replication slot." +
                             "Enabling this option results in startup failure if the slot is re-created instead of data loss.");
