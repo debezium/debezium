@@ -41,7 +41,6 @@ import okhttp3.ResponseBody;
 public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
 
     private static final String DEBEZIUM_CONTAINER = "quay.io/debezium/connect";
-    private static final String DEBEZIUM_STABLE_TAG = ContainerImageVersions.getStableVersion("quay.io/debezium/connect");
     private static final String DEBEZIUM_NIGHTLY_TAG = "nightly";
 
     private static final int KAFKA_CONNECT_PORT = 8083;
@@ -67,8 +66,19 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
     }
 
     public static DebeziumContainer latestStable() {
-        return new DebeziumContainer(String.format("%s:%s", DEBEZIUM_CONTAINER, DEBEZIUM_STABLE_TAG));
+
+        return new DebeziumContainer(String.format("%s:%s", DEBEZIUM_CONTAINER, lazilyRetrieveAndCacheLatestStable()));
     }
+
+    private static String debeziumLatestStable;
+
+    private static String lazilyRetrieveAndCacheLatestStable() {
+        if (debeziumLatestStable == null) {
+            debeziumLatestStable = ContainerImageVersions.getStableVersion("quay.io/debezium/connect");
+        }
+        return debeziumLatestStable;
+    }
+
 
     public static DebeziumContainer nightly() {
         return new DebeziumContainer(String.format("%s:%s", DEBEZIUM_CONTAINER, DEBEZIUM_NIGHTLY_TAG));
@@ -308,8 +318,7 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
                 return Connector.State.valueOf(parsedObject.get("connector").get("state").asText());
             }
             return null;
-        }
-        catch (IOException e) {
+        } catch (IOException e) {
             throw new IllegalStateException("Error fetching connector state for connector: " + connectorName, e);
         }
     }
