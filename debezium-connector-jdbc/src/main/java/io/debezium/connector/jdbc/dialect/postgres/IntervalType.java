@@ -5,9 +5,11 @@
  */
 package io.debezium.connector.jdbc.dialect.postgres;
 
-import org.apache.kafka.connect.data.Schema;
-import org.hibernate.query.Query;
+import java.util.List;
 
+import org.apache.kafka.connect.data.Schema;
+
+import io.debezium.connector.jdbc.ValueBindDescriptor;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 import io.debezium.connector.jdbc.type.AbstractType;
@@ -49,15 +51,13 @@ class IntervalType extends AbstractType {
     }
 
     @Override
-    public int bind(Query<?> query, int index, Schema schema, Object value) {
+    public List<ValueBindDescriptor> bind(int index, Schema schema, Object value) {
+
         if (value != null && Long.class.isAssignableFrom(value.getClass())) {
             final double doubleValue = ((Long) value).doubleValue() / 1_000_000d;
-            query.setParameter(index, ((long) doubleValue) + " seconds");
-        }
-        else {
-            query.setParameter(index, value);
+            return List.of(new ValueBindDescriptor(index, ((long) doubleValue) + " seconds")); // TODO check if this works with PreparedStatement
         }
 
-        return 1;
+        return super.bind(index, schema, value);
     }
 }

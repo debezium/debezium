@@ -7,6 +7,7 @@ package io.debezium.connector.jdbc;
 
 import static io.debezium.connector.jdbc.JdbcSinkConnectorConfig.SchemaEvolutionMode.NONE;
 
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Objects;
@@ -45,6 +46,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
     private final DatabaseDialect dialect;
     private final StatelessSession session;
     private final TableNamingStrategy tableNamingStrategy;
+    private QueryBinderResolver queryBinderResolver;
 
     public JdbcChangeEventSink(JdbcSinkConnectorConfig config) {
         this.config = config;
@@ -53,7 +55,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
 
         this.dialect = DatabaseDialectResolver.resolve(config, sessionFactory);
         this.session = this.sessionFactory.openStatelessSession();
-
+        this.queryBinderResolver = new QueryBinderResolver(); // TODO maybe move it upper fot testability
         final DatabaseVersion version = this.dialect.getVersion();
         LOGGER.info("Database version {}.{}.{}", version.getMajor(), version.getMinor(), version.getMicro());
     }
@@ -248,8 +250,9 @@ public class JdbcChangeEventSink implements ChangeEventSink {
         try {
             LOGGER.trace("SQL: {}", sql);
             final NativeQuery<?> query = session.createNativeQuery(sql, Object.class);
-            int index = bindKeyValuesToQuery(record, query, 1);
-            bindNonKeyValuesToQuery(record, query, index);
+            QueryBinder queryBinder = queryBinderResolver.resolve(query);
+            int index = bindKeyValuesToQuery(record, queryBinder, 1);
+            bindNonKeyValuesToQuery(record, queryBinder, index);
 
             final int result = query.executeUpdate();
             if (result != 1) {
@@ -264,13 +267,31 @@ public class JdbcChangeEventSink implements ChangeEventSink {
         }
     }
 
+    private void writeBatchInsert(String sql, SinkRecordDescriptor record) {
+
+        final Transaction transaction = session.beginTransaction();
+        session.doWork(conn -> {
+
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) { // PreparedStatement should be passed to the buffer and should be separated for insert and delete
+
+                // Add record to a table buffer if exist or initialize an empty buffer
+                // 1. Check if it's time to flush ( buffer size > max_batch_size, on delete event, on schema change, on some elapsed time after last flush)
+                // 2. Before flush needs to bind the values. The idea is to use a refactored dialect.bindValue method that did not receive the NativeQuery as parameter
+                // but simply return a List<Object> of bounded values. Then bounded values will be used for pstmt.setObject() (followed by a pstmt.addBatch())
+                // 3. Call to pstmt.executeBatch();
+            }
+        });
+        transaction.commit();
+    }
+
     private void writeUpsert(String sql, SinkRecordDescriptor record) throws SQLException {
         final Transaction transaction = session.beginTransaction();
         try {
             LOGGER.trace("SQL: {}", sql);
             final NativeQuery<?> query = session.createNativeQuery(sql, Object.class);
-            int index = bindKeyValuesToQuery(record, query, 1);
-            bindNonKeyValuesToQuery(record, query, index);
+            QueryBinder queryBinder = queryBinderResolver.resolve(query);
+            int index = bindKeyValuesToQuery(record, queryBinder, 1);
+            bindNonKeyValuesToQuery(record, queryBinder, index);
 
             query.executeUpdate();
             transaction.commit();
@@ -286,8 +307,9 @@ public class JdbcChangeEventSink implements ChangeEventSink {
         try {
             LOGGER.trace("SQL: {}", sql);
             final NativeQuery<?> query = session.createNativeQuery(sql, Object.class);
-            int index = bindNonKeyValuesToQuery(record, query, 1);
-            bindKeyValuesToQuery(record, query, index);
+            QueryBinder queryBinder = queryBinderResolver.resolve(query);
+            int index = bindNonKeyValuesToQuery(record, queryBinder, 1);
+            bindKeyValuesToQuery(record, queryBinder, index);
 
             query.executeUpdate();
             transaction.commit();
@@ -307,7 +329,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
         try {
             LOGGER.trace("SQL: {}", sql);
             final NativeQuery<?> query = session.createNativeQuery(sql, Object.class);
-            bindKeyValuesToQuery(record, query, 1);
+            bindKeyValuesToQuery(record, queryBinderResolver.resolve(query), 1);
 
             query.executeUpdate();
             transaction.commit();
@@ -337,12 +359,12 @@ public class JdbcChangeEventSink implements ChangeEventSink {
         }
     }
 
-    private int bindKeyValuesToQuery(SinkRecordDescriptor record, NativeQuery<?> query, int index) {
+    private int bindKeyValuesToQuery(SinkRecordDescriptor record, QueryBinder query, int index) {
 
         if (Objects.requireNonNull(config.getPrimaryKeyMode()) == JdbcSinkConnectorConfig.PrimaryKeyMode.KAFKA) {
-            query.setParameter(index++, record.getTopicName());
-            query.setParameter(index++, record.getPartition());
-            query.setParameter(index++, record.getOffset());
+            query.bind(new ValueBindDescriptor(index++, record.getTopicName()));
+            query.bind(new ValueBindDescriptor(index++, record.getPartition()));
+            query.bind(new ValueBindDescriptor(index++, record.getOffset()));
         }
         else {
             final Struct keySource = record.getKeyStruct(config.getPrimaryKeyMode());
@@ -353,14 +375,17 @@ public class JdbcChangeEventSink implements ChangeEventSink {
         return index;
     }
 
-    private int bindNonKeyValuesToQuery(SinkRecordDescriptor record, NativeQuery<?> query, int index) {
+    private int bindNonKeyValuesToQuery(SinkRecordDescriptor record, QueryBinder query, int index) {
         return bindFieldValuesToQuery(record, query, index, record.getAfterStruct(), record.getNonKeyFieldNames());
     }
 
-    private int bindFieldValuesToQuery(SinkRecordDescriptor record, NativeQuery<?> query, int index, Struct source, List<String> fields) {
+    private int bindFieldValuesToQuery(SinkRecordDescriptor record, QueryBinder query, int index, Struct source, List<String> fields) {
         for (String fieldName : fields) {
             final FieldDescriptor field = record.getFields().get(fieldName);
-            index += dialect.bindValue(field, query, index, source.get(fieldName));
+            List<ValueBindDescriptor> boundValues = dialect.bindValue(field, index, source.get(fieldName));
+
+            boundValues.forEach(query::bind);
+            index += boundValues.size();
         }
         return index;
     }

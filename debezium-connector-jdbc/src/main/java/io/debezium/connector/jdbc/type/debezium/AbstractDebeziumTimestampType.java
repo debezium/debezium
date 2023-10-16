@@ -6,10 +6,12 @@
 package io.debezium.connector.jdbc.type.debezium;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import org.apache.kafka.connect.data.Schema;
-import org.hibernate.query.Query;
+import org.apache.kafka.connect.errors.ConnectException;
 
+import io.debezium.connector.jdbc.ValueBindDescriptor;
 import io.debezium.connector.jdbc.type.AbstractTimestampType;
 
 /**
@@ -20,24 +22,21 @@ import io.debezium.connector.jdbc.type.AbstractTimestampType;
 public abstract class AbstractDebeziumTimestampType extends AbstractTimestampType {
 
     @Override
-    public int bind(Query<?> query, int index, Schema schema, Object value) {
+    public List<ValueBindDescriptor> bind(int index, Schema schema, Object value) {
+
         if (value == null) {
-            query.setParameter(index, null);
+            return List.of(new ValueBindDescriptor(index, null));
         }
-        else if (value instanceof Number) {
+        if (value instanceof Number) {
             final LocalDateTime localDateTime = getLocalDateTime(((Number) value).longValue());
             if (getDialect().isTimeZoneSet()) {
-                query.setParameter(index, localDateTime.atZone(getDatabaseTimeZone().toZoneId()));
+                return List.of(new ValueBindDescriptor(index, localDateTime.atZone(getDatabaseTimeZone().toZoneId())));
             }
-            else {
-                query.setParameter(index, localDateTime);
-            }
-        }
-        else {
-            throwUnexpectedValue(value);
+            return List.of(new ValueBindDescriptor(index, localDateTime));
         }
 
-        return 1;
+        throw new ConnectException(String.format("Unexpected %s value '%s' with type '%s'", getClass().getSimpleName(),
+                value, value.getClass().getName()));
     }
 
     protected abstract LocalDateTime getLocalDateTime(long value);

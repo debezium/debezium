@@ -36,7 +36,6 @@ import org.hibernate.engine.jdbc.Size;
 import org.hibernate.engine.jdbc.env.spi.IdentifierHelper;
 import org.hibernate.engine.jdbc.env.spi.NameQualifierSupport;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
-import org.hibernate.query.NativeQuery;
 import org.hibernate.type.descriptor.sql.spi.DdlTypeRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,6 +44,7 @@ import io.debezium.DebeziumException;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.SinkRecordDescriptor;
 import io.debezium.connector.jdbc.SinkRecordDescriptor.FieldDescriptor;
+import io.debezium.connector.jdbc.ValueBindDescriptor;
 import io.debezium.connector.jdbc.naming.ColumnNamingStrategy;
 import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
@@ -412,9 +412,9 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
     }
 
     @Override
-    public int bindValue(FieldDescriptor field, NativeQuery<?> query, int startIndex, Object value) {
+    public List<ValueBindDescriptor> bindValue(FieldDescriptor field, int startIndex, Object value) {
         LOGGER.trace("Bind field '{}' at position {} with type {}: {}", field.getName(), startIndex, field.getType().getClass().getName(), value);
-        return field.bind(query, startIndex, value);
+        return field.bind(startIndex, value);
     }
 
     @Override

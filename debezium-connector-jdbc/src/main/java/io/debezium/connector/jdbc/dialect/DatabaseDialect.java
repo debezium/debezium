@@ -8,15 +8,16 @@ package io.debezium.connector.jdbc.dialect;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.temporal.TemporalAccessor;
+import java.util.List;
 import java.util.Set;
 
 import org.apache.kafka.connect.data.Schema;
 import org.hibernate.dialect.DatabaseVersion;
 import org.hibernate.engine.jdbc.Size;
-import org.hibernate.query.NativeQuery;
 
 import io.debezium.connector.jdbc.SinkRecordDescriptor;
 import io.debezium.connector.jdbc.SinkRecordDescriptor.FieldDescriptor;
+import io.debezium.connector.jdbc.ValueBindDescriptor;
 import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
 import io.debezium.connector.jdbc.relational.TableId;
@@ -362,11 +363,10 @@ public interface DatabaseDialect {
     /**
      * Bind the specified value to the query.
      *
-     * @param field the field being bound, should never be {@code null}
-     * @param query the query the value is to be bound, should never be {@code null}
+     * @param field      the field being bound, should never be {@code null}
      * @param startIndex the starting index of the parameter binding
-     * @param value the value to be bound, may be {@code null}
-     * @return the next bind offset that should be used when binding multiple values
+     * @param value      the value to be bound, may be {@code null}
+     * @return the list of bounded values
      */
-    int bindValue(FieldDescriptor field, NativeQuery<?> query, int startIndex, Object value);
+    List<ValueBindDescriptor> bindValue(FieldDescriptor field, int startIndex, Object value);
 }

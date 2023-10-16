@@ -5,11 +5,12 @@
  */
 package io.debezium.connector.jdbc.dialect.postgres;
 
+import java.util.List;
 import java.util.Map;
 
 import org.apache.kafka.connect.data.Schema;
-import org.hibernate.query.Query;
 
+import io.debezium.connector.jdbc.ValueBindDescriptor;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 import io.debezium.connector.jdbc.type.Type;
@@ -38,8 +39,8 @@ class MapToHstoreType extends AbstractConnectMapType {
 
     @Override
     @SuppressWarnings("unchecked")
-    public int bind(Query<?> query, int index, Schema schema, Object value) {
-        return super.bind(query, index, schema, HstoreConverter.mapToString((Map<String, String>) value));
+    public List<ValueBindDescriptor> bind(int index, Schema schema, Object value) {
+        return super.bind(index, schema, HstoreConverter.mapToString((Map<String, String>) value));
     }
 
 }
