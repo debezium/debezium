@@ -5,11 +5,12 @@
  */
 package io.debezium.connector.jdbc.type.connect;
 
+import java.util.List;
 import java.util.Map;
 
 import org.apache.kafka.connect.data.Schema;
-import org.hibernate.query.Query;
 
+import io.debezium.connector.jdbc.ValueBindDescriptor;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 import io.debezium.connector.jdbc.type.Type;
@@ -40,12 +41,11 @@ public class ConnectMapToConnectStringType extends AbstractConnectMapType {
     }
 
     @Override
-    public int bind(Query<?> query, int index, Schema schema, Object value) {
+    public List<ValueBindDescriptor> bind(int index, Schema schema, Object value) {
         if (value instanceof Map) {
             value = mapToJsonString(value);
         }
-        ConnectStringType.INSTANCE.bind(query, index, schema, value);
-        return 1;
+        return ConnectStringType.INSTANCE.bind(index, schema, value);
     }
 
 }

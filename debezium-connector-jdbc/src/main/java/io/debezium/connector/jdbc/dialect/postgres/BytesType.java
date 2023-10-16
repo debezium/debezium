@@ -7,11 +7,12 @@ package io.debezium.connector.jdbc.dialect.postgres;
 
 import java.nio.ByteBuffer;
 import java.sql.Types;
+import java.util.List;
 
 import org.apache.kafka.connect.data.Schema;
 import org.hibernate.engine.jdbc.Size;
-import org.hibernate.query.Query;
 
+import io.debezium.connector.jdbc.ValueBindDescriptor;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.type.AbstractType;
 import io.debezium.connector.jdbc.type.Type;
@@ -49,12 +50,12 @@ class BytesType extends AbstractType {
     }
 
     @Override
-    public int bind(Query<?> query, int index, Schema schema, Object value) {
-        if (value instanceof ByteBuffer) {
-            value = ((ByteBuffer) value).array();
-        }
-        query.setParameter(index, value);
+    public List<ValueBindDescriptor> bind(int index, Schema schema, Object value) {
 
-        return 1;
+        if (value instanceof ByteBuffer) {
+            return List.of(new ValueBindDescriptor(index, ((ByteBuffer) value).array()));
+        }
+
+        return super.bind(index, schema, value);
     }
 }

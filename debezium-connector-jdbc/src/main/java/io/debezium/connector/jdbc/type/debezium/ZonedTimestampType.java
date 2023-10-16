@@ -7,11 +7,13 @@ package io.debezium.connector.jdbc.type.debezium;
 
 import java.sql.Types;
 import java.time.ZonedDateTime;
+import java.util.List;
 
 import org.apache.kafka.connect.data.Schema;
-import org.hibernate.query.Query;
+import org.apache.kafka.connect.errors.ConnectException;
 import org.hibernate.type.StandardBasicTypes;
 
+import io.debezium.connector.jdbc.ValueBindDescriptor;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.type.AbstractTimestampType;
 import io.debezium.connector.jdbc.type.Type;
@@ -37,20 +39,20 @@ public class ZonedTimestampType extends AbstractTimestampType {
     }
 
     @Override
-    public int bind(Query<?> query, int index, Schema schema, Object value) {
+    public List<ValueBindDescriptor> bind(int index, Schema schema, Object value) {
+
         if (value == null) {
-            query.setParameter(index, null);
+            return List.of(new ValueBindDescriptor(index, null));
         }
-        else if (value instanceof String) {
+        if (value instanceof String) {
             final ZonedDateTime zdt = ZonedDateTime.parse((String) value, ZonedTimestamp.FORMATTER)
                     .withZoneSameInstant(getDatabaseTimeZone().toZoneId());
-            query.setParameter(index, zdt, StandardBasicTypes.ZONED_DATE_TIME_WITH_TIMEZONE);
-        }
-        else {
-            throwUnexpectedValue(value);
+            // TODO check if this works with PreparedStatement
+            return List.of(new ValueBindDescriptor(index, zdt, StandardBasicTypes.ZONED_DATE_TIME_WITH_TIMEZONE));
         }
 
-        return 1;
+        throw new ConnectException(String.format("Unexpected %s value '%s' with type '%s'", getClass().getSimpleName(),
+                value, value.getClass().getName()));
     }
 
     @Override

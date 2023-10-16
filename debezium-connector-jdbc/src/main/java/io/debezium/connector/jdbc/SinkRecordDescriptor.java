@@ -19,7 +19,6 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.sink.SinkRecord;
-import org.hibernate.query.NativeQuery;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -231,8 +230,8 @@ public class SinkRecordDescriptor {
             return queryBinding;
         }
 
-        public int bind(NativeQuery<?> query, int startIndex, Object value) {
-            return type.bind(query, startIndex, schema, value);
+        public List<ValueBindDescriptor> bind(int startIndex, Object value) {
+            return type.bind(startIndex, schema, value);
         }
 
         @Override

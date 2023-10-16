@@ -7,11 +7,13 @@ package io.debezium.connector.jdbc.dialect.sqlserver;
 
 import java.math.BigInteger;
 import java.sql.Types;
+import java.util.List;
 
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.errors.ConnectException;
 import org.hibernate.engine.jdbc.Size;
-import org.hibernate.query.Query;
 
+import io.debezium.connector.jdbc.ValueBindDescriptor;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 import io.debezium.connector.jdbc.type.AbstractType;
@@ -60,17 +62,17 @@ class BitType extends AbstractType {
     }
 
     @Override
-    public int bind(Query<?> query, int index, Schema schema, Object value) {
+    public List<ValueBindDescriptor> bind(int index, Schema schema, Object value) {
+
         if (value == null) {
-            query.setParameter(index, null);
+            return List.of(new ValueBindDescriptor(index, null));
         }
-        else if (value instanceof byte[]) {
+        if (value instanceof byte[]) {
             final BigInteger bigIntegerValue = new BigInteger((byte[]) value);
-            query.setParameter(index, bigIntegerValue.intValue());
+            return List.of(new ValueBindDescriptor(index, bigIntegerValue.intValue()));
         }
-        else {
-            throwUnexpectedValue(value);
-        }
-        return 1;
+
+        throw new ConnectException(String.format("Unexpected %s value '%s' with type '%s'", getClass().getSimpleName(),
+                value, value.getClass().getName()));
     }
 }

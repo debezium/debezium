@@ -8,10 +8,12 @@ package io.debezium.connector.jdbc.type.debezium;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.List;
 
 import org.apache.kafka.connect.data.Schema;
-import org.hibernate.query.Query;
+import org.apache.kafka.connect.errors.ConnectException;
 
+import io.debezium.connector.jdbc.ValueBindDescriptor;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 import io.debezium.connector.jdbc.type.AbstractTimeType;
@@ -38,24 +40,21 @@ public abstract class AbstractDebeziumTimeType extends AbstractTimeType {
     }
 
     @Override
-    public int bind(Query<?> query, int index, Schema schema, Object value) {
+    public List<ValueBindDescriptor> bind(int index, Schema schema, Object value) {
+
         if (value == null) {
-            query.setParameter(index, null);
+            return List.of(new ValueBindDescriptor(index, null));
         }
-        else if (value instanceof Number) {
+        if (value instanceof Number) {
             final LocalTime localTime = getLocalTime((Number) value);
             final LocalDateTime localDateTime = localTime.atDate(LocalDate.now());
             if (getDialect().isTimeZoneSet()) {
-                query.setParameter(index, localDateTime.atZone(getDatabaseTimeZone().toZoneId()));
+                return List.of(new ValueBindDescriptor(index, localDateTime.atZone(getDatabaseTimeZone().toZoneId())));
             }
-            else {
-                query.setParameter(index, localDateTime);
-            }
+            return List.of(new ValueBindDescriptor(index, localDateTime));
         }
-        else {
-            throwUnexpectedValue(value);
-        }
-        return 1;
+        throw new ConnectException(String.format("Unexpected %s value '%s' with type '%s'", getClass().getSimpleName(),
+                value.toString(), value.getClass().getName()));
     }
 
     protected abstract LocalTime getLocalTime(Number value);

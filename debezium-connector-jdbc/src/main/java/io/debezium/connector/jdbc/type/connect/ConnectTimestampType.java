@@ -7,12 +7,14 @@ package io.debezium.connector.jdbc.type.connect;
 
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
 
 import org.apache.kafka.connect.data.Date;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Timestamp;
-import org.hibernate.query.Query;
+import org.apache.kafka.connect.errors.ConnectException;
 
+import io.debezium.connector.jdbc.ValueBindDescriptor;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.type.AbstractTimestampType;
 import io.debezium.connector.jdbc.type.Type;
@@ -38,23 +40,21 @@ public class ConnectTimestampType extends AbstractTimestampType {
     }
 
     @Override
-    public int bind(Query<?> query, int index, Schema schema, Object value) {
+    public List<ValueBindDescriptor> bind(int index, Schema schema, Object value) {
+
         if (value == null) {
-            query.setParameter(index, null);
+            return List.of(new ValueBindDescriptor(index, null));
         }
-        else if (value instanceof java.util.Date) {
+        if (value instanceof java.util.Date) {
             final LocalDateTime localDateTime = DateTimeUtils.toLocalDateTimeFromDate((java.util.Date) value);
             if (getDialect().isTimeZoneSet()) {
-                query.setParameter(index, localDateTime.atZone(getDatabaseTimeZone().toZoneId()));
+                return List.of(new ValueBindDescriptor(index, localDateTime.atZone(getDatabaseTimeZone().toZoneId())));
             }
-            else {
-                query.setParameter(index, localDateTime);
-            }
+            return List.of(new ValueBindDescriptor(index, localDateTime));
         }
-        else {
-            throwUnexpectedValue(value);
-        }
-        return 1;
+
+        throw new ConnectException(String.format("Unexpected %s value '%s' with type '%s'", getClass().getSimpleName(),
+                value, value.getClass().getName()));
     }
 
 }
