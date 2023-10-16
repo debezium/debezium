@@ -5,15 +5,16 @@
  */
 package io.debezium.connector.jdbc.dialect.mysql;
 
+import java.util.List;
 import java.util.Map;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.errors.ConnectException;
-import org.hibernate.query.Query;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import io.debezium.connector.jdbc.ValueBindDescriptor;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 import io.debezium.connector.jdbc.type.Type;
@@ -42,7 +43,7 @@ class MapToJsonType extends AbstractConnectMapType {
     }
 
     @Override
-    public int bind(Query<?> query, int index, Schema schema, Object value) {
+    public List<ValueBindDescriptor> bind(int index, Schema schema, Object value) {
         if (value instanceof Map) {
             try {
                 value = OBJECT_MAPPER.writeValueAsString(value);
@@ -51,7 +52,7 @@ class MapToJsonType extends AbstractConnectMapType {
                 throw new ConnectException("Failed to deserialize MAP data to JSON", e);
             }
         }
-        return JsonType.INSTANCE.bind(query, index, schema, value);
+        return JsonType.INSTANCE.bind(index, schema, value);
     }
 
 }

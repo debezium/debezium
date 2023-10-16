@@ -5,9 +5,11 @@
  */
 package io.debezium.connector.jdbc.dialect.postgres;
 
-import org.apache.kafka.connect.data.Schema;
-import org.hibernate.query.Query;
+import java.util.List;
 
+import org.apache.kafka.connect.data.Schema;
+
+import io.debezium.connector.jdbc.ValueBindDescriptor;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 import io.debezium.connector.jdbc.type.AbstractType;
@@ -39,9 +41,9 @@ class RangeType extends AbstractType {
     }
 
     @Override
-    public int bind(Query<?> query, int index, Schema schema, Object value) {
-        query.setParameter(index, value == null ? null : ((String) value).replaceAll("\"", ""));
+    public List<ValueBindDescriptor> bind(int index, Schema schema, Object value) {
 
-        return 1;
+        Object finalValue = value == null ? null : ((String) value).replaceAll("\"", "");
+        return List.of(new ValueBindDescriptor(index, finalValue));
     }
 }

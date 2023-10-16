@@ -9,11 +9,13 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Date;
+import java.util.List;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Time;
-import org.hibernate.query.Query;
+import org.apache.kafka.connect.errors.ConnectException;
 
+import io.debezium.connector.jdbc.ValueBindDescriptor;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 import io.debezium.connector.jdbc.type.AbstractTimeType;
@@ -45,29 +47,28 @@ public class ConnectTimeType extends AbstractTimeType {
     }
 
     @Override
-    public int bind(Query<?> query, int index, Schema schema, Object value) {
+    public List<ValueBindDescriptor> bind(int index, Schema schema, Object value) {
+
         if (value == null) {
-            query.setParameter(index, null);
+            return List.of(new ValueBindDescriptor(index, null));
         }
-        else if (value instanceof Date) {
+        if (value instanceof Date) {
             final LocalTime localTime = DateTimeUtils.toLocalTimeFromUtcDate((Date) value);
             final LocalDateTime localDateTime = localTime.atDate(LocalDate.now());
             if (getDialect().isTimeZoneSet()) {
-                query.setParameter(index, localDateTime.atZone(getDatabaseTimeZone().toZoneId()));
+                return List.of(new ValueBindDescriptor(index, localDateTime.atZone(getDatabaseTimeZone().toZoneId())));
             }
-            else {
-                // NOTE
-                // ----
-                // Hibernate truncates LocalTime to 0 precision, see LocalTimeJavaType#getDefaultSqlPrecision.
-                // To avoid this loss in precision from the source system, the following will bind the value
-                // as a LocalDateTime using the current date as the base in order to avoid data loss.
-                query.setParameter(index, localDateTime);
-            }
+            // NOTE
+            // ----
+            // Hibernate truncates LocalTime to 0 precision, see LocalTimeJavaType#getDefaultSqlPrecision.
+            // To avoid this loss in precision from the source system, the following will bind the value
+            // as a LocalDateTime using the current date as the base in order to avoid data loss.
+
+            return List.of(new ValueBindDescriptor(index, localDateTime)); // TODO check if this works with PreparedStatement
         }
-        else {
-            throwUnexpectedValue(value);
-        }
-        return 1;
+
+        throw new ConnectException(String.format("Unexpected %s value '%s' with type '%s'", getClass().getSimpleName(),
+                value, value.getClass().getName()));
     }
 
 }
