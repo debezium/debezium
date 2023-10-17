@@ -84,28 +84,7 @@ After the connector processes the message, it begins the snapshot operation.
 The snapshot process reads the first and last primary key values and uses those values as the start and end point for each {data-collection}.
 Based on the number of entries in the {data-collection}, and the configured chunk size, {prodname} divides the {data-collection} into chunks, and proceeds to snapshot each chunk, in succession, one at a time.
 
-For more information, see xref:{context}-incremental-snapshots[Incremental snapshots].
-////
-.Prerequisites
-
-* xref:{link-signalling}#debezium-signaling-enabling-source-signaling-channel[Signaling is enabled].
-
-.Procedure
-
-* Trigger a snapshot by submitting a SQL query to add a signal to the signaling {data-collection} that uses the following format:
-+
-[source,sql,subs="+attributes,+quotes"]
-----
-INSERT INTO _<signalingCollection>_ VALUES('_<signalName>_','_<signalType>_', '{"data-collections": ["_<dataCollection>_","_<dataCollectionN>_"]}')
-----
-+
-For example:
-+
-[source,sql]
-----
-INSERT INTO myschema.debezium_signal VALUES('ad-hoc-1', 'execute-snapshot', '{"data-collections": ["schema1.table1", "schema2.table2"]}')
-----
-////
+For more information, see xref:debezium-{context}-incremental-snapshots[Incremental snapshots].
 
 .Triggering an ad hoc blocking snapshot
 
@@ -114,4 +93,4 @@ After the connector processes the message, it begins the snapshot operation.
 The connector temporarily stops streaming, and then initiates a snapshot of the specified {data-collection}, following the same process that it uses during an initial snapshot.
 After the snapshot completes, the connector resumes streaming.
 
-For more information, see xref:#{context}-blocking-snapshots[Blocking snapshots].
+For more information, see xref:{context}-blocking-snapshots[Blocking snapshots].
