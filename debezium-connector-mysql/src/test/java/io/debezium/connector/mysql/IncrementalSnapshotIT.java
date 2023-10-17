@@ -232,7 +232,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
         final int batchSize = 10;
         try (JdbcConnection connection = databaseConnection()) {
             connection.setAutoCommit(false);
-            connection.execute("SET binlog_rows_query_log_events=ON");
+            ((MySqlTestConnection) connection).databaseAsserts().setBinlogRowQueryEventsOn(connection);
             for (int i = 0; i < ROW_COUNT; i++) {
                 connection.executeWithoutCommitting(
                         String.format("UPDATE %s SET aa = aa + 2000 WHERE pk > %s AND pk <= %s", tableName(),

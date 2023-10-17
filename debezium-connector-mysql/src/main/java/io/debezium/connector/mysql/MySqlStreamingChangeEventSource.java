@@ -42,6 +42,7 @@ import org.slf4j.event.Level;
 
 import com.github.shyiko.mysql.binlog.BinaryLogClient;
 import com.github.shyiko.mysql.binlog.BinaryLogClient.LifecycleListener;
+import com.github.shyiko.mysql.binlog.event.AnnotateRowsEventData;
 import com.github.shyiko.mysql.binlog.event.DeleteRowsEventData;
 import com.github.shyiko.mysql.binlog.event.Event;
 import com.github.shyiko.mysql.binlog.event.EventData;
@@ -530,17 +531,25 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
     }
 
     /**
-     * Handle the supplied event with an {@link RowsQueryEventData} by recording the original SQL query
-     * that generated the event.
+     * Handle the supplied event with an {@link RowsQueryEventData} or {@link AnnotateRowsEventData} by
+     * recording the original SQL query that generated the event.
      *
      * @param event the database change data event to be processed; may not be null
      */
-    protected void handleRowsQuery(MySqlOffsetContext offsetContext, Event event) {
-        // Unwrap the RowsQueryEvent
-        final RowsQueryEventData lastRowsQueryEventData = unwrapData(event);
-
+    protected void handleRecordingQuery(MySqlOffsetContext offsetContext, Event event) {
+        final String query;
+        if (!connection.isMariaDb()) {
+            // Unwrap the RowsQueryEvent
+            final RowsQueryEventData lastRowsQueryEventData = unwrapData(event);
+            query = lastRowsQueryEventData.getQuery();
+        }
+        else {
+            // Unwrap the AnnotateRowsEventData
+            final AnnotateRowsEventData annotateRowsEventData = unwrapData(event);
+            query = annotateRowsEventData.getRowsQuery();
+        }
         // Set the query on the source
-        offsetContext.setQuery(lastRowsQueryEventData.getQuery());
+        offsetContext.setQuery(query);
     }
 
     /**
@@ -926,7 +935,16 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
 
         // Conditionally register ROWS_QUERY handler to parse SQL statements.
         if (connectorConfig.includeSqlQuery()) {
-            eventHandlers.put(EventType.ROWS_QUERY, (event) -> handleRowsQuery(effectiveOffsetContext, event));
+            if (!connection.isMariaDb()) {
+                eventHandlers.put(EventType.ROWS_QUERY, (event) -> handleRecordingQuery(effectiveOffsetContext, event));
+            }
+            else {
+                // Binlog client explicitly needs to be told to enable ANNOTATE_ROWS events, which is the
+                // MariaDB equivalent of ROWS_QUERY. This must be done ahead of the connection to make
+                // sure that the right negotiation bits are set during handshake.
+                client.setUseSendAnnotateRowsEvent(true);
+                eventHandlers.put(EventType.ANNOTATE_ROWS, (event) -> handleRecordingQuery(effectiveOffsetContext, event));
+            }
         }
 
         BinaryLogClient.EventListener listener;

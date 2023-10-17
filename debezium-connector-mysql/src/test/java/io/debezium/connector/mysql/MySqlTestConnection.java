@@ -27,7 +27,8 @@ public class MySqlTestConnection extends JdbcConnection {
         MYSQL_5_5,
         MYSQL_5_6,
         MYSQL_5_7,
-        MYSQL_8;
+        MYSQL_8,
+        MARIADB_11;
     }
 
     private DatabaseDifferences databaseAsserts;
@@ -105,6 +106,16 @@ public class MySqlTestConnection extends JdbcConnection {
         return comment.startsWith("Percona");
     }
 
+    /**
+     * Check whether the database is MariaDB or MySQL.
+     *
+     * @return true if the database is MariaDB; otherwise false
+     */
+    public static boolean isMariaDb() {
+        String comment = forTestDatabase("mysql").getMySqlVersionComment();
+        return comment.toLowerCase().contains("mariadb");
+    }
+
     private static JdbcConfiguration addDefaultSettings(JdbcConfiguration configuration) {
         return JdbcConfiguration.adapt(configuration.edit()
                 .withDefault(JdbcConfiguration.HOSTNAME, "localhost")
@@ -129,6 +140,18 @@ public class MySqlTestConnection extends JdbcConnection {
     public MySqlVersion getMySqlVersion() {
         if (mySqlVersion == null) {
             final String versionString = getMySqlVersionString();
+
+            if (isMariaDb()) {
+                if (versionString.startsWith("11.")) {
+                    mySqlVersion = MySqlVersion.MARIADB_11;
+                }
+                else {
+                    throw new IllegalStateException("Couldn't resolve MariaDB Server version");
+                }
+                return mySqlVersion;
+            }
+
+            // Fallback to MySQL
             if (versionString.startsWith("8.")) {
                 mySqlVersion = MySqlVersion.MYSQL_8;
             }
@@ -193,7 +216,30 @@ public class MySqlTestConnection extends JdbcConnection {
 
     public DatabaseDifferences databaseAsserts() {
         if (databaseAsserts == null) {
-            if (getMySqlVersion() == MySqlVersion.MYSQL_8) {
+            if (getMySqlVersion() == MySqlVersion.MARIADB_11) {
+                databaseAsserts = new DatabaseDifferences() {
+                    @Override
+                    public boolean isCurrentDateTimeDefaultGenerated() {
+                        return true;
+                    }
+
+                    @Override
+                    public String currentDateTimeDefaultOptional(String isoString) {
+                        return null;
+                    }
+
+                    @Override
+                    public void setBinlogRowQueryEventsOff(JdbcConnection connection) throws SQLException {
+                        connection.execute("SET binlog_annotate_row_events=OFF");
+                    }
+
+                    @Override
+                    public void setBinlogRowQueryEventsOn(JdbcConnection connection) throws SQLException {
+                        connection.execute("SET binlog_annotate_row_events=ON");
+                    }
+                };
+            }
+            else if (getMySqlVersion() == MySqlVersion.MYSQL_8) {
                 databaseAsserts = new DatabaseDifferences() {
                     @Override
                     public boolean isCurrentDateTimeDefaultGenerated() {
