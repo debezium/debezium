@@ -181,6 +181,16 @@ public class RemoteInfinispanLogMinerEventProcessor extends AbstractInfinispanLo
         return Optional.ofNullable(transaction);
     }
 
+    @Override
+    protected String getFirstActiveTransactionKey() {
+        try (CloseableIterator<String> iterator = transactionCache.keySet().iterator()) {
+            if (iterator.hasNext()) {
+                return iterator.next();
+            }
+        }
+        return null;
+    }
+
     private Properties getHotrodClientProperties(OracleConnectorConfig connectorConfig) {
         final Map<String, String> clientSettings = connectorConfig.getConfig()
                 .subset(HOTROD_CLIENT_LOOKUP_PREFIX, true)

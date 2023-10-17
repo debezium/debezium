@@ -20,6 +20,7 @@ import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -237,10 +238,12 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                         metrics.getMillisecondToSleepBetweenMiningQuery());
 
                 if (metrics.getNumberOfActiveTransactions() > 0) {
-                    LOGGER.debug("All active transactions: {}",
-                            getTransactionCache().values().stream()
-                                    .map(t -> t.getTransactionId() + " (" + t.getStartScn() + ")")
-                                    .collect(Collectors.joining(",")));
+                    // This is wrapped in try-with-resources specifically for Infinispan performance
+                    try (Stream<T> stream = getTransactionCache().values().stream()) {
+                        LOGGER.debug("All active transactions: {}",
+                                stream.map(t -> t.getTransactionId() + " (" + t.getStartScn() + ")")
+                                        .collect(Collectors.joining(",")));
+                    }
                 }
 
                 metrics.addProcessedRows(counters.rows);
@@ -614,6 +617,13 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
     protected abstract void finalizeTransactionCommit(String transactionId, Scn commitScn);
 
     /**
+     * Returns only the first transaction id in the transaction buffer.
+     *
+     * @return the first active transaction in the buffer, or {@code null} if there is none.
+     */
+    protected abstract String getFirstActiveTransactionKey();
+
+    /**
      * Check whether the supplied username associated with the specified transaction is excluded.
      *
      * @param transaction the transaction, never {@code null}
@@ -710,7 +720,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                 advanceLowerScnBoundary = true;
             }
             else if (activeTransactions == 1) {
-                final String transactionId = getTransactionCache().keySet().iterator().next();
+                final String transactionId = getFirstActiveTransactionKey();
                 if (transactionId.equals(row.getTransactionId())) {
                     // The row's transaction is the current and only active transaction.
                     advanceLowerScnBoundary = true;

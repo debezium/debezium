@@ -226,6 +226,12 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
     }
 
     @Override
+    protected String getFirstActiveTransactionKey() {
+        final Iterator<String> keyIterator = transactionCache.keySet().iterator();
+        return keyIterator.hasNext() ? keyIterator.next() : null;
+    }
+
+    @Override
     protected void handleSchemaChange(LogMinerEventRow row) throws InterruptedException {
         super.handleSchemaChange(row);
         if (row.getTableName() != null && getConfig().isLobEnabled()) {
