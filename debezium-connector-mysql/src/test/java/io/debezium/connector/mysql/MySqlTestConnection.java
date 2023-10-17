@@ -220,7 +220,7 @@ public class MySqlTestConnection extends JdbcConnection {
                 databaseAsserts = new DatabaseDifferences() {
                     @Override
                     public boolean isCurrentDateTimeDefaultGenerated() {
-                        return true;
+                        return false;
                     }
 
                     @Override

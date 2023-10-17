@@ -165,15 +165,19 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 assertThat(c1Date.getDayOfMonth()).isEqualTo(8);
                 assertThat(io.debezium.time.Date.toEpochDay(c1Date, ADJUSTER)).isEqualTo(c1);
 
+                long timeWithNanoSeconds = getTimeWithNanoSeconds();
+                int nanoSeconds = getNanoSeconds();
+                int nanos = getNanos();
+
                 // '17:51:04.777'
                 Long c2 = after.getInt64("c2");
                 Duration c2Time = Duration.ofNanos(c2 * 1_000);
                 assertThat(c2Time.toHours()).isEqualTo(17);
                 assertThat(c2Time.toMinutes()).isEqualTo(1071);
                 assertThat(c2Time.getSeconds()).isEqualTo(64264);
-                assertThat(c2Time.getNano()).isEqualTo(780000000);
-                assertThat(c2Time.toNanos()).isEqualTo(64264780000000L);
-                assertThat(c2Time).isEqualTo(Duration.ofHours(17).plusMinutes(51).plusSeconds(4).plusMillis(780));
+                assertThat(c2Time.getNano()).isEqualTo(nanoSeconds);
+                assertThat(c2Time.toNanos()).isEqualTo(timeWithNanoSeconds);
+                assertThat(c2Time).isEqualTo(Duration.ofHours(17).plusMinutes(51).plusSeconds(4).plusMillis(nanos));
 
                 // '2014-09-08 17:51:04.777'
                 // DATETIME is a logical date and time, it doesn't contain any TZ information;
@@ -191,7 +195,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 assertThat(c3DateTime.getHour()).isEqualTo(17);
                 assertThat(c3DateTime.getMinute()).isEqualTo(51);
                 assertThat(c3DateTime.getSecond()).isEqualTo(4);
-                assertThat(c3DateTime.getNano()).isEqualTo((int) TimeUnit.MILLISECONDS.toNanos(780));
+                assertThat(c3DateTime.getNano()).isEqualTo((int) TimeUnit.MILLISECONDS.toNanos(nanos));
                 assertThat(io.debezium.time.Timestamp.toEpochMillis(c3DateTime, ADJUSTER)).isEqualTo(c3);
 
                 // '2014-09-08 17:51:04.777'
@@ -293,14 +297,18 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
             else if (record.topic().endsWith("dbz_342_timetest")) {
                 Struct after = value.getStruct(Envelope.FieldName.AFTER);
 
+                String durationValue = getDuration();
+                long timeWithNanoSeconds = getTimeWithNanoSecondsLarge();
+                int nanos = getNanos();
+
                 // '517:51:04.777'
                 long c1 = after.getInt64("c1");
                 Duration c1Time = Duration.ofNanos(c1 * 1_000);
-                Duration c1ExpectedTime = toDuration("PT517H51M4.78S");
+                Duration c1ExpectedTime = toDuration(durationValue);
                 assertEquals(c1ExpectedTime, c1Time);
                 assertEquals(c1ExpectedTime.toNanos(), c1Time.toNanos());
-                assertThat(c1Time.toNanos()).isEqualTo(1864264780000000L);
-                assertThat(c1Time).isEqualTo(Duration.ofHours(517).plusMinutes(51).plusSeconds(4).plusMillis(780));
+                assertThat(c1Time.toNanos()).isEqualTo(timeWithNanoSeconds);
+                assertThat(c1Time).isEqualTo(Duration.ofHours(517).plusMinutes(51).plusSeconds(4).plusMillis(nanos));
 
                 // '-13:14:50'
                 long c2 = after.getInt64("c2");
@@ -449,9 +457,12 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 assertThat(c1Date.getMonth()).isEqualTo(Month.SEPTEMBER);
                 assertThat(c1Date.getDayOfMonth()).isEqualTo(8);
 
+                int nanoSeconds = getNanoSeconds();
+                int nanos = getNanos();
+
                 // '17:51:04.777'
                 java.util.Date c2 = (java.util.Date) after.get("c2"); // milliseconds past midnight
-                assertThat(c2.toInstant()).isEqualTo(LocalDateTime.of(1970, 1, 1, 17, 51, 4, 780_000_000).atOffset(ZoneOffset.UTC).toInstant());
+                assertThat(c2.toInstant()).isEqualTo(LocalDateTime.of(1970, 1, 1, 17, 51, 4, nanoSeconds).atOffset(ZoneOffset.UTC).toInstant());
 
                 // '2014-09-08 17:51:04.777'
                 // DATETIME is a logical date and time, it doesn't contain any TZ information;
@@ -468,7 +479,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 assertThat(c3DateTime.getHour()).isEqualTo(17);
                 assertThat(c3DateTime.getMinute()).isEqualTo(51);
                 assertThat(c3DateTime.getSecond()).isEqualTo(4);
-                assertThat(c3DateTime.getNano()).isEqualTo((int) TimeUnit.MILLISECONDS.toNanos(780));
+                assertThat(c3DateTime.getNano()).isEqualTo((int) TimeUnit.MILLISECONDS.toNanos(nanos));
                 assertThat(io.debezium.time.Timestamp.toEpochMillis(c3DateTime, ADJUSTER)).isEqualTo(c3.getTime());
 
                 // '2014-09-08 17:51:04.777'
@@ -660,15 +671,19 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 assertThat(c1Date.getDayOfMonth()).isEqualTo(8);
                 assertThat(io.debezium.time.Date.toEpochDay(c1Date, ADJUSTER)).isEqualTo(c1);
 
+                long timeWithNanoSeconds = getTimeWithNanoSeconds();
+                int nanoSeconds = getNanoSeconds();
+                int nanos = getNanos();
+
                 // '17:51:04.777' - time is Duration so no timeshift is needed
                 Long c2 = after.getInt64("c2");
                 Duration c2Time = Duration.ofNanos(c2 * 1_000);
                 assertThat(c2Time.toHours()).isEqualTo(17);
                 assertThat(c2Time.toMinutes()).isEqualTo(1071);
                 assertThat(c2Time.getSeconds()).isEqualTo(64264);
-                assertThat(c2Time.getNano()).isEqualTo(780000000);
-                assertThat(c2Time.toNanos()).isEqualTo(64264780000000L);
-                assertThat(c2Time).isEqualTo(Duration.ofHours(17).plusMinutes(51).plusSeconds(4).plusMillis(780));
+                assertThat(c2Time.getNano()).isEqualTo(nanoSeconds);
+                assertThat(c2Time.toNanos()).isEqualTo(timeWithNanoSeconds);
+                assertThat(c2Time).isEqualTo(Duration.ofHours(17).plusMinutes(51).plusSeconds(4).plusMillis(nanos));
 
                 // '2014-09-08 17:51:04.777'
                 // DATETIME is a logical date and time, it doesn't contain any TZ information;
@@ -685,7 +700,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 assertThat(c3DateTime.getHour()).isEqualTo(17);
                 assertThat(c3DateTime.getMinute()).isEqualTo(51);
                 assertThat(c3DateTime.getSecond()).isEqualTo(4);
-                assertThat(c3DateTime.getNano()).isEqualTo((int) TimeUnit.MILLISECONDS.toNanos(780));
+                assertThat(c3DateTime.getNano()).isEqualTo((int) TimeUnit.MILLISECONDS.toNanos(nanos));
                 assertThat(io.debezium.time.Timestamp.toEpochMillis(c3DateTime, ADJUSTER)).isEqualTo(c3);
 
                 // '2014-09-08 17:51:04.777' -> '2014-09-09 04:51:04.78'
@@ -699,10 +714,10 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 assertThat(c4DateTime.getHour()).isEqualTo(4);
                 assertThat(c4DateTime.getMinute()).isEqualTo(51);
                 assertThat(c4DateTime.getSecond()).isEqualTo(4);
-                assertThat(c4DateTime.getNano()).isEqualTo((int) TimeUnit.MILLISECONDS.toNanos(780));
+                assertThat(c4DateTime.getNano()).isEqualTo((int) TimeUnit.MILLISECONDS.toNanos(nanos));
 
                 OffsetDateTime expected = ZonedDateTime.of(
-                        LocalDateTime.of(2014, 9, 8, 17, 51, 4, (int) TimeUnit.MILLISECONDS.toNanos(780)),
+                        LocalDateTime.of(2014, 9, 8, 17, 51, 4, (int) TimeUnit.MILLISECONDS.toNanos(nanos)),
                         UniqueDatabase.TIMEZONE)
                         .withZoneSameInstant(ZoneOffset.UTC)
                         .toOffsetDateTime();
@@ -764,14 +779,18 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
             else if (record.topic().endsWith("dbz_342_timetest")) {
                 Struct after = value.getStruct(Envelope.FieldName.AFTER);
 
+                String durationValue = getDuration();
+                long timeWithNanoSeconds = getTimeWithNanoSecondsLarge();
+                int nanos = getNanos();
+
                 // '517:51:04.777'
                 long c1 = after.getInt64("c1");
                 Duration c1Time = Duration.ofNanos(c1 * 1_000);
-                Duration c1ExpectedTime = toDuration("PT517H51M4.78S");
+                Duration c1ExpectedTime = toDuration(durationValue);
                 assertEquals(c1ExpectedTime, c1Time);
                 assertEquals(c1ExpectedTime.toNanos(), c1Time.toNanos());
-                assertThat(c1Time.toNanos()).isEqualTo(1864264780000000L);
-                assertThat(c1Time).isEqualTo(Duration.ofHours(517).plusMinutes(51).plusSeconds(4).plusMillis(780));
+                assertThat(c1Time.toNanos()).isEqualTo(timeWithNanoSeconds);
+                assertThat(c1Time).isEqualTo(Duration.ofHours(517).plusMinutes(51).plusSeconds(4).plusMillis(nanos));
 
                 // '-13:14:50'
                 long c2 = after.getInt64("c2");
@@ -883,15 +902,19 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                     assertThat(c1Date.getDayOfMonth()).isEqualTo(8);
                     assertThat(io.debezium.time.Date.toEpochDay(c1Date, ADJUSTER)).isEqualTo(c1);
 
+                    long timeWithNanoSeconds = getTimeWithNanoSeconds();
+                    int nanoSeconds = getNanoSeconds();
+                    int nanos = getNanos();
+
                     // '17:51:04.777'
                     Long c2 = after.getInt64("c2");
                     Duration c2Time = Duration.ofNanos(c2 * 1_000);
                     assertThat(c2Time.toHours()).isEqualTo(17);
                     assertThat(c2Time.toMinutes()).isEqualTo(1071);
                     assertThat(c2Time.getSeconds()).isEqualTo(64264);
-                    assertThat(c2Time.getNano()).isEqualTo(780000000);
-                    assertThat(c2Time.toNanos()).isEqualTo(64264780000000L);
-                    assertThat(c2Time).isEqualTo(Duration.ofHours(17).plusMinutes(51).plusSeconds(4).plusMillis(780));
+                    assertThat(c2Time.getNano()).isEqualTo(nanoSeconds);
+                    assertThat(c2Time.toNanos()).isEqualTo(timeWithNanoSeconds);
+                    assertThat(c2Time).isEqualTo(Duration.ofHours(17).plusMinutes(51).plusSeconds(4).plusMillis(nanos));
 
                     // '2014-09-08 17:51:04.777'
                     // DATETIME is a logical date and time, it doesn't contain any TZ information;
@@ -909,7 +932,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                     assertThat(c3DateTime.getHour()).isEqualTo(17);
                     assertThat(c3DateTime.getMinute()).isEqualTo(51);
                     assertThat(c3DateTime.getSecond()).isEqualTo(4);
-                    assertThat(c3DateTime.getNano()).isEqualTo((int) TimeUnit.MILLISECONDS.toNanos(780));
+                    assertThat(c3DateTime.getNano()).isEqualTo((int) TimeUnit.MILLISECONDS.toNanos(nanos));
                     assertThat(io.debezium.time.Timestamp.toEpochMillis(c3DateTime, ADJUSTER)).isEqualTo(c3);
 
                     // '2014-09-08 17:51:04.777'
@@ -1047,8 +1070,9 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
     private void assertTimestamp(String c4) {
         // '2014-09-08 17:51:04.777'
         // MySQL container is in UTC and the test time is during summer time period
+        String expectedValue = MySqlTestConnection.isMariaDb() ? "2014-09-08T17:51:04.770" : "2014-09-08T17:51:04.780";
         ZonedDateTime expectedTimestamp = ZonedDateTime.ofInstant(
-                LocalDateTime.parse("2014-09-08T17:51:04.780").atZone(ZoneId.of("US/Samoa")).toInstant(),
+                LocalDateTime.parse(expectedValue).atZone(ZoneId.of("US/Samoa")).toInstant(),
                 ZoneId.systemDefault());
         ZoneId defaultZoneId = ZoneId.systemDefault();
         ZonedDateTime c4DateTime = ZonedDateTime.parse(c4, ZonedTimestamp.FORMATTER).withZoneSameInstant(defaultZoneId);
@@ -1061,12 +1085,36 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
         assertThat(c4DateTime.getNano()).isEqualTo(expectedTimestamp.getNano());
         // We're running the connector in the same timezone as the server, so the timezone in the timestamp
         // should match our current offset ...
-        LocalDateTime expectedLocalDateTime = LocalDateTime.parse("2014-09-08T17:51:04.780");
+        LocalDateTime expectedLocalDateTime = LocalDateTime.parse(expectedValue);
         ZoneOffset expectedOffset = defaultZoneId.getRules().getOffset(expectedLocalDateTime);
         assertThat(c4DateTime.getOffset()).isEqualTo(expectedOffset);
     }
 
     private Duration toDuration(String duration) {
         return Duration.parse(duration);
+    }
+
+    // MariaDB does not enable TIME_ROUND_FRACTIONAL, which means that it will truncate several
+    // time types to the exact database precision rather than rounding like MySQL. For now,
+    // the following methods account for this and explicitly round down.
+
+    private String getDuration() {
+        return MySqlTestConnection.isMariaDb() ? "PT517H51M4.77S" : "PT517H51M4.78S";
+    }
+
+    private int getNanos() {
+        return MySqlTestConnection.isMariaDb() ? 770 : 780;
+    }
+
+    private int getNanoSeconds() {
+        return MySqlTestConnection.isMariaDb() ? 770_000_000 : 780_000_000;
+    }
+
+    private long getTimeWithNanoSeconds() {
+        return MySqlTestConnection.isMariaDb() ? 64_264_770_000_000L : 64_264_780_000_000L;
+    }
+
+    private long getTimeWithNanoSecondsLarge() {
+        return MySqlTestConnection.isMariaDb() ? 1_864_264_770_000_000L : 1_864_264_780_000_000L;
     }
 }
