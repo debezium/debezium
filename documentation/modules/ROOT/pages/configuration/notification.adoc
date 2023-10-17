@@ -82,14 +82,15 @@ The following example shows a typical notification that provides the status of a
 {
     "id": "5563ae14-49f8-4579-9641-c1bbc2d76f99",
     "aggregate_type": "Initial Snapshot",
-    "type": "COMPLETED" <1>,
+    "type": "COMPLETED", // <1>
     "additional_data" : {
         "connector_name": "myConnector"
     },
     "timestamp": "1695817046353"
 }
 ----
-<1> The type field can contain one of the following values:
+
+<1> The `type` field can contain one of the following values:
 
 * `STARTED`
 * `COMPLETED`
@@ -190,18 +191,22 @@ a|[source, json]
       "data_collection":"table1, table2",
       "scanned_collection":"table1",
       "total_rows_scanned":"100",
-      "status":"SUCCEEDED" // <1>
+      "status":"SUCCEEDED"
    },
    "timestamp": "1695817046353"
 }
 ----
-<1> The possible values are:
-* EMPTY - table is empty
-* NO_PRIMARY_KEY - table has no primary key necessary for snapshot
-* SKIPPED - snapshot for this kind of table is not supported, check logs for details
-* SQL_EXCEPTION - SQL exception caught while processing a snapshot
-* SUCCEEDED - snapshot completed successfully
-* UNKNOWN_SCHEMA - schema not found for table, check logs for the list of known tables
+In the preceding example, the `additional_data.status` field can contain one of the following values:
+
+`EMPTY`:: The table contains no values.
+`NO_PRIMARY_KEY`:: Cannot complete snapshot; table has no primary key.
+`SKIPPED`:: Cannot complete a snapshots for this type of table.
+Refer to the logs for details.
+`SQL_EXCEPTION`:: A SQL exception occurred while performing the snapshot.
+`SUCCEEDED`:: The snapshot completed successfully.
+`UNKNOWN_SCHEMA`:: Could not find a schema for the table.
+Check the logs for the list of known tables.
+
 |Completed
 a|[source, json]
 ----

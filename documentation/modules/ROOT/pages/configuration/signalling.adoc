@@ -175,7 +175,7 @@ After you enable the signaling channel, a Kafka consumer is created to consume s
 ====
 To use Kafka signaling to trigger ad hoc incremental snapshots for most connectors, you must first xref:debezium-signaling-enabling-source-signaling-channel[enable a `source` signaling channel] in the connector configuration.
 The source channel implements a watermarking mechanism to deduplicate events that might be captured by an incremental snapshot and then captured again after streaming resumes.
-Enabling the source channel is not required when using a signaling channel to trigger an incremental snapshot of a read-only MySQL database that has {link-prefix}:link-mysql-connector}#enable-mysql-gtids[GTIDs enabled].
+Enabling the source channel is not required when using a signaling channel to trigger an incremental snapshot of a read-only MySQL database that has {link-prefix}:{link-mysql-connector}#enable-mysql-gtids[GTIDs enabled].
 For more information, see {link-prefix}:{link-mysql-connector}#mysql-read-only-incremental-snapshots[MySQL read only incremental snapshot]
 ====
 
