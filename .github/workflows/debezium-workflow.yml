@@ -318,6 +318,7 @@ jobs:
       - name: Build Debezium Connector MySQL
         run: >
           ./mvnw clean install -B -pl debezium-connector-mysql -am -Passembly
+          -Dmysql.server.image.source=mysql/mysql-server
           -Dversion.mysql.server=5.7
           -Dcheckstyle.skip=true
           -Dformat.skip=true
