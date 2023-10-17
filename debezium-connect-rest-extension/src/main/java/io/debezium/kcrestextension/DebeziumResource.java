@@ -115,19 +115,15 @@ public class DebeziumResource {
             final List<PredicateDefinition> predicatePlugins = new ArrayList<>();
             Herder herder = getHerder();
             for (PluginDesc<Transformation<?>> transformPlugin : herder.plugins().transformations()) {
-                if ("org.apache.kafka.connect.runtime.PredicatedTransformation".equals(transformPlugin.className())) {
-                    for (PluginDesc<Predicate<?>> predicate : herder.plugins().predicates()) {
-                        PredicateDefinition predicateDefinition = PredicateDefinition.fromPluginDesc(predicate);
-                        if (null != predicateDefinition) {
-                            predicatePlugins.add(predicateDefinition);
-                        }
-                    }
+                TransformDefinition transformDefinition = TransformDefinition.fromPluginDesc(transformPlugin);
+                if (null != transformDefinition) {
+                    transformPlugins.add(transformDefinition);
                 }
-                else {
-                    TransformDefinition transformDefinition = TransformDefinition.fromPluginDesc(transformPlugin);
-                    if (null != transformDefinition) {
-                        transformPlugins.add(transformDefinition);
-                    }
+            }
+            for (PluginDesc<Predicate<?>> predicate : herder.plugins().predicates()) {
+                PredicateDefinition predicateDefinition = PredicateDefinition.fromPluginDesc(predicate);
+                if (null != predicateDefinition) {
+                    predicatePlugins.add(predicateDefinition);
                 }
             }
             this.predicates = Collections.unmodifiableList(predicatePlugins);
