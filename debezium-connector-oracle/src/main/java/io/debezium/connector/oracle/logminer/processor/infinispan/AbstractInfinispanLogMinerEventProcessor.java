@@ -285,7 +285,7 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
         // todo: implement indexed keys when ISPN supports them
         return (int) getEventCache()
                 .keySet()
-                .parallelStream()
+                .stream()
                 .filter(k -> k.startsWith(transaction.getTransactionId() + "-"))
                 .count();
     }
