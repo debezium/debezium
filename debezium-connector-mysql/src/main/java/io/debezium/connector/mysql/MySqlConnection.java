@@ -59,6 +59,9 @@ public class MySqlConnection extends JdbcConnection {
     private final MySqlConnectionConfiguration connectionConfig;
     private final MySqlFieldReader mysqlFieldReader;
 
+    // Tracks whether this connection is with MariaDB, calculated lazily as needed.
+    private Boolean isMariaDb;
+
     /**
      * Creates a new connection using the supplied configuration.
      *
@@ -424,6 +427,14 @@ public class MySqlConnection extends JdbcConnection {
             LOGGER.debug("Error while getting number of rows in table {}: {}", tableId, e.getMessage(), e);
         }
         return OptionalLong.empty();
+    }
+
+    public boolean isMariaDb() {
+        if (isMariaDb == null) {
+            final String version = querySystemVariables(SQL_SHOW_SYSTEM_VARIABLES).get("version");
+            isMariaDb = version.toLowerCase().contains("mariadb");
+        }
+        return isMariaDb;
     }
 
     public boolean isTableIdCaseSensitive() {

@@ -1626,8 +1626,9 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     }
 
     /**
-     * This test case validates that if you disable MySQL option binlog_rows_query_log_events, then
-     * the original SQL statement for an INSERT statement is NOT parsed into the resulting event.
+     * This test case validates that if you disable MySQL option binlog_rows_query_log_events or
+     * the Maria option binlog_annotate_row_events, then the original SQL statement for an
+     * INSERT statement is NOT parsed into the resulting event.
      */
     @Test
     @FixFor("DBZ-706")
@@ -1657,7 +1658,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
             try (JdbcConnection connection = db.connect()) {
                 // Disable Query log option
-                connection.execute("SET binlog_rows_query_log_events=OFF");
+                db.databaseAsserts().setBinlogRowQueryEventsOff(connection);
 
                 // Execute insert statement.
                 connection.execute(insertSqlStatement);
@@ -1678,8 +1679,9 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     }
 
     /**
-     * This test case validates that if you enable MySQL option binlog_rows_query_log_events,
-     * but configure the connector to NOT include the query, it will not be included in the event.
+     * This test case validates that if you enable MySQL option binlog_rows_query_log_events
+     * or the MariaDB option binlog_annotate_row_events but configure the connector to NOT
+     * include the query, it will not be included in the event.
      */
     @Test
     @FixFor("DBZ-706")
@@ -1708,7 +1710,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
             try (JdbcConnection connection = db.connect()) {
                 // Enable Query log option
-                connection.execute("SET binlog_rows_query_log_events=ON");
+                db.databaseAsserts().setBinlogRowQueryEventsOn(connection);
 
                 // Execute insert statement.
                 connection.execute(insertSqlStatement);
@@ -1730,8 +1732,9 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     }
 
     /**
-     * This test case validates that if you enable MySQL option binlog_rows_query_log_events, then
-     * the original SQL statement for an INSERT statement is parsed into the resulting event.
+     * This test case validates that if you enable MySQL option binlog_rows_query_log_events or
+     * the MariaDB option binlog_annotate_row_events, then the original SQL statement for an
+     * INSERT statement is parsed into the resulting event.
      */
     @Test
     @FixFor("DBZ-706")
@@ -1760,7 +1763,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
             try (JdbcConnection connection = db.connect()) {
                 // Enable Query log option
-                connection.execute("SET binlog_rows_query_log_events=ON");
+                db.databaseAsserts().setBinlogRowQueryEventsOn(connection);
 
                 // Execute insert statement.
                 connection.execute(insertSqlStatement);
@@ -1782,8 +1785,9 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     }
 
     /**
-     * This test case validates that if you enable MySQL option binlog_rows_query_log_events, then
-     * the issue multiple INSERTs, the appropriate SQL statements are parsed into the resulting events.
+     * This test case validates that if you enable MySQL option binlog_rows_query_log_events or
+     * the MariaDB option binlog_annotate_rows_event, then the issue multiple INSERTs, the
+     * appropriate SQL statements are parsed into the resulting events.
      */
     @Test
     @FixFor("DBZ-706")
@@ -1815,7 +1819,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
             try (JdbcConnection connection = db.connect()) {
                 // Enable Query log option
-                connection.execute("SET binlog_rows_query_log_events=ON");
+                db.databaseAsserts().setBinlogRowQueryEventsOn(connection);
 
                 // Execute insert statement.
                 connection.execute(insertSqlStatement1);
@@ -1845,8 +1849,9 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     }
 
     /**
-     * This test case validates that if you enable MySQL option binlog_rows_query_log_events, then
-     * the issue single multi-row INSERT, the appropriate SQL statements are parsed into the resulting events.
+     * This test case validates that if you enable MySQL option binlog_rows_query_log_events or the
+     * MariaDB option binlog_annotate_row_events, then the issue single multi-row INSERT, the
+     * appropriate SQL statements are parsed into the resulting events.
      */
     @Test
     @FixFor("DBZ-706")
@@ -1877,7 +1882,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
             try (JdbcConnection connection = db.connect()) {
                 // Enable Query log option
-                connection.execute("SET binlog_rows_query_log_events=ON");
+                db.databaseAsserts().setBinlogRowQueryEventsOn(connection);
 
                 // Execute insert statement.
                 connection.execute(insertSqlStatement);
@@ -1906,8 +1911,9 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     }
 
     /**
-     * This test case validates that if you enable MySQL option binlog_rows_query_log_events, then
-     * the original SQL statement for a DELETE over a single row is parsed into the resulting event.
+     * This test case validates that if you enable MySQL option binlog_rows_query_log_events or
+     * the MariaDB option binlog_annotate_row_events, then the original SQL statement for a
+     * DELETE over a single row is parsed into the resulting event.
      */
     @Test
     @FixFor("DBZ-706")
@@ -1936,7 +1942,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
             try (JdbcConnection connection = db.connect()) {
                 // Enable Query log option
-                connection.execute("SET binlog_rows_query_log_events=ON");
+                db.databaseAsserts().setBinlogRowQueryEventsOn(connection);
 
                 // Execute insert statement.
                 connection.execute(deleteSqlStatement);
@@ -1957,8 +1963,9 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     }
 
     /**
-     * This test case validates that if you enable MySQL option binlog_rows_query_log_events, then
-     * issue a multi-row DELETE, the resulting events get the original SQL statement.
+     * This test case validates that if you enable MySQL option binlog_rows_query_log_events or
+     * the MariaDB option binlog_annotate_row_events, then issue a multi-row DELETE, the
+     * resulting events get the original SQL statement.
      */
     @Test
     @FixFor("DBZ-706")
@@ -1987,7 +1994,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
             try (JdbcConnection connection = db.connect()) {
                 // Enable Query log option
-                connection.execute("SET binlog_rows_query_log_events=ON");
+                db.databaseAsserts().setBinlogRowQueryEventsOn(connection);
 
                 // Execute insert statement.
                 connection.execute(deleteSqlStatement);
@@ -2016,8 +2023,9 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     }
 
     /**
-     * This test case validates that if you enable MySQL option binlog_rows_query_log_events, then
-     * the original SQL statement for an UPDATE over a single row is parsed into the resulting event.
+     * This test case validates that if you enable MySQL option binlog_rows_query_log_events or
+     * the MariaDB option binlog_annotate_row_events, then the original SQL statement for an
+     * UPDATE over a single row is parsed into the resulting event.
      */
     @Test
     @FixFor("DBZ-706")
@@ -2046,7 +2054,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
             try (JdbcConnection connection = db.connect()) {
                 // Enable Query log option
-                connection.execute("SET binlog_rows_query_log_events=ON");
+                db.databaseAsserts().setBinlogRowQueryEventsOn(connection);
 
                 // Execute insert statement.
                 connection.execute(updateSqlStatement);
@@ -2067,8 +2075,9 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     }
 
     /**
-     * This test case validates that if you enable MySQL option binlog_rows_query_log_events, then
-     * the original SQL statement for an UPDATE over a single row is parsed into the resulting event.
+     * This test case validates that if you enable MySQL option binlog_rows_query_log_events or
+     * the MariaDB option binlog_annotate_row_events, then the original SQL statement for an
+     * UPDATE over a single row is parsed into the resulting event.
      */
     @Test
     @FixFor("DBZ-706")
@@ -2097,7 +2106,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
             try (JdbcConnection connection = db.connect()) {
                 // Enable Query log option
-                connection.execute("SET binlog_rows_query_log_events=ON");
+                db.databaseAsserts().setBinlogRowQueryEventsOn(connection);
 
                 // Execute insert statement.
                 connection.execute(updateSqlStatement);

@@ -1377,6 +1377,7 @@ a| Mandatory field that describes the source metadata for the event. This field 
 * Timestamp for when the change was made in the database
 
 If the xref:enable-query-log-events[`binlog_rows_query_log_events`] MySQL configuration option is enabled and the connector configuration `include.query` property is enabled, the `source` field also provides the `query` field, which contains the original SQL statement that caused the change event.
+On MariaDB, the configuration option is xref:enable-query-log-events[`binlog_annotate_row_events`].
 
 |===
 
@@ -1455,6 +1456,7 @@ a|Mandatory field that describes the source metadata for the event. The `source`
 * Timestamp for when the change was made in the database
 
 If the xref:enable-query-log-events[`binlog_rows_query_log_events`] MySQL configuration option is enabled and the connector configuration `include.query` property is enabled, the `source` field also provides the `query` field, which contains the original SQL statement that caused the change event.
+On MariaDB, the configuration option is xref:enable-query-log-events[`binlog_annotate_row_events`].
 
 |4
 |`op`
@@ -1553,6 +1555,7 @@ a|Mandatory field that describes the source metadata for the event. In a _delete
 * Timestamp for when the change was made in the database
 
 If the xref:enable-query-log-events[`binlog_rows_query_log_events`] MySQL configuration option is enabled and the connector configuration `include.query` property is enabled, the `source` field also provides the `query` field, which contains the original SQL statement that caused the change event.
+On MariaDB, the configuration option is xref:enable-query-log-events[`binlog_annotate_row_events`].
 
 |4
 |`op`
@@ -2306,7 +2309,7 @@ a|The number of seconds the server waits for activity on a non-interactive conne
 [[enable-query-log-events]]
 === Enabling query log events
 
-You might want to see the original `SQL` statement for each binlog event. Enabling the `binlog_rows_query_log_events` option in the MySQL configuration file allows you to do this.
+You might want to see the original `SQL` statement for each binlog event. Enabling the `binlog_rows_query_log_events` option in the MySQL configuration or `binlog_annotate_row_events` in the MariaDB configuration file allows you to do this.
 
 This option is available in MySQL 5.6 and later.
 
@@ -2318,14 +2321,19 @@ This option is available in MySQL 5.6 and later.
 
 .Procedure
 
-* Enable `binlog_rows_query_log_events`:
+* Enable `binlog_rows_query_log_events` in MySQL or `binlog_annotate_row_events` in MariaDB:
 +
 [source,SQL]
 ----
 mysql> binlog_rows_query_log_events=ON
 ----
 +
-`binlog_rows_query_log_events` is set to a value that enables/disables support for including the original `SQL` statement in the binlog entry.
+[source,SQL]
+----
+mariadb> binlog_annotate_row_events=ON
+----
++
+`binlog_rows_query_log_events` or `binlog_annotate_row_events` is set to a value that enables/disables support for including the original `SQL` statement in the binlog entry.
 +
 ** `ON` = enabled
 ** `OFF` = disabled
@@ -2998,7 +3006,7 @@ endif::community[]
 |`false`
 |Boolean value that specifies whether the connector should include the original SQL query that generated the change event. +
  +
-If you set this option to `true` then you must also configure MySQL with the `binlog_rows_query_log_events` option set to `ON`. When `include.query` is `true`, the query is not present for events that the snapshot process generates. +
+If you set this option to `true` then you must also configure MySQL with the `binlog_rows_query_log_events` option or MariaDB with the `binlog_annotate_row_events` option set to `ON`. When `include.query` is `true`, the query is not present for events that the snapshot process generates. +
  +
 Setting `include.query` to `true` might expose tables or fields that are explicitly excluded or masked by including the original SQL statement in the change event. For this reason, the default setting is `false`.
 

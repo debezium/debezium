@@ -808,7 +808,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
             try (JdbcConnection connection = db.connect()) {
                 // Enable Query log option
-                connection.execute("SET binlog_rows_query_log_events=ON");
+                db.databaseAsserts().setBinlogRowQueryEventsOn(connection);
 
                 connection.execute("alter table DBZ_771_CUSTOMERS change customer_type customer_type int default 42;");
                 connection.execute("insert into DBZ_771_CUSTOMERS (id) values (2);");
@@ -848,7 +848,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
             try (JdbcConnection connection = db.connect()) {
                 // Enable Query log option
-                connection.execute("SET binlog_rows_query_log_events=ON");
+                db.databaseAsserts().setBinlogRowQueryEventsOn(connection);
 
                 connection.execute("alter table DBZ_771_CUSTOMERS change customer_type customer_type int;");
                 connection.execute("insert into DBZ_771_CUSTOMERS (id, customer_type) values (2, 456);");

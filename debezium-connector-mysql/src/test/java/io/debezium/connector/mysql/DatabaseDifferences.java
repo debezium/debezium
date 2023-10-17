@@ -5,6 +5,10 @@
  */
 package io.debezium.connector.mysql;
 
+import java.sql.SQLException;
+
+import io.debezium.jdbc.JdbcConnection;
+
 /**
  * A centralized expression of differences in behaviour between MySQL 5.x and 8.x
  *
@@ -15,4 +19,12 @@ public interface DatabaseDifferences {
     boolean isCurrentDateTimeDefaultGenerated();
 
     String currentDateTimeDefaultOptional(String isoString);
+
+    default void setBinlogRowQueryEventsOff(JdbcConnection connection) throws SQLException {
+        connection.execute("SET binlog_rows_query_log_events=OFF");
+    }
+
+    default void setBinlogRowQueryEventsOn(JdbcConnection connection) throws SQLException {
+        connection.execute("SET binlog_rows_query_log_events=ON");
+    }
 }
