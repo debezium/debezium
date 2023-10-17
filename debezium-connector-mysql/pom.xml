@@ -215,7 +215,7 @@
                                     <color>yellow</color>
                                 </log>
                                 <wait>
-                                    <log>MySQL init process done. Ready for start up.(?s)(.*)mysqld: ready for connections.</log>
+                                    <log>(MySQL|MariaDB) init process done. Ready for start up.(?s)(.*)(mysqld|mariadbd): ready for connections.</log>
                                     <time>${mysql.init.timeout}</time>
                                 </wait>
                             </run>
@@ -274,7 +274,7 @@
                                     <color>yellow</color>
                                 </log>
                                 <wait>
-                                    <log>MySQL init process done. Ready for start up.(?s)(.*)mysqld: ready for connections.</log>
+                                    <log>(MySQL|MariaDB) init process done. Ready for start up.(?s)(.*)(mysqld|mariadbd): ready for connections.</log>
                                     <time>${mysql.init.timeout}</time>
                                 </wait>
                             </run>
@@ -332,7 +332,7 @@
                                     <color>cyan</color>
                                 </log>
                                 <wait>
-                                    <log>MySQL init process done. Ready for start up.(?s)(.*)mysqld: ready for connections.</log>
+                                    <log>(MySQL|MariaDB) init process done. Ready for start up.(?s)(.*)(mysqld|mariadbd): ready for connections.</log>
                                     <time>${mysql.init.timeout}</time>
                                 </wait>
                             </run>
@@ -390,7 +390,7 @@
                                     <color>magenta</color>
                                 </log>
                                 <wait>
-                                    <log>MySQL init process done. Ready for start up.(?s)(.*)mysqld: ready for connections.</log>
+                                    <log>(MySQL|MariaDB) init process done. Ready for start up.(?s)(.*)(mysqld|mariadbd): ready for connections.</log>
                                     <time>${mysql.init.timeout}</time>
                                 </wait>
                             </run>
