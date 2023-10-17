@@ -170,6 +170,16 @@ public class EmbeddedInfinispanLogMinerEventProcessor extends AbstractInfinispan
         return Optional.ofNullable(transaction);
     }
 
+    @Override
+    protected String getFirstActiveTransactionKey() {
+        try (CloseableIterator<String> iterator = transactionCache.keySet().iterator()) {
+            if (iterator.hasNext()) {
+                return iterator.next();
+            }
+        }
+        return null;
+    }
+
     private <K, V> Cache<K, V> createCache(String cacheName, OracleConnectorConfig connectorConfig, Field field) {
         Objects.requireNonNull(cacheName);
 
