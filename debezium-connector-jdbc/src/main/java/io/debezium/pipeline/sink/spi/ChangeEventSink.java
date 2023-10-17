@@ -5,6 +5,8 @@
  */
 package io.debezium.pipeline.sink.spi;
 
+import java.util.Collection;
+
 import org.apache.kafka.connect.sink.SinkRecord;
 
 import io.debezium.common.annotation.Incubating;
@@ -22,4 +24,6 @@ public interface ChangeEventSink extends AutoCloseable {
      * @param record the sink record, never {@code null}
      */
     void execute(SinkRecord record);
+
+    void execute(Collection<SinkRecord> records);
 }

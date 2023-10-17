@@ -87,6 +87,10 @@ public class JdbcSinkConnectorTask extends SinkTask {
 
         LOGGER.debug("Received {} changes.", records.size());
 
+        // Maybe here we need to differentiate between batch and not batch mode
+        // since the use of session.doWork creates the connection for the bunch of records passed by Connect API.
+        // Another approach is to refactor the current code and push down the loop on records.
+
         for (Iterator<SinkRecord> iterator = records.iterator(); iterator.hasNext();) {
             final SinkRecord record = iterator.next();
             LOGGER.trace("Received {}", record);
