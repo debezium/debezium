@@ -47,7 +47,7 @@ import io.debezium.testing.testcontainers.ConnectorConfiguration;
  */
 public abstract class AbstractJdbcSinkIT {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(AbstractJdbcSinkIT.class);
+    protected static final Logger LOGGER = LoggerFactory.getLogger(AbstractJdbcSinkIT.class);
 
     private JsonConverter keyConverter;
     private JsonConverter valueConverter;

@@ -2663,6 +2663,11 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
     }
 
     protected ZonedDateTime getTimestampWithTimeZoneAsZonedDateTime(ResultSet rs, int index) throws SQLException {
+        LOGGER.trace("Timestamp from ResultSet " + getTimestamp(rs, index));
+        LOGGER.trace("Timestamp to LocalDateTime " + getTimestamp(rs, index).toLocalDateTime());
+        LOGGER.trace("Timestamp at Zone " + ZoneOffset.systemDefault() + " " + getTimestamp(rs, index).toLocalDateTime().atZone(ZoneOffset.systemDefault()));
+        LOGGER.trace("Timestamp at Zone " + SINK_ZONE_ID + " " + getTimestamp(rs, index).toLocalDateTime().atZone(ZoneOffset.systemDefault()).withZoneSameInstant(SINK_ZONE_ID));
+
         return getTimestamp(rs, index).toLocalDateTime()
                 .atZone(ZoneOffset.systemDefault())
                 .withZoneSameInstant(SINK_ZONE_ID);

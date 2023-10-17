@@ -9,9 +9,14 @@ import static io.debezium.connector.jdbc.JdbcSinkConnectorConfig.SchemaEvolution
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
@@ -88,6 +93,45 @@ public class JdbcChangeEventSink implements ChangeEventSink {
         catch (Exception e) {
             throw new ConnectException("Failed to process a sink record", e);
         }
+    }
+
+    @Override
+    public void execute(Collection<SinkRecord> records) {
+
+        final Map<TableId, RecordBuffer> updateBufferByTable = new HashMap<>();
+
+        for (SinkRecord record : records) {
+
+            Optional<TableId> optionalTableId = getTableId(record);
+            if (optionalTableId.isEmpty()) {
+                LOGGER.warn("Ignored to write record from topic '{}' partition '{}' offset '{}'", record.topic(), record.kafkaPartition(), record.kafkaOffset());
+                continue;
+            }
+
+            final TableId tableId = optionalTableId.get();
+
+            RecordBuffer tableIdBuffer = updateBufferByTable.computeIfAbsent(tableId, k -> new RecordBuffer(config));
+
+            List<SinkRecord> toFlush = tableIdBuffer.add(record);
+            if (!toFlush.isEmpty()) {
+                writeBatchInsert(tableId, toFlush);
+            }
+        }
+
+        updateBufferByTable.forEach((tableId, buffer) -> {
+            LOGGER.debug("Flushing records in JDBC Writer for table ID: {}", tableId);
+            buffer.flush();
+        });
+    }
+
+    private Optional<TableId> getTableId(SinkRecord record) {
+
+        String tableName = tableNamingStrategy.resolveTableName(config, record);
+        if (tableName == null) {
+            return Optional.empty();
+        }
+
+        return Optional.of(dialect.getTableId(tableName));
     }
 
     @Override
@@ -267,21 +311,62 @@ public class JdbcChangeEventSink implements ChangeEventSink {
         }
     }
 
-    private void writeBatchInsert(String sql, SinkRecordDescriptor record) {
+    private void writeBatchInsert(TableId tableId, List<SinkRecord> records) {
+
+        final List<SinkRecordDescriptor> toWrite = records.stream().map(record -> SinkRecordDescriptor.builder()
+                .withPrimaryKeyMode(config.getPrimaryKeyMode())
+                .withPrimaryKeyFields(config.getPrimaryKeyFields())
+                .withSinkRecord(record)
+                .withDialect(dialect)
+                .build()).collect(Collectors.toList());
+
+        /*
+         * if (descriptor.isTombstone()) {
+         * LOGGER.debug("Skipping tombstone record {}", descriptor);
+         * return;
+         * }
+         */ // TODO manage it
+
+        final String insertStatement;
+        try {
+            final TableDescriptor table = checkAndApplyTableChangesIfNeeded(tableId, toWrite.get(0));
+            insertStatement = dialect.getInsertStatement(table, toWrite.get(0));
+        }
+        catch (Exception e) {
+            throw new ConnectException("Failed to process a sink record", e);
+        }
 
         final Transaction transaction = session.beginTransaction();
-        session.doWork(conn -> {
+        try {
+            session.doWork(conn -> {
 
-            try (PreparedStatement pstmt = conn.prepareStatement(sql)) { // PreparedStatement should be passed to the buffer and should be separated for insert and delete
+                try (PreparedStatement pstmt = conn.prepareStatement(insertStatement)) {
 
-                // Add record to a table buffer if exist or initialize an empty buffer
-                // 1. Check if it's time to flush ( buffer size > max_batch_size, on delete event, on schema change, on some elapsed time after last flush)
-                // 2. Before flush needs to bind the values. The idea is to use a refactored dialect.bindValue method that did not receive the NativeQuery as parameter
-                // but simply return a List<Object> of bounded values. Then bounded values will be used for pstmt.setObject() (followed by a pstmt.addBatch())
-                // 3. Call to pstmt.executeBatch();
-            }
-        });
-        transaction.commit();
+                    QueryBinder queryBinder = queryBinderResolver.resolve(pstmt);
+                    for (SinkRecordDescriptor sinkRecordDescriptor : toWrite) {
+
+                        int index = bindKeyValuesToQuery(sinkRecordDescriptor, queryBinder, 1);
+                        bindNonKeyValuesToQuery(sinkRecordDescriptor, queryBinder, index);
+
+                        pstmt.addBatch();
+                    }
+
+                    pstmt.executeBatch();
+
+                }
+                catch (SQLException e) {
+                    transaction.rollback();
+                    throw e;
+                }
+            });
+
+            transaction.commit();
+
+        }
+        catch (Exception e) {
+            transaction.rollback();
+            throw e;
+        }
     }
 
     private void writeUpsert(String sql, SinkRecordDescriptor record) throws SQLException {

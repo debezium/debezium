@@ -63,6 +63,7 @@ public class JdbcSinkConnectorConfig {
     public static final String DATABASE_TIME_ZONE = "database.time_zone";
     public static final String POSTGRES_POSTGIS_SCHEMA = "dialect.postgres.postgis.schema";
     public static final String SQLSERVER_IDENTITY_INSERT = "dialect.sqlserver.identity.insert";
+    public static final String BATCH_SIZE = "batch.size";
 
     // todo add support for the ValueConverter contract
 
@@ -262,6 +263,17 @@ public class JdbcSinkConnectorConfig {
             .withDefault(false)
             .withDescription("Allowing to insert explicit value for identity column in table for SQLSERVER.");
 
+    public static final Field BATCH_SIZE_FIELD = Field.create(BATCH_SIZE)
+            .withDisplayName("Specifies how many records to attempt to batch together for insertion into the destination table, when possible. " +
+                    "You can also configure the connector’s underlying consumer’s max.poll.records using consumer.override.max.poll.records in the connector configuration.")
+            .withType(Type.INT)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 4))
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.MEDIUM)
+            .withDefault(500)
+            .withDescription("Specifies how many records to attempt to batch together for insertion into the destination table, when possible. " +
+                    "You can also configure the connector’s underlying consumer’s max.poll.records using consumer.override.max.poll.records in the connector configuration.");
+
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
             .connector(
                     CONNECTION_URL_FIELD,
@@ -284,7 +296,8 @@ public class JdbcSinkConnectorConfig {
                     COLUMN_NAMING_STRATEGY_FIELD,
                     DATABASE_TIME_ZONE_FIELD,
                     POSTGRES_POSTGIS_SCHEMA_FIELD,
-                    SQLSERVER_IDENTITY_INSERT_FIELD)
+                    SQLSERVER_IDENTITY_INSERT_FIELD,
+                    BATCH_SIZE_FIELD)
             .create();
 
     /**
@@ -458,6 +471,8 @@ public class JdbcSinkConnectorConfig {
 
     private final boolean sqlServerIdentityInsert;
 
+    private final long batchSize;
+
     public JdbcSinkConnectorConfig(Map<String, String> props) {
         config = Configuration.from(props);
         this.insertMode = InsertMode.parse(config.getString(INSERT_MODE));
@@ -474,6 +489,7 @@ public class JdbcSinkConnectorConfig {
         this.databaseTimezone = config.getString(DATABASE_TIME_ZONE_FIELD);
         this.postgresPostgisSchema = config.getString(POSTGRES_POSTGIS_SCHEMA_FIELD);
         this.sqlServerIdentityInsert = config.getBoolean(SQLSERVER_IDENTITY_INSERT_FIELD);
+        this.batchSize = config.getLong(BATCH_SIZE_FIELD);
     }
 
     public void validate() {
@@ -531,6 +547,10 @@ public class JdbcSinkConnectorConfig {
 
     public boolean isSqlServerIdentityInsert() {
         return sqlServerIdentityInsert;
+    }
+
+    public long getBatchSize() {
+        return batchSize;
     }
 
     // public Set<String> getDataTypeMapping() {
