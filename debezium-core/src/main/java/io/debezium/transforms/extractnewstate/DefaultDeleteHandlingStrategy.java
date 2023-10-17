@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.transforms.strategy;
+package io.debezium.transforms.extractnewstate;
 
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.slf4j.Logger;
@@ -17,12 +17,12 @@ import io.debezium.transforms.ExtractNewRecordStateConfigDefinition.DeleteTombst
  *
  * @author Harvey Yue
  */
-public class DeleteTombstoneExtractRecordStrategy<R extends ConnectRecord<R>> extends AbstractExtractRecordStrategy<R> {
+public class DefaultDeleteHandlingStrategy<R extends ConnectRecord<R>> extends AbstractExtractRecordStrategy<R> {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(DeleteTombstoneExtractRecordStrategy.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(DefaultDeleteHandlingStrategy.class);
     private final DeleteTombstoneHandling deleteTombstoneHandling;
 
-    public DeleteTombstoneExtractRecordStrategy(DeleteTombstoneHandling deleteTombstoneHandling) {
+    public DefaultDeleteHandlingStrategy(DeleteTombstoneHandling deleteTombstoneHandling) {
         this.deleteTombstoneHandling = deleteTombstoneHandling;
     }
 

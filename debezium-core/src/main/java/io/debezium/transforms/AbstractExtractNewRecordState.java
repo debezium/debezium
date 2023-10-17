@@ -47,9 +47,9 @@ import io.debezium.config.Field;
 import io.debezium.data.Envelope;
 import io.debezium.transforms.ExtractNewRecordStateConfigDefinition.DeleteHandling;
 import io.debezium.transforms.ExtractNewRecordStateConfigDefinition.DeleteTombstoneHandling;
-import io.debezium.transforms.strategy.DeleteExtractRecordStrategy;
-import io.debezium.transforms.strategy.DeleteTombstoneExtractRecordStrategy;
-import io.debezium.transforms.strategy.ExtractRecordStrategy;
+import io.debezium.transforms.extractnewstate.DefaultDeleteHandlingStrategy;
+import io.debezium.transforms.extractnewstate.ExtractRecordStrategy;
+import io.debezium.transforms.extractnewstate.LegacyDeleteHandlingStrategy;
 import io.debezium.util.Strings;
 
 /**
@@ -91,13 +91,13 @@ public abstract class AbstractExtractNewRecordState<R extends ConnectRecord<R>> 
         // handle deleted records
         if (!Strings.isNullOrBlank(config.getString(HANDLE_TOMBSTONE_DELETES))) {
             DeleteTombstoneHandling deleteTombstoneHandling = DeleteTombstoneHandling.parse(config.getString(HANDLE_TOMBSTONE_DELETES));
-            extractRecordStrategy = new DeleteTombstoneExtractRecordStrategy<>(deleteTombstoneHandling);
+            extractRecordStrategy = new DefaultDeleteHandlingStrategy<>(deleteTombstoneHandling);
         }
         else {
             // will be removed in further release
             boolean dropTombstones = config.getBoolean(DROP_TOMBSTONES);
             DeleteHandling handleDeletes = DeleteHandling.parse(config.getString(HANDLE_DELETES));
-            extractRecordStrategy = new DeleteExtractRecordStrategy<>(handleDeletes, dropTombstones);
+            extractRecordStrategy = new LegacyDeleteHandlingStrategy<>(handleDeletes, dropTombstones);
             LOGGER.warn(
                     "The deleted record handling configs \"drop.tombstones\" and \"delete.handling.mode\" have been deprecated, " +
                             "please use \"delete.tombstone.handling.mode\" instead of.");

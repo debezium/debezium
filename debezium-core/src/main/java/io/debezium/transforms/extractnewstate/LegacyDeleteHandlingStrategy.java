@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.transforms.strategy;
+package io.debezium.transforms.extractnewstate;
 
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Struct;
@@ -14,18 +14,18 @@ import io.debezium.DebeziumException;
 import io.debezium.transforms.ExtractNewRecordStateConfigDefinition.DeleteHandling;
 
 /**
- * Deprecated, use {@link DeleteTombstoneExtractRecordStrategy} instead
+ * Deprecated, use {@link DefaultDeleteHandlingStrategy} instead
  *
  * @author Harvey Yue
  */
 @Deprecated
-public class DeleteExtractRecordStrategy<R extends ConnectRecord<R>> extends AbstractExtractRecordStrategy<R> {
+public class LegacyDeleteHandlingStrategy<R extends ConnectRecord<R>> extends AbstractExtractRecordStrategy<R> {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(DeleteExtractRecordStrategy.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(LegacyDeleteHandlingStrategy.class);
     private final DeleteHandling deleteHandling;
     private final boolean dropTombstones;
 
-    public DeleteExtractRecordStrategy(DeleteHandling deleteHandling, boolean dropTombstones) {
+    public LegacyDeleteHandlingStrategy(DeleteHandling deleteHandling, boolean dropTombstones) {
         this.deleteHandling = deleteHandling;
         this.dropTombstones = dropTombstones;
     }
