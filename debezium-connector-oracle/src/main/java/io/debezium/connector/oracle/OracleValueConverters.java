@@ -316,14 +316,6 @@ public class OracleValueConverters extends JdbcValueConverters {
             return unavailableValuePlaceholderString;
         }
 
-        // A situation exists where when combining UNISTR with a character string in a CHAR field
-        // that Oracle reconstructs the string with 1 less character padding for each multibyte
-        // character present. This leads to an inconsistent behavior between the output of data
-        // for a CHAR field, so this is to realign the field's right padding to the column length.
-        if (column.jdbcType() == OracleTypes.CHAR && data instanceof String) {
-            data = Strings.pad((String) data, column.length(), ' ');
-        }
-
         return super.convertString(column, fieldDefn, data);
     }
 

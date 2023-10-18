@@ -5666,12 +5666,20 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             List<SourceRecord> tableRecords = records.recordsForTopic("server1.DEBEZIUM.DBZ6975");
             assertThat(tableRecords).hasSize(3);
 
+            // NOTE:
+            // The following assertions show that CHAR fields with multi-byte characters are short
+            // 1 character, this is because Oracle interprets the two bytes as two separate bytes
+            // due to the field being CHAR, thus the final output is short by 1 character padding.
+            // As seen below with NCHAR columns, the padding properly aligns to the column width
+            // as expected. In short, don't insert multibyte data into CHAR fields and expect the
+            // database will properly account for the padding!!! :)
+
             // Insert
             SourceRecord record = tableRecords.get(0);
             VerifyRecord.isValidInsert(record);
             assertThat(getAfter(record).get("C0")).isEqualTo("Вa'b\\c");
             assertThat(getAfter(record).get("C1")).isEqualTo("Вa'b\\c");
-            assertThat(getAfter(record).get("C2")).isEqualTo("Вa'b\\c    "); // CHAR is padded
+            assertThat(getAfter(record).get("C2")).isEqualTo("Вa'b\\c   "); // CHAR is padded
             assertThat(getAfter(record).get("C3")).isEqualTo("Вa'b\\c    "); // NCHAR is padded
 
             // Update
@@ -5679,7 +5687,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             VerifyRecord.isValidUpdate(record);
             assertThat(getAfter(record).get("C0")).isEqualTo("Нbc'd");
             assertThat(getAfter(record).get("C1")).isEqualTo("Нbc'd");
-            assertThat(getAfter(record).get("C2")).isEqualTo("Нbc'd     "); // CHAR is padded
+            assertThat(getAfter(record).get("C2")).isEqualTo("Нbc'd    "); // CHAR is padded
             assertThat(getAfter(record).get("C3")).isEqualTo("Нbc'd     "); // NCHAR is padded
 
             // Delete
@@ -5687,7 +5695,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             VerifyRecord.isValidDelete(record);
             assertThat(getBefore(record).get("C0")).isEqualTo("Нbc'd");
             assertThat(getBefore(record).get("C1")).isEqualTo("Нbc'd");
-            assertThat(getBefore(record).get("C2")).isEqualTo("Нbc'd     "); // CHAR is padded
+            assertThat(getBefore(record).get("C2")).isEqualTo("Нbc'd    "); // CHAR is padded
             assertThat(getBefore(record).get("C3")).isEqualTo("Нbc'd     "); // NCHAR is padded
 
             stopConnector();
