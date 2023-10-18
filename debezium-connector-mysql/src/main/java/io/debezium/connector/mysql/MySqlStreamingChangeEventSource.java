@@ -309,6 +309,11 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
                         tableMapEventByTableId, eventDeserializationFailureHandlingMode).setMayContainExtraInformation(true));
         eventDeserializer.setEventDataDeserializer(EventType.TRANSACTION_PAYLOAD,
                 new TransactionPayloadDeserializer(tableMapEventByTableId, eventDeserializationFailureHandlingMode));
+
+        if (connection.isMariaDb()) {
+            eventDeserializer.setCompatibilityMode(EventDeserializer.CompatibilityMode.CHAR_AND_BINARY_AS_BYTE_ARRAY);
+        }
+
         client.setEventDeserializer(eventDeserializer);
     }
 
