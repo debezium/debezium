@@ -18,6 +18,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.junit.Assume.assumeTrue;
 
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
@@ -60,6 +61,7 @@ import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
+import org.postgresql.core.ServerVersion;
 import org.postgresql.util.PSQLState;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -175,6 +177,18 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         Config validateConfig = new PostgresConnector().validate(config.asMap());
         validateConfig.configValues().forEach(configValue -> assertTrue("Unexpected error for: " + configValue.name(),
                 configValue.errorMessages().isEmpty()));
+    }
+
+    @Test
+    public void shouldCaptureErrorForInvalidPgoutputDecoder() {
+        assumeTrue(ServerVersion.v10.getVersionNum() > TestHelper.getServerVersion().getVersionNum());
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.PLUGIN_NAME, "pgoutput")
+                .build();
+        Config validatedConfig = new PostgresConnector().validate(config.asMap());
+
+        assertConfigurationErrors(validatedConfig, PostgresConnectorConfig.HOSTNAME, 1);
+        assertConfigurationErrors(validatedConfig, PostgresConnectorConfig.PLUGIN_NAME, 1);
     }
 
     @Test

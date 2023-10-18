@@ -25,6 +25,9 @@
         <version.joda>2.10.1</version.joda>
         <version.google.protos>1.17.0</version.google.protos>
 
+        <!-- re2j Regex Library -->
+        <re2j.version>1.6</re2j.version>
+
         <!-- Spanner and Vitess dependencies -->
         <version.grpc>1.56.1</version.grpc>
 
@@ -96,6 +99,11 @@
                 <artifactId>jackson-datatype-jsr310</artifactId>
                 <version>${version.jackson}</version>
                 <optional>true</optional>
+            </dependency>
+            <dependency>
+                <groupId>com.google.re2j</groupId>
+                <artifactId>re2j</artifactId>
+                <version>${re2j.version}</version>
             </dependency>
 
             <!-- Kafka Connect -->

@@ -16,11 +16,14 @@ import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.connector.Task;
 import org.apache.kafka.connect.source.ExactlyOnceSupport;
+import org.postgresql.core.ServerVersion;
+import org.postgresql.core.Version;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.RelationalBaseSourceConnector;
+import io.debezium.connector.postgresql.PostgresConnectorConfig.LogicalDecoder;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 
@@ -84,6 +87,9 @@ public class PostgresConnector extends RelationalBaseSourceConnector {
 
         final PostgresConnectorConfig postgresConfig = new PostgresConnectorConfig(config);
         final ConfigValue hostnameValue = configValues.get(RelationalDatabaseConnectorConfig.HOSTNAME.name());
+        final ConfigValue portValue = configValues.get(PostgresConnectorConfig.PORT.name());
+        final ConfigValue userValue = configValues.get(PostgresConnectorConfig.USER.name());
+        final ConfigValue passwordValue = configValues.get(PostgresConnectorConfig.PASSWORD.name());
         // Try to connect to the database ...
         try (PostgresConnection connection = new PostgresConnection(postgresConfig.getJdbcConfig(), PostgresConnection.CONNECTION_VALIDATE_CONNECTION)) {
             try {
@@ -92,11 +98,24 @@ public class PostgresConnector extends RelationalBaseSourceConnector {
                 testConnection(connection);
                 checkWalLevel(connection, postgresConfig);
                 checkLoginReplicationRoles(connection);
+                if (LogicalDecoder.PGOUTPUT.equals(postgresConfig.plugin())) {
+                    int pgversion = checkPostgresVersionForPgoutputSupport(connection, postgresConfig);
+                    if (ServerVersion.v10.getVersionNum() > pgversion) {
+                        final String errorMessage = "PGOUTPUT plugin is only supported on postgres server version 10+";
+                        LOGGER.error(errorMessage);
+                        hostnameValue.addErrorMessage(errorMessage);
+                        pluginNameValue.addErrorMessage(errorMessage);
+                    }
+                }
             }
-            catch (SQLException e) {
+            catch (Exception e) {
                 LOGGER.error("Failed testing connection for {} with user '{}'", connection.connectionString(),
                         connection.username(), e);
                 hostnameValue.addErrorMessage("Error while validating connector config: " + e.getMessage());
+                databaseValue.addErrorMessage("Error while validating connector config: " + e.getMessage());
+                portValue.addErrorMessage("Error while validating connector config: " + e.getMessage());
+                userValue.addErrorMessage("Error while validating connector config: " + e.getMessage());
+                passwordValue.addErrorMessage("Error while validating connector config: " + e.getMessage());
             }
         }
     }
@@ -159,6 +178,17 @@ public class PostgresConnector extends RelationalBaseSourceConnector {
         connection.execute("SELECT version()");
         LOGGER.info("Successfully tested connection for {} with user '{}'", connection.connectionString(),
                 connection.username());
+    }
+
+    private static int checkPostgresVersionForPgoutputSupport(PostgresConnection connection, PostgresConnectorConfig postgresConfig) throws SQLException {
+        // check for DB version and LogicalDecoder compatibility
+        final Version dbVersion = ServerVersion.from(
+                connection.queryAndMap(
+                        "SHOW server_version",
+                        connection.singleResultMapper(
+                                rs -> rs.getString("server_version"),
+                                "Could not fetch db version")));
+        return dbVersion.getVersionNum();
     }
 
     @Override
