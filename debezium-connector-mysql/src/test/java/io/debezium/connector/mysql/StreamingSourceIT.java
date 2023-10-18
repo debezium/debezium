@@ -38,11 +38,15 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestRule;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig.EventProcessingFailureHandlingMode;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
+import io.debezium.connector.mysql.junit.SkipTestDependingOnDatabaseRule;
+import io.debezium.connector.mysql.junit.SkipWhenDatabaseIs;
+import io.debezium.connector.mysql.junit.SkipWhenDatabaseIs.Type;
 import io.debezium.data.Envelope;
 import io.debezium.data.KeyValueStore;
 import io.debezium.data.KeyValueStore.Collection;
@@ -53,7 +57,6 @@ import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.heartbeat.DatabaseHeartbeatImpl;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConnection;
-import io.debezium.junit.SkipTestRule;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.history.SchemaHistory;
@@ -65,7 +68,7 @@ import io.debezium.util.Testing;
  * @author Randall Hauch, Jiri Pechanec
  *
  */
-@SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 6, reason = "DDL uses fractional second data types, not supported until MySQL 5.6")
+@SkipWhenDatabaseIs(value = Type.MYSQL, versions = @SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 6, reason = "DDL uses fractional second data types, not supported until MySQL 5.6"))
 public class StreamingSourceIT extends AbstractConnectorTest {
 
     private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-binlog.txt").toAbsolutePath();
@@ -79,7 +82,7 @@ public class StreamingSourceIT extends AbstractConnectorTest {
     private SchemaChangeHistory schemaChanges;
 
     @Rule
-    public SkipTestRule skipRule = new SkipTestRule();
+    public TestRule skipRule = new SkipTestDependingOnDatabaseRule();
 
     @Before
     public void beforeEach() {
@@ -468,7 +471,8 @@ public class StreamingSourceIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-1208")
-    @SkipWhenDatabaseVersion(check = LESS_THAN_OR_EQUAL, major = 5, minor = 6, reason = "MySQL 5.6 does not support SSL")
+    @SkipWhenDatabaseIs(value = Type.MYSQL, versions = @SkipWhenDatabaseVersion(check = LESS_THAN_OR_EQUAL, major = 5, minor = 6, reason = "MySQL 5.6 does not support SSL"))
+    @SkipWhenDatabaseIs(value = Type.MARIADB, reason = "MariaDB does not support SSL by default")
     public void shouldFailOnUnknownTlsProtocol() {
         final UniqueDatabase REGRESSION_DATABASE = new UniqueDatabase("logical_server_name", "regression_test")
                 .withDbHistoryPath(SCHEMA_HISTORY_PATH);
@@ -494,7 +498,8 @@ public class StreamingSourceIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-1208")
-    @SkipWhenDatabaseVersion(check = LESS_THAN_OR_EQUAL, major = 5, minor = 6, reason = "MySQL 5.6 does not support SSL")
+    @SkipWhenDatabaseIs(value = Type.MYSQL, versions = @SkipWhenDatabaseVersion(check = LESS_THAN_OR_EQUAL, major = 5, minor = 6, reason = "MySQL 5.6 does not support SSL"))
+    @SkipWhenDatabaseIs(value = Type.MARIADB, reason = "MariaDB does not support SSL by default")
     public void shouldAcceptTls12() throws Exception {
         final UniqueDatabase REGRESSION_DATABASE = new UniqueDatabase("logical_server_name", "regression_test")
                 .withDbHistoryPath(SCHEMA_HISTORY_PATH);
