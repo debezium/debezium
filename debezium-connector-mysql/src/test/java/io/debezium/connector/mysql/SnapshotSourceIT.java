@@ -517,7 +517,8 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
             timerecords.add(((Struct) val.value()).getStruct("after"));
         });
         Struct after = timerecords.get(0);
-        assertThat(after.get("c1")).isEqualTo(toMicroSeconds("PT517H51M04.78S"));
+        String expected = MySqlTestConnection.isMariaDb() ? "PT517H51M04.77S" : "PT517H51M04.78S";
+        assertThat(after.get("c1")).isEqualTo(toMicroSeconds(expected));
         assertThat(after.get("c2")).isEqualTo(toMicroSeconds("-PT13H14M50S"));
         assertThat(after.get("c3")).isEqualTo(toMicroSeconds("-PT733H0M0.001S"));
         assertThat(after.get("c4")).isEqualTo(toMicroSeconds("-PT1H59M59.001S"));
@@ -607,7 +608,8 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
             timerecords.add(((Struct) val.value()).getStruct("after"));
         });
         Struct after = timerecords.get(0);
-        assertThat(after.get("c1")).isEqualTo(toMicroSeconds("PT517H51M04.78S"));
+        String expected = MySqlTestConnection.isMariaDb() ? "PT517H51M04.77S" : "PT517H51M04.78S";
+        assertThat(after.get("c1")).isEqualTo(toMicroSeconds(expected));
         assertThat(after.get("c2")).isEqualTo(toMicroSeconds("-PT13H14M50S"));
         assertThat(after.get("c3")).isEqualTo(toMicroSeconds("-PT733H0M0.001S"));
         assertThat(after.get("c4")).isEqualTo(toMicroSeconds("-PT1H59M59.001S"));
