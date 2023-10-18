@@ -126,10 +126,6 @@ public class ReadBinLogIT implements Testing {
         client.registerEventListener(counters);
         client.registerEventListener(this::recordEvent);
         client.registerLifecycleListener(new TraceLifecycleListener());
-        if (MySqlTestConnection.isMariaDb()) {
-            // This makes sure BEGIN events are emitted via QUERY events rather than GTIDs
-            client.setMariaDbSlaveCapability(2);
-        }
         EventDeserializer eventDeserializer = new EventDeserializer();
         eventDeserializer.setEventDataDeserializer(EventType.STOP, new StopEventDataDeserializer());
         client.setEventDeserializer(eventDeserializer);
