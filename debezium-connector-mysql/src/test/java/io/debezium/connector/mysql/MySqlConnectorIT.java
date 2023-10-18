@@ -669,7 +669,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
             assertThat(persistedOffsetSource.binlogFilename()).isEqualTo(positionBeforeInserts.binlogFilename());
             assertThat(persistedOffsetSource.binlogFilename()).isEqualTo(positionAfterInserts.binlogFilename());
             final MySqlVersion mysqlVersion = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName()).getMySqlVersion();
-            if (mysqlVersion == MySqlVersion.MYSQL_5_5 || mysqlVersion == MySqlVersion.MYSQL_5_6) {
+            if (mysqlVersion == MySqlVersion.MYSQL_5_5 || mysqlVersion == MySqlVersion.MYSQL_5_6 || mysqlVersion == MySqlVersion.MARIADB_11) {
                 // todo: for some reason on MySQL 5.6, the binlog position does not behave like it does on MySQL 5.7 - why?
                 assertThat(persistedOffsetSource.binlogPosition()).isGreaterThanOrEqualTo(positionBeforeInserts.binlogPosition());
             }
