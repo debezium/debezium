@@ -11,6 +11,14 @@
         <appender-ref ref="CONSOLE" />
     </root>
 
+    <!-- Reduced to manage verbosity on CI -->
+    <logger name="io.debezium.connector.mysql.MySqlSnapshotChangeEventSource" level="warn" additivity="false">
+        <appender-ref ref="CONSOLE" />
+    </logger>
+    <logger name="io.debezium.relational.RelationalSnapshotChangeEventSource" level="warn" additivity="false">
+        <appender-ref ref="CONSOLE" />
+    </logger>
+
     <!-- Set up the default logging to be INFO level, then override specific 
         units -->
     <logger name="io.debezium" level="info" additivity="false">
