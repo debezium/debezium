@@ -97,6 +97,15 @@ public class MySqlTestConnection extends JdbcConnection {
     }
 
     /**
+     * Obtain whether the database source is MariaDB.
+     *
+     * @return true if the database is; otherwise false
+     */
+    public static boolean isMariaDB() {
+        return forTestDatabase("mysql").getMySqlVersion() == MySqlVersion.MARIADB_11;
+    }
+
+    /**
      * Obtain whether the database source is the Percona Server fork.
      *
      * @return true if the database is Percona Server; otherwise false.
@@ -236,6 +245,16 @@ public class MySqlTestConnection extends JdbcConnection {
                     @Override
                     public void setBinlogRowQueryEventsOn(JdbcConnection connection) throws SQLException {
                         connection.execute("SET binlog_annotate_row_events=ON");
+                    }
+
+                    @Override
+                    public void setBinlogCompressionOff(JdbcConnection connection) throws SQLException {
+                        connection.execute("set global log_bin_compress=OFF;");
+                    }
+
+                    @Override
+                    public void setBinlogCompressionOn(JdbcConnection connection) throws SQLException {
+                        connection.execute("set global log_bin_compress=ON;");
                     }
                 };
             }

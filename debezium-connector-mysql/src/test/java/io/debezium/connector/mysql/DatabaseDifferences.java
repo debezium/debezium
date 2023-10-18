@@ -27,4 +27,12 @@ public interface DatabaseDifferences {
     default void setBinlogRowQueryEventsOn(JdbcConnection connection) throws SQLException {
         connection.execute("SET binlog_rows_query_log_events=ON");
     }
+
+    default void setBinlogCompressionOff(JdbcConnection connection) throws SQLException {
+        connection.execute("set binlog_transaction_compression=OFF;");
+    }
+
+    default void setBinlogCompressionOn(JdbcConnection connection) throws SQLException {
+        connection.execute("set binlog_transaction_compression=ON;");
+    }
 }
