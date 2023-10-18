@@ -345,12 +345,14 @@ public class StreamingSourceIT extends AbstractConnectorTest {
 
         consumeAtLeast(expectedChanges);
 
+        String dateTime = MySqlTestConnection.isMariaDb() ? "2014-09-08T17:51:04.77" : "2014-09-08T17:51:04.780";
+
         // Check the records via the store ...
         List<SourceRecord> sourceRecords = store.sourceRecords();
         assertThat(sourceRecords.size()).isEqualTo(1);
         // TIMESTAMP should be converted to UTC, using the DB's (or connection's) time zone
         ZonedDateTime expectedTimestamp = ZonedDateTime.of(
-                LocalDateTime.parse("2014-09-08T17:51:04.780"),
+                LocalDateTime.parse(dateTime),
                 UniqueDatabase.TIMEZONE)
                 .withZoneSameInstant(ZoneOffset.UTC);
 
@@ -390,14 +392,23 @@ public class StreamingSourceIT extends AbstractConnectorTest {
         Struct value = (Struct) sourceRecord.value();
         Struct after = value.getStruct(Envelope.FieldName.AFTER);
 
+        String durationValue = "PT517H51M4.78S";
+        long timeWithNanoSeconds = 1_864_264_780_000_000L;
+        int nanos = 780;
+        if (MySqlTestConnection.isMariaDb()) {
+            durationValue = "PT517H51M4.77S";
+            timeWithNanoSeconds = 1_864_264_770_000_000L;
+            nanos = 770;
+        }
+
         // '517:51:04.777'
         long c1 = after.getInt64("c1");
         Duration c1Time = Duration.ofNanos(c1 * 1_000);
-        Duration c1ExpectedTime = toDuration("PT517H51M4.78S");
+        Duration c1ExpectedTime = toDuration(durationValue);
         assertEquals(c1ExpectedTime, c1Time);
         assertEquals(c1ExpectedTime.toNanos(), c1Time.toNanos());
-        assertThat(c1Time.toNanos()).isEqualTo(1864264780000000L);
-        assertThat(c1Time).isEqualTo(Duration.ofHours(517).plusMinutes(51).plusSeconds(4).plusMillis(780));
+        assertThat(c1Time.toNanos()).isEqualTo(timeWithNanoSeconds);
+        assertThat(c1Time).isEqualTo(Duration.ofHours(517).plusMinutes(51).plusSeconds(4).plusMillis(nanos));
 
         // '-13:14:50'
         long c2 = after.getInt64("c2");
