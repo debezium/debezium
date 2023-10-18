@@ -253,6 +253,10 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
             if (snapshot.equals("false")) {
                 assertNotNull(query);
             }
+            else if (MySqlTestConnection.isMariaDb()) {
+                assertNotNull(query);
+                assertEquals("incremental", snapshot);
+            }
             else {
                 assertNull(query);
                 assertEquals("incremental", snapshot);

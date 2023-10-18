@@ -15,6 +15,11 @@ import io.debezium.junit.DatabaseVersionResolver;
  */
 public class MySqlDatabaseVersionResolver implements DatabaseVersionResolver {
 
+    public boolean isMariaDb() {
+        return MySqlTestConnection.forTestDatabase("mysql")
+                .getMySqlVersion() == MySqlTestConnection.MySqlVersion.MARIADB_11;
+    }
+
     public DatabaseVersion getVersion() {
         final String versionString = MySqlTestConnection.forTestDatabase("mysql").getMySqlVersionString();
 

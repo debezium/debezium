@@ -176,17 +176,24 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
 
     @NotNull
     private static String getDdlString(MySqlDatabaseVersionResolver databaseVersionResolver) {
-
-        return databaseVersionResolver.getVersion().getMajor() < MYSQL8 ? "CREATE TABLE `b` (\n" +
-                "  `pk` int(11) NOT NULL AUTO_INCREMENT,\n" +
-                "  `aa` int(11) DEFAULT NULL,\n" +
-                "  PRIMARY KEY (`pk`)\n" +
-                ") ENGINE=InnoDB AUTO_INCREMENT=1001 DEFAULT CHARSET=latin1"
-
-                : "CREATE TABLE `b` (\n" +
-                        "  `pk` int NOT NULL AUTO_INCREMENT,\n" +
-                        "  `aa` int DEFAULT NULL,\n" +
-                        "  PRIMARY KEY (`pk`)\n" +
-                        ") ENGINE=InnoDB AUTO_INCREMENT=1001 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci";
+        boolean isMariaDB = databaseVersionResolver.isMariaDb();
+        if (isMariaDB || databaseVersionResolver.getVersion().getMajor() < MYSQL8) {
+            final StringBuilder sb = new StringBuilder("CREATE TABLE `b` (\n");
+            sb.append("  `pk` int(11) NOT NULL AUTO_INCREMENT,\n");
+            sb.append("  `aa` int(11) DEFAULT NULL,\n");
+            sb.append("  PRIMARY KEY (`pk`)\n");
+            sb.append(") ENGINE=InnoDB AUTO_INCREMENT=1001 DEFAULT CHARSET=latin1");
+            if (isMariaDB) {
+                sb.append(" COLLATE=latin1_swedish_ci");
+            }
+            return sb.toString();
+        }
+        else {
+            return "CREATE TABLE `b` (\n" +
+                    "  `pk` int NOT NULL AUTO_INCREMENT,\n" +
+                    "  `aa` int DEFAULT NULL,\n" +
+                    "  PRIMARY KEY (`pk`)\n" +
+                    ") ENGINE=InnoDB AUTO_INCREMENT=1001 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci";
+        }
     }
 }
