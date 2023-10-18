@@ -5,7 +5,6 @@
  */
 package io.debezium.testing.testcontainers;
 
-import static io.debezium.testing.testcontainers.MongoDbContainer.node;
 import static io.debezium.testing.testcontainers.util.DockerUtils.logDockerDesktopBanner;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -14,6 +13,7 @@ import static org.awaitility.Awaitility.await;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -59,7 +59,7 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
     private final String rootPassword;
     private final Supplier<MongoDbContainer.Builder> nodeSupplier;
 
-    private boolean started;
+    private boolean started = false;
 
     public static Builder replicaSet() {
         return new Builder().nodeSupplier(MongoDbContainer::node);
@@ -278,9 +278,11 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
      */
     @Override
     public void stop() {
-        LOGGER.info("[{}] Stopping...", name);
-        MoreStartables.deepStopSync(members.stream());
-        started = false;
+        if (started) {
+            LOGGER.info("[{}] Stopping...", name);
+            MoreStartables.deepStopSync(members.stream());
+            started = false;
+        }
     }
 
     private void initializeReplicaSet() {
@@ -366,6 +368,11 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
                 .map(MongoDbContainer::getNamedAddress)
                 .map(Address::getHost)
                 .collect(Collectors.toList());
+    }
+
+    public MongoDbReplicaSet withStartupTimeout(Duration startupTimeout) {
+        members.forEach(member -> member.withStartupTimeout(startupTimeout));
+        return this;
     }
 
     @Override
