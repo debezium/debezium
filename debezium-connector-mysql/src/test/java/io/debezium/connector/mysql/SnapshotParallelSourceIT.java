@@ -21,6 +21,8 @@ import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.util.Collect;
 
+import ch.qos.logback.classic.Level;
+
 @SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 6, reason = "DDL uses fractional second data types, not supported until MySQL 5.6")
 public class SnapshotParallelSourceIT extends SnapshotSourceIT {
 
@@ -74,6 +76,7 @@ public class SnapshotParallelSourceIT extends SnapshotSourceIT {
                 .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, String.join(",", includeDatabases))
                 .build();
         LogInterceptor logInterceptor = new LogInterceptor(MySqlSnapshotChangeEventSource.class);
+        logInterceptor.setLoggerLevel(MySqlSnapshotChangeEventSource.class, Level.INFO);
 
         // Start the connector ...
         start(MySqlConnector.class, config);
