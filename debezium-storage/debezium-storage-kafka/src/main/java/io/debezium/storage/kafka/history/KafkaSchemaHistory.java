@@ -241,10 +241,6 @@ public class KafkaSchemaHistory extends AbstractSchemaHistory {
                 .withDefault(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class)
                 .withDefault(ProducerConfig.MAX_BLOCK_MS_CONFIG, 10_000) // wait at most this if we can't reach Kafka
                 .build();
-        if (LOGGER.isInfoEnabled()) {
-            LOGGER.info("KafkaSchemaHistory Consumer config: {}", consumerConfig.withMaskedPasswords());
-            LOGGER.info("KafkaSchemaHistory Producer config: {}", producerConfig.withMaskedPasswords());
-        }
 
         try {
             final String connectorClassname = config.getString(INTERNAL_CONNECTOR_CLASS);
@@ -271,7 +267,7 @@ public class KafkaSchemaHistory extends AbstractSchemaHistory {
         if (this.producer == null) {
             throw new IllegalStateException("No producer is available. Ensure that 'start()' is called before storing database schema history records.");
         }
-        LOGGER.trace("Storing record into database schema history: {}", record);
+        LOGGER.trace("Storing record into database schema history.");
         try {
             ProducerRecord<String, String> produced = new ProducerRecord<>(topicName, PARTITION, null, record.toString());
             Future<RecordMetadata> future = this.producer.send(produced);
@@ -401,7 +397,7 @@ public class KafkaSchemaHistory extends AbstractSchemaHistory {
                 Long beginOffset = beginningOffsets.entrySet().iterator().next().getValue();
                 Long endOffset = endOffsets.entrySet().iterator().next().getValue();
 
-                exists = endOffset > beginOffset;
+                exists = endOffset >= beginOffset;
             }
         }
         return exists;

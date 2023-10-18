@@ -937,7 +937,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
 
         client.registerLifecycleListener(new ReaderThreadLifecycleListener(effectiveOffsetContext));
         client.registerEventListener((event) -> onEvent(effectiveOffsetContext, event));
-        if (LOGGER.isDebugEnabled()) {
+        if (LOGGER.isTraceEnabled()) {
             client.registerEventListener((event) -> logEvent(effectiveOffsetContext, event));
         }
 
@@ -1031,7 +1031,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
                 }
                 catch (AuthenticationException e) {
                     throw new DebeziumException("Failed to authenticate to the MySQL database at " +
-                            connectorConfig.hostname() + ":" + connectorConfig.port() + " with user '" + connectorConfig.username() + "'", e);
+                            connectorConfig.hostname() + ":" + connectorConfig.port() + " with user '" + connectorConfig.username() + "'", sanitizeAuthenticationException(e));
                 }
                 catch (Throwable e) {
                     throw new DebeziumException("Unable to connect to the MySQL database at " +
@@ -1056,6 +1056,15 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
                 LOGGER.info("Exception while stopping binary log client", e);
             }
         }
+    }
+
+    static AuthenticationException sanitizeAuthenticationException(AuthenticationException e) {
+        String sanitizedError = e.getMessage()
+            .replaceAll("[^\\P{Cc}\t\r\n]", "");
+        AuthenticationException sanitized = new AuthenticationException(sanitizedError,
+            e.getErrorCode(), e.getSqlState());
+        sanitized.setStackTrace(e.getStackTrace());
+        return sanitized;
     }
 
     @Override
@@ -1144,7 +1153,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
     }
 
     protected void logEvent(MySqlOffsetContext offsetContext, Event event) {
-        LOGGER.trace("Received event: {}", event);
+        LOGGER.trace("Received event for offset: {}", offsetContext.getOffset());
     }
 
     private void logStreamingSourceState(Level severity) {

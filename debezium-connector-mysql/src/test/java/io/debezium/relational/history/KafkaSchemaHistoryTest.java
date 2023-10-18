@@ -119,28 +119,28 @@ public class KafkaSchemaHistoryTest {
         testHistoryTopicContent(topicName, false);
     }
 
-    private void testHistoryTopicContent(String topicName, boolean skipUnparseableDDL) {
+    private Configuration startHistory(String topicName, boolean skipUnparseableDDL) {
         interceptor = new LogInterceptor(KafkaSchemaHistory.class);
         // Start up the history ...
         Configuration config = Configuration.create()
-                .with(KafkaSchemaHistory.BOOTSTRAP_SERVERS, kafka.brokerList())
-                .with(KafkaSchemaHistory.TOPIC, topicName)
-                .with(SchemaHistory.NAME, "my-db-history")
-                .with(KafkaSchemaHistory.RECOVERY_POLL_INTERVAL_MS, 500)
-                // new since 0.10.1.0 - we want a low value because we're running everything locally
-                // in this test. However, it can't be so low that the broker returns the same
-                // messages more than once.
-                .with(KafkaSchemaHistory.consumerConfigPropertyName(
-                        ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG),
-                        100)
-                .with(KafkaSchemaHistory.consumerConfigPropertyName(
-                        ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG),
-                        50000)
-                .with(KafkaSchemaHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, skipUnparseableDDL)
-                .with(KafkaSchemaHistory.DDL_FILTER, "CREATE\\s+ROLE.*")
-                .with(KafkaSchemaHistory.INTERNAL_CONNECTOR_CLASS, "org.apache.kafka.connect.source.SourceConnector")
-                .with(KafkaSchemaHistory.INTERNAL_CONNECTOR_ID, "dbz-test")
-                .build();
+            .with(KafkaSchemaHistory.BOOTSTRAP_SERVERS, kafka.brokerList())
+            .with(KafkaSchemaHistory.TOPIC, topicName)
+            .with(SchemaHistory.NAME, "my-db-history")
+            .with(KafkaSchemaHistory.RECOVERY_POLL_INTERVAL_MS, 500)
+            // new since 0.10.1.0 - we want a low value because we're running everything locally
+            // in this test. However, it can't be so low that the broker returns the same
+            // messages more than once.
+            .with(KafkaSchemaHistory.consumerConfigPropertyName(
+                    ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG),
+                100)
+            .with(KafkaSchemaHistory.consumerConfigPropertyName(
+                    ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG),
+                50000)
+            .with(KafkaSchemaHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, skipUnparseableDDL)
+            .with(KafkaSchemaHistory.DDL_FILTER, "CREATE\\s+ROLE.*")
+            .with(KafkaSchemaHistory.INTERNAL_CONNECTOR_CLASS, "org.apache.kafka.connect.source.SourceConnector")
+            .with(KafkaSchemaHistory.INTERNAL_CONNECTOR_ID, "dbz-test")
+            .build();
         history.configure(config, null, SchemaHistoryMetrics.NOOP, true);
         history.start();
 
@@ -151,6 +151,12 @@ public class KafkaSchemaHistoryTest {
 
         // Calling it another time to ensure we can work with the DB history topic already existing
         history.initializeStorage();
+
+        return config;
+    }
+
+    private void testHistoryTopicContent(String topicName, boolean skipUnparseableDDL) {
+        Configuration config = startHistory(topicName, skipUnparseableDDL);
 
         DdlParser recoveryParser = new MySqlAntlrDdlParser();
         DdlParser ddlParser = new MySqlAntlrDdlParser();
@@ -226,6 +232,14 @@ public class KafkaSchemaHistoryTest {
         setLogPosition(100000010);
         history.recover(offsets, recoveredTables, recoveryParser);
         assertThat(recoveredTables).isEqualTo(tables3);
+    }
+
+    @Test
+    public void testEmptyHistoryExists() {
+        String topicName = "exists-schema-changes";
+        // Start up the history ...
+        startHistory(topicName, true);
+        assertTrue(history.exists());
     }
 
     protected void setLogPosition(int index) {
@@ -386,7 +400,6 @@ public class KafkaSchemaHistoryTest {
         history.initializeStorage();
         assertTrue(history.storageExists());
 
-        assertFalse(history.exists());
         history.start();
         setLogPosition(0);
         String ddl = "CREATE TABLE foo ( name VARCHAR(255) NOT NULL PRIMARY KEY); \n" +
