@@ -2282,6 +2282,8 @@ Also in the `pg_replication_slots` view, the `restart_lsn` column contains the L
 The database typically reclaims disk space in batch blocks. This is expected behavior and no action by a user is necessary.
 
 * There are many updates in a database that is being tracked but only a tiny number of updates are related to the table(s) and schema(s) for which the connector is capturing changes. This situation can be easily solved with periodic heartbeat events. Set the xref:postgresql-property-heartbeat-interval-ms[`heartbeat.interval.ms`] connector configuration property.
++
+Note that the heartbeat table _must_ be included in your publication in order for the connector to see the heartbeat events and process them. This can be achieved either by adding it explicitly via `ALTER PUBLICATION ... ADD TABLE ...` or by specifying `FOR ALL TABLES` when creating the publication.
 
 * The PostgreSQL instance contains multiple databases and one of them is a high-traffic database. {prodname} captures changes in another database that is low-traffic in comparison to the other database. {prodname} then cannot confirm the LSN as replication slots work per-database and {prodname} is not invoked. As WAL is shared by all databases, the amount used tends to grow until an event is emitted by the database for which {prodname} is capturing changes. To overcome this, it is necessary to:
 
