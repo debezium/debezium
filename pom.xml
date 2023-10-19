@@ -135,6 +135,7 @@
 
         <!-- Databases, should align with database drivers -->
         <version.mysql.server>8.1</version.mysql.server>
+        <version.mysql.percona.server>8.0</version.mysql.percona.server>
         <version.mongo.server>6.0</version.mongo.server>
         <version.cassandra3>3.11.12</version.cassandra3>
         <version.cassandra4>4.0.2</version.cassandra4>
