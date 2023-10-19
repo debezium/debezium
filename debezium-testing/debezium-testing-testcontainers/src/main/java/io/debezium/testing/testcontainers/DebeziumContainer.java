@@ -79,7 +79,6 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
         return debeziumLatestStable;
     }
 
-
     public static DebeziumContainer nightly() {
         return new DebeziumContainer(String.format("%s:%s", DEBEZIUM_CONTAINER, DEBEZIUM_NIGHTLY_TAG));
     }
@@ -318,7 +317,8 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
                 return Connector.State.valueOf(parsedObject.get("connector").get("state").asText());
             }
             return null;
-        } catch (IOException e) {
+        }
+        catch (IOException e) {
             throw new IllegalStateException("Error fetching connector state for connector: " + connectorName, e);
         }
     }
