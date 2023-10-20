@@ -538,7 +538,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         Instant sourceTableSnapshotTimestamp = getSnapshotSourceTimestamp(jdbcConnection, offset, table.id());
 
         try (Statement statement = readTableStatement(jdbcConnection, rowCount);
-                ResultSet rs = CancellableResultSet.from(statement.executeQuery(selectStatement))) {
+                ResultSet rs = resultSetForDataEvents(selectStatement, statement)) {
 
             ColumnUtils.ColumnArray columnArray = ColumnUtils.toArray(rs, table);
             long rows = 0;
@@ -586,6 +586,11 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         catch (SQLException e) {
             throw new ConnectException("Snapshotting of table " + table.id() + " failed", e);
         }
+    }
+
+    protected ResultSet resultSetForDataEvents(String selectStatement, Statement statement)
+            throws SQLException {
+        return CancellableResultSet.from(statement.executeQuery(selectStatement));
     }
 
     private void setSnapshotMarker(OffsetContext offset, boolean firstTable, boolean lastTable, boolean firstRecordInTable,
