@@ -223,6 +223,13 @@ public interface DatabaseDialect {
     boolean shouldBindTimeWithTimeZoneAsDatabaseTimeZone();
 
     /**
+     * Returns whether a time with time zone details is internally stored into database.
+     *
+     * @return true if the value should be not zoned; false otherwise (the default).
+     */
+    boolean isZonedTimeSupported();
+
+    /**
      * Gets the maximum precision allowed for a dialect's time data type.
      *
      * @return maximum time precision
