@@ -75,8 +75,7 @@ public class ZonedTimeType extends AbstractTimeType {
                     return List.of(new ValueBindDescriptor(index, zdt.withZoneSameInstant(getDatabaseTimeZone().toZoneId())));
                 }
                 // TODO check if this works with PreparedStatement
-                return List
-                        .of(new ValueBindDescriptor(index, zdt.withZoneSameInstant(getDatabaseTimeZone().toZoneId()), StandardBasicTypes.ZONED_DATE_TIME_WITH_TIMEZONE));
+                return List.of(new ValueBindDescriptor(index, zdt, StandardBasicTypes.ZONED_DATE_TIME_WITH_TIMEZONE));
             }
             return List.of(new ValueBindDescriptor(index, zdt));
         }

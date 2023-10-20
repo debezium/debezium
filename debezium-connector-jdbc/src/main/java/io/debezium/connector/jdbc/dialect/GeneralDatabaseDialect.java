@@ -629,6 +629,11 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
         registerType(ConnectMapToConnectStringType.INSTANCE);
     }
 
+    @Override
+    public boolean isZonedTimeSupported() {
+        return true;
+    }
+
     protected void registerType(Type type) {
         type.configure(connectorConfig, this);
         for (String key : type.getRegistrationKeys()) {
