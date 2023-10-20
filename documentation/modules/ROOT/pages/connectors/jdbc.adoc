@@ -694,12 +694,19 @@ Use of this option requires that you set the xref:jdbc-property-primary-key-mode
 
 |[[jdbc-property-truncate-enabled]]<<jdbc-property-truncate-enabled, `+truncate.enabled+`>>
 |`false`
-|Specifies whether the connector processes `TRUNCATE` events and truncate the corresponding tables from the database.
+|Specifies whether the connector processes `TRUNCATE` events and truncates the corresponding tables from the database.
+
 [NOTE]
 ====
-Currently, for some reason the `TRUNCATE` statement doesn't work for DB2 even if it is supported from link:https://www.ibm.com/support/pages/apar/JR37942/[9.7]. The problem verifies with Hibernate, plain JDBC works good.
+Although support for `TRUNCATE` statements has been available in Db2 since link:https://www.ibm.com/support/pages/apar/JR37942/[version 9.7],
+currently, the JDBC connector is unable to process standard `TRUNCATE` events that the Db2 connector emits.
 
-Db2 dialects have to utilize `ALTER TABLE table_name ACTIVATE NOT LOGGED INITIALLY WITH EMPTY TABLE` statement instead of traditional `TRUNCATE TABLE` syntax, make sure grant related `ALTER` privileges to user account.
+To ensure that the JDBC connector can process `TRUNCATE` events received from Db2, perform the truncation by using an alternative to the standard `TRUNCATE TABLE` statement.
+For example:
+
+`ALTER TABLE _<table_name>_ ACTIVATE NOT LOGGED INITIALLY WITH EMPTY TABLE`
+
+The user account that submits the preceding query requires `ALTER` privileges on the table to be truncated.
 ====
 
 |[[jdbc-property-insert-mode]]<<jdbc-property-insert-mode, `+insert.mode+`>>
