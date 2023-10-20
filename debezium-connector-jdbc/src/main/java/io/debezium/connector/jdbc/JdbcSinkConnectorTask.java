@@ -91,27 +91,48 @@ public class JdbcSinkConnectorTask extends SinkTask {
         // since the use of session.doWork creates the connection for the bunch of records passed by Connect API.
         // Another approach is to refactor the current code and push down the loop on records.
 
-        for (Iterator<SinkRecord> iterator = records.iterator(); iterator.hasNext();) {
-            final SinkRecord record = iterator.next();
-            LOGGER.trace("Received {}", record);
+        boolean oldMode = false;
+        if(oldMode) {
+            for (Iterator<SinkRecord> iterator = records.iterator(); iterator.hasNext();) {
+                final SinkRecord record = iterator.next();
+                LOGGER.trace("Received {}", record);
 
-            try {
-                validate(record);
-                changeEventSink.execute(record);
-                markProcessed(record);
+                try {
+                    validate(record);
+                    changeEventSink.execute(record);
+                    markProcessed(record);
+                }
+                catch (Throwable throwable) {
+                    // Stash currently failed record
+                    markNotProcessed(record);
+
+                    // Capture failure
+                    LOGGER.error("Failed to process record: {}", throwable.getMessage(), throwable);
+                    previousPutException = throwable;
+
+                    // Stash any remaining records
+                    markNotProcessed(iterator);
+                }
             }
-            catch (Throwable throwable) {
+        } else {
+            try {
+                //validate(record); TODO move validate down
+                changeEventSink.execute(records);
+                //markProcessed(records);
+            }
+            catch (Throwable throwable) { // TODO check how to manage errors with batch
                 // Stash currently failed record
-                markNotProcessed(record);
+                //markNotProcessed(record);
 
                 // Capture failure
                 LOGGER.error("Failed to process record: {}", throwable.getMessage(), throwable);
                 previousPutException = throwable;
 
                 // Stash any remaining records
-                markNotProcessed(iterator);
+                //markNotProcessed(iterator);
             }
         }
+
     }
 
     private void validate(SinkRecord record) {

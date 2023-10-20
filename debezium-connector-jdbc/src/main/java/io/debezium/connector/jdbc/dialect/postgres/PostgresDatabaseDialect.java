@@ -210,4 +210,9 @@ public class PostgresDatabaseDialect extends GeneralDatabaseDialect {
         }
         return columnName;
     }
+
+    @Override
+    public boolean isZonedTimeSupported() {
+        return false;
+    }
 }

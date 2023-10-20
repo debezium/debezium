@@ -16,10 +16,12 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
+import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.hibernate.SessionFactory;
 import org.hibernate.StatelessSession;
@@ -104,6 +106,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
 
             Optional<TableId> optionalTableId = getTableId(record);
             if (optionalTableId.isEmpty()) {
+
                 LOGGER.warn("Ignored to write record from topic '{}' partition '{}' offset '{}'", record.topic(), record.kafkaPartition(), record.kafkaOffset());
                 continue;
             }
@@ -114,13 +117,19 @@ public class JdbcChangeEventSink implements ChangeEventSink {
 
             List<SinkRecord> toFlush = tableIdBuffer.add(record);
             if (!toFlush.isEmpty()) {
+
+                LOGGER.debug("Flushing records in JDBC Writer for table ID: {}", tableId);
                 writeBatchInsert(tableId, toFlush);
             }
         }
 
         updateBufferByTable.forEach((tableId, buffer) -> {
-            LOGGER.debug("Flushing records in JDBC Writer for table ID: {}", tableId);
-            buffer.flush();
+
+            List<SinkRecord> toFlush = buffer.flush();
+            if (!toFlush.isEmpty()) {
+                LOGGER.debug("Flushing records in JDBC Writer for table ID: {}", tableId);
+                writeBatchInsert(tableId, toFlush);
+            }
         });
     }
 
@@ -135,7 +144,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
     }
 
     @Override
-    public void close() throws Exception {
+    public void close() {
         if (session != null && session.isOpen()) {
             LOGGER.info("Closing session.");
             session.close();
@@ -313,13 +322,6 @@ public class JdbcChangeEventSink implements ChangeEventSink {
 
     private void writeBatchInsert(TableId tableId, List<SinkRecord> records) {
 
-        final List<SinkRecordDescriptor> toWrite = records.stream().map(record -> SinkRecordDescriptor.builder()
-                .withPrimaryKeyMode(config.getPrimaryKeyMode())
-                .withPrimaryKeyFields(config.getPrimaryKeyFields())
-                .withSinkRecord(record)
-                .withDialect(dialect)
-                .build()).collect(Collectors.toList());
-
         /*
          * if (descriptor.isTombstone()) {
          * LOGGER.debug("Skipping tombstone record {}", descriptor);
@@ -328,9 +330,19 @@ public class JdbcChangeEventSink implements ChangeEventSink {
          */ // TODO manage it
 
         final String insertStatement;
-        try {
+        final List<SinkRecordDescriptor> toWrite;
+        try { // TODO refactor this part
+            toWrite = records.stream().map(record -> SinkRecordDescriptor.builder()
+                    .withPrimaryKeyMode(config.getPrimaryKeyMode())
+                    .withPrimaryKeyFields(config.getPrimaryKeyFields())
+                    .withSinkRecord(record)
+                    .withDialect(dialect)
+                    .build())
+                    .filter(Predicate.not(SinkRecordDescriptor::isTombstone))
+                    .collect(Collectors.toList());
+
             final TableDescriptor table = checkAndApplyTableChangesIfNeeded(tableId, toWrite.get(0));
-            insertStatement = dialect.getInsertStatement(table, toWrite.get(0));
+            insertStatement = getSqlStatement(table, toWrite.get(0));
         }
         catch (Exception e) {
             throw new ConnectException("Failed to process a sink record", e);
@@ -345,13 +357,12 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                     QueryBinder queryBinder = queryBinderResolver.resolve(pstmt);
                     for (SinkRecordDescriptor sinkRecordDescriptor : toWrite) {
 
-                        int index = bindKeyValuesToQuery(sinkRecordDescriptor, queryBinder, 1);
-                        bindNonKeyValuesToQuery(sinkRecordDescriptor, queryBinder, index);
+                        bindValues(sinkRecordDescriptor, queryBinder);
 
                         pstmt.addBatch();
                     }
 
-                    pstmt.executeBatch();
+                    int[] batchResult = pstmt.executeBatch(); // TODO check result for error
 
                 }
                 catch (SQLException e) {
@@ -367,6 +378,45 @@ public class JdbcChangeEventSink implements ChangeEventSink {
             transaction.rollback();
             throw e;
         }
+    }
+
+    private void bindValues(SinkRecordDescriptor sinkRecordDescriptor, QueryBinder queryBinder) {
+
+        int index;
+        switch (config.getInsertMode()) {
+            case INSERT:
+            case UPSERT:
+                index = bindKeyValuesToQuery(sinkRecordDescriptor, queryBinder, 1);
+                bindNonKeyValuesToQuery(sinkRecordDescriptor, queryBinder, index);
+                break;
+            case UPDATE:
+                index = bindNonKeyValuesToQuery(sinkRecordDescriptor, queryBinder, 1);
+                bindKeyValuesToQuery(sinkRecordDescriptor, queryBinder, index);
+                break;
+        }
+
+    }
+
+    private String getSqlStatement(TableDescriptor table, SinkRecordDescriptor record) {
+
+        if (!record.isDelete()) {
+            switch (config.getInsertMode()) {
+                case INSERT:
+                    return dialect.getInsertStatement(table, record);
+                case UPSERT:
+                    if (record.getKeyFieldNames().isEmpty()) {
+                        throw new ConnectException("Cannot write to table " + table.getId().getTableName() + " with no key fields defined.");
+                    }
+                    return dialect.getUpsertStatement(table, record);
+                case UPDATE:
+                    return dialect.getUpdateStatement(table, record);
+            }
+        }
+        else {
+            return dialect.getDeleteStatement(table, record);
+        }
+
+        throw new DataException("Not supported mode"); //TODO check better message
     }
 
     private void writeUpsert(String sql, SinkRecordDescriptor record) throws SQLException {
