@@ -329,7 +329,7 @@ public class CloudEventsConverterTest {
         Map<String, Object> config = new HashMap<>();
         config.put("serializer.type", "json");
         config.put("data.serializer.type", "json");
-        config.put("metadata.location", "header");
+        config.put("metadata.source", "header");
 
         CloudEventsConverter cloudEventsConverter = new CloudEventsConverter();
         cloudEventsConverter.configure(config, false);
@@ -392,7 +392,7 @@ public class CloudEventsConverterTest {
         Map<String, Object> config = new HashMap<>();
         config.put("serializer.type", "json");
         config.put("data.serializer.type", "json");
-        config.put("metadata.location", "value,id:header,type:generate");
+        config.put("metadata.source", "value,id:header,type:generate");
 
         CloudEventsConverter cloudEventsConverter = new CloudEventsConverter();
         cloudEventsConverter.configure(config, false);

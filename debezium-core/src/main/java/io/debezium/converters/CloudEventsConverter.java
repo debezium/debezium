@@ -48,8 +48,8 @@ import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.Configuration;
 import io.debezium.config.Instantiator;
 import io.debezium.connector.AbstractSourceInfo;
-import io.debezium.converters.CloudEventsConverterConfig.MetadataLocation;
-import io.debezium.converters.CloudEventsConverterConfig.MetadataLocationValue;
+import io.debezium.converters.CloudEventsConverterConfig.MetadataSource;
+import io.debezium.converters.CloudEventsConverterConfig.MetadataSourceValue;
 import io.debezium.converters.recordandmetadata.RecordAndMetadata;
 import io.debezium.converters.recordandmetadata.RecordAndMetadataBaseImpl;
 import io.debezium.converters.recordandmetadata.RecordAndMetadataHeaderImpl;
@@ -155,7 +155,7 @@ public class CloudEventsConverter implements Converter {
 
     private boolean extensionAttributesEnable;
 
-    private MetadataLocation metadataLocation;
+    private MetadataSource metadataSource;
 
     public CloudEventsConverter() {
         this(null);
@@ -177,7 +177,7 @@ public class CloudEventsConverter implements Converter {
         dataSerializerType = ceConfig.cloudeventsDataSerializerTypeConfig();
         schemaNameAdjuster = ceConfig.schemaNameAdjustmentMode().createAdjuster();
         extensionAttributesEnable = ceConfig.extensionAttributesEnable();
-        metadataLocation = ceConfig.metadataLocation();
+        metadataSource = ceConfig.metadataSource();
 
         Map<String, Object> jsonHeaderConverterConfig = new HashMap<>();
         jsonHeaderConverterConfig.put(JsonConverterConfig.SCHEMAS_ENABLE_CONFIG, true);
@@ -249,7 +249,7 @@ public class CloudEventsConverter implements Converter {
             return null;
         }
 
-        if (this.metadataLocation.global() == MetadataLocationValue.VALUE) {
+        if (this.metadataSource.global() == MetadataSourceValue.VALUE) {
             if (!Envelope.isEnvelopeSchema(schema)) {
                 // TODO Handling of non-data messages like schema change or transaction metadata
                 return null;
@@ -270,13 +270,13 @@ public class CloudEventsConverter implements Converter {
         CloudEventsProvider provider = lookupCloudEventsProvider(source);
 
         RecordAndMetadata recordAndMetadata;
-        boolean useBaseImpl = metadataLocation.global() != MetadataLocationValue.HEADER && metadataLocation.id() != MetadataLocationValue.HEADER
-                && metadataLocation.type() != MetadataLocationValue.HEADER;
+        boolean useBaseImpl = metadataSource.global() != MetadataSourceValue.HEADER && metadataSource.id() != MetadataSourceValue.HEADER
+                && metadataSource.type() != MetadataSourceValue.HEADER;
         if (useBaseImpl) {
             recordAndMetadata = new RecordAndMetadataBaseImpl(record, schema);
         }
         else {
-            recordAndMetadata = new RecordAndMetadataHeaderImpl(record, schema, headers, metadataLocation, jsonHeaderConverter);
+            recordAndMetadata = new RecordAndMetadataHeaderImpl(record, schema, headers, metadataSource, jsonHeaderConverter);
         }
 
         RecordParser parser = provider.createParser(recordAndMetadata);
@@ -336,7 +336,7 @@ public class CloudEventsConverter implements Converter {
     }
 
     private Struct getSource(Struct record, Headers headers) {
-        if (this.metadataLocation.global() == MetadataLocationValue.VALUE) {
+        if (this.metadataSource.global() == MetadataSourceValue.VALUE) {
             return record.getStruct(Envelope.FieldName.SOURCE);
         }
         else {
@@ -500,8 +500,8 @@ public class CloudEventsConverter implements Converter {
 
         Schema ceSchema = ceSchemaBuilder.build();
 
-        String ceId = this.metadataLocation.id() == MetadataLocationValue.GENERATE ? maker.ceId() : parser.id();
-        String ceType = this.metadataLocation.type() == MetadataLocationValue.GENERATE ? maker.ceType() : parser.type();
+        String ceId = this.metadataSource.id() == MetadataSourceValue.GENERATE ? maker.ceId() : parser.id();
+        String ceType = this.metadataSource.type() == MetadataSourceValue.GENERATE ? maker.ceType() : parser.type();
 
         // construct value of CloudEvents Envelope
         CEValueBuilder ceValueBuilder = withValue(ceSchema)
