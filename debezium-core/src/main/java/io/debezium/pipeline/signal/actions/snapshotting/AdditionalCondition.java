@@ -5,7 +5,7 @@
  */
 package io.debezium.pipeline.signal.actions.snapshotting;
 
-import java.util.regex.Pattern;
+import com.google.re2j.Pattern;
 
 /**
  * Contains filtering information for snapshot

@@ -10,9 +10,10 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Predicate;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
+import com.google.re2j.Matcher;
+import com.google.re2j.Pattern;
 
 import io.debezium.DebeziumException;
 import io.debezium.annotation.Immutable;
@@ -27,7 +28,7 @@ import io.debezium.relational.TableId;
 @Immutable
 public class ReplicaIdentityMapper {
     public static final Pattern REPLICA_AUTO_SET_PATTERN = Pattern
-            .compile("(?i)^\\s*(?<tablepredicate>[^\\s:]+):(?<replicaidentity>DEFAULT|(INDEX) (?<indexname>.\\w*)|FULL|NOTHING)\\s*$");
+            .compile("(?i)^\\s*(?P<tablepredicate>[^\\s:]+):(?P<replicaidentity>DEFAULT|(INDEX) (?P<indexname>.\\w*)|FULL|NOTHING)\\s*$");
     public static final Pattern PATTERN_SPLIT = Pattern.compile(",");
     private Map<Predicate<TableId>, ReplicaIdentityInfo> replicaIdentityPredicateMap;
     private final String replicaAutoSetValue;

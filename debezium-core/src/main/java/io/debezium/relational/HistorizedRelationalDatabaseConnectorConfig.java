@@ -6,13 +6,14 @@
 package io.debezium.relational;
 
 import java.util.function.Predicate;
-import java.util.regex.Pattern;
 
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceConnector;
+
+import com.google.re2j.Pattern;
 
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;

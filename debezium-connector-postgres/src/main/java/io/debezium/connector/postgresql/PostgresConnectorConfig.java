@@ -1135,7 +1135,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             }
 
             for (String substring : ReplicaIdentityMapper.PATTERN_SPLIT.split(replica_autoset_values)) {
-                if (!ReplicaIdentityMapper.REPLICA_AUTO_SET_PATTERN.asPredicate().test(substring)) {
+                if (!ReplicaIdentityMapper.REPLICA_AUTO_SET_PATTERN.matcher(substring).find()) {
                     problems.accept(PostgresConnectorConfig.REPLICA_IDENTITY_AUTOSET_VALUES, substring,
                             substring + " has an invalid format (expecting '" + ReplicaIdentityMapper.REPLICA_AUTO_SET_PATTERN.pattern() + "')");
                     problemCount++;
