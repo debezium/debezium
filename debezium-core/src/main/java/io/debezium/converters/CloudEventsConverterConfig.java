@@ -41,9 +41,12 @@ public class CloudEventsConverterConfig extends ConverterConfig {
             + "'avro' replaces the characters that cannot be used in the Avro type name with underscore (default)"
             + "'none' does not apply any adjustment";
 
+    @Deprecated
     public static final String CLOUDEVENTS_METADATA_LOCATION_CONFIG = "metadata.location";
-    public static final String CLOUDEVENTS_METADATA_LOCATION_DEFAULT = "value,id:generate,type:generate";
-    private static final String CLOUDEVENTS_METADATA_LOCATION_DOC = "Specify from where to retrieve metadata";
+
+    public static final String CLOUDEVENTS_METADATA_SOURCE_CONFIG = "metadata.source";
+    public static final String CLOUDEVENTS_METADATA_SOURCE_DEFAULT = "value,id:generate,type:generate";
+    private static final String CLOUDEVENTS_METADATA_SOURCE_DOC = "Specify from where to retrieve metadata";
 
     private static final ConfigDef CONFIG;
 
@@ -58,8 +61,8 @@ public class CloudEventsConverterConfig extends ConverterConfig {
                 CLOUDEVENTS_EXTENSION_ATTRIBUTES_ENABLE_DOC);
         CONFIG.define(CLOUDEVENTS_SCHEMA_NAME_ADJUSTMENT_MODE_CONFIG, ConfigDef.Type.STRING, CLOUDEVENTS_SCHEMA_NAME_ADJUSTMENT_MODE_DEFAULT, ConfigDef.Importance.LOW,
                 CLOUDEVENTS_SCHEMA_NAME_ADJUSTMENT_MODE_DOC);
-        CONFIG.define(CLOUDEVENTS_METADATA_LOCATION_CONFIG, ConfigDef.Type.LIST, CLOUDEVENTS_METADATA_LOCATION_DEFAULT, ConfigDef.Importance.HIGH,
-                CLOUDEVENTS_METADATA_LOCATION_DOC);
+        CONFIG.define(CLOUDEVENTS_METADATA_SOURCE_CONFIG, ConfigDef.Type.LIST, CLOUDEVENTS_METADATA_SOURCE_DEFAULT, ConfigDef.Importance.HIGH,
+                CLOUDEVENTS_METADATA_SOURCE_DOC);
     }
 
     public static ConfigDef configDef() {
@@ -109,25 +112,25 @@ public class CloudEventsConverterConfig extends ConverterConfig {
     /**
      * Return from where to retrieve metadata
      *
-     * @return metadata location
+     * @return metadata source
      */
-    public MetadataLocation metadataLocation() {
-        List<String> metadataLocations = getList(CLOUDEVENTS_METADATA_LOCATION_CONFIG);
+    public MetadataSource metadataSource() {
+        List<String> metadataSources = getList(CLOUDEVENTS_METADATA_SOURCE_CONFIG);
 
         // get global metadata source
-        Set<MetadataLocationValue> globalMetadataLocationAllowedValues = Set.of(MetadataLocationValue.VALUE, MetadataLocationValue.HEADER);
-        MetadataLocationValue global = MetadataLocationValue.parse(metadataLocations.get(0));
-        if (!globalMetadataLocationAllowedValues.contains(global)) {
-            throw new ConfigException("Global metadata location can't be " + global.name());
+        Set<MetadataSourceValue> globalMetadataSourceAllowedValues = Set.of(MetadataSourceValue.VALUE, MetadataSourceValue.HEADER);
+        MetadataSourceValue global = MetadataSourceValue.parse(metadataSources.get(0));
+        if (!globalMetadataSourceAllowedValues.contains(global)) {
+            throw new ConfigException("Global metadata source can't be " + global.name());
         }
 
         // get sources for customizable fields
-        MetadataLocationValue idCustomSource = null;
-        MetadataLocationValue typeCustomSource = null;
-        for (int i = 1; i < metadataLocations.size(); i++) {
-            final String[] parts = metadataLocations.get(i).split(":");
+        MetadataSourceValue idCustomSource = null;
+        MetadataSourceValue typeCustomSource = null;
+        for (int i = 1; i < metadataSources.size(); i++) {
+            final String[] parts = metadataSources.get(i).split(":");
             final String fieldName = parts[0];
-            final MetadataLocationValue fieldSource = MetadataLocationValue.parse(parts[1]);
+            final MetadataSourceValue fieldSource = MetadataSourceValue.parse(parts[1]);
             if (fieldSource == null) {
                 throw new ConfigException("Field source `" + parts[1] + "` is not valid");
             }
@@ -143,37 +146,37 @@ public class CloudEventsConverterConfig extends ConverterConfig {
             }
         }
 
-        return new MetadataLocation(global, idCustomSource != null ? idCustomSource : global, typeCustomSource != null ? typeCustomSource : global);
+        return new MetadataSource(global, idCustomSource != null ? idCustomSource : global, typeCustomSource != null ? typeCustomSource : global);
     }
 
-    public class MetadataLocation {
-        private final MetadataLocationValue global;
-        private final MetadataLocationValue id;
-        private final MetadataLocationValue type;
+    public class MetadataSource {
+        private final MetadataSourceValue global;
+        private final MetadataSourceValue id;
+        private final MetadataSourceValue type;
 
-        public MetadataLocation(MetadataLocationValue global, MetadataLocationValue id, MetadataLocationValue type) {
+        public MetadataSource(MetadataSourceValue global, MetadataSourceValue id, MetadataSourceValue type) {
             this.global = global;
             this.id = id;
             this.type = type;
         }
 
-        public MetadataLocationValue global() {
+        public MetadataSourceValue global() {
             return global;
         }
 
-        public MetadataLocationValue id() {
+        public MetadataSourceValue id() {
             return id;
         }
 
-        public MetadataLocationValue type() {
+        public MetadataSourceValue type() {
             return type;
         }
     }
 
     /**
-     * The set of predefined MetadataLocationValue options
+     * The set of predefined MetadataSourceValue options
      */
-    public enum MetadataLocationValue implements EnumeratedValue {
+    public enum MetadataSourceValue implements EnumeratedValue {
 
         /**
          * Get metadata from the value
@@ -192,7 +195,7 @@ public class CloudEventsConverterConfig extends ConverterConfig {
 
         private final String value;
 
-        MetadataLocationValue(String value) {
+        MetadataSourceValue(String value) {
             this.value = value;
         }
 
@@ -207,12 +210,12 @@ public class CloudEventsConverterConfig extends ConverterConfig {
          * @param value the configuration property value ; may not be null
          * @return the matching option, or null if the match is not found
          */
-        public static MetadataLocationValue parse(String value) {
+        public static MetadataSourceValue parse(String value) {
             if (value == null) {
                 return null;
             }
             value = value.trim();
-            for (MetadataLocationValue option : MetadataLocationValue.values()) {
+            for (MetadataSourceValue option : MetadataSourceValue.values()) {
                 if (option.getValue().equalsIgnoreCase(value)) {
                     return option;
                 }

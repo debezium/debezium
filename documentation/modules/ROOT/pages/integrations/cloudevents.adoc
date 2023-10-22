@@ -173,7 +173,7 @@ For example, you might specify `StringConverter`, `LongConverter`, `JsonConverte
 [[configuration-of-sources-of-metadata-and-some-cloudevents-fields]]
 == Configuration of sources of metadata and some CloudEvents fields
 
-By default, the `metadata.location` property consists of three parts, as seen in the following example:
+By default, the `metadata.source` property consists of three parts, as seen in the following example:
 
 [source,json,indent=0,subs="+attributes"]
 ----
@@ -193,7 +193,7 @@ To preserve the required metadata, you can use the following approach to pass th
 .Procedure
 
 1. Implement a mechanism for recording the metadata in the record's headers before the record reaches the converter, for example, by using the `HeaderFrom` SMT.
-2. Set the value of the converter's `metadata.location` property to `header`.
+2. Set the value of the converter's `metadata.source` property to `header`.
 
 The following example shows the configuration for a connector that uses the Outbox Event Router SMT, and the `HeaderFrom` SMT:
 
@@ -214,7 +214,7 @@ The following example shows the configuration for a connector that uses the Outb
 "predicates.isHeartbeat.type": "org.apache.kafka.connect.transforms.predicates.TopicNameMatches",
 "predicates.isHeartbeat.pattern": "__debezium-heartbeat.*",
 "value.converter": "io.debezium.converters.CloudEventsConverter",
-"value.converter.metadata.location": "header",
+"value.converter.metadata.source": "header",
 "header.converter": "org.apache.kafka.connect.json.JsonConverter",
 "header.converter.schemas.enable": true
 ...
@@ -222,7 +222,7 @@ The following example shows the configuration for a connector that uses the Outb
 
 NOTE: To use the `HeaderFrom` transformation, it might be necessary to filter tombstone and heartbeat messages.
 
-The `header` value of the `metadata.location` property is a global setting.
+The `header` value of the `metadata.source` property is a global setting.
 As a result, even if you omit parts of a property's value, such as  the `id` and `type` sources, the converter generates `header` values for the omitted parts.
 
 === Obtaining `id` and `type` of a CloudEvent
@@ -233,7 +233,7 @@ For example:
 
 [source,json,indent=0,subs="+attributes"]
 ----
-"value.converter.metadata.location": "value,id:header,type:header"
+"value.converter.metadata.source": "value,id:header,type:header"
 ----
 
 With the preceding configuration in effect, you could configure upstream functions to add `id` and `type` headers with the values that you want to pass to the CloudEvents converter.
@@ -242,14 +242,14 @@ If you want to provide values only for `id` header, use:
 
 [source,json,indent=0,subs="+attributes"]
 ----
-"value.converter.metadata.location": "value,id:header,type:generate"
+"value.converter.metadata.source": "value,id:header,type:generate"
 ----
 
 To provide metadata, `id`, and `type` in headers, use the short syntax:
 
 [source,json,indent=0,subs="+attributes"]
 ----
-"value.converter.metadata.location": "header"
+"value.converter.metadata.source": "header"
 ----
 
 // Type: reference
@@ -294,7 +294,7 @@ The value can be `json` or `avro`.
 |Specifies whether the converter includes extension attributes when it generates a cloud event. 
 The value can be `true` or `false`.
 
-|[[cloud-events-converter-metadata-location]]xref:cloud-events-converter-metadata-location[`metadata.location`]
+|[[cloud-events-converter-metadata-source]]xref:cloud-events-converter-metadata-source[`metadata.source`]
 |`value,id:generate,type:generate`
 |A comma-separated list that specifies the sources from which the converter retrieves metadata (source, operation, transaction), along with the names of the CloudEvent `id`, and `type` fields.
 The first element in the list is a global setting that specifies the source of the metadata.  
