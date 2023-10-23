@@ -24,7 +24,7 @@ import org.testcontainers.utility.DockerImageName;
 /**
  * Integration test for JdbcOffsetBackingStore using MySQL.
  */
-public class MySqlOffsetBackingStoreIT extends AbstractOffsetBackingStoreIT {
+public class MySqlOffsetBackingStoreIT extends AbstractJdbcOffsetBackingStoreIT {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MySqlOffsetBackingStoreIT.class);
 

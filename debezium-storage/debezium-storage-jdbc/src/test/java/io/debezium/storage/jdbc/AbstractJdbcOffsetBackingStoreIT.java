@@ -37,7 +37,7 @@ import static io.debezium.junit.EqualityCheck.LESS_THAN;
  * Abstract Integration test class for OffsetBackingStore implementations.
  */
 @SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 6, reason = "DDL uses fractional second data types, not supported until MySQL 5.6")
-public abstract class AbstractOffsetBackingStoreIT extends AbstractConnectorTest {
+public abstract class AbstractJdbcOffsetBackingStoreIT extends AbstractConnectorTest {
     protected static final String TOPIC_PREFIX = "test";
     private static final String IMAGE = "debezium/example-mysql";
     protected static final Integer PORT = 3306;

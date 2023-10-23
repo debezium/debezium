@@ -25,7 +25,7 @@ import java.sql.SQLException;
 /**
  * Integration test for JdbcOffsetBackingStore using Sqlite.
  */
-public class SqliteOffsetBackingStoreIT extends AbstractOffsetBackingStoreIT {
+public class SqliteOffsetBackingStoreIT extends AbstractJdbcOffsetBackingStoreIT {
 
     private static final String DBNAME = "inventory";
     private static final Integer PORT = 3306;
