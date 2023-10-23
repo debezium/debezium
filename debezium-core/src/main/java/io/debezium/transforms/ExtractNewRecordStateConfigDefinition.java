@@ -126,10 +126,10 @@ public class ExtractNewRecordStateConfigDefinition {
             .withImportance(ConfigDef.Importance.MEDIUM)
             .optional()
             .withDescription("How to handle delete records. Options are: "
-                    + "drop - will remove both delete and tombstone,"
-                    + "tombstone - will convert delete to tombstone and remove tombstone (the default),"
-                    + "rewrite - will convert delete and remove tombstone, __deleted field is added to records,"
-                    + "rewrite-with-tombstone - will convert delete and keep tombstone, __deleted field is added to records.");
+                    + "drop - Remove the delete event and tombstone from the stream."
+                    + "tombstone (default) - For each delete event, leave only a tombstone in the stream."
+                    + "rewrite - Remove tombstone from the record, and add a `__deleted` field with the value `true`."
+                    + "rewrite-with-tombstone - Retain tombstone in record and add a `__deleted` field with the value `true`.");
 
     @Deprecated
     public static final Field DROP_TOMBSTONES = Field.create("drop.tombstones")
@@ -141,7 +141,7 @@ public class ExtractNewRecordStateConfigDefinition {
             .withDescription("Debezium by default generates a tombstone record to enable Kafka compaction after "
                     + "a delete record was generated. This record is usually filtered out to avoid duplicates "
                     + "as a delete record is converted to a tombstone record, too"
-                    + "Note: will be removed in further release, use \"delete.tombstone.handling.mode\" instead");
+                    + "Note: This option is scheduled for removal in a future release, use \"delete.tombstone.handling.mode\" instead");
 
     @Deprecated
     public static final Field HANDLE_DELETES = Field.create("delete.handling.mode")
@@ -153,7 +153,7 @@ public class ExtractNewRecordStateConfigDefinition {
                     + "none - records are passed,"
                     + "drop - records are removed (the default),"
                     + "rewrite - __deleted field is added to records."
-                    + "Note: will be removed in further release, use \"delete.tombstone.handling.mode\" instead");
+                    + "Note: This option is scheduled for removal in a future release, use \"delete.tombstone.handling.mode\" instead");
 
     public static final Field ROUTE_BY_FIELD = Field.create("route.by.field")
             .withDisplayName("Route by field name")
