@@ -107,6 +107,14 @@ public class SinkRecordDescriptor {
         return false;
     }
 
+    public Schema getKeySchema() {
+        return record.keySchema();
+    }
+
+    public Schema getValueSchema() {
+        return record.valueSchema();
+    }
+
     public Struct getKeyStruct(PrimaryKeyMode primaryKeyMode) {
         if (!getKeyFieldNames().isEmpty()) {
             switch (primaryKeyMode) {
