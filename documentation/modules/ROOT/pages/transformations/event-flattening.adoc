@@ -258,7 +258,11 @@ The following table describes the options that you can specify to configure the 
 |[[extract-new-record-state-drop-tombstones]]xref:extract-new-record-state-drop-tombstones[`drop.tombstones`]
 |`true`
 |{prodname} generates a tombstone record for each `DELETE` operation. The default behavior is that event flattening SMT removes tombstone records from the stream. To keep tombstone records in the stream, specify `drop.tombstones=false`.
-
+[NOTE]
+====
+This option is scheduled for removal in a future release.
+In its place, use the xref:extract-new-record-state-delete-tombstone-handling-mode[`delete.tombstone.handling.mode`] option.
+====
 |[[extract-new-record-state-delete-handling-mode]]xref:extract-new-record-state-delete-handling-mode[`delete.handling{zwsp}.mode`]
 |`drop`
 |{prodname} generates a change event record for each `DELETE` operation. The default behavior is that event flattening SMT removes these records from the stream. To keep Kafka records for `DELETE` operations in the stream, set `delete.handling.mode` to `none` or `rewrite`. +
@@ -268,6 +272,33 @@ Specify `none` to keep the change event record in the stream. The record contain
 Specify `rewrite` to keep the change event record in the stream and edit the record to have a `value` field that contains the key/value pairs that were in the `before` field and also add `+__deleted: true+` to the `value`. This is another way to indicate that the record has been deleted. +
  +
 When you  specify `rewrite`, the updated simplified records for `DELETE` operations might be all you need to track deleted records. You can consider accepting the default behavior of dropping the tombstone records that the {prodname} connector creates.
+[NOTE]
+====
+This option is scheduled for removal in a future release.
+In its place, use the xref:extract-new-record-state-delete-tombstone-handling-mode[`delete.tombstone.handling.mode`] option.
+====
+
+|[[extract-new-record-state-delete-tombstone-handling-mode]]xref:extract-new-record-state-delete-tombstone-handling-mode[`delete.tombstone.handling.mode`]
+|No default
+|{prodname} generates a change event record for each `DELETE` operation. This setting determines how the event flattening SMT handles `DELETE` events from the stream.
+
+[NOTE]
+====
+The setting for this option takes precedence over any conflicting settings that you might configure for the deprecated xref:extract-new-record-state-drop-tombstones[`drop.tombstones`] or xref:extract-new-record-state-delete-handling-mode[`delete.handling.mode`] options.
+====
+Set one of the following options:
+
+`drop`:: The SMT removes both the `DELETE` event and `TOMBSTONE` from the stream.
+`tombstone` (default):: The SMT retains `TOMBSTONE` records in the stream.
+The `TOMBSTONE` record contains only the following value: `"value": "null"`.
+`rewrite`:: The SMT retains the change event record in the stream and makes the following changes:
+* Adds a `value` field to the record that contains the key/value pairs from the `before` field of the original record.
+* Adds `+__deleted: true+` to the `value` of the record.
+* Removes `TOMBSTONE` records.
++
+This setting provides another way to indicate that the record has been deleted.
+
+`rewrite-with-tombstone`:: The SMT behaves as it does when you select the `rewrite` option, except that it also retains `TOMBSTONE` records.
 
 |[[extract-new-record-state-route-by-field]]xref:extract-new-record-state-route-by-field[`route.by.field`]
 |

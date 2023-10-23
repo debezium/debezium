@@ -489,6 +489,11 @@ For more information about the `array.coding` option, see the xref:mongodb-event
 |{prodname} generates a tombstone record for each `delete` operation.
 The default behavior is that event flattening SMT removes tombstone records from the stream.
 To retain tombstone records in the stream, specify `drop.tombstones=false`.
+[NOTE]
+====
+This option is scheduled for removal in a future release.
+In its place, use the xref:mongodb-extract-new-record-state-delete-tombstone-handling-mode[`delete.tombstone.handling.mode`] option.
+====
 
 |[[mongodb-extract-new-record-state-delete-handling-mode]]<<mongodb-extract-new-record-state-delete-handling-mode, `delete.handling.mode`>>
 |`drop`
@@ -503,6 +508,34 @@ To provide another way to indicate that the record was deleted, the modified rec
  +
 If you set the `rewrite` option, you might find that the updated, simplified records for `DELETE` operations are sufficient for tracking deleted records.
 In such a case, you might want the SMT to xref:mongodb-extract-new-record-state-drop-tombstones[drop tombstone records].
+[NOTE]
+====
+This option is scheduled for removal in a future release.
+In its place, use the xref:mongodb-extract-new-record-state-delete-tombstone-handling-mode[`delete.tombstone.handling.mode`] option.
+====
+
+|[[mongodb-extract-new-record-state-delete-tombstone-handling-mode]]xref:mongodb-extract-new-record-state-delete-tombstone-handling-mode[`delete.tombstone.handling.mode`]
+|No default
+|{prodname} generates a change event record for each `DELETE` operation.
+This setting determines how the MongoDB event flattening SMT handles `DELETE` events in the stream.
+[NOTE]
+====
+The setting for this option takes precedence over any conflicting settings that you might configure for the deprecated xref:mongodb-extract-new-record-state-drop-tombstones[`drop.tombstones`] or xref:mongodb-extract-new-record-state-delete-handling-mode[`delete.handling.mode`] options.
+====
+Set one of the following options:
+
+`drop`:: The SMT removes both `DELETE` events and `TOMBSTONE`records from the stream.
+`tombstone` (default):: The SMT retains `TOMBSTONE` records in the stream.
+The `TOMBSTONE` record contains only the following value: `"value": "null"`.
+`rewrite`:: The SMT retains the change event record in the stream and makes the following changes:
+
+* Adds a `value` field to the record that contains the key/value pairs from the `before` field of the original record.
+* Adds `+__deleted: true+` to the `value` of the record.
+* Removes `TOMBSTONE` records.
++
+This setting provides another way to indicate that the record has been deleted.
+
+`rewrite-with-tombstone`:: The SMT behaves as it does when you select the `rewrite` option, except that it also retains `TOMBSTONE` records.
 
 |[[mongodb-extract-new-record-state-add-headers-prefix]]<<mongodb-extract-new-record-state-add-headers-prefix, `add.headers.prefix`>>
 |__ (double-underscore)
@@ -519,9 +552,10 @@ Optionally, you can override the original name of a field and assign it a new na
 
 For example:
 
-```
+[source]
+----
 version:VERSION, connector:CONNECTOR, source.ts_ms:EVENT_TIMESTAMP
-```
+----
 
 The new name values that you specify are case-sensitive. +
  +
@@ -545,9 +579,10 @@ Optionally, you can override the original name of a field and assign it a new na
 
 For example:
 
-```
+[source]
+----
 version:VERSION, connector:CONNECTOR, source.ts_ms:EVENT_TIMESTAMP
-```
+----
 
 The new name values that you specify are case-sensitive. +
 
