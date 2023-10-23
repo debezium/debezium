@@ -780,7 +780,7 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
 
         assertThat(errorReference.get()).isNotNull();
         assertThat(errorReference.get()).contains("Connector configuration is not valid. ");
-        assertThat(this.engine.isRunning()).isFalse();
+        assertThat(isRunning.get()).isFalse();
     }
 
     protected void appendLinesToSource(int numberOfLines) throws IOException {

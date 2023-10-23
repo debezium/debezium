@@ -172,7 +172,7 @@ public class EventProcessingFailureHandlingIT extends AbstractConnectorTest {
                 .alias("Found error message in logs")
                 .atMost(TestHelper.waitTimeForLogEntries(), TimeUnit.SECONDS).until(() -> {
                     boolean foundErrorMessageInLogs = logInterceptor.containsStacktraceElement("Error while processing event at offset {");
-                    return foundErrorMessageInLogs && !engine.isRunning();
+                    return foundErrorMessageInLogs && !isRunning.get();
                 });
     }
 }
