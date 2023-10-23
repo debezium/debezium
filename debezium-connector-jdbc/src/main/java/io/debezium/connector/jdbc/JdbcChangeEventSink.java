@@ -16,8 +16,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
@@ -101,6 +99,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
     public void execute(Collection<SinkRecord> records) {
 
         final Map<TableId, RecordBuffer> updateBufferByTable = new HashMap<>();
+        final Map<TableId, RecordBuffer> deleteBufferByTable = new HashMap<>();
 
         for (SinkRecord record : records) {
 
@@ -111,26 +110,127 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                 continue;
             }
 
+            SinkRecordDescriptor sinkRecordDescriptor = buildRecordSinkDescriptor(record);
+
             final TableId tableId = optionalTableId.get();
 
-            RecordBuffer tableIdBuffer = updateBufferByTable.computeIfAbsent(tableId, k -> new RecordBuffer(config));
-
-            List<SinkRecord> toFlush = tableIdBuffer.add(record);
-            if (!toFlush.isEmpty()) {
-
-                LOGGER.debug("Flushing records in JDBC Writer for table ID: {}", tableId);
-                writeBatchInsert(tableId, toFlush);
+            if (sinkRecordDescriptor.isTombstone()) {
+                LOGGER.debug("Skipping tombstone record {}", sinkRecordDescriptor);
+                continue;
             }
+
+            if (sinkRecordDescriptor.isDelete()) {
+
+                if (!config.isDeleteEnabled()) {
+                    LOGGER.debug("Deletes are not enabled, skipping delete for topic '{}'", sinkRecordDescriptor.getTopicName());
+                    try { // Do we want to maintain this behavior? Should table be created on delete only when deletes are enabled?
+                        checkAndApplyTableChangesIfNeeded(tableId, sinkRecordDescriptor);
+                    }
+                    catch (Exception e) {
+                        throw new ConnectException("Failed to process a sink record", e);
+                    }
+                    continue;
+                }
+
+                RecordBuffer tableIdBuffer = deleteBufferByTable.computeIfAbsent(tableId, k -> new RecordBuffer(config));
+                List<SinkRecordDescriptor> toFlush = tableIdBuffer.add(sinkRecordDescriptor);
+
+                flushBuffer(tableId, toFlush);
+            }
+            else {
+
+                if (deleteBufferByTable.get(tableId) != null && !deleteBufferByTable.get(tableId).isEmpty()) {
+                    // When an insert arrives, delete buffer must be flushed to avoid losing an insert for the same record after its deletion.
+                    // this because at the end we will always flush inserts before deletes.
+
+                    flushBuffer(tableId, deleteBufferByTable.get(tableId).flush());
+                }
+
+                RecordBuffer tableIdBuffer = updateBufferByTable.computeIfAbsent(tableId, k -> new RecordBuffer(config));
+
+                List<SinkRecordDescriptor> toFlush = tableIdBuffer.add(sinkRecordDescriptor);
+                flushBuffer(tableId, toFlush);
+            }
+
         }
 
-        updateBufferByTable.forEach((tableId, buffer) -> {
+        flushBuffers(updateBufferByTable);
 
-            List<SinkRecord> toFlush = buffer.flush();
-            if (!toFlush.isEmpty()) {
-                LOGGER.debug("Flushing records in JDBC Writer for table ID: {}", tableId);
-                writeBatchInsert(tableId, toFlush);
-            }
-        });
+        flushBuffers(deleteBufferByTable);
+    }
+
+    private SinkRecordDescriptor buildRecordSinkDescriptor(SinkRecord record) {
+        SinkRecordDescriptor sinkRecordDescriptor;
+        try {
+            sinkRecordDescriptor = SinkRecordDescriptor.builder()
+                    .withPrimaryKeyMode(config.getPrimaryKeyMode())
+                    .withPrimaryKeyFields(config.getPrimaryKeyFields())
+                    .withSinkRecord(record)
+                    .withDialect(dialect)
+                    .build();
+        }
+        catch (Exception e) { // TODO review configuration validation, maybe move it in the task start method
+            throw new ConnectException("Failed to process a sink record", e);
+        }
+        return sinkRecordDescriptor;
+    }
+
+    private void flushBuffers(Map<TableId, RecordBuffer> bufferByTable) {
+
+        bufferByTable.forEach((tableId, recordBuffer) -> flushBuffer(tableId, recordBuffer.flush()));
+    }
+
+    private void flushBuffer(TableId tableId, List<SinkRecordDescriptor> toFlush) {
+
+        if (!toFlush.isEmpty()) {
+            LOGGER.debug("Flushing records in JDBC Writer for table ID: {}", tableId);
+            writeBuffer(tableId, toFlush);
+        }
+
+    }
+
+    private void writeBuffer(TableId tableId, List<SinkRecordDescriptor> records) {
+
+        final String sqlStatement;
+        try {
+
+            final TableDescriptor table = checkAndApplyTableChangesIfNeeded(tableId, records.get(0));
+            sqlStatement = getSqlStatement(table, records.get(0));
+        }
+        catch (Exception e) {
+            throw new ConnectException("Failed to process a sink record", e);
+        }
+
+        final Transaction transaction = session.beginTransaction();
+        try {
+            session.doWork(conn -> {
+
+                try (PreparedStatement pstmt = conn.prepareStatement(sqlStatement)) {
+
+                    QueryBinder queryBinder = queryBinderResolver.resolve(pstmt);
+                    for (SinkRecordDescriptor sinkRecordDescriptor : records) {
+
+                        bindValues(sinkRecordDescriptor, queryBinder);
+
+                        pstmt.addBatch();
+                    }
+
+                    int[] batchResult = pstmt.executeBatch(); // TODO check result for error
+
+                }
+                catch (SQLException e) {
+                    transaction.rollback();
+                    throw e;
+                }
+            });
+
+            transaction.commit();
+
+        }
+        catch (Exception e) {
+            transaction.rollback();
+            throw e;
+        }
     }
 
     private Optional<TableId> getTableId(SinkRecord record) {
@@ -320,69 +420,14 @@ public class JdbcChangeEventSink implements ChangeEventSink {
         }
     }
 
-    private void writeBatchInsert(TableId tableId, List<SinkRecord> records) {
-
-        /*
-         * if (descriptor.isTombstone()) {
-         * LOGGER.debug("Skipping tombstone record {}", descriptor);
-         * return;
-         * }
-         */ // TODO manage it
-
-        final String insertStatement;
-        final List<SinkRecordDescriptor> toWrite;
-        try { // TODO refactor this part
-            toWrite = records.stream().map(record -> SinkRecordDescriptor.builder()
-                    .withPrimaryKeyMode(config.getPrimaryKeyMode())
-                    .withPrimaryKeyFields(config.getPrimaryKeyFields())
-                    .withSinkRecord(record)
-                    .withDialect(dialect)
-                    .build())
-                    .filter(Predicate.not(SinkRecordDescriptor::isTombstone))
-                    .collect(Collectors.toList());
-
-            final TableDescriptor table = checkAndApplyTableChangesIfNeeded(tableId, toWrite.get(0));
-            insertStatement = getSqlStatement(table, toWrite.get(0));
-        }
-        catch (Exception e) {
-            throw new ConnectException("Failed to process a sink record", e);
-        }
-
-        final Transaction transaction = session.beginTransaction();
-        try {
-            session.doWork(conn -> {
-
-                try (PreparedStatement pstmt = conn.prepareStatement(insertStatement)) {
-
-                    QueryBinder queryBinder = queryBinderResolver.resolve(pstmt);
-                    for (SinkRecordDescriptor sinkRecordDescriptor : toWrite) {
-
-                        bindValues(sinkRecordDescriptor, queryBinder);
-
-                        pstmt.addBatch();
-                    }
-
-                    int[] batchResult = pstmt.executeBatch(); // TODO check result for error
-
-                }
-                catch (SQLException e) {
-                    transaction.rollback();
-                    throw e;
-                }
-            });
-
-            transaction.commit();
-
-        }
-        catch (Exception e) {
-            transaction.rollback();
-            throw e;
-        }
-    }
-
     private void bindValues(SinkRecordDescriptor sinkRecordDescriptor, QueryBinder queryBinder) {
 
         int index;
+        if (sinkRecordDescriptor.isDelete()) {
+            bindKeyValuesToQuery(sinkRecordDescriptor, queryBinder, 1);
+            return;
+        }
+
         switch (config.getInsertMode()) {
             case INSERT:
             case UPSERT:
@@ -416,7 +461,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
             return dialect.getDeleteStatement(table, record);
         }
 
-        throw new DataException("Not supported mode"); //TODO check better message
+        throw new DataException("Not supported mode"); // TODO check better message
     }
 
     private void writeUpsert(String sql, SinkRecordDescriptor record) throws SQLException {
@@ -455,7 +500,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
         }
     }
 
-    private void writeDelete(String sql, SinkRecordDescriptor record) throws SQLException {
+    private void writeDelete(String sql, SinkRecordDescriptor record) {
         if (!config.isDeleteEnabled()) {
             LOGGER.debug("Deletes are not enabled, skipping delete for topic '{}'", record.getTopicName());
             return;

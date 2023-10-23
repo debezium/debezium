@@ -30,7 +30,7 @@ public abstract class AbstractDebeziumTimestampType extends AbstractTimestampTyp
         if (value instanceof Number) {
 
             final LocalDateTime localDateTime = getLocalDateTime(((Number) value).longValue());
-            if (getDialect().isTimeZoneSet() ) {
+            if (getDialect().isTimeZoneSet()) {
 
                 if (getDialect().isZonedTimeSupported()) {
 
@@ -42,8 +42,8 @@ public abstract class AbstractDebeziumTimestampType extends AbstractTimestampTyp
                 // If no time zone is stated in the input string, then it is assumed to be in the time zone indicated by the system's TimeZone parameter,
                 // and is converted to UTC using the offset for the timezone zone.
                 //
-                //When a timestamp with time zone value is output, it is always converted from UTC to the current timezone zone, and displayed as local time in that zone.
-                //https://www.postgresql.org/docs/current/datatype-datetime.html
+                // When a timestamp with time zone value is output, it is always converted from UTC to the current timezone zone, and displayed as local time in that zone.
+                // https://www.postgresql.org/docs/current/datatype-datetime.html
                 return List.of(new ValueBindDescriptor(index, localDateTime.atZone(getDatabaseTimeZone().toZoneId()).toOffsetDateTime()));
             }
 
