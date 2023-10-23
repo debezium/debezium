@@ -9,6 +9,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
+import java.net.UnknownHostException;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -22,6 +23,7 @@ import io.debezium.testing.system.tools.OpenShiftUtils;
 import io.debezium.testing.system.tools.WaitConditions;
 import io.fabric8.kubernetes.api.model.ObjectMetaBuilder;
 import io.fabric8.kubernetes.api.model.ObjectReferenceBuilder;
+import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.openshift.api.model.ClusterRoleBindingBuilder;
 import io.fabric8.openshift.api.model.Project;
 import io.fabric8.openshift.api.model.ProjectBuilder;
@@ -35,8 +37,9 @@ public class NamespacePreparationListener implements TestExecutionListener {
     private List<String> projectNames;
 
     public void testPlanExecutionStarted(TestPlan testPlan) {
+        client = OpenShiftUtils.createOcpClient();
         // execute only before OCP system tests
-        if (ConfigProperties.OCP_PROJECT_DBZ != null && OpenShiftUtils.isRunningFromOcp()) {
+        if (ConfigProperties.OCP_PROJECT_DBZ != null && isOcpAvailable()) {
             projectNames = List.of(ConfigProperties.OCP_PROJECT_DBZ,
                     ConfigProperties.OCP_PROJECT_ORACLE,
                     ConfigProperties.OCP_PROJECT_MONGO,
@@ -45,7 +48,6 @@ public class NamespacePreparationListener implements TestExecutionListener {
                     ConfigProperties.OCP_PROJECT_POSTGRESQL,
                     ConfigProperties.OCP_PROJECT_REGISTRY,
                     ConfigProperties.OCP_PROJECT_SQLSERVER);
-            client = OpenShiftUtils.createOcpClient();
 
             validateSystemParameters();
             if (ConfigProperties.PREPARE_NAMESPACES_AND_STRIMZI) {
@@ -56,10 +58,10 @@ public class NamespacePreparationListener implements TestExecutionListener {
 
     public void testPlanExecutionFinished(TestPlan testPlan) {
         // execute only after OCP system tests
-        if (ConfigProperties.OCP_PROJECT_DBZ != null && ConfigProperties.PREPARE_NAMESPACES_AND_STRIMZI && OpenShiftUtils.isRunningFromOcp()) {
+        if (ConfigProperties.OCP_PROJECT_DBZ != null && ConfigProperties.PREPARE_NAMESPACES_AND_STRIMZI && isOcpAvailable()) {
             deleteNamespaces();
-            client.close();
         }
+        client.close();
     }
 
     private void prepareNamespaces() {
@@ -151,5 +153,17 @@ public class NamespacePreparationListener implements TestExecutionListener {
                 client.projects().delete(project);
             }
         });
+    }
+
+    private boolean isOcpAvailable() {
+        try {
+            client.getVersion();
+        }
+        catch (KubernetesClientException e) {
+            if (e.getCause() instanceof UnknownHostException) {
+                return false;
+            }
+        }
+        return true;
     }
 }
