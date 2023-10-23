@@ -178,9 +178,9 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> extends Abstrac
         BsonDocument keyDocument = BsonDocument.parse("{ \"id\" : " + keyRecord.key().toString() + "}");
         BsonDocument valueDocument = new BsonDocument();
 
-        // Tombstone message
+        // Handling tombstone record
         if (record.value() == null) {
-            R newRecord = extractRecordStrategy.handleTruncateRecord(record);
+            R newRecord = extractRecordStrategy.handleTombstoneRecord(record);
             if (newRecord == null) {
                 return null;
             }

@@ -31,7 +31,7 @@ public class LegacyDeleteHandlingStrategy<R extends ConnectRecord<R>> extends Ab
     }
 
     @Override
-    public R handleTruncateRecord(R record) {
+    public R handleTombstoneRecord(R record) {
         if (dropTombstones) {
             LOGGER.trace("Tombstone {} arrived and requested to be dropped", record.key());
             return null;
@@ -54,6 +54,7 @@ public class LegacyDeleteHandlingStrategy<R extends ConnectRecord<R>> extends Ab
             case REWRITE:
                 LOGGER.trace("Delete message {} requested to be rewritten", record.key());
                 R oldRecord = beforeDelegate.apply(record);
+                // need to add the rewrite "__deleted" field manually since mongodb's value is a string type
                 if (oldRecord.value() instanceof Struct) {
                     return removedDelegate.apply(oldRecord);
                 }
@@ -68,6 +69,7 @@ public class LegacyDeleteHandlingStrategy<R extends ConnectRecord<R>> extends Ab
         R newRecord = afterDelegate.apply(record);
         if (deleteHandling == DeleteHandling.REWRITE) {
             LOGGER.trace("Insert/update message {} requested to be rewritten", record.key());
+            // need to add the rewrite "__deleted" field manually since mongodb's value is a string type
             if (newRecord.value() instanceof Struct) {
                 return updatedDelegate.apply(newRecord);
             }

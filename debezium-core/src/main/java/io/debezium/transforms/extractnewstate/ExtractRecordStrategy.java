@@ -21,6 +21,8 @@ public interface ExtractRecordStrategy<R extends ConnectRecord<R>> {
 
     R handleTruncateRecord(R record);
 
+    R handleTombstoneRecord(R record);
+
     R handleDeleteRecord(R record);
 
     R handleRecord(R record);

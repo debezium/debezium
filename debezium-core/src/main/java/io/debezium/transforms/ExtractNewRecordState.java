@@ -110,7 +110,7 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> extends AbstractE
 
         // Handling tombstone record
         if (record.value() == null) {
-            return extractRecordStrategy.handleTruncateRecord(record);
+            return extractRecordStrategy.handleTombstoneRecord(record);
         }
 
         if (!smtManager.isValidEnvelope(record)) {
@@ -118,9 +118,9 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> extends AbstractE
         }
 
         R newRecord = extractRecordStrategy.afterDelegate().apply(record);
+        // Handling truncate record
         if (newRecord.value() == null && extractRecordStrategy.beforeDelegate().apply(record).value() == null) {
-            LOGGER.trace("Truncate event arrived and requested to be dropped");
-            return null;
+            return extractRecordStrategy.handleTruncateRecord(record);
         }
 
         if (newRecord.value() == null) {

@@ -15,6 +15,8 @@ import java.util.Map;
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.transforms.ExtractField;
 import org.apache.kafka.connect.transforms.InsertField;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * An abstract implementation of {@link ExtractRecordStrategy}.
@@ -23,6 +25,7 @@ import org.apache.kafka.connect.transforms.InsertField;
  */
 public abstract class AbstractExtractRecordStrategy<R extends ConnectRecord<R>> implements ExtractRecordStrategy<R> {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(AbstractExtractRecordStrategy.class);
     private static final String UPDATE_DESCRIPTION = "updateDescription";
     protected final ExtractField<R> afterDelegate = new ExtractField.Value<>();
     protected final ExtractField<R> beforeDelegate = new ExtractField.Value<>();
@@ -57,6 +60,13 @@ public abstract class AbstractExtractRecordStrategy<R extends ConnectRecord<R>> 
         delegateConfig = new HashMap<>();
         delegateConfig.put("field", UPDATE_DESCRIPTION);
         updateDescriptionDelegate.configure(delegateConfig);
+    }
+
+    @Override
+    public R handleTruncateRecord(R record) {
+        // will drop truncate event as default behavior
+        LOGGER.trace("Truncate event arrived and requested to be dropped");
+        return null;
     }
 
     @Override
