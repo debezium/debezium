@@ -21,9 +21,10 @@ public class PreparedStatementQueryBinder implements QueryBinder {
     public void bind(ValueBindDescriptor valueBindDescriptor) {
 
         try {
-            if (valueBindDescriptor.getBindableType() != null) { //TODO improve the naming
+            if (valueBindDescriptor.getBindableType() != null) { // TODO improve the naming
                 binder.setObject(valueBindDescriptor.getIndex(), valueBindDescriptor.getValue(), Types.TIMESTAMP_WITH_TIMEZONE);
-            } else {
+            }
+            else {
                 binder.setObject(valueBindDescriptor.getIndex(), valueBindDescriptor.getValue());
             }
         }
