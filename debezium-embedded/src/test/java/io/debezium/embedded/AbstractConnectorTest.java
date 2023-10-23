@@ -68,7 +68,6 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.Instantiator;
-import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.data.VerifyRecord;
 import io.debezium.embedded.EmbeddedEngine.CompletionCallback;
 import io.debezium.embedded.EmbeddedEngine.ConnectorCallback;
@@ -107,6 +106,7 @@ public abstract class AbstractConnectorTest implements Testing {
     protected BlockingQueue<SourceRecord> consumedLines;
     protected long pollTimeoutInMs = TimeUnit.SECONDS.toMillis(10);
     protected final Logger logger = LoggerFactory.getLogger(getClass());
+    protected final AtomicBoolean isRunning = new AtomicBoolean(false);
     private CountDownLatch latch;
     private JsonConverter keyJsonConverter = new JsonConverter();
     private JsonConverter valueJsonConverter = new JsonConverter();
@@ -154,12 +154,12 @@ public abstract class AbstractConnectorTest implements Testing {
         try {
             logger.info("Stopping the connector");
             // Try to stop the connector ...
-            if (engine != null && engine.isRunning()) {
+            if (engine != null && isRunning.get()) {
                 logger.info("Stopping the engine");
                 try {
                     engine.close();
                     // Oracle connector needs longer time to complete shutdown
-                    Awaitility.await().atMost(60, TimeUnit.SECONDS).until(() -> !engine.isRunning());
+                    Awaitility.await().atMost(60, TimeUnit.SECONDS).until(() -> !isRunning.get());
                 }
                 catch (IOException e) {
                     logger.warn("Failed during engine stop", e);
@@ -184,10 +184,10 @@ public abstract class AbstractConnectorTest implements Testing {
                     Thread.currentThread().interrupt();
                 }
             }
-            if (engine != null && engine.isRunning()) {
+            if (engine != null && isRunning.get()) {
                 logger.info("Waiting for engine to stop");
                 try {
-                    Awaitility.await().atMost(60, TimeUnit.SECONDS).until(() -> !engine.isRunning());
+                    Awaitility.await().atMost(60, TimeUnit.SECONDS).until(() -> !isRunning.get());
                 }
                 catch (ConditionTimeoutException e) {
                     logger.warn("Connector has not stopped on time");
@@ -195,7 +195,7 @@ public abstract class AbstractConnectorTest implements Testing {
                 }
             }
             if (callback != null) {
-                callback.accept(engine != null && engine.isRunning());
+                callback.accept(engine != null && isRunning.get());
             }
         }
         finally {
@@ -391,6 +391,18 @@ public abstract class AbstractConnectorTest implements Testing {
                 // if this is called, it means a task has been started successfully so we can continue
                 latch.countDown();
             }
+
+            @Override
+            public void connectorStarted() {
+                // it should never happen we run the callback on already running engine
+                isRunning.compareAndExchange(false, true);
+            }
+
+            @Override
+            public void connectorStopped() {
+                // while it can happen that stop callback is called on engine which doesn't run (e.g. when exception is thrown during the start)
+                isRunning.set(false);
+            }
         };
 
         // Create the connector ...
@@ -432,11 +444,11 @@ public abstract class AbstractConnectorTest implements Testing {
                 throw new ConnectException("Stopping connector after record as requested");
             }
             // Test stopped the connector, remaining records are ignored
-            if (ignoreRecordsAfterStop && (!engine.isRunning() || Thread.currentThread().isInterrupted())) {
+            if (ignoreRecordsAfterStop && (!isRunning.get() || Thread.currentThread().isInterrupted())) {
                 return;
             }
             while (!consumedLines.offer(record)) {
-                if (ignoreRecordsAfterStop && (!engine.isRunning() || Thread.currentThread().isInterrupted())) {
+                if (ignoreRecordsAfterStop && (!isRunning.get() || Thread.currentThread().isInterrupted())) {
                     return;
                 }
             }
@@ -522,7 +534,7 @@ public abstract class AbstractConnectorTest implements Testing {
         int recordsConsumed = 0;
         int nullReturn = 0;
         boolean isLastRecord = false;
-        while (!isLastRecord && engine.isRunning()) {
+        while (!isLastRecord && isRunning.get()) {
             SourceRecord record = consumedLines.poll(pollTimeoutInMs, TimeUnit.MILLISECONDS);
             if (record != null) {
                 nullReturn = 0;
@@ -955,14 +967,14 @@ public abstract class AbstractConnectorTest implements Testing {
      * Assert that the connector is currently running.
      */
     protected void assertConnectorIsRunning() {
-        assertThat(engine.isRunning()).isTrue();
+        assertThat(isRunning.get()).isTrue();
     }
 
     /**
      * Assert that the connector is NOT currently running.
      */
     protected void assertConnectorNotRunning() {
-        assertThat(engine != null && engine.isRunning()).isFalse();
+        assertThat(engine != null && isRunning.get()).isFalse();
     }
 
     /**
@@ -1055,7 +1067,7 @@ public abstract class AbstractConnectorTest implements Testing {
      * Assert that there was no exception in engine that would cause its termination.
      */
     protected void assertEngineIsRunning() {
-        assertThat(engine.isRunning()).as("Engine should not fail due to an exception").isTrue();
+        assertThat(isRunning.get()).as("Engine should not fail due to an exception").isTrue();
     }
 
     /**
