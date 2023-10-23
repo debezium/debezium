@@ -57,6 +57,7 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
 
     private InMemoryPendingTransactionsCache inMemoryPendingTransactionsCache = new InMemoryPendingTransactionsCache();
 
+    private static AbstractInfinispanLogMinerEventProcessor instance;
 
     public AbstractInfinispanLogMinerEventProcessor(ChangeEventSourceContext context,
                                                     OracleConnectorConfig connectorConfig,
@@ -72,6 +73,11 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
         this.partition = partition;
         this.offsetContext = offsetContext;
         this.dispatcher = dispatcher;
+        AbstractInfinispanLogMinerEventProcessor.instance = this;
+    }
+
+    public static void logCacheStats() {
+        AbstractInfinispanLogMinerEventProcessor.instance.displayCacheStatistics();
     }
 
     @Override
