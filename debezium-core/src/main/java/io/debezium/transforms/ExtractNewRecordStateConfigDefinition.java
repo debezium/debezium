@@ -16,6 +16,7 @@ public class ExtractNewRecordStateConfigDefinition {
     public static final String DELETED_FIELD = "__deleted";
     public static final String METADATA_FIELD_PREFIX = "__";
 
+    @Deprecated
     public enum DeleteHandling implements EnumeratedValue {
         DROP("drop"),
         REWRITE("rewrite"),

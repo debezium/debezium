@@ -100,7 +100,7 @@ public abstract class AbstractExtractNewRecordState<R extends ConnectRecord<R>> 
             extractRecordStrategy = new LegacyDeleteHandlingStrategy<>(handleDeletes, dropTombstones);
             LOGGER.warn(
                     "The deleted record handling configs \"drop.tombstones\" and \"delete.handling.mode\" have been deprecated, " +
-                            "please use \"delete.tombstone.handling.mode\" instead of.");
+                            "please use \"delete.tombstone.handling.mode\" instead.");
         }
     }
 
