@@ -58,6 +58,7 @@ import org.apache.kafka.connect.storage.Converter;
 import org.apache.kafka.connect.storage.FileOffsetBackingStore;
 import org.apache.kafka.connect.storage.OffsetStorageReaderImpl;
 import org.awaitility.Awaitility;
+import org.awaitility.core.ConditionTimeoutException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -158,13 +159,13 @@ public abstract class AbstractConnectorTest implements Testing {
                 try {
                     engine.close();
                     // Oracle connector needs longer time to complete shutdown
-                    engine.await(60, TimeUnit.SECONDS);
+                    Awaitility.await().atMost(60, TimeUnit.SECONDS).until(() -> !engine.isRunning());
                 }
                 catch (IOException e) {
                     logger.warn("Failed during engine stop", e);
                     Thread.currentThread().interrupt();
                 }
-                catch (InterruptedException e) {
+                catch (ConditionTimeoutException e) {
                     logger.warn("Engine has not stopped on time");
                     Thread.currentThread().interrupt();
                 }
@@ -186,11 +187,9 @@ public abstract class AbstractConnectorTest implements Testing {
             if (engine != null && engine.isRunning()) {
                 logger.info("Waiting for engine to stop");
                 try {
-                    while (!engine.await(60, TimeUnit.SECONDS)) {
-                        // Wait for connector to stop completely ...
-                    }
+                    Awaitility.await().atMost(60, TimeUnit.SECONDS).until(() -> !engine.isRunning());
                 }
-                catch (InterruptedException e) {
+                catch (ConditionTimeoutException e) {
                     logger.warn("Connector has not stopped on time");
                     Thread.currentThread().interrupt();
                 }
