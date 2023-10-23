@@ -10,34 +10,35 @@ import java.util.List;
 import java.util.Objects;
 
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.sink.SinkRecord;
 
 public class RecordBuffer {
 
     private final JdbcSinkConnectorConfig connectorConfig;
     private Schema keySchema;
     private Schema valueSchema;
-    private final ArrayList<SinkRecord> records = new ArrayList<>();
+    private final ArrayList<SinkRecordDescriptor> records = new ArrayList<>();
 
     public RecordBuffer(JdbcSinkConnectorConfig connectorConfig) {
 
         this.connectorConfig = connectorConfig;
     }
 
-    public List<SinkRecord> add(SinkRecord record) {
+    public List<SinkRecordDescriptor> add(SinkRecordDescriptor recordDescriptor) {
 
-        ArrayList<SinkRecord> flushed = new ArrayList<>();
+        ArrayList<SinkRecordDescriptor> flushed = new ArrayList<>();
 
         if (records.isEmpty()) {
-            keySchema = record.keySchema();
-            valueSchema = record.valueSchema();
+            keySchema = recordDescriptor.getKeySchema();
+            valueSchema = recordDescriptor.getValueSchema();
         }
 
-        if (!Objects.equals(keySchema, record.keySchema()) || !Objects.equals(valueSchema, record.valueSchema())) {
+        if (!Objects.equals(keySchema, recordDescriptor.getKeySchema()) || !Objects.equals(valueSchema, recordDescriptor.getValueSchema())) {
+            keySchema = recordDescriptor.getKeySchema();
+            valueSchema = recordDescriptor.getValueSchema();
             flushed.addAll(flush());
         }
 
-        records.add(record);
+        records.add(recordDescriptor);
 
         if (records.size() >= connectorConfig.getBatchSize()) {
             flushed.addAll(flush());
@@ -46,11 +47,15 @@ public class RecordBuffer {
         return flushed;
     }
 
-    public List<SinkRecord> flush() {
+    public List<SinkRecordDescriptor> flush() {
 
-        ArrayList<SinkRecord> flushed = new ArrayList<>(records);
+        ArrayList<SinkRecordDescriptor> flushed = new ArrayList<>(records);
         records.clear();
 
         return flushed;
+    }
+
+    public boolean isEmpty() {
+        return records.isEmpty();
     }
 }

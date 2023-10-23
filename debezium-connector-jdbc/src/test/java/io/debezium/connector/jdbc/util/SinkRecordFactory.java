@@ -68,6 +68,15 @@ public interface SinkRecordFactory {
     }
 
     /**
+     * Returns a single field key schema.
+     * @param columnNameTransformation transformation for the field name
+     * @param schema the schema used for the key field
+     */
+    default Schema keySchema(UnaryOperator<String> columnNameTransformation, Schema schema) {
+        return SchemaBuilder.struct().field(columnNameTransformation.apply("id"), schema).build();
+    }
+
+    /**
      * Returns a multiple field key schema.
      */
     default Schema multipleKeySchema() {

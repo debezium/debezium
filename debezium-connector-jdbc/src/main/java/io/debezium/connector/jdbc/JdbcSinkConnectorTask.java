@@ -92,7 +92,7 @@ public class JdbcSinkConnectorTask extends SinkTask {
         // Another approach is to refactor the current code and push down the loop on records.
 
         boolean oldMode = false;
-        if(oldMode) {
+        if (oldMode) {
             for (Iterator<SinkRecord> iterator = records.iterator(); iterator.hasNext();) {
                 final SinkRecord record = iterator.next();
                 LOGGER.trace("Received {}", record);
@@ -114,22 +114,23 @@ public class JdbcSinkConnectorTask extends SinkTask {
                     markNotProcessed(iterator);
                 }
             }
-        } else {
+        }
+        else {
             try {
-                //validate(record); TODO move validate down
+                // validate(record); TODO move validate down
                 changeEventSink.execute(records);
-                //markProcessed(records);
+                // markProcessed(records);
             }
             catch (Throwable throwable) { // TODO check how to manage errors with batch
                 // Stash currently failed record
-                //markNotProcessed(record);
+                // markNotProcessed(record);
 
                 // Capture failure
                 LOGGER.error("Failed to process record: {}", throwable.getMessage(), throwable);
                 previousPutException = throwable;
 
                 // Stash any remaining records
-                //markNotProcessed(iterator);
+                // markNotProcessed(iterator);
             }
         }
 
