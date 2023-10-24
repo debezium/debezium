@@ -79,7 +79,9 @@ public class JdbcSinkConnectorTask extends SinkTask {
 
     @Override
     public void put(Collection<SinkRecord> records) {
+
         if (previousPutException != null) {
+            LOGGER.error("JDBC sink connector failure", previousPutException);
             throw new ConnectException("JDBC sink connector failure", previousPutException);
         }
 
@@ -134,9 +136,6 @@ public class JdbcSinkConnectorTask extends SinkTask {
     public void stop() {
         stateLock.lock();
         try {
-            if (previousPutException != null) {
-                throw new ConnectException("JDBC sink connector failure", previousPutException);
-            }
 
             if (changeEventSink != null) {
                 try {
