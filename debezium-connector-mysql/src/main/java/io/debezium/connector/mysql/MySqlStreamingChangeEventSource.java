@@ -255,7 +255,8 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
                     }
 
                     // DBZ-5126 Clean cache on rotate event to prevent it from growing indefinitely.
-                    if (event.getHeader().getEventType() == EventType.ROTATE) {
+                    if (event.getHeader().getEventType() == EventType.ROTATE
+                        && event.getHeader().getTimestamp() != 0) {
                         tableMapEventByTableId.clear();
                     }
                     return event;
