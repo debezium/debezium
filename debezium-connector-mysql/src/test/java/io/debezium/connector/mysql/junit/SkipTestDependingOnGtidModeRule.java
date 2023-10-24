@@ -31,7 +31,7 @@ public class SkipTestDependingOnGtidModeRule extends AnnotationBasedTestRule {
 
     public static SkipWhenGtidModeIs.GtidMode getGtidMode() {
         try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase("emptydb")) {
-            String databaseOption = MySqlTestConnection.isMariaDB() ? "GTID_STRICT_MODE" : "GTID_MODE";
+            String databaseOption = MySqlTestConnection.isMariaDb() ? "GTID_STRICT_MODE" : "GTID_MODE";
             return db.queryAndMap(
                     "SHOW GLOBAL VARIABLES LIKE '" + databaseOption + "'",
                     rs -> {

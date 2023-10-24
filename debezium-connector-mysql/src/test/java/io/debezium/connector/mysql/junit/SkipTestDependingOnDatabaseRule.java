@@ -28,7 +28,7 @@ import io.debezium.util.Strings;
 public class SkipTestDependingOnDatabaseRule extends AnnotationBasedTestRule {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SkipTestDependingOnDatabaseRule.class);
-    private static final boolean IS_MARIADB = MySqlTestConnection.isMariaDB();
+    private static final boolean IS_MARIADB = MySqlTestConnection.isMariaDb();
 
     @Override
     public Statement apply(Statement base, Description description) {

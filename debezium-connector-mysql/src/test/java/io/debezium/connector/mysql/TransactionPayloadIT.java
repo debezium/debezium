@@ -103,7 +103,7 @@ public class TransactionPayloadIT extends AbstractConnectorTest {
         assertThat(records).isNotNull();
         records.forEach(this::validate);
 
-        boolean isMariaDB = MySqlTestConnection.isMariaDB();
+        boolean isMariaDB = MySqlTestConnection.isMariaDb();
 
         try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
             try (JdbcConnection connection = db.connect()) {
