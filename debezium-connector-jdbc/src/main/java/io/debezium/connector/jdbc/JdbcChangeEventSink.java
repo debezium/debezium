@@ -218,16 +218,9 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                     int[] batchResult = pstmt.executeBatch(); // TODO check result for error
 
                 }
-                catch (SQLException e) {
-                    transaction.rollback();
-                    throw e;
-                }
             });
-
             transaction.commit();
-
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             transaction.rollback();
             throw e;
         }
