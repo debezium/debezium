@@ -97,15 +97,6 @@ public class MySqlTestConnection extends JdbcConnection {
     }
 
     /**
-     * Obtain whether the database source is MariaDB.
-     *
-     * @return true if the database is; otherwise false
-     */
-    public static boolean isMariaDB() {
-        return forTestDatabase("mysql").getMySqlVersion() == MySqlVersion.MARIADB_11;
-    }
-
-    /**
      * Obtain whether the database source is the Percona Server fork.
      *
      * @return true if the database is Percona Server; otherwise false.
@@ -121,8 +112,21 @@ public class MySqlTestConnection extends JdbcConnection {
      * @return true if the database is MariaDB; otherwise false
      */
     public static boolean isMariaDb() {
-        String comment = forTestDatabase("mysql").getMySqlVersionComment();
-        return comment.toLowerCase().contains("mariadb");
+        try (MySqlTestConnection connection = forTestDatabase("mysql")) {
+            return connection.isVersionCommentMariaDb();
+        }
+        catch (SQLException e) {
+            throw new RuntimeException("Failed to resolve if database is MariaDB", e);
+        }
+    }
+
+    /**
+     * Checks whether the database version string indicates MariaDB.
+     *
+     * @return true if the database is MariaDB; otherwise false
+     */
+    public boolean isVersionCommentMariaDb() {
+        return getMySqlVersionComment().toLowerCase().contains("mariadb");
     }
 
     private static JdbcConfiguration addDefaultSettings(JdbcConfiguration configuration) {
@@ -150,7 +154,7 @@ public class MySqlTestConnection extends JdbcConnection {
         if (mySqlVersion == null) {
             final String versionString = getMySqlVersionString();
 
-            if (isMariaDb()) {
+            if (isVersionCommentMariaDb()) {
                 if (versionString.startsWith("11.")) {
                     mySqlVersion = MySqlVersion.MARIADB_11;
                 }
