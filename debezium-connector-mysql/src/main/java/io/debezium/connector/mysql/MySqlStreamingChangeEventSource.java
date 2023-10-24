@@ -212,6 +212,10 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
                 client.setSslSocketFactory(sslSocketFactory);
             }
         }
+        if (connection.isMariaDb()) {
+            // This makes sure BEGIN events are emitted via QUERY events rather than GTIDs.
+            client.setMariaDbSlaveCapability(2);
+        }
         Configuration configuration = connectorConfig.getConfig();
         client.setKeepAlive(configuration.getBoolean(MySqlConnectorConfig.KEEP_ALIVE));
         final long keepAliveInterval = configuration.getLong(MySqlConnectorConfig.KEEP_ALIVE_INTERVAL_MS);
