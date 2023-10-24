@@ -450,8 +450,8 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         counters.commitCount++;
 
         int numEvents = getTransactionEventCount(transaction);
-        LOGGER.trace("Commit (smallest SCN {}) {}", smallestScn, row);
-        LOGGER.trace("Transaction {} has {} events", transactionId, numEvents);
+        LOGGER.debug("Committing transaction {} with {} events (scn: {}, oldest buffer scn: {}): {}",
+                transactionId, numEvents, row.getScn(), smallestScn, row);
 
         final ZoneOffset databaseOffset = metrics.getDatabaseOffset();
 
