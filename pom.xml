@@ -124,7 +124,7 @@
         <!-- Database drivers, should align with databases -->
         <version.postgresql.driver>42.6.0</version.postgresql.driver>
         <version.mysql.driver>8.0.33</version.mysql.driver>
-        <version.mysql.binlog>0.28.1</version.mysql.binlog>
+        <version.mysql.binlog>0.28.3</version.mysql.binlog>
         <version.mongo.driver>4.7.1</version.mongo.driver>
         <version.sqlserver.driver>10.2.1.jre8</version.sqlserver.driver>
         <version.oracle.driver>21.6.0.0</version.oracle.driver>
