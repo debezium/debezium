@@ -102,7 +102,7 @@ public abstract class AbstractConnectorTest implements Testing {
     private static final String TEST_PROPERTY_PREFIX = "debezium.test.";
 
     private ExecutorService executor;
-    protected EmbeddedEngine engine;
+    protected TestingDebeziumEngine engine;
     protected BlockingQueue<SourceRecord> consumedLines;
     protected long pollTimeoutInMs = TimeUnit.SECONDS.toMillis(10);
     protected final Logger logger = LoggerFactory.getLogger(getClass());
@@ -415,7 +415,7 @@ public abstract class AbstractConnectorTest implements Testing {
         if (changeConsumer != null) {
             builder.notifying(changeConsumer);
         }
-        engine = builder.build();
+        engine = new TestingEmbeddedEngine(builder.build());
 
         // Submit the connector for asynchronous execution ...
         assertThat(executor).isNull();
