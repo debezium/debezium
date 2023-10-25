@@ -124,6 +124,12 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
 
     private void streamChangesForReplicaSet(ChangeEventSourceContext context, MongoDbPartition partition,
                                             ReplicaSet replicaSet, MongoDbOffsetContext offsetContext) {
+
+        streamChangesForReplicaSetWithSharding(context, partition, replicaSet, offsetContext, connectorConfig.getStreamingShardId());
+    }
+
+    private void streamChangesForReplicaSetWithSharding(ChangeEventSourceContext context, MongoDbPartition partition,
+                                                        ReplicaSet replicaSet, MongoDbOffsetContext offsetContext, int shardId) {
         MongoPrimary primaryClient = null;
         try {
             primaryClient = establishConnectionToPrimary(partition, replicaSet);
@@ -131,10 +137,10 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                 final AtomicReference<MongoPrimary> primaryReference = new AtomicReference<>(primaryClient);
                 primaryClient.execute("read from oplog on '" + replicaSet + "'", primary -> {
                     if (taskContext.getCaptureMode().isChangeStreams()) {
-                        readChangeStream(primary, primaryReference.get(), replicaSet, context, offsetContext);
+                        readChangeStream(primary, primaryReference.get(), replicaSet, context, offsetContext, shardId);
                     }
                     else {
-                        readOplog(primary, primaryReference.get(), replicaSet, context, offsetContext);
+                        readOplog(primary, primaryReference.get(), replicaSet, context, offsetContext, shardId);
                     }
                 });
             }
@@ -195,7 +201,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
     }
 
     private void readOplog(MongoClient primary, MongoPrimary primaryClient, ReplicaSet replicaSet, ChangeEventSourceContext context,
-                           MongoDbOffsetContext offsetContext) {
+                           MongoDbOffsetContext offsetContext, int shardId) {
         final ReplicaSetPartition rsPartition = offsetContext.getReplicaSetPartition(replicaSet);
         final ReplicaSetOffsetContext rsOffsetContext = offsetContext.getReplicaSetOffsetContext(replicaSet);
 
@@ -255,6 +261,15 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                 // In this situation if not document is available, we'll pause.
                 final BsonDocument event = cursor.tryNext();
                 if (event != null) {
+                    BsonTimestamp timeStamp = SourceInfo.extractEventTimestamp(event);
+                    if (timeStamp.getValue() % connectorConfig.getStreamingShards() != shardId) {
+                        LOGGER.debug("shard id doesn't match, skip oplog event");
+                        continue;
+                    }
+                    else {
+                        LOGGER.debug("shard id match, process oplog event");
+                    }
+
                     if (!handleOplogEvent(primaryAddress, event, event, 0, oplogContext, connectorConfig.getEnableRawOplog(), connectorConfig.getAllowCmdCollection())) {
                         // Something happened and we are supposed to stop reading
                         return;
@@ -301,7 +316,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
     }
 
     private void readChangeStream(MongoClient primary, MongoPrimary primaryClient, ReplicaSet replicaSet, ChangeEventSourceContext context,
-                                  MongoDbOffsetContext offsetContext) {
+                                  MongoDbOffsetContext offsetContext, int shardId) {
         final ReplicaSetPartition rsPartition = offsetContext.getReplicaSetPartition(replicaSet);
         final ReplicaSetOffsetContext rsOffsetContext = offsetContext.getReplicaSetOffsetContext(replicaSet);
 
@@ -362,6 +377,14 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                         oplogContext.getOffset().changeStreamEvent(event, txOrder);
                         if (shouldFilterStripeAudit(oplogContext, event, (e) -> serialization.getDocumentIdChangeStream(e.getDocumentKey()))) {
                             continue;
+                        }
+
+                        if (event.getClusterTime() != null && event.getClusterTime().getValue() % connectorConfig.getStreamingShards() != shardId) {
+                            LOGGER.debug("shard id doesn't match, skip change stream event");
+                            continue;
+                        }
+                        else {
+                            LOGGER.debug("shard id match, process stream event");
                         }
 
                         oplogContext.getOffset().getOffset();

@@ -597,6 +597,26 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                     "The number of threads for incremental snapshots to query mongodb. If this is more than 1, a window size is will be equal to threads * chunk.")
             .withDefault(1)
             .withValidation(Field::isPositiveInteger);
+
+    public static final Field STREAMING_SHARDS = Field.create("streaming.shards")
+            .withDisplayName("Streaming shards")
+            .withType(Type.INT)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withDescription(
+                    "number of tasks for streaming")
+            .withDefault(1)
+            .withValidation(Field::isPositiveInteger);
+
+    public static final Field STREAMING_SHARD_ID = Field.create("streaming.shard.id")
+            .withDisplayName("Shard id")
+            .withType(Type.INT)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withDescription(
+                    "shard id")
+            .withDefault(0)
+            .withValidation(Field::isInteger);
     public static final Field CONNECT_TIMEOUT_MS = Field.create("mongodb.connect.timeout.ms")
             .withDisplayName("Connect Timeout MS")
             .withType(Type.INT)
@@ -666,6 +686,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                     CONNECT_BACKOFF_INITIAL_DELAY_MS,
                     CONNECT_BACKOFF_MAX_DELAY_MS,
                     INCREMENTAL_SNAPSHOT_THREADS,
+                    STREAMING_SHARDS,
+                    STREAMING_SHARD_ID,
                     CONNECT_TIMEOUT_MS,
                     HEARTBEAT_FREQUENCY_MS,
                     SOCKET_TIMEOUT_MS,
@@ -718,6 +740,10 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     private final String stripeAuditFilterPattern;
     private final int incrementalSnapshotThreads;
 
+    private final int streamingShards;
+
+    private final int streamingShardId;
+
     public MongoDbConnectorConfig(Configuration config) {
         super(config, config.getString(LOGICAL_NAME), DEFAULT_SNAPSHOT_FETCH_SIZE);
 
@@ -734,6 +760,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         this.snapshotMaxThreads = resolveSnapshotMaxThreads(config);
         this.cursorMaxAwaitTimeMs = config.getInteger(MongoDbConnectorConfig.CURSOR_MAX_AWAIT_TIME_MS, 0);
         this.incrementalSnapshotThreads = config.getInteger(MongoDbConnectorConfig.INCREMENTAL_SNAPSHOT_THREADS, 1);
+        this.streamingShards = config.getInteger(MongoDbConnectorConfig.STREAMING_SHARDS, 1);
+        this.streamingShardId = config.getInteger(MongoDbConnectorConfig.STREAMING_SHARD_ID, 0);
     }
 
     private static int validateHosts(Configuration config, Field field, ValidationOutput problems) {
@@ -855,6 +883,14 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
     public int getIncrementalSnapshotThreads() {
         return incrementalSnapshotThreads;
+    }
+
+    public int getStreamingShards() {
+        return streamingShards;
+    }
+
+    public int getStreamingShardId() {
+        return streamingShardId;
     }
 
     public int getCursorMaxAwaitTime() {
