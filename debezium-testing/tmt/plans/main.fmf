@@ -49,6 +49,11 @@ prepare:
       rm -f /tmp/apache-maven.tar.gz
       ln -s /usr/share/maven/bin/mvn /usr/bin/mvn
 
+  - name: Disable Chronyd service
+    how: shell
+    script: |
+      sudo systemctl disable --now chronyd
+
 # Discover tmt defined tests in tests/ folder
 execute:
   how: tmt
