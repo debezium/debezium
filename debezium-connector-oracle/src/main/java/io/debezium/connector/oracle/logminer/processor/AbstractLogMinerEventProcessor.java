@@ -667,9 +667,11 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
      */
     protected void handleSchemaChange(LogMinerEventRow row) throws InterruptedException {
         if (row.getTableId() != null) {
-            if ("SYS".equalsIgnoreCase(row.getUserName()) || "SYSTEM".equalsIgnoreCase(row.getUserName())) {
-                // We do not process SYS/SYSTEM schema changes as these are mostly internal.
-                LOGGER.trace("SYS/SYSTEM initiated DDL '{}' skipped", row.getRedoSql());
+            boolean isExcluded = connectorConfig.getLogMiningSchemaChangesUsernameExcludes()
+                    .stream()
+                    .anyMatch(userName -> userName.equalsIgnoreCase(row.getUserName()));
+            if (isExcluded) {
+                LOGGER.trace("User '{}' is in schema change exclusions, DDL '{}' skipped.", row.getUserName(), row.getRedoSql());
                 return;
             }
             else if (row.getInfo() != null && row.getInfo().startsWith("INTERNAL DDL")) {

@@ -584,6 +584,14 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withValidation(OracleConnectorConfig::validateRequiredWhenUsingOpenLogReplicator)
             .withDescription("The port of the OpenLogReplicator network service");
 
+    public static final Field LOG_MINING_SCHEMA_CHANGES_USERNAME_EXCLUDE_LIST = Field.createInternal("log.mining.schema_changes.username.exclude.list")
+            .withDisplayName("Username exclusion list for schema changes")
+            .withType(Type.STRING)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.LOW)
+            .withDescription("A comma-separated list of usernames that schema changes will be skipped for. Defaults to 'SYS,SYSTEM'.")
+            .withDefault("SYS,SYSTEM");
+
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("Oracle")
             .excluding(
@@ -648,6 +656,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_QUERY_FILTER_MODE,
                     LOG_MINING_RESTART_CONNECTION,
                     LOG_MINING_MAX_SCN_DEVIATION_MS,
+                    LOG_MINING_SCHEMA_CHANGES_USERNAME_EXCLUDE_LIST,
                     OLR_SOURCE,
                     OLR_HOST,
                     OLR_PORT)
@@ -716,6 +725,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final Boolean logMiningRestartConnection;
     private final Duration logMiningMaxScnDeviation;
     private final String logMiningInifispanGlobalConfiguration;
+    private final Set<String> logMiningSchemaChangesUsernameExcludes;
     private final String openLogReplicatorSource;
     private final String openLogReplicatorHostname;
     private final Integer openLogReplicatorPort;
@@ -781,6 +791,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningRestartConnection = config.getBoolean(LOG_MINING_RESTART_CONNECTION);
         this.logMiningMaxScnDeviation = Duration.ofMillis(config.getLong(LOG_MINING_MAX_SCN_DEVIATION_MS));
         this.logMiningInifispanGlobalConfiguration = config.getString(LOG_MINING_BUFFER_INFINISPAN_CACHE_GLOBAL);
+        this.logMiningSchemaChangesUsernameExcludes = Strings.setOf(config.getString(LOG_MINING_SCHEMA_CHANGES_USERNAME_EXCLUDE_LIST), String::new);
 
         // OpenLogReplicator
         this.openLogReplicatorSource = config.getString(OLR_SOURCE);
@@ -1772,6 +1783,15 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      */
     public Duration getLogMiningMaxScnDeviation() {
         return logMiningMaxScnDeviation;
+    }
+
+    /**
+     * Returns the list of usernames that should have schema changes excluded for.
+     *
+     * @return set of usernames
+     */
+    public Set<String> getLogMiningSchemaChangesUsernameExcludes() {
+        return logMiningSchemaChangesUsernameExcludes;
     }
 
     /**
