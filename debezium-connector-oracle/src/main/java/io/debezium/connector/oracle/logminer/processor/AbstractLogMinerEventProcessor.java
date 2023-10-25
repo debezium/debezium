@@ -237,7 +237,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                         offsetContext.getCommitScn(), metrics.getNumberOfActiveTransactions(),
                         metrics.getMillisecondToSleepBetweenMiningQuery());
 
-                if (metrics.getNumberOfActiveTransactions() > 0) {
+                if (metrics.getNumberOfActiveTransactions() > 0 && LOGGER.isDebugEnabled()) {
                     // This is wrapped in try-with-resources specifically for Infinispan performance
                     try (Stream<T> stream = getTransactionCache().values().stream()) {
                         LOGGER.debug("All active transactions: {}",
