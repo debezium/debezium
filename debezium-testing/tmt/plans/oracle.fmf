@@ -21,6 +21,11 @@ prepare:
     script: |
       sudo systemctl enable docker --now
 
+  - name: Disable Chronyd service
+    how: shell
+    script: |
+      sudo systemctl disable --now chronyd
+
 # Discover tmt defined tests in tests/ folder
 execute:
   how: tmt
