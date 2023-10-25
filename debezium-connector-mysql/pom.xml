@@ -916,5 +916,17 @@
                 <version.mysql.server>${version.mariadb.server}</version.mysql.server>
             </properties>
         </profile>
+        <!-- Profile for MariaDB SQL support -->
+        <profile>
+            <id>mariadb-ssl</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <properties>
+                <docker.dbs>debezium/mysql-server-test-database-ssl</docker.dbs>
+                <mysql.server.image.source>${mariadb.server.image.source}</mysql.server.image.source>
+                <version.mysql.server>${version.mariadb.server}</version.mysql.server>
+            </properties>
+        </profile>
     </profiles>
 </project>
