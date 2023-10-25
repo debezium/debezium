@@ -51,7 +51,7 @@ import io.debezium.relational.TableId;
  *
  * @author Chris Cranford
  */
-public class RemoteInfinispanLogMinerEventProcessor extends AbstractInfinispanLogMinerEventProcessor implements CacheProvider {
+public class RemoteInfinispanLogMinerEventProcessor extends AbstractInfinispanLogMinerEventProcessor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RemoteInfinispanLogMinerEventProcessor.class);
 
@@ -189,6 +189,12 @@ public class RemoteInfinispanLogMinerEventProcessor extends AbstractInfinispanLo
             }
         }
         return null;
+    }
+
+    @Override
+    protected void purgeCache(Scn minCacheScn) {
+        removeIf(processedTransactionsCache.entrySet().iterator(), entry -> Scn.valueOf(entry.getValue()).compareTo(minCacheScn) > 0);
+        removeIf(schemaChangesCache.entrySet().iterator(), entry -> Scn.valueOf(entry.getKey()).compareTo(minCacheScn) < 0);
     }
 
     private Properties getHotrodClientProperties(OracleConnectorConfig connectorConfig) {

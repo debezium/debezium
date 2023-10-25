@@ -12,10 +12,14 @@ import java.time.Duration;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
+import org.infinispan.commons.util.CloseableIterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -73,9 +77,9 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
         LOGGER.info("\tRecent Transactions : {}", getProcessedTransactionsCache().size());
         LOGGER.info("\tSchema Changes      : {}", getSchemaChangesCache().size());
         LOGGER.info("\tEvents              : {}", getEventCache().size());
-        if (!getEventCache().isEmpty()) {
-            for (String eventKey : getEventCache().keySet()) {
-                LOGGER.debug("\t\tFound Key: {}", eventKey);
+        if (!getEventCache().isEmpty() && LOGGER.isDebugEnabled()) {
+            try (Stream<String> stream = getEventCache().keySet().stream()) {
+                stream.forEach(eventKey -> LOGGER.debug("\t\tFound Key: {}", eventKey));
             }
         }
     }
@@ -139,7 +143,9 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
     }
 
     private List<String> getTransactionKeysWithPrefix(String prefix) {
-        return getEventCache().keySet().stream().filter(k -> k.startsWith(prefix)).collect(Collectors.toList());
+        try (Stream<String> stream = getEventCache().keySet().stream()) {
+            return stream.filter(k -> k.startsWith(prefix)).collect(Collectors.toList());
+        }
     }
 
     @Override
@@ -282,11 +288,9 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
     @Override
     protected int getTransactionEventCount(InfinispanTransaction transaction) {
         // todo: implement indexed keys when ISPN supports them
-        return (int) getEventCache()
-                .keySet()
-                .stream()
-                .filter(k -> k.startsWith(transaction.getTransactionId() + "-"))
-                .count();
+        try (Stream<String> stream = getEventCache().keySet().stream()) {
+            return (int) stream.filter(k -> k.startsWith(transaction.getTransactionId() + "-")).count();
+        }
     }
 
     @Override
@@ -311,8 +315,7 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
         }
 
         if (!minCacheScn.isNull()) {
-            getProcessedTransactionsCache().entrySet().removeIf(entry -> Scn.valueOf(entry.getValue()).compareTo(minCacheScn) < 0);
-            getSchemaChangesCache().entrySet().removeIf(entry -> Scn.valueOf(entry.getKey()).compareTo(minCacheScn) < 0);
+            purgeCache(minCacheScn);
         }
         else {
             getProcessedTransactionsCache().clear();
@@ -349,6 +352,33 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
             dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
 
             return endScn;
+        }
+    }
+
+    /**
+     * Purge the necessary caches with all entries that occurred prior to the specified change number.
+     *
+     * @param minCacheScn the minimum system change number to keep entries until
+     */
+    protected abstract void purgeCache(Scn minCacheScn);
+
+    /**
+     * Helper method to remove entries that match the given predicate from a closeable iterator.
+     * This method guarantees that the underlying resources are released at the end of the operation.
+     *
+     * @param iterator the iterator
+     * @param filter the predicate
+     * @param <K> the key type
+     * @param <V> the value type
+     */
+    protected <K, V> void removeIf(CloseableIterator<Map.Entry<K, V>> iterator, Predicate<Map.Entry<K, V>> filter) {
+        try (CloseableIterator<Map.Entry<K, V>> it = iterator) {
+            while (it.hasNext()) {
+                final Map.Entry<K, V> entry = it.next();
+                if (filter.test(entry)) {
+                    it.remove();
+                }
+            }
         }
     }
 
