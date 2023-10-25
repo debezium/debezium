@@ -358,6 +358,42 @@ jobs:
           -Dmaven.wagon.http.pool=false
           -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
 
+  build_mariadb:
+    needs: [check_style, file_changes]
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mysql-changed == 'true' || needs.file_changes.outputs.mysql-ddl-parser-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' }}
+    name: "MariaDB"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: 17
+
+      - name: Cache Maven Repository
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2/repository
+          key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+
+      - name: Build Debezium Connector MySQL for MariaDB
+        # We specifically exclude the assembly profile for now as the MariaDB integration is still
+        # ongoing for GTID and therefore this simply runs the tests like non-assembly builds but
+        # utilizes the MariaDB database rather than MySQL at this time. It also gives us a chance
+        # to see how changes react to MariaDB as they're contributed.
+        run: >
+          ./mvnw clean install -B -pl debezium-connector-mysql -am -Pmariadb
+          -Dcheckstyle.skip=true
+          -Dformat.skip=true
+          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+          -Dmaven.wagon.http.pool=false
+          -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+
   build_postgresql:
     needs: [check_style, file_changes]
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.postgresql-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' }}

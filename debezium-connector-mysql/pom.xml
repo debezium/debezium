@@ -173,6 +173,11 @@
         <apicurio.port>8080</apicurio.port>
         <apicurio.init.timeout>60000</apicurio.init.timeout> <!-- 60 seconds -->
         <!--
+        MariaDB specific
+        -->
+        <mariadb.server.image.source>mariadb</mariadb.server.image.source>
+        <version.mariadb.server>11.1.2</version.mariadb.server>
+        <!--
         By default, we should use the docker image maintained by the MySQL team. This property is changed with different profiles.
         However, we run one container with GTIDs and one without.
         -->
@@ -871,7 +876,7 @@
                 <!-- Integration test properties -->
                 <database.port>${mysql.ssl.port}</database.port>
                 <database.replica.port>${mysql.ssl.port}</database.replica.port>
-                <docker.initimage>ln -s /usr/share/zoneinfo/Pacific/Pago_Pago /etc/localtime</docker.initimage>
+                <docker.initimage>rm -f /etc/localtime; ln -s /usr/share/zoneinfo/Pacific/Pago_Pago /etc/localtime</docker.initimage>
             </properties>
         </profile>
         <profile>
@@ -897,6 +902,18 @@
             </build>
             <properties>
                 <docker.filter>${docker.dbs},apicurio/apicurio-registry-mem:${version.apicurio}</docker.filter>
+            </properties>
+        </profile>
+        <!-- Profile used to toggle MariaDB instead of MySQL -->
+        <profile>
+            <id>mariadb</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <properties>
+                <docker.dbs>debezium/mysql-server-test-database</docker.dbs>
+                <mysql.server.image.source>${mariadb.server.image.source}</mysql.server.image.source>
+                <version.mysql.server>${version.mariadb.server}</version.mysql.server>
             </properties>
         </profile>
     </profiles>
