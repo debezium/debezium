@@ -129,6 +129,8 @@
         <version.sqlserver.driver>10.2.1.jre8</version.sqlserver.driver>
         <version.oracle.driver>21.6.0.0</version.oracle.driver>
         <version.db2.driver>11.5.0.0</version.db2.driver>
+        <version.informix.changestream.client>1.1.3</version.informix.changestream.client>
+        <version.informix.driver>4.50.10</version.informix.driver>
         <version.cassandra.driver>4.14.0</version.cassandra.driver>
 
         <!-- Databases, should align with database drivers -->
