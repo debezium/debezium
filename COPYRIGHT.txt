@@ -81,6 +81,7 @@ Brennan Vincent
 Breno Moreira
 Byron Ruth
 Camile Sing
+ccro
 César Martínez
 Cao Manh Dat
 Chad Marmon
@@ -282,6 +283,8 @@ Kewei Shang
 Krizhan Mariampillai
 Kyley Jex
 Lairen Hightower
+laoflch
+Lars M. Johansson
 Lars Werkman
 Laurent Broudoux
 Leo Mei
@@ -503,6 +506,7 @@ Wu Zhenhua
 Wout Scheepers
 Xiao Fu
 Xiaojian Sun
+Xiaolin Zhang
 Xiaopu Zhu
 Xinbin Huang
 Xinquan She

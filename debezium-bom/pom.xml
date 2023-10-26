@@ -243,6 +243,18 @@
                 <version>${version.db2.driver}</version>
             </dependency>
 
+            <!-- Informix JDBC driver -->
+            <dependency>
+                <groupId>com.ibm.informix</groupId>
+                <artifactId>jdbc</artifactId>
+                <version>${version.informix.driver}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.ibm.informix</groupId>
+                <artifactId>ifx-changestream-client</artifactId>
+                <version>${version.informix.changestream.client}</version>
+            </dependency>
+
             <!-- Logging -->
             <dependency>
                 <groupId>org.slf4j</groupId>
@@ -689,6 +701,11 @@
             <dependency>
                 <groupId>io.debezium</groupId>
                 <artifactId>debezium-connector-vitess</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-connector-informix</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
