@@ -2,6 +2,85 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.5.0.Alpha1
+October 26th 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12410510)
+
+### New features since 2.4.0.Final
+
+* Provide first class support for MariaDB [DBZ-2913](https://issues.redhat.com/browse/DBZ-2913)
+* Support for IBM Informix [DBZ-4999](https://issues.redhat.com/browse/DBZ-4999)
+* Add support for honouring MongoDB read preference in change stream after promotion [DBZ-5953](https://issues.redhat.com/browse/DBZ-5953)
+* Enable Spanner Connector against Cloud Spanner Emulator [DBZ-6845](https://issues.redhat.com/browse/DBZ-6845)
+* Refactor Oracle streaming metrics beans [DBZ-6899](https://issues.redhat.com/browse/DBZ-6899)
+* Provide capability to set image pull secrets in DS k8s CRD [DBZ-6962](https://issues.redhat.com/browse/DBZ-6962)
+* Upgrade to Vitess 17 for integration tests [DBZ-6981](https://issues.redhat.com/browse/DBZ-6981)
+* Add the ability to sanitize field name when inferencing json schema [DBZ-6983](https://issues.redhat.com/browse/DBZ-6983)
+* Allow OLM Bundle scripts to download from maven central by default [DBZ-6995](https://issues.redhat.com/browse/DBZ-6995)
+* Enhance README.md with Instructions for Creating a Kubernetes Namespace [DBZ-7004](https://issues.redhat.com/browse/DBZ-7004)
+* Support OKD/Openshift catalog in OH release script [DBZ-7010](https://issues.redhat.com/browse/DBZ-7010)
+* Add displayName and description metadata to DebeziumServer CRD in OLM Bundle [DBZ-7011](https://issues.redhat.com/browse/DBZ-7011)
+* Upgrade  Kafka to 3.6.0 [DBZ-7033](https://issues.redhat.com/browse/DBZ-7033)
+* DebeziumConnector always attempts to contact Quay.io to determine latest stable version [DBZ-7044](https://issues.redhat.com/browse/DBZ-7044)
+* Support snapshot with automatic retry [DBZ-7050](https://issues.redhat.com/browse/DBZ-7050)
+* Provide resources to set pod requests and limits in DS k8s CRD [DBZ-7052](https://issues.redhat.com/browse/DBZ-7052)
+* Provide svc to better collects dbz-server metrics  in DS k8s [DBZ-7053](https://issues.redhat.com/browse/DBZ-7053)
+* Improve logging at DEBUG level for Commit events [DBZ-7067](https://issues.redhat.com/browse/DBZ-7067)
+* Replace schema tracking restriction for SYS/SYSTEM users with configurable option [DBZ-7071](https://issues.redhat.com/browse/DBZ-7071)
+
+
+### Breaking changes since 2.4.0.Final
+
+* Setting "none" to "delete.handle.mode" is recommended [DBZ-6907](https://issues.redhat.com/browse/DBZ-6907)
+
+
+### Fixes since 2.4.0.Final
+
+* Multiple debezium:offsets Redis clients [DBZ-6952](https://issues.redhat.com/browse/DBZ-6952)
+* Wrong case-behavior for non-avro column name in sink connector [DBZ-6958](https://issues.redhat.com/browse/DBZ-6958)
+* Handle properly bytea field for jdbc sink to postgresql [DBZ-6967](https://issues.redhat.com/browse/DBZ-6967)
+* Debezium jdbc sink process truncate event failure [DBZ-6970](https://issues.redhat.com/browse/DBZ-6970)
+* Single quote replication includes escaped quotes for N(CHAR/VARCHAR) columns [DBZ-6975](https://issues.redhat.com/browse/DBZ-6975)
+* Debezium jdbc sink should throw not supporting schema change topic exception [DBZ-6990](https://issues.redhat.com/browse/DBZ-6990)
+* Debezium doesn't compile with JDK 21 [DBZ-6992](https://issues.redhat.com/browse/DBZ-6992)
+* OLM bundle version for GA releases is invalid [DBZ-6994](https://issues.redhat.com/browse/DBZ-6994)
+* ALTER TABLE fails when adding multiple columns to JDBC sink target [DBZ-6999](https://issues.redhat.com/browse/DBZ-6999)
+* Invalid Link to zulip chat in CSV metadata [DBZ-7000](https://issues.redhat.com/browse/DBZ-7000)
+* Make sure to terminate the task once connectivity is lost to either the rebalance or sync topic [DBZ-7001](https://issues.redhat.com/browse/DBZ-7001)
+* Missing .metadata.annotations.repository field in CSV metadata [DBZ-7003](https://issues.redhat.com/browse/DBZ-7003)
+* Single quote replication and loss of data [DBZ-7006](https://issues.redhat.com/browse/DBZ-7006)
+* Oracle connector: Payload size over 76020 bytes are getting truncated [DBZ-7018](https://issues.redhat.com/browse/DBZ-7018)
+* DDL statement couldn't be parsed [DBZ-7030](https://issues.redhat.com/browse/DBZ-7030)
+* Blocking ad-hoc snapshot is not really blocking for MySQL [DBZ-7035](https://issues.redhat.com/browse/DBZ-7035)
+* Fake ROTATE event on connection restart cleans metadata [DBZ-7037](https://issues.redhat.com/browse/DBZ-7037)
+
+
+### Other changes since 2.4.0.Final
+
+* Adding Debezium Server example using MySQL and GCP PubSub [DBZ-4471](https://issues.redhat.com/browse/DBZ-4471)
+* Test Debezium against MSSQL 2016 [DBZ-6693](https://issues.redhat.com/browse/DBZ-6693)
+* Test Debezium against DB2 1.5.8.0 [DBZ-6694](https://issues.redhat.com/browse/DBZ-6694)
+* Add MSSQL 2022 to test matrix [DBZ-6695](https://issues.redhat.com/browse/DBZ-6695)
+* Edit test matrix after team evaluation [DBZ-6696](https://issues.redhat.com/browse/DBZ-6696)
+* Edit test automation to run both DB2 1.5.8.0 and 1.5.0.0a [DBZ-6697](https://issues.redhat.com/browse/DBZ-6697)
+* Refactor ElapsedTimeStrategy [DBZ-6778](https://issues.redhat.com/browse/DBZ-6778)
+* Provide configuration option to exclude extension attributes from a CloudEvent [DBZ-6982](https://issues.redhat.com/browse/DBZ-6982)
+* Further refactoring to correct downstream rendering of incremental snapshots topics [DBZ-6997](https://issues.redhat.com/browse/DBZ-6997)
+* Remove deprecated embedded engine code [DBZ-7013](https://issues.redhat.com/browse/DBZ-7013)
+* Enable replication slot advance check [DBZ-7015](https://issues.redhat.com/browse/DBZ-7015)
+* Add configuration option to CloudEventsConverter to retrieve id and type from headers [DBZ-7016](https://issues.redhat.com/browse/DBZ-7016)
+* Use optional schema for Timezone Converter tests [DBZ-7020](https://issues.redhat.com/browse/DBZ-7020)
+* Debezium Operator blogpost  [DBZ-7025](https://issues.redhat.com/browse/DBZ-7025)
+* Apply 2.3.4 updates to main branch [DBZ-7039](https://issues.redhat.com/browse/DBZ-7039)
+* Update documentation with Postgres's pgoutput limitation [DBZ-7041](https://issues.redhat.com/browse/DBZ-7041)
+* Use oracle container registry for MySQL images [DBZ-7042](https://issues.redhat.com/browse/DBZ-7042)
+* Updates to fix build of downstream doc [DBZ-7046](https://issues.redhat.com/browse/DBZ-7046)
+* Update operator dependencies and add qosdk platform bom [DBZ-7048](https://issues.redhat.com/browse/DBZ-7048)
+* Upgrade maven-surefire-plugin to 3.1.2 [DBZ-7055](https://issues.redhat.com/browse/DBZ-7055)
+* Consolidate resource labels and annotations [DBZ-7064](https://issues.redhat.com/browse/DBZ-7064)
+* Disable time sync in Testing farm test runs [DBZ-7074](https://issues.redhat.com/browse/DBZ-7074)
+
+
+
 ## 2.4.0.Final
 October 3rd 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12411356)
 
