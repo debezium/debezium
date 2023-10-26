@@ -758,6 +758,13 @@
                 <version>${project.version}</version>
                 <type>test-jar</type>
             </dependency>
+
+            <!-- Security fixes -->
+            <dependency>
+                <groupId>org.yaml</groupId>
+                <artifactId>snakeyaml</artifactId>
+                <version>${version.snakeyaml}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 </project>

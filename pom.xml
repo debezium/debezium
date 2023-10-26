@@ -131,20 +131,24 @@
         <version.db2.driver>11.5.0.0</version.db2.driver>
         <version.informix.changestream.client>1.1.3</version.informix.changestream.client>
         <version.informix.driver>4.50.10</version.informix.driver>
-        <version.cassandra.driver>4.14.0</version.cassandra.driver>
+        <version.cassandra.driver>4.17.0</version.cassandra.driver>
 
         <!-- Databases, should align with database drivers -->
         <version.mysql.server>8.0</version.mysql.server>
         <version.mongo.server>6.0</version.mongo.server>
         <version.cassandra3>3.11.12</version.cassandra3>
-        <version.cassandra4>4.0.2</version.cassandra4>
+        <version.cassandra4>4.0.11</version.cassandra4>
 
         <!-- Required in protoc plug-in config, too; can't be in BOM therefore -->
         <version.com.google.protobuf>3.19.6</version.com.google.protobuf>
         <!-- The version is separate so different protoc can be used in product -->
         <version.com.google.protobuf.protoc>3.19.6</version.com.google.protobuf.protoc>
 
-        <!-- Infinispan version for Oracle and Debezium Server sink -->
+        <!-- Security fixes -->
+        <!-- DBZ-7034 -->
+        <version.snakeyaml>2.2</version.snakeyaml>
+
+	<!-- Infinispan version for Oracle and Debezium Server sink -->
         <version.infinispan>14.0.11.Final</version.infinispan>
         <version.infinispan.protostream>4.6.2.Final</version.infinispan.protostream>
 
