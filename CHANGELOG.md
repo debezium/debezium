@@ -30,7 +30,8 @@ October 26th 2023 [Detailed release notes](https://issues.redhat.com/secure/Rele
 
 ### Breaking changes since 2.4.0.Final
 
-* Setting "none" to "delete.handle.mode" is recommended [DBZ-6907](https://issues.redhat.com/browse/DBZ-6907)
+* Setting "none" to "delete.handle.mode" is recommended [DBZ-6907](https://issues.redhat.com/browse/DBZ-6881)
+* Deprecate MongoDB 4.4 [DBZ-6907](https://issues.redhat.com/browse/DBZ-6881)
 
 
 ### Fixes since 2.4.0.Final
