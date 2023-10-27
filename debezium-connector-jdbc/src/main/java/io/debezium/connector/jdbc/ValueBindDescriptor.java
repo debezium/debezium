@@ -10,7 +10,7 @@ public class ValueBindDescriptor {
     private final int index;
     private final Object value;
 
-    private final Object bindableType;
+    private final Integer bindableType;
 
     public ValueBindDescriptor(int index, Object value) {
         this.index = index;
@@ -18,7 +18,7 @@ public class ValueBindDescriptor {
         this.bindableType = null;
     }
 
-    public ValueBindDescriptor(int index, Object value, Object bindableType) {
+    public ValueBindDescriptor(int index, Object value, Integer bindableType) {
         this.index = index;
         this.value = value;
         this.bindableType = bindableType;
@@ -32,7 +32,7 @@ public class ValueBindDescriptor {
         return value;
     }
 
-    public Object getBindableType() {
+    public Integer getBindableType() {
         return bindableType;
     }
 }

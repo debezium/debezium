@@ -56,7 +56,7 @@ public class ConnectTimeType extends AbstractTimeType {
             final LocalTime localTime = DateTimeUtils.toLocalTimeFromUtcDate((Date) value);
             final LocalDateTime localDateTime = localTime.atDate(LocalDate.now());
             if (getDialect().isTimeZoneSet()) {
-                return List.of(new ValueBindDescriptor(index, localDateTime.atZone(getDatabaseTimeZone().toZoneId())));
+                return List.of(new ValueBindDescriptor(index, getDialect().convertToCorrectDateTime(localDateTime.atZone(getDatabaseTimeZone().toZoneId()))));
             }
             // NOTE
             // ----
