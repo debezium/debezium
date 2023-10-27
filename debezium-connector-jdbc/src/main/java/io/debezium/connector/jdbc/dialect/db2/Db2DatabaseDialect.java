@@ -5,16 +5,6 @@
  */
 package io.debezium.connector.jdbc.dialect.db2;
 
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeFormatterBuilder;
-import java.time.temporal.TemporalAccessor;
-import java.util.Optional;
-
-import org.hibernate.SessionFactory;
-import org.hibernate.dialect.DB2Dialect;
-import org.hibernate.dialect.Dialect;
-
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.SinkRecordDescriptor;
 import io.debezium.connector.jdbc.SinkRecordDescriptor.FieldDescriptor;
@@ -24,6 +14,16 @@ import io.debezium.connector.jdbc.dialect.GeneralDatabaseDialect;
 import io.debezium.connector.jdbc.dialect.SqlStatementBuilder;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
 import io.debezium.time.ZonedTimestamp;
+import org.hibernate.SessionFactory;
+import org.hibernate.dialect.DB2Dialect;
+import org.hibernate.dialect.Dialect;
+
+import java.sql.Timestamp;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
+import java.time.temporal.TemporalAccessor;
+import java.util.Optional;
 
 /**
  * A {@link DatabaseDialect} implementation for Db2.
@@ -198,5 +198,14 @@ public class Db2DatabaseDialect extends GeneralDatabaseDialect {
         builder.append(getQualifiedTableName(table.getId()));
         builder.append(" ACTIVATE NOT LOGGED INITIALLY WITH EMPTY TABLE");
         return builder.build();
+    }
+    @Override
+    public Optional<Integer> getTimestampType() {
+        return Optional.empty();
+    }
+
+    @Override
+    public Object convertToCorrectDateTime(ZonedDateTime zonedTime) {
+        return Timestamp.valueOf(zonedTime.toLocalDateTime());
     }
 }

@@ -7,7 +7,6 @@ package io.debezium.connector.jdbc;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.sql.Types;
 
 public class PreparedStatementQueryBinder implements QueryBinder {
 
@@ -22,7 +21,7 @@ public class PreparedStatementQueryBinder implements QueryBinder {
 
         try {
             if (valueBindDescriptor.getBindableType() != null) { // TODO improve the naming
-                binder.setObject(valueBindDescriptor.getIndex(), valueBindDescriptor.getValue(), Types.TIMESTAMP_WITH_TIMEZONE);
+                binder.setObject(valueBindDescriptor.getIndex(), valueBindDescriptor.getValue(), valueBindDescriptor.getBindableType());
             }
             else {
                 binder.setObject(valueBindDescriptor.getIndex(), valueBindDescriptor.getValue());
