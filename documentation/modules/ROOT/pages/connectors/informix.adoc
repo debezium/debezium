@@ -26,9 +26,6 @@ endif::community[]
 ifdef::community[]
 For information about the Informix Database versions that are compatible with this connector, see the link:https://debezium.io/releases/[{prodname} release overview].
 endif::community[]
-ifdef::product[]
-For information about the Informix Database versions that are compatible with this connector, see the link:{LinkDebeziumSupportedConfigurations}[{NameDebeziumSupportedConfigurations}].
-endif::product[]
 
 This connector is strongly inspired by the {prodname} implementation of IBM DB2, but uses the Informix Change Streams API for Java to capture transactional data.
 The Change Data Capture API capture data from databases that have full row logging enabled and captures transactions from the current logical log and processes all transactions sequentially.
@@ -48,22 +45,6 @@ It is expected that the connector would also work on other platforms such as Win
 and we'd love to get your feedback if you can confirm this to be the case.
 endif::community[]
 
-ifdef::product[]
-
-Information and procedures for using a {prodname} Informix connector is organized as follows:
-
-* xref:overview-of-debezium-informix-connector[]
-* xref:how-debezium-informix-connectors-work[]
-* xref:descriptions-of-debezium-informix-connector-data-change-events[]
-* xref:how-debezium-informix-connectors-map-data-types[]
-* xref:setting-up-informix-to-run-a-debezium-connector[]
-* xref:deployment-of-debezium-informix-connectors[]
-* xref:monitoring-debezium-informix-connector-performance[]
-* xref:managing-debezium-informix-connectors[]
-* xref:updating-schemas-for-informix-tables-in-capture-mode-for-debezium-connectors[]
-
-endif::product[]
-
 // Type: concept
 // Title: Overview of {prodname} Informix connector
 // ModuleID: overview-of-debezium-informix-connector
@@ -73,7 +54,7 @@ endif::product[]
 The {prodname} Informix connector is based on the link:https://www.ibm.com/docs/en/informix-servers/14.10?topic=api-change-data-capture[Informix Change Data Capture API]
 that enable Change Data Capture in Informix.
 
-The database administrator must prepare the database and the database server for using the Change Data Capture API.
+The database administrator must prepare the database and the database server for using the Change Data Capture API. See link:https://www.ibm.com/docs/en/informix-servers/14.10?topic=api-preparing-use-change-data-capture[Preparing to use the Change Data Capture API].
 
 After the tables of interest are in capture mode, the connector reads their corresponding change-stream records to obtain change events for table updates.
 The connector emits a change event for each row-level insert, update, and delete operation to a Kafka topic that has the same name as the changed table.
@@ -96,19 +77,6 @@ In this way, the connector starts with a consistent view of the tables that are 
 
 To optimally configure and run a {prodname} Informix connector, it is helpful to understand how the connector performs snapshots, streams change events, determines Kafka topic names, and handles schema changes.
 
-ifdef::product[]
-Details are in the following topics:
-
-* xref:how-debezium-informix-connectors-perform-database-snapshots[]
-* xref:debezium-informix-ad-hoc-snapshots[]
-* xref:debezium-informix-incremental-snapshots[]
-* xref:how-debezium-informix-connectors-read-change-stream-records[]
-* xref:default-names-of-kafka-topics-that-receive-informix-change-event-records[]
-* xref:about-the-debezium-informix-connector-schema-change-topic[]
-* xref:debezium-informix-connector-generated-events-that-represent-transaction-boundaries[]
-
-endif::product[]
-
 // Type: concept
 // ModuleID: how-debezium-informix-connectors-perform-database-snapshots
 // Title: How {prodname} Informix connectors perform database snapshots
@@ -119,15 +87,6 @@ Informix`s replication feature is not designed to store the complete history of 
 As a result, the {prodname} Informix connector cannot retrieve the entire history of the database from the logs.
 To enable the connector to establish a baseline for the current state of the database, the first time that the connector starts, it performs an initial _consistent snapshot_ of the tables that are in capture mode.
 For each change that the snapshot captures, the connector emits a `read` event to the Kafka topic for the captured table.
-
-ifdef::product[]
-
-You can find more information about snapshots in the following sections:
-
-* xref:debezium-informix-ad-hoc-snapshots[]
-* xref:debezium-informix-incremental-snapshots[]
-
-endif::product[]
 
 .Default workflow that the {prodname} Informix connector uses to perform an initial snapshot
 
@@ -401,15 +360,22 @@ include::{partialsdir}/modules/all-connectors/con-connector-blocking-snapshot.ad
 === Change-stream records
 
 After a complete snapshot, when a {prodname} Informix connector starts for the first time, the connector starts consuming change-stream records for the source tables that are in capture mode.
-The connector does the following for each change-data table:
+The connector does the following:
 
-. Reads change events that were created between the last stored, highest LSN and the current, highest LSN.
-. Orders the change events according to the commit LSN and the change LSN for each event.
-  This ensures that the connector emits the change events in the order in which the table changes occurred.
-. Passes commit and change LSNs as offsets to Kafka Connect.
-. Stores the highest LSN that the connector passed to Kafka Connect.
+. Reads available change records from the current LSN.
+. Groups records by transaction Id and orders them according to the change LSN for each record.
+. Processes records as transactions are committed.
+. Passes begin, commit and change LSNs as offsets to Kafka Connect.
+. Stores the highest commit LSN and the lowest, uncommitted begin LSN that the connector passed to Kafka Connect.
 
-After a restart, the connector resumes emitting change events from the offset (commit and change LSNs) where it left off.
+After a restart, the connector resumes emitting change events from the offset (begin, commit and change LSNs) where it left off. It does so by:
+
+. Reading change records that were created between the last stored, lowest uncommitted begin LSN and the current LSN.
+. Grouping records by transaction Id and ordering them according to the change LSN for each event.
+. Discarding already processed transactions (commit LSN lower than last stored commit LSN).
+. Discarding already processed records of the last incompletely processed transaction, if any (change LSN lower than last stored change LSN and commit LSN equal to last stored commit LSN).
+. Processes the remaining records of any incompletely processed transaction.
+. Continues processing records as transactions are committed.
 
 // Type: concept
 // ModuleID: default-names-of-kafka-topics-that-receive-informix-change-event-records
@@ -895,14 +861,6 @@ This can lead to unexpected conflicts if the logical server name, a database nam
 
 Also, Informix names for databases, schemas, and tables can be case sensitive. This means that the connector could emit event records for more than one table to the same Kafka topic.
 ====
-
-ifdef::product[]
-Details are in the following topics:
-
-* xref:about-keys-in-debezium-informix-change-events[]
-* xref:about-values-in-debezium-informix-change-events[]
-
-endif::product[]
 
 // Type: concept
 // ModuleID: about-keys-in-debezium-informix-change-events
@@ -1449,16 +1407,6 @@ For a complete description of the data types that Informix supports, see https:/
 The Informix connector represents changes to rows with events that are structured like the table in which the row exists. The event contains a field for each column value. How that value is represented in the event depends on the Informix data type of the column. This section describes these mappings.
 If the default data type conversions do not meet your needs, you can {link-prefix}:{link-custom-converters}#custom-converters[create a custom converter] for the connector.
 
-ifdef::product[]
-Details are in the following sections:
-
-* xref:informix-basic-types[]
-* xref:informix-temporal-types[]
-* xref:informix-timestamp-types[]
-* xref:informix-decimal-types[]
-
-endif::product[]
-
 [id="informix-basic-types"]
 === Basic types
 
@@ -1698,11 +1646,11 @@ To deploy a {prodname} Informix connector, you install the {prodname} Informix c
 
 . Download the link:https://repo1.maven.org/maven2/io/debezium/debezium-connector-informix/{debezium-version}/debezium-connector-informix-{debezium-version}-plugin.tar.gz[{prodname} Informix connector plug-in archive] from Maven Central.
 . Extract the JAR files into your Kafka Connect environment.
-. Download the link:https://repo1.maven.org/maven2/com/ibm/informix/jcc/{informix-version}/jcc-{informix-version}.jar[JDBC driver for Informix] from Maven Central, and extract the downloaded driver file to the directory that contains the {prodname} Informix connector JAR file (that is, `debezium-connector-informix-{debezium-version}.jar`).
+. Download the link:https://repo1.maven.org/maven2/com/ibm/informix/jdbc/{informix-jdbc-version}/jdbc-{informix-jdbc-version}.jar[JDBC driver for Informix] and link:https://repo1.maven.org/maven2/com/ibm/informix/ifx-changestream-client/{ifx-changestream-version}/ifx-changestream-client-{ifx-changestream-version}.jar[Informix Change Stream client] from Maven Central, and copy the downloaded JAR files to the directory that contains the {prodname} Informix connector JAR file (that is, `debezium-connector-informix-{debezium-version}.jar`).
 +
 [IMPORTANT]
 ====
-Due to licensing requirements, the {prodname} Informix connector archive does not include the Informix JDBC driver and Change Stream Client that {prodname} requires to connect to a Informix database.
+Due to licensing requirements, the {prodname} Informix connector archive does not include the Informix JDBC driver and Change Stream client that {prodname} requires to connect to a Informix database.
 To enable the connector to access the database, you must add the driver and client library to your connector environment.
 ====
 . Add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`].
@@ -1716,278 +1664,6 @@ You can also xref:operations/openshift.adoc[run {prodname} on Kubernetes and Ope
 
 * xref:informix-example-configuration[Configure the connector] and xref:informix-adding-connector-configuration[add the configuration to your Kafka Connect cluster.]
 endif::community[]
-
-ifdef::product[]
-You can use either of the following methods to deploy a {prodname} Informix connector:
-
-* xref:openshift-streams-informix-connector-deployment[Use {StreamsName} to automatically create an image that includes the connector plug-in].
-+
-This is the preferred method.
-* xref:deploying-debezium-informix-connectors[Build a custom Kafka Connect container image from a Dockerfile].
-
-[IMPORTANT]
-====
-Due to licensing requirements, the {prodname} Informix connector archive does not include the Informix JDBC driver and Change Stream Client that {prodname} requires to connect to a Informix database.
-To enable the connector to access the database, you must add the driver and client library to your connector environment.
-For information about how to obtain the driver and library, see xref:obtaining-the-informix-jdbc-driver[Obtaining the Informix JDBC driver].
-====
-
-.Additional resources
-
-* xref:descriptions-of-debezium-informix-connector-configuration-properties[]
-
-// Type: procedure
-[id="obtaining-the-informix-jdbc-driver"]
-=== Obtaining the Informix JDBC driver
-
-Due to licensing requirements, the Informix JDBC driver and Change Stream Client files that {prodname} requires to connect to an Informix database is not included in the {prodname} Informix connector archive.
-The driver and client library is available for download from Maven Central.
-Depending on the deployment method that you use, you retrieve the driver and library by adding a command to the Kafka Connect custom resource or to the Dockerfile that you use to build the connector image.
-
-* If you use {StreamsName} to add the connector to your Kafka Connect image, add the Maven Central location for the driver to `builds.plugins.artifact.url` in the `KafkaConnect` custom resource as shown in xref:using-streams-to-deploy-debezium-informix-connectors[].
-* If you use a Dockerfile to build a container image for the connector, insert a `curl` command in the Dockerfile to specify the URL for downloading the required driver file from Maven Central.
-For more information, see xref:deploying-debezium-informix-connectors[].
-
-
-// Type: concept
-[id="openshift-streams-informix-connector-deployment"]
-=== Informix connector deployment using {StreamsName}
-
-include::{partialsdir}/modules/all-connectors/con-connector-streams-deployment.adoc[leveloffset=+1]
-
-// Type: procedure
-[id="using-streams-to-deploy-debezium-informix-connectors"]
-=== Using {StreamsName} to deploy a {prodname} Informix connector
-
-include::{partialsdir}/modules/all-connectors/proc-using-streams-to-deploy-a-debezium-informix-ora-pg-connector.adoc[leveloffset=+1]
-
-// Type: procedure
-// ModuleID: deploying-debezium-informix-connectors
-=== Deploying a {prodname} Informix connector by building a custom Kafka Connect container image from a Dockerfile
-
-To deploy a {prodname} Informix connector, you must build a custom Kafka Connect container image that contains the {prodname} connector archive, and then push this container image to a container registry.
-You then need to create the following custom resources (CRs):
-
-* A `KafkaConnect` CR that defines your Kafka Connect instance.
-The `image` property in the CR specifies the name of the container image that you create to run your {prodname} connector.
-You apply this CR to the OpenShift instance where link:https://access.redhat.com/products/red-hat-amq#streams[Red Hat {StreamsName}] is deployed.
-{StreamsName} offers operators and images that bring Apache Kafka to OpenShift.
-
-* A `KafkaConnector` CR that defines your {prodname} Informix connector.
-Apply this CR to the same OpenShift instance where you applied the `KafkaConnect` CR.
-
-.Prerequisites
-
-* Informix is running and you completed the steps to {LinkDebeziumUserGuide}#setting-up-informix-to-run-a-debezium-connector[set up Informix to work with a {prodname} connector].
-
-* {StreamsName} is deployed on OpenShift and is running Apache Kafka and Kafka Connect.
-For more information, see link:{LinkDeployStreamsOpenShift}[{NameDeployStreamsOpenShift}].
-
-* Podman or Docker is installed.
-
-* The Kafka Connect server has access to Maven Central to download the required JDBC driver for Informix.
-  You can also use a local copy of the driver, or one that is available from a local Maven repository or other HTTP server.
-* You have an account and permissions to create and manage containers in the container registry (such as `quay.io` or `docker.io`) to which you plan to add the container that will run your Debezium connector.
-
-.Procedure
-
-. Create the {prodname} Informix container for Kafka Connect:
-
-.. Create a Dockerfile that uses `{DockerKafkaConnect}` as the base image.
-For example, from a terminal window, enter the following command:
-+
-=====================================================================
-
-[source,shell,subs="+attributes,+quotes"]
-----
-cat <<EOF >debezium-container-for-informix.yaml // <1>
-FROM {DockerKafkaConnect}
-USER root:root
-RUN mkdir -p /opt/kafka/plugins/debezium // <2>
-RUN cd /opt/kafka/plugins/debezium/ \
-&& curl -O {red-hat-maven-repository}debezium/debezium-connector-{connector-file}/{debezium-version}-redhat-{debezium-build-number}/debezium-connector-{connector-file}-{debezium-version}-redhat-{debezium-build-number}-plugin.zip \
-&& unzip debezium-connector-{connector-file}-{debezium-version}-redhat-{debezium-build-number}-plugin.zip \
-&& rm debezium-connector-{connector-file}-{debezium-version}-redhat-{debezium-build-number}-plugin.zip
-RUN cd /opt/kafka/plugins/debezium/ \
-&& curl -O https://repo1.maven.org/maven2/com/ibm/informix/jdbc/{informix-jdbc-version}/jdbc-{informix-jdbc-version}.jar
-&& curl -O https://repo1.maven.org/maven2/com/ibm/informix/ifx-changestream-client/{ifx-changestream-version}/ifx-changestream-client-{ifx-changestream-version}.jar
-USER 1001
-EOF
-----
-=====================================================================
-+
-[cols="1,7",options="header"]
-|===
-|Item |Description
-
-|1
-|You can specify any file name that you want.
-
-|2
-|Specifies the path to your Kafka Connect plug-ins directory.
-If your Kafka Connect plug-ins directory is in a different location, replace this path with the actual path of your directory.
-
-|===
-+
-The command creates a Dockerfile with the name `debezium-container-for-informix.yaml` in the current directory.
-
-.. Build the container image from the `debezium-container-for-informix.yaml` Docker file that you created in the previous step.
-From the directory that contains the file, open a terminal window and enter one of the following commands:
-+
-[source,shell,options="nowrap"]
-----
-podman build -t debezium-container-for-informix:latest .
-----
-+
-[source,shell,options="nowrap"]
-----
-docker build -t debezium-container-for-informix:latest .
-----
-The preceding commands build a container image with the name `debezium-container-for-informix`.
-
-.. Push your custom image to a container registry, such as quay.io or an internal container registry.
-The container registry must be available to the OpenShift instance where you want to deploy the image.
-Enter one of the following commands:
-+
-[source,shell,subs="+quotes"]
-----
-podman push _<myregistry.io>_/debezium-container-for-informix:latest
-----
-+
-[source,shell,subs="+quotes"]
-----
-docker push _<myregistry.io>_/debezium-container-for-informix:latest
-----
-
-.. Create a new {prodname} Informix `KafkaConnect` custom resource (CR).
-For example, create a `KafkaConnect` CR with the name `dbz-connect.yaml` that specifies `annotations` and `image` properties.
-The following example shows an excerpt from a `dbz-connect.yaml` file that describes a `KafkaConnect` custom resource. +
-+
-=====================================================================
-[source,yaml,subs="+attributes"]
-----
-apiVersion: {KafkaConnectApiVersion}
-kind: KafkaConnect
-metadata:
-  name: my-connect-cluster
-  annotations:
-    strimzi.io/use-connector-resources: "true" // <1>
-spec:
-  #...
-  image: debezium-container-for-informix  // <2>
-
-  ...
-----
-=====================================================================
-+
-[cols="1,7",options="header"]
-|===
-|Item |Description
-
-|1
-|`metadata.annotations` indicates to the Cluster Operator that `KafkaConnector` resources are used to configure connectors in this Kafka Connect cluster.
-
-|2
-|`spec.image` specifies the name of the image that you created to run your Debezium connector.
-This property overrides the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable in the Cluster Operator.
-
-|===
-
-.. Apply the `KafkaConnect` CR to the OpenShift Kafka Connect environment by entering the following command:
-+
-[source,shell,options="nowrap"]
-----
-oc create -f dbz-connect.yaml
-----
-+
-The command adds a Kafka Connect instance that specifies the name of the image that you created to run your {prodname} connector.
-
-. Create a `KafkaConnector` custom resource that configures your {prodname} Informix connector instance.
-+
-You configure a {prodname} Informix connector in a `.yaml` file that specifies the configuration properties for the connector.
-The connector configuration might instruct {prodname} to produce events for a subset of the schemas and tables, or it might set properties so that {prodname} ignores, masks, or truncates values in specified columns that are sensitive, too large, or not needed.
-+
-The following example configures a {prodname} connector that connects to a Informix server host, `192.168.99.100`, on port `50000`.
-This host has a database named `mydatabase`, a table with the name `inventory`, and `inventory-connector-{context}` is the server's logical name.
-+
-.Informix `inventory-connector.yaml`
-[source,yaml,options="nowrap",subs="+attributes"]
-----
-apiVersion: {KafkaConnectApiVersion}
-  kind: KafkaConnector
-  metadata:
-    name: inventory-connector-{context}  // <1>
-    labels:
-      strimzi.io/cluster: my-connect-cluster
-    annotations:
-      strimzi.io/use-connector-resources: 'true'
-  spec:
-    class: io.debezium.connector.informix.InformixConnector // <2>
-    tasksMax: 1  // <3>
-    config:  // <4>
-      database.hostname: 192.168.99.100   // <5>
-      database.port: 9088 // <6>
-      database.user: informix // <7>
-      database.password: in4mix // <8>
-      database.dbname: mydatabase // <9>
-      topic.prefix: inventory-connector-{context}   // <10>
-      table.include.list: public.inventory   // <11>
-
-      ...
-----
-+
-.Descriptions of connector configuration settings
-[cols="1,7",options="header",subs="+attributes"]
-|===
-|Item |Description
-
-|1
-|The name of the connector when we register it with a Kafka Connect cluster.
-
-|2
-|The name of this Informix connector class.
-
-|3
-|Only one task should operate at any one time.
-
-|4
-|The connector’s configuration.
-
-|5
-|The database host, which is the address of the Informix instance.
-
-|6
-|The port number of the Informix instance.
-
-|7
-|The name of the Informix user.
-
-|8
-|The password for the Informix user.
-
-|9
-|The name of the database to capture changes from.
-
-|10
-|The logical name of the Informix instance/cluster, which forms a namespace and is used in the names of the Kafka topics to which the connector writes, the names of Kafka Connect schemas, and the namespaces of the corresponding Avro schema when the {link-prefix}:{link-avro-serialization}#avro-serialization[Avro Connector] is used.
-
-|11
-|The connector captures changes from the `public.inventory` table only.
-
-|===
-
-. Create your connector instance with Kafka Connect.
-For example, if you saved your `KafkaConnector` resource in the `inventory-connector.yaml` file, you would run the following command:
-+
-[source,shell,options="nowrap"]
-----
-oc apply -f inventory-connector.yaml
-----
-+
-The preceding command registers `inventory-connector` and the connector starts to run against the `mydatabase` database as defined in the `KafkaConnector` CR.
-
-
-endif::product[]
 
 ifdef::community[]
 [[informix-example-configuration]]
@@ -2063,14 +1739,6 @@ endif::community[]
 
 After the connector starts, it xref:informix-snapshots[performs a consistent snapshot] of the Informix database tables that the connector is configured to capture changes for.
 The connector then starts generating data change events for row-level operations and streaming change event records to Kafka topics.
-
-ifdef::product[]
-// Type: procedure
-[id="verifying-that-the-debezium-informix-connector-is-running"]
-=== Verifying that the {prodname} Informix connector is running
-
-include::{partialsdir}/modules/all-connectors/proc-verifying-the-connector-deployment.adoc[leveloffset=+1]
-endif::product[]
 
 // Type: reference
 // Title: Descriptions of {prodname} Informix connector configuration properties
@@ -2388,6 +2056,20 @@ For example, +
  +
 `exclusive` - Uses repeatable read isolation level but takes an  exclusive lock for all tables to be read. This mode prevents other transactions from updating table rows during an initial snapshot. Only `exclusive` mode guarantees full consistency; the initial snapshot and streaming logs constitute a linear history.
 
+|[[informix-property-cdc-timeout]]<<informix-property-cdc-timeout, `+cdc.timeout+`>>
+|`2048`
+|Positive integer value that specifies the timeout behavior of a read call to the change stream client: +
+ +
+`<0` - Do not timeout. +
+ +
+`0` - Return immediately if no data is available. +
+ +
+`>=1` - The number of seconds to wait for data before timing out.
+
+|[[informix-property-cdc-batchsize]]<<informix-property-cdc-batchsize, `+cdc.batchsize+`>>
+|`0x100000`
+|Positive integer value that specifies the maximum size of each batch of records that the Ifx Change Stream Client processes.
+
 |[[informix-property-event-processing-failure-handling-mode]]<<informix-property-event-processing-failure-handling-mode, `+event.processing.failure.handling.mode+`>>
 |`fail`
 |Specifies how the connector handles exceptions during processing of events. The possible values are: +
@@ -2570,16 +2252,6 @@ In a parallel initial snapshot, the connector processes multiple tables concurre
 ifdef::community[]
 This feature is incubating.
 endif::community[]
-ifdef::product[]
-[IMPORTANT]
-====
-Parallel initial snapshots is a Technology Preview feature only.
-Technology Preview features are not supported with Red Hat production service level agreements (SLAs) and might not be functionally complete.
-Red Hat does not recommend using them in production.
-These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
-For more information about the support scope of Red Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
-====
-endif::product[]
 
 |[[informix-property-custom-metric-tags]]<<informix-property-custom-metric-tags, `custom.metric.tags`>>
 |`No default`
@@ -2646,14 +2318,6 @@ include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-increment
 include::{partialsdir}/modules/all-connectors/frag-common-mbean-name.adoc[leveloffset=+1,tags=common-streaming]
 
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
-
-// Type: reference
-// ModuleID: monitoring-debezium-informix-connector-schema-history
-// Title: Monitoring {prodname} Informix connector schema history
-[[informix-schema-history-metrics]]
-=== Schema history metrics
-
-include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-schema-history-metrics.adoc[leveloffset=+1]
 
 // Type: assembly
 // ModuleID: updating-schemas-for-informix-tables-in-capture-mode-for-debezium-connectors
