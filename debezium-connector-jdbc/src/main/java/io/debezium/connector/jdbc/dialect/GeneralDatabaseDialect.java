@@ -10,8 +10,11 @@ import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Types;
 import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.Temporal;
 import java.time.temporal.TemporalAccessor;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -630,8 +633,13 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
     }
 
     @Override
-    public boolean isZonedTimeSupported() {
-        return true;
+    public Object convertToCorrectDateTime(ZonedDateTime zonedTime) {
+        return zonedTime;
+    }
+
+    @Override
+    public Optional<Integer> getTimestampType() {
+        return Optional.of(Types.TIMESTAMP_WITH_TIMEZONE);
     }
 
     protected void registerType(Type type) {

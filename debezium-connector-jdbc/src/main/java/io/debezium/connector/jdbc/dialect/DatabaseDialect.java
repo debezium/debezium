@@ -5,16 +5,6 @@
  */
 package io.debezium.connector.jdbc.dialect;
 
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.time.temporal.TemporalAccessor;
-import java.util.List;
-import java.util.Set;
-
-import org.apache.kafka.connect.data.Schema;
-import org.hibernate.dialect.DatabaseVersion;
-import org.hibernate.engine.jdbc.Size;
-
 import io.debezium.connector.jdbc.SinkRecordDescriptor;
 import io.debezium.connector.jdbc.SinkRecordDescriptor.FieldDescriptor;
 import io.debezium.connector.jdbc.ValueBindDescriptor;
@@ -22,6 +12,18 @@ import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
 import io.debezium.connector.jdbc.relational.TableId;
 import io.debezium.connector.jdbc.type.Type;
+import org.apache.kafka.connect.data.Schema;
+import org.hibernate.dialect.DatabaseVersion;
+import org.hibernate.engine.jdbc.Size;
+
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.time.ZonedDateTime;
+import java.time.temporal.Temporal;
+import java.time.temporal.TemporalAccessor;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 /**
  * Represents a dialect of SQL implemented by a particular RDBMS.
@@ -223,11 +225,18 @@ public interface DatabaseDialect {
     boolean shouldBindTimeWithTimeZoneAsDatabaseTimeZone();
 
     /**
-     * Returns whether a time with time zone details is internally stored into database.
+     * Returns a time with timezone if is supported, without timezone if not supported by the database.
      *
-     * @return true if the value should be not zoned; false otherwise (the default).
+     * @return LocalDataTime if zoned date is not supported; ZonedDateTime otherwise (the default).
      */
-    boolean isZonedTimeSupported();
+    Object convertToCorrectDateTime(ZonedDateTime zonedDateTime);
+
+    /**
+     * Returns a time with timezone if is supported, without timezone if not supported by the database.
+     *
+     * @return LocalDataTime if zoned date is not supported; ZonedDateTime otherwise (the default).
+     */ //TODO fix docs
+    Optional<Integer> getTimestampType();
 
     /**
      * Gets the maximum precision allowed for a dialect's time data type.
