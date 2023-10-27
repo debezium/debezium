@@ -189,4 +189,8 @@ public class MySqlDatabaseDialect extends GeneralDatabaseDialect {
         super.addColumnDefaultValue(field, columnSpec);
     }
 
+    @Override
+    public Optional<Integer> getTimestampType() {
+        return Optional.empty();
+    }
 }

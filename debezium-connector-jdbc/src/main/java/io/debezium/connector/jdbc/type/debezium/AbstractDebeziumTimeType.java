@@ -49,12 +49,12 @@ public abstract class AbstractDebeziumTimeType extends AbstractTimeType {
             final LocalTime localTime = getLocalTime((Number) value);
             final LocalDateTime localDateTime = localTime.atDate(LocalDate.now());
             if (getDialect().isTimeZoneSet()) {
-                return List.of(new ValueBindDescriptor(index, localDateTime.atZone(getDatabaseTimeZone().toZoneId())));
+                return List.of(new ValueBindDescriptor(index, getDialect().convertToCorrectDateTime(localDateTime.atZone(getDatabaseTimeZone().toZoneId()))));
             }
             return List.of(new ValueBindDescriptor(index, localDateTime));
         }
         throw new ConnectException(String.format("Unexpected %s value '%s' with type '%s'", getClass().getSimpleName(),
-                value.toString(), value.getClass().getName()));
+                value, value.getClass().getName()));
     }
 
     protected abstract LocalTime getLocalTime(Number value);
