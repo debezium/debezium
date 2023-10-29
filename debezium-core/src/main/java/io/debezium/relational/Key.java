@@ -82,7 +82,7 @@ public class Key {
     private static class IdentityKeyMapper {
 
         public static KeyMapper getInstance() {
-            return (table) -> table.primaryKeyColumns();
+            return Table::primaryKeyColumns;
         }
     }
 
@@ -119,7 +119,7 @@ public class Key {
             // will become => [inventory.customers.pk1,inventory.customers.pk2,(.*).purchaseorders.pk3,(.*).purchaseorders.pk4]
             // then joining those values
             String regexes = Arrays.stream(PATTERN_SPLIT.split(fullyQualifiedColumnNames))
-                    .map(s -> TABLE_SPLIT.split(s))
+                    .map(TABLE_SPLIT::split)
                     .collect(
                             ArrayList<String>::new,
                             (m, p) -> Arrays.asList(COLUMN_SPLIT.split(p[1])).forEach(c -> m.add(p[0] + "." + c)),
