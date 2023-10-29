@@ -62,6 +62,7 @@ public class DefaultDeleteHandlingStrategy<R extends ConnectRecord<R>> extends A
                 if (oldRecord.value() instanceof Struct) {
                     return removedDelegate.apply(oldRecord);
                 }
+                return oldRecord;
             default:
                 throw new DebeziumException("Unknown delete handling mode: " + deleteTombstoneHandling);
         }

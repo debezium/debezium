@@ -9,6 +9,7 @@ import static io.debezium.junit.EqualityCheck.GREATER_THAN_OR_EQUAL;
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static io.debezium.junit.SkipWhenKafkaVersion.KafkaVersion.KAFKA_241;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.assertThrows;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -21,7 +22,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
 import org.junit.rules.TestRule;
 
 import io.debezium.connector.AbstractSourceInfo;
@@ -38,13 +38,10 @@ public class ExtractNewDocumentStateTest {
 
     private static final String SERVER_NAME = "serverX";
 
-    private ExtractNewDocumentState<SourceRecord> transformation;
+    protected ExtractNewDocumentState<SourceRecord> transformation;
 
     @Rule
     public TestRule skipTestRule = new SkipTestRule();
-
-    @Rule
-    public ExpectedException exceptionRule = ExpectedException.none();
 
     @Before
     public void setup() {
@@ -211,12 +208,8 @@ public class ExtractNewDocumentStateTest {
                 valueSchema,
                 value);
 
-        exceptionRule.expect(NullPointerException.class);
-
         // when
-        SourceRecord transformed = transformation.apply(eventRecord);
-
-        assertThat(transformed).isNull();
+        assertThrows(NullPointerException.class, () -> transformation.apply(eventRecord));
     }
 
     @Test
@@ -246,11 +239,7 @@ public class ExtractNewDocumentStateTest {
                 valueSchema,
                 value);
 
-        exceptionRule.expect(IllegalArgumentException.class);
-
         // when
-        SourceRecord transformed = transformation.apply(eventRecord);
-
-        assertThat(transformed).isNull();
+        assertThrows(IllegalArgumentException.class, () -> transformation.apply(eventRecord));
     }
 }
