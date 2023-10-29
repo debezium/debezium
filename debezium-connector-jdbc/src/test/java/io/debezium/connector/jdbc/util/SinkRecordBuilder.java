@@ -6,14 +6,18 @@
 package io.debezium.connector.jdbc.util;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
+import org.apache.kafka.common.Uuid;
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.sink.SinkRecord;
 
+import io.debezium.converters.spi.CloudEventsMaker;
 import io.debezium.data.Envelope;
 import io.debezium.util.Strings;
 
@@ -47,6 +51,10 @@ public class SinkRecordBuilder {
         return new SinkRecordTypeBuilder(Type.TRUNCATE);
     }
 
+    public static SinkRecordTypeBuilder cloudEvent() {
+        return new SinkRecordTypeBuilder(Type.CLOUD_EVENT);
+    }
+
     public static class SinkRecordTypeBuilder {
         private final Type type;
 
@@ -58,6 +66,7 @@ public class SinkRecordBuilder {
         private Schema sourceSchema;
         private int partition;
         private int offset;
+        private SinkRecord basicRecord;
         private Map<String, Object> keyValues = new HashMap<>();
         private Map<String, Object> beforeValues = new HashMap<>();
         private Map<String, Object> afterValues = new HashMap<>();
@@ -127,6 +136,11 @@ public class SinkRecordBuilder {
             return this;
         }
 
+        public SinkRecordTypeBuilder basicRecord(SinkRecord basicRecord) {
+            this.basicRecord = basicRecord;
+            return this;
+        }
+
         public SinkRecord build() {
             switch (type) {
                 case CREATE:
@@ -139,6 +153,8 @@ public class SinkRecordBuilder {
                     return buildTombstoneSinkRecord();
                 case TRUNCATE:
                     return buildTruncateSinkRecord();
+                case CLOUD_EVENT:
+                    return buildCloudEventRecord();
             }
             return null;
         }
@@ -215,6 +231,32 @@ public class SinkRecordBuilder {
             }
         }
 
+        private SinkRecord buildCloudEventRecord() {
+            final SchemaBuilder schemaBuilder = SchemaBuilder.struct()
+                    .name("test.CloudEvents.Envelope")
+                    .field(CloudEventsMaker.FieldName.ID, Schema.STRING_SCHEMA)
+                    .field(CloudEventsMaker.FieldName.SOURCE, Schema.STRING_SCHEMA)
+                    .field(CloudEventsMaker.FieldName.SPECVERSION, Schema.STRING_SCHEMA)
+                    .field(CloudEventsMaker.FieldName.TYPE, Schema.STRING_SCHEMA)
+                    .field(CloudEventsMaker.FieldName.TIME, Schema.STRING_SCHEMA)
+                    .field(CloudEventsMaker.FieldName.DATACONTENTTYPE, Schema.STRING_SCHEMA)
+                    .field(CloudEventsMaker.FieldName.DATA, basicRecord.valueSchema());
+
+            Schema ceSchema = schemaBuilder.build();
+
+            Struct ceValue = new Struct(ceSchema);
+            ceValue.put(CloudEventsMaker.FieldName.ID, Uuid.randomUuid().toString());
+            ceValue.put(CloudEventsMaker.FieldName.SOURCE, "test");
+            ceValue.put(CloudEventsMaker.FieldName.SPECVERSION, "1.0");
+            ceValue.put(CloudEventsMaker.FieldName.TYPE, "TestType");
+            ceValue.put(CloudEventsMaker.FieldName.TIME, LocalDateTime.now().toString());
+            ceValue.put(CloudEventsMaker.FieldName.DATACONTENTTYPE, "application/json");
+            ceValue.put(CloudEventsMaker.FieldName.DATA, basicRecord.value());
+
+            return new SinkRecord(basicRecord.topic(), basicRecord.kafkaPartition(), basicRecord.keySchema(), basicRecord.key(), ceSchema, ceValue,
+                    basicRecord.kafkaOffset());
+        }
+
         private Envelope createEnvelope() {
             return Envelope.defineSchema()
                     .withRecord(recordSchema)
@@ -243,6 +285,7 @@ public class SinkRecordBuilder {
         UPDATE,
         DELETE,
         TOMBSTONE,
-        TRUNCATE
+        TRUNCATE,
+        CLOUD_EVENT
     }
 }
