@@ -6,11 +6,15 @@
 package io.debezium.transforms;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.source.SourceRecord;
 
 import io.debezium.data.Envelope;
@@ -22,6 +26,19 @@ import io.debezium.pipeline.txmetadata.TransactionMonitor;
  * @author Chris Cranford
  */
 public abstract class AbstractExtractStateTest {
+
+    // for ExtractNewRecordState
+    protected static final String DROP_TOMBSTONES = "drop.tombstones";
+    protected static final String HANDLE_DELETES = "delete.handling.mode";
+    protected static final String HANDLE_TOMBSTONE_DELETES = "delete.tombstone.handling.mode";
+    protected static final String ROUTE_BY_FIELD = "route.by.field";
+    protected static final String ADD_FIELDS = "add.fields";
+    protected static final String ADD_HEADERS = "add.headers";
+    protected static final String ADD_FIELDS_PREFIX = ADD_FIELDS + ".prefix";
+    protected static final String ADD_HEADERS_PREFIX = ADD_HEADERS + ".prefix";
+    protected static final String DROP_FIELDS_HEADER_NAME = "drop.fields.header.name";
+    protected static final String DROP_FIELDS_FROM_KEY = "drop.fields.from.key";
+    protected static final String DROP_FIELDS_KEEP_SCHEMA_COMPATIBLE = "drop.fields.keep.schema.compatible";
 
     protected final Schema recordSchema = SchemaBuilder.struct()
             .field("id", Schema.INT8_SCHEMA)
@@ -288,4 +305,68 @@ public abstract class AbstractExtractStateTest {
         return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", recordSchema, before);
     }
 
+    // for ExtractNewRecordState
+    protected String getSourceRecordHeaderByKey(SourceRecord record, String headerKey) {
+        Iterator<Header> operationHeader = record.headers().allWithName(headerKey);
+        if (!operationHeader.hasNext()) {
+            return null;
+        }
+
+        Object value = operationHeader.next().value();
+        return value != null ? value.toString() : null;
+    }
+
+    protected SourceRecord createUpdateRecordWithChangedFields() {
+        Envelope changesEnvelope = Envelope.defineSchema()
+                .withName("changedFields.Envelope")
+                .withRecord(recordSchema)
+                .withSource(sourceSchema)
+                .withSchema(SchemaBuilder.array(Schema.STRING_SCHEMA), "changes")
+                .build();
+
+        final Struct before = new Struct(recordSchema);
+        final Struct after = new Struct(recordSchema);
+        final Struct source = new Struct(sourceSchema);
+        final Struct transaction = new Struct(TransactionMonitor.TRANSACTION_BLOCK_SCHEMA);
+        final List<String> changes = new ArrayList<>();
+        changes.add("name");
+
+        before.put("id", (byte) 1);
+        before.put("name", "myRecord");
+        after.put("id", (byte) 1);
+        after.put("name", "updatedRecord");
+        source.put("lsn", 1234);
+        transaction.put("id", "571");
+        transaction.put("total_order", 42L);
+        transaction.put("data_collection_order", 42L);
+
+        Struct struct = new Struct(changesEnvelope.schema());
+        struct.put(Envelope.FieldName.OPERATION, Envelope.Operation.UPDATE.code());
+        if (before != null) {
+            struct.put(Envelope.FieldName.BEFORE, before);
+        }
+        struct.put(Envelope.FieldName.AFTER, after);
+        if (source != null) {
+            struct.put(Envelope.FieldName.SOURCE, source);
+        }
+        if (Instant.now() != null) {
+            struct.put(Envelope.FieldName.TIMESTAMP, Instant.now().toEpochMilli());
+        }
+
+        struct.put("changes", changes);
+        struct.put("transaction", transaction);
+
+        final SourceRecord updateRecord = new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", envelope.schema(), struct);
+        return updateRecord;
+    }
+
+    protected SourceRecord addDropFieldsHeader(SourceRecord record, String name, List<String> values) {
+        final Schema dropFieldsSchema = SchemaBuilder
+                .array(SchemaBuilder.OPTIONAL_STRING_SCHEMA)
+                .optional()
+                .name(name)
+                .build();
+        record.headers().add(name, values, dropFieldsSchema);
+        return record;
+    }
 }
