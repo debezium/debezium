@@ -404,4 +404,10 @@ public interface SinkRecordFactory {
                 .build();
     }
 
+    default SinkRecord cloudEventRecord(String topicName) {
+        final SinkRecord basicRecord = updateRecord(topicName);
+        return SinkRecordBuilder.cloudEvent()
+                .basicRecord(basicRecord)
+                .build();
+    }
 }
