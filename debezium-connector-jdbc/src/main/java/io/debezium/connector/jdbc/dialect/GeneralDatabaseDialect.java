@@ -11,6 +11,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
+import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -634,6 +635,11 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
     @Override
     public Object convertToCorrectDateTime(ZonedDateTime zonedTime) {
         return zonedTime;
+    }
+
+    @Override
+    public Object convertToCorrectDate(LocalDate localDate) {
+        return localDate;
     }
 
     @Override

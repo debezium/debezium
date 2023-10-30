@@ -224,11 +224,11 @@ public class PostgresDatabaseDialect extends GeneralDatabaseDialect {
         //
         // When a timestamp with time zone value is output, it is always converted from UTC to the current timezone zone, and displayed as local time in that zone.
         // https://www.postgresql.org/docs/current/datatype-datetime.html
-        return zonedTime.toLocalDateTime();
+        return zonedTime.toOffsetDateTime();
     }
 
     @Override
     public Optional<Integer> getTimestampType() {
-        return Optional.of(Types.TIMESTAMP);
+        return Optional.of(Types.TIMESTAMP_WITH_TIMEZONE);
     }
 }
