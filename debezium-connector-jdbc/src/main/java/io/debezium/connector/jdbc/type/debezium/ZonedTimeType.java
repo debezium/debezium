@@ -5,20 +5,21 @@
  */
 package io.debezium.connector.jdbc.type.debezium;
 
-import io.debezium.connector.jdbc.ValueBindDescriptor;
-import io.debezium.connector.jdbc.dialect.DatabaseDialect;
-import io.debezium.connector.jdbc.type.AbstractTimeType;
-import io.debezium.connector.jdbc.type.Type;
-import io.debezium.time.ZonedTime;
-import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.errors.ConnectException;
-import org.hibernate.engine.jdbc.Size;
-
 import java.sql.Types;
 import java.time.LocalDate;
 import java.time.OffsetTime;
 import java.time.ZonedDateTime;
 import java.util.List;
+
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.errors.ConnectException;
+import org.hibernate.engine.jdbc.Size;
+
+import io.debezium.connector.jdbc.ValueBindDescriptor;
+import io.debezium.connector.jdbc.dialect.DatabaseDialect;
+import io.debezium.connector.jdbc.type.AbstractTimeType;
+import io.debezium.connector.jdbc.type.Type;
+import io.debezium.time.ZonedTime;
 
 /**
  * An implementation of {@link Type} for {@link ZonedTime} values.
@@ -90,6 +91,6 @@ public class ZonedTimeType extends AbstractTimeType {
     }
 
     protected int getJdbcType(DatabaseDialect dialect) {
-        return Types.TIME_WITH_TIMEZONE; //TODO use this for timestamp type?
+        return Types.TIME_WITH_TIMEZONE; // TODO use this for timestamp type?
     }
 }

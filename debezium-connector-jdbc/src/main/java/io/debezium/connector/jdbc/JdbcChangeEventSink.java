@@ -103,10 +103,13 @@ public class JdbcChangeEventSink implements ChangeEventSink {
 
         for (SinkRecord record : records) {
 
+            LOGGER.trace("Processing {}", record);
+
             Optional<TableId> optionalTableId = getTableId(record);
             if (optionalTableId.isEmpty()) {
 
-                LOGGER.warn("Ignored to write record from topic '{}' partition '{}' offset '{}'", record.topic(), record.kafkaPartition(), record.kafkaOffset());
+                LOGGER.warn("Ignored to write record from topic '{}' partition '{}' offset '{}'. No resolvable table name", record.topic(), record.kafkaPartition(),
+                        record.kafkaOffset());
                 continue;
             }
 
@@ -119,11 +122,32 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                 continue;
             }
 
+            if (sinkRecordDescriptor.isTruncate()) {
+
+                if (!config.isTruncateEnabled()) {
+                    LOGGER.debug("Truncates are not enabled, skipping truncate for topic '{}'", sinkRecordDescriptor.getTopicName());
+                    continue;
+                }
+
+                // Here we want to flush the buffer to let truncate having effect on the buffered events.
+                flushBuffers(updateBufferByTable);
+
+                flushBuffers(deleteBufferByTable);
+
+                try {
+                    final TableDescriptor table = checkAndApplyTableChangesIfNeeded(tableId, sinkRecordDescriptor);
+                    writeTruncate(dialect.getTruncateStatement(table));
+                }
+                catch (SQLException e) { // TODO manage it
+                    throw new RuntimeException(e);
+                }
+            }
+
             if (sinkRecordDescriptor.isDelete()) {
 
                 if (!config.isDeleteEnabled()) {
                     LOGGER.debug("Deletes are not enabled, skipping delete for topic '{}'", sinkRecordDescriptor.getTopicName());
-                    try { // Do we want to maintain this behavior? Should table be created on delete only when deletes are enabled?
+                    try { // TODO Do we want to maintain this behavior? Should table be created on delete only when deletes are enabled?
                         checkAndApplyTableChangesIfNeeded(tableId, sinkRecordDescriptor);
                     }
                     catch (Exception e) {
@@ -183,7 +207,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
     private void flushBuffer(TableId tableId, List<SinkRecordDescriptor> toFlush) {
 
         if (!toFlush.isEmpty()) {
-            LOGGER.debug("Flushing records in JDBC Writer for table ID: {}", tableId);
+            LOGGER.debug("Flushing records in JDBC Writer for table: {}", tableId.getTableName());
             writeBuffer(tableId, toFlush);
         }
 
@@ -220,7 +244,8 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                 }
             });
             transaction.commit();
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             transaction.rollback();
             throw e;
         }
@@ -371,7 +396,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
             writeDelete(dialect.getDeleteStatement(table, record), record);
         }
         else if (record.isTruncate()) {
-            writeTruncate(dialect.getTruncateStatement(table), record);
+            writeTruncate(dialect.getTruncateStatement(table));
         }
         else {
             switch (config.getInsertMode()) {
@@ -513,11 +538,8 @@ public class JdbcChangeEventSink implements ChangeEventSink {
         }
     }
 
-    private void writeTruncate(String sql, SinkRecordDescriptor record) throws SQLException {
-        if (!config.isTruncateEnabled()) {
-            LOGGER.debug("Truncates are not enabled, skipping truncate for topic '{}'", record.getTopicName());
-            return;
-        }
+    private void writeTruncate(String sql) throws SQLException {
+
         final Transaction transaction = session.beginTransaction();
         try {
             LOGGER.trace("SQL: {}", sql);

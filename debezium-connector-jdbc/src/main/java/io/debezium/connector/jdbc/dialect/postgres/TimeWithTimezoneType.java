@@ -5,17 +5,18 @@
  */
 package io.debezium.connector.jdbc.dialect.postgres;
 
-import io.debezium.connector.jdbc.ValueBindDescriptor;
-import io.debezium.connector.jdbc.type.Type;
-import io.debezium.connector.jdbc.type.debezium.ZonedTimeType;
-import io.debezium.time.ZonedTime;
-import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.errors.ConnectException;
-
 import java.time.LocalDate;
 import java.time.OffsetTime;
 import java.time.ZonedDateTime;
 import java.util.List;
+
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.errors.ConnectException;
+
+import io.debezium.connector.jdbc.ValueBindDescriptor;
+import io.debezium.connector.jdbc.type.Type;
+import io.debezium.connector.jdbc.type.debezium.ZonedTimeType;
+import io.debezium.time.ZonedTime;
 
 /**
  * An implementation of {@link Type} for {@link ZonedTime} types for PostgreSQL.
