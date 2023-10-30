@@ -5,6 +5,14 @@
  */
 package io.debezium.connector.jdbc.dialect.sqlserver;
 
+import java.time.ZonedDateTime;
+import java.time.temporal.Temporal;
+import java.util.Optional;
+
+import org.hibernate.SessionFactory;
+import org.hibernate.dialect.Dialect;
+import org.hibernate.dialect.SQLServerDialect;
+
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.SinkRecordDescriptor;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
@@ -12,13 +20,6 @@ import io.debezium.connector.jdbc.dialect.DatabaseDialectProvider;
 import io.debezium.connector.jdbc.dialect.GeneralDatabaseDialect;
 import io.debezium.connector.jdbc.dialect.SqlStatementBuilder;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
-import org.hibernate.SessionFactory;
-import org.hibernate.dialect.Dialect;
-import org.hibernate.dialect.SQLServerDialect;
-
-import java.time.ZonedDateTime;
-import java.time.temporal.Temporal;
-import java.util.Optional;
 
 /**
  * A {@link DatabaseDialect} implementation for SQL Server.
