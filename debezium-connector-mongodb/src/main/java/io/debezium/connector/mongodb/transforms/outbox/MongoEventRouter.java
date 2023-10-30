@@ -27,10 +27,10 @@ import io.debezium.common.annotation.Incubating;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState;
 import io.debezium.connector.mongodb.transforms.MongoDataConverter;
-import io.debezium.data.Envelope;
 import io.debezium.time.Timestamp;
 import io.debezium.transforms.outbox.EventRouterConfigDefinition;
 import io.debezium.transforms.outbox.EventRouterDelegate;
+import io.debezium.util.ConnectRecordUtil;
 
 /**
  * Debezium MongoDB Outbox Event Router SMT
@@ -54,7 +54,7 @@ public class MongoEventRouter<R extends ConnectRecord<R>> implements Transformat
     private String fieldPayload;
     private boolean expandPayload;
 
-    private final ExtractField<R> afterExtractor = new ExtractField.Value<>();
+    private ExtractField<R> afterExtractor;
     private final EventRouterDelegate<R> eventRouterDelegate = new EventRouterDelegate<>();
 
     @Override
@@ -87,10 +87,7 @@ public class MongoEventRouter<R extends ConnectRecord<R>> implements Transformat
         expandPayload = config.getBoolean(MongoEventRouterConfigDefinition.EXPAND_JSON_PAYLOAD);
         fieldPayload = config.getString(MongoEventRouterConfigDefinition.FIELD_PAYLOAD);
 
-        final Map<String, String> afterExtractorConfig = new HashMap<>();
-        afterExtractorConfig.put("field", Envelope.FieldName.AFTER);
-
-        afterExtractor.configure(afterExtractorConfig);
+        afterExtractor = ConnectRecordUtil.extractAfterDelegate();
 
         // Convert configuration fields from MongoDB Outbox Event Router to SQL Outbox Event Router's
         Map<String, ?> convertedConfigMap = convertConfigMap(configMap);
