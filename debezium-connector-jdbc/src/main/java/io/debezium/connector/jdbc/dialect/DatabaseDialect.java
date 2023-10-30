@@ -7,6 +7,7 @@ package io.debezium.connector.jdbc.dialect;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.time.ZonedDateTime;
 import java.time.temporal.TemporalAccessor;
 import java.util.List;
@@ -230,6 +231,13 @@ public interface DatabaseDialect {
      * @return LocalDataTime if zoned date is not supported; ZonedDateTime otherwise (the default).
      */
     Object convertToCorrectDateTime(ZonedDateTime zonedDateTime);
+
+    /**
+     * Returns the correct date type for the database.
+     *
+     * @return the objects returned depends on the database dialect.
+     */
+    Object convertToCorrectDate(LocalDate localDate);
 
     /**
      * Returns a time with timezone if is supported, without timezone if not supported by the database.
