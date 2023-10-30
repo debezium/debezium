@@ -43,7 +43,7 @@ public class ConnectDateType extends AbstractDateType {
             return List.of(new ValueBindDescriptor(index, null));
         }
         if (value instanceof java.util.Date) {
-            return List.of(new ValueBindDescriptor(index, DateTimeUtils.toLocalDateFromDate((java.util.Date) value))); //TODO add a get Date as for getFormattedDate
+            return List.of(new ValueBindDescriptor(index, DateTimeUtils.toLocalDateFromDate((java.util.Date) value))); // TODO add a get Date as for getFormattedDate
         }
 
         throw new ConnectException(String.format("Unexpected %s value '%s' with type '%s'", getClass().getSimpleName(),

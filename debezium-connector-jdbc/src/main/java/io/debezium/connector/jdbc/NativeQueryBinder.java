@@ -5,13 +5,13 @@
  */
 package io.debezium.connector.jdbc;
 
-import org.hibernate.query.BindableType;
-import org.hibernate.query.NativeQuery;
-import org.hibernate.type.StandardBasicTypes;
-
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+
+import org.hibernate.query.BindableType;
+import org.hibernate.query.NativeQuery;
+import org.hibernate.type.StandardBasicTypes;
 
 public class NativeQueryBinder implements QueryBinder {
 
@@ -25,7 +25,8 @@ public class NativeQueryBinder implements QueryBinder {
     public void bind(ValueBindDescriptor valueBindDescriptor) {
 
         if (valueBindDescriptor.getBindableType() != null) {
-            binder.setParameter(valueBindDescriptor.getIndex(), ZonedDateTime.ofInstant(Instant.now(), ZoneOffset.UTC), (BindableType) StandardBasicTypes.ZONED_DATE_TIME_WITH_TIMEZONE);
+            binder.setParameter(valueBindDescriptor.getIndex(), ZonedDateTime.ofInstant(Instant.now(), ZoneOffset.UTC),
+                    (BindableType) StandardBasicTypes.ZONED_DATE_TIME_WITH_TIMEZONE);
         }
         else {
             binder.setParameter(valueBindDescriptor.getIndex(), valueBindDescriptor.getValue());
