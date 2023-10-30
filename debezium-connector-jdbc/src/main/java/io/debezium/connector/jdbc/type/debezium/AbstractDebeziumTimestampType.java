@@ -6,6 +6,8 @@
 package io.debezium.connector.jdbc.type.debezium;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.List;
 
 import org.apache.kafka.connect.data.Schema;
@@ -29,13 +31,15 @@ public abstract class AbstractDebeziumTimestampType extends AbstractTimestampTyp
         }
         if (value instanceof Number) {
 
-            final LocalDateTime localDateTime = getLocalDateTime(((Number) value).longValue());
+            final ZonedDateTime zonedDateTime = getLocalDateTime(((Number) value).longValue()).atZone(ZoneOffset.UTC);
 
             if (getDialect().isTimeZoneSet()) {
-                return List.of(new ValueBindDescriptor(index, getDialect().convertToCorrectDateTime(localDateTime.atZone(getDatabaseTimeZone().toZoneId()))));
+                return List.of(new ValueBindDescriptor(index,
+                        getDialect().convertToCorrectDateTime(zonedDateTime.withZoneSameInstant(getDatabaseTimeZone().toZoneId())),
+                        getDialect().getTimestampType().orElse(null)));
             }
 
-            return List.of(new ValueBindDescriptor(index, localDateTime));
+            return List.of(new ValueBindDescriptor(index, zonedDateTime));
         }
 
         throw new ConnectException(String.format("Unexpected %s value '%s' with type '%s'", getClass().getSimpleName(),
