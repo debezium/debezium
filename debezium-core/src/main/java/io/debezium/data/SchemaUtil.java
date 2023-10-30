@@ -5,6 +5,12 @@
  */
 package io.debezium.data;
 
+import static io.debezium.relational.mapping.PropagateSourceMetadataToSchemaParameter.COLUMN_COMMENT_PARAMETER_KEY;
+import static io.debezium.relational.mapping.PropagateSourceMetadataToSchemaParameter.COLUMN_NAME_PARAMETER_KEY;
+import static io.debezium.relational.mapping.PropagateSourceMetadataToSchemaParameter.TYPE_LENGTH_PARAMETER_KEY;
+import static io.debezium.relational.mapping.PropagateSourceMetadataToSchemaParameter.TYPE_NAME_PARAMETER_KEY;
+import static io.debezium.relational.mapping.PropagateSourceMetadataToSchemaParameter.TYPE_SCALE_PARAMETER_KEY;
+
 import java.nio.ByteBuffer;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
@@ -12,10 +18,13 @@ import java.time.temporal.TemporalAccessor;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Schema.Type;
+import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 
@@ -303,4 +312,80 @@ public class SchemaUtil {
         }
     }
 
+    /**
+     * Copy all properties to a new schema builder
+     *
+     * @param source Connect schema
+     * @return Connect schema build
+     */
+    public static SchemaBuilder copySchema(Schema source) {
+        SchemaBuilder builder = org.apache.kafka.connect.transforms.util.SchemaUtil.copySchemaBasics(source);
+        if (source.isOptional()) {
+            builder.optional();
+        }
+        else {
+            builder.required();
+        }
+        for (org.apache.kafka.connect.data.Field field : source.fields()) {
+            builder.field(field.name(), field.schema());
+        }
+        return builder;
+    }
+
+    /**
+     * Extract source column type from connect schema's parameters
+     *
+     * @param schema Connect schema
+     * @return the source column type
+     */
+    public static Optional<String> getSourceColumnType(Schema schema) {
+        return getSchemaParameter(schema, TYPE_NAME_PARAMETER_KEY);
+    }
+
+    /**
+     * Extract source column length from connect schema's parameters
+     *
+     * @param schema Connect schema
+     * @return the source column length
+     */
+    public static Optional<String> getSourceColumnSize(Schema schema) {
+        return getSchemaParameter(schema, TYPE_LENGTH_PARAMETER_KEY);
+    }
+
+    /**
+     * Extract source column scale from connect schema's parameters
+     *
+     * @param schema Connect schema
+     * @return the source column scale
+     */
+    public static Optional<String> getSourceColumnPrecision(Schema schema) {
+        return getSchemaParameter(schema, TYPE_SCALE_PARAMETER_KEY);
+    }
+
+    /**
+     * Extract source column name from connect schema's parameters
+     *
+     * @param schema Connect schema
+     * @return the source column name
+     */
+    public static Optional<String> getSourceColumnName(Schema schema) {
+        return getSchemaParameter(schema, COLUMN_NAME_PARAMETER_KEY);
+    }
+
+    /**
+     * Extract source column comment from connect schema's parameters
+     *
+     * @param schema Connect schema
+     * @return the source column comment
+     */
+    public static Optional<String> getSourceColumnComment(Schema schema) {
+        return getSchemaParameter(schema, COLUMN_COMMENT_PARAMETER_KEY);
+    }
+
+    public static Optional<String> getSchemaParameter(Schema schema, String parameterName) {
+        if (!Objects.isNull(schema.parameters())) {
+            return Optional.ofNullable(schema.parameters().get(parameterName));
+        }
+        return Optional.empty();
+    }
 }
