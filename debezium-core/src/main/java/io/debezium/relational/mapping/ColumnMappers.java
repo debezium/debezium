@@ -102,10 +102,10 @@ public class ColumnMappers {
          * @return this object so that methods can be chained together; never null
          */
         public Builder map(String fullyQualifiedColumnNames, ColumnMapper mapper) {
-            BiPredicate<TableId, Column> columnMatcher = Predicates.includes(fullyQualifiedColumnNames, (tableId, column) -> fullyQualifiedColumnName(tableId, column));
+            BiPredicate<TableId, Column> columnMatcher = Predicates.includes(fullyQualifiedColumnNames, this::fullyQualifiedColumnName);
             rules.add(new MapperRule(columnMatcher, mapper));
             if (tableIdMapper != null) {
-                columnMatcher = Predicates.includes(fullyQualifiedColumnNames, (tableId, column) -> mappedTableColumnName(tableId, column));
+                columnMatcher = Predicates.includes(fullyQualifiedColumnNames, this::mappedTableColumnName);
                 rules.add(new MapperRule(columnMatcher, mapper));
             }
             return this;
@@ -122,10 +122,10 @@ public class ColumnMappers {
         }
 
         public Builder mapByDatatype(String columnDatatypes, ColumnMapper mapper) {
-            BiPredicate<TableId, Column> columnMatcher = Predicates.includes(columnDatatypes, (tableId, column) -> fullyQualifiedColumnDatatype(tableId, column));
+            BiPredicate<TableId, Column> columnMatcher = Predicates.includes(columnDatatypes, this::fullyQualifiedColumnDatatype);
             rules.add(new MapperRule(columnMatcher, mapper));
             if (tableIdMapper != null) {
-                columnMatcher = Predicates.includes(columnDatatypes, (tableId, column) -> mappedTableColumnDatatype(tableId, column));
+                columnMatcher = Predicates.includes(columnDatatypes, this::mappedTableColumnDatatype);
                 rules.add(new MapperRule(columnMatcher, mapper));
             }
             return this;
@@ -328,10 +328,7 @@ public class ColumnMappers {
      */
     public ColumnMapper mapperFor(TableId tableId, Column column) {
         Optional<MapperRule> matchingRule = rules.stream().filter(rule -> rule.matches(tableId, column)).findFirst();
-        if (matchingRule.isPresent()) {
-            return matchingRule.get().mapper;
-        }
-        return null;
+        return matchingRule.map(mapperRule -> mapperRule.mapper).orElse(null);
     }
 
     @Immutable

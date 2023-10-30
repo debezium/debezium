@@ -5,6 +5,10 @@
  */
 package io.debezium.transforms;
 
+import static io.debezium.relational.mapping.PropagateSourceMetadataToSchemaParameter.COLUMN_NAME_PARAMETER_KEY;
+import static io.debezium.relational.mapping.PropagateSourceMetadataToSchemaParameter.TYPE_LENGTH_PARAMETER_KEY;
+import static io.debezium.relational.mapping.PropagateSourceMetadataToSchemaParameter.TYPE_NAME_PARAMETER_KEY;
+
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -19,6 +23,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 
 import io.debezium.data.Envelope;
 import io.debezium.pipeline.txmetadata.TransactionMonitor;
+import io.debezium.util.Collect;
 
 /**
  * A base abstract class for the Extract-based single message transform tests.
@@ -40,14 +45,27 @@ public abstract class AbstractExtractStateTest {
     protected static final String DROP_FIELDS_FROM_KEY = "drop.fields.from.key";
     protected static final String DROP_FIELDS_KEEP_SCHEMA_COMPATIBLE = "drop.fields.keep.schema.compatible";
 
+    Schema idSchema = SchemaBuilder
+            .int8()
+            .parameters(Collect.hashMapOf(COLUMN_NAME_PARAMETER_KEY, "id", TYPE_NAME_PARAMETER_KEY, "int"))
+            .build();
+    Schema nameSchema = SchemaBuilder
+            .string()
+            .parameters(Collect.hashMapOf(
+                    COLUMN_NAME_PARAMETER_KEY, "name",
+                    TYPE_NAME_PARAMETER_KEY, "varchar",
+                    TYPE_LENGTH_PARAMETER_KEY, "255"))
+            .build();
     protected final Schema recordSchema = SchemaBuilder.struct()
-            .field("id", Schema.INT8_SCHEMA)
-            .field("name", Schema.STRING_SCHEMA)
+            .field("id", idSchema)
+            .field("name", nameSchema)
             .build();
 
     protected final Schema sourceSchema = SchemaBuilder.struct()
             .field("lsn", Schema.INT32_SCHEMA)
             .field("ts_ms", Schema.OPTIONAL_INT32_SCHEMA)
+            .field("db", Schema.OPTIONAL_STRING_SCHEMA)
+            .field("table", Schema.OPTIONAL_STRING_SCHEMA)
             .build();
 
     protected final Envelope envelope = Envelope.defineSchema()
@@ -60,6 +78,8 @@ public abstract class AbstractExtractStateTest {
         final Schema deleteSourceSchema = SchemaBuilder.struct()
                 .field("lsn", SchemaBuilder.int32())
                 .field("version", SchemaBuilder.string())
+                .field("db", Schema.OPTIONAL_STRING_SCHEMA)
+                .field("table", Schema.OPTIONAL_STRING_SCHEMA)
                 .build();
 
         Envelope deleteEnvelope = Envelope.defineSchema()
@@ -75,8 +95,10 @@ public abstract class AbstractExtractStateTest {
         before.put("name", "myRecord");
         source.put("lsn", 1234);
         source.put("version", "version!");
+        source.put("db", "test_db");
+        source.put("table", "test_table");
         final Struct payload = deleteEnvelope.delete(before, source, Instant.now());
-        return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", envelope.schema(), payload);
+        return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", deleteEnvelope.schema(), payload);
     }
 
     protected SourceRecord createTombstoneRecord() {
@@ -99,6 +121,8 @@ public abstract class AbstractExtractStateTest {
         after.put("name", "myRecord");
         source.put("lsn", 1234);
         source.put("ts_ms", 12836);
+        source.put("db", "test_db");
+        source.put("table", "test_table");
         final Struct payload = envelope.create(after, source, Instant.now());
         return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", envelope.schema(), payload);
     }
@@ -192,6 +216,8 @@ public abstract class AbstractExtractStateTest {
         after.put("id", (byte) 1);
         after.put("name", "updatedRecord");
         source.put("lsn", 1234);
+        source.put("db", "test_db");
+        source.put("table", "test_table");
         transaction.put("id", "571");
         transaction.put("total_order", 42L);
         transaction.put("data_collection_order", 42L);
@@ -258,6 +284,8 @@ public abstract class AbstractExtractStateTest {
         after.put("id", (byte) 1);
         after.put("name", "updatedRecord");
         source.put("lsn", 1234);
+        source.put("db", "test_db");
+        source.put("table", "test_table");
         transaction.put("id", "571");
         transaction.put("total_order", 42L);
         transaction.put("data_collection_order", 42L);
