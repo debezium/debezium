@@ -2057,7 +2057,7 @@ For example, +
 `exclusive` - Uses repeatable read isolation level but takes an  exclusive lock for all tables to be read. This mode prevents other transactions from updating table rows during an initial snapshot. Only `exclusive` mode guarantees full consistency; the initial snapshot and streaming logs constitute a linear history.
 
 |[[informix-property-cdc-timeout]]<<informix-property-cdc-timeout, `+cdc.timeout+`>>
-|`2048`
+|`5`
 |Positive integer value that specifies the timeout behavior of a read call to the change stream client: +
  +
 `<0` - Do not timeout. +
@@ -2066,7 +2066,7 @@ For example, +
  +
 `>=1` - The number of seconds to wait for data before timing out.
 
-|[[informix-property-cdc-batchsize]]<<informix-property-cdc-batchsize, `+cdc.batchsize+`>>
+|[[informix-property-cdc-buffersize]]<<informix-property-cdc-buffersize, `+cdc.buffersize+`>>
 |`0x100000`
 |Positive integer value that specifies the maximum size of each batch of records that the Ifx Change Stream Client processes.
 
