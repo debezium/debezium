@@ -6,8 +6,9 @@
 package io.debezium.connector.jdbc.type.connect;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.Date;
 import java.util.List;
 
@@ -53,10 +54,13 @@ public class ConnectTimeType extends AbstractTimeType {
             return List.of(new ValueBindDescriptor(index, null));
         }
         if (value instanceof Date) {
+
             final LocalTime localTime = DateTimeUtils.toLocalTimeFromUtcDate((Date) value);
-            final LocalDateTime localDateTime = localTime.atDate(LocalDate.now());
+            final ZonedDateTime zonedDateTime = localTime.atDate(LocalDate.now()).atZone(ZoneOffset.UTC);
+
             if (getDialect().isTimeZoneSet()) {
-                return List.of(new ValueBindDescriptor(index, getDialect().convertToCorrectDateTime(localDateTime.atZone(getDatabaseTimeZone().toZoneId()))));
+                return List
+                        .of(new ValueBindDescriptor(index, getDialect().convertToCorrectDateTime(zonedDateTime.withZoneSameInstant(getDatabaseTimeZone().toZoneId()))));
             }
             // NOTE
             // ----
@@ -64,7 +68,7 @@ public class ConnectTimeType extends AbstractTimeType {
             // To avoid this loss in precision from the source system, the following will bind the value
             // as a LocalDateTime using the current date as the base in order to avoid data loss.
 
-            return List.of(new ValueBindDescriptor(index, localDateTime)); // TODO check if this works with PreparedStatement
+            return List.of(new ValueBindDescriptor(index, zonedDateTime)); // TODO check if this works with PreparedStatement
         }
 
         throw new ConnectException(String.format("Unexpected %s value '%s' with type '%s'", getClass().getSimpleName(),

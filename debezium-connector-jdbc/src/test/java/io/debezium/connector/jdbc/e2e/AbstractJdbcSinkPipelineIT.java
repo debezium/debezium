@@ -2675,11 +2675,15 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
     }
 
     protected ZonedDateTime getTimestampAsZonedDateTime(ResultSet rs, int index) throws SQLException {
+        LOGGER.trace("Timestamp from ResultSet " + getTimestamp(rs, index));
+        LOGGER.trace("Timestamp to LocalDateTime " + getTimestamp(rs, index).toLocalDateTime());
+        LOGGER.trace("Timestamp at Zone " + SINK_ZONE_ID + " "
+                + getTimestamp(rs, index).toLocalDateTime().atZone(SINK_ZONE_ID));
         return getTimestamp(rs, index).toLocalDateTime().atZone(SINK_ZONE_ID);
     }
 
     protected OffsetTime getTimeAsOffsetTime(ResultSet rs, int index) throws SQLException {
-        System.out.println(getTimestamp(rs, index) + " " + getTimestamp(rs, index).getNanos());
+        LOGGER.trace(getTimestamp(rs, index) + " " + getTimestamp(rs, index).getNanos());
         return getTimestamp(rs, index).toLocalDateTime()
                 .toLocalTime()
                 .atOffset(getCurrentSinkTimeOffset());
