@@ -15,7 +15,7 @@ import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 
 /**
- * Utility class for mapping columns to various data structures from from {@link Table} and {@link ResultSet}.
+ * Utility class for mapping columns to various data structures from {@link Table} and {@link ResultSet}.
  */
 public class ColumnUtils {
 

@@ -5,18 +5,15 @@
  */
 package io.debezium.transforms.extractnewstate;
 
-import static io.debezium.data.Envelope.FieldName.AFTER;
-import static io.debezium.data.Envelope.FieldName.BEFORE;
 import static io.debezium.transforms.ExtractNewRecordStateConfigDefinition.DELETED_FIELD;
-
-import java.util.HashMap;
-import java.util.Map;
 
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.transforms.ExtractField;
 import org.apache.kafka.connect.transforms.InsertField;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import io.debezium.util.ConnectRecordUtil;
 
 /**
  * An abstract implementation of {@link ExtractRecordStrategy}.
@@ -26,40 +23,23 @@ import org.slf4j.LoggerFactory;
 public abstract class AbstractExtractRecordStrategy<R extends ConnectRecord<R>> implements ExtractRecordStrategy<R> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractExtractRecordStrategy.class);
-    private static final String UPDATE_DESCRIPTION = "updateDescription";
-    protected final ExtractField<R> afterDelegate = new ExtractField.Value<>();
-    protected final ExtractField<R> beforeDelegate = new ExtractField.Value<>();
-    protected final InsertField<R> removedDelegate = new InsertField.Value<>();
-    protected final InsertField<R> updatedDelegate = new InsertField.Value<>();
+    protected ExtractField<R> afterDelegate;
+    protected ExtractField<R> beforeDelegate;
+    protected InsertField<R> removedDelegate;
+    protected InsertField<R> updatedDelegate;
     // for mongodb
-    protected final ExtractField<R> updateDescriptionDelegate = new ExtractField.Value<>();
+    protected ExtractField<R> updateDescriptionDelegate;
 
     public AbstractExtractRecordStrategy() {
         init();
     }
 
     private void init() {
-        Map<String, String> delegateConfig = new HashMap<>();
-        delegateConfig.put("field", BEFORE);
-        beforeDelegate.configure(delegateConfig);
-
-        delegateConfig = new HashMap<>();
-        delegateConfig.put("field", AFTER);
-        afterDelegate.configure(delegateConfig);
-
-        delegateConfig = new HashMap<>();
-        delegateConfig.put("static.field", DELETED_FIELD);
-        delegateConfig.put("static.value", "true");
-        removedDelegate.configure(delegateConfig);
-
-        delegateConfig = new HashMap<>();
-        delegateConfig.put("static.field", DELETED_FIELD);
-        delegateConfig.put("static.value", "false");
-        updatedDelegate.configure(delegateConfig);
-
-        delegateConfig = new HashMap<>();
-        delegateConfig.put("field", UPDATE_DESCRIPTION);
-        updateDescriptionDelegate.configure(delegateConfig);
+        afterDelegate = ConnectRecordUtil.extractAfterDelegate();
+        beforeDelegate = ConnectRecordUtil.extractBeforeDelegate();
+        removedDelegate = ConnectRecordUtil.insertStaticValueDelegate(DELETED_FIELD, "true");
+        updatedDelegate = ConnectRecordUtil.insertStaticValueDelegate(DELETED_FIELD, "false");
+        updateDescriptionDelegate = ConnectRecordUtil.extractUpdateDescriptionDelegate();
     }
 
     @Override

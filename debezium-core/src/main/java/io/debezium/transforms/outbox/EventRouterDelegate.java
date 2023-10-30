@@ -46,6 +46,7 @@ import io.debezium.transforms.outbox.EventRouterConfigDefinition.InvalidOperatio
 import io.debezium.transforms.outbox.EventRouterConfigDefinition.JsonPayloadNullFieldBehavior;
 import io.debezium.transforms.tracing.ActivateTracingSpan;
 import io.debezium.util.BoundedConcurrentHashMap;
+import io.debezium.util.ConnectRecordUtil;
 
 /**
  * A delegate class having common logic between Outbox Event Routers for SQL DBs and MongoDB
@@ -63,7 +64,7 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
 
     private static final String ENVELOPE_PAYLOAD = "payload";
 
-    private final ExtractField<R> afterExtractor = new ExtractField.Value<>();
+    private ExtractField<R> afterExtractor;
     private final RegexRouter<R> regexRouter = new RegexRouter<>();
     private InvalidOperationBehavior invalidOperationBehavior;
     private final ActivateTracingSpan<R> tracingSmt = new ActivateTracingSpan<>();
@@ -368,10 +369,7 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
 
         regexRouter.configure(regexRouterConfig);
 
-        final Map<String, String> afterExtractorConfig = new HashMap<>();
-        afterExtractorConfig.put("field", Envelope.FieldName.AFTER);
-
-        afterExtractor.configure(afterExtractorConfig);
+        afterExtractor = ConnectRecordUtil.extractAfterDelegate();
 
         additionalFields = parseAdditionalFieldsConfig(config);
         onlyHeadersInOutputMessage = additionalFields.stream().noneMatch(field -> field.getPlacement() == AdditionalFieldPlacement.ENVELOPE);

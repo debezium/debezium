@@ -9,7 +9,6 @@ import static io.debezium.transforms.ExtractNewRecordStateConfigDefinition.CONFI
 import static io.debezium.transforms.ExtractNewRecordStateConfigDefinition.DELETED_FIELD;
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -39,6 +38,7 @@ import io.debezium.data.Envelope;
 import io.debezium.schema.FieldNameSelector;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.transforms.AbstractExtractNewRecordState;
+import io.debezium.util.ConnectRecordUtil;
 
 /**
  * Debezium Mongo Connector generates the CDC records in String format. Sink connectors usually are not able to parse
@@ -130,8 +130,8 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> extends Abstrac
             .withDescription("Delimiter to concat between field names from the input record when generating field names for the"
                     + "output record.");
 
-    private final ExtractField<R> keyExtractor = new ExtractField.Key<>();
-    private final Flatten<R> recordFlattener = new Flatten.Value<>();
+    private ExtractField<R> keyExtractor;
+    private Flatten<R> recordFlattener;
     private MongoDataConverter converter;
     private boolean flattenStruct;
     private String delimiter;
@@ -153,13 +153,8 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> extends Abstrac
         flattenStruct = config.getBoolean(FLATTEN_STRUCT);
         delimiter = config.getString(DELIMITER);
 
-        Map<String, String> delegateConfig = new HashMap<>();
-        delegateConfig.put("field", "id");
-        keyExtractor.configure(delegateConfig);
-
-        delegateConfig = new HashMap<>();
-        delegateConfig.put("delimiter", delimiter);
-        recordFlattener.configure(delegateConfig);
+        keyExtractor = ConnectRecordUtil.extractKeyDelegate("id");
+        recordFlattener = ConnectRecordUtil.flattenValueDelegate(delimiter);
     }
 
     @Override
