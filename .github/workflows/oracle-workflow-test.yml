@@ -54,7 +54,6 @@ jobs:
         run: |
           if [[ $QUAY_IO_USERNAME == '' ]] && [[ $QUAY_IO_PASSWORD == '' ]]; then
             echo "HAS_QUAY_IO=false" >> $GITHUB_OUTPUT
-            exit -1
           else
             echo "HAS_QUAY_IO=true" >> $GITHUB_OUTPUT
           fi
