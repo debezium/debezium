@@ -117,7 +117,7 @@ public class TransactionCommitConsumerIT extends AbstractConnectorTest {
             for (int i = 0, k = 0; i < emails.size(); i += 4, k++) {
                 VerifyRecord.isValidUpdate(emails.get(i), "ID", -1);
                 VerifyRecord.isValidInsert(emails.get(i + 1), "ID", k);
-                VerifyRecord.isValidUpdate(emails.get(i + 2), "ID", 0);
+                VerifyRecord.isValidUpdate(emails.get(i + 2), "ID", k);
                 VerifyRecord.isValidUpdate(emails.get(i + 3), "ID", -1);
             }
 
