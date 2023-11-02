@@ -7,6 +7,8 @@ package io.debezium.connector.oracle;
 
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -19,6 +21,7 @@ import org.apache.kafka.connect.errors.RetriableException;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.config.Configuration;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
 
@@ -27,6 +30,7 @@ public class OracleConnectionTest {
     private Statement statement;
     private JdbcConfiguration jdbcConfiguration;
     private JdbcConnection.ConnectionFactory connectionFactory;
+    private Configuration.Builder configurationBuilder;
 
     @Before
     public void setUp() throws Exception {
@@ -37,6 +41,13 @@ public class OracleConnectionTest {
         statement = mock(Statement.class);
         when(connection.createStatement()).thenReturn(statement);
         when(connectionFactory.connect(jdbcConfiguration)).thenReturn(connection);
+
+        configurationBuilder = mock(Configuration.Builder.class);
+        when(jdbcConfiguration.subset(anyString(), anyBoolean())).thenReturn(jdbcConfiguration);
+        when(jdbcConfiguration.merge(jdbcConfiguration)).thenReturn(jdbcConfiguration);
+        when(jdbcConfiguration.edit()).thenReturn(configurationBuilder);
+        when(configurationBuilder.with(anyString(), anyString())).thenReturn(configurationBuilder);
+        when(configurationBuilder.build()).thenReturn(jdbcConfiguration);
 
     }
 
