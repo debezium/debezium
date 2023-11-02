@@ -6,10 +6,12 @@
 package io.debezium.connector.jdbc.type.connect;
 
 import java.sql.Types;
+import java.util.List;
 
 import org.apache.kafka.connect.data.Schema;
 import org.hibernate.engine.jdbc.Size;
 
+import io.debezium.connector.jdbc.ValueBindDescriptor;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.type.Type;
 import io.debezium.connector.jdbc.util.ByteArrayUtils;
@@ -45,4 +47,9 @@ public class ConnectBytesType extends AbstractConnectSchemaType {
         return dialect.getTypeName(Types.VARBINARY);
     }
 
+    @Override
+    public List<ValueBindDescriptor> bind(int index, Schema schema, Object value) {
+
+        return List.of(new ValueBindDescriptor(index, value, Types.VARBINARY));
+    }
 }
