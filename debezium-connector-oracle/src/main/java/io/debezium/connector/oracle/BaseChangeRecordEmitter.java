@@ -80,7 +80,7 @@ public abstract class BaseChangeRecordEmitter<T> extends RelationalChangeRecordE
                         table.id(), oldKey, newKey, reselectColumns.stream().map(Column::name).collect(Collectors.toList()));
 
                 final JdbcConfiguration jdbcConfig = connectorConfig.getJdbcConfig();
-                try (OracleConnection connection = new OracleConnection(jdbcConfig, false)) {
+                try (OracleConnection connection = new OracleConnection(new OracleConnection.OracleConnectionConfiguration(jdbcConfig), false)) {
                     final String query = getReselectQuery(reselectColumns, table, connection);
                     if (!Strings.isNullOrBlank(connectorConfig.getPdbName())) {
                         connection.setSessionToPdb(connectorConfig.getPdbName());

@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.oracle;
 
+import static io.debezium.config.CommonConnectorConfig.DRIVER_CONFIG_PREFIX;
+
 import java.sql.Clob;
 import java.sql.DatabaseMetaData;
 import java.sql.SQLException;
@@ -30,6 +32,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.oracle.OracleConnectorConfig.ConnectorAdapter;
 import io.debezium.connector.oracle.logminer.SqlUtils;
@@ -83,17 +86,17 @@ public class OracleConnection extends JdbcConnection {
 
     private static final String QUOTED_CHARACTER = "\"";
 
-    public OracleConnection(JdbcConfiguration config) {
+    public OracleConnection(OracleConnectionConfiguration config) {
         this(config, true);
     }
 
-    public OracleConnection(JdbcConfiguration config, ConnectionFactory connectionFactory) {
+    public OracleConnection(OracleConnectionConfiguration config, ConnectionFactory connectionFactory) {
         this(config, connectionFactory, true);
     }
 
-    public OracleConnection(JdbcConfiguration config, ConnectionFactory connectionFactory, boolean showVersion) {
-        super(config, connectionFactory, QUOTED_CHARACTER, QUOTED_CHARACTER);
-        LOGGER.trace("JDBC connection string: " + connectionString(config));
+    public OracleConnection(OracleConnectionConfiguration config, ConnectionFactory connectionFactory, boolean showVersion) {
+        super(config.getJdbcConfig(), connectionFactory, QUOTED_CHARACTER, QUOTED_CHARACTER);
+        LOGGER.trace("JDBC connection string: " + connectionString(config.getJdbcConfig()));
         this.logPositionValidator = this::validateLogPosition;
         this.databaseVersion = resolveOracleDatabaseVersion();
         if (showVersion) {
@@ -101,9 +104,9 @@ public class OracleConnection extends JdbcConnection {
         }
     }
 
-    public OracleConnection(JdbcConfiguration config, boolean showVersion) {
-        super(config, resolveConnectionFactory(config), QUOTED_CHARACTER, QUOTED_CHARACTER);
-        LOGGER.trace("JDBC connection string: " + connectionString(config));
+    public OracleConnection(OracleConnectionConfiguration config, boolean showVersion) {
+        super(config.getJdbcConfig(), config.getConnectionFactory(), QUOTED_CHARACTER, QUOTED_CHARACTER);
+        LOGGER.trace("JDBC connection string: " + connectionString(config.getJdbcConfig()));
         this.logPositionValidator = this::validateLogPosition;
         this.databaseVersion = resolveOracleDatabaseVersion();
         if (showVersion) {
@@ -488,10 +491,6 @@ public class OracleConnection extends JdbcConnection {
                 : ConnectorAdapter.parse(config.getString("connection.adapter")).getConnectionUrl();
     }
 
-    private static ConnectionFactory resolveConnectionFactory(JdbcConfiguration config) {
-        return JdbcConnection.patternBasedFactory(connectionString(config));
-    }
-
     /**
      * Determine whether the Oracle server has the archive log enabled.
      *
@@ -591,6 +590,9 @@ public class OracleConnection extends JdbcConnection {
         }
         else if (OracleTypes.NUMBER == column.jdbcType()) {
             column.scale().filter(s -> s == ORACLE_UNSET_SCALE).ifPresent(s -> column.scale(null));
+        }
+        else if ("JSON".equals(column.typeName())) {
+            column.jdbcType(OracleTypes.JSON);
         }
         return column;
     }
@@ -768,5 +770,43 @@ public class OracleConnection extends JdbcConnection {
     @FunctionalInterface
     interface ObjectIdentifierConsumer {
         void apply(Long objectId, Long dataObjectId);
+    }
+
+    public static class OracleConnectionConfiguration {
+        protected static final String JDBC_PROPERTY_JSON_DEFAULT_GET_OBJECT_TYPE = "oracle.jdbc.jsonDefaultGetObjectType";
+
+        private final JdbcConfiguration jdbcConfig;
+        private final Configuration config;
+        private final ConnectionFactory factory;
+
+        public OracleConnectionConfiguration(JdbcConfiguration config) {
+            // Set up the JDBC connection without actually connecting, with extra MySQL-specific properties
+            // to give us better JDBC database metadata behavior, including using UTF-8 for the client-side character encoding
+            // per https://dev.mysql.com/doc/connector-j/5.1/en/connector-j-reference-charsets.html
+            this.config = config;
+
+            final Configuration dbConfig = config
+                    .merge(config.subset(DRIVER_CONFIG_PREFIX, true));
+
+            final Configuration.Builder jdbcConfigBuilder = dbConfig
+                    .edit()
+                    .with(JDBC_PROPERTY_JSON_DEFAULT_GET_OBJECT_TYPE, "java.lang.String");
+
+            this.jdbcConfig = JdbcConfiguration.adapt(jdbcConfigBuilder.build());
+
+            this.factory = JdbcConnection.patternBasedFactory(connectionString(config));
+        }
+
+        public JdbcConfiguration getJdbcConfig() {
+            return jdbcConfig;
+        }
+
+        public Configuration getConfig() {
+            return config;
+        }
+
+        public ConnectionFactory getConnectionFactory() {
+            return factory;
+        }
     }
 }

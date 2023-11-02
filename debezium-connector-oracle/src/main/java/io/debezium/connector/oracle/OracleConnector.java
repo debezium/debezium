@@ -21,6 +21,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.RelationalBaseSourceConnector;
+import io.debezium.connector.oracle.OracleConnection.OracleConnectionConfiguration;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
 import io.debezium.util.Strings;
@@ -75,7 +76,7 @@ public class OracleConnector extends RelationalBaseSourceConnector {
         final ConfigValue userValue = configValues.get(RelationalDatabaseConnectorConfig.USER.name());
 
         OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
-        try (OracleConnection connection = new OracleConnection(connectorConfig.getJdbcConfig())) {
+        try (OracleConnection connection = new OracleConnection(new OracleConnectionConfiguration(connectorConfig.getJdbcConfig()))) {
             LOGGER.debug("Successfully tested connection for {} with user '{}'", OracleConnection.connectionString(connectorConfig.getJdbcConfig()),
                     connection.username());
         }
@@ -96,7 +97,8 @@ public class OracleConnector extends RelationalBaseSourceConnector {
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
         final String databaseName = connectorConfig.getCatalogName();
 
-        try (OracleConnection connection = new OracleConnection(connectorConfig.getJdbcConfig(), false)) {
+        OracleConnectionConfiguration connectionConfiguration = new OracleConnectionConfiguration(connectorConfig.getJdbcConfig());
+        try (OracleConnection connection = new OracleConnection(connectionConfiguration, false)) {
             if (!Strings.isNullOrBlank(connectorConfig.getPdbName())) {
                 connection.setSessionToPdb(connectorConfig.getPdbName());
             }

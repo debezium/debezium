@@ -631,6 +631,14 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withValidation(Field::isNonNegativeInteger)
             .withDescription("The number of attempts to retry database errors during snapshots before failing.");
 
+    public static final Field JSON_DEFAULT_GET_OBJECT_TYPE = Field.create(DRIVER_CONFIG_PREFIX + "oracle.jdbc.jsonDefaultGetObjectType")
+            .withDisplayName("Type used to parse JSON columns")
+            .withType(Type.STRING)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.LOW)
+            .withDescription("This property sets the default return type of getObject() methods when the column type is JSON")
+            .withDefault("java.lang.String");
+
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("Oracle")
             .excluding(
@@ -702,7 +710,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     OLR_SOURCE,
                     OLR_HOST,
                     OLR_PORT,
-                    SNAPSHOT_DATABASE_ERRORS_MAX_RETRIES)
+                    SNAPSHOT_DATABASE_ERRORS_MAX_RETRIES,
+                    JSON_DEFAULT_GET_OBJECT_TYPE)
             .events(SOURCE_INFO_STRUCT_MAKER)
             .create();
 

@@ -28,6 +28,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.oracle.OracleConnection;
+import io.debezium.connector.oracle.OracleConnection.OracleConnectionConfiguration;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleConnectorConfig.ConnectorAdapter;
 import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningBufferType;
@@ -353,7 +354,7 @@ public class TestHelper {
      * @return the connection
      */
     private static OracleConnection createConnection(Configuration config, JdbcConfiguration jdbcConfig, boolean autoCommit) {
-        OracleConnection connection = new OracleConnection(jdbcConfig);
+        OracleConnection connection = new OracleConnection(new OracleConnectionConfiguration(jdbcConfig));
         try {
             connection.setAutoCommit(autoCommit);
 
@@ -373,7 +374,7 @@ public class TestHelper {
         Configuration config = adminConfig().build();
         Configuration jdbcConfig = config.subset(DATABASE_PREFIX, true);
 
-        try (OracleConnection jdbcConnection = new OracleConnection(JdbcConfiguration.adapt(jdbcConfig))) {
+        try (OracleConnection jdbcConnection = new OracleConnection(new OracleConnectionConfiguration(JdbcConfiguration.adapt(jdbcConfig)))) {
             if ((new OracleConnectorConfig(defaultConfig().build())).getPdbName() != null) {
                 jdbcConnection.resetSessionToCdb();
             }
@@ -388,7 +389,7 @@ public class TestHelper {
         Configuration config = adminConfig().build();
         Configuration jdbcConfig = config.subset(DATABASE_PREFIX, true);
 
-        try (OracleConnection jdbcConnection = new OracleConnection(JdbcConfiguration.adapt(jdbcConfig))) {
+        try (OracleConnection jdbcConnection = new OracleConnection(new OracleConnectionConfiguration(JdbcConfiguration.adapt(jdbcConfig)))) {
             if ((new OracleConnectorConfig(defaultConfig().build())).getPdbName() != null) {
                 jdbcConnection.resetSessionToCdb();
             }
@@ -680,7 +681,7 @@ public class TestHelper {
      * @throws SQLException if a database error occurred
      */
     public static Scn getCurrentScn() throws SQLException {
-        try (OracleConnection admin = new OracleConnection(adminJdbcConfig(), false)) {
+        try (OracleConnection admin = new OracleConnection(new OracleConnectionConfiguration(adminJdbcConfig()), false)) {
             // Force the connection to the CDB$ROOT if we're operating w/a PDB
             if (isUsingPdb()) {
                 admin.resetSessionToCdb();
@@ -705,8 +706,9 @@ public class TestHelper {
 
     // expects user passed in the config to be any local user account on the Oracle DB instance
     private static OracleConnection createConnection(ConnectorConfiguration config, boolean autoCommit) {
-        Configuration connectionConfiguration = getTestConnectionConfiguration(config);
-        OracleConnection connection = new OracleConnection(JdbcConfiguration.adapt(connectionConfiguration));
+        Configuration testConnectionConfig = getTestConnectionConfiguration(config);
+        OracleConnectionConfiguration connectorConfig = new OracleConnectionConfiguration(JdbcConfiguration.adapt(testConnectionConfig));
+        OracleConnection connection = new OracleConnection(connectorConfig);
         try {
             connection.setAutoCommit(autoCommit);
             return connection;

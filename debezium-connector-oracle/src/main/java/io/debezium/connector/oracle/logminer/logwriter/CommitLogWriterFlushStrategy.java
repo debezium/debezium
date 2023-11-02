@@ -67,7 +67,7 @@ public class CommitLogWriterFlushStrategy implements LogWriterFlushStrategy {
     public CommitLogWriterFlushStrategy(OracleConnectorConfig connectorConfig, JdbcConfiguration jdbcConfig) throws SQLException {
         this.flushTableName = connectorConfig.getLogMiningFlushTableName();
         this.databasePdbName = connectorConfig.getPdbName();
-        this.connection = new OracleConnection(jdbcConfig);
+        this.connection = new OracleConnection(new OracleConnection.OracleConnectionConfiguration(jdbcConfig));
         this.connection.setAutoCommit(false);
         this.closeConnectionOnClose = true;
         createFlushTableIfNotExists();
