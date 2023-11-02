@@ -153,8 +153,12 @@ public class SqlServerDatabaseDialect extends GeneralDatabaseDialect {
     }
 
     @Override
-    public Temporal convertToCorrectDateTime(ZonedDateTime zonedTime) {
+    public Temporal convertToCorrectTime(ZonedDateTime zonedTime) {
 
+        return zonedTime.toOffsetDateTime();
+    }
+
+    public Object convertToCorrectZonedTimestamp(ZonedDateTime zonedTime) {
         return zonedTime.toOffsetDateTime();
     }
 }
