@@ -230,14 +230,35 @@ public interface DatabaseDialect {
      *
      * @return LocalDataTime if zoned date is not supported; ZonedDateTime otherwise (the default).
      */
-    Object convertToCorrectDateTime(ZonedDateTime zonedDateTime);
+    Object convertToCorrectZonedTimestamp(ZonedDateTime zonedDateTime);
 
     /**
      * Returns the correct date type for the database.
      *
-     * @return the objects returned depends on the database dialect.
+     * @return the object returned depends on the database dialect.
      */
     Object convertToCorrectDate(LocalDate localDate);
+
+    /**
+     * Returns the correct time type for the database.
+     *
+     * @return the object returned depends on the database dialect.
+     */
+    Object convertToCorrectTimestamp(ZonedDateTime zonedDateTime);
+
+    /**
+     * Returns the correct time type for the database.
+     *
+     * @return the object returned depends on the database dialect.
+     */
+    Object convertToCorrectTime(ZonedDateTime zonedDateTime);
+
+    /**
+     * Returns a time with timezone if is supported, without timezone if not supported by the database.
+     *
+     * @return LocalDataTime if zoned date is not supported; ZonedDateTime otherwise (the default).
+     */ // TODO fix docs
+    Optional<Integer> getZonedTimestampType();
 
     /**
      * Returns a time with timezone if is supported, without timezone if not supported by the database.

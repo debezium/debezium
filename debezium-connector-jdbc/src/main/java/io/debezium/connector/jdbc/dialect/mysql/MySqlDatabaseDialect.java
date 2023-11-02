@@ -7,9 +7,11 @@ package io.debezium.connector.jdbc.dialect.mysql;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
+import java.time.temporal.Temporal;
 import java.time.temporal.TemporalAccessor;
 import java.util.Arrays;
 import java.util.List;
@@ -190,7 +192,13 @@ public class MySqlDatabaseDialect extends GeneralDatabaseDialect {
     }
 
     @Override
-    public Optional<Integer> getTimestampType() {
-        return Optional.empty();
+    public Optional<Integer> getZonedTimestampType() {
+        return Optional.of(Types.TIMESTAMP); // TIMESTAMP_WITH_TIMEZONE not supported for MySQL
+    }
+
+    @Override
+    public Temporal convertToCorrectZonedTimestamp(ZonedDateTime zonedTime) {
+
+        return zonedTime.toOffsetDateTime();
     }
 }
