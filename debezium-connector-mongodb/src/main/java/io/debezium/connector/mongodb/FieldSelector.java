@@ -556,14 +556,7 @@ public final class FieldSelector {
          */
         public boolean matchesPath(String other) {
             final String[] otherParts = excludeNumericItems(FieldSelectorBuilder.parseIntoParts(other, other, length -> length < 1, DOT));
-            if (fieldNodes.length <= other.length()) {
-                for (int i = 0; i < fieldNodes.length; i++) {
-                    if (!fieldNodes[i].equals(otherParts[i])) {
-                        return false;
-                    }
-                }
-            }
-            return true;
+            return startsWith(otherParts, fieldNodes);
         }
 
         @Override
