@@ -263,11 +263,11 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                 if (event != null) {
                     BsonTimestamp timeStamp = SourceInfo.extractEventTimestamp(event);
                     if (timeStamp.getValue() % connectorConfig.getStreamingShards() != shardId) {
-                        LOGGER.debug("shard id doesn't match, skip oplog event");
+                        LOGGER.debug("shard id doesn't match, skip oplog event {}:{}", shardId, timeStamp.getValue());
                         continue;
                     }
                     else {
-                        LOGGER.debug("shard id match, process oplog event");
+                        LOGGER.debug("shard id match, process oplog event {}:{}", shardId, timeStamp.getValue());
                     }
 
                     if (!handleOplogEvent(primaryAddress, event, event, 0, oplogContext, connectorConfig.getEnableRawOplog(), connectorConfig.getAllowCmdCollection())) {
@@ -367,6 +367,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                 // Use tryNext which will return null if no document is yet available from the cursor.
                 // In this situation if not document is available, we'll pause.
                 final ChangeStreamDocument<BsonDocument> event = cursor.tryNext();
+
                 if (event != null) {
                     LOGGER.trace("Arrived Change Stream event: {}", event);
 
@@ -379,12 +380,13 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                             continue;
                         }
 
+                        // UPDATE TO ID
                         if (event.getClusterTime() != null && event.getClusterTime().getValue() % connectorConfig.getStreamingShards() != shardId) {
-                            LOGGER.debug("shard id doesn't match, skip change stream event");
+                            LOGGER.debug("shard id doesn't match, skip change stream event {}:{}", shardId, event.getClusterTime().getValue());
                             continue;
                         }
                         else {
-                            LOGGER.debug("shard id match, process stream event");
+                            LOGGER.debug("shard id match, process stream event {}:{}", shardId, event.getClusterTime().getValue());
                         }
 
                         oplogContext.getOffset().getOffset();
