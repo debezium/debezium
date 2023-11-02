@@ -139,7 +139,7 @@ public class MySqlTestConnection extends JdbcConnection {
 
     }
 
-    protected static ConnectionFactory FACTORY = JdbcConnection.patternBasedFactory("jdbc:mysql://${hostname}:${port}/${dbname}");
+    protected static ConnectionFactory FACTORY = JdbcConnection.patternBasedFactory("${protocol}://${hostname}:${port}/${dbname}");
 
     /**
      * Create a new instance with the given configuration and connection factory.
