@@ -780,9 +780,9 @@ public class OracleConnection extends JdbcConnection {
         private final ConnectionFactory factory;
 
         public OracleConnectionConfiguration(JdbcConfiguration config) {
-            // Set up the JDBC connection without actually connecting, with extra MySQL-specific properties
-            // to give us better JDBC database metadata behavior, including using UTF-8 for the client-side character encoding
-            // per https://dev.mysql.com/doc/connector-j/5.1/en/connector-j-reference-charsets.html
+            // Set up the JDBC connection without actually connecting, with extra Oracle-specific properties
+            // to handle JSON columns in Oracle 23+ as per
+            // https://docs.oracle.com/en//database/oracle/oracle-database/23/jajdb/oracle/jdbc/OracleConnection.html#CONNECTION_PROPERTY_JSON_DEFAULT_GET_OBJECT_TYPE
             this.config = config;
 
             final Configuration dbConfig = config
