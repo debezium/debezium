@@ -200,6 +200,13 @@
                 <version>1.0.2</version>
             </dependency>
 
+            <!-- MariaDB JDBC driver -->
+            <dependency>
+                <groupId>org.mariadb.jdbc</groupId>
+                <artifactId>mariadb-java-client</artifactId>
+                <version>${version.mariadb.driver}</version>
+            </dependency>
+
             <!-- MongoDB Java driver -->
             <dependency>
                 <groupId>org.mongodb</groupId>
