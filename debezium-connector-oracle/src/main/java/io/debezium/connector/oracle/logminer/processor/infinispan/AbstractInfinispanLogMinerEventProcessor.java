@@ -362,6 +362,12 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
     /**
      * Purge the necessary caches with all entries that occurred prior to the specified change number.
      *
+     * NOTE: This method is abstract despite the code used by both all implementations being identical.
+     * This is because the method needed {@code entrySet()} is made available on two different concrete
+     * interfaces between the embedded and remote cache implementations, and therefore we need to access
+     * this method from the concrete implementation classes (RemoteCache and Cache) rather than from
+     * the common class used by CacheProvider (BasicCache).
+     *
      * @param minCacheScn the minimum system change number to keep entries until
      */
     protected abstract void purgeCache(Scn minCacheScn);
