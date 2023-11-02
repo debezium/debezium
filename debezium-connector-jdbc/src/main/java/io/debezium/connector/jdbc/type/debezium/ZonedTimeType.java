@@ -74,13 +74,14 @@ public class ZonedTimeType extends AbstractTimeType {
 
             if (getDialect().isTimeZoneSet()) {
                 if (getDialect().shouldBindTimeWithTimeZoneAsDatabaseTimeZone()) {
-                    return List.of(new ValueBindDescriptor(index, getDialect().convertToCorrectDateTime(zdt.withZoneSameInstant(getDatabaseTimeZone().toZoneId()))));
+                    return List
+                            .of(new ValueBindDescriptor(index, getDialect().convertToCorrectZonedTimestamp(zdt.withZoneSameInstant(getDatabaseTimeZone().toZoneId()))));
                 }
                 // TODO check if this works with PreparedStatement
 
-                return List.of(new ValueBindDescriptor(index, getDialect().convertToCorrectDateTime(zdt), getDialect().getTimestampType().orElse(null)));
+                return List.of(new ValueBindDescriptor(index, getDialect().convertToCorrectZonedTimestamp(zdt), getDialect().getZonedTimestampType().orElse(null)));
             }
-            return List.of(new ValueBindDescriptor(index, getDialect().convertToCorrectDateTime(zdt)));
+            return List.of(new ValueBindDescriptor(index, getDialect().convertToCorrectZonedTimestamp(zdt)));
 
         }
 

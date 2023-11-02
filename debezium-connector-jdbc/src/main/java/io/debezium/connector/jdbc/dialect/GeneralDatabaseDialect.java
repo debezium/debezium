@@ -633,7 +633,7 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
     }
 
     @Override
-    public Object convertToCorrectDateTime(ZonedDateTime zonedTime) {
+    public Object convertToCorrectZonedTimestamp(ZonedDateTime zonedTime) {
         return zonedTime;
     }
 
@@ -643,8 +643,23 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
     }
 
     @Override
-    public Optional<Integer> getTimestampType() {
+    public Object convertToCorrectTimestamp(ZonedDateTime zonedDateTime) {
+        return zonedDateTime.toLocalDateTime();
+    }
+
+    @Override
+    public Object convertToCorrectTime(ZonedDateTime zonedDateTime) {
+        return zonedDateTime.toLocalDateTime().toLocalTime();
+    }
+
+    @Override
+    public Optional<Integer> getZonedTimestampType() {
         return Optional.of(Types.TIMESTAMP_WITH_TIMEZONE);
+    }
+
+    @Override
+    public Optional<Integer> getTimestampType() {
+        return Optional.of(Types.TIMESTAMP);
     }
 
     protected void registerType(Type type) {
