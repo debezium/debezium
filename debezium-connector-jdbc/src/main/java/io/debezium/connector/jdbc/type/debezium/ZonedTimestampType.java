@@ -47,7 +47,7 @@ public class ZonedTimestampType extends AbstractTimestampType {
 
             final ZonedDateTime zdt = ZonedDateTime.parse((String) value, ZonedTimestamp.FORMATTER).withZoneSameInstant(getDatabaseTimeZone().toZoneId());
             // TODO check if this works with PreparedStatement
-            return List.of(new ValueBindDescriptor(index, getDialect().convertToCorrectDateTime(zdt), getDialect().getTimestampType().orElse(null)));
+            return List.of(new ValueBindDescriptor(index, getDialect().convertToCorrectZonedTimestamp(zdt), getDialect().getZonedTimestampType().orElse(null)));
         }
 
         throw new ConnectException(String.format("Unexpected %s value '%s' with type '%s'", getClass().getSimpleName(),

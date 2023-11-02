@@ -6,6 +6,7 @@
 package io.debezium.connector.jdbc.dialect.db2;
 
 import java.sql.Date;
+import java.sql.Time;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.ZonedDateTime;
@@ -204,16 +205,31 @@ public class Db2DatabaseDialect extends GeneralDatabaseDialect {
     }
 
     @Override
+    public Optional<Integer> getZonedTimestampType() {
+        return Optional.empty();
+    }
+
+    @Override
     public Optional<Integer> getTimestampType() {
         return Optional.empty();
     }
 
     @Override
-    public Object convertToCorrectDateTime(ZonedDateTime zonedTime) {
+    public Object convertToCorrectZonedTimestamp(ZonedDateTime zonedTime) {
         return Timestamp.from(zonedTime.toInstant());
     }
 
     public Object convertToCorrectDate(LocalDate localDate) {
         return Date.valueOf(localDate);
+    }
+
+    @Override
+    public Object convertToCorrectTimestamp(ZonedDateTime zonedDateTime) {
+        return Timestamp.valueOf(zonedDateTime.toLocalDateTime());
+    }
+
+    @Override
+    public Object convertToCorrectTime(ZonedDateTime zonedDateTime) {
+        return Time.valueOf(zonedDateTime.toLocalDateTime().toLocalTime());
     }
 }
