@@ -31,9 +31,9 @@ import io.debezium.config.Configuration.Builder;
 import io.debezium.connector.mysql.MySqlConnector;
 import io.debezium.connector.mysql.MySqlConnectorConfig;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
-import io.debezium.connector.mysql.MySqlTestConnection;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.jdbc.JdbcConfiguration;
+import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.storage.jdbc.offset.JdbcOffsetBackingStoreConfig;
 import io.debezium.util.Testing;
@@ -76,7 +76,7 @@ public class JdbcSchemaHistoryIT extends AbstractConnectorTest {
         initializeConnectorTestFramework();
         Testing.Files.delete(SCHEMA_HISTORY_PATH);
 
-        try (MySqlTestConnection conn = testConnection()) {
+        try (JdbcConnection conn = testConnection()) {
             conn.execute(
                     "DROP TABLE IF EXISTS schematest",
                     "CREATE TABLE schematest (id INT PRIMARY KEY, val VARCHAR(16))",
@@ -95,7 +95,7 @@ public class JdbcSchemaHistoryIT extends AbstractConnectorTest {
             Testing.Files.delete(SCHEMA_HISTORY_PATH);
         }
 
-        try (MySqlTestConnection conn = testConnection()) {
+        try (JdbcConnection conn = testConnection()) {
             conn.execute("DROP TABLE IF EXISTS schematest");
         }
     }
@@ -137,7 +137,7 @@ public class JdbcSchemaHistoryIT extends AbstractConnectorTest {
         return schemaHistory(builder);
     }
 
-    private MySqlTestConnection testConnection() {
+    private JdbcConnection testConnection() {
         final JdbcConfiguration jdbcConfig = JdbcConfiguration.create()
                 .withHostname(container.getHost())
                 .withPort(container.getMappedPort(PORT))
@@ -145,7 +145,8 @@ public class JdbcSchemaHistoryIT extends AbstractConnectorTest {
                 .withPassword(PRIVILEGED_PASSWORD)
                 .withDatabase(DBNAME)
                 .build();
-        return new MySqlTestConnection(jdbcConfig);
+        final String url = "jdbc:mysql://${hostname}:${port}/${dbname}";
+        return new JdbcConnection(jdbcConfig, JdbcConnection.patternBasedFactory(url), "`", "`");
     }
 
     @Test
@@ -188,7 +189,7 @@ public class JdbcSchemaHistoryIT extends AbstractConnectorTest {
 
         stopConnector();
 
-        try (MySqlTestConnection conn = testConnection()) {
+        try (JdbcConnection conn = testConnection()) {
             conn.execute("INSERT INTO schematest VALUES (5, 'five')");
         }
         // Start the connector ...
