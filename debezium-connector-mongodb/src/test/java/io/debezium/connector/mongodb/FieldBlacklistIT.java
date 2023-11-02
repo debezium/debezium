@@ -221,6 +221,21 @@ public class FieldBlacklistIT extends AbstractMongoConnectorIT {
     }
 
     @Test
+    public void shouldExcludeFiledWhenParentIsRemoved() throws InterruptedException {
+        ObjectId objId = new ObjectId();
+        Document obj = new Document()
+                .append("_id", objId)
+                .append("name", "Bob")
+                .append("contact", new Document("email", "thebob@example.com"));
+
+        Document updateObj = new Document("contact", "");
+
+        var full = "{\"_id\": {\"$oid\": \"<OID>\"},\"name\": \"Bob\"}";
+        var expectedUpdate = new ExpectedUpdate(null, full, "{}", null);
+        assertUpdateRecord("*.c1.contact.email", objId, obj, updateObj, false, updateField(), expectedUpdate);
+    }
+
+    @Test
     public void shouldExcludeFieldsForUpdateEvent() throws InterruptedException {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
