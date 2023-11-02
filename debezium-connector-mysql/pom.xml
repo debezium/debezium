@@ -57,6 +57,10 @@
                 </exclusion>
             </exclusions>
         </dependency>
+        <dependency>
+            <groupId>org.mariadb.jdbc</groupId>
+            <artifactId>mariadb-java-client</artifactId>
+        </dependency>
 
         <!-- Testing -->
         <dependency>
@@ -172,6 +176,8 @@
         <mysql.init.timeout>60000</mysql.init.timeout> <!-- 60 seconds -->
         <apicurio.port>8080</apicurio.port>
         <apicurio.init.timeout>60000</apicurio.init.timeout> <!-- 60 seconds -->
+        <mysql.database.protocol>jdbc:mysql</mysql.database.protocol>
+        <mysql.database.jdbc.driver>com.mysql.cj.jdbc.Driver</mysql.database.jdbc.driver>
         <!--
         MariaDB specific
         -->
@@ -541,6 +547,9 @@
                         <database.password>${mysql.password}</database.password>
                         <database.replica.hostname>${docker.host.address}</database.replica.hostname>
                         <database.replica.port>${mysql.replica.port}</database.replica.port>
+                        <!-- Specifies which driver to use for the tests -->
+                        <database.protocol>${mysql.database.protocol}</database.protocol>
+                        <database.jdbc.driver>${mysql.database.jdbc.driver}</database.jdbc.driver>
                         <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
                         <database.ssl.mode>disabled</database.ssl.mode>
                     </systemPropertyVariables>
@@ -686,6 +695,9 @@
                                 <database.port>${mysql.port}</database.port>
                                 <database.replica.port>${mysql.port}</database.replica.port>
                                 <database.ssl.mode>disabled</database.ssl.mode>
+                                <!-- Specifies which driver to use for the tests -->
+                                <database.protocol>${mysql.database.protocol}</database.protocol>
+                                <database.jdbc.driver>${mysql.database.jdbc.driver}</database.jdbc.driver>
                                 <skipLongRunningTests>false</skipLongRunningTests>
                                 <isAssemblyProfileActive>true</isAssemblyProfileActive>
                             </systemPropertyVariables>
@@ -703,6 +715,9 @@
                                         <!-- same port for both, since we're only running one server -->
                                         <database.port>${mysql.port}</database.port>
                                         <database.replica.port>${mysql.port}</database.replica.port>
+                                        <!-- Specifies which driver to use for the tests -->
+                                        <database.protocol>${mysql.database.protocol}</database.protocol>
+                                        <database.jdbc.driver>${mysql.database.jdbc.driver}</database.jdbc.driver>
                                     </systemPropertyVariables>
                                 </configuration>
                             </execution>
@@ -716,6 +731,9 @@
                                     <systemPropertyVariables>
                                         <database.port>${mysql.gtid.port}</database.port>
                                         <database.replica.port>${mysql.gtid.replica.port}</database.replica.port>
+                                        <!-- Specifies which driver to use for the tests -->
+                                        <database.protocol>${mysql.database.protocol}</database.protocol>
+                                        <database.jdbc.driver>${mysql.database.jdbc.driver}</database.jdbc.driver>
                                     </systemPropertyVariables>
                                 </configuration>
                             </execution>
@@ -749,6 +767,9 @@
                                         <!-- same port for both, since we're only running one server -->
                                         <database.port>${mysql.ssl.port}</database.port>
                                         <database.replica.port>${mysql.ssl.port}</database.replica.port>
+                                        <!-- Specifies which driver to use for the tests -->
+                                        <database.protocol>${mysql.database.protocol}</database.protocol>
+                                        <database.jdbc.driver>${mysql.database.jdbc.driver}</database.jdbc.driver>
                                     </systemPropertyVariables>
                                 </configuration>
                             </execution>
@@ -914,6 +935,8 @@
                 <docker.dbs>debezium/mysql-server-test-database</docker.dbs>
                 <mysql.server.image.source>${mariadb.server.image.source}</mysql.server.image.source>
                 <version.mysql.server>${version.mariadb.server}</version.mysql.server>
+                <mysql.database.protocol>jdbc:mariadb</mysql.database.protocol>
+                <mysql.database.jdbc.driver>org.mariadb.jdbc.Driver</mysql.database.jdbc.driver>
             </properties>
         </profile>
         <!-- Profile for MariaDB SQL support -->
@@ -926,6 +949,8 @@
                 <docker.dbs>debezium/mysql-server-test-database-ssl</docker.dbs>
                 <mysql.server.image.source>${mariadb.server.image.source}</mysql.server.image.source>
                 <version.mysql.server>${version.mariadb.server}</version.mysql.server>
+                <mysql.database.protocol>jdbc:mariadb</mysql.database.protocol>
+                <mysql.database.jdbc.driver>org.mariadb.jdbc.Driver</mysql.database.jdbc.driver>
             </properties>
         </profile>
     </profiles>

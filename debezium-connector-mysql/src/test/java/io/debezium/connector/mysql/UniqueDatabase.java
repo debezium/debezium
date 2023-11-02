@@ -193,6 +193,10 @@ public class UniqueDatabase {
         Builder builder = Configuration.create()
                 .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.hostname", "localhost"))
                 .with(MySqlConnectorConfig.PORT, System.getProperty("database.port", "3306"))
+                .with(MySqlConnectorConfig.JDBC_PROTOCOL, System.getProperty("database.protocol",
+                        MySqlConnectorConfig.JDBC_PROTOCOL.defaultValueAsString()))
+                .with(MySqlConnectorConfig.JDBC_DRIVER, System.getProperty("database.jdbc.driver",
+                        MySqlConnectorConfig.JDBC_DRIVER.defaultValueAsString()))
                 .with(MySqlConnectorConfig.USER, "snapper")
                 .with(MySqlConnectorConfig.PASSWORD, "snapperpass");
 
