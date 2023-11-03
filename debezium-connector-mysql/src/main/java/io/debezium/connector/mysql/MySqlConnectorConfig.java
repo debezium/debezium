@@ -36,6 +36,7 @@ import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.schema.DefaultTopicNamingStrategy;
 import io.debezium.util.Collect;
+import io.debezium.util.Strings;
 
 /**
  * The configuration properties.
@@ -1080,15 +1081,12 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     }
 
     private static int resolveDefaultFetchSize(Configuration config) {
-        if (config.hasKey(MySqlConnectorConfig.JDBC_PROTOCOL)) {
-            final String protocol = config.getString(MySqlConnectorConfig.JDBC_PROTOCOL);
-            if (protocol.equalsIgnoreCase("jdbc:mariadb")) {
-                // In order to mimic MySQL's Integer.MIN_VALUE logic which indicates to stream 1 row
-                // at a time, for MariaDB we need to explicitly set the driver with a fetch size of
-                // 1 as MariaDB drivers 3.x+ do not support the old non-compliant JDBC-spec style
-                // that MySQL uses.
-                return 1;
-            }
+        if (usesMariaDbProtocol(config)) {
+            // In order to mimic MySQL's Integer.MIN_VALUE logic which indicates to stream 1 row
+            // at a time, for MariaDB we need to explicitly set the driver with a fetch size of
+            // 1 as MariaDB drivers 3.x+ do not support the old non-compliant JDBC-spec style
+            // that MySQL uses.
+            return 1;
         }
         return DEFAULT_SNAPSHOT_FETCH_SIZE;
     }
@@ -1205,5 +1203,19 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
      */
     boolean useGlobalLock() {
         return !"true".equals(config.getString(TEST_DISABLE_GLOBAL_LOCKING));
+    }
+
+    public boolean usesMariaDbProtocol() {
+        return usesMariaDbProtocol(config);
+    }
+
+    public static boolean usesMariaDbProtocol(Configuration config) {
+        if (config.hasKey(MySqlConnectorConfig.JDBC_PROTOCOL)) {
+            final String protocol = config.getString(MySqlConnectorConfig.JDBC_PROTOCOL);
+            if (!Strings.isNullOrBlank(protocol) && protocol.equalsIgnoreCase("jdbc:mariadb")) {
+                return true;
+            }
+        }
+        return false;
     }
 }

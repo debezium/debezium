@@ -82,8 +82,7 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
                 .build();
 
         MainConnectionProvidingConnectionFactory<MySqlConnection> connectionFactory = new DefaultMainConnectionProvidingConnectionFactory<>(
-                () -> new MySqlConnection(new MySqlConnectionConfiguration(config),
-                        connectorConfig.useCursorFetch() ? new MySqlBinaryProtocolFieldReader(connectorConfig) : new MySqlTextProtocolFieldReader(connectorConfig)));
+                () -> new MySqlConnection(new MySqlConnectionConfiguration(config), getFieldReader(connectorConfig)));
 
         connection = connectionFactory.mainConnection();
 
@@ -161,9 +160,8 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
                 connectorConfig.createHeartbeat(
                         topicNamingStrategy,
                         schemaNameAdjuster,
-                        () -> new MySqlConnection(new MySqlConnectionConfiguration(heartbeatConfig), connectorConfig.useCursorFetch()
-                                ? new MySqlBinaryProtocolFieldReader(connectorConfig)
-                                : new MySqlTextProtocolFieldReader(connectorConfig)),
+                        () -> new MySqlConnection(new MySqlConnectionConfiguration(heartbeatConfig),
+                                getFieldReader(connectorConfig)),
                         exception -> {
                             String sqlErrorId = exception.getSQLState();
                             switch (sqlErrorId) {
@@ -217,6 +215,18 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
         return new MySqlValueConverters(decimalMode, timePrecisionMode, bigIntUnsignedMode,
                 configuration.binaryHandlingMode(), timeAdjusterEnabled ? MySqlValueConverters::adjustTemporal : x -> x,
                 MySqlValueConverters::defaultParsingErrorHandler);
+    }
+
+    private MySqlFieldReader getFieldReader(MySqlConnectorConfig configuration) {
+        if (configuration.usesMariaDbProtocol()) {
+            return new MariaDbProtocolFieldReader(configuration);
+        }
+        else if (configuration.useCursorFetch()) {
+            return new MySqlBinaryProtocolFieldReader(configuration);
+        }
+        else {
+            return new MySqlTextProtocolFieldReader(configuration);
+        }
     }
 
     @Override
