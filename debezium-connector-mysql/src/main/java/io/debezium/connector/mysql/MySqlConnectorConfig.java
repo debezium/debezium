@@ -509,6 +509,11 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     /**
      * {@link Integer#MIN_VALUE Minimum value} used for fetch size hint.
      * See <a href="https://issues.jboss.org/browse/DBZ-94">DBZ-94</a> for details.
+     *
+     * This fetch size is not valid for MariaDB and per <a href="https://jira.mariadb.org/browse/CONJ-977">CONJ-997</a>
+     * they believe that the MySQL implementation for this is not according to the spec. Starting
+     * with MariaDB driver's 3.x+, this value cannot be negative. See the configuration method
+     * {@link #resolveDefaultFetchSize(Configuration)} for more details when MariaDB is enabled.
      */
     protected static final int DEFAULT_SNAPSHOT_FETCH_SIZE = Integer.MIN_VALUE;
 
@@ -968,7 +973,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
                 config,
                 TableFilter.fromPredicate(MySqlConnectorConfig::isNotBuiltInTable),
                 true,
-                DEFAULT_SNAPSHOT_FETCH_SIZE,
+                resolveDefaultFetchSize(config),
                 ColumnFilterMode.CATALOG,
                 false);
 
@@ -1072,6 +1077,20 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
 
         // Everything checks out ok.
         return 0;
+    }
+
+    private static int resolveDefaultFetchSize(Configuration config) {
+        if (config.hasKey(MySqlConnectorConfig.JDBC_PROTOCOL)) {
+            final String protocol = config.getString(MySqlConnectorConfig.JDBC_PROTOCOL);
+            if (protocol.equalsIgnoreCase("jdbc:mariadb")) {
+                // In order to mimic MySQL's Integer.MIN_VALUE logic which indicates to stream 1 row
+                // at a time, for MariaDB we need to explicitly set the driver with a fetch size of
+                // 1 as MariaDB drivers 3.x+ do not support the old non-compliant JDBC-spec style
+                // that MySQL uses.
+                return 1;
+            }
+        }
+        return DEFAULT_SNAPSHOT_FETCH_SIZE;
     }
 
     @Override
