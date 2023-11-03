@@ -75,6 +75,7 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
     private boolean routeTombstoneOnEmptyPayload;
 
     private List<AdditionalField> additionalFields;
+    private boolean additionalFieldsErrorOnMissing;
 
     private final Map<Integer, Schema> versionedValueSchema = new HashMap<>();
     private BoundedConcurrentHashMap<Schema, Schema> payloadSchemaCache;
@@ -186,6 +187,8 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
         AtomicReference<Integer> partition = new AtomicReference<>();
 
         additionalFields.forEach((additionalField -> {
+            if (!additionalFieldsErrorOnMissing && eventStruct.schema().field(additionalField.getField()) == null)
+                return;
             switch (additionalField.getPlacement()) {
                 case ENVELOPE:
                     structValue.put(
@@ -374,6 +377,8 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
         afterExtractor.configure(afterExtractorConfig);
 
         additionalFields = parseAdditionalFieldsConfig(config);
+        additionalFieldsErrorOnMissing = config.getBoolean(EventRouterConfigDefinition.FIELDS_ADDITIONAL_ERROR_ON_MISSING);
+
         onlyHeadersInOutputMessage = additionalFields.stream().noneMatch(field -> field.getPlacement() == AdditionalFieldPlacement.ENVELOPE);
 
         payloadSchemaCache = new BoundedConcurrentHashMap<>(10000, 10, BoundedConcurrentHashMap.Eviction.LRU);

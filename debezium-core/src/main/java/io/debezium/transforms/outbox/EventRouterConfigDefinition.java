@@ -216,6 +216,15 @@ public class EventRouterConfigDefinition {
                     " is a list of colon-delimited pairs or trios when you desire to have aliases," +
                     " e.g. <code>id:header,field_name:envelope:alias,field_name:partition</code> ");
 
+    public static final Field FIELDS_ADDITIONAL_ERROR_ON_MISSING = Field.create("table.fields.additional.error.on.missing")
+            .withDisplayName("Should the transform error if an additional field is missing in the change data")
+            .withType(ConfigDef.Type.BOOLEAN)
+            .withDefault(true)
+            .withWidth(ConfigDef.Width.MEDIUM)
+            .withImportance(ConfigDef.Importance.MEDIUM)
+            .withDescription("When transforming the 'table.fields.additional.placement' fields, should the transform throw" +
+                    " an exception if one of the fields is missing in the change data");
+
     public static final Field FIELD_SCHEMA_VERSION = Field.create("table.field.event.schema.version")
             .withDisplayName("Event Schema Version Field")
             .withType(ConfigDef.Type.STRING)
@@ -285,6 +294,7 @@ public class EventRouterConfigDefinition {
             FIELD_PAYLOAD,
             FIELD_EVENT_TIMESTAMP,
             FIELDS_ADDITIONAL_PLACEMENT,
+            FIELDS_ADDITIONAL_ERROR_ON_MISSING,
             FIELD_SCHEMA_VERSION,
             ROUTE_BY_FIELD,
             ROUTE_TOPIC_REGEX,
@@ -309,7 +319,7 @@ public class EventRouterConfigDefinition {
                 config,
                 "Table",
                 FIELD_EVENT_ID, FIELD_EVENT_KEY, FIELD_EVENT_TYPE, FIELD_PAYLOAD, FIELD_EVENT_TIMESTAMP, FIELDS_ADDITIONAL_PLACEMENT,
-                FIELD_SCHEMA_VERSION, OPERATION_INVALID_BEHAVIOR, EXPAND_JSON_PAYLOAD, TABLE_JSON_PAYLOAD_NULL_BEHAVIOR);
+                FIELDS_ADDITIONAL_ERROR_ON_MISSING, FIELD_SCHEMA_VERSION, OPERATION_INVALID_BEHAVIOR, EXPAND_JSON_PAYLOAD, TABLE_JSON_PAYLOAD_NULL_BEHAVIOR);
         Field.group(
                 config,
                 "Router",
