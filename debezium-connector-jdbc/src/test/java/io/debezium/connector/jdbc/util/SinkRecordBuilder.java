@@ -246,7 +246,7 @@ public class SinkRecordBuilder {
 
             Struct ceValue = new Struct(ceSchema);
             ceValue.put(CloudEventsMaker.FieldName.ID, Uuid.randomUuid().toString());
-            ceValue.put(CloudEventsMaker.FieldName.SOURCE, "test");
+            ceValue.put(CloudEventsMaker.FieldName.SOURCE, "test_ce_source");
             ceValue.put(CloudEventsMaker.FieldName.SPECVERSION, "1.0");
             ceValue.put(CloudEventsMaker.FieldName.TYPE, "TestType");
             ceValue.put(CloudEventsMaker.FieldName.TIME, LocalDateTime.now().toString());
