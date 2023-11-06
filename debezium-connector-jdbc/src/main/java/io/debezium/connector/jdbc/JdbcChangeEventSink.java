@@ -7,8 +7,10 @@ package io.debezium.connector.jdbc;
 
 import static io.debezium.connector.jdbc.JdbcSinkConnectorConfig.SchemaEvolutionMode.NONE;
 
+import java.sql.BatchUpdateException;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -17,6 +19,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
+import io.debezium.util.Strings;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.DataException;
@@ -46,6 +49,8 @@ public class JdbcChangeEventSink implements ChangeEventSink {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JdbcChangeEventSink.class);
 
+    public static final String SCHEMA_CHANGE_VALUE = "SchemaChangeValue";
+    public static final String DETECT_SCHEMA_CHANGE_RECORD_MSG = "Schema change records are not supported by JDBC connector. Adjust `topics` or `topics.regex` to exclude schema change topic.";
     private final JdbcSinkConnectorConfig config;
     private final SessionFactory sessionFactory;
     private final DatabaseDialect dialect;
@@ -105,6 +110,8 @@ public class JdbcChangeEventSink implements ChangeEventSink {
 
             LOGGER.trace("Processing {}", record);
 
+            validate(record);
+
             Optional<TableId> optionalTableId = getTableId(record);
             if (optionalTableId.isEmpty()) {
 
@@ -138,8 +145,8 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                     final TableDescriptor table = checkAndApplyTableChangesIfNeeded(tableId, sinkRecordDescriptor);
                     writeTruncate(dialect.getTruncateStatement(table));
                 }
-                catch (SQLException e) { // TODO manage it
-                    throw new RuntimeException(e);
+                catch (SQLException e) {
+                    throw new ConnectException("Failed to process a sink record", e);
                 }
             }
 
@@ -183,6 +190,20 @@ public class JdbcChangeEventSink implements ChangeEventSink {
         flushBuffers(deleteBufferByTable);
     }
 
+    private void validate(SinkRecord record) {
+
+        if (isSchemaChange(record)) {
+            LOGGER.error(DETECT_SCHEMA_CHANGE_RECORD_MSG);
+            throw new DataException(DETECT_SCHEMA_CHANGE_RECORD_MSG);
+        }
+    }
+
+    private static boolean isSchemaChange(SinkRecord record) {
+        return record.valueSchema() != null
+                && !Strings.isNullOrEmpty(record.valueSchema().name())
+                && record.valueSchema().name().contains(SCHEMA_CHANGE_VALUE);
+    }
+
     private SinkRecordDescriptor buildRecordSinkDescriptor(SinkRecord record) {
         SinkRecordDescriptor sinkRecordDescriptor;
         try {
@@ -193,7 +214,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                     .withDialect(dialect)
                     .build();
         }
-        catch (Exception e) { // TODO review configuration validation, maybe move it in the task start method
+        catch (Exception e) {
             throw new ConnectException("Failed to process a sink record", e);
         }
         return sinkRecordDescriptor;
@@ -239,8 +260,13 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                         pstmt.addBatch();
                     }
 
-                    int[] batchResult = pstmt.executeBatch(); // TODO check result for error
-
+                    int[] batchResult = pstmt.executeBatch();
+                    for (int updateCount : batchResult) {
+                        if (updateCount == Statement.EXECUTE_FAILED) {
+                            throw new BatchUpdateException(
+                                    "Execution failed for part of the batch", batchResult);
+                        }
+                    }
                 }
             });
             transaction.commit();
@@ -479,7 +505,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
             return dialect.getDeleteStatement(table, record);
         }
 
-        throw new DataException("Not supported mode"); // TODO check better message
+        throw new DataException(String.format("Unable to get SQL statement for %s", record));
     }
 
     private void writeUpsert(String sql, SinkRecordDescriptor record) throws SQLException {

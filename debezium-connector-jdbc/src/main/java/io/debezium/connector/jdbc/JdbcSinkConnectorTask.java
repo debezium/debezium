@@ -117,20 +117,18 @@ public class JdbcSinkConnectorTask extends SinkTask {
         }
         else {
             try {
-                // validate(record); TODO move validate down
+
                 changeEventSink.execute(records);
-                // markProcessed(records);
+                records.forEach(this::markProcessed);
             }
-            catch (Throwable throwable) { // TODO check how to manage errors with batch
-                // Stash currently failed record
-                // markNotProcessed(record);
+            catch (Throwable throwable) {
 
                 // Capture failure
                 LOGGER.error("Failed to process record: {}", throwable.getMessage(), throwable);
                 previousPutException = throwable;
 
-                // Stash any remaining records
-                // markNotProcessed(iterator);
+                // Stash all records
+                records.forEach(this::markNotProcessed);
             }
         }
 
