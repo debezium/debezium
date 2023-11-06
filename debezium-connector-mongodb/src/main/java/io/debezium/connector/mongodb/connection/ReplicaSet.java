@@ -30,25 +30,8 @@ public final class ReplicaSet implements Comparable<ReplicaSet> {
 
     private ReplicaSet(String replicaSetName, ConnectionString connectionString) {
         this.connectionString = Objects.requireNonNull(connectionString, "Connection string cannot be null");
-        this.replicaSetName = Objects.requireNonNull(replicaSetName, "Replica set name cannot be null");
+        this.replicaSetName = Objects.requireNonNullElse(replicaSetName, CLUSTER_RS_NAME);
         this.hc = Objects.hash(connectionString);
-    }
-
-    /**
-     * Creates a fake replica set representing entire sharded cluster
-     *
-     * @param connectionString connection string for sharded cluster
-     * @return sharded cluster as fake replica set
-     */
-    public static ReplicaSet forCluster(ConnectionString connectionString) {
-        return new ReplicaSet(CLUSTER_RS_NAME, connectionString);
-    }
-
-    /**
-     * Same as {@link #forCluster(ConnectionString)}
-     */
-    public static ReplicaSet forCluster(String connectionString) {
-        return new ReplicaSet(CLUSTER_RS_NAME, new ConnectionString(connectionString));
     }
 
     /**
