@@ -126,18 +126,18 @@ public class EndToEndPerf {
                     .build();
 
             Consumer<SourceRecord> recordArrivedListener = this::processRecord;
-            this.engine = EmbeddedEngine.create()
-                    .using(config)
+            this.engine = (EmbeddedEngine) new EmbeddedEngine.BuilderImpl()
+                    .using(config.asProperties())
                     .notifying((record) -> {
                         if (!engine.isRunning() || Thread.currentThread().isInterrupted()) {
                             return;
                         }
-                        while (!consumedLines.offer(record)) {
+                        while (!consumedLines.offer((SourceRecord) record)) {
                             if (!engine.isRunning() || Thread.currentThread().isInterrupted()) {
                                 return;
                             }
                         }
-                        recordArrivedListener.accept(record);
+                        recordArrivedListener.accept((SourceRecord) record);
                     })
                     .using(this.getClass().getClassLoader())
                     .build();

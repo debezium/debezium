@@ -84,7 +84,7 @@ import io.debezium.util.VariableLatch;
 @ThreadSafe
 public final class EmbeddedEngine implements DebeziumEngine<SourceRecord>, EmbeddedEngineConfig {
 
-    public static final class BuilderImpl implements Builder {
+    public static final class BuilderImpl implements Builder<SourceRecord> {
         private Configuration config;
         private DebeziumEngine.ChangeConsumer<SourceRecord> handler;
         private ClassLoader classLoader;
@@ -92,12 +92,6 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord>, Embed
         private DebeziumEngine.CompletionCallback completionCallback;
         private DebeziumEngine.ConnectorCallback connectorCallback;
         private OffsetCommitPolicy offsetCommitPolicy = null;
-
-        @Override
-        public Builder using(Configuration config) {
-            this.config = config;
-            return this;
-        }
 
         @Override
         public Builder using(Properties config) {
@@ -108,12 +102,6 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord>, Embed
         @Override
         public Builder using(ClassLoader classLoader) {
             this.classLoader = classLoader;
-            return this;
-        }
-
-        @Override
-        public Builder using(Clock clock) {
-            this.clock = clock;
             return this;
         }
 
@@ -153,13 +141,14 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord>, Embed
 
         @Override
         public Builder using(java.time.Clock clock) {
-            return using(new Clock() {
+            this.clock = new Clock() {
 
                 @Override
                 public long currentTimeInMillis() {
                     return clock.millis();
                 }
-            });
+            };
+            return this;
         }
 
         @Override
@@ -175,31 +164,6 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord>, Embed
             return new EmbeddedEngine(config, classLoader, clock,
                     handler, completionCallback, connectorCallback, offsetCommitPolicy);
         }
-
-        // backward compatibility methods
-        @Override
-        public Builder using(CompletionCallback completionCallback) {
-            return using((DebeziumEngine.CompletionCallback) completionCallback);
-        }
-
-        @Override
-        public Builder using(ConnectorCallback connectorCallback) {
-            return using((DebeziumEngine.ConnectorCallback) connectorCallback);
-        }
-    }
-
-    /**
-     * A callback function to be notified when the connector completes.
-     */
-    @Deprecated
-    public interface CompletionCallback extends DebeziumEngine.CompletionCallback {
-    }
-
-    /**
-     * Callback function which informs users about the various stages a connector goes through during startup
-     */
-    @Deprecated
-    public interface ConnectorCallback extends DebeziumEngine.ConnectorCallback {
     }
 
     /**
@@ -308,25 +272,8 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord>, Embed
         }
     }
 
-    /**
-     * Contract passed to {@link ChangeConsumer}s, allowing them to commit single records as they have been processed
-     * and to signal that offsets may be flushed eventually.
-     */
-    @ThreadSafe
-    @Deprecated
-    public interface RecordCommitter extends DebeziumEngine.RecordCommitter<SourceRecord> {
-    }
-
-    /**
-     * A contract invoked by the embedded engine when it has received a batch of change records to be processed. Allows
-     * to process multiple records in one go, acknowledging their processing once that's done.
-     */
-    @Deprecated
-    public interface ChangeConsumer extends DebeziumEngine.ChangeConsumer<SourceRecord> {
-    }
-
-    private static ChangeConsumer buildDefaultChangeConsumer(Consumer<SourceRecord> consumer) {
-        return new ChangeConsumer() {
+    private static ChangeConsumer<SourceRecord> buildDefaultChangeConsumer(Consumer<SourceRecord> consumer) {
+        return new DebeziumEngine.ChangeConsumer<SourceRecord>() {
 
             /**
              * the default implementation that is compatible with the old Consumer api.
@@ -356,60 +303,6 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord>, Embed
                 committer.markBatchFinished();
             }
         };
-    }
-
-    /**
-     * A builder to set up and create {@link EmbeddedEngine} instances.
-     */
-    @Deprecated
-    public interface Builder extends DebeziumEngine.Builder<SourceRecord> {
-
-        /**
-         * Use the specified configuration for the connector. The configuration is assumed to already be valid.
-         *
-         * @param config the configuration
-         * @return this builder object so methods can be chained together; never null
-         */
-        Builder using(Configuration config);
-
-        /**
-         * Use the specified clock when needing to determine the current time. Passing <code>null</code> or not calling this
-         * method results in the connector using the {@link Clock#system() system clock}.
-         *
-         * @param clock the clock
-         * @return this builder object so methods can be chained together; never null
-         */
-        Builder using(Clock clock);
-
-        // backward compatibility methods
-        @Override
-        Builder notifying(Consumer<SourceRecord> consumer);
-
-        @Override
-        Builder notifying(DebeziumEngine.ChangeConsumer<SourceRecord> handler);
-
-        @Override
-        Builder using(ClassLoader classLoader);
-
-        Builder using(CompletionCallback completionCallback);
-
-        Builder using(ConnectorCallback connectorCallback);
-
-        @Override
-        Builder using(OffsetCommitPolicy policy);
-
-        @Override
-        EmbeddedEngine build();
-    }
-
-    /**
-     * Obtain a new {@link Builder} instance that can be used to construct runnable {@link EmbeddedEngine} instances.
-     *
-     * @return the new builder; never null
-     */
-    @Deprecated
-    public static Builder create() {
-        return new BuilderImpl();
     }
 
     private static final Logger LOGGER = LoggerFactory.getLogger(EmbeddedEngine.class);
@@ -920,7 +813,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord>, Embed
      * @return the new recordCommitter to be used for a given batch
      */
     protected RecordCommitter buildRecordCommitter(OffsetStorageWriter offsetWriter, SourceTask task, Duration commitTimeout) {
-        return new RecordCommitter() {
+        return new DebeziumEngine.RecordCommitter<SourceRecord>() {
 
             @Override
             public synchronized void markProcessed(SourceRecord record) throws InterruptedException {

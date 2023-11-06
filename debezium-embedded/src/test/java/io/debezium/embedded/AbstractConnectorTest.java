@@ -69,8 +69,6 @@ import org.slf4j.LoggerFactory;
 import io.debezium.config.Configuration;
 import io.debezium.config.Instantiator;
 import io.debezium.data.VerifyRecord;
-import io.debezium.embedded.EmbeddedEngine.CompletionCallback;
-import io.debezium.embedded.EmbeddedEngine.ConnectorCallback;
 import io.debezium.embedded.EmbeddedEngine.EmbeddedConfig;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.function.BooleanConsumer;
@@ -219,12 +217,12 @@ public abstract class AbstractConnectorTest implements Testing {
     }
 
     /**
-     * Create a {@link CompletionCallback} that logs when the engine fails to start the connector or when the connector
+     * Create a {@link DebeziumEngine.CompletionCallback} that logs when the engine fails to start the connector or when the connector
      * stops running after completing successfully or due to an error
      *
-     * @return the logging {@link CompletionCallback}
+     * @return the logging {@link DebeziumEngine.CompletionCallback}
      */
-    protected CompletionCallback loggingCompletion() {
+    protected DebeziumEngine.CompletionCallback loggingCompletion() {
         return (success, msg, error) -> {
             if (success) {
                 logger.info(msg);
@@ -370,7 +368,7 @@ public abstract class AbstractConnectorTest implements Testing {
                 .with(EmbeddedEngineConfig.OFFSET_FLUSH_INTERVAL_MS, 0)
                 .build();
         latch = new CountDownLatch(1);
-        CompletionCallback wrapperCallback = (success, msg, error) -> {
+        DebeziumEngine.CompletionCallback wrapperCallback = (success, msg, error) -> {
             try {
                 if (callback != null) {
                     callback.handle(success, msg, error);
@@ -385,7 +383,7 @@ public abstract class AbstractConnectorTest implements Testing {
             Testing.debug("Stopped connector");
         };
 
-        ConnectorCallback connectorCallback = new ConnectorCallback() {
+        DebeziumEngine.ConnectorCallback connectorCallback = new DebeziumEngine.ConnectorCallback() {
             @Override
             public void taskStarted() {
                 // if this is called, it means a task has been started successfully so we can continue
@@ -406,8 +404,8 @@ public abstract class AbstractConnectorTest implements Testing {
         };
 
         // Create the connector ...
-        EmbeddedEngine.Builder builder = EmbeddedEngine.create();
-        builder.using(config)
+        EmbeddedEngine.Builder builder = new EmbeddedEngine.BuilderImpl();
+        builder.using(config.asProperties())
                 .notifying(getConsumer(isStopRecord, recordArrivedListener, ignoreRecordsAfterStop))
                 .using(this.getClass().getClassLoader())
                 .using(wrapperCallback)
@@ -415,7 +413,7 @@ public abstract class AbstractConnectorTest implements Testing {
         if (changeConsumer != null) {
             builder.notifying(changeConsumer);
         }
-        engine = new TestingEmbeddedEngine(builder.build());
+        engine = new TestingEmbeddedEngine((EmbeddedEngine) builder.build());
 
         // Submit the connector for asynchronous execution ...
         assertThat(executor).isNull();
@@ -626,7 +624,7 @@ public abstract class AbstractConnectorTest implements Testing {
      * This is most useful in corner cases when there can be a duplicate records between snapshot
      * and streaming switch.
      *
-     * @param numRecords the number of records that should be consumed
+     * @param recordsToRead the number of records that should be consumed
      * @param tripCondition condition to satisfy to stop skipping records
      * @return the collector into which the records were captured; never null
      * @throws InterruptedException if the thread was interrupted while waiting for a record to be returned

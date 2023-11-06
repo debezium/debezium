@@ -60,7 +60,6 @@ import io.debezium.document.ArrayWriter;
 import io.debezium.document.Document;
 import io.debezium.document.DocumentReader;
 import io.debezium.document.Value;
-import io.debezium.embedded.EmbeddedEngine.CompletionCallback;
 import io.debezium.embedded.EmbeddedEngine.CompletionResult;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.RecordChangeEvent;
@@ -796,7 +795,7 @@ public abstract class ConnectorOutputTest {
      * @param spec the test specification
      * @param callback the function that should be called when the connector is stopped
      */
-    protected void runConnector(TestSpecification spec, CompletionCallback callback) {
+    protected void runConnector(TestSpecification spec, DebeziumEngine.CompletionCallback callback) {
         PreviousContext preRunContext = LoggingContext.forConnector(getClass().getSimpleName(), "runner", spec.name());
         final Configuration environmentConfig = Configuration.copy(spec.environment()).build();
         final Configuration connectorConfig = spec.config();
