@@ -12,16 +12,12 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
-import io.debezium.util.Strings;
-import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.sink.SinkRecord;
-import org.hibernate.SessionFactory;
 import org.hibernate.StatelessSession;
 import org.hibernate.Transaction;
 import org.hibernate.dialect.DatabaseVersion;
@@ -31,11 +27,11 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.jdbc.SinkRecordDescriptor.FieldDescriptor;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
-import io.debezium.connector.jdbc.dialect.DatabaseDialectResolver;
 import io.debezium.connector.jdbc.naming.TableNamingStrategy;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
 import io.debezium.connector.jdbc.relational.TableId;
 import io.debezium.pipeline.sink.spi.ChangeEventSink;
+import io.debezium.util.Strings;
 
 /**
  * A {@link ChangeEventSink} for a JDBC relational database.
@@ -49,55 +45,20 @@ public class JdbcChangeEventSink implements ChangeEventSink {
     public static final String SCHEMA_CHANGE_VALUE = "SchemaChangeValue";
     public static final String DETECT_SCHEMA_CHANGE_RECORD_MSG = "Schema change records are not supported by JDBC connector. Adjust `topics` or `topics.regex` to exclude schema change topic.";
     private final JdbcSinkConnectorConfig config;
-    private final SessionFactory sessionFactory;
     private final DatabaseDialect dialect;
     private final StatelessSession session;
     private final TableNamingStrategy tableNamingStrategy;
-    private final QueryBinderResolver queryBinderResolver;
-
     private final RecordWriter recordWriter;
 
-    public JdbcChangeEventSink(JdbcSinkConnectorConfig config) {
-        this.config = config;
-        this.sessionFactory = config.getHibernateConfiguration().buildSessionFactory();
-        this.tableNamingStrategy = config.getTableNamingStrategy();
+    public JdbcChangeEventSink(JdbcSinkConnectorConfig config, StatelessSession session, DatabaseDialect dialect, RecordWriter recordWriter) {
 
-        this.dialect = DatabaseDialectResolver.resolve(config, sessionFactory);
-        this.session = this.sessionFactory.openStatelessSession();
-        this.queryBinderResolver = new QueryBinderResolver(); // TODO maybe move it upper fot testability
-        this.recordWriter = new RecordWriter(session, queryBinderResolver, config, dialect); // TODO maybe move it upper fot testability
+        this.config = config;
+        this.tableNamingStrategy = config.getTableNamingStrategy();
+        this.dialect = dialect;
+        this.session = session;
+        this.recordWriter = recordWriter;
         final DatabaseVersion version = this.dialect.getVersion();
         LOGGER.info("Database version {}.{}.{}", version.getMajor(), version.getMinor(), version.getMicro());
-    }
-
-    @Override
-    public void execute(SinkRecord record) {
-        try {
-            // Examine the sink record and prepare a descriptor
-            final SinkRecordDescriptor descriptor = SinkRecordDescriptor.builder()
-                    .withPrimaryKeyMode(config.getPrimaryKeyMode())
-                    .withPrimaryKeyFields(config.getPrimaryKeyFields())
-                    .withSinkRecord(record)
-                    .withDialect(dialect)
-                    .build();
-
-            if (descriptor.isTombstone()) {
-                LOGGER.debug("Skipping tombstone record {}", descriptor);
-                return;
-            }
-
-            String tableName = tableNamingStrategy.resolveTableName(config, record);
-            if (tableName == null) {
-                LOGGER.warn("Ignored to write record from topic '{}' partition '{}' offset '{}'", record.topic(), record.kafkaPartition(), record.kafkaOffset());
-                return;
-            }
-            final TableId tableId = dialect.getTableId(tableName);
-            final TableDescriptor table = checkAndApplyTableChangesIfNeeded(tableId, descriptor);
-            write(table, descriptor);
-        }
-        catch (Exception e) {
-            throw new ConnectException("Failed to process a sink record", e);
-        }
     }
 
     @Override
@@ -205,6 +166,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
     }
 
     private SinkRecordDescriptor buildRecordSinkDescriptor(SinkRecord record) {
+
         SinkRecordDescriptor sinkRecordDescriptor;
         try {
             sinkRecordDescriptor = SinkRecordDescriptor.builder()
@@ -260,14 +222,6 @@ public class JdbcChangeEventSink implements ChangeEventSink {
         }
         else {
             LOGGER.info("Session already closed.");
-        }
-
-        if (sessionFactory != null && sessionFactory.isOpen()) {
-            LOGGER.info("Closing the session factory");
-            sessionFactory.close();
-        }
-        else {
-            LOGGER.info("Session factory already closed");
         }
     }
 
@@ -382,53 +336,6 @@ public class JdbcChangeEventSink implements ChangeEventSink {
         return readTable(tableId);
     }
 
-    private void write(TableDescriptor table, SinkRecordDescriptor record) throws SQLException {
-        if (record.isDelete()) {
-            writeDelete(dialect.getDeleteStatement(table, record), record);
-        }
-        else if (record.isTruncate()) {
-            writeTruncate(dialect.getTruncateStatement(table));
-        }
-        else {
-            switch (config.getInsertMode()) {
-                case INSERT:
-                    writeInsert(dialect.getInsertStatement(table, record), record);
-                    break;
-                case UPSERT:
-                    if (record.getKeyFieldNames().isEmpty()) {
-                        throw new ConnectException("Cannot write to table " + table.getId().getTableName() + " with no key fields defined.");
-                    }
-                    writeUpsert(dialect.getUpsertStatement(table, record), record);
-                    break;
-                case UPDATE:
-                    writeUpdate(dialect.getUpdateStatement(table, record), record);
-                    break;
-            }
-        }
-    }
-
-    private void writeInsert(String sql, SinkRecordDescriptor record) throws SQLException {
-        final Transaction transaction = session.beginTransaction();
-        try {
-            LOGGER.trace("SQL: {}", sql);
-            final NativeQuery<?> query = session.createNativeQuery(sql, Object.class);
-            QueryBinder queryBinder = queryBinderResolver.resolve(query);
-            int index = bindKeyValuesToQuery(record, queryBinder, 1);
-            bindNonKeyValuesToQuery(record, queryBinder, index);
-
-            final int result = query.executeUpdate();
-            if (result != 1) {
-                throw new SQLException("Failed to insert row from table");
-            }
-
-            transaction.commit();
-        }
-        catch (SQLException e) {
-            transaction.rollback();
-            throw e;
-        }
-    }
-
     private String getSqlStatement(TableDescriptor table, SinkRecordDescriptor record) {
 
         if (!record.isDelete()) {
@@ -451,62 +358,6 @@ public class JdbcChangeEventSink implements ChangeEventSink {
         throw new DataException(String.format("Unable to get SQL statement for %s", record));
     }
 
-    private void writeUpsert(String sql, SinkRecordDescriptor record) throws SQLException {
-        final Transaction transaction = session.beginTransaction();
-        try {
-            LOGGER.trace("SQL: {}", sql);
-            final NativeQuery<?> query = session.createNativeQuery(sql, Object.class);
-            QueryBinder queryBinder = queryBinderResolver.resolve(query);
-            int index = bindKeyValuesToQuery(record, queryBinder, 1);
-            bindNonKeyValuesToQuery(record, queryBinder, index);
-
-            query.executeUpdate();
-            transaction.commit();
-        }
-        catch (Exception e) {
-            transaction.rollback();
-            throw e;
-        }
-    }
-
-    private void writeUpdate(String sql, SinkRecordDescriptor record) throws SQLException {
-        final Transaction transaction = session.beginTransaction();
-        try {
-            LOGGER.trace("SQL: {}", sql);
-            final NativeQuery<?> query = session.createNativeQuery(sql, Object.class);
-            QueryBinder queryBinder = queryBinderResolver.resolve(query);
-            int index = bindNonKeyValuesToQuery(record, queryBinder, 1);
-            bindKeyValuesToQuery(record, queryBinder, index);
-
-            query.executeUpdate();
-            transaction.commit();
-        }
-        catch (Exception e) {
-            transaction.rollback();
-            throw e;
-        }
-    }
-
-    private void writeDelete(String sql, SinkRecordDescriptor record) {
-        if (!config.isDeleteEnabled()) {
-            LOGGER.debug("Deletes are not enabled, skipping delete for topic '{}'", record.getTopicName());
-            return;
-        }
-        final Transaction transaction = session.beginTransaction();
-        try {
-            LOGGER.trace("SQL: {}", sql);
-            final NativeQuery<?> query = session.createNativeQuery(sql, Object.class);
-            bindKeyValuesToQuery(record, queryBinderResolver.resolve(query), 1);
-
-            query.executeUpdate();
-            transaction.commit();
-        }
-        catch (Exception e) {
-            transaction.rollback();
-            throw e;
-        }
-    }
-
     private void writeTruncate(String sql) throws SQLException {
 
         final Transaction transaction = session.beginTransaction();
@@ -522,36 +373,4 @@ public class JdbcChangeEventSink implements ChangeEventSink {
             throw e;
         }
     }
-
-    private int bindKeyValuesToQuery(SinkRecordDescriptor record, QueryBinder query, int index) {
-
-        if (Objects.requireNonNull(config.getPrimaryKeyMode()) == JdbcSinkConnectorConfig.PrimaryKeyMode.KAFKA) {
-            query.bind(new ValueBindDescriptor(index++, record.getTopicName()));
-            query.bind(new ValueBindDescriptor(index++, record.getPartition()));
-            query.bind(new ValueBindDescriptor(index++, record.getOffset()));
-        }
-        else {
-            final Struct keySource = record.getKeyStruct(config.getPrimaryKeyMode());
-            if (keySource != null) {
-                index = bindFieldValuesToQuery(record, query, index, keySource, record.getKeyFieldNames());
-            }
-        }
-        return index;
-    }
-
-    private int bindNonKeyValuesToQuery(SinkRecordDescriptor record, QueryBinder query, int index) {
-        return bindFieldValuesToQuery(record, query, index, record.getAfterStruct(), record.getNonKeyFieldNames());
-    }
-
-    private int bindFieldValuesToQuery(SinkRecordDescriptor record, QueryBinder query, int index, Struct source, List<String> fields) {
-        for (String fieldName : fields) {
-            final FieldDescriptor field = record.getFields().get(fieldName);
-            List<ValueBindDescriptor> boundValues = dialect.bindValue(field, index, source.get(fieldName));
-
-            boundValues.forEach(query::bind);
-            index += boundValues.size();
-        }
-        return index;
-    }
-
 }
