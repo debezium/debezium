@@ -38,10 +38,9 @@ symbolic-links=0
 # The prefix is arbitrary, expiration can be short for integration tests but would
 # be longer on a production system. Row-level info is required for ingest to work.
 # Server ID is required, but this will vary on production systems
-server-id         = 223344
-log_bin           = mysql-bin
-expire_logs_days  = 1
-binlog_format     = row
+server-id                   = 223344
+log_bin                     = mysql-bin
+binlog_format               = row
 
 # Configures the amount of table metadata added to the binary log when using row-based logging
 binlog_row_metadata = FULL
