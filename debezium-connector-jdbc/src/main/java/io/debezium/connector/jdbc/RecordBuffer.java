@@ -9,8 +9,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import io.debezium.pipeline.sink.spi.ChangeEventSink;
 import org.apache.kafka.connect.data.Schema;
 
+/**
+ * A buffer of {@link SinkRecordDescriptor}. It contains the logic of when is the time to flush
+ *
+ * @author Mario Fiore Vitale
+ */
 public class RecordBuffer {
 
     private final JdbcSinkConnectorConfig connectorConfig;
