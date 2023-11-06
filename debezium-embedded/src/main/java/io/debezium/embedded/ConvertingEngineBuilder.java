@@ -79,7 +79,7 @@ public class ConvertingEngineBuilder<R> implements Builder<R> {
     }
 
     ConvertingEngineBuilder(KeyValueHeaderChangeEventFormat<?, ?, ?> format) {
-        this.delegate = new EmbeddedEngine.BuilderImpl();
+        this.delegate = new EmbeddedEngine.EngineBuilder();
         this.formatKey = format.getKeyFormat();
         this.formatValue = format.getValueFormat();
         this.formatHeader = format.getHeaderFormat();

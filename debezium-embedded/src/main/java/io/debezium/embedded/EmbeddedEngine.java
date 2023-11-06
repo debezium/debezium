@@ -84,7 +84,7 @@ import io.debezium.util.VariableLatch;
 @ThreadSafe
 public final class EmbeddedEngine implements DebeziumEngine<SourceRecord>, EmbeddedEngineConfig {
 
-    public static final class BuilderImpl implements Builder<SourceRecord> {
+    public static final class EngineBuilder implements Builder<SourceRecord> {
         private Configuration config;
         private DebeziumEngine.ChangeConsumer<SourceRecord> handler;
         private ClassLoader classLoader;

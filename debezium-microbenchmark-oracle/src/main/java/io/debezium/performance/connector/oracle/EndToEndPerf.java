@@ -126,7 +126,7 @@ public class EndToEndPerf {
                     .build();
 
             Consumer<SourceRecord> recordArrivedListener = this::processRecord;
-            this.engine = (EmbeddedEngine) new EmbeddedEngine.BuilderImpl()
+            this.engine = (EmbeddedEngine) new EmbeddedEngine.EngineBuilder()
                     .using(config.asProperties())
                     .notifying((record) -> {
                         if (!engine.isRunning() || Thread.currentThread().isInterrupted()) {
