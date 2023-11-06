@@ -7,7 +7,6 @@ package io.debezium.connector.jdbc;
 
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
@@ -15,13 +14,16 @@ import java.util.concurrent.locks.ReentrantLock;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.connect.errors.ConnectException;
-import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.runtime.InternalSinkRecord;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.apache.kafka.connect.sink.SinkTask;
+import org.hibernate.SessionFactory;
+import org.hibernate.StatelessSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.connector.jdbc.dialect.DatabaseDialect;
+import io.debezium.connector.jdbc.dialect.DatabaseDialectResolver;
 import io.debezium.pipeline.sink.spi.ChangeEventSink;
 import io.debezium.util.Strings;
 
@@ -34,8 +36,7 @@ import io.debezium.util.Strings;
 public class JdbcSinkConnectorTask extends SinkTask {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JdbcSinkConnectorTask.class);
-    public static final String SCHEMA_CHANGE_VALUE = "SchemaChangeValue";
-    public static final String DETECT_SCHEMA_CHANGE_RECORD_MSG = "Schema change records are not supported by JDBC connector. Adjust `topics` or `topics.regex` to exclude schema change topic.";
+    private SessionFactory sessionFactory;
 
     private enum State {
         RUNNING,
@@ -70,7 +71,13 @@ public class JdbcSinkConnectorTask extends SinkTask {
             final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(props);
             config.validate();
 
-            changeEventSink = new JdbcChangeEventSink(config);
+            sessionFactory = config.getHibernateConfiguration().buildSessionFactory();
+            StatelessSession session = sessionFactory.openStatelessSession();
+            DatabaseDialect databaseDialect = DatabaseDialectResolver.resolve(config, sessionFactory);
+            QueryBinderResolver queryBinderResolver = new QueryBinderResolver();
+            RecordWriter recordWriter = new RecordWriter(session, queryBinderResolver, config, databaseDialect);
+
+            changeEventSink = new JdbcChangeEventSink(config, session, databaseDialect, recordWriter);
         }
         finally {
             stateLock.unlock();
@@ -87,65 +94,20 @@ public class JdbcSinkConnectorTask extends SinkTask {
 
         LOGGER.debug("Received {} changes.", records.size());
 
-        // Maybe here we need to differentiate between batch and not batch mode
-        // since the use of session.doWork creates the connection for the bunch of records passed by Connect API.
-        // Another approach is to refactor the current code and push down the loop on records.
+        try {
 
-        boolean oldMode = false;
-        if (oldMode) {
-            for (Iterator<SinkRecord> iterator = records.iterator(); iterator.hasNext();) {
-                final SinkRecord record = iterator.next();
-                LOGGER.trace("Received {}", record);
-
-                try {
-                    validate(record);
-                    changeEventSink.execute(record);
-                    markProcessed(record);
-                }
-                catch (Throwable throwable) {
-                    // Stash currently failed record
-                    markNotProcessed(record);
-
-                    // Capture failure
-                    LOGGER.error("Failed to process record: {}", throwable.getMessage(), throwable);
-                    previousPutException = throwable;
-
-                    // Stash any remaining records
-                    markNotProcessed(iterator);
-                }
-            }
+            changeEventSink.execute(records);
+            records.forEach(this::markProcessed);
         }
-        else {
-            try {
+        catch (Throwable throwable) {
 
-                changeEventSink.execute(records);
-                records.forEach(this::markProcessed);
-            }
-            catch (Throwable throwable) {
+            // Capture failure
+            LOGGER.error("Failed to process record: {}", throwable.getMessage(), throwable);
+            previousPutException = throwable;
 
-                // Capture failure
-                LOGGER.error("Failed to process record: {}", throwable.getMessage(), throwable);
-                previousPutException = throwable;
-
-                // Stash all records
-                records.forEach(this::markNotProcessed);
-            }
+            // Stash all records
+            records.forEach(this::markNotProcessed);
         }
-
-    }
-
-    private void validate(SinkRecord record) {
-
-        if (isSchemaChange(record)) {
-            LOGGER.error(DETECT_SCHEMA_CHANGE_RECORD_MSG);
-            throw new DataException(DETECT_SCHEMA_CHANGE_RECORD_MSG);
-        }
-    }
-
-    private static boolean isSchemaChange(SinkRecord record) {
-        return record.valueSchema() != null
-                && !Strings.isNullOrEmpty(record.valueSchema().name())
-                && record.valueSchema().name().contains(SCHEMA_CHANGE_VALUE);
     }
 
     @Override
@@ -164,6 +126,14 @@ public class JdbcSinkConnectorTask extends SinkTask {
             if (changeEventSink != null) {
                 try {
                     changeEventSink.close();
+
+                    if (sessionFactory != null && sessionFactory.isOpen()) {
+                        LOGGER.info("Closing the session factory");
+                        sessionFactory.close();
+                    }
+                    else {
+                        LOGGER.info("Session factory already closed");
+                    }
                 }
                 catch (Exception e) {
                     LOGGER.error("Failed to gracefully close resources.", e);
@@ -204,18 +174,6 @@ public class JdbcSinkConnectorTask extends SinkTask {
         else {
             LOGGER.trace("Updated topic {} from offset {} to {}.", topicName, existing.offset(), record.kafkaOffset());
         }
-    }
-
-    /**
-     * Marks all remaining elements in the collection as not processed.
-     *
-     * @param records collection of sink records, should not be {@code null}
-     */
-    private void markNotProcessed(Iterator<SinkRecord> records) {
-        while (records.hasNext()) {
-            markNotProcessed(records.next());
-        }
-        context.requestCommit();
     }
 
     /**

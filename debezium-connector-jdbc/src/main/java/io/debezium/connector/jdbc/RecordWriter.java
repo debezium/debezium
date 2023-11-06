@@ -5,17 +5,18 @@
  */
 package io.debezium.connector.jdbc;
 
-import io.debezium.connector.jdbc.dialect.DatabaseDialect;
-import org.apache.kafka.connect.data.Struct;
-import org.hibernate.SharedSessionContract;
-import org.hibernate.Transaction;
-import org.hibernate.jdbc.Work;
-
 import java.sql.BatchUpdateException;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.util.List;
 import java.util.Objects;
+
+import org.apache.kafka.connect.data.Struct;
+import org.hibernate.SharedSessionContract;
+import org.hibernate.Transaction;
+import org.hibernate.jdbc.Work;
+
+import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 
 /**
  * Effectively writes the batches using Hibernate {@link Work}
