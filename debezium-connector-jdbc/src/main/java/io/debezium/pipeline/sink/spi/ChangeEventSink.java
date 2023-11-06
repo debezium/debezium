@@ -18,12 +18,11 @@ import io.debezium.common.annotation.Incubating;
  */
 @Incubating
 public interface ChangeEventSink extends AutoCloseable {
+
     /**
      * Executes this sink.
      *
-     * @param record the sink record, never {@code null}
+     * @param records the sink records, never {@code null}
      */
-    void execute(SinkRecord record);
-
     void execute(Collection<SinkRecord> records);
 }
