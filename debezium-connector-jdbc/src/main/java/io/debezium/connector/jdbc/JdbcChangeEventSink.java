@@ -7,10 +7,7 @@ package io.debezium.connector.jdbc;
 
 import static io.debezium.connector.jdbc.JdbcSinkConnectorConfig.SchemaEvolutionMode.NONE;
 
-import java.sql.BatchUpdateException;
-import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -56,7 +53,9 @@ public class JdbcChangeEventSink implements ChangeEventSink {
     private final DatabaseDialect dialect;
     private final StatelessSession session;
     private final TableNamingStrategy tableNamingStrategy;
-    private QueryBinderResolver queryBinderResolver;
+    private final QueryBinderResolver queryBinderResolver;
+
+    private final RecordWriter recordWriter;
 
     public JdbcChangeEventSink(JdbcSinkConnectorConfig config) {
         this.config = config;
@@ -66,6 +65,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
         this.dialect = DatabaseDialectResolver.resolve(config, sessionFactory);
         this.session = this.sessionFactory.openStatelessSession();
         this.queryBinderResolver = new QueryBinderResolver(); // TODO maybe move it upper fot testability
+        this.recordWriter = new RecordWriter(session, queryBinderResolver, config, dialect); // TODO maybe move it upper fot testability
         final DatabaseVersion version = this.dialect.getVersion();
         LOGGER.info("Database version {}.{}.{}", version.getMajor(), version.getMinor(), version.getMicro());
     }
@@ -229,52 +229,17 @@ public class JdbcChangeEventSink implements ChangeEventSink {
 
         if (!toFlush.isEmpty()) {
             LOGGER.debug("Flushing records in JDBC Writer for table: {}", tableId.getTableName());
-            writeBuffer(tableId, toFlush);
+            try {
+
+                final TableDescriptor table = checkAndApplyTableChangesIfNeeded(tableId, toFlush.get(0));
+                String sqlStatement = getSqlStatement(table, toFlush.get(0));
+                recordWriter.write(toFlush, sqlStatement);
+            }
+            catch (Exception e) {
+                throw new ConnectException("Failed to process a sink record", e);
+            }
         }
 
-    }
-
-    private void writeBuffer(TableId tableId, List<SinkRecordDescriptor> records) {
-
-        final String sqlStatement;
-        try {
-
-            final TableDescriptor table = checkAndApplyTableChangesIfNeeded(tableId, records.get(0));
-            sqlStatement = getSqlStatement(table, records.get(0));
-        }
-        catch (Exception e) {
-            throw new ConnectException("Failed to process a sink record", e);
-        }
-
-        final Transaction transaction = session.beginTransaction();
-        try {
-            session.doWork(conn -> {
-
-                try (PreparedStatement pstmt = conn.prepareStatement(sqlStatement)) {
-
-                    QueryBinder queryBinder = queryBinderResolver.resolve(pstmt);
-                    for (SinkRecordDescriptor sinkRecordDescriptor : records) {
-
-                        bindValues(sinkRecordDescriptor, queryBinder);
-
-                        pstmt.addBatch();
-                    }
-
-                    int[] batchResult = pstmt.executeBatch();
-                    for (int updateCount : batchResult) {
-                        if (updateCount == Statement.EXECUTE_FAILED) {
-                            throw new BatchUpdateException(
-                                    "Execution failed for part of the batch", batchResult);
-                        }
-                    }
-                }
-            });
-            transaction.commit();
-        }
-        catch (Exception e) {
-            transaction.rollback();
-            throw e;
-        }
     }
 
     private Optional<TableId> getTableId(SinkRecord record) {
@@ -462,28 +427,6 @@ public class JdbcChangeEventSink implements ChangeEventSink {
             transaction.rollback();
             throw e;
         }
-    }
-
-    private void bindValues(SinkRecordDescriptor sinkRecordDescriptor, QueryBinder queryBinder) {
-
-        int index;
-        if (sinkRecordDescriptor.isDelete()) {
-            bindKeyValuesToQuery(sinkRecordDescriptor, queryBinder, 1);
-            return;
-        }
-
-        switch (config.getInsertMode()) {
-            case INSERT:
-            case UPSERT:
-                index = bindKeyValuesToQuery(sinkRecordDescriptor, queryBinder, 1);
-                bindNonKeyValuesToQuery(sinkRecordDescriptor, queryBinder, index);
-                break;
-            case UPDATE:
-                index = bindNonKeyValuesToQuery(sinkRecordDescriptor, queryBinder, 1);
-                bindKeyValuesToQuery(sinkRecordDescriptor, queryBinder, index);
-                break;
-        }
-
     }
 
     private String getSqlStatement(TableDescriptor table, SinkRecordDescriptor record) {
