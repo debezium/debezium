@@ -171,7 +171,7 @@ public class MongoDbConnectorDatabaseRestrictedIT extends AbstractConnectorTest 
         start(MongoDbConnector.class, config);
 
         // Connector should fail after 2 retries
-        Awaitility.await().pollDelay(10, TimeUnit.SECONDS).timeout(30, TimeUnit.SECONDS).until(() -> !isRunning.get());
+        Awaitility.await().pollDelay(10, TimeUnit.SECONDS).timeout(30, TimeUnit.SECONDS).until(() -> !isEngineRunning.get());
         Assertions.assertThat(logInterceptor.containsMessage("The maximum number of 2 retries has been attempted")).isTrue();
     }
 
