@@ -404,7 +404,7 @@ public abstract class AbstractConnectorTest implements Testing {
         };
 
         // Create the connector ...
-        EmbeddedEngine.Builder builder = new EmbeddedEngine.BuilderImpl();
+        EmbeddedEngine.Builder builder = new EmbeddedEngine.EngineBuilder();
         builder.using(config.asProperties())
                 .notifying(getConsumer(isStopRecord, recordArrivedListener, ignoreRecordsAfterStop))
                 .using(this.getClass().getClassLoader())
