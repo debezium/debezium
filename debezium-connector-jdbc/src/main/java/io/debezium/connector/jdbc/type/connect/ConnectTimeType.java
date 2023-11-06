@@ -65,7 +65,7 @@ public class ConnectTimeType extends AbstractTimeType {
             // To avoid this loss in precision from the source system, the following will bind the value
             // as a LocalDateTime using the current date as the base in order to avoid data loss.
 
-            return List.of(new ValueBindDescriptor(index, localDateTime)); // TODO check if this works with PreparedStatement
+            return List.of(new ValueBindDescriptor(index, localDateTime));
         }
 
         throw new ConnectException(String.format("Unexpected %s value '%s' with type '%s'", getClass().getSimpleName(),
