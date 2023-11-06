@@ -240,7 +240,7 @@ public interface DatabaseDialect {
     Object convertToCorrectDate(LocalDate localDate);
 
     /**
-     * Returns the correct time type for the database.
+     * Returns the correct timestamp type for the database.
      *
      * @return the object returned depends on the database dialect.
      */
@@ -254,17 +254,17 @@ public interface DatabaseDialect {
     Object convertToCorrectTime(ZonedDateTime zonedDateTime);
 
     /**
-     * Returns a time with timezone if is supported, without timezone if not supported by the database.
+     * Returns the JDBC type for a zoned timestamp.
      *
-     * @return LocalDataTime if zoned date is not supported; ZonedDateTime otherwise (the default).
-     */ // TODO fix docs
+     * @return the int value associated to the JDBC types from {@link java.sql.Types}.
+     */
     Optional<Integer> getZonedTimestampType();
 
     /**
-     * Returns a time with timezone if is supported, without timezone if not supported by the database.
+     * Returns the JDBC type for a timestamp without zone.
      *
-     * @return LocalDataTime if zoned date is not supported; ZonedDateTime otherwise (the default).
-     */ // TODO fix docs
+     * @return the int value associated to the JDBC types from {@link java.sql.Types}.
+     */
     Optional<Integer> getTimestampType();
 
     /**
