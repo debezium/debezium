@@ -10,18 +10,18 @@ public class ValueBindDescriptor {
     private final int index;
     private final Object value;
 
-    private final Integer bindableType;
+    private final Integer targetSqlType;
 
     public ValueBindDescriptor(int index, Object value) {
         this.index = index;
         this.value = value;
-        this.bindableType = null;
+        this.targetSqlType = null;
     }
 
-    public ValueBindDescriptor(int index, Object value, Integer bindableType) {
+    public ValueBindDescriptor(int index, Object value, Integer targetSqlType) {
         this.index = index;
         this.value = value;
-        this.bindableType = bindableType;
+        this.targetSqlType = targetSqlType;
     }
 
     public int getIndex() {
@@ -32,7 +32,7 @@ public class ValueBindDescriptor {
         return value;
     }
 
-    public Integer getBindableType() {
-        return bindableType;
+    public Integer getTargetSqlType() {
+        return targetSqlType;
     }
 }

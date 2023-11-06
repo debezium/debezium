@@ -24,7 +24,7 @@ public class NativeQueryBinder implements QueryBinder {
     @Override
     public void bind(ValueBindDescriptor valueBindDescriptor) {
 
-        if (valueBindDescriptor.getBindableType() != null) {
+        if (valueBindDescriptor.getTargetSqlType() != null) {
             binder.setParameter(valueBindDescriptor.getIndex(), ZonedDateTime.ofInstant(Instant.now(), ZoneOffset.UTC),
                     (BindableType) StandardBasicTypes.ZONED_DATE_TIME_WITH_TIMEZONE);
         }

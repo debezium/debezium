@@ -77,7 +77,6 @@ public class ZonedTimeType extends AbstractTimeType {
                     return List
                             .of(new ValueBindDescriptor(index, getDialect().convertToCorrectZonedTimestamp(zdt.withZoneSameInstant(getDatabaseTimeZone().toZoneId()))));
                 }
-                // TODO check if this works with PreparedStatement
 
                 return List.of(new ValueBindDescriptor(index, getDialect().convertToCorrectZonedTimestamp(zdt), getDialect().getZonedTimestampType().orElse(null)));
             }
@@ -90,6 +89,6 @@ public class ZonedTimeType extends AbstractTimeType {
     }
 
     protected int getJdbcType(DatabaseDialect dialect) {
-        return Types.TIME_WITH_TIMEZONE; // TODO use this for timestamp type?
+        return Types.TIME_WITH_TIMEZONE;
     }
 }
