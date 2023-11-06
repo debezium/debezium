@@ -103,7 +103,7 @@ public class ReplicaSetDiscovery {
     private void readShardedClusterAsReplicaSet(Set<ReplicaSet> replicaSetSpecs, ConnectionContext connectionContext) {
         LOGGER.info("Using '{}' as sharded cluster connection", maskedConnectionSeed);
         var connectionString = connectionContext.connectionString();
-        replicaSetSpecs.add(ReplicaSet.forCluster(connectionString));
+        replicaSetSpecs.add(new ReplicaSet(connectionString));
     }
 
     private void readReplicaSetsFromCluster(Set<ReplicaSet> replicaSetSpecs, ClusterDescription clusterDescription, ConnectionContext connectionContext) {

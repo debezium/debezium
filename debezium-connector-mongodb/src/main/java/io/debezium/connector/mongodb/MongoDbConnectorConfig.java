@@ -589,14 +589,14 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
     public static final Field CONNECTION_MODE = Field.create("mongodb.connection.mode")
             .withDisplayName("Connection mode")
-            .withEnum(ConnectionMode.class, ConnectionMode.REPLICA_SET)
+            .withEnum(ConnectionMode.class, ConnectionMode.SHARDED)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 2))
             .withWidth(Width.SHORT)
             .withImportance(Importance.HIGH)
             .withDescription("The method used to connect to MongoDB cluster. "
                     + "Options include: "
-                    + "'replica_set' (the default) to individually connect to each replica set / shard "
-                    + "'sharded' to connect via single connection obtained from connection string");
+                    + "'replica_set' to individually connect to each replica set / shard "
+                    + "'sharded' (the default) to connect via single connection obtained from connection string");
 
     public static final Field USER = Field.create("mongodb.user")
             .withDisplayName("User")
@@ -1005,7 +1005,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         this.snapshotMaxThreads = resolveSnapshotMaxThreads(config);
         this.cursorMaxAwaitTimeMs = config.getInteger(MongoDbConnectorConfig.CURSOR_MAX_AWAIT_TIME_MS, 0);
 
-        this.replicaSets = resolveReplicaSets(config, connectionMode);
+        this.replicaSets = resolveReplicaSets(config);
     }
 
     private static int validateHosts(Configuration config, Field field, ValidationOutput problems) {
@@ -1268,25 +1268,12 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         return config.getInteger(SNAPSHOT_MAX_THREADS);
     }
 
-    private static ReplicaSets resolveReplicaSets(Configuration config, ConnectionMode connectionMode) {
+    private static ReplicaSets resolveReplicaSets(Configuration config) {
         if (!config.hasKey(MongoDbConnectorConfig.TASK_CONNECTION_STRINGS)) {
             return new ReplicaSets(List.of());
         }
 
-        List<ReplicaSet> replicaSetSpecs;
-
-        switch (connectionMode) {
-            case REPLICA_SET:
-                replicaSetSpecs = config.getList(MongoDbConnectorConfig.TASK_CONNECTION_STRINGS, ReplicaSets.SEPARATOR, ReplicaSet::new);
-                break;
-            case SHARDED:
-                replicaSetSpecs = config.getList(MongoDbConnectorConfig.TASK_CONNECTION_STRINGS, ReplicaSets.SEPARATOR, ReplicaSet::forCluster);
-                break;
-            default:
-                LOGGER.warn("Unexpected connection mode '{}'", connectionMode);
-                replicaSetSpecs = List.of();
-        }
-
+        var replicaSetSpecs = config.getList(MongoDbConnectorConfig.TASK_CONNECTION_STRINGS, ReplicaSets.SEPARATOR, ReplicaSet::new);
         return new ReplicaSets(replicaSetSpecs);
     }
 

@@ -1506,13 +1506,13 @@ This property applies only when the xref:mongodb-property-mongodb-connection-mod
 ====
 
 |[[mongodb-property-mongodb-connection-mode]]<<mongodb-property-mongodb-connection-mode, `+mongodb.connection.mode+`>>
-|`replica_set`
+|`sharded`
 |Specifies the strategy that the connector uses when it connects to a `sharded` MongoDB cluster.
 Set this property to one of the following values:
 
 `replica_set`:: The connector establishes individual connections to the replica set for each shard.
 
-`sharded`:: The connector establishes a single connection to the database, based on the value of the xref:mongodb-property-mongodb-connection-string[`mongodb.connection.string`].
+`sharded`:: The connector establishes a single connection to Mongo router, based on the value of the xref:mongodb-property-mongodb-connection-string[`mongodb.connection.string`].
 
 [NOTE]
 ====
