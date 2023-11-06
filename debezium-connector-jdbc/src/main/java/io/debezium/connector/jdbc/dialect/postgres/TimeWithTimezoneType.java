@@ -47,7 +47,7 @@ class TimeWithTimezoneType extends ZonedTimeType {
                 if (getDialect().shouldBindTimeWithTimeZoneAsDatabaseTimeZone()) {
                     return List.of(new ValueBindDescriptor(index, zdt.withZoneSameInstant(getDatabaseTimeZone().toZoneId())));
                 }
-                // TODO check if this works with PreparedStatement
+
                 return List.of(new ValueBindDescriptor(index, zdt.toOffsetDateTime().toOffsetTime()));
             }
 

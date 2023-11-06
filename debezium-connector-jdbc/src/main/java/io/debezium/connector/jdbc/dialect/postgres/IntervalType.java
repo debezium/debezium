@@ -55,7 +55,7 @@ class IntervalType extends AbstractType {
 
         if (value != null && Long.class.isAssignableFrom(value.getClass())) {
             final double doubleValue = ((Long) value).doubleValue() / 1_000_000d;
-            return List.of(new ValueBindDescriptor(index, ((long) doubleValue) + " seconds")); // TODO check if this works with PreparedStatement
+            return List.of(new ValueBindDescriptor(index, ((long) doubleValue) + " seconds"));
         }
 
         return super.bind(index, schema, value);

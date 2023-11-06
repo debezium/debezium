@@ -20,8 +20,8 @@ public class PreparedStatementQueryBinder implements QueryBinder {
     public void bind(ValueBindDescriptor valueBindDescriptor) {
 
         try {
-            if (valueBindDescriptor.getBindableType() != null) { // TODO improve the naming
-                binder.setObject(valueBindDescriptor.getIndex(), valueBindDescriptor.getValue(), valueBindDescriptor.getBindableType());
+            if (valueBindDescriptor.getTargetSqlType() != null) {
+                binder.setObject(valueBindDescriptor.getIndex(), valueBindDescriptor.getValue(), valueBindDescriptor.getTargetSqlType());
             }
             else {
                 binder.setObject(valueBindDescriptor.getIndex(), valueBindDescriptor.getValue());

@@ -264,14 +264,14 @@ public class JdbcSinkConnectorConfig {
             .withDescription("Allowing to insert explicit value for identity column in table for SQLSERVER.");
 
     public static final Field BATCH_SIZE_FIELD = Field.create(BATCH_SIZE)
-            .withDisplayName("Specifies how many records to attempt to batch together for insertion into the destination table, when possible. " +
+            .withDisplayName("Specifies how many records to attempt to batch together into the destination table, when possible. " +
                     "You can also configure the connector’s underlying consumer’s max.poll.records using consumer.override.max.poll.records in the connector configuration.")
             .withType(Type.INT)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 4))
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.MEDIUM)
             .withDefault(500)
-            .withDescription("Specifies how many records to attempt to batch together for insertion into the destination table, when possible. " +
+            .withDescription("Specifies how many records to attempt to batch together into the destination table, when possible. " +
                     "You can also configure the connector’s underlying consumer’s max.poll.records using consumer.override.max.poll.records in the connector configuration.");
 
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
