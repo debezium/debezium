@@ -150,9 +150,10 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
 
     @ParameterizedTest
     @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
-    public void testTableCreatedOnDeleteRecordWithDefaultInsertMode(SinkRecordFactory factory) {
+    public void testTableCreatedOnDeleteRecordWithDefaultInsertModeAndDeleteEnabled(SinkRecordFactory factory) {
         final Map<String, String> properties = getDefaultSinkConfig();
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
+        properties.put(JdbcSinkConnectorConfig.DELETE_ENABLED, "true");
         startSinkConnector(properties);
         assertSinkConnectorIsRunning();
 

@@ -115,12 +115,6 @@ public class JdbcChangeEventSink implements ChangeEventSink {
 
                 if (!config.isDeleteEnabled()) {
                     LOGGER.debug("Deletes are not enabled, skipping delete for topic '{}'", sinkRecordDescriptor.getTopicName());
-                    try { // TODO Do we want to maintain this behavior? Should table be created on delete only when deletes are enabled?
-                        checkAndApplyTableChangesIfNeeded(tableId, sinkRecordDescriptor);
-                    }
-                    catch (Exception e) {
-                        throw new ConnectException("Failed to process a sink record", e);
-                    }
                     continue;
                 }
 
