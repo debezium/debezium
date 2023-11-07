@@ -270,6 +270,9 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
         // Create rootUser
         LOGGER.info("[{}] Creating root user...", name);
         createRootUser();
+        // Make sure RS status is available to root user
+        awaitReplicaPrimary();
+
         started = true;
     }
 
@@ -329,6 +332,7 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
         await()
                 .atMost(1, MINUTES)
                 .pollDelay(1, SECONDS)
+                .ignoreException(IllegalArgumentException.class)
                 .until(() -> tryPrimary().isPresent());
     }
 
