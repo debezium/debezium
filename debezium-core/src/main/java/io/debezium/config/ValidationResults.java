@@ -14,17 +14,22 @@ import org.apache.kafka.connect.connector.Connector;
 
 public class ValidationResults {
 
-    public final List<ValidationResult> validationResults;
     public Status status;
+    public final List<ValidationResult> validationResults;
 
-    public ValidationResults(Connector connector, Map<String, ?> properties) {
-        this.validationResults = convertConfigToValidationResults(connector.validate(convertPropertiesToStrings(properties)));
+    public ValidationResults(ConnectorParameter connector, Map<String, ?> properties) {
+        this.validationResults = convertConfigToValidationResults(connector.get().validate(convertPropertiesToStrings(properties)));
         if (validationResults.isEmpty()) {
             this.status = Status.VALID;
         }
         else {
             this.status = Status.INVALID;
         }
+    }
+
+    public ValidationResults(Status status, List<ValidationResult> validationResults) {
+        this.status = status;
+        this.validationResults = validationResults;
     }
 
     private static Map<String, String> convertPropertiesToStrings(Map<String, ?> properties) {
@@ -54,6 +59,10 @@ public class ValidationResults {
     public enum Status {
         VALID,
         INVALID;
+    }
+
+    public interface ConnectorParameter {
+        Connector get();
     }
 
 }

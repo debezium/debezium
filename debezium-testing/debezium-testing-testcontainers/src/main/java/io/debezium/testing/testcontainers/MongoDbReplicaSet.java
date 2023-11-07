@@ -279,6 +279,15 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
     @Override
     public void stop() {
         if (started) {
+            forceStop();
+        }
+    }
+
+    public void forceStop() {
+        LOGGER.info("[{}] Stopping...", name);
+        MoreStartables.deepStopSync(members.stream());
+        started = false;
+        if (started) {
             LOGGER.info("[{}] Stopping...", name);
             MoreStartables.deepStopSync(members.stream());
             started = false;

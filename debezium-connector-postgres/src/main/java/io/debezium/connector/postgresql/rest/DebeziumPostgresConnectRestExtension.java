@@ -13,9 +13,7 @@ import org.apache.kafka.connect.rest.ConnectRestExtensionContext;
 
 /**
  * A Kafka Connect REST extension that enables some advanced features over
- * Kafka Connect's REST interface:
- *   + report available transformations and their configuration
- *   + return if topic auto-creation is available and enabled
+ * Kafka Connect's REST interface.
  *
  * To install this extension put the jar file into a separate Kafka Connect
  * plugin dir and configure your Kafka Connect properties file with:

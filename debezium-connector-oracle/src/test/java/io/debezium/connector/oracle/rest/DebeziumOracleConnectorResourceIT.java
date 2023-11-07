@@ -99,6 +99,70 @@ public class DebeziumOracleConnectorResourceIT {
                                 Map.of("property", OracleConnectorConfig.HOSTNAME.name(), "message", "The 'database.hostname' value is invalid: A value is required")));
     }
 
+    @Test
+    public void testFiltersWithEmptyFilters() {
+        ConnectorConfiguration config = getOracleConnectorConfiguration(1);
+
+        given()
+                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .when().contentType(ContentType.JSON).accept(ContentType.JSON).body(config.toJson())
+                .put(DebeziumOracleConnectorResource.BASE_PATH + DebeziumOracleConnectorResource.VALIDATE_FILTERS_ENDPOINT)
+                .then().log().all()
+                .statusCode(200)
+                .assertThat().body("status", equalTo("VALID"))
+                .body("validationResults.size()", is(0))
+                .body("matchingCollections.size()", is(6))
+                .body("matchingCollections",
+                        hasItems(
+                                Map.of("namespace", "C##DBZUSER", "name", "PEOPLE", "identifier", "C##DBZUSER.PEOPLE"),
+                                Map.of("namespace", "C##DBZUSER", "name", "DEBEZIUM_TABLE3", "identifier", "C##DBZUSER.DEBEZIUM_TABLE3"),
+                                Map.of("namespace", "C##DBZUSER", "name", "DEBEZIUM_TABLE1", "identifier", "C##DBZUSER.DEBEZIUM_TABLE1"),
+                                Map.of("namespace", "C##DBZUSER", "name", "DEBEZIUM_TABLE2", "identifier", "C##DBZUSER.DEBEZIUM_TABLE2"),
+                                Map.of("namespace", "C##DBZUSER", "name", "DEBEZIUM_TEST", "identifier", "C##DBZUSER.DEBEZIUM_TEST"),
+                                Map.of("namespace", "C##DBZUSER", "name", "TEST", "identifier", "C##DBZUSER.TEST")));
+    }
+
+    @Test
+    public void testFiltersWithValidTableIncludeList() {
+        ConnectorConfiguration config = getOracleConnectorConfiguration(1)
+                .with("table.include.list", "C##DBZUSER\\.DEBEZIUM_TABLE.*");
+
+        given()
+                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .when().contentType(ContentType.JSON).accept(ContentType.JSON).body(config.toJson())
+                .put(DebeziumOracleConnectorResource.BASE_PATH + DebeziumOracleConnectorResource.VALIDATE_FILTERS_ENDPOINT)
+                .then().log().all()
+                .statusCode(200)
+                .assertThat().body("status", equalTo("VALID"))
+                .body("validationResults.size()", is(0))
+                .body("matchingCollections.size()", is(3))
+                .body("matchingCollections",
+                        hasItems(
+                                Map.of("namespace", "C##DBZUSER", "name", "DEBEZIUM_TABLE3", "identifier", "C##DBZUSER.DEBEZIUM_TABLE3"),
+                                Map.of("namespace", "C##DBZUSER", "name", "DEBEZIUM_TABLE1", "identifier", "C##DBZUSER.DEBEZIUM_TABLE1"),
+                                Map.of("namespace", "C##DBZUSER", "name", "DEBEZIUM_TABLE2", "identifier", "C##DBZUSER.DEBEZIUM_TABLE2")));
+    }
+
+    @Test
+    public void testFiltersWithInvalidTableIncludeList() {
+        ConnectorConfiguration config = getOracleConnectorConfiguration(1)
+                .with("table.include.list", "+");
+
+        given()
+                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .when().contentType(ContentType.JSON).accept(ContentType.JSON).body(config.toJson())
+                .put(DebeziumOracleConnectorResource.BASE_PATH + DebeziumOracleConnectorResource.VALIDATE_FILTERS_ENDPOINT)
+                .then().log().all()
+                .statusCode(200)
+                .assertThat().body("status", equalTo("INVALID"))
+                .body("matchingCollections.size()", is(0))
+                .body("validationResults.size()", is(1))
+                .rootPath("validationResults[0]")
+                .body("property", equalTo("table.include.list"))
+                .body("message", equalTo(
+                        "The 'table.include.list' value is invalid: A comma-separated list of valid regular expressions is expected, but Dangling meta character '+' near index 0\n+\n^"));
+    }
+
     public static ConnectorConfiguration getOracleConnectorConfiguration(int id, String... options) {
         final ConnectorConfiguration config = ConnectorConfiguration.forJdbcContainer(RestExtensionTestInfrastructure.getOracleContainer())
                 .with(OracleConnectorConfig.PDB_NAME.name(), "ORCLPDB1")

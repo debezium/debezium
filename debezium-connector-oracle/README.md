@@ -30,7 +30,7 @@ In order to build this connector, the following pre-requisites must be met:
 mvn install:install-file \
   -DgroupId=com.oracle.instantclient \
   -DartifactId=xstreams \
-  -Dversion=21.1.0.0 \
+  -Dversion=21.6.0.0 \
   -Dpackaging=jar \
   -Dfile=xstreams.jar
 ```
