@@ -98,6 +98,111 @@ public class DebeziumPostgresConnectorResourceIT {
                                 Map.of("property", PostgresConnectorConfig.HOSTNAME.name(), "message", "The 'database.hostname' value is invalid: A value is required")));
     }
 
+    @Test
+    public void testFiltersWithEmptyFilters() {
+        ConnectorConfiguration config = getPostgresConnectorConfiguration(1);
+
+        given()
+                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .when().contentType(ContentType.JSON).accept(ContentType.JSON).body(config.toJson())
+                .put(DebeziumPostgresConnectorResource.BASE_PATH + DebeziumPostgresConnectorResource.VALIDATE_FILTERS_ENDPOINT)
+                .then().log().all()
+                .statusCode(200)
+                .assertThat().body("status", equalTo("VALID"))
+                .body("validationResults.size()", is(0))
+                .body("matchingCollections.size()", is(5))
+                .body("matchingCollections",
+                        hasItems(
+                                Map.of("namespace", "inventory", "name", "geom", "identifier", "inventory.geom"),
+                                Map.of("namespace", "inventory", "name", "products_on_hand", "identifier", "inventory.products_on_hand"),
+                                Map.of("namespace", "inventory", "name", "customers", "identifier", "inventory.customers"),
+                                Map.of("namespace", "inventory", "name", "orders", "identifier", "inventory.orders"),
+                                Map.of("namespace", "inventory", "name", "products", "identifier", "inventory.products")));
+    }
+
+    @Test
+    public void testFiltersWithValidTableIncludeList() {
+        ConnectorConfiguration config = getPostgresConnectorConfiguration(1)
+                .with("table.include.list", "inventory\\.product.*");
+
+        given()
+                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .when().contentType(ContentType.JSON).accept(ContentType.JSON).body(config.toJson())
+                .put(DebeziumPostgresConnectorResource.BASE_PATH + DebeziumPostgresConnectorResource.VALIDATE_FILTERS_ENDPOINT)
+                .then().log().all()
+                .statusCode(200)
+                .assertThat().body("status", equalTo("VALID"))
+                .body("validationResults.size()", is(0))
+                .body("matchingCollections.size()", is(2))
+                .body("matchingCollections",
+                        hasItems(
+                                Map.of("namespace", "inventory", "name", "products_on_hand", "identifier", "inventory.products_on_hand"),
+                                Map.of("namespace", "inventory", "name", "products", "identifier", "inventory.products")));
+    }
+
+    @Test
+    public void testFiltersWithValidSchemaIncludeList() {
+        ConnectorConfiguration config = getPostgresConnectorConfiguration(1)
+                .with("schema.include.list", "inventory");
+
+        given()
+                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .when().contentType(ContentType.JSON).accept(ContentType.JSON).body(config.toJson())
+                .put(DebeziumPostgresConnectorResource.BASE_PATH + DebeziumPostgresConnectorResource.VALIDATE_FILTERS_ENDPOINT)
+                .then().log().all()
+                .statusCode(200)
+                .assertThat().body("status", equalTo("VALID"))
+                .body("validationResults.size()", is(0))
+                .body("matchingCollections.size()", is(5))
+                .body("matchingCollections",
+                        hasItems(
+                                Map.of("namespace", "inventory", "name", "geom", "identifier", "inventory.geom"),
+                                Map.of("namespace", "inventory", "name", "products_on_hand", "identifier", "inventory.products_on_hand"),
+                                Map.of("namespace", "inventory", "name", "customers", "identifier", "inventory.customers"),
+                                Map.of("namespace", "inventory", "name", "orders", "identifier", "inventory.orders"),
+                                Map.of("namespace", "inventory", "name", "products", "identifier", "inventory.products")));
+    }
+
+    @Test
+    public void testFiltersWithInvalidSchemaIncludeListPattern() {
+        ConnectorConfiguration config = getPostgresConnectorConfiguration(1)
+                .with("schema.include.list", "+");
+
+        given()
+                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .when().contentType(ContentType.JSON).accept(ContentType.JSON).body(config.toJson())
+                .put(DebeziumPostgresConnectorResource.BASE_PATH + DebeziumPostgresConnectorResource.VALIDATE_FILTERS_ENDPOINT)
+                .then().log().all()
+                .statusCode(200)
+                .assertThat().body("status", equalTo("INVALID"))
+                .body("matchingCollections.size()", is(0))
+                .body("validationResults.size()", is(1))
+                .rootPath("validationResults[0]")
+                .body("property", equalTo("schema.include.list"))
+                .body("message", equalTo(
+                        "The 'schema.include.list' value is invalid: A comma-separated list of valid regular expressions is expected, but Dangling meta character '+' near index 0\n+\n^"));
+    }
+
+    @Test
+    public void testFiltersWithInvalidSchemaExcludeListPattern() {
+        ConnectorConfiguration config = getPostgresConnectorConfiguration(1)
+                .with("schema.exclude.list", "+");
+
+        given()
+                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .when().contentType(ContentType.JSON).accept(ContentType.JSON).body(config.toJson())
+                .put(DebeziumPostgresConnectorResource.BASE_PATH + DebeziumPostgresConnectorResource.VALIDATE_FILTERS_ENDPOINT)
+                .then().log().all()
+                .statusCode(200)
+                .assertThat().body("status", equalTo("INVALID"))
+                .body("matchingCollections.size()", is(0))
+                .body("validationResults.size()", is(1))
+                .rootPath("validationResults[0]")
+                .body("property", equalTo("schema.exclude.list"))
+                .body("message", equalTo(
+                        "The 'schema.exclude.list' value is invalid: A comma-separated list of valid regular expressions is expected, but Dangling meta character '+' near index 0\n+\n^"));
+    }
+
     private static ConnectorConfiguration getPostgresConnectorConfiguration(int id, String... options) {
         final ConnectorConfiguration config = ConnectorConfiguration.forJdbcContainer(RestExtensionTestInfrastructure.getPostgresContainer())
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE.name(), "never") // temporarily disable snapshot mode globally until we can check if connectors inside testcontainers are in SNAPSHOT or STREAMING mode (wait for snapshot finished!)

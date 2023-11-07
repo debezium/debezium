@@ -556,6 +556,7 @@
                                 <database.username>${database.username}</database.username>
                                 <database.password>${database.password}</database.password>
                                 <database.dbname>${database.dbname}</database.dbname>
+                                <database.pdb.name>${database.pdb.name}</database.pdb.name>
                             </systemPropertyVariables>
                         </configuration>
                     </plugin>

@@ -15,42 +15,45 @@ import static org.hamcrest.CoreMatchers.startsWith;
 import java.util.Locale;
 import java.util.Map;
 
-import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assume;
-import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import io.debezium.connector.oracle.Module;
 import io.debezium.connector.oracle.OracleConnector;
 import io.debezium.connector.oracle.OracleConnectorConfig;
-import io.debezium.storage.kafka.history.KafkaSchemaHistory;
+import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.testing.testcontainers.ConnectorConfiguration;
 import io.debezium.testing.testcontainers.testhelper.RestExtensionTestInfrastructure;
 import io.restassured.http.ContentType;
 
 public class DebeziumOracleConnectorResourceIT {
 
-    @BeforeClass
-    public static void checkCondition() {
-        Assume.assumeThat("Skipping DebeziumOracleConnectorResourceIT tests when assembly profile is not active!", System.getProperty("isAssemblyProfileActive", "false"),
-                is("true"));
-    }
+    private static final boolean IS_ASSEMBLY_PROFILE_ACTIVE = System.getProperty("isAssemblyProfileActive", "false").equalsIgnoreCase("true");
+    private static String ORACLE_USERNAME;
+    private static boolean running = false;
 
-    @Before
-    public void start() {
+    @BeforeClass
+    public static void checkConditionAndStart() {
+        Assume.assumeTrue("Skipping DebeziumOracleConnectorResourceIT tests when assembly profile is not active!", IS_ASSEMBLY_PROFILE_ACTIVE);
         RestExtensionTestInfrastructure.setupDebeziumContainer(Module.version(), DebeziumOracleConnectRestExtension.class.getName());
         RestExtensionTestInfrastructure.startContainers(DATABASE.ORACLE);
+        TestHelper.loadTestData(TestHelper.getOracleConnectorConfiguration(1), "rest/data.sql");
+        ORACLE_USERNAME = RestExtensionTestInfrastructure.getOracleContainer().getUsername();
+        running = true;
     }
 
-    @After
-    public void stop() {
-        RestExtensionTestInfrastructure.stopContainers();
+    @AfterClass
+    public static void stop() {
+        if (IS_ASSEMBLY_PROFILE_ACTIVE && running) {
+            RestExtensionTestInfrastructure.stopContainers();
+        }
     }
 
     @Test
     public void testValidConnection() {
-        ConnectorConfiguration config = getOracleConnectorConfiguration(1);
+        ConnectorConfiguration config = TestHelper.getOracleConnectorConfiguration(1);
 
         given()
                 .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
@@ -64,7 +67,7 @@ public class DebeziumOracleConnectorResourceIT {
 
     @Test
     public void testInvalidHostnameConnection() {
-        ConnectorConfiguration config = getOracleConnectorConfiguration(1).with(OracleConnectorConfig.HOSTNAME.name(), "zzzzzzzzzz");
+        ConnectorConfiguration config = TestHelper.getOracleConnectorConfiguration(1).with(OracleConnectorConfig.HOSTNAME.name(), "zzzzzzzzzz");
 
         Locale.setDefault(new Locale("en", "US")); // to enforce errormessages in English
         given()
@@ -99,20 +102,80 @@ public class DebeziumOracleConnectorResourceIT {
                                 Map.of("property", OracleConnectorConfig.HOSTNAME.name(), "message", "The 'database.hostname' value is invalid: A value is required")));
     }
 
-    public static ConnectorConfiguration getOracleConnectorConfiguration(int id, String... options) {
-        final ConnectorConfiguration config = ConnectorConfiguration.forJdbcContainer(RestExtensionTestInfrastructure.getOracleContainer())
-                .with(OracleConnectorConfig.PDB_NAME.name(), "ORCLPDB1")
-                .with(OracleConnectorConfig.TOPIC_PREFIX.name(), "dbserver" + id)
-                .with(KafkaSchemaHistory.BOOTSTRAP_SERVERS.name(), RestExtensionTestInfrastructure.KAFKA_HOSTNAME + ":9092")
-                .with(KafkaSchemaHistory.TOPIC.name(), "dbhistory.inventory");
+    @Test
+    public void testFiltersWithEmptyFilters() {
+        ConnectorConfiguration config = TestHelper.getOracleConnectorConfiguration(1);
 
-        if (options != null && options.length > 0) {
-            for (int i = 0; i < options.length; i += 2) {
-                config.with(options[i], options[i + 1]);
-            }
-        }
+        given()
+                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .when().contentType(ContentType.JSON).accept(ContentType.JSON).body(config.toJson())
+                .put(DebeziumOracleConnectorResource.BASE_PATH + DebeziumOracleConnectorResource.VALIDATE_FILTERS_ENDPOINT)
+                .then().log().all()
+                .statusCode(200)
+                .assertThat().body("status", equalTo("VALID"))
+                .body("validationResults.size()", is(0))
+                .body("matchingCollections.size()", is(10))
+                .body("matchingCollections",
+                        hasItems(
+                                Map.of("namespace", ORACLE_USERNAME.toUpperCase(), "name", "ORDERS", "identifier", ORACLE_USERNAME.toUpperCase() + ".ORDERS"),
+                                Map.of("namespace", ORACLE_USERNAME.toUpperCase(), "name", "PEOPLE", "identifier", ORACLE_USERNAME.toUpperCase() + ".PEOPLE"),
+                                Map.of("namespace", ORACLE_USERNAME.toUpperCase(), "name", "TEST", "identifier", ORACLE_USERNAME.toUpperCase() + ".TEST"),
+                                Map.of("namespace", ORACLE_USERNAME.toUpperCase(), "name", "PRODUCTS", "identifier", ORACLE_USERNAME.toUpperCase() + ".PRODUCTS"),
+                                Map.of("namespace", ORACLE_USERNAME.toUpperCase(), "name", "CUSTOMERS", "identifier", ORACLE_USERNAME.toUpperCase() + ".CUSTOMERS"),
+                                Map.of("namespace", ORACLE_USERNAME.toUpperCase(), "name", "DEBEZIUM_TABLE3", "identifier",
+                                        ORACLE_USERNAME.toUpperCase() + ".DEBEZIUM_TABLE3"),
+                                Map.of("namespace", ORACLE_USERNAME.toUpperCase(), "name", "DEBEZIUM_TABLE2", "identifier",
+                                        ORACLE_USERNAME.toUpperCase() + ".DEBEZIUM_TABLE2"),
+                                Map.of("namespace", ORACLE_USERNAME.toUpperCase(), "name", "DEBEZIUM_TABLE1", "identifier",
+                                        ORACLE_USERNAME.toUpperCase() + ".DEBEZIUM_TABLE1"),
+                                Map.of("namespace", ORACLE_USERNAME.toUpperCase(), "name", "PRODUCTS_ON_HAND", "identifier",
+                                        ORACLE_USERNAME.toUpperCase() + ".PRODUCTS_ON_HAND"),
+                                Map.of("namespace", ORACLE_USERNAME.toUpperCase(), "name", "DEBEZIUM_TEST", "identifier",
+                                        ORACLE_USERNAME.toUpperCase() + ".DEBEZIUM_TEST")));
+    }
 
-        return config;
+    @Test
+    public void testFiltersWithValidTableIncludeList() {
+        ConnectorConfiguration config = TestHelper.getOracleConnectorConfiguration(1)
+                .with("table.include.list", ORACLE_USERNAME.toUpperCase() + "\\.DEBEZIUM_TABLE.*");
+
+        given()
+                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .when().contentType(ContentType.JSON).accept(ContentType.JSON).body(config.toJson())
+                .put(DebeziumOracleConnectorResource.BASE_PATH + DebeziumOracleConnectorResource.VALIDATE_FILTERS_ENDPOINT)
+                .then().log().all()
+                .statusCode(200)
+                .assertThat().body("status", equalTo("VALID"))
+                .body("validationResults.size()", is(0))
+                .body("matchingCollections.size()", is(3))
+                .body("matchingCollections",
+                        hasItems(
+                                Map.of("namespace", ORACLE_USERNAME.toUpperCase(), "name", "DEBEZIUM_TABLE3", "identifier",
+                                        ORACLE_USERNAME.toUpperCase() + ".DEBEZIUM_TABLE3"),
+                                Map.of("namespace", ORACLE_USERNAME.toUpperCase(), "name", "DEBEZIUM_TABLE1", "identifier",
+                                        ORACLE_USERNAME.toUpperCase() + ".DEBEZIUM_TABLE1"),
+                                Map.of("namespace", ORACLE_USERNAME.toUpperCase(), "name", "DEBEZIUM_TABLE2", "identifier",
+                                        ORACLE_USERNAME.toUpperCase() + ".DEBEZIUM_TABLE2")));
+    }
+
+    @Test
+    public void testFiltersWithInvalidTableIncludeList() {
+        ConnectorConfiguration config = TestHelper.getOracleConnectorConfiguration(1)
+                .with("table.include.list", "+");
+
+        given()
+                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .when().contentType(ContentType.JSON).accept(ContentType.JSON).body(config.toJson())
+                .put(DebeziumOracleConnectorResource.BASE_PATH + DebeziumOracleConnectorResource.VALIDATE_FILTERS_ENDPOINT)
+                .then().log().all()
+                .statusCode(200)
+                .assertThat().body("status", equalTo("INVALID"))
+                .body("matchingCollections.size()", is(0))
+                .body("validationResults.size()", is(1))
+                .rootPath("validationResults[0]")
+                .body("property", equalTo("table.include.list"))
+                .body("message", equalTo(
+                        "The 'table.include.list' value is invalid: A comma-separated list of valid regular expressions is expected, but Dangling meta character '+' near index 0\n+\n^"));
     }
 
 }

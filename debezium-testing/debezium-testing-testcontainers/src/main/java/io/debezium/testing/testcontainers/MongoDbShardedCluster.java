@@ -145,9 +145,11 @@ public class MongoDbShardedCluster implements MongoDbDeployment {
      */
     @Override
     public void stop() {
-        // Idempotent
-        LOGGER.info("Stopping {} shard cluster...", shards.size());
-        MoreStartables.deepStopSync(stream());
+        if (started) {
+            LOGGER.info("Stopping {} shard cluster...", shards.size());
+            MoreStartables.deepStopSync(stream());
+            started = false;
+        }
     }
 
     public int size() {

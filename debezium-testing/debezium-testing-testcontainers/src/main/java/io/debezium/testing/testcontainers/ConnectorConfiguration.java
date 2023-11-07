@@ -5,7 +5,11 @@
  */
 package io.debezium.testing.testcontainers;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Properties;
 
 import org.testcontainers.containers.JdbcDatabaseContainer;
 
@@ -26,11 +30,12 @@ public class ConnectorConfiguration {
     public static final String PASSWORD = "database.password";
     public static final String DBNAME = "database.dbname";
 
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
     private final ObjectNode configNode;
 
     protected ConnectorConfiguration() {
-        final ObjectMapper mapper = new ObjectMapper();
-        this.configNode = mapper.createObjectNode();
+        this.configNode = MAPPER.createObjectNode();
         this.configNode.put("tasks.max", 1);
     }
 
@@ -115,8 +120,21 @@ public class ConnectorConfiguration {
         return this;
     }
 
+    public ConnectorConfiguration remove(String key) {
+        this.configNode.remove(key);
+        return this;
+    }
+
     public String toJson() {
         return getConfiguration().toString();
+    }
+
+    public Properties asProperties() {
+        var connectorProperties = new Properties();
+        Map<?, ?> configMap = MAPPER.convertValue(configNode, HashMap.class);
+        configMap.values().removeIf(Objects::isNull);
+        connectorProperties.putAll(configMap);
+        return connectorProperties;
     }
 
     ObjectNode getConfiguration() {

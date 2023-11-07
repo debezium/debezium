@@ -16,13 +16,13 @@ import org.testcontainers.utility.DockerImageName;
 public class OracleContainer extends org.testcontainers.containers.OracleContainer {
 
     private static final String FALLBACK_ORACLE_SERVER_VERSION = "21.3.0";
-    static final String DEFAULT_TAG = parameterWithDefault(System.getProperty("version.oracle.server"), FALLBACK_ORACLE_SERVER_VERSION);
-    static final String ORACLE_USERNAME = parameterWithDefault(System.getProperty("database.username"), "c##dbzuser");
-    static final String ORACLE_PASSWORD = parameterWithDefault(System.getProperty("database.password"), "dbz");
-    static final String ORACLE_DBNAME = parameterWithDefault(System.getProperty("database.dbname"), "ORCLCDB");
-
-    static final int ORACLE_PORT = 1521;
-    private static final DockerImageName DEFAULT_IMAGE_NAME = DockerImageName.parse("quay.io/rh_integration/dbz-oracle");
+    public static final String DEFAULT_TAG = parameterWithDefault(System.getProperty("version.oracle.server"), FALLBACK_ORACLE_SERVER_VERSION);
+    public static final DockerImageName DEFAULT_IMAGE_NAME = DockerImageName.parse("quay.io/rh_integration/dbz-oracle");
+    public final String ORACLE_DBNAME = parameterWithDefault(System.getProperty("database.dbname"), "ORCLCDB");
+    public final String ORACLE_PDB_NAME = parameterWithDefault(System.getProperty("database.pdb.name"), "ORCLPDB1");
+    private static final String ORACLE_USERNAME = parameterWithDefault(System.getProperty("database.username"), "debezium");
+    private static final String ORACLE_PASSWORD = parameterWithDefault(System.getProperty("database.password"), "dbz");
+    public static final int ORACLE_PORT = 1521;
     private static final int ORACLE_DEFAULT_STARTUP_TIMEOUT_SECONDS = 240;
     private static final int DEFAULT_CONNECT_TIMEOUT_SECONDS = 120;
     private static final int APEX_HTTP_PORT = 8080;

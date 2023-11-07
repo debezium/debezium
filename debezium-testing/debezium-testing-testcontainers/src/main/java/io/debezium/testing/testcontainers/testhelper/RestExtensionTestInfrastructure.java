@@ -7,6 +7,7 @@ package io.debezium.testing.testcontainers.testhelper;
 
 import java.nio.file.Paths;
 import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
@@ -21,6 +22,7 @@ import org.testcontainers.containers.Network;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.containers.startupcheck.MinimumDurationRunningStartupCheckStrategy;
+import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
 import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.lifecycle.Startable;
 import org.testcontainers.utility.DockerImageName;
@@ -86,9 +88,14 @@ public class RestExtensionTestInfrastructure {
             .withEnv("MSSQL_PID", "Standard")
             .withEnv("MSSQL_AGENT_ENABLED", "true")
             .withPassword("Password!")
-            .withStartupCheckStrategy(new MinimumDurationRunningStartupCheckStrategy(Duration.ofSeconds(5)))
             .withInitScript("initialize-sqlserver-database.sql")
-            .acceptLicense();
+            .acceptLicense()
+            .waitingFor(new LogMessageWaitStrategy()
+                    .withRegEx(".*SQL Server is now ready for client connections\\..*\\s")
+                    .withTimes(1)
+                    .withStartupTimeout(Duration.of(CI_CONTAINER_STARTUP_TIME * 3, ChronoUnit.SECONDS)))
+            .withStartupCheckStrategy(new MinimumDurationRunningStartupCheckStrategy(Duration.ofSeconds(10)))
+            .withConnectTimeoutSeconds(300);
 
     private static final OracleContainer ORACLE_CONTAINER = (OracleContainer) new OracleContainer()
             .withNetwork(NETWORK)
@@ -128,7 +135,8 @@ public class RestExtensionTestInfrastructure {
     }
 
     public static void stopContainers() {
-        Stream<Startable> containers = Stream.of(DEBEZIUM_CONTAINER, SQL_SERVER_CONTAINER, MONGODB_REPLICA, MYSQL_CONTAINER, POSTGRES_CONTAINER, KAFKA_CONTAINER);
+        Stream<Startable> containers = Stream.of(DEBEZIUM_CONTAINER, ORACLE_CONTAINER, SQL_SERVER_CONTAINER, MONGODB_REPLICA, MYSQL_CONTAINER, POSTGRES_CONTAINER,
+                KAFKA_CONTAINER);
         MoreStartables.deepStopSync(containers);
         DEBEZIUM_CONTAINER = null;
     }

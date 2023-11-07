@@ -3,33 +3,26 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.config;
+package io.debezium.rest.model;
 
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.Config;
-import org.apache.kafka.connect.connector.Connector;
 
 public class ValidationResults {
 
-    public final List<ValidationResult> validationResults;
     public Status status;
+    public final List<ValidationResult> validationResults;
 
-    public ValidationResults(Connector connector, Map<String, ?> properties) {
-        this.validationResults = convertConfigToValidationResults(connector.validate(convertPropertiesToStrings(properties)));
+    public ValidationResults(Config validatedConfig) {
+        this.validationResults = convertConfigToValidationResults(validatedConfig);
         if (validationResults.isEmpty()) {
             this.status = Status.VALID;
         }
         else {
             this.status = Status.INVALID;
         }
-    }
-
-    private static Map<String, String> convertPropertiesToStrings(Map<String, ?> properties) {
-        return properties.entrySet().stream()
-                .collect(Collectors.toMap(Map.Entry::getKey, entry -> String.valueOf(entry.getValue())));
     }
 
     private List<ValidationResult> convertConfigToValidationResults(Config result) {

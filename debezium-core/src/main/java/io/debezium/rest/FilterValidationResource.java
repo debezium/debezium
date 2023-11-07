@@ -5,6 +5,7 @@
  */
 package io.debezium.rest;
 
+import java.util.List;
 import java.util.Map;
 
 import javax.ws.rs.PUT;
@@ -12,22 +13,28 @@ import javax.ws.rs.Path;
 
 import org.apache.kafka.connect.connector.Connector;
 
-import io.debezium.rest.model.ValidationResults;
+import io.debezium.config.Configuration;
+import io.debezium.rest.model.DataCollection;
+import io.debezium.rest.model.FilterValidationResults;
 
-public interface ConnectionValidationResource {
+public interface FilterValidationResource {
 
     Connector getConnector();
 
-    String VALIDATE_CONNECTION_ENDPOINT = "/validate/connection";
+    List<DataCollection> getMatchingCollections(Configuration configuration);
+
+    String VALIDATE_FILTERS_ENDPOINT = "/validate/filters";
 
     @PUT
-    @Path(VALIDATE_CONNECTION_ENDPOINT)
-    default ValidationResults validateConnectionProperties(Map<String, ?> properties) {
+    @Path(VALIDATE_FILTERS_ENDPOINT)
+    default FilterValidationResults validateFiltersProperties(Map<String, ?> properties) {
         // switch classloader to the connector specific classloader in order to load dependencies required to validate the connector config
         ClassLoader originalClassLoader = Thread.currentThread().getContextClassLoader();
         Thread.currentThread().setContextClassLoader(getConnector().getClass().getClassLoader());
-        ValidationResults validationResults = ConnectorConfigValidator.validateConfig(getConnector(), properties);
+        FilterValidationResults validationResults = ConnectorConfigValidator.validateFilterConfig(
+                getConnector(), properties, () -> getMatchingCollections(Configuration.from(properties)));
         Thread.currentThread().setContextClassLoader(originalClassLoader);
         return validationResults;
     }
+
 }
