@@ -7,6 +7,7 @@ package io.debezium.connector.mysql;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Calendar;
 
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
@@ -29,17 +30,31 @@ public class MariaDbProtocolFieldReader extends AbstractMySqlFieldReader {
 
     @Override
     protected Object readTimeField(ResultSet rs, int columnIndex) throws SQLException {
-        return rs.getTime(columnIndex);
+        final String value = rs.getString(columnIndex);
+        if (value == null) {
+            return null;
+        }
+        return MySqlValueConverters.stringToDuration(value);
     }
 
     @Override
     protected Object readDateField(ResultSet rs, int columnIndex, Column column, Table table) throws SQLException {
-        return rs.getDate(columnIndex);
+        String value = rs.getString(columnIndex);
+        if (value == null) {
+            return value;
+        }
+        return MySqlValueConverters.stringToLocalDate(value, column, table);
     }
 
     @Override
     protected Object readTimestampField(ResultSet rs, int columnIndex, Column column, Table table) throws SQLException {
-        return rs.getTimestamp(columnIndex);
+        String value = rs.getString(columnIndex);
+        if (value == null) {
+            return value;
+        }
+        return MySqlValueConverters.containsZeroValuesInDatePart(value, column, table)
+                ? null
+                : rs.getTimestamp(columnIndex, Calendar.getInstance());
     }
 
 }
