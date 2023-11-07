@@ -32,7 +32,6 @@ jobs:
       rest-extension-changed: ${{ steps.changed-files-rest-extension.outputs.any_changed }}
       schema-generator-changed: ${{ steps.changed-files-schema-generator.outputs.any_changed }}
       debezium-testing-changed: ${{ steps.changed-files-debezium-testing.outputs.any_changed }}
-      debezium-ui-changed: ${{ steps.changed-files-debezium-ui.outputs.any_changed }}
       mysql-ddl-parser-changed: ${{ steps.changed-files-mysql-ddl-parser.outputs.any_changed }}
       oracle-ddl-parser-changed: ${{ steps.changed-files-oracle-ddl-parser.outputs.any_changed }}
       documentation-only-changed: ${{ steps.changed-files-documentation.outputs.only_changed}}
@@ -1036,30 +1035,3 @@ jobs:
           -Dmaven.wagon.http.pool=false
           -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
           -DskipNonCore
-
-  build_ui:
-    needs: [check_style, file_changes]
-    if: ${{ needs.file_changes.outputs.debezium-ui-changed == 'true' }}
-    name: "UI"
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Action (UI)
-        uses: actions/checkout@v4
-        with:
-          repository: debezium/debezium-ui
-          path: debezium-ui
-
-      - name: Set up Java 17
-        uses: actions/setup-java@v3
-        with:
-          distribution: 'temurin'
-          java-version: 17
-
-      - name: Cache Maven Repository
-        uses: actions/cache@v3
-        with:
-          path: ~/.m2/repository
-          key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
-          restore-keys: |
-            maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
-
