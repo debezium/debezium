@@ -495,6 +495,7 @@ public class MySqlConnection extends JdbcConnection {
     public static class MySqlConnectionConfiguration {
 
         protected static final String JDBC_PROPERTY_CONNECTION_TIME_ZONE = "connectionTimeZone";
+        protected static final String JDBC_PROPERTY_MARIADB_TIME_ZONE = "timezone";
 
         private final JdbcConfiguration jdbcConfig;
         private final ConnectionFactory factory;
@@ -534,7 +535,12 @@ public class MySqlConnection extends JdbcConnection {
                 }
             }
 
-            jdbcConfigBuilder.with(JDBC_PROPERTY_CONNECTION_TIME_ZONE, determineConnectionTimeZone(dbConfig));
+            if (isUsingMariaDbProtocol(config)) {
+                jdbcConfigBuilder.with(JDBC_PROPERTY_MARIADB_TIME_ZONE, determineConnectionTimeZoneForMariaDbDriver(dbConfig));
+            }
+            else {
+                jdbcConfigBuilder.with(JDBC_PROPERTY_CONNECTION_TIME_ZONE, determineConnectionTimeZoneForMySqlDriver(dbConfig));
+            }
 
             // Set and remove options to prevent potential vulnerabilities
             jdbcConfigBuilder
@@ -550,7 +556,18 @@ public class MySqlConnection extends JdbcConnection {
             factory = JdbcConnection.patternBasedFactory(MySqlConnection.URL_PATTERN, driverClassName, getClass().getClassLoader(), protocol);
         }
 
-        private static String determineConnectionTimeZone(final Configuration dbConfig) {
+        private static boolean isUsingMariaDbProtocol(Configuration config) {
+            final String jdbcProtocol = config.getString(MySqlConnectorConfig.JDBC_PROTOCOL);
+            return !Strings.isNullOrBlank(jdbcProtocol) && jdbcProtocol.equalsIgnoreCase("jdbc:mariadb");
+        }
+
+        private static String determineConnectionTimeZoneForMariaDbDriver(final Configuration dbConfig) {
+            // Debezium by default expected timezone data delivered in server timezone
+            String timezone = dbConfig.getString(JDBC_PROPERTY_MARIADB_TIME_ZONE);
+            return timezone != null ? timezone : "auto";
+        }
+
+        private static String determineConnectionTimeZoneForMySqlDriver(final Configuration dbConfig) {
             // Debezium by default expects timezoned data delivered in server timezone
             String connectionTimeZone = dbConfig.getString(JDBC_PROPERTY_CONNECTION_TIME_ZONE);
 
