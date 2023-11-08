@@ -21,6 +21,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -450,6 +451,75 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         Struct deleteKey = (Struct) deleteRecord.key();
         String deleteId = toObjectId(deleteKey.getString("id")).toString();
         assertThat(deleteId).isEqualTo(id.get());
+    }
+
+    @Test
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 6, reason = "Pre-image support in Change Stream is officially released in Mongo 6.0.")
+    public void shouldConsumeLargeEvents() throws InterruptedException {
+        final var collName = "large";
+        final var dbName = "dbit";
+
+        config = TestHelper.getConfiguration(mongo).edit()
+                .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.NEVER)
+                .with(MongoDbConnectorConfig.CAPTURE_MODE, MongoDbConnectorConfig.CaptureMode.CHANGE_STREAMS_UPDATE_FULL_WITH_PRE_IMAGE)
+                .with(MongoDbConnectorConfig.CURSOR_OVERSIZE_HANDLING_MODE, MongoDbConnectorConfig.OversizeHandlingMode.SPLIT)
+                .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, dbName + "." + collName)
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
+                .build();
+
+        // Set up the replication context for connections ...
+        context = new MongoDbTaskContext(config);
+
+        // Cleanup database
+        TestHelper.cleanDatabase(mongo, "dbit");
+
+        // Enable pre images
+        try (var client = connect()) {
+            MongoDatabase db1 = client.getDatabase(dbName);
+            CreateCollectionOptions options = new CreateCollectionOptions();
+            options.changeStreamPreAndPostImagesOptions(new ChangeStreamPreAndPostImagesOptions(true));
+            db1.createCollection(collName, options);
+        }
+
+        // Before starting the connector, add data to the databases ...
+        var docId = 0;
+        var beforeValue = String.join("", Collections.nCopies(16 * 1024 * 1024 - 1024, "a"));
+        var expectedBeforeDocument = new Document("_id", 0).append("value", beforeValue);
+        insertDocuments("dbit", collName, expectedBeforeDocument);
+
+        // Start the connector ...
+        start(MongoDbConnector.class, config);
+        waitForStreamingRunning("mongodb", "mongo");
+
+        // Update document
+        var afterValue = String.join("", Collections.nCopies(16 * 1024 * 1024 - 1024, "b"));
+        var expectedAfterDocument = new Document("_id", 0).append("value", afterValue);
+        try (var client = connect()) {
+            MongoDatabase db1 = client.getDatabase(dbName);
+            MongoCollection<Document> coll = db1.getCollection(collName);
+
+            // Insert the document with a generated ID ...
+            var updateDocument = new Document("$set", new Document("value", afterValue));
+            updateDocument(dbName, collName, new Document("_id", docId), updateDocument);
+        }
+
+        // Wait until we can consume the 1 insert and 1 update and 1 replace...
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.allRecordsInOrder().size()).isEqualTo(1);
+        SourceRecord updateRecord = records.allRecordsInOrder().get(0);
+
+        validate(updateRecord);
+        verifyUpdateOperation(updateRecord);
+        verifyNotFromInitialSync(updateRecord);
+
+        Struct updateValue = (Struct) updateRecord.value();
+        var actualBeforeDocument = Document.parse(updateValue.getString("before"));
+        var actualAfterDocument = Document.parse(updateValue.getString("after"));
+
+        assertThat(actualBeforeDocument).isEqualTo(expectedBeforeDocument);
+        assertThat(actualAfterDocument).isEqualTo(expectedAfterDocument);
+
     }
 
     @Test
