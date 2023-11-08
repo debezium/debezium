@@ -1512,7 +1512,7 @@ Set this property to one of the following values:
 
 `replica_set`:: The connector establishes individual connections to the replica set for each shard.
 
-`sharded`:: The connector establishes a single connection to Mongo router, based on the value of the xref:mongodb-property-mongodb-connection-string[`mongodb.connection.string`].
+`sharded`:: The connector establishes a single connection to the mongos router instance that is specified in the xref:mongodb-property-mongodb-connection-string[`mongodb.connection.string`] property.
 
 [NOTE]
 ====
