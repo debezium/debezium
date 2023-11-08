@@ -81,7 +81,7 @@ public class ConvertCloudEventToSaveableForm implements Transformation<SinkRecor
             final String[] parts = rawFieldMapping.split(FIELD_NAME_SEPARATOR);
             final String cloudEventFieldName = parts[0];
             final String databaseColumnName;
-            if (rawFieldMapping.contains(FIELD_NAME_SEPARATOR)) {
+            if (parts.length > 1) {
                 databaseColumnName = parts[1];
             }
             else {
@@ -94,8 +94,8 @@ public class ConvertCloudEventToSaveableForm implements Transformation<SinkRecor
 
     @Override
     public SinkRecord apply(final SinkRecord record) {
-        if (!record.valueSchema().name().endsWith(CLOUD_EVENTS_SCHEMA_NAME_SUFFIX) || fieldsMapping.isEmpty()) {
-            return null;
+        if (record == null || !record.valueSchema().name().endsWith(CLOUD_EVENTS_SCHEMA_NAME_SUFFIX) || fieldsMapping.isEmpty()) {
+            return record;
         }
 
         final org.apache.kafka.connect.data.Field dataField = record.valueSchema().field(CloudEventsMaker.FieldName.DATA);
