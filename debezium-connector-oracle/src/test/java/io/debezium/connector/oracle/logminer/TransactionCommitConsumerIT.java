@@ -13,12 +13,16 @@ import java.util.List;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnector;
 import io.debezium.connector.oracle.OracleConnectorConfig;
+import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
+import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
@@ -27,7 +31,11 @@ import io.debezium.embedded.AbstractConnectorTest;
 /**
  * @author Chris Cranford
  */
+@SkipWhenAdapterNameIsNot(SkipWhenAdapterNameIsNot.AdapterName.LOGMINER)
 public class TransactionCommitConsumerIT extends AbstractConnectorTest {
+
+    @Rule
+    public final TestRule skipAdapterRule = new SkipTestDependingOnAdapterNameRule();
 
     private static OracleConnection connection;
 
