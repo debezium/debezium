@@ -10,10 +10,7 @@ import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.sql.Types;
-import java.time.LocalDate;
 import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
 import java.util.ArrayList;
@@ -630,36 +627,6 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
         registerType(ConnectTimestampType.INSTANCE);
         registerType(ConnectTimeType.INSTANCE);
         registerType(ConnectMapToConnectStringType.INSTANCE);
-    }
-
-    @Override
-    public Object convertToCorrectZonedTimestamp(ZonedDateTime zonedTime) {
-        return zonedTime;
-    }
-
-    @Override
-    public Object convertToCorrectDate(LocalDate localDate) {
-        return localDate;
-    }
-
-    @Override
-    public Object convertToCorrectTimestamp(ZonedDateTime zonedDateTime) {
-        return zonedDateTime.toLocalDateTime();
-    }
-
-    @Override
-    public Object convertToCorrectTime(ZonedDateTime zonedDateTime) {
-        return zonedDateTime.toLocalDateTime().toLocalTime();
-    }
-
-    @Override
-    public Optional<Integer> getZonedTimestampType() {
-        return Optional.of(Types.TIMESTAMP_WITH_TIMEZONE);
-    }
-
-    @Override
-    public Optional<Integer> getTimestampType() {
-        return Optional.of(Types.TIMESTAMP);
     }
 
     protected void registerType(Type type) {

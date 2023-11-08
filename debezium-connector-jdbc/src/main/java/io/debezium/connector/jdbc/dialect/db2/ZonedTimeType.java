@@ -3,8 +3,9 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.jdbc.type.debezium;
+package io.debezium.connector.jdbc.dialect.db2;
 
+import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.LocalDate;
 import java.time.OffsetTime;
@@ -73,14 +74,11 @@ public class ZonedTimeType extends AbstractTimeType {
             final ZonedDateTime zdt = OffsetTime.parse((String) value, ZonedTime.FORMATTER).atDate(LocalDate.now()).toZonedDateTime();
 
             if (getDialect().isTimeZoneSet()) {
-                if (getDialect().shouldBindTimeWithTimeZoneAsDatabaseTimeZone()) {
-                    return List
-                            .of(new ValueBindDescriptor(index, zdt.withZoneSameInstant(getDatabaseTimeZone().toZoneId()).toOffsetDateTime()));
-                }
 
-                return List.of(new ValueBindDescriptor(index, zdt.toOffsetDateTime(), getJdbcType()));
+                return List.of(new ValueBindDescriptor(index, Timestamp.from(zdt.toInstant())));
             }
-            return List.of(new ValueBindDescriptor(index, zdt.toOffsetDateTime()));
+
+            return List.of(new ValueBindDescriptor(index, Timestamp.from(zdt.toInstant())));
 
         }
 

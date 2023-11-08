@@ -7,9 +7,7 @@ package io.debezium.connector.jdbc.dialect.postgres;
 
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.time.temporal.Temporal;
 import java.time.temporal.TemporalAccessor;
 import java.util.Optional;
 
@@ -211,18 +209,5 @@ public class PostgresDatabaseDialect extends GeneralDatabaseDialect {
             }
         }
         return columnName;
-    }
-
-    @Override
-    public Temporal convertToCorrectZonedTimestamp(ZonedDateTime zonedTime) {
-
-        // For timestamp with time zone, the internally stored value is always in UTC (Universal Coordinated Time, traditionally known as Greenwich Mean Time, GMT).
-        // An input value that has an explicit time zone specified is converted to UTC using the appropriate offset for that time zone.
-        // If no time zone is stated in the input string, then it is assumed to be in the time zone indicated by the system's TimeZone parameter,
-        // and is converted to UTC using the offset for the timezone zone.
-        //
-        // When a timestamp with time zone value is output, it is always converted from UTC to the current timezone zone, and displayed as local time in that zone.
-        // https://www.postgresql.org/docs/current/datatype-datetime.html
-        return zonedTime.toOffsetDateTime();
     }
 }

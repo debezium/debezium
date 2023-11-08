@@ -3,38 +3,37 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.jdbc.type.debezium;
+package io.debezium.connector.jdbc.dialect.db2.connect;
 
-import java.sql.Types;
-import java.time.ZonedDateTime;
 import java.util.List;
 
+import org.apache.kafka.connect.data.Date;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.errors.ConnectException;
 
 import io.debezium.connector.jdbc.ValueBindDescriptor;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
-import io.debezium.connector.jdbc.type.AbstractTimestampType;
+import io.debezium.connector.jdbc.type.AbstractDateType;
 import io.debezium.connector.jdbc.type.Type;
-import io.debezium.time.ZonedTimestamp;
+import io.debezium.connector.jdbc.util.DateTimeUtils;
 
 /**
- * An implementation of {@link Type} for {@link ZonedTimestamp} values.
+ * An implementation of {@link Type} for {@link Date} values.
  *
  * @author Chris Cranford
  */
-public class ZonedTimestampType extends AbstractTimestampType {
+public class ConnectDateType extends AbstractDateType {
 
-    public static final ZonedTimestampType INSTANCE = new ZonedTimestampType();
+    public static final ConnectDateType INSTANCE = new ConnectDateType();
 
     @Override
     public String[] getRegistrationKeys() {
-        return new String[]{ ZonedTimestamp.SCHEMA_NAME };
+        return new String[]{ Date.LOGICAL_NAME };
     }
 
     @Override
     public String getDefaultValueBinding(DatabaseDialect dialect, Schema schema, Object value) {
-        return dialect.getFormattedTimestampWithTimeZone((String) value);
+        return dialect.getFormattedDate(DateTimeUtils.toLocalDateFromDate((java.util.Date) value));
     }
 
     @Override
@@ -43,20 +42,12 @@ public class ZonedTimestampType extends AbstractTimestampType {
         if (value == null) {
             return List.of(new ValueBindDescriptor(index, null));
         }
-        if (value instanceof String) {
-
-            final ZonedDateTime zdt = ZonedDateTime.parse((String) value, ZonedTimestamp.FORMATTER).withZoneSameInstant(getDatabaseTimeZone().toZoneId());
-
-            return List.of(new ValueBindDescriptor(index, zdt.toOffsetDateTime(), getJdbcType()));
+        if (value instanceof java.util.Date) {
+            return List.of(new ValueBindDescriptor(index, java.sql.Date.valueOf(DateTimeUtils.toLocalDateFromDate((java.util.Date) value))));
         }
 
         throw new ConnectException(String.format("Unexpected %s value '%s' with type '%s'", getClass().getSimpleName(),
                 value, value.getClass().getName()));
-    }
-
-    @Override
-    protected int getJdbcType() {
-        return Types.TIMESTAMP_WITH_TIMEZONE;
     }
 
 }

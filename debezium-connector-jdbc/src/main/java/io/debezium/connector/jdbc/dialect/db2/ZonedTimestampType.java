@@ -3,9 +3,9 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.jdbc.type.debezium;
+package io.debezium.connector.jdbc.dialect.db2;
 
-import java.sql.Types;
+import java.sql.Timestamp;
 import java.time.ZonedDateTime;
 import java.util.List;
 
@@ -47,16 +47,10 @@ public class ZonedTimestampType extends AbstractTimestampType {
 
             final ZonedDateTime zdt = ZonedDateTime.parse((String) value, ZonedTimestamp.FORMATTER).withZoneSameInstant(getDatabaseTimeZone().toZoneId());
 
-            return List.of(new ValueBindDescriptor(index, zdt.toOffsetDateTime(), getJdbcType()));
+            return List.of(new ValueBindDescriptor(index, Timestamp.from(zdt.toInstant())));
         }
 
         throw new ConnectException(String.format("Unexpected %s value '%s' with type '%s'", getClass().getSimpleName(),
                 value, value.getClass().getName()));
     }
-
-    @Override
-    protected int getJdbcType() {
-        return Types.TIMESTAMP_WITH_TIMEZONE;
-    }
-
 }

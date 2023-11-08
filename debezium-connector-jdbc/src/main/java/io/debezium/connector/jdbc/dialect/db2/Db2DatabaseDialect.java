@@ -5,10 +5,6 @@
  */
 package io.debezium.connector.jdbc.dialect.db2;
 
-import java.sql.Date;
-import java.sql.Time;
-import java.sql.Timestamp;
-import java.time.LocalDate;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
@@ -26,6 +22,15 @@ import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.dialect.DatabaseDialectProvider;
 import io.debezium.connector.jdbc.dialect.GeneralDatabaseDialect;
 import io.debezium.connector.jdbc.dialect.SqlStatementBuilder;
+import io.debezium.connector.jdbc.dialect.db2.connect.ConnectDateType;
+import io.debezium.connector.jdbc.dialect.db2.connect.ConnectTimeType;
+import io.debezium.connector.jdbc.dialect.db2.connect.ConnectTimestampType;
+import io.debezium.connector.jdbc.dialect.db2.debezium.MicroTimeType;
+import io.debezium.connector.jdbc.dialect.db2.debezium.MicroTimestampType;
+import io.debezium.connector.jdbc.dialect.db2.debezium.NanoTimeType;
+import io.debezium.connector.jdbc.dialect.db2.debezium.NanoTimestampType;
+import io.debezium.connector.jdbc.dialect.db2.debezium.TimeType;
+import io.debezium.connector.jdbc.dialect.db2.debezium.TimestampType;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
 import io.debezium.time.ZonedTimestamp;
 
@@ -74,6 +79,18 @@ public class Db2DatabaseDialect extends GeneralDatabaseDialect {
         super.registerTypes();
 
         registerType(BytesType.INSTANCE);
+        registerType(ZonedTimestampType.INSTANCE);
+        registerType(ZonedTimeType.INSTANCE);
+        registerType(DateType.INSTANCE);
+        registerType(ConnectDateType.INSTANCE);
+        registerType(ConnectTimeType.INSTANCE);
+        registerType(ConnectTimestampType.INSTANCE);
+        registerType(TimestampType.INSTANCE);
+        registerType(NanoTimestampType.INSTANCE);
+        registerType(MicroTimestampType.INSTANCE);
+        registerType(TimeType.INSTANCE);
+        registerType(NanoTimeType.INSTANCE);
+        registerType(MicroTimeType.INSTANCE);
     }
 
     @Override
@@ -204,32 +221,4 @@ public class Db2DatabaseDialect extends GeneralDatabaseDialect {
         return builder.build();
     }
 
-    @Override
-    public Optional<Integer> getZonedTimestampType() {
-        return Optional.empty();
-    }
-
-    @Override
-    public Optional<Integer> getTimestampType() {
-        return Optional.empty();
-    }
-
-    @Override
-    public Object convertToCorrectZonedTimestamp(ZonedDateTime zonedTime) {
-        return Timestamp.from(zonedTime.toInstant());
-    }
-
-    public Object convertToCorrectDate(LocalDate localDate) {
-        return Date.valueOf(localDate);
-    }
-
-    @Override
-    public Object convertToCorrectTimestamp(ZonedDateTime zonedDateTime) {
-        return Timestamp.valueOf(zonedDateTime.toLocalDateTime());
-    }
-
-    @Override
-    public Object convertToCorrectTime(ZonedDateTime zonedDateTime) {
-        return Time.valueOf(zonedDateTime.toLocalDateTime().toLocalTime());
-    }
 }

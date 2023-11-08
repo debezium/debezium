@@ -7,11 +7,8 @@ package io.debezium.connector.jdbc.dialect;
 
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.time.LocalDate;
-import java.time.ZonedDateTime;
 import java.time.temporal.TemporalAccessor;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 
 import org.apache.kafka.connect.data.Schema;
@@ -224,48 +221,6 @@ public interface DatabaseDialect {
      * @return true if the value should be shifted; false otherwise (the default).
      */
     boolean shouldBindTimeWithTimeZoneAsDatabaseTimeZone();
-
-    /**
-     * Returns a time with timezone if is supported, without timezone if not supported by the database.
-     *
-     * @return LocalDataTime if zoned date is not supported; ZonedDateTime otherwise (the default).
-     */
-    Object convertToCorrectZonedTimestamp(ZonedDateTime zonedDateTime);
-
-    /**
-     * Returns the correct date type for the database.
-     *
-     * @return the object returned depends on the database dialect.
-     */
-    Object convertToCorrectDate(LocalDate localDate);
-
-    /**
-     * Returns the correct timestamp type for the database.
-     *
-     * @return the object returned depends on the database dialect.
-     */
-    Object convertToCorrectTimestamp(ZonedDateTime zonedDateTime);
-
-    /**
-     * Returns the correct time type for the database.
-     *
-     * @return the object returned depends on the database dialect.
-     */
-    Object convertToCorrectTime(ZonedDateTime zonedDateTime);
-
-    /**
-     * Returns the JDBC type for a zoned timestamp.
-     *
-     * @return the int value associated to the JDBC types from {@link java.sql.Types}.
-     */
-    Optional<Integer> getZonedTimestampType();
-
-    /**
-     * Returns the JDBC type for a timestamp without zone.
-     *
-     * @return the int value associated to the JDBC types from {@link java.sql.Types}.
-     */
-    Optional<Integer> getTimestampType();
 
     /**
      * Gets the maximum precision allowed for a dialect's time data type.
