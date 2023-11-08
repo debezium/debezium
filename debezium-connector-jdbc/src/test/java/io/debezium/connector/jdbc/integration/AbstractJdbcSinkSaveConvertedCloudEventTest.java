@@ -25,7 +25,7 @@ import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.SchemaEvolutionMode;
 import io.debezium.connector.jdbc.junit.TestHelper;
 import io.debezium.connector.jdbc.junit.jupiter.Sink;
 import io.debezium.connector.jdbc.junit.jupiter.SinkRecordFactoryArgumentsProvider;
-import io.debezium.connector.jdbc.transform.ConvertCloudEventToSaveableForm;
+import io.debezium.connector.jdbc.transforms.ConvertCloudEventToSaveableForm;
 import io.debezium.connector.jdbc.util.SinkRecordFactory;
 
 /**
