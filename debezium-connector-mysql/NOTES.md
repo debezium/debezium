@@ -4,7 +4,7 @@ The [mysql](https://hub.docker.com/r/_/mysql/) images are maintained by Docker, 
 
 ## Using MySQL Server
 
-As mentioned in the [README.md]() file, our Maven build can be used to start a container using either one of these images. The `container-registry.oracle.com/mysql/community-server:8.1` image is used:
+As mentioned in the [README.md]() file, our Maven build can be used to start a container using either one of these images. The `container-registry.oracle.com/mysql/community-server:8.2` image is used:
 
     $ mvn docker:start
 
@@ -31,9 +31,9 @@ or
 
 Although using the Maven command is far simpler, the Maven command for the `alt-server` profile really just runs (via the Jolokia Maven plugin) a Docker command to start the container, so it's equivalent to:
 
-    $ docker run -it --name database -p 3306:3306 -v $(pwd)/src/test/docker/alt-server:/etc/mysql/conf.d -v $(pwd)/src/test/docker/init:/docker-entrypoint-initdb.d -e MYSQL_DATABASE=mysql -e MYSQL_ROOT_PASSWORD=debezium-rocks -e MYSQL_USER=mysqluser -e MYSQL_PASSWORD=mysqlpw mysql:5.7
+    $ docker run -it --name database -p 3306:3306 -v $(pwd)/src/test/docker/alt-server:/etc/mysql/conf.d -v $(pwd)/src/test/docker/init:/docker-entrypoint-initdb.d -e MYSQL_DATABASE=mysql -e MYSQL_ROOT_PASSWORD=debezium-rocks -e MYSQL_USER=mysqluser -e MYSQL_PASSWORD=mysqlpw mysql:8.2
 
-This will use the `mysql:5.7` image to start a new container named `database` where the MySQL instance uses the combined startup settings from `/etc/mysql/my.cnf` (defined in the Docker image) and the same local configuration file we used in the integration test MySQL container, `src/test/docker/mysql.cnf` (mounted into the container at `/etc/mysql/conf.d/mysql.cnf`). The settings from the latter file take precedence.
+This will use the `mysql:8.2` image to start a new container named `database` where the MySQL instance uses the combined startup settings from `/etc/mysql/my.cnf` (defined in the Docker image) and the same local configuration file we used in the integration test MySQL container, `src/test/docker/mysql.cnf` (mounted into the container at `/etc/mysql/conf.d/mysql.cnf`). The settings from the latter file take precedence.
 
 The second volume mount, namely `-v src/test/docker/init:/docker-entrypoint-initdb.d`, makes available all of our existing scripts inside the `src/test/docker/init` directory so that they are run upon server initialization.
 
@@ -43,4 +43,4 @@ The command also defines the same `mysql` database and uses the same username an
 
 The following command can be used to manually start up a Docker container to run the MySQL command line client:
 
-    $ docker run -it --link database:mysql --rm mysql:5.7 sh -c 'exec mysql -h"$MYSQL_PORT_3306_TCP_ADDR" -P"$MYSQL_PORT_3306_TCP_PORT" -uroot -p"$MYSQL_ENV_MYSQL_ROOT_PASSWORD"'
+    $ docker run -it --link database:mysql --rm mysql:8.2 sh -c 'exec mysql -h"$MYSQL_PORT_3306_TCP_ADDR" -P"$MYSQL_PORT_3306_TCP_PORT" -uroot -p"$MYSQL_ENV_MYSQL_ROOT_PASSWORD"'

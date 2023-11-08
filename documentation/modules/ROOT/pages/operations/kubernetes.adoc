@@ -397,7 +397,7 @@ Connect to the MySQL database:
 
 [source,subs="attributes",options="nowrap"]
 ----
-$ kubectl run -n debezium-example -it --rm --image=mysql:8.0 --restart=Never --env MYSQL_ROOT_PASSWORD=debezium mysqlterm -- mysql -hmysql -P3306 -uroot -pdebezium
+$ kubectl run -n debezium-example -it --rm --image=mysql:8.2 --restart=Never --env MYSQL_ROOT_PASSWORD=debezium mysqlterm -- mysql -hmysql -P3306 -uroot -pdebezium
 ----
 
 Do some changes in the `customers` table:

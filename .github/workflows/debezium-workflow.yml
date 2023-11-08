@@ -291,11 +291,10 @@ jobs:
           -Dmaven.wagon.http.pool=false
           -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
 
-  ## Add this as until 5.7 will be EOL in October 2023
-  build_mysql_5_7:
+  build_mysql_8_0:
     needs: [ check_style, file_changes ]
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mysql-changed == 'true' || needs.file_changes.outputs.mysql-ddl-parser-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' }}
-    name: "MySQL 5.7"
+    name: "MySQL 8.0"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action
@@ -318,8 +317,7 @@ jobs:
       - name: Build Debezium Connector MySQL
         run: >
           ./mvnw clean install -B -pl debezium-connector-mysql -am -Passembly
-          -Dmysql.server.image.source=mysql/mysql-server
-          -Dversion.mysql.server=5.7
+          -Dversion.mysql.server=8.0
           -Dcheckstyle.skip=true
           -Dformat.skip=true
           -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn

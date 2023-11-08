@@ -178,9 +178,9 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
         // from the same MVCC snapshot. Thus each plain (non-locking) SELECT statements within the same transaction are
         // consistent also with respect to each other.
         //
-        // See: https://dev.mysql.com/doc/refman/5.7/en/set-transaction.html
-        // See: https://dev.mysql.com/doc/refman/5.7/en/innodb-transaction-isolation-levels.html
-        // See: https://dev.mysql.com/doc/refman/5.7/en/innodb-consistent-read.html
+        // See: https://dev.mysql.com/doc/refman/8.2/en/set-transaction.html
+        // See: https://dev.mysql.com/doc/refman/8.2/en/innodb-transaction-isolation-levels.html
+        // See: https://dev.mysql.com/doc/refman/8.2/en/innodb-consistent-read.html
         connection.connection().setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
         connection.executeWithoutCommitting("SET SESSION lock_wait_timeout=" + connectorConfig.snapshotLockTimeout().getSeconds());
         try {
@@ -225,7 +225,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
                 // using 'FLUSH TABLE <tableName> WITH READ LOCK'. However, if we were to do this, the 'UNLOCK TABLES'
                 // would implicitly commit our active transaction, and this would break our consistent snapshot logic.
                 // Therefore, we cannot unlock the tables here!
-                // https://dev.mysql.com/doc/refman/5.7/en/flush.html
+                // https://dev.mysql.com/doc/refman/8.2/en/flush.html
                 LOGGER.warn("Tables were locked explicitly, but to get a consistent snapshot we cannot release the locks until we've read all tables.");
             }
         }
