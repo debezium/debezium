@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.jdbc.type.debezium;
 
+import java.sql.Types;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -50,8 +51,7 @@ public abstract class AbstractDebeziumTimeType extends AbstractTimeType {
             final LocalDateTime localDateTime = localTime.atDate(LocalDate.now());
             if (getDialect().isTimeZoneSet()) {
                 return List.of(new ValueBindDescriptor(index,
-                        getDialect().convertToCorrectTimestamp(localDateTime.atZone(getDatabaseTimeZone().toZoneId())),
-                        getDialect().getTimestampType().orElse(null)));
+                        localDateTime.atZone(getDatabaseTimeZone().toZoneId()).toLocalDateTime(), getJdbcType()));
             }
             return List.of(new ValueBindDescriptor(index, localDateTime));
         }
@@ -59,6 +59,9 @@ public abstract class AbstractDebeziumTimeType extends AbstractTimeType {
                 value, value.getClass().getName()));
     }
 
-    protected abstract LocalTime getLocalTime(Number value);
+    protected int getJdbcType() {
+        return Types.TIMESTAMP;
+    }
 
+    protected abstract LocalTime getLocalTime(Number value);
 }

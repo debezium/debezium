@@ -5,8 +5,6 @@
  */
 package io.debezium.connector.jdbc.dialect.sqlserver;
 
-import java.time.ZonedDateTime;
-import java.time.temporal.Temporal;
 import java.util.Optional;
 
 import org.hibernate.SessionFactory;
@@ -19,6 +17,7 @@ import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.dialect.DatabaseDialectProvider;
 import io.debezium.connector.jdbc.dialect.GeneralDatabaseDialect;
 import io.debezium.connector.jdbc.dialect.SqlStatementBuilder;
+import io.debezium.connector.jdbc.dialect.sqlserver.connect.ConnectTimeType;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
 
 /**
@@ -91,7 +90,8 @@ public class SqlServerDatabaseDialect extends GeneralDatabaseDialect {
 
         registerType(BitType.INSTANCE);
         registerType(XmlType.INSTANCE);
-        registerType(SqlServerZonedTimeType.INSTANCE);
+        registerType(ZonedTimeType.INSTANCE);
+        registerType(ConnectTimeType.INSTANCE);
     }
 
     @Override
@@ -152,13 +152,4 @@ public class SqlServerDatabaseDialect extends GeneralDatabaseDialect {
         return "CONVERT(VARBINARY, '0x%s')";
     }
 
-    @Override
-    public Temporal convertToCorrectTime(ZonedDateTime zonedTime) {
-
-        return zonedTime.toOffsetDateTime();
-    }
-
-    public Object convertToCorrectZonedTimestamp(ZonedDateTime zonedTime) {
-        return zonedTime.toOffsetDateTime();
-    }
 }
