@@ -689,7 +689,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
 
         String value1 = "1970-01-01 00:00:01";
         ZonedDateTime t = java.sql.Timestamp.valueOf(value1).toInstant().atZone(ZoneId.systemDefault());
-        String isoString = ZonedTimestamp.toIsoString(t, ZoneId.systemDefault(), MySqlValueConverters::adjustTemporal, null);
+        String isoString = getZonedDateTimeIsoString(t);
         assertThat(schemaB.defaultValue()).isEqualTo(isoString);
 
         String value2 = "2018-01-03 00:00:10";
@@ -758,7 +758,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
 
         String value1 = "1970-01-01 00:00:01";
         ZonedDateTime t = java.sql.Timestamp.valueOf(value1).toInstant().atZone(ZoneId.systemDefault());
-        String isoString = ZonedTimestamp.toIsoString(t, ZoneId.systemDefault(), MySqlValueConverters::adjustTemporal, null);
+        String isoString = getZonedDateTimeIsoString(t);
         assertThat(schemaB.defaultValue()).isEqualTo(isoString);
 
         LocalDateTime localDateTimeC = LocalDateTime.from(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").parse("2018-01-03 00:00:10"));
@@ -1020,6 +1020,23 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
 
     private void assertFieldDefaultValue(Struct value, String fieldName, Object defaultValue) {
         assertThat(value.schema().field(fieldName).schema().defaultValue()).isEqualTo(defaultValue);
+    }
+
+    private static String getZonedDateTimeIsoString(ZonedDateTime zdt) {
+        if (MySqlTestConnection.isMariaDb()) {
+            // MariaDB applies the time-zone shift to the SHOW CREATE TABLE response when generating
+            // the SQL for the default value resolution which MySQL does not. This is because MariaDB
+            // pushes the "timezone=auto" connection argument to the server level whereas the MySQL
+            // "connectionTimeZone" is managed at the driver level on data responses only. In this
+            // case, MariaDB's default value resolution will always account for the current host
+            // time-zone difference with the host-system's time-zone.
+            long serverOffsetSecs = UniqueDatabase.TIMEZONE.getRules().getOffset(zdt.toInstant()).getTotalSeconds();
+            long hostOffsetSecs = ZoneOffset.systemDefault().getRules().getOffset(zdt.toInstant()).getTotalSeconds();
+            long timeDelta = serverOffsetSecs - hostOffsetSecs;
+            zdt = zdt.minusSeconds(timeDelta);
+            return ZonedTimestamp.toIsoString(zdt, UniqueDatabase.TIMEZONE, MySqlValueConverters::adjustTemporal, null);
+        }
+        return ZonedTimestamp.toIsoString(zdt, ZoneId.systemDefault(), MySqlValueConverters::adjustTemporal, null);
     }
 
 }
