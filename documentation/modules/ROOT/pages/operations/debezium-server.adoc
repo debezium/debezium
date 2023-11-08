@@ -297,6 +297,10 @@ There are also other options available
 |
 |The maximum delay in case of a connection retry to Redis if using `RedisSchemaHistory`. Default: 10000 (ms)
 
+|[[debezium-source-database-history-redis-retry-max-attempts]]<<debezium-source-database-history-redis-retry-max-attempts, `debezium.source.schema.history.internal.redis.retry.max.attempts`>>
+|
+|The maximum number of attempts to connect to Redis. Default: 10
+
 |[[debezium-source-database-history-redis-connection-timeout-ms]]<<debezium-source-database-history-redis-connection-timeout-ms, `debezium.source.schema.history.internal.redis.connection.timeout.ms`>>
 |
 |Connection timeout of Redis client if using `RedisSchemaHistory`. Default: 2000 (ms)

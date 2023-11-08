@@ -64,6 +64,11 @@ public class RedisCommonConfig {
             .withDescription("Maximum retry delay (in ms)")
             .withDefault(DEFAULT_RETRY_MAX_DELAY);
 
+    private static final Integer DEFAULT_MAX_RETRIES = 10;
+    private static final Field PROP_MAX_RETRIES = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "retry.max.attempts")
+            .withDescription("Maximum number of retry attempts before giving up.")
+            .withDefault(DEFAULT_MAX_RETRIES);
+
     private static final boolean DEFAULT_WAIT_ENABLED = false;
     private static final Field PROP_WAIT_ENABLED = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "wait.enabled")
             .withDescription(
@@ -93,6 +98,7 @@ public class RedisCommonConfig {
 
     private Integer initialRetryDelay;
     private Integer maxRetryDelay;
+    private Integer maxRetryCount;
 
     private Integer connectionTimeout;
     private Integer socketTimeout;
@@ -127,6 +133,7 @@ public class RedisCommonConfig {
 
         initialRetryDelay = config.getInteger(PROP_RETRY_INITIAL_DELAY);
         maxRetryDelay = config.getInteger(PROP_RETRY_MAX_DELAY);
+        maxRetryCount = config.getInteger(PROP_MAX_RETRIES);
 
         connectionTimeout = config.getInteger(PROP_CONNECTION_TIMEOUT);
         socketTimeout = config.getInteger(PROP_SOCKET_TIMEOUT);
@@ -167,6 +174,10 @@ public class RedisCommonConfig {
 
     public Integer getMaxRetryDelay() {
         return maxRetryDelay;
+    }
+
+    public Integer getMaxRetryCount() {
+        return maxRetryCount;
     }
 
     public Integer getConnectionTimeout() {

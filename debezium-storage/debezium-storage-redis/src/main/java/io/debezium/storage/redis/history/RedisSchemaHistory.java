@@ -44,6 +44,7 @@ public class RedisSchemaHistory extends AbstractSchemaHistory {
 
     private Duration initialRetryDelay;
     private Duration maxRetryDelay;
+    private Integer maxRetryCount;
 
     private final DocumentWriter writer = DocumentWriter.defaultWriter();
     private final DocumentReader reader = DocumentReader.defaultReader();
@@ -65,6 +66,7 @@ public class RedisSchemaHistory extends AbstractSchemaHistory {
         this.config = new RedisSchemaHistoryConfig(config);
         this.initialRetryDelay = Duration.ofMillis(this.config.getInitialRetryDelay());
         this.maxRetryDelay = Duration.ofMillis(this.config.getMaxRetryDelay());
+        this.maxRetryCount = this.config.getMaxRetryCount();
         super.configure(config, comparator, listener, useCatalogBeforeSchema);
     }
 
@@ -137,8 +139,8 @@ public class RedisSchemaHistory extends AbstractSchemaHistory {
     private <T> T doWithRetry(Supplier<T> action, String description) {
         final var delayStrategy = DelayStrategy.exponential(initialRetryDelay, maxRetryDelay);
 
-        // loop and retry until successful
-        for (;;) {
+        // loop and retry until successful or maximum attempts reached
+        for (int i = 1; i <= maxRetryCount; i++) {
             try {
                 if (client == null) {
                     this.connect();
@@ -147,7 +149,7 @@ public class RedisSchemaHistory extends AbstractSchemaHistory {
                 return action.get();
             }
             catch (RedisClientConnectionException e) {
-                LOGGER.warn("Connection to Redis failed, will try to reconnect");
+                LOGGER.warn("Connection to Redis failed, will try to reconnect [attempt {} of {}]", i, maxRetryCount);
                 try {
                     if (client != null) {
                         client.disconnect();
@@ -164,5 +166,7 @@ public class RedisSchemaHistory extends AbstractSchemaHistory {
             // Failed to execute the operation, retry...
             delayStrategy.sleepWhen(true);
         }
+
+        throw new SchemaHistoryException(String.format("Failed to connect to Redis after %d attempts.", maxRetryCount));
     }
 }
