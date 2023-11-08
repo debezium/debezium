@@ -1,5 +1,5 @@
 # For advice on how to change settings please see
-# https://dev.mysql.com/doc/refman/8.0/en/server-configuration-defaults.html
+# https://dev.mysql.com/doc/refman/8.2/en/server-configuration-defaults.html
 
 [mysqld]
 #
@@ -46,3 +46,4 @@ binlog_format               = row
 binlog_row_metadata = FULL
 
 default_authentication_plugin = mysql_native_password
+binlog_expire_logs_seconds = 86400

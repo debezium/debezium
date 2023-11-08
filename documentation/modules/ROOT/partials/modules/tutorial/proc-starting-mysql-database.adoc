@@ -15,7 +15,7 @@ In this procedure, you will start a MySQL server with an example database.
 . Open a new terminal, and use it to start a new container that runs a MySQL database server preconfigured with an `inventory` database.
 +
 --
-This command runs a new container using version {debezium-docker-label} of the `quay.io/debezium/example-mysql` image, which is https://github.com/debezium/container-images/blob/main/examples/mysql/{debezium-docker-label}/Dockerfile[based on] the https://hub.docker.com/r/_/mysql/[mysql:8.0] image.
+This command runs a new container using version {debezium-docker-label} of the `quay.io/debezium/example-mysql` image, which is https://github.com/debezium/container-images/blob/main/examples/mysql/{debezium-docker-label}/Dockerfile[based on] the https://hub.docker.com/r/_/mysql/[mysql:8.2] image.
 It also defines and populates a sample `inventory` database:
 
 [source,shell,options="nowrap",subs="attributes"]

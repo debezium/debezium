@@ -56,7 +56,7 @@ import io.debezium.util.Strings;
  * <p>
  * This class always uses UTC for the default time zone when converting values without timezone information to values that require
  * timezones. This is because MySQL {@code TIMESTAMP} values are always
- * <a href="https://dev.mysql.com/doc/refman/5.7/en/datetime.html">stored in UTC</a> (unlike {@code DATETIME} values) and
+ * <a href="https://dev.mysql.com/doc/refman/8.2/en/datetime.html">stored in UTC</a> (unlike {@code DATETIME} values) and
  * are replicated in this form. Meanwhile, the MySQL Binlog Client library will {@link AbstractRowsEventDataDeserializer
  * deserialize} these as {@link java.sql.Timestamp} values that have no timezone and, therefore, are presumed to be in UTC.
  * When the column is properly marked with a {@link Types#TIMESTAMP_WITH_TIMEZONE} type, the converters will need to convert
@@ -91,7 +91,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
     private static final Pattern TIMESTAMP_FIELD_PATTERN = Pattern.compile("([0-9]*)-([0-9]*)-([0-9]*) .*");
 
     /**
-     * A utility method that adjusts <a href="https://dev.mysql.com/doc/refman/5.7/en/two-digit-years.html">ambiguous</a> 2-digit
+     * A utility method that adjusts <a href="https://dev.mysql.com/doc/refman/8.2/en/two-digit-years.html">ambiguous</a> 2-digit
      * year values of DATETIME, DATE, and TIMESTAMP types using these MySQL-specific rules:
      * <ul>
      * <li>Year values in the range 00-69 are converted to 2000-2069.</li>

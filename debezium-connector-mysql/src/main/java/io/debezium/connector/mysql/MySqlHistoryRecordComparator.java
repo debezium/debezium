@@ -75,7 +75,7 @@ final class MySqlHistoryRecordComparator extends HistoryRecordComparator {
             // recorded position is older since GTIDs are often enabled but rarely disabled. And if they are disabled,
             // it is likely that the desired position would not include GTIDs as we would be trying to read the binlog of a
             // server that no longer has GTIDs. And if they are enabled, disabled, and re-enabled, per
-            // https://dev.mysql.com/doc/refman/5.7/en/replication-gtids-failover.html all properly configured slaves that
+            // https://dev.mysql.com/doc/refman/8.2/en/replication-gtids-failover.html all properly configured slaves that
             // use GTIDs should always have the complete set of GTIDs copied from the master, in which case
             // again we know that recorded not having GTIDs is before the desired position ...
             return true;
