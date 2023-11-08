@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.jdbc.transform;
+package io.debezium.connector.jdbc.transforms;
 
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 
@@ -29,9 +29,7 @@ import io.debezium.converters.spi.CloudEventsMaker;
 import io.debezium.transforms.outbox.AdditionalFieldsValidator;
 
 /**
- * The transform converts a CloudEvent to a structure suitable for `JdbcSinkConnector`. It uses provided by a user
- * mapping between a CloudEvent's fields and names of database columns. The resulting value schema has no name. A
- * CloudEvent's `data` field is flattened if needed
+ * The transform converts a CloudEvent to a structure suitable for `JdbcSinkConnector`
  *
  * @author Roman Kudryashov
  */
@@ -111,7 +109,8 @@ public class ConvertCloudEventToSaveableForm implements Transformation<SinkRecor
                 record.key(),
                 newSchema,
                 newValue,
-                record.timestamp());
+                record.timestamp(),
+                record.headers());
     }
 
     private Schema getSchema(SinkRecord record, boolean cloudEventContainsDataAsStruct) {

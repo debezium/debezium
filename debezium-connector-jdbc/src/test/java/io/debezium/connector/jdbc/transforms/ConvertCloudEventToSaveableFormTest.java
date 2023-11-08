@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.jdbc.transform;
+package io.debezium.connector.jdbc.transforms;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -39,7 +39,7 @@ class ConvertCloudEventToSaveableFormTest {
             assertThat(createRecord.valueSchema().name()).doesNotEndWith(".CloudEvents.Envelope");
 
             final SinkRecord convertedRecord = transform.apply(createRecord);
-            assertThat(convertedRecord).isNull();
+            assertThat(convertedRecord).isEqualTo(createRecord);
         }
     }
 
@@ -58,7 +58,7 @@ class ConvertCloudEventToSaveableFormTest {
             assertThat(cloudEventRecord.valueSchema().field("id").schema()).isEqualTo(Schema.STRING_SCHEMA);
 
             final SinkRecord convertedRecord = transform.apply(cloudEventRecord);
-            assertThat(convertedRecord).isNull();
+            assertThat(convertedRecord).isEqualTo(cloudEventRecord);
         }
     }
 
@@ -79,12 +79,13 @@ class ConvertCloudEventToSaveableFormTest {
 
             final SinkRecord convertedRecord = transform.apply(cloudEventRecord);
             assertThat(convertedRecord).isNotNull();
+            assertThat(convertedRecord).isNotEqualTo(cloudEventRecord);
             assertThat(convertedRecord.valueSchema().type()).isEqualTo(Schema.Type.STRUCT);
             assertThat(convertedRecord.valueSchema().fields().size()).isEqualTo(1);
             assertThat(convertedRecord.valueSchema().field("id").schema()).isEqualTo(Schema.STRING_SCHEMA);
             assertThat(convertedRecord.value()).isInstanceOf(Struct.class);
             assertThat(((Struct) convertedRecord.value()).getString("id")).isNotBlank();
-            checkParamsOfOriginalAndConvertedRecordsAreEqual(convertedRecord, cloudEventRecord);
+            checkParamsOfOriginalAndConvertedRecordsAreEqual(cloudEventRecord, convertedRecord);
         }
     }
 
@@ -105,12 +106,13 @@ class ConvertCloudEventToSaveableFormTest {
 
             final SinkRecord convertedRecord = transform.apply(cloudEventRecord);
             assertThat(convertedRecord).isNotNull();
+            assertThat(convertedRecord).isNotEqualTo(cloudEventRecord);
             assertThat(convertedRecord.valueSchema().type()).isEqualTo(Schema.Type.STRUCT);
             assertThat(convertedRecord.valueSchema().fields().size()).isEqualTo(1);
             assertThat(convertedRecord.valueSchema().field("data").schema()).isEqualTo(Schema.STRING_SCHEMA);
             assertThat(convertedRecord.value()).isInstanceOf(Struct.class);
             assertThat(((Struct) convertedRecord.value()).getString("data")).isNotBlank();
-            checkParamsOfOriginalAndConvertedRecordsAreEqual(convertedRecord, cloudEventRecord);
+            checkParamsOfOriginalAndConvertedRecordsAreEqual(cloudEventRecord, convertedRecord);
         }
     }
 
@@ -131,6 +133,7 @@ class ConvertCloudEventToSaveableFormTest {
 
             final SinkRecord convertedRecord = transform.apply(cloudEventRecord);
             assertThat(convertedRecord).isNotNull();
+            assertThat(convertedRecord).isNotEqualTo(cloudEventRecord);
             assertThat(convertedRecord.valueSchema().type()).isEqualTo(Schema.Type.STRUCT);
             assertThat(convertedRecord.valueSchema().fields().size()).isEqualTo(7);
             assertThat(convertedRecord.value()).isInstanceOf(Struct.class);
@@ -142,7 +145,7 @@ class ConvertCloudEventToSaveableFormTest {
             assertThat(convertedRecordValue.getString("created_at")).isNotBlank();
             assertThat(convertedRecordValue.getString("payload_format")).isNotBlank();
             assertThat(convertedRecordValue.getString("payload")).isNotBlank();
-            checkParamsOfOriginalAndConvertedRecordsAreEqual(convertedRecord, cloudEventRecord);
+            checkParamsOfOriginalAndConvertedRecordsAreEqual(cloudEventRecord, convertedRecord);
         }
     }
 
