@@ -3,8 +3,9 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.jdbc.type.debezium;
+package io.debezium.connector.jdbc.dialect.db2.debezium;
 
+import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -33,11 +34,10 @@ public abstract class AbstractDebeziumTimestampType extends AbstractTimestampTyp
 
             if (getDialect().isTimeZoneSet()) {
                 return List.of(new ValueBindDescriptor(index,
-                        localDateTime.atZone(getDatabaseTimeZone().toZoneId()).toLocalDateTime(),
-                        getJdbcType()));
+                        Timestamp.valueOf(localDateTime.atZone(getDatabaseTimeZone().toZoneId()).toLocalDateTime())));
             }
 
-            return List.of(new ValueBindDescriptor(index, localDateTime, getJdbcType()));
+            return List.of(new ValueBindDescriptor(index, Timestamp.valueOf(localDateTime)));
         }
 
         throw new ConnectException(String.format("Unexpected %s value '%s' with type '%s'", getClass().getSimpleName(),

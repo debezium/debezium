@@ -42,5 +42,4 @@ public abstract class AbstractTimeType extends AbstractTemporalType {
         final Optional<String> scale = getSourceColumnPrecision(schema);
         return scale.map(Integer::parseInt).orElseGet(() -> Integer.parseInt(length));
     }
-
 }
