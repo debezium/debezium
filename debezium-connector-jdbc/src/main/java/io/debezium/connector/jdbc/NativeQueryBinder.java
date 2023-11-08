@@ -9,7 +9,6 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 
-import org.hibernate.query.BindableType;
 import org.hibernate.query.NativeQuery;
 import org.hibernate.type.StandardBasicTypes;
 
@@ -26,7 +25,7 @@ public class NativeQueryBinder implements QueryBinder {
 
         if (valueBindDescriptor.getTargetSqlType() != null) {
             binder.setParameter(valueBindDescriptor.getIndex(), ZonedDateTime.ofInstant(Instant.now(), ZoneOffset.UTC),
-                    (BindableType) StandardBasicTypes.ZONED_DATE_TIME_WITH_TIMEZONE);
+                    StandardBasicTypes.ZONED_DATE_TIME_WITH_TIMEZONE);
         }
         else {
             binder.setParameter(valueBindDescriptor.getIndex(), valueBindDescriptor.getValue());

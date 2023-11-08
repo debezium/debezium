@@ -3,11 +3,12 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.jdbc.type.connect;
+package io.debezium.connector.jdbc.dialect.db2.connect;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZonedDateTime;
 import java.util.Date;
 import java.util.List;
 
@@ -57,10 +58,12 @@ public class ConnectTimeType extends AbstractTimeType {
             final LocalTime localTime = DateTimeUtils.toLocalTimeFromUtcDate((Date) value);
             final LocalDateTime localDateTime = localTime.atDate(LocalDate.now());
             if (getDialect().isTimeZoneSet()) {
-                return List.of(new ValueBindDescriptor(index, localDateTime.atZone(getDatabaseTimeZone().toZoneId()).toLocalDateTime().toLocalTime()));
+                ZonedDateTime zonedDateTime = localDateTime.atZone(getDatabaseTimeZone().toZoneId());
+                return List.of(
+                        new ValueBindDescriptor(index, java.sql.Time.valueOf(zonedDateTime.toLocalDateTime().toLocalTime())));
             }
 
-            return List.of(new ValueBindDescriptor(index, localDateTime.toLocalTime()));
+            return List.of(new ValueBindDescriptor(index, localDateTime));
         }
 
         throw new ConnectException(String.format("Unexpected %s value '%s' with type '%s'", getClass().getSimpleName(),

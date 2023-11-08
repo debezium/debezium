@@ -43,7 +43,7 @@ public class DateType extends AbstractDateType {
             return List.of(new ValueBindDescriptor(index, null));
         }
         if (value instanceof Number) {
-            return List.of(new ValueBindDescriptor(index, getDialect().convertToCorrectDate(DateTimeUtils.toLocalDateOfEpochDays(((Number) value).longValue()))));
+            return List.of(new ValueBindDescriptor(index, DateTimeUtils.toLocalDateOfEpochDays(((Number) value).longValue())));
         }
 
         throw new ConnectException(String.format("Unexpected %s value '%s' with type '%s'", getClass().getSimpleName(),
