@@ -45,17 +45,19 @@ class ChangeStreamPipelineFactory {
 
     ChangeStreamPipeline create() {
         var sizePipeline = createSizePipeline();
+        var splitPipeline = createSplitPipeline();
+        var userAndInternalPipeline = createUserAndInternalPipeline();
 
-        // Resolve and combine size, internal and user pipelines serially
-        var userAndInternalPipeline = mergeUserAndInternalPipeline();
+        // Resolve and combine pipelines serially
         var effectivePipeline = sizePipeline
-                .then(userAndInternalPipeline);
+                .then(userAndInternalPipeline)
+                .then(splitPipeline);
 
         LOGGER.info("Effective change stream pipeline: {}", effectivePipeline);
         return effectivePipeline;
     }
 
-    private ChangeStreamPipeline mergeUserAndInternalPipeline() {
+    private ChangeStreamPipeline createUserAndInternalPipeline() {
         var internalPipeline = createInternalPipeline();
         var userPipeline = createUserPipeline();
 
@@ -86,6 +88,14 @@ class ChangeStreamPipelineFactory {
                 Filters.and(fullDocument, fullDocumentBeforeChange));
 
         return new ChangeStreamPipeline(stage);
+    }
+
+    private ChangeStreamPipeline createSplitPipeline() {
+        if (connectorConfig.getOversizeHandlingMode() != MongoDbConnectorConfig.OversizeHandlingMode.SPLIT) {
+            return new ChangeStreamPipeline();
+        }
+
+        return new ChangeStreamPipeline(splitLargeEvent());
     }
 
     private ChangeStreamPipeline createInternalPipeline() {
@@ -290,6 +300,10 @@ class ChangeStreamPipelineFactory {
         return Stream.of(filters)
                 .flatMap(Optional::stream)
                 .collect(toList());
+    }
+
+    private static Bson splitLargeEvent() {
+        return new BasicDBObject("$changeStreamSplitLargeEvent", new BasicDBObject());
     }
 
     private static Bson concat(Object... expressions) {

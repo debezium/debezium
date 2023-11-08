@@ -500,14 +500,19 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
      */
     public enum OversizeHandlingMode implements EnumeratedValue {
         /**
-         * Connect individually to each replica set
+         * Fail if oversized event is encoutered
          */
         FAIL("fail"),
 
         /**
-         * Connect to sharded cluster with single connection via mongos
+         * Skip oversized events
          */
-        SKIP("skip");
+        SKIP("skip"),
+
+        /**
+         * Split oversized events (only supported for MongoDB 6.0.9 and later
+         */
+        SPLIT("split");
 
         private String value;
 
@@ -893,7 +898,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withDescription("The strategy used to handle change events for documents exceeding specified BSON size. "
                     + "Options include: "
                     + "'fail' (the default) the connector fails if the total size of change event exceed the maximum BSON size"
-                    + "'skip' any change events for documents exceeding the maximum size will be ignored ");
+                    + "'skip' any change events for documents exceeding the maximum size will be ignored"
+                    + "'split' change events exceeding the maximum BSON size will be split using the $changeStreamSplitLargeEvent aggregation");
 
     public static final Field CURSOR_OVERSIZE_SKIP_THRESHOLD = Field.create("cursor.oversize.skip.threshold")
             .withDisplayName("Oversize document skip threshold")
