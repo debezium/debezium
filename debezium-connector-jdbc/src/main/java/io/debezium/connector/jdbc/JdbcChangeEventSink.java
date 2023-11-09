@@ -86,6 +86,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
             final TableId tableId = optionalTableId.get();
 
             if (sinkRecordDescriptor.isTombstone()) {
+                // Skip only Debezium Envelope tombstone not the one produced by ExtractNewRecordState SMT
                 LOGGER.debug("Skipping tombstone record {}", sinkRecordDescriptor);
                 continue;
             }
