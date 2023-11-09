@@ -1916,6 +1916,9 @@ The connector fails if the total size of change event exceed the maximum BSON si
 `skip`::
 Any change events for documents exceeding the maximum (specified by the `cursor.oversize.skip.threshold` property) size will be ignored
 
+`split`::
+Change events exceeding the maximum BSON size will be split using the https://www.mongodb.com/docs/v6.0/reference/operator/aggregation/changeStreamSplitLargeEvent/[$changeStreamSplitLargeEvent] aggregation. This option requires **MongoDB 6.0.9 or newer**.
+
 |[[mongodb-property-cursor-oversize-skip-threshold]]<<mongodb-property-cursor-oversize-skip-threshold, `+cursor.oversize.skip.threshold+`>>
 |0
 |The maximum allowed size **in bytes** of the stored document for which change events are processed. This includes both, the size before and after database operation, more specifically this limits the size of fullDocument and fullDocumentBeforeChange filed of MongoDB change events.
