@@ -46,6 +46,10 @@ public class LegacyDeleteHandlingStrategy<R extends ConnectRecord<R>> extends Ab
                 LOGGER.trace("Delete message {} requested to be dropped", record.key());
                 return null;
             case NONE:
+                // NOTE
+                // Debezium TOMBSTONE has both value and valueSchema to null, instead here we are generating
+                // a record only with null value that by JDBC connector is treated as a flattened delete.
+                // Any change to this behavior can have impact on JDBC connector.
                 return afterDelegate.apply(record);
             case REWRITE:
                 LOGGER.trace("Delete message {} requested to be rewritten", record.key());
