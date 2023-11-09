@@ -23,6 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.annotation.VisibleForTesting;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.relational.Column;
@@ -100,7 +101,8 @@ public class LogMinerHelper {
         throw new IllegalStateException("None of log files contains offset SCN: " + lastProcessedScn + ", re-snapshot is required.");
     }
 
-    private static boolean hasLogFilesStartingBeforeOrAtScn(List<LogFile> logs, Scn scn) {
+    @VisibleForTesting
+    public static boolean hasLogFilesStartingBeforeOrAtScn(List<LogFile> logs, Scn scn) {
         final Map<Integer, List<LogFile>> threadLogs = logs.stream().collect(Collectors.groupingBy(LogFile::getThread));
         for (Map.Entry<Integer, List<LogFile>> entry : threadLogs.entrySet()) {
             if (!entry.getValue().stream().anyMatch(l -> l.getFirstScn().compareTo(scn) <= 0)) {
@@ -108,6 +110,31 @@ public class LogMinerHelper {
                 return false;
             }
         }
+
+        // Now that we have at least one log per thread, verify the ranges have no gaps.
+        // To do this we first gather the min/max sequences for the logs detected.
+        long min = Long.MAX_VALUE;
+        long max = Long.MIN_VALUE;
+        for (LogFile logFile : logs) {
+            min = Math.min(logFile.getSequence().longValue(), min);
+            max = Math.max(logFile.getSequence().longValue(), max);
+        }
+
+        // Now iterate the logs and verify that we have no sequence gap.
+        for (long sequenceId = min; sequenceId <= max; sequenceId++) {
+            boolean found = false;
+            for (LogFile logFile : logs) {
+                if (logFile.getSequence().longValue() == sequenceId) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                LOGGER.warn("Failed to find a log file with sequence {}, forcing re-check.", sequenceId);
+                return false;
+            }
+        }
+
         LOGGER.debug("Redo threads {} have logs before or at SCN {}.", threadLogs.keySet(), scn);
         return true;
     }
