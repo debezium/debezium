@@ -6,9 +6,8 @@
 package io.debezium.connector.mongodb;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Deque;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
@@ -171,7 +170,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             rsChangeStream.maxAwaitTime(connectorConfig.getCursorMaxAwaitTime(), TimeUnit.MILLISECONDS);
         }
 
-        var fragmentBuffer = new LinkedList<ChangeStreamDocument<BsonDocument>>();
+        final List<ChangeStreamDocument<BsonDocument>> fragmentBuffer = new ArrayList<>(16);
 
         try (MongoChangeStreamCursor<ChangeStreamDocument<BsonDocument>> cursor = rsChangeStream.cursor()) {
             // In Replicator, this used cursor.hasNext() but this is a blocking call and I observed that this can
@@ -275,9 +274,9 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
     }
 
     @SuppressWarnings("DuplicatedCode")
-    private static ChangeStreamDocument<BsonDocument> mergeEventFragments(Deque<ChangeStreamDocument<BsonDocument>> events) {
+    private static ChangeStreamDocument<BsonDocument> mergeEventFragments(List<ChangeStreamDocument<BsonDocument>> events) {
         var operationTypeString = firstOrNull(events, ChangeStreamDocument::getOperationTypeString);
-        var resumeToken = events.getLast().getResumeToken();
+        var resumeToken = events.get(events.size() - 1).getResumeToken();
         var namespaceDocument = firstOrNull(events, ChangeStreamDocument::getNamespaceDocument);
         var destinationNamespaceDocument = firstOrNull(events, ChangeStreamDocument::getDestinationNamespaceDocument);
         var fullDocument = firstOrNull(events, ChangeStreamDocument::getFullDocument);
