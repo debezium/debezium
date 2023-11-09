@@ -881,7 +881,7 @@ insertStatement
       IGNORE? INTO? tableName
       (PARTITION '(' partitions=uidList? ')' )?
       (
-        ('(' columns=fullColumnNameList ')')? insertStatementValue (AS? uid)?
+        ('(' columns=fullColumnNameList? ')')? insertStatementValue (AS? uid)?
         | SET
             setFirst=updatedElement
             (',' setElements+=updatedElement)*

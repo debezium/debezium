@@ -23,6 +23,7 @@ SELECT * FROM f3p1 WHERE 1;
 #begin
 -- insert base syntax
 insert ignore into t1(col1, col2, col3) values ('abc', 0, .12), ('adfasdf',23432, -.12);
+INSERT INTO test_auto_inc () VALUES ();
 -- http://dev.mysql.com/doc/refman/5.6/en/insert.html
 INSERT INTO tbl_name (col1,col2) VALUES(col2*2, 15);
 INSERT INTO tbl_name (col1,col2) VALUES(15,col1*2);
