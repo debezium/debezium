@@ -8,13 +8,13 @@ package io.debezium.connector.oracle.logminer.processor.infinispan;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -48,7 +48,6 @@ import io.debezium.util.Loggings;
 public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractLogMinerEventProcessor<InfinispanTransaction> implements CacheProvider {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractInfinispanLogMinerEventProcessor.class);
-
     private final OracleConnection jdbcConnection;
     private final LogMinerStreamingChangeEventSourceMetrics metrics;
     private final OraclePartition partition;
@@ -67,7 +66,7 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
                                                     OracleOffsetContext offsetContext,
                                                     OracleDatabaseSchema schema,
                                                     LogMinerStreamingChangeEventSourceMetrics metrics) {
-        super(context, connectorConfig, schema, partition, offsetContext, dispatcher, metrics);
+        super(context, connectorConfig, schema, partition, offsetContext, dispatcher, metrics, jdbcConnection);
         this.jdbcConnection = jdbcConnection;
         this.metrics = metrics;
         this.partition = partition;
@@ -183,11 +182,6 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
             return;
         }
         super.processRow(partition, row);
-    }
-
-    @Override
-    public void abandonTransactions(Duration retention) throws InterruptedException {
-        // no-op, transactions are never abandoned
     }
 
     @Override
@@ -347,6 +341,7 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
         }
 
         if (!minCacheScn.isNull()) {
+            abandonTransactions(getConfig().getLogMiningTransactionRetention());            
             purgeCache(minCacheScn);
         }
         else {
@@ -426,6 +421,11 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
             getEventCache().remove(transaction.getEventId(i));
         }
         inMemoryPendingTransactionsCache.remove(transaction.getTransactionId());
+    }
+
+    @Override
+    public Set<String> getAbandonedTransactionsCache() {
+        return null;
     }
 
     /**

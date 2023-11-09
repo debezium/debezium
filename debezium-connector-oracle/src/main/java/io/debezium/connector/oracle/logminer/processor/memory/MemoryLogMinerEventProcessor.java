@@ -5,12 +5,9 @@
  */
 package io.debezium.connector.oracle.logminer.processor.memory;
 
-import java.math.BigInteger;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.time.Duration;
-import java.time.Instant;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -29,7 +26,6 @@ import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
-import io.debezium.connector.oracle.logminer.SqlUtils;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
 import io.debezium.connector.oracle.logminer.processor.AbstractLogMinerEventProcessor;
@@ -48,8 +44,6 @@ import io.debezium.util.Loggings;
 public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor<MemoryTransaction> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MemoryLogMinerEventProcessor.class);
-
-    private final OracleConnection jdbcConnection;
     private final EventDispatcher<OraclePartition, TableId> dispatcher;
     private final OraclePartition partition;
     private final OracleOffsetContext offsetContext;
@@ -64,6 +58,7 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
      */
     private final Map<String, Scn> recentlyProcessedTransactionsCache = new HashMap<>();
     private final Set<Scn> schemaChangesCache = new HashSet<>();
+
     private final Set<String> abandonedTransactionsCache = new HashSet<>();
 
     public MemoryLogMinerEventProcessor(ChangeEventSourceContext context,
@@ -74,8 +69,7 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
                                         OracleOffsetContext offsetContext,
                                         OracleDatabaseSchema schema,
                                         LogMinerStreamingChangeEventSourceMetrics metrics) {
-        super(context, connectorConfig, schema, partition, offsetContext, dispatcher, metrics);
-        this.jdbcConnection = jdbcConnection;
+        super(context, connectorConfig, schema, partition, offsetContext, dispatcher, metrics, jdbcConnection);
         this.dispatcher = dispatcher;
         this.partition = partition;
         this.offsetContext = offsetContext;
@@ -133,52 +127,6 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
     @Override
     public void close() throws Exception {
         // close any resources used here
-    }
-
-    @Override
-    public void abandonTransactions(Duration retention) throws InterruptedException {
-        if (!Duration.ZERO.equals(retention)) {
-            Optional<Scn> lastScnToAbandonTransactions = getLastScnToAbandon(jdbcConnection, retention);
-            if (lastScnToAbandonTransactions.isPresent()) {
-                Scn thresholdScn = lastScnToAbandonTransactions.get();
-                Scn smallestScn = getTransactionCacheMinimumScn();
-                if (!smallestScn.isNull() && thresholdScn.compareTo(smallestScn) >= 0) {
-                    boolean first = true;
-                    Iterator<Map.Entry<String, MemoryTransaction>> iterator = transactionCache.entrySet().iterator();
-                    while (iterator.hasNext()) {
-                        Map.Entry<String, MemoryTransaction> entry = iterator.next();
-                        if (entry.getValue().getStartScn().compareTo(thresholdScn) <= 0) {
-                            if (first) {
-                                LOGGER.warn("All transactions with SCN <= {} will be abandoned.", thresholdScn);
-                                first = false;
-                            }
-                            LOGGER.warn("Transaction {} (start SCN {}, change time {}, redo thread {}, {} events) is being abandoned.",
-                                    entry.getKey(), entry.getValue().getStartScn(), entry.getValue().getChangeTime(),
-                                    entry.getValue().getRedoThreadId(), entry.getValue().getNumberOfEvents());
-
-                            abandonedTransactionsCache.add(entry.getKey());
-                            iterator.remove();
-
-                            metrics.addAbandonedTransactionId(entry.getKey());
-                            metrics.setActiveTransactionCount(transactionCache.size());
-                        }
-                    }
-
-                    // Update the oldest scn metric are transaction abandonment
-                    final Optional<MemoryTransaction> oldestTransaction = getOldestTransactionInCache();
-                    if (oldestTransaction.isPresent()) {
-                        final MemoryTransaction transaction = oldestTransaction.get();
-                        metrics.setOldestScnDetails(transaction.getStartScn(), transaction.getChangeTime());
-                    }
-                    else {
-                        metrics.setOldestScnDetails(Scn.NULL, null);
-                    }
-
-                    offsetContext.setScn(thresholdScn);
-                }
-                dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
-            }
-        }
     }
 
     @Override
@@ -346,42 +294,6 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
         }
     }
 
-    /**
-     * Calculates the SCN as a watermark to abandon for long running transactions.
-     * The criteria is do not let the offset SCN expire from archives older the specified retention hours.
-     *
-     * @param connection database connection, should not be {@code null}
-     * @param retention duration to tolerate long running transactions before being abandoned, must not be {@code null}
-     * @return an optional system change number as the watermark for transaction buffer abandonment
-     */
-    protected Optional<Scn> getLastScnToAbandon(OracleConnection connection, Duration retention) {
-        try {
-            if (getLastProcessedScn().isNull()) {
-                return Optional.empty();
-            }
-            BigInteger scnToAbandon = connection.singleOptionalValue(
-                    SqlUtils.getScnByTimeDeltaQuery(getLastProcessedScn(), retention),
-                    rs -> rs.getBigDecimal(1).toBigInteger());
-            return Optional.of(new Scn(scnToAbandon));
-        }
-        catch (SQLException e) {
-            // This can happen when the last processed SCN has aged out of the UNDO_RETENTION.
-            // In this case, we use a fallback in order to calculate the SCN based on the
-            // change times in the transaction cache.
-            if (getLastProcessedScnChangeTime() != null) {
-                final Scn calculatedLastScn = getLastScnToAbandonFallbackByTransactionChangeTime(retention);
-                if (!calculatedLastScn.isNull()) {
-                    return Optional.of(calculatedLastScn);
-                }
-            }
-
-            // Both SCN database calculation and fallback failed, log error.
-            LOGGER.error(String.format("Cannot fetch SCN %s by given duration to calculate SCN to abandon", getLastProcessedScn()), e);
-            metrics.incrementErrorCount();
-            return Optional.empty();
-        }
-    }
-
     @Override
     protected void abandonTransactionOverEventThreshold(MemoryTransaction transaction) {
         super.abandonTransactionOverEventThreshold(transaction);
@@ -419,34 +331,8 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
         return Optional.ofNullable(transaction);
     }
 
-    /**
-     * Calculates the last system change number to abandon by directly examining the transaction buffer
-     * cache and comparing the transaction start time to the most recent last processed change time and
-     * comparing the difference to the configured transaction retention policy.
-     *
-     * @param retention duration to tolerate long-running transactions before being abandoned, must not be {@code null}
-     * @return the system change number to consider for transaction abandonment, never {@code null}
-     */
-    private Scn getLastScnToAbandonFallbackByTransactionChangeTime(Duration retention) {
-        LOGGER.debug("Getting abandon SCN breakpoint based on change time {} (retention {} minutes).",
-                getLastProcessedScnChangeTime(), retention.toMinutes());
-
-        Scn calculatedLastScn = Scn.NULL;
-        for (MemoryTransaction transaction : getTransactionCache().values()) {
-            final Instant changeTime = transaction.getChangeTime();
-            final long diffMinutes = Duration.between(getLastProcessedScnChangeTime(), changeTime).abs().toMinutes();
-            if (diffMinutes > 0 && diffMinutes > retention.toMinutes()) {
-                // We either now will capture the transaction's SCN because it is the first detected transaction
-                // outside the configured retention period or the transaction has a start SCN that is more recent
-                // than the current calculated SCN but is still outside the configured retention period.
-                LOGGER.debug("Transaction {} with SCN {} started at {}, age is {} minutes.",
-                        transaction.getTransactionId(), transaction.getStartScn(), changeTime, diffMinutes);
-                if (calculatedLastScn.isNull() || calculatedLastScn.compareTo(transaction.getStartScn()) < 0) {
-                    calculatedLastScn = transaction.getStartScn();
-                }
-            }
-        }
-
-        return calculatedLastScn;
+    public Set<String> getAbandonedTransactionsCache() {
+        return abandonedTransactionsCache;
     }
+
 }
