@@ -7,6 +7,7 @@ package io.debezium.connector.oracle.logminer.processor;
 
 import java.sql.SQLException;
 import java.time.Duration;
+import java.util.Set;
 
 import io.debezium.connector.oracle.Scn;
 
@@ -31,4 +32,6 @@ public interface LogMinerEventProcessor extends AutoCloseable {
      * @param retention the maximum duration in which long running transactions are allowed.
      */
     void abandonTransactions(Duration retention) throws InterruptedException;
+
+    Set<String> getAbandonedTransactionsCache();
 }
