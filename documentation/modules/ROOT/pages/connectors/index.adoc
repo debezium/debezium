@@ -14,6 +14,7 @@ We currently have the following connectors:
 * xref:connectors/vitess.adoc[Vitess] (Incubating)
 * xref:connectors/spanner.adoc[Spanner] (Incubating)
 * xref:connectors/jdbc.adoc[JDBC] (Incubating)
+* xref:connectors/informix.adoc[Informix] (Incubating)
 
 [NOTE]
 ====

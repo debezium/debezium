@@ -20,7 +20,8 @@
 ** xref:connectors/cassandra.adoc[Cassandra]
 ** xref:connectors/vitess.adoc[Vitess]
 ** xref:connectors/spanner.adoc[Spanner]
-** xref:connectors/jdbc.adoc[Jdbc]
+** xref:connectors/jdbc.adoc[JDBC]
+** xref:connectors/informix.adoc[Informix]
 * Transformations
 ** xref:transformations/index.adoc[Overview]
 ** xref:transformations/topic-routing.adoc[Topic Routing]

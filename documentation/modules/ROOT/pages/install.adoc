@@ -37,7 +37,8 @@ ifeval::['{page-version}' == 'master']
 * {link-cassandra-4-plugin-snapshot}[Cassandra 4.x plugin archive]
 * {link-vitess-plugin-snapshot}[Vitess plugin archive] (incubating)
 * {link-spanner-plugin-snapshot}[Spanner plugin archive] (incubating)
-* {link-jdbc-plugin-snapshot}[JDBC sink plugin archive]
+* {link-jdbc-plugin-snapshot}[JDBC sink plugin archive] (incubating)
+* {link-informix-plugin-snapshot}[Informix plugin archive] (incubating)
 
 NOTE: All above links are to nightly snapshots of the {prodname} main branch.  If you are looking for non-snapshot versions, please select the appropriate version in the top right.
 endif::[]
@@ -52,7 +53,8 @@ ifeval::['{page-version}' != 'master']
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-cassandra/{debezium-version}/debezium-connector-cassandra-4-{debezium-version}-plugin.tar.gz[Cassandra 4.x plugin archive]
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-vitess/{debezium-version}/debezium-connector-vitess-{debezium-version}-plugin.tar.gz[Vitess plugin archive] (incubating)
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-spanner/{debezium-version}/debezium-connector-spanner-{debezium-version}-plugin.tar.gz[Spanner plugin archive] (incubating)
-* https://repo1.maven.org/maven2/io/debezium/debezium-connector-jdbc/${debezium-version}/debezium-connector-jdbc-{debezium-version}-plugin.tar.gz[JDBC sink plugin archive]
+* https://repo1.maven.org/maven2/io/debezium/debezium-connector-jdbc/${debezium-version}/debezium-connector-jdbc-{debezium-version}-plugin.tar.gz[JDBC sink plugin archive] (incubating)
+* https://repo1.maven.org/maven2/io/debezium/debezium-connector-informix/${debezium-version}/debezium-connector-informix-{debezium-version}-plugin.tar.gz[Informix plugin archive] (incubating)
 endif::[]
 
 NOTE: If you are interested in Debezium Server, please check the installation instructions xref:operations/debezium-server.adoc#_installation[here].
@@ -88,7 +90,10 @@ xref:connectors/sqlserver.adoc#sqlserver-deploying-a-connector[SQL Server Connec
 xref:connectors/oracle.adoc#oracle-deploying-a-connector[Oracle Connector],
 xref:connectors/db2.adoc#db2-deploying-a-connector[Db2 Connector],
 xref:connectors/cassandra.adoc#cassandra-deploying-a-connector[Cassandra Connector],
-or xref:connectors/vitess.adoc#vitess-deploying-a-connector[Vitess Connector],
+xref:connectors/vitess.adoc#vitess-deploying-a-connector[Vitess Connector],
+xref:connectors/spanner.adoc#spanner-deploying-a-connector[Spanner Connector],
+xref:connectors/jdbc.adoc#jdbc-deployment[JDBC sink Connector],
+xref:connectors/informix.adoc#informix-deploying-a-connector[Informix Connector],
 and use the link:{link-kafka-docs}/#connect_rest[Kafka Connect REST API] to add that
 connector configuration to your Kafka Connect cluster. When the connector starts, it will connect to the source and produce events
 for each inserted, updated, and deleted row or document.
