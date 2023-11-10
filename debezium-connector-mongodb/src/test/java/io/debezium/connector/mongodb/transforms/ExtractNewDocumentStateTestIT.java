@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import io.debezium.config.CommonConnectorConfig;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -590,7 +591,7 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
     @SkipWhenDatabaseVersion(check = LESS_THAN, major = 6, reason = "Pre-image support in Change Stream is officially released in Mongo 6.0.")
     public void shouldGenerateRecordForPartialUpdateEvent() throws InterruptedException {
         Configuration config = getBaseConfigBuilder()
-                .with(MongoDbConnectorConfig.CAPTURE_MODE, MongoDbConnectorConfig.CaptureMode.CHANGE_STREAMS_WITH_PRE_IMAGE)
+                .with(MongoDbConnectorConfig.CAPTURE_MODE, MongoDbConnectorConfig.CaptureMode.CHANGE_STREAMS_UPDATE_FULL_WITH_PRE_IMAGE)
                 .build();
         restartConnectorWithConfig(config);
         waitForStreamingRunning();
@@ -2003,6 +2004,37 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         assertThat(value.get("_id")).isEqualTo(objId.toString());
         assertThat(value.get("dataStr")).isEqualTo("Hello");
         assertThat(value.get("__deleted")).isEqualTo(true);
+    }
+
+
+    @Test
+    @FixFor("DBZ-6809")
+    public void testConnectorAndTransformAvroFieldNameAdjustment() throws InterruptedException, IOException {
+        restartConnectorWithConfig(getBaseConfigBuilder()
+                .with(CommonConnectorConfig.FIELD_NAME_ADJUSTMENT_MODE, "avro")
+                .build());
+
+        final Map<String, String> transformationConfig = new HashMap<>();
+        transformationConfig.put("field.name.adjustment.mode", "avro");
+        transformation.configure(transformationConfig);
+
+        // Test insert
+        var doc = new Document("_id", 0).append("api-version", "2.5");
+        try (var client = connect()) {
+            client.getDatabase(DB_NAME)
+                    .getCollection(this.getCollectionName())
+                    .insertOne(doc);
+        }
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+
+        final SourceRecord insertRecord = records.recordsForTopic(this.topicName()).get(0);
+        final SourceRecord transformedInsert = transformation.apply(insertRecord);
+        VerifyRecord.isValid(transformedInsert);
+
+        final var transformedStruct = (Struct) transformedInsert.value();
+        final var transformedFiledNames = transformedStruct.schema().fields().stream().map(Field::name).collect(Collectors.toList());
+        assertThat(transformedFiledNames).containsOnly("_id", "api_version");
     }
 
     private SourceRecords createCreateRecordFromJson(String pathOnClasspath) throws Exception {
