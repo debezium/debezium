@@ -20,7 +20,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import io.debezium.config.CommonConnectorConfig;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -37,6 +36,7 @@ import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.ChangeStreamPreAndPostImagesOptions;
 import com.mongodb.client.model.CreateCollectionOptions;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.Module;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig;
@@ -2005,7 +2005,6 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         assertThat(value.get("dataStr")).isEqualTo("Hello");
         assertThat(value.get("__deleted")).isEqualTo(true);
     }
-
 
     @Test
     @FixFor("DBZ-6809")
