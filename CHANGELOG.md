@@ -2,6 +2,58 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.5.0.Alpha2
+November 10th 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12415492)
+
+### New features since 2.5.0.Alpha1
+
+* JDBC Sink Connector - Support batch operations [DBZ-6317](https://issues.redhat.com/browse/DBZ-6317)
+* Utilize $changeStreamSplitLargeEvent to handle large change events with post and pre images [DBZ-6726](https://issues.redhat.com/browse/DBZ-6726)
+* Add support for MySQL 8.2 [DBZ-6873](https://issues.redhat.com/browse/DBZ-6873)
+* Kinesis Sink Reliability [DBZ-7032](https://issues.redhat.com/browse/DBZ-7032)
+* Upgrade MSSQL JDBC driver to support sensitivity classification [DBZ-7109](https://issues.redhat.com/browse/DBZ-7109)
+* Add maximum retry limit to Redis Schema History [DBZ-7120](https://issues.redhat.com/browse/DBZ-7120)
+* Emit a notification when completed reading from a capture instance [DBZ-7043](https://issues.redhat.com/browse/DBZ-7043)
+
+### Breaking changes since 2.5.0.Alpha1
+
+* Drop support for MySQL 5.7 [DBZ-6874](https://issues.redhat.com/browse/DBZ-6874)
+* Rename metadata.location ->metadata.source  [DBZ-7060](https://issues.redhat.com/browse/DBZ-7060)
+* Switch default connection mode to shared for sharded clusters  [DBZ-7108](https://issues.redhat.com/browse/DBZ-7108)
+* Remove deprecated EmbeddedEngine interface [DBZ-7110](https://issues.redhat.com/browse/DBZ-7110)
+
+
+### Fixes since 2.5.0.Alpha1
+
+* Oracle RAC throws ORA-00310: archive log sequence required [DBZ-5350](https://issues.redhat.com/browse/DBZ-5350)
+* oracle missing CDC data [DBZ-5656](https://issues.redhat.com/browse/DBZ-5656)
+* Missing oracle cdc records [DBZ-5750](https://issues.redhat.com/browse/DBZ-5750)
+* Connector frequently misses commit operations [DBZ-6942](https://issues.redhat.com/browse/DBZ-6942)
+* Missing events from Oracle 19c [DBZ-6963](https://issues.redhat.com/browse/DBZ-6963)
+* Debezium Embedded Infinispan Performs Slowly [DBZ-7047](https://issues.redhat.com/browse/DBZ-7047)
+* Field exclusion does not work with events of removed fields [DBZ-7058](https://issues.redhat.com/browse/DBZ-7058)
+* JDBC sink connector not working with CloudEvent [DBZ-7065](https://issues.redhat.com/browse/DBZ-7065)
+* JDBC connection leak when error occurs during processing [DBZ-7069](https://issues.redhat.com/browse/DBZ-7069)
+* Some server tests fail due to @com.google.inject.Inject annotation [DBZ-7077](https://issues.redhat.com/browse/DBZ-7077)
+* HttpIT fails with "Unrecognized field subEvents"  [DBZ-7092](https://issues.redhat.com/browse/DBZ-7092)
+* MySQL parser does not conform to arithmetical operation priorities [DBZ-7095](https://issues.redhat.com/browse/DBZ-7095)
+* When RelationalBaseSourceConnector#validateConnection is called with invalid config [inside Connector#validate()] can lead to exceptions [DBZ-7105](https://issues.redhat.com/browse/DBZ-7105)
+* Debezium crashes on parsing MySQL DDL statement (specific INSERT) [DBZ-7119](https://issues.redhat.com/browse/DBZ-7119)
+
+
+### Other changes since 2.5.0.Alpha1
+
+* Add (integration) tests for Oracle connector-specific Debezium Connect REST extension [DBZ-6763](https://issues.redhat.com/browse/DBZ-6763)
+* Intermittent failure of MongoDbReplicaSetAuthTest [DBZ-6875](https://issues.redhat.com/browse/DBZ-6875)
+* Mongodb tests in RHEL system testsuite are failing with DBZ 2.3.4 [DBZ-6996](https://issues.redhat.com/browse/DBZ-6996)
+* Use DebeziumEngine instead of EmbeddedEngine in the testsuite [DBZ-7007](https://issues.redhat.com/browse/DBZ-7007)
+* Update transformation property "delete.tombstone.handling.mode" to debezium doc [DBZ-7062](https://issues.redhat.com/browse/DBZ-7062)
+* Add MariaDB driver for testing and distribution [DBZ-7085](https://issues.redhat.com/browse/DBZ-7085)
+* Allow DS JMX to use username-password authentication on k8 [DBZ-7087](https://issues.redhat.com/browse/DBZ-7087)
+* VitessConnectorIT.shouldTaskFailIfColumnNameInvalid fails [DBZ-7104](https://issues.redhat.com/browse/DBZ-7104)
+
+
+
 ## 2.5.0.Alpha1
 October 26th 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12410510)
 
