@@ -1887,7 +1887,9 @@ The following configuration properties are _required_ unless a default value is 
 
 |[[informix-property-name]]<<informix-property-name, `+name+`>>
 |No default
-|Unique name for the connector. Attempting to register again with the same name will fail. 
+|Unique name for the connector. 
+You can register a connector with the specified name only once.
+Subsequent attempts result in failures. 
 This property is required by all Kafka Connect connectors.
 
 |[[informix-property-connector-class]]<<informix-property-connector-class, `+connector.class+`>>
@@ -1918,13 +1920,14 @@ The Informix connector always uses a single task and therefore does not use this
 
 |[[informix-property-database-dbname]]<<informix-property-database-dbname, `+database.dbname+`>>
 |No default
-|The name of the Informix database from which to stream the changes
+|The name of the Informix database from which to stream changes.
 
 |[[informix-property-topic-prefix]]<<informix-property-topic-prefix, `+topic.prefix+`>>
 |No default
 |Topic prefix which provides a namespace for the particular Informix database server that hosts the database for which {prodname} is capturing changes.
 Only alphanumeric characters, hyphens, dots and underscores must be used in the topic prefix name.
-The topic prefix should be unique across all other connectors, since this topic prefix is used for all Kafka topics that receive records from this connector. +
+The topic prefix is used for all Kafka topics that receive records from this connector.
+Specify a value that is unique across all connectors in the Kafka Connect deployment. +
  +
 [WARNING]
 ====
@@ -1937,7 +1940,8 @@ The connector is also unable to recover its database schema history topic.
 |No default
 |An optional, comma-separated list of regular expressions that match fully-qualified table identifiers for tables whose changes you want the connector to capture.
 When this property is set, the connector captures changes only from the specified tables.
-Each identifier is of the form _schemaName_._tableName_. By default, the connector captures changes in every non-system table. +
+Each identifier is of the form _schemaName_._tableName_. 
+By default, the connector captures changes in every non-system table. +
 
 To match the name of a table, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
 That is, the specified expression is matched against the entire name string of the table it does not match substrings that might be present in a table name. +
@@ -1969,14 +1973,14 @@ Fully-qualified names for columns are of the form _schemaName_._tableName_._colu
 
 To match the name of a column, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
 That is, the specified expression is matched against the entire name string of the column; it does not match substrings that might be present in a column name.
-Primary key columns are always included in the event's key, even if they are excluded from the value.
+Primary key columns are always included in the event's key, the value that you set in this property would exclude them.
 If you include this property in the configuration, do not set the `column.include.list` property.
 
 |[[informix-property-column-mask-hash]]<<informix-property-column-mask-hash, `column.mask.hash._hashAlgorithm_.with.salt._salt_`>>
 |_n/a_
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns.
 Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_. +
-To match the name of a column {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+To match the name of a column, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
 That is, the specified expression is matched against the entire name string of the column; the expression does not match substrings that might be present in a column name.
 In the resulting change event record, the values for the specified columns are replaced with pseudonyms.
 
@@ -1997,26 +2001,33 @@ Depending on the _hashAlgorithm_ used, the _salt_ selected, and the actual data 
 
 |[[informix-property-time-precision-mode]]<<informix-property-time-precision-mode, `+time.precision.mode+`>>
 |`adaptive`
-| Time, date, and timestamps can be represented with different kinds of precision: +
+| Specifies the numeric precision that the connector uses to represent time, date, and timestamps values. +
+Specify one of the following values:
  +
-`adaptive` captures the time and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type. +
+`adaptive`::
+Depending on the data type of the table column, the connector uses millisecond, microsecond, or nanosecond precision values to represent time and timestamp values exactly as they exist in the source table . +
  +
-`connect` always represents time and timestamp values by using Kafka Connect's built-in representations for `Time`, `Date`, and `Timestamp`, which uses millisecond precision regardless of the database columns' precision.
+`connect`:: 
+The connector always represents `Time`, `Date`, and `Timestamp` values by using the default Kafka Connect format, which uses millisecond precision regardless of the precision that is configured for the column in the source table. 
 For more information, see xref:informix-temporal-types[temporal types].
 
 |[[informix-property-tombstones-on-delete]]<<informix-property-tombstones-on-delete, `+tombstones.on.delete+`>>
 |`true`
-|Controls whether a _delete_ event is followed by a tombstone event. +
+|Specifies whether a _delete_ event is followed by a tombstone event. +
+Specify one of the following values:
  +
-`true` - a delete operation is represented by a _delete_ event and a subsequent tombstone event.  +
+`true`:: For each delete operation, the connector emits a _delete_ event, and a subsequent tombstone event. 
+Select this option to ensure that Kafka can delete all events that pertain to the key of the deleted row.
+If tombstones are disabled, and {link-kafka-docs}/#compaction[log compaction] is enabled for the destination topic, Kafka might be unable to identify and delete all events that share the key.
  +
-`false` - only a _delete_ event is emitted. +
+`false`:: The connector emits only a _delete_ event.
  +
-After a source record is deleted, emitting a tombstone event (the default behavior) allows Kafka to completely delete all events that pertain to the key of the deleted row in case {link-kafka-docs}/#compaction[log compaction] is enabled for the topic.
 
 |[[informix-property-include-schema-changes]]<<informix-property-include-schema-changes, `+include.schema.changes+`>>
 |`true`
-|Boolean value that specifies whether the connector should publish changes in the database schema to a Kafka topic with the same name as the database server ID. Each schema change is recorded with a key that contains the database name and a value that is a JSON structure that describes the schema update. This is independent of how the connector internally records database schema history.
+|Boolean value that specifies whether the connector publishes changes in the database schema to the Kafka topic that has the same name as the database server ID.
+When the default value is set, schema changes are recorded with a `key` that contains the database name and a `value` that is a JSON structure that describes the schema update. 
+This property does not effect the way that the connector records information to its internal database schema history topic.
 
 |[[informix-property-column-truncate-to-length-chars]]<<informix-property-column-truncate-to-length-chars, `column.truncate.to._length_.chars`>>
 |_n/a_
@@ -2068,7 +2079,7 @@ When this property is set, for columns with matching data types, the connector e
 * `pass:[_]pass:[_]debezium.source.column.length` +
 * `pass:[_]pass:[_]debezium.source.column.scale` +
 
-These parameters propagate a column's original type name and length (for variable-width types), respectively. +
+These parameters propagate the name of a column's original data type, and, for variable-width types, its length, and scale. +
 Enabling the connector to emit this extra data can assist in properly sizing specific numeric or character-based columns in sink databases.
 
 The fully-qualified name of a column observes one of the following formats: _databaseName_._tableName_._typeName_, or _databaseName_._schemaName_._tableName_._typeName_. +
@@ -2106,21 +2117,27 @@ For `purchaseorders` tables in any schema, the columns `pk3` and `pk4` serve as 
 
 |[[informix-property-schema-name-adjustment-mode]]<<informix-property-schema-name-adjustment-mode,`+schema.name.adjustment.mode+`>>
 |none
-|Specifies how schema names should be adjusted for compatibility with the message converter used by the connector. Possible settings:  +
+|Specifies how to adjust schema names for compatibility with the message converter that the connector uses. +
+Specify one of the following values:
 
-* `none` does not apply any adjustment. +
-* `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
-* `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java +
+`none`:: No adjustment. +
+`avro`:: Replace characters that are not valid for the Avro type with an underscore (`_`). 
+`avro_unicode`:: Replaces underscores or characters are not valid for the Avro type with the corresponding unicode, for example, `_uxxxx`. 
++
+Note: `_` is an escape sequence, equivalent to a backslash in Java.
 
 |[[informix-property-field-name-adjustment-mode]]<<informix-property-field-name-adjustment-mode,`+field.name.adjustment.mode+`>>
 |none
-|Specifies how field names should be adjusted for compatibility with the message converter used by the connector. Possible settings:  +
+|SSpecifies how to adjust field names for compatibility with the message converter that the connector uses. +
+Specify one of the following values:
 
-* `none` does not apply any adjustment. +
-* `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
-* `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java +
+`none`:: No adjustment. +
+`avro`:: Replace characters that are not valid for the Avro type with an underscore (`_`). 
+`avro_unicode`:: Replaces underscores or characters are not valid for the Avro type with the corresponding unicode, for example, `_uxxxx`. 
++
+Note: `_` is an escape sequence, equivalent to a backslash in Java.
 
-See {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming] for more details.
+For more information about Avro compatibility, see {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming] .
 |===
 
 [id="informix-advanced-configuration-properties"]
@@ -2158,53 +2175,72 @@ For example, +
 
 |[[informix-property-snapshot-mode]]<<informix-property-snapshot-mode, `+snapshot.mode+`>>
 |`initial`
-|Specifies the criteria for performing a snapshot when the connector starts: +
- +
-`initial` - For tables in capture mode, the connector takes a snapshot of the schema for the table and the data in the table. This is useful for populating Kafka topics with a complete representation of the data. +
- +
-`initial_only` - Takes a snapshot of structure and data like initial but instead does not transition into streaming changes once the snapshot has completed. +
- +
-`schema_only` - For tables in capture mode, the connector takes a snapshot of only the schema for the table. This is useful when only the changes that are happening from now on need to be emitted to Kafka topics. After the snapshot is complete, the connector continues by reading change events from the database's redo logs.
+|Specifies the criteria for performing a snapshot when the connector starts. +
+Specify one of the following values: 
+
+`initial`:: For tables in capture mode, the connector takes a snapshot of the schema for the table and the data in the table, and then transitions to streaming data for subsequent changes. 
+This option is useful for populating Kafka topics with a complete representation of the existing table data. 
+
+`initial_only`:: Takes a snapshot of structure and data as with the `initial` option, but does not transition to streaming changes after the snapshot completes. 
+
+`schema_only`:: For tables in capture mode, the connector takes a snapshot of only the schema for the table. 
+This is useful when you are not interested in capturing past data and want the connector to emit to Kafka topics only the changes that happen after the current time. 
+After the snapshot is complete, the connector continues by reading change events from the database's redo logs.
 
 |[[informix-property-snapshot-isolation-mode]]<<informix-property-snapshot-isolation-mode, `+snapshot.isolation.mode+`>>
 |`repeatable_read`
-|During a snapshot, controls the transaction isolation level and how long the connector locks the tables that are in capture mode. The possible values are: +
- +
-`read_uncommitted` - Does not prevent other transactions from updating table rows during an initial snapshot. This mode has no data consistency guarantees; some data might be lost or corrupted. +
- +
-`read_committed` - Does not prevent other transactions from updating table rows during an initial snapshot. It is possible for a new record to appear twice: once in the initial snapshot and once in the streaming phase. However, this consistency level is appropriate for data mirroring. +
- +
-`repeatable_read` - Prevents other transactions from updating table rows during an initial snapshot. It is possible for a new record to appear twice: once in the initial snapshot and once in the streaming phase. However, this consistency level is appropriate for data mirroring. +
- +
-`exclusive` - Uses repeatable read isolation level but takes an  exclusive lock for all tables to be read. This mode prevents other transactions from updating table rows during an initial snapshot. Only `exclusive` mode guarantees full consistency; the initial snapshot and streaming logs constitute a linear history.
+|During a snapshot, specifies the transaction isolation level and the length of time that the connector locks tables that are in capture mode. 
+Specify one of the following values:
+`read_uncommitted`:: 
+Does not prevent other transactions from updating table rows during an initial snapshot. 
+This mode has no data consistency guarantees; some data might be lost or corrupted.
+
+`read_committed`:: 
+Does not prevent other transactions from updating table rows during an initial snapshot. 
+It is possible for a new record to appear twice: once in the initial snapshot, and once in the streaming phase. 
+However, this consistency level is appropriate for data mirroring. 
+
+`repeatable_read`:: 
+Prevents other transactions from updating table rows during an initial snapshot.
+It is possible for a new record to appear twice: once in the initial snapshot,and once in the streaming phase. 
+However, this consistency level is appropriate for data mirroring. 
+
+`exclusive`::
+Uses repeatable read isolation level but takes an exclusive lock for all tables to be read. 
+This mode prevents other transactions from updating table rows during an initial snapshot. 
+Only `exclusive` mode guarantees full consistency; the initial snapshot and streaming logs constitute a linear history.
 
 |[[informix-property-cdc-timeout]]<<informix-property-cdc-timeout, `+cdc.timeout+`>>
 |`5`
-|Positive integer value that specifies the timeout behavior of a read call to the change stream client: +
+|Positive integer value that specifies the timeout behavior of a read call to the change stream client. +
+Specify one of the following values:
+
  +
-`<0` - Do not timeout. +
- +
-`0` - Return immediately if no data is available. +
- +
-`>=1` - The number of seconds to wait for data before timing out.
+
+`<0`:: Do not timeout. 
+ 
+`0`:: Return immediately if no data is available.
+ 
+`>=1`:: Specifies the number of seconds that the connector waits for data before it times out.
 
 |[[informix-property-cdc-buffersize]]<<informix-property-cdc-buffersize, `+cdc.buffersize+`>>
 |`0x100000`
-|Positive integer value that specifies the maximum size of each batch of records that the Ifx Change Stream Client processes.
+|Positive integer value that specifies the maximum size of each batch of records that the Informix Change Stream Client processes.
 
 |[[informix-property-event-processing-failure-handling-mode]]<<informix-property-event-processing-failure-handling-mode, `+event.processing.failure.handling.mode+`>>
 |`fail`
-|Specifies how the connector handles exceptions during processing of events. The possible values are: +
+|Specifies how the connector handles exceptions during processing of events. +
+Specify one of the following values:
  +
-`fail` - The connector logs the offset of the problematic event and stops processing. +
- +
-`warn` - The connector logs the offset of the problematic event and continues processing with the next event. +
- +
-`skip` - The connector skips the problematic event and continues processing with the next event.
+`fail`:: The connector logs the offset of the problematic event and stops processing.
+
+`warn`:: The connector logs the offset of the problematic event and continues processing with the next event.
+ 
+`skip`:: The connector skips the problematic event and continues processing with the next event.
 
 |[[informix-property-poll-interval-ms]]<<informix-property-poll-interval-ms, `+poll.interval.ms+`>>
-|`500`
-|Positive integer value that specifies the number of milliseconds the connector should wait for new change events to appear before it starts processing a batch of events. Defaults to 500 milliseconds, or 0.5 second.
+|`500` (0.5 seconds)
+|Positive integer value that specifies the number of milliseconds that the connector waits for new change events to appear before it starts processing a batch of events. 
 
 |[[informix-property-max-batch-size]]<<informix-property-max-batch-size, `+max.batch.size+`>>
 |`2048`
@@ -2231,13 +2267,17 @@ For example, if you set `max.queue.size=1000`, and `max.queue.size.in.bytes=5000
 |`0`
 |Controls how frequently the connector sends heartbeat messages to a Kafka topic. The default behavior is that the connector does not send heartbeat messages. +
  +
-Heartbeat messages are useful for monitoring whether the connector is receiving change events from the database. Heartbeat messages might help decrease the number of change events that need to be re-sent when a connector restarts. To send heartbeat messages, set this property to a positive integer, which indicates the number of milliseconds between heartbeat messages. +
- +
-Heartbeat messages are useful when there are many updates in a database that is being tracked but only a tiny number of updates are in tables that are in capture mode. In this situation, the connector reads from the database transaction log as usual but rarely emits change records to Kafka. This means that the connector has few opportunities to send the latest offset to Kafka. Sending heartbeat messages enables the connector to send the latest offset to Kafka.
+Heartbeat messages are useful for monitoring whether the connector is receiving change events from the database. 
+Heartbeat messages might help decrease the number of change events that need to be re-sent when a connector restarts. 
+To send heartbeat messages, set this property to a positive integer, which indicates the number of milliseconds between heartbeat messages. +
+Heartbeat messages are useful when there are many updates in a database that is being tracked but only a tiny number of updates are in tables that are in capture mode. In this situation, the connector reads from the database transaction log as usual, but rarely emits change records to Kafka. 
+In such a situation, the connector has few opportunities to send the latest offset to Kafka. 
+Enable the connector to send heartbeat messages to ensure that it sends the latest offset to Kafka even when few changes occur in monitored tables.
 
 |[[informix-property-snapshot-delay-ms]]<<informix-property-snapshot-delay-ms, `+snapshot.delay.ms+`>>
 |No default
-|An interval in milliseconds that the connector should wait before performing a snapshot when the connector starts. If you are starting multiple connectors in a cluster, this property is useful for avoiding snapshot interruptions, which might cause re-balancing of connectors.
+|An interval in milliseconds that the connector should wait before performing a snapshot when the connector starts. 
+If you start multiple connectors in a cluster, this property is useful for avoiding snapshot interruptions, which might cause re-balancing of connectors.
 
 |[[informix-property-snapshot-include-collection-list]]<<informix-property-snapshot-include-collection-list, `+snapshot.include.collection.list+`>>
 | All tables specified in `table.include.list`
@@ -2251,22 +2291,29 @@ That is, the specified expression is matched against the entire name string of t
 
 |[[informix-property-snapshot-fetch-size]]<<informix-property-snapshot-fetch-size, `+snapshot.fetch.size+`>>
 |`2000`
-|During a snapshot, the connector reads table content in batches of rows. This property specifies the maximum number of rows in a batch.
+|During a snapshot, the connector reads table content in batches of rows. 
+This property specifies the maximum number of rows in a batch.
 
 |[[informix-property-snapshot-lock-timeout-ms]]<<informix-property-snapshot-lock-timeout-ms, `+snapshot.lock.timeout.ms+`>>
 |`10000`
-|Positive integer value that specifies the maximum amount of time (in milliseconds) to wait to obtain table locks when performing a snapshot. If the connector cannot acquire table locks in this interval, the snapshot fails. xref:informix-snapshots[How the connector performs snapshots] provides details. Other possible settings are: +
+|Specifies the maximum amount of time (in milliseconds) to wait to obtain table locks when performing a snapshot. 
+If the connector cannot acquire table locks during this interval, the snapshot fails. 
+For more information, see xref:informix-snapshots[How the connector performs snapshots]. + 
+Specify one of the following settings: 
  +
-`0` -  The connector immediately fails when it cannot obtain a lock. +
- +
-`-1` - The connector waits infinitely.
+An integer > 0:: The number of milliseconds that the connector waits to obtain table locks. 
+The snapshot fails if the connector cannot obtain a lock before the specified interval ends.   
+
+`0`:: The snapshot fails immediately if the connector cannot obtain a lock. 
+ 
+`-1`:: The connector waits indefinitely to obtain a lock.
 
 |[[informix-property-snapshot-select-statement-overrides]]<<informix-property-snapshot-select-statement-overrides, `+snapshot.select.statement.overrides+`>>
 |No default
 |Specifies the table rows to include in a snapshot.
 Use the property if you want a snapshot to include only a subset of the rows in a table.
 This property affects snapshots only.
-It does not apply to events that the connector reads from the log.
+It does not apply to events that the connector reads from the log during the streaming phase.
 
 The property contains a comma-separated list of fully-qualified table names in the form `_<schemaName>.<tableName>_`. For example, +
  +
@@ -2293,13 +2340,20 @@ In the resulting snapshot, the connector includes only the records for which `de
 
 |[[informix-property-provide-transaction-metadata]]<<informix-property-provide-transaction-metadata, `+provide.transaction.metadata+`>>
 |`false`
-|Determines whether the connector generates events with transaction boundaries and enriches change event envelopes with transaction metadata. Specify `true` if you want the connector to do this. See xref:informix-transaction-metadata[Transaction metadata] for details.
+|Determines whether the connector generates events with transaction boundaries and enriches change event envelopes with transaction metadata. 
+Set the value to `true` if you want the connector to perform these actions.
+For more information, see xref:informix-transaction-metadata[Transaction metadata] .
 
 |[[informix-property-skipped-operations]]<<informix-property-skipped-operations, `+skipped.operations+`>>
 |`t`
-|A comma-separated list of operation types that will be skipped during streaming.
-The operations include: `c` for inserts/create, `u` for updates, `d` for deletes, `t` for truncates, and `none` to not skip any operations.
-By default, truncate operations are skipped (not emitted by this connector).
+|A comma-separated list of operation types that the connector skips during streaming.
+You can specify the following values: 
+
+`c`:: The connector does not emit events for insert (create) operations.
+`u`:: The connector does not emit events for update operations.
+`d`:: The connector does not emit events for delete operations.
+ `t`(default):: The connector does not emit events truncate operation.
+ `none`:: The connector emits events for all operation types. 
 
 |[[informix-property-signal-data-collection]]<<informix-property-signal-data-collection, `+signal.data.collection+`>>
 |No default
@@ -2308,7 +2362,7 @@ Use the following format to specify the collection name: +
 `_<schemaName>_._<tableName>_`
 
 |[[informix-property-signal-enabled-channels]]<<informix-property-signal-enabled-channels, `+signal.enabled.channels+`>>
-|source
+|`source`
 | List of the signaling channel names that are enabled for the connector.
 By default, the following channels are available:
 
@@ -2340,35 +2394,38 @@ Adjust the chunk size to a value that provides the best performance in your envi
 
 |[[informix-property-topic-naming-strategy]]<<informix-property-topic-naming-strategy, `topic.naming.strategy`>>
 |`io.debezium.schema.SchemaTopicNamingStrategy`
-|The name of the TopicNamingStrategy class that should be used to determine the topic name for data change, schema change, transaction, heartbeat event etc., defaults to `SchemaTopicNamingStrategy`.
+|The name of the `TopicNamingStrategy` class that the connector uses to construct the topic names for data change, schema change, transaction, heartbeat, and other types of events.
 
 |[[informix-property-topic-delimiter]]<<informix-property-topic-delimiter, `topic.delimiter`>>
 |`.`
-|Specify the delimiter for topic name, defaults to `.`.
+|Specifies the delimiter that the connector uses to construct topic names.
 
 |[[informix-property-topic-cache-size]]<<informix-property-topic-cache-size, `topic.cache.size`>>
 |`10000`
-|The size used for holding the topic names in bounded concurrent hash map. This cache will help to determine the topic name corresponding to a given data collection.
+|The cache size allocated for storing topic names in a bounded concurrent hash map.
+This cache helps to determine the topic name that corresponds to a given data collection.
 
 |[[informix-property-topic-heartbeat-prefix]]<<informix-property-topic-heartbeat-prefix, `+topic.heartbeat.prefix+`>>
 |`__debezium-heartbeat`
-|Controls the name of the topic to which the connector sends heartbeat messages. The topic name has this pattern: +
+|Specifies a string that the connector appends to the name of the topic to which it sends heartbeat messages.
+The topic name has the following pattern: +
  +
 _topic.heartbeat.prefix_._topic.prefix_ +
  +
-For example, if the topic prefix is `fulfillment`, the default topic name is `__debezium-heartbeat.fulfillment`.
+For example, if the topic prefix is `fulfillment`, based on the default value of the prefix, the connector assigns the following name to the heartbeat topic : `__debezium-heartbeat.fulfillment`.
 
 |[[informix-property-topic-transaction]]<<informix-property-topic-transaction, `topic.transaction`>>
 |`transaction`
-|Controls the name of the topic to which the connector sends transaction metadata messages. The topic name has this pattern: +
+|Specifies a string that the connector appends to the name of the topic to which it sends transaction metadata messages. 
+The topic name has the following pattern: +
  +
 _topic.prefix_._transaction_ +
  +
-For example, if the topic prefix is `fulfillment`, the default topic name is `fulfillment.transaction`.
+For example, if the topic prefix is `fulfillment`, based on the default value of this property, the connector assigns the following name to the transaction metadata topic:  `fulfillment.transaction`.
 
 |[[informix-property-snapshot-max-threads]]<<informix-property-snapshot-max-threads, `snapshot.max.threads`>>
 |`1`
-|Specifies the number of threads that the connector uses when performing an initial snapshot.
+|Specifies the maximum number of threads that the connector uses when performing an initial snapshot.
 To enable parallel initial snapshots, set the property to a value greater than 1.
 In a parallel initial snapshot, the connector processes multiple tables concurrently.
 ifdef::community[]
@@ -2377,7 +2434,14 @@ endif::community[]
 
 |[[informix-property-custom-metric-tags]]<<informix-property-custom-metric-tags, `custom.metric.tags`>>
 |`No default`
-|The custom metric tags will accept key-value pairs to customize the MBean object name which should be appended the end of regular name, each key would represent a tag for the MBean object name, and the corresponding value would be the value of that tag the key is. For example: `k1=v1,k2=v2`.
+|Defines tags for customizing MBean object names by adding metadata that provides contextual information that enables you to organize and categorize metrics data.
+Specify a comma-separated list of key-value pairs.
+Each key represents a tag for the MBean object name, and the corresponding value represents a value for the key, for example,  +
+`k1=v1,k2=v2`
+
+The connector appends the specified tags to the base MBean object name.
+
+You can define tags to identify particular application instances, environments, regions, versions, and so forth.
 
 |[[informix-property-errors-max-retires]]<<informix-property-errors-max-retires, `errors.max.retries`>>
 |`-1`
