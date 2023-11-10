@@ -365,14 +365,8 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
     private void collectChangeTablesWithKnownStopLsn(SqlServerPartition partition, SqlServerChangeTable[] tables) {
         for (SqlServerChangeTable table : tables) {
             if (table.getStopLsn().isAvailable()) {
-                synchronized (changeTablesWithKnownStopLsn) {
-                    if (!changeTablesWithKnownStopLsn.containsKey(partition)) {
-                        changeTablesWithKnownStopLsn.put(partition, new HashSet<>());
-                    }
-
-                    LOGGER.info("The stop lsn of {} change table became known", table);
-                    changeTablesWithKnownStopLsn.get(partition).add(table);
-                }
+                LOGGER.info("The stop lsn of {} change table became known", table);
+                changeTablesWithKnownStopLsn.computeIfAbsent(partition, x -> new HashSet<>()).add(table);
             }
         }
     }
