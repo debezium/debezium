@@ -778,6 +778,16 @@ The default is `public`; however, if the PostGIS extension was installed in anot
 |`false`
 |Specifies whether the connector automatically sets an `IDENTITY_INSERT` before an `INSERT` or `UPSERT` operation into the identity column of SQL Server tables, and then unsets it immediately after the operation.
 When the default setting (`false`) is in effect, an `INSERT` or `UPSERT` operation into the `IDENTITY` column of a table results in a SQL exception.
+
+|[[jdbc-property-batch-size]]<<jdbc-property-batch-size, `+batch.size+`>>
+|`500`
+|Specifies how many records to attempt to batch together into the destination table.
+
+[NOTE]
+====
+Note that if you set `_consumer.max.poll.records_` in the Connect worker properties to a value lower than `_batch.size_`, batch processing will be caped by `_consumer.max.poll.records_` and the desired `_batch.size_` won’t be reached.
+You can also configure the connector’s underlying consumer’s `_max.poll.records_` using `_consumer.override.max.poll.records_` in the connector configuration.
+====
 |===
 
 [[jdbc-connector-properties-extendable]]
