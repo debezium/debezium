@@ -11,11 +11,14 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kafka.connect.json.JsonConverterConfig;
 import org.apache.kafka.connect.sink.SinkRecord;
@@ -26,6 +29,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.converters.spi.CloudEventsMaker;
+import io.debezium.converters.spi.SerializerType;
 import io.debezium.transforms.outbox.AdditionalFieldsValidator;
 
 /**
@@ -49,14 +53,29 @@ public class ConvertCloudEventToSaveableForm implements Transformation<SinkRecor
             .withImportance(ConfigDef.Importance.HIGH)
             .withDescription("Specifies a list of pairs with mappings between a CloudEvent's fields and names of database columns");
 
+    private static final Field SERIALIZER_TYPE = Field.create("serializer.type")
+            .withDisplayName("Specifies a serialization type a provided CloudEvent was serialized and deserialized with")
+            .withType(ConfigDef.Type.STRING)
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.HIGH)
+            .withDescription("Specifies a serialization type a provided CloudEvent was serialized and deserialized with");
+
     private Map<String, String> fieldsMapping;
 
+    private SerializerType serializerType;
+
     private final JsonConverter jsonDataConverter = new JsonConverter();
+
+    private final Set<String> cloudEventsSpecRequiredFields = Set.of(CloudEventsMaker.FieldName.ID, CloudEventsMaker.FieldName.SOURCE,
+            CloudEventsMaker.FieldName.SPECVERSION,
+            CloudEventsMaker.FieldName.TYPE);
+
+    private final Map<String, Schema> cloudEventsFieldToColumnSchema = new HashMap<>();
 
     @Override
     public ConfigDef config() {
         final ConfigDef config = new ConfigDef();
-        Field.group(config, null, FIELDS_MAPPING);
+        Field.group(config, null, FIELDS_MAPPING, SERIALIZER_TYPE);
         return config;
     }
 
@@ -67,10 +86,24 @@ public class ConvertCloudEventToSaveableForm implements Transformation<SinkRecor
         final List<String> rawFieldsMapping = config.getList(FIELDS_MAPPING);
         fieldsMapping = Collections.unmodifiableMap(parseFieldsMapping(rawFieldsMapping));
 
+        serializerType = SerializerType.withName(config.getString(SERIALIZER_TYPE));
+        if (serializerType == null) {
+            throw new ConfigException(SERIALIZER_TYPE.name(), serializerType, "Serialization/deserialization type of CloudEvents converter is required");
+        }
+
         Map<String, Object> jsonDataConverterConfig = new HashMap<>();
         jsonDataConverterConfig.put(JsonConverterConfig.SCHEMAS_ENABLE_CONFIG, false);
         jsonDataConverterConfig.put(JsonConverterConfig.TYPE_CONFIG, "value");
         jsonDataConverter.configure(jsonDataConverterConfig);
+
+        cloudEventsFieldToColumnSchema.put(CloudEventsMaker.FieldName.ID, Schema.STRING_SCHEMA);
+        cloudEventsFieldToColumnSchema.put(CloudEventsMaker.FieldName.SOURCE, Schema.STRING_SCHEMA);
+        cloudEventsFieldToColumnSchema.put(CloudEventsMaker.FieldName.SPECVERSION, Schema.STRING_SCHEMA);
+        cloudEventsFieldToColumnSchema.put(CloudEventsMaker.FieldName.TYPE, Schema.STRING_SCHEMA);
+        cloudEventsFieldToColumnSchema.put(CloudEventsMaker.FieldName.DATACONTENTTYPE, Schema.STRING_SCHEMA);
+        cloudEventsFieldToColumnSchema.put(CloudEventsMaker.FieldName.DATASCHEMA, Schema.STRING_SCHEMA);
+        cloudEventsFieldToColumnSchema.put(CloudEventsMaker.FieldName.TIME, Schema.STRING_SCHEMA);
+        cloudEventsFieldToColumnSchema.put(CloudEventsMaker.FieldName.DATA, Schema.STRING_SCHEMA);
     }
 
     private Map<String, String> parseFieldsMapping(List<String> rawFieldsMapping) {
@@ -92,12 +125,19 @@ public class ConvertCloudEventToSaveableForm implements Transformation<SinkRecor
 
     @Override
     public SinkRecord apply(final SinkRecord record) {
-        if (record == null || !record.valueSchema().name().endsWith(CLOUD_EVENTS_SCHEMA_NAME_SUFFIX) || fieldsMapping.isEmpty()) {
+        if (record == null || !isCloudEvent(record) || fieldsMapping.isEmpty()) {
             return record;
         }
 
-        final org.apache.kafka.connect.data.Field dataField = record.valueSchema().field(CloudEventsMaker.FieldName.DATA);
-        final boolean cloudEventContainsDataAsStruct = dataField != null && dataField.schema().type() == Schema.Type.STRUCT;
+        final boolean cloudEventContainsDataAsStruct;
+        if (serializerType == SerializerType.JSON) {
+            Object dataFieldValue = getCloudEventFieldsMap(record).get(CloudEventsMaker.FieldName.DATA);
+            cloudEventContainsDataAsStruct = dataFieldValue instanceof Struct;
+        }
+        else {
+            final org.apache.kafka.connect.data.Field dataField = record.valueSchema().field(CloudEventsMaker.FieldName.DATA);
+            cloudEventContainsDataAsStruct = dataField != null && dataField.schema().type() == Schema.Type.STRUCT;
+        }
 
         final Schema newSchema = getSchema(record, cloudEventContainsDataAsStruct);
         final Struct newValue = getValue(record, newSchema, cloudEventContainsDataAsStruct);
@@ -113,36 +153,105 @@ public class ConvertCloudEventToSaveableForm implements Transformation<SinkRecor
                 record.headers());
     }
 
+    private boolean isCloudEvent(SinkRecord record) {
+        if (serializerType == SerializerType.JSON) {
+            boolean valueIsMap = record.value() instanceof Map;
+            if (valueIsMap && record.valueSchema() == null) {
+                final Map<String, Object> cloudEventMap = getCloudEventFieldsMap(record);
+                return cloudEventMap.size() >= 4 && cloudEventsSpecRequiredFields.stream().allMatch(cloudEventMap::containsKey);
+            }
+            return false;
+        }
+        else {
+            return record.valueSchema().name().endsWith(CLOUD_EVENTS_SCHEMA_NAME_SUFFIX);
+        }
+    }
+
+    private Map<String, Object> getCloudEventFieldsMap(SinkRecord record) {
+        return (Map<String, Object>) record.value();
+    }
+
     private Schema getSchema(SinkRecord record, boolean cloudEventContainsDataAsStruct) {
+        Map<String, Object> cloudEventMap = null;
+        if (serializerType == SerializerType.JSON) {
+            cloudEventMap = getCloudEventFieldsMap(record);
+        }
+
         final SchemaBuilder schemaBuilder = SchemaBuilder.struct();
         for (Map.Entry<String, String> fieldMapping : fieldsMapping.entrySet()) {
             final String cloudEventFieldName = fieldMapping.getKey();
             final String databaseColumnName = fieldMapping.getValue();
-            final org.apache.kafka.connect.data.Field cloudEventField = record.valueSchema().field(cloudEventFieldName);
+
+            final Schema cloudEventFieldSchema;
+            if (serializerType == SerializerType.JSON) {
+                Object cloudEventFieldValue = cloudEventMap.get(cloudEventFieldName);
+                if (cloudEventFieldValue == null) {
+                    // set default schemas
+                    cloudEventFieldSchema = cloudEventsFieldToColumnSchema.get(cloudEventFieldName);
+                }
+                else {
+                    cloudEventFieldSchema = determineCloudEventFieldSchema(cloudEventFieldValue);
+                }
+            }
+            else {
+                final org.apache.kafka.connect.data.Field cloudEventField = record.valueSchema().field(cloudEventFieldName);
+                cloudEventFieldSchema = cloudEventField.schema();
+            }
+
             final Schema databaseColumnSchema;
             if (cloudEventFieldName.equals(CloudEventsMaker.FieldName.DATA) && cloudEventContainsDataAsStruct) {
                 databaseColumnSchema = Schema.STRING_SCHEMA;
             }
             else {
-                databaseColumnSchema = cloudEventField.schema();
+                databaseColumnSchema = cloudEventFieldSchema;
             }
             schemaBuilder.field(databaseColumnName, databaseColumnSchema);
         }
         return schemaBuilder.build();
     }
 
+    private Schema determineCloudEventFieldSchema(Object cloudEventFieldValue) {
+        final Schema cloudEventFieldSchema;
+        if (cloudEventFieldValue instanceof String) {
+            cloudEventFieldSchema = Schema.STRING_SCHEMA;
+        }
+        else if (cloudEventFieldValue instanceof Struct) {
+            cloudEventFieldSchema = ((Struct) cloudEventFieldValue).schema();
+        }
+        else {
+            throw new DataException("Unsupported type of CloudEvent field: " + cloudEventFieldValue.getClass());
+        }
+        return cloudEventFieldSchema;
+    }
+
     private Struct getValue(SinkRecord record, Schema schema, boolean cloudEventContainsDataAsStruct) {
+        Map<String, Object> cloudEventMap = null;
+        Struct cloudEventStruct = null;
+        if (serializerType == SerializerType.JSON) {
+            cloudEventMap = getCloudEventFieldsMap(record);
+        }
+        else {
+            cloudEventStruct = requireStruct(record.value(), "convert cloud event");
+        }
+
         final Struct struct = new Struct(schema);
-        final Struct cloudEvent = requireStruct(record.value(), "convert cloud event");
         for (Map.Entry<String, String> fieldMapping : fieldsMapping.entrySet()) {
             final String cloudEventFieldName = fieldMapping.getKey();
             final String databaseColumnName = fieldMapping.getValue();
-            Object fieldValue = cloudEvent.get(cloudEventFieldName);
+
+            Object fieldValue;
+            if (serializerType == SerializerType.JSON) {
+                fieldValue = cloudEventMap.get(cloudEventFieldName);
+            }
+            else {
+                fieldValue = cloudEventStruct.get(cloudEventFieldName);
+            }
             if (cloudEventFieldName.equals(CloudEventsMaker.FieldName.DATA) && cloudEventContainsDataAsStruct) {
                 final Struct data = (Struct) fieldValue;
                 final byte[] dataInJson = jsonDataConverter.fromConnectData(null, data.schema(), data);
                 fieldValue = new String(dataInJson);
             }
+
             struct.put(databaseColumnName, fieldValue);
         }
         return struct;

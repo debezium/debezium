@@ -14,6 +14,8 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.sink.SinkRecord;
 
+import io.debezium.converters.spi.SerializerType;
+
 /**
  * @author Chris Cranford
  */
@@ -413,10 +415,11 @@ public interface SinkRecordFactory {
                 .build();
     }
 
-    default SinkRecord cloudEventRecord(String topicName) {
+    default SinkRecord cloudEventRecord(String topicName, SerializerType serializerType) {
         final SinkRecord basicRecord = updateRecord(topicName);
         return SinkRecordBuilder.cloudEvent()
                 .basicRecord(basicRecord)
+                .cloudEventSerializerType(serializerType)
                 .build();
     }
 }
