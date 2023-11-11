@@ -38,6 +38,7 @@
 ** xref:transformations/header-to-value.adoc[HeaderToValue]
 ** xref:transformations/timezone-converter.adoc[Timezone Converter]
 ** xref:transformations/timescaledb.adoc[TimescaleDB Integration]
+** xref:transformations/convert-cloudevent-to-saveable-form.adoc[Convert CloudEvents to Saveable Form]
 * API and SPI
 ** xref:development/engine.adoc[Debezium Engine]
 ** xref:development/converters.adoc[Custom Converters]

@@ -42,6 +42,9 @@ The following SMTs are provided by {prodname}:
 |xref:transformations/timescaledb.adoc[TimescaleDB Integration]
 |Routes and enriches messages that the {prodname} PostgreSQL connector captures from a TimescaleDB.
 
+|xref:transformations/convert-cloudevent-to-saveable-form.adoc[Convert CloudEvents to Saveable Form]
+|Converts values of records deserialized by {prodname} CloudEvents converter to a structure suitable for {prodname} JDBC sink connector.
+
 |===
 
 By means of xref:transformations/applying-transformations-selectively.adoc[SMT Predicates] you can apply any of the transformations selectively, so that it modifies only that subset of change event messages that share a common characteristic.

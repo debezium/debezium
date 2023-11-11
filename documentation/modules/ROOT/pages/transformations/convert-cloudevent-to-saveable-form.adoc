@@ -1,0 +1,118 @@
+:page-aliases: configuration/convert-cloudevent-to-saveable-form.adoc
+// Category: debezium-using
+// Type: assembly
+// ModuleID: convert-cloudevent-to-saveable-form
+// Title: ConvertCloudEventToSaveableForm
+[id="convert-cloudevent-to-saveable-form"]
+= ConvertCloudEventToSaveableForm
+
+:toc:
+:toc-placement: macro
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+
+toc::[]
+
+The `ConvertCloudEventToSaveableForm` SMT is used in conjunction with `CloudEventsConverter` and `JdbcSinkConnector` that is it makes a
+CloudEvent suitable for saving to a database.
+
+It is done using the mapping between a CloudEvent and target database table columns; it specifies which CloudEvent field is
+associated with which column. A new structure and its schema created by the transform contain fields with the names of target table
+columns and values from an original CloudEvent. If a CloudEvent contains `data` field as a structure, it is flattened, that is,
+converted to JSON string.
+
+To perform the conversion, SMT needs to know serializer type that is used to serialize and deserialize CloudEvents
+(JSON or Avro). `serializer.type` should have the same value as `value.converter.serializer.type`.
+
+// Type: concept
+// Title: Example: Basic configuration of the {prodname} `ConvertCloudEventToSaveableForm` SMT
+// ModuleID: basic-configuration-of-the-debezium-convert-cloudevent-to-saveable-form-smt
+[[example-convert-cloudevent-to-saveable-form]]
+== Example
+
+To convert a CloudEvent to a form suitable for `JdbcSinkConnector`, configure the `ConvertCloudEventToSaveableForm` SMT in the Kafka Connect configuration
+for a connector. For example, to convert CloudEvents that were serialized and deserialized with JSON provided that the target database has
+`id`, `source`, `type`, and `payload` columns, use the following configuration for the SMT:
+
+[source]
+----
+"connector.class": "io.debezium.connector.jdbc.JdbcSinkConnector",
+...
+"transforms": "convertCloudEvent",
+"transforms.convertCloudEvent.type": "io.debezium.connector.jdbc.transforms.ConvertCloudEventToSaveableForm",
+"transforms.convertCloudEvent.fields.mapping": "id,source,type,data:payload",
+"transforms.convertCloudEvent.serializer.type": "json",
+"value.converter": "io.debezium.converters.CloudEventsConverter",
+"value.converter.serializer.type": "json",
+"value.converter.data.serializer.type": "json"
+...
+----
+
+The following example shows the value of a record before and after the transformation is applied.
+
+.Effect of applying the `ConvertCloudEventToSaveableForm` SMT
+====
+Value before the SMT processes the record::
++
+[source]
+----
+{
+	"id": "624e6565-99ee-4fdb-9228-653138c3a7b3",
+	"source": "/debezium/postgresql/book",
+	"specversion": "1.0",
+	"type": "BookCreated",
+	"time": "2023-11-11T07:11:01.825Z",
+	"datacontenttype": "application/json",
+	"data": {
+        "id": 4,
+        "name": "1984",
+        "publicationYear": 1949
+	}
+}
+----
+
+Value after the SMT processes the record::
++
+[source, json]
+----
+{
+	"id": "624e6565-99ee-4fdb-9228-653138c3a7b3",
+	"source": "/debezium/postgresql/book",
+	"type": "BookCreated",
+	"payload": "{"id": 4, "name": "1984", "publicationYear": 1949}"
+}
+----
+====
+
+// Type: reference
+// ModuleID: options-for-configuring-the-cloudevent-to-saveable-form-transformation
+// Title: Options for configuring the `ConvertCloudEventToSaveableForm` transformation
+[[cloudevent-to-saveable-form-configuration-options]]
+== Configuration options
+
+The following table lists the configuration options that you can use with the `ConvertCloudEventToSaveableForm` SMT.
+
+.ConvertCloudEventToSaveableForm SMT configuration options
+[cols="14%a,40%a,10%a, 16%a, 16%a, 10%a"]
+|===
+|Property
+|Description
+|Type
+|Default
+|Valid Values
+|Importance
+
+|[[cloudevent-to-saveable-form-fields-mapping]]<<cloudevent-to-saveable-form-fields-mapping, `fields.mapping`>>
+|A comma-separated list of pairs each of which contains the name of a CloudEvents field followed by the name of a target table column
+|list
+|No default value
+|non-empty list
+|high
+|[[cloudevent-to-saveable-form-serializer-type]]<<cloudevent-to-saveable-form-serializer-type, `serializer.type`>>
+|Serializer type that is used to serialize and deserialize CloudEvents. Should have the same value as `value.converter.serializer.type`.
+|string
+|No default value
+|`json` or `avro`
+|high
+|===
