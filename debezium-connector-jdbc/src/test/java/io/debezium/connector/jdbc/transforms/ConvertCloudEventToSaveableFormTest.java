@@ -10,13 +10,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.sink.SinkRecord;
+import org.junit.Assert;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import io.debezium.connector.jdbc.util.DebeziumSinkRecordFactory;
 import io.debezium.connector.jdbc.util.SinkRecordFactory;
+import io.debezium.converters.spi.SerializerType;
 import io.debezium.doc.FixFor;
 
 /**
@@ -27,10 +32,22 @@ import io.debezium.doc.FixFor;
 class ConvertCloudEventToSaveableFormTest {
 
     @Test
-    @FixFor("DBZ-7065")
-    void testConvertNotCloudEventRecord() {
+    @FixFor({ "DBZ-7065", "DBZ-7130" })
+    void testConvertCloudEventRecordWithEmptyConfig() {
         try (ConvertCloudEventToSaveableForm transform = new ConvertCloudEventToSaveableForm()) {
             final Map<String, String> config = new HashMap<>();
+            Assert.assertThrows("Invalid value null for configuration serializer.type: Serialization/deserialization type of CloudEvents converter is required",
+                    ConfigException.class, () -> transform.configure(config));
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = { "json", "avro" })
+    @FixFor({ "DBZ-7065", "DBZ-7130" })
+    void testConvertNotCloudEventRecord(String serializerType) {
+        try (ConvertCloudEventToSaveableForm transform = new ConvertCloudEventToSaveableForm()) {
+            final Map<String, String> config = new HashMap<>();
+            config.put("serializer.type", serializerType);
             transform.configure(config);
 
             final SinkRecordFactory factory = new DebeziumSinkRecordFactory();
@@ -43,39 +60,47 @@ class ConvertCloudEventToSaveableFormTest {
         }
     }
 
-    @Test
-    @FixFor("DBZ-7065")
-    void testConvertCloudEventRecordWithEmptyConfig() {
+    @ParameterizedTest
+    @ValueSource(strings = { "json", "avro" })
+    @FixFor({ "DBZ-7065", "DBZ-7130" })
+    void testConvertCloudEventRecordWithEmptyMapping(String serializerType) {
         try (ConvertCloudEventToSaveableForm transform = new ConvertCloudEventToSaveableForm()) {
             final Map<String, String> config = new HashMap<>();
+            config.put("serializer.type", serializerType);
             transform.configure(config);
 
             final SinkRecordFactory factory = new DebeziumSinkRecordFactory();
 
-            final SinkRecord cloudEventRecord = factory.cloudEventRecord("test.topic");
-            assertThat(cloudEventRecord.valueSchema().name()).endsWith(".CloudEvents.Envelope");
-            assertThat(cloudEventRecord.valueSchema().fields().size()).isEqualTo(7);
-            assertThat(cloudEventRecord.valueSchema().field("id").schema()).isEqualTo(Schema.STRING_SCHEMA);
+            final SinkRecord cloudEventRecord = factory.cloudEventRecord("test.topic", SerializerType.withName(serializerType));
+            if (serializerType.equals("avro")) {
+                assertThat(cloudEventRecord.valueSchema().name()).endsWith(".CloudEvents.Envelope");
+                assertThat(cloudEventRecord.valueSchema().fields().size()).isEqualTo(7);
+                assertThat(cloudEventRecord.valueSchema().field("id").schema()).isEqualTo(Schema.STRING_SCHEMA);
+            }
 
             final SinkRecord convertedRecord = transform.apply(cloudEventRecord);
             assertThat(convertedRecord).isEqualTo(cloudEventRecord);
         }
     }
 
-    @Test
-    @FixFor("DBZ-7065")
-    void testConvertCloudEventRecordWithMappingOfIdField() {
+    @ParameterizedTest
+    @ValueSource(strings = { "json", "avro" })
+    @FixFor({ "DBZ-7065", "DBZ-7130" })
+    void testConvertCloudEventRecordWithMappingOfIdField(String serializerType) {
         try (ConvertCloudEventToSaveableForm transform = new ConvertCloudEventToSaveableForm()) {
             final Map<String, String> config = new HashMap<>();
             config.put("fields.mapping", "id");
+            config.put("serializer.type", serializerType);
             transform.configure(config);
 
             final SinkRecordFactory factory = new DebeziumSinkRecordFactory();
 
-            final SinkRecord cloudEventRecord = factory.cloudEventRecord("test.topic");
-            assertThat(cloudEventRecord.valueSchema().name()).endsWith(".CloudEvents.Envelope");
-            assertThat(cloudEventRecord.valueSchema().fields().size()).isEqualTo(7);
-            assertThat(cloudEventRecord.valueSchema().field("id").schema()).isEqualTo(Schema.STRING_SCHEMA);
+            final SinkRecord cloudEventRecord = factory.cloudEventRecord("test.topic", SerializerType.withName(serializerType));
+            if (serializerType.equals("avro")) {
+                assertThat(cloudEventRecord.valueSchema().name()).endsWith(".CloudEvents.Envelope");
+                assertThat(cloudEventRecord.valueSchema().fields().size()).isEqualTo(7);
+                assertThat(cloudEventRecord.valueSchema().field("id").schema()).isEqualTo(Schema.STRING_SCHEMA);
+            }
 
             final SinkRecord convertedRecord = transform.apply(cloudEventRecord);
             assertThat(convertedRecord).isNotNull();
@@ -89,20 +114,24 @@ class ConvertCloudEventToSaveableFormTest {
         }
     }
 
-    @Test
-    @FixFor("DBZ-7065")
-    void testConvertCloudEventRecordWithMappingOfDataField() {
+    @ParameterizedTest
+    @ValueSource(strings = { "json", "avro" })
+    @FixFor({ "DBZ-7065", "DBZ-7130" })
+    void testConvertCloudEventRecordWithMappingOfDataField(String serializerType) {
         try (ConvertCloudEventToSaveableForm transform = new ConvertCloudEventToSaveableForm()) {
             final Map<String, String> config = new HashMap<>();
             config.put("fields.mapping", "data");
+            config.put("serializer.type", serializerType);
             transform.configure(config);
 
             final SinkRecordFactory factory = new DebeziumSinkRecordFactory();
 
-            final SinkRecord cloudEventRecord = factory.cloudEventRecord("test.topic");
-            assertThat(cloudEventRecord.valueSchema().name()).endsWith(".CloudEvents.Envelope");
-            assertThat(cloudEventRecord.valueSchema().fields().size()).isEqualTo(7);
-            assertThat(cloudEventRecord.valueSchema().field("data").schema().type()).isEqualTo(Schema.Type.STRUCT);
+            final SinkRecord cloudEventRecord = factory.cloudEventRecord("test.topic", SerializerType.withName(serializerType));
+            if (serializerType.equals("avro")) {
+                assertThat(cloudEventRecord.valueSchema().name()).endsWith(".CloudEvents.Envelope");
+                assertThat(cloudEventRecord.valueSchema().fields().size()).isEqualTo(7);
+                assertThat(cloudEventRecord.valueSchema().field("data").schema().type()).isEqualTo(Schema.Type.STRUCT);
+            }
 
             final SinkRecord convertedRecord = transform.apply(cloudEventRecord);
             assertThat(convertedRecord).isNotNull();
@@ -116,20 +145,24 @@ class ConvertCloudEventToSaveableFormTest {
         }
     }
 
-    @Test
-    @FixFor("DBZ-7065")
-    void testConvertCloudEventRecordWithMappingOfAllFieldsWithCustomNames() {
+    @ParameterizedTest
+    @ValueSource(strings = { "json", "avro" })
+    @FixFor({ "DBZ-7065", "DBZ-7130" })
+    void testConvertCloudEventRecordWithMappingOfAllFieldsWithCustomNames(String serializerType) {
         try (ConvertCloudEventToSaveableForm transform = new ConvertCloudEventToSaveableForm()) {
             final Map<String, String> config = new HashMap<>();
             config.put("fields.mapping", "id,source:created_by,specversion:ce_spec_number,type,time:created_at,datacontenttype:payload_format,data:payload");
+            config.put("serializer.type", serializerType);
             transform.configure(config);
 
             final SinkRecordFactory factory = new DebeziumSinkRecordFactory();
 
-            final SinkRecord cloudEventRecord = factory.cloudEventRecord("test.topic");
-            assertThat(cloudEventRecord.valueSchema().name()).endsWith(".CloudEvents.Envelope");
-            assertThat(cloudEventRecord.valueSchema().fields().size()).isEqualTo(7);
-            assertThat(cloudEventRecord.valueSchema().field("data").schema().type()).isEqualTo(Schema.Type.STRUCT);
+            final SinkRecord cloudEventRecord = factory.cloudEventRecord("test.topic", SerializerType.withName(serializerType));
+            if (serializerType.equals("avro")) {
+                assertThat(cloudEventRecord.valueSchema().name()).endsWith(".CloudEvents.Envelope");
+                assertThat(cloudEventRecord.valueSchema().fields().size()).isEqualTo(7);
+                assertThat(cloudEventRecord.valueSchema().field("data").schema().type()).isEqualTo(Schema.Type.STRUCT);
+            }
 
             final SinkRecord convertedRecord = transform.apply(cloudEventRecord);
             assertThat(convertedRecord).isNotNull();

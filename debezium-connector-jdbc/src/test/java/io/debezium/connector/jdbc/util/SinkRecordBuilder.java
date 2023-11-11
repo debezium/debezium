@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.jdbc.util;
 
+import java.io.IOException;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -15,9 +16,16 @@ import org.apache.kafka.common.Uuid;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.DataException;
+import org.apache.kafka.connect.json.JsonConverter;
+import org.apache.kafka.connect.json.JsonConverterConfig;
 import org.apache.kafka.connect.sink.SinkRecord;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import io.debezium.converters.spi.CloudEventsMaker;
+import io.debezium.converters.spi.SerializerType;
 import io.debezium.data.Envelope;
 import io.debezium.util.Strings;
 
@@ -67,6 +75,7 @@ public class SinkRecordBuilder {
         private int partition;
         private int offset;
         private SinkRecord basicRecord;
+        private SerializerType cloudEventSerializerType;
         private Map<String, Object> keyValues = new HashMap<>();
         private Map<String, Object> beforeValues = new HashMap<>();
         private Map<String, Object> afterValues = new HashMap<>();
@@ -138,6 +147,11 @@ public class SinkRecordBuilder {
 
         public SinkRecordTypeBuilder basicRecord(SinkRecord basicRecord) {
             this.basicRecord = basicRecord;
+            return this;
+        }
+
+        public SinkRecordTypeBuilder cloudEventSerializerType(SerializerType serializerType) {
+            this.cloudEventSerializerType = serializerType;
             return this;
         }
 
@@ -244,17 +258,27 @@ public class SinkRecordBuilder {
 
             Schema ceSchema = schemaBuilder.build();
 
-            Struct ceValue = new Struct(ceSchema);
-            ceValue.put(CloudEventsMaker.FieldName.ID, Uuid.randomUuid().toString());
-            ceValue.put(CloudEventsMaker.FieldName.SOURCE, "test_ce_source");
-            ceValue.put(CloudEventsMaker.FieldName.SPECVERSION, "1.0");
-            ceValue.put(CloudEventsMaker.FieldName.TYPE, "TestType");
-            ceValue.put(CloudEventsMaker.FieldName.TIME, LocalDateTime.now().toString());
-            ceValue.put(CloudEventsMaker.FieldName.DATACONTENTTYPE, "application/json");
-            ceValue.put(CloudEventsMaker.FieldName.DATA, basicRecord.value());
+            Struct ceValueStruct = new Struct(ceSchema);
+            ceValueStruct.put(CloudEventsMaker.FieldName.ID, Uuid.randomUuid().toString());
+            ceValueStruct.put(CloudEventsMaker.FieldName.SOURCE, "test_ce_source");
+            ceValueStruct.put(CloudEventsMaker.FieldName.SPECVERSION, "1.0");
+            ceValueStruct.put(CloudEventsMaker.FieldName.TYPE, "TestType");
+            ceValueStruct.put(CloudEventsMaker.FieldName.TIME, LocalDateTime.now().toString());
+            ceValueStruct.put(CloudEventsMaker.FieldName.DATACONTENTTYPE, "application/json");
+            ceValueStruct.put(CloudEventsMaker.FieldName.DATA, basicRecord.value());
 
-            return new SinkRecord(basicRecord.topic(), basicRecord.kafkaPartition(), basicRecord.keySchema(), basicRecord.key(), ceSchema, ceValue,
-                    basicRecord.kafkaOffset());
+            final Object ceValue;
+            if (cloudEventSerializerType == SerializerType.JSON) {
+                ceValue = convertCloudEventToMap(ceSchema, ceValueStruct);
+                ceSchema = null;
+            }
+            else {
+                ceValue = ceValueStruct;
+            }
+
+            return new SinkRecord(basicRecord.topic(), basicRecord.kafkaPartition(), basicRecord.keySchema(), basicRecord.key(),
+                    ceSchema, ceValue,
+                    basicRecord.kafkaOffset(), basicRecord.timestamp(), basicRecord.timestampType(), basicRecord.headers());
         }
 
         private Envelope createEnvelope() {
@@ -277,6 +301,33 @@ public class SinkRecordBuilder {
                 return populateStructFromMap(new Struct(keySchema), keyValues);
             }
             return null;
+        }
+
+        private Map<String, Object> convertCloudEventToMap(Schema ceSchema, Struct ceValueStruct) {
+            byte[] cloudEventJson;
+            try (JsonConverter jsonConverter = new JsonConverter()) {
+                final Map<String, Object> jsonDataConverterConfig = new HashMap<>();
+                jsonDataConverterConfig.put(JsonConverterConfig.SCHEMAS_ENABLE_CONFIG, false);
+                jsonDataConverterConfig.put(JsonConverterConfig.TYPE_CONFIG, "value");
+                jsonConverter.configure(jsonDataConverterConfig);
+
+                cloudEventJson = jsonConverter.fromConnectData(null, ceSchema, ceValueStruct);
+            }
+
+            ObjectMapper objectMapper = new ObjectMapper();
+            Map<String, Object> map;
+            try {
+                map = objectMapper.readValue(cloudEventJson, new TypeReference<>() {
+                });
+            }
+            catch (IOException e) {
+                throw new DataException("Failed to instantiate map from CloudEvent JSON");
+            }
+            final Object dataMap = map.get(CloudEventsMaker.FieldName.DATA);
+            if (dataMap != null) {
+                map.put(CloudEventsMaker.FieldName.DATA, dataMap.toString());
+            }
+            return map;
         }
     }
 
