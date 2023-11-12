@@ -307,6 +307,10 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
                 LOGGER.info("Server has already purged {} GTIDs", purgedGtidSet);
                 final GtidSet nonPurgedGtidSetToReplicate = connection.subtractGtidSet(gtidSetToReplicate, purgedGtidSet);
                 LOGGER.info("GTIDs known by the server but not processed yet {}, for replication are available only {}", gtidSetToReplicate, nonPurgedGtidSetToReplicate);
+                if (gtidSetToReplicate == null) {
+                    LOGGER.info("No GTIDs are available to replicate");
+                    return false;
+                }
                 if (!gtidSetToReplicate.equals(nonPurgedGtidSetToReplicate)) {
                     LOGGER.info("Some of the GTIDs needed to replicate have been already purged");
                     return false;
