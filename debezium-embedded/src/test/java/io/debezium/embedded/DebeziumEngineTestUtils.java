@@ -22,10 +22,13 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.Task;
 import org.apache.kafka.connect.runtime.WorkerConfig;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.storage.OffsetBackingStore;
+import org.apache.kafka.connect.transforms.Transformation;
+import org.apache.kafka.connect.transforms.predicates.Predicate;
 import org.apache.kafka.connect.util.Callback;
 
 import io.debezium.connector.simple.SimpleSourceConnector;
@@ -60,6 +63,49 @@ public class DebeziumEngineTestUtils {
 
     public static String generateLine(String linePrefix, int lineNumber) {
         return linePrefix + lineNumber;
+    }
+
+    public static class FilterTransform implements Transformation<SourceRecord> {
+
+        @Override
+        public void configure(Map<String, ?> configs) {
+        }
+
+        @Override
+        public SourceRecord apply(SourceRecord record) {
+            final String payload = (String) record.value();
+            return payload.equals("Generated line number 1") || payload.equals("Generated line number 2") ? null
+                    : record;
+        }
+
+        @Override
+        public ConfigDef config() {
+            return new ConfigDef();
+        }
+
+        @Override
+        public void close() {
+        }
+    }
+
+    public static class FilterPredicate implements Predicate<SourceRecord> {
+        @Override
+        public ConfigDef config() {
+            return new ConfigDef();
+        }
+
+        @Override
+        public boolean test(SourceRecord sourceRecord) {
+            return sourceRecord.value().equals("Generated line number 1");
+        }
+
+        @Override
+        public void close() {
+        }
+
+        @Override
+        public void configure(Map<String, ?> map) {
+        }
     }
 }
 
