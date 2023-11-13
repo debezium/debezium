@@ -2440,6 +2440,8 @@ endif::community[]
 |[[sqlserver-property-database-port]]<<sqlserver-property-database-port, `+database.port+`>>
 |`1433`
 |Integer port number of the SQL Server database server.
+If both `database.port` and `database.instance` are specified, `database.instance` is ignored.
+See https://learn.microsoft.com/en-us/sql/connect/jdbc/building-the-connection-url[JDBC driver for SQL server documentation] for more details.
 
 |[[sqlserver-property-database-user]]<<sqlserver-property-database-user, `+database.user+`>>
 |No default
@@ -2453,6 +2455,8 @@ Can be omitted when using Kerberos authentication, which can be configured using
 |[[sqlserver-property-database-instance]] <<sqlserver-property-database-instance, `+database.instance+`>>
 |No default
 |Specifies the instance name of the link:https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/database-engine-instances-sql-server?view=sql-server-latest#instances[SQL Server named instance].
+If both `database.port` and `database.instance` are specified, `database.instance` is ignored.
+See https://learn.microsoft.com/en-us/sql/connect/jdbc/building-the-connection-url[JDBC driver for SQL server documentation] for more details.
 
 ifdef::community[]
 |[[sqlserver-property-database-names]]<<sqlserver-property-database-names, `+database.names+`>>
