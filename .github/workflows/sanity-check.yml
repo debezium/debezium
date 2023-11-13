@@ -47,7 +47,7 @@ jobs:
             Hi @${{ github.event.pull_request.user.login }}, thanks for your contribution. Please prefix the commit message(s) with the [DBZ-xxx JIRA issue key](https://github.com/debezium/debezium/blob/main/CONTRIBUTE.md#making-changes).
       - name: Check failure
         if: ${{ steps.check.outputs.PREFIX_COMMITS == 'false' }}
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         continue-on-error: false
         with:
           script: |
