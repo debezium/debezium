@@ -40,7 +40,10 @@ public interface OffsetCommitPolicy {
         private final Duration minimumTime;
 
         public PeriodicCommitOffsetPolicy(Properties config) {
-            minimumTime = Duration.ofMillis(Long.valueOf(config.getProperty(DebeziumEngine.OFFSET_FLUSH_INTERVAL_MS_PROP)));
+            final long interval = config.containsKey(DebeziumEngine.OFFSET_FLUSH_INTERVAL_MS_PROP)
+                    ? Long.valueOf(config.getProperty(DebeziumEngine.OFFSET_FLUSH_INTERVAL_MS_PROP))
+                    : 60000L;
+            minimumTime = Duration.ofMillis(interval);
         }
 
         @Override

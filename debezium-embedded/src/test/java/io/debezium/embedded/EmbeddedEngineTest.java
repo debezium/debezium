@@ -783,6 +783,51 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
         assertThat(isEngineRunning.get()).isFalse();
     }
 
+    @Test
+    @FixFor("DBZ-7099")
+    public void shouldHandleNoDefaultOffsetFlushInterval() throws IOException, InterruptedException {
+        final Properties props = new Properties();
+        props.put(EmbeddedEngineConfig.ENGINE_NAME.name(), "testing-connector");
+        props.put(EmbeddedEngineConfig.CONNECTOR_CLASS.name(), SimpleSourceConnector.class.getName());
+        props.put(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
+        props.put(EmbeddedEngineConfig.WAIT_FOR_COMPLETION_BEFORE_INTERRUPT_MS.name(), "10");
+
+        final CountDownLatch engineRunning = new CountDownLatch(1);
+        final CountDownLatch engineStopped = new CountDownLatch(1);
+        final AtomicBoolean engineSucceeded = new AtomicBoolean(false);
+
+        final DebeziumEngine<ChangeEvent<String, String>> engine = DebeziumEngine.create(Json.class)
+                .using(props)
+                .notifying((records, committer) -> {
+                    engineRunning.countDown();
+                })
+                .using(this.getClass().getClassLoader())
+                .using(new DebeziumEngine.ConnectorCallback() {
+                    @Override
+                    public void connectorStarted() {
+                        isEngineRunning.compareAndExchange(false, true);
+                    }
+                })
+                .using((success, message, error) -> {
+                    engineSucceeded.set(success);
+                    engineStopped.countDown();
+                })
+                .build();
+
+        ExecutorService exec = Executors.newFixedThreadPool(1);
+        exec.execute(() -> {
+            LoggingContext.forConnector(getClass().getSimpleName(), "", "engine");
+            engine.run();
+        });
+
+        engineRunning.await(100, TimeUnit.MILLISECONDS);
+        assertThat(isEngineRunning.get()).isTrue();
+
+        engine.close();
+        engineStopped.await(100, TimeUnit.MILLISECONDS);
+        assertThat(engineSucceeded.get()).isTrue();
+    }
+
     protected void appendLinesToSource(int numberOfLines) throws IOException {
         CharSequence[] lines = new CharSequence[numberOfLines];
         for (int i = 0; i != numberOfLines; ++i) {
