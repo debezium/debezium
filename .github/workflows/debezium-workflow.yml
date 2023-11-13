@@ -294,7 +294,10 @@ jobs:
   build_mysql_8_0:
     needs: [ check_style, file_changes ]
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mysql-changed == 'true' || needs.file_changes.outputs.mysql-ddl-parser-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' }}
-    name: "MySQL 8.0"
+    strategy:
+      matrix:
+        profile: [ 'mysql-ci', 'mysql-ci-gtids', 'mysql-ci-percona', 'mysql-ci-ssl' ]
+    name: "MySQL 8.0 (${{ matrix.profile }})"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action
@@ -316,7 +319,7 @@ jobs:
 
       - name: Build Debezium Connector MySQL
         run: >
-          ./mvnw clean install -B -pl debezium-connector-mysql -am -Passembly
+          ./mvnw clean install -B -pl debezium-connector-mysql -am -P${{ matrix.profile }}
           -Dversion.mysql.server=8.0
           -Dcheckstyle.skip=true
           -Dformat.skip=true
@@ -327,7 +330,10 @@ jobs:
   build_mysql:
     needs: [check_style, file_changes]
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mysql-changed == 'true' || needs.file_changes.outputs.mysql-ddl-parser-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' }}
-    name: "MySQL"
+    strategy:
+      matrix:
+        profile: [ 'mysql-ci', 'mysql-ci-gtids', 'mysql-ci-percona', 'mysql-ci-ssl' ]
+    name: "MySQL (${{ matrix.profile }})"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action
@@ -349,7 +355,7 @@ jobs:
 
       - name: Build Debezium Connector MySQL
         run: >
-          ./mvnw clean install -B -pl debezium-connector-mysql -am -Passembly
+          ./mvnw clean install -B -pl debezium-connector-mysql -am -P${{ matrix.profile }}
           -Dcheckstyle.skip=true
           -Dformat.skip=true
           -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
