@@ -119,7 +119,7 @@ public class MySqlValueConvertersTest {
                 TemporalPrecisionMode.CONNECT, JdbcValueConverters.BigIntUnsignedMode.LONG, BinaryHandlingMode.BYTES,
                 x -> x, (message, exception) -> {
                     errorCount.incrementAndGet();
-                });
+                }, null);
 
         DdlParser parser = new MySqlAntlrDdlParser();
         Tables tables = new Tables();
@@ -148,7 +148,7 @@ public class MySqlValueConvertersTest {
                 TemporalPrecisionMode.CONNECT, JdbcValueConverters.BigIntUnsignedMode.LONG, BinaryHandlingMode.BYTES,
                 x -> x, (message, exception) -> {
                     throw new DebeziumException(message, exception);
-                });
+                }, null);
 
         DdlParser parser = new MySqlAntlrDdlParser();
         Tables tables = new Tables();
@@ -171,7 +171,7 @@ public class MySqlValueConvertersTest {
                 TemporalPrecisionMode.CONNECT, JdbcValueConverters.BigIntUnsignedMode.LONG, BinaryHandlingMode.BYTES,
                 x -> x, (message, exception) -> {
                     throw new DebeziumException(message, exception);
-                });
+                }, null);
 
         DdlParser parser = new MySqlAntlrDdlParser();
         Tables tables = new Tables();
@@ -194,7 +194,7 @@ public class MySqlValueConvertersTest {
                 TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS, JdbcValueConverters.BigIntUnsignedMode.LONG, BinaryHandlingMode.BYTES,
                 x -> x, (message, exception) -> {
                     throw new DebeziumException(message, exception);
-                });
+                }, null);
 
         DdlParser parser = new MySqlAntlrDdlParser();
         Tables tables = new Tables();

@@ -38,8 +38,9 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.connector.SnapshotRecord;
-import io.debezium.connector.mysql.MySqlConnection.DatabaseLocales;
 import io.debezium.connector.mysql.MySqlOffsetContext.Loader;
+import io.debezium.connector.mysql.strategy.AbstractConnectorConnection;
+import io.debezium.connector.mysql.strategy.AbstractConnectorConnection.DatabaseLocales;
 import io.debezium.data.Envelope;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.jdbc.JdbcConnection;
@@ -61,7 +62,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
     private static final Logger LOGGER = LoggerFactory.getLogger(MySqlSnapshotChangeEventSource.class);
 
     private final MySqlConnectorConfig connectorConfig;
-    private final MySqlConnection connection;
+    private final AbstractConnectorConnection connection;
     private long globalLockAcquiredAt = -1;
     private long tableLockAcquiredAt = -1;
     private final RelationalTableFilters filters;
@@ -72,7 +73,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
     private final BlockingConsumer<Function<SourceRecord, SourceRecord>> lastEventProcessor;
     private final Runnable preSnapshotAction;
 
-    public MySqlSnapshotChangeEventSource(MySqlConnectorConfig connectorConfig, MainConnectionProvidingConnectionFactory<MySqlConnection> connectionFactory,
+    public MySqlSnapshotChangeEventSource(MySqlConnectorConfig connectorConfig, MainConnectionProvidingConnectionFactory<AbstractConnectorConnection> connectionFactory,
                                           MySqlDatabaseSchema schema, EventDispatcher<MySqlPartition, TableId> dispatcher, Clock clock,
                                           MySqlSnapshotChangeEventSourceMetrics metrics,
                                           BlockingConsumer<Function<SourceRecord, SourceRecord>> lastEventProcessor,
@@ -359,7 +360,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
 
         if (!snapshottingTask.isBlocking()) {
             // Record default charset
-            addSchemaEvent(snapshotContext, "", connection.setStatementFor(connection.readMySqlCharsetSystemVariables()));
+            addSchemaEvent(snapshotContext, "", connection.setStatementFor(connection.readCharsetSystemVariables()));
         }
 
         for (TableId tableId : capturedSchemaTables) {
@@ -584,7 +585,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
 
     @Override
     protected Statement readTableStatement(JdbcConnection jdbcConnection, OptionalLong rowCount) throws SQLException {
-        MySqlConnection connection = (MySqlConnection) jdbcConnection;
+        AbstractConnectorConnection connection = (AbstractConnectorConnection) jdbcConnection;
         final long largeTableRowCount = connectorConfig.rowCountForLargeTable();
         if (rowCount.isEmpty() || largeTableRowCount == 0 || rowCount.getAsLong() <= largeTableRowCount) {
             return super.readTableStatement(connection, rowCount);
@@ -610,7 +611,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
      * @return the statement; never null
      * @throws SQLException if there is a problem creating the statement
      */
-    private Statement createStatementWithLargeResultSet(MySqlConnection connection) throws SQLException {
+    private Statement createStatementWithLargeResultSet(AbstractConnectorConnection connection) throws SQLException {
         int fetchSize = connectorConfig.getSnapshotFetchSize();
         Statement stmt = connection.connection().createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
         stmt.setFetchSize(fetchSize);

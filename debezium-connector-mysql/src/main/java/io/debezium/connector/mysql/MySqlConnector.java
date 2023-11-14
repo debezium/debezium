@@ -20,7 +20,8 @@ import org.slf4j.LoggerFactory;
 import io.debezium.annotation.Immutable;
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.RelationalBaseSourceConnector;
-import io.debezium.connector.mysql.MySqlConnection.MySqlConnectionConfiguration;
+import io.debezium.connector.mysql.strategy.AbstractConnectorConnection;
+import io.debezium.connector.mysql.strategy.ConnectorAdapter;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 
 /**
@@ -78,17 +79,25 @@ public class MySqlConnector extends RelationalBaseSourceConnector {
 
     @Override
     protected void validateConnection(Map<String, ConfigValue> configValues, Configuration config) {
+        ConfigValue adapterValue = configValues.get(MySqlConnectorConfig.CONNECTOR_ADAPTER.name());
         ConfigValue hostnameValue = configValues.get(RelationalDatabaseConnectorConfig.HOSTNAME.name());
+
+        ConnectorAdapter adapter = adapter(config);
+        if (adapter == null) {
+            LOGGER.error("Failed to resolve connection adapter.");
+            adapterValue.addErrorMessage("Failed to resolve the connector's connection adapter.");
+            return;
+        }
+
         // Try to connect to the database ...
-        final MySqlConnectionConfiguration connectionConfig = new MySqlConnectionConfiguration(config);
-        try (MySqlConnection connection = new MySqlConnection(connectionConfig)) {
+        try (AbstractConnectorConnection connection = adapter.createConnection(config)) {
             try {
                 connection.connect();
                 connection.execute("SELECT version()");
-                LOGGER.info("Successfully tested connection for {} with user '{}'", connection.connectionString(), connectionConfig.username());
+                LOGGER.info("Successfully tested connection for {} with user '{}'", connection.connectionString(), connection.connectionConfig().username());
             }
             catch (SQLException e) {
-                LOGGER.error("Failed testing connection for {} with user '{}'", connection.connectionString(), connectionConfig.username(), e);
+                LOGGER.error("Failed testing connection for {} with user '{}'", connection.connectionString(), connection.connectionConfig().username(), e);
                 hostnameValue.addErrorMessage("Unable to connect: " + e.getMessage());
             }
         }
@@ -100,5 +109,10 @@ public class MySqlConnector extends RelationalBaseSourceConnector {
     @Override
     protected Map<String, ConfigValue> validateAllFields(Configuration config) {
         return config.validate(MySqlConnectorConfig.ALL_FIELDS);
+    }
+
+    private static ConnectorAdapter adapter(Configuration config) {
+        // todo: find a better way to handle this
+        return new MySqlConnectorConfig(config).getConnectorAdapter();
     }
 }

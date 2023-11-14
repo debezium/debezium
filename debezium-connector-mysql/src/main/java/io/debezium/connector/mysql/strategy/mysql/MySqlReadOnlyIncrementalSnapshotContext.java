@@ -3,28 +3,27 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.mysql;
+package io.debezium.connector.mysql.strategy.mysql;
 
-import static io.debezium.connector.mysql.GtidSet.GTID_DELIMITER;
+import static io.debezium.connector.mysql.strategy.mysql.MySqlGtidSet.GTID_DELIMITER;
 
 import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.annotation.NotThreadSafe;
+import io.debezium.connector.mysql.SourceInfo;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotContext;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.spi.OffsetContext;
 
-@NotThreadSafe
 public class MySqlReadOnlyIncrementalSnapshotContext<T> extends AbstractIncrementalSnapshotContext<T> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MySqlReadOnlyIncrementalSnapshotContext.class);
-    private GtidSet previousLowWatermark;
-    private GtidSet previousHighWatermark;
-    private GtidSet lowWatermark;
-    private GtidSet highWatermark;
+    private MySqlGtidSet previousLowWatermark;
+    private MySqlGtidSet previousHighWatermark;
+    private MySqlGtidSet lowWatermark;
+    private MySqlGtidSet highWatermark;
     private Long signalOffset;
     public static final String SIGNAL_OFFSET = INCREMENTAL_SNAPSHOT_KEY + "_signal_offset";
 
@@ -53,11 +52,11 @@ public class MySqlReadOnlyIncrementalSnapshotContext<T> extends AbstractIncremen
         return context;
     }
 
-    public void setLowWatermark(GtidSet lowWatermark) {
+    public void setLowWatermark(MySqlGtidSet lowWatermark) {
         this.lowWatermark = lowWatermark;
     }
 
-    public void setHighWatermark(GtidSet highWatermark) {
+    public void setHighWatermark(MySqlGtidSet highWatermark) {
         this.highWatermark = highWatermark.subtract(lowWatermark);
     }
 
@@ -89,10 +88,10 @@ public class MySqlReadOnlyIncrementalSnapshotContext<T> extends AbstractIncremen
             return true;
         }
         String[] gtid = GTID_DELIMITER.split(currentGtid);
-        GtidSet.UUIDSet uuidSet = getUuidSet(gtid[0]);
+        MySqlGtidSet.UUIDSet uuidSet = getUuidSet(gtid[0]);
         if (uuidSet != null) {
             long maxTransactionId = uuidSet.getIntervals().stream()
-                    .mapToLong(GtidSet.Interval::getEnd)
+                    .mapToLong(MySqlGtidSet.Interval::getEnd)
                     .max()
                     .getAsLong();
             if (maxTransactionId <= Long.parseLong(gtid[1])) {
@@ -115,7 +114,7 @@ public class MySqlReadOnlyIncrementalSnapshotContext<T> extends AbstractIncremen
         lowWatermark = null;
     }
 
-    private GtidSet.UUIDSet getUuidSet(String serverId) {
+    private MySqlGtidSet.UUIDSet getUuidSet(String serverId) {
         return highWatermark.getUUIDSets().isEmpty() ? lowWatermark.forServerWithId(serverId) : highWatermark.forServerWithId(serverId);
     }
 

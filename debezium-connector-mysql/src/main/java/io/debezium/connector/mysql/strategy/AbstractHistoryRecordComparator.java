@@ -3,21 +3,29 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.mysql;
+package io.debezium.connector.mysql.strategy;
 
 import java.util.function.Predicate;
 
+import io.debezium.annotation.VisibleForTesting;
+import io.debezium.connector.mysql.GtidSet;
+import io.debezium.connector.mysql.MySqlOffsetContext;
+import io.debezium.connector.mysql.SourceInfo;
 import io.debezium.document.Document;
 import io.debezium.relational.history.HistoryRecordComparator;
 
-final class MySqlHistoryRecordComparator extends HistoryRecordComparator {
+/**
+ * @author Chris Cranford
+ */
+public abstract class AbstractHistoryRecordComparator extends HistoryRecordComparator {
 
     private final Predicate<String> gtidSourceFilter;
 
-    MySqlHistoryRecordComparator(Predicate<String> gtidSourceFilter) {
-        super();
+    public AbstractHistoryRecordComparator(Predicate<String> gtidSourceFilter) {
         this.gtidSourceFilter = gtidSourceFilter;
     }
+
+    protected abstract GtidSet createGtidSet(String gtidSet);
 
     /**
      * Determine whether the first offset is at or before the point in time of the second
@@ -36,15 +44,16 @@ final class MySqlHistoryRecordComparator extends HistoryRecordComparator {
      * @return {@code true} if the recorded position is at or before the desired position; or {@code false} otherwise
      */
     @Override
-    protected boolean isPositionAtOrBefore(Document recorded, Document desired) {
+    @VisibleForTesting
+    public boolean isPositionAtOrBefore(Document recorded, Document desired) {
         String recordedGtidSetStr = recorded.getString(MySqlOffsetContext.GTID_SET_KEY);
         String desiredGtidSetStr = desired.getString(MySqlOffsetContext.GTID_SET_KEY);
         if (desiredGtidSetStr != null) {
             // The desired position uses GTIDs, so we ideally compare using GTIDs ...
             if (recordedGtidSetStr != null) {
                 // Both have GTIDs, so base the comparison entirely on the GTID sets.
-                GtidSet recordedGtidSet = new GtidSet(recordedGtidSetStr);
-                GtidSet desiredGtidSet = new GtidSet(desiredGtidSetStr);
+                GtidSet recordedGtidSet = createGtidSet(recordedGtidSetStr);
+                GtidSet desiredGtidSet = createGtidSet(desiredGtidSetStr);
                 if (gtidSourceFilter != null) {
                     // Apply the GTID source filter before we do any comparisons ...
                     recordedGtidSet = recordedGtidSet.retainAll(gtidSourceFilter);
