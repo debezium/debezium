@@ -810,8 +810,9 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
                 x -> taskContext.getSchema().getTableId(x.getTableId()),
                 UpdateRowsEventData::getRows,
                 (tableId, row) -> eventDispatcher.dispatchDataChangeEvent(partition, tableId,
-                        new MySqlChangeRecordEmitter(partition, offsetContext, clock, Operation.UPDATE, row.getKey(), row.getValue(), connectorConfig)),
-         (tableId, row) -> validateChangeEventWithTable(taskContext.getSchema().tableFor(tableId), row.getKey(), row.getValue()));
+                        new MySqlChangeRecordEmitter(partition, offsetContext, clock, Operation.UPDATE, row.getKey(), row.getValue(),
+                                connectorConfig)),
+                (tableId, row) -> validateChangeEventWithTable(taskContext.getSchema().tableFor(tableId), row.getKey(), row.getValue()));
     }
 
     /**
@@ -827,7 +828,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
                 DeleteRowsEventData::getRows,
                 (tableId, row) -> eventDispatcher.dispatchDataChangeEvent(partition, tableId,
                         new MySqlChangeRecordEmitter(partition, offsetContext, clock, Operation.DELETE, row, null, connectorConfig)),
-         (tableId, row) -> validateChangeEventWithTable(taskContext.getSchema().tableFor(tableId), row, null));
+                (tableId, row) -> validateChangeEventWithTable(taskContext.getSchema().tableFor(tableId), row, null));
     }
 
     private <T extends EventData, U> void handleChange(MySqlPartition partition, MySqlOffsetContext offsetContext, Event event, Operation operation,
