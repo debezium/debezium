@@ -39,6 +39,7 @@ import io.debezium.schema.FieldNameSelector;
 import io.debezium.time.MicroTimestamp;
 import io.debezium.time.NanoTimestamp;
 import io.debezium.time.Timestamp;
+import io.debezium.transforms.ConnectRecordUtil;
 import io.debezium.transforms.SmtManager;
 import io.debezium.transforms.outbox.EventRouterConfigDefinition.AdditionalField;
 import io.debezium.transforms.outbox.EventRouterConfigDefinition.AdditionalFieldPlacement;
@@ -46,7 +47,6 @@ import io.debezium.transforms.outbox.EventRouterConfigDefinition.InvalidOperatio
 import io.debezium.transforms.outbox.EventRouterConfigDefinition.JsonPayloadNullFieldBehavior;
 import io.debezium.transforms.tracing.ActivateTracingSpan;
 import io.debezium.util.BoundedConcurrentHashMap;
-import io.debezium.util.ConnectRecordUtil;
 
 /**
  * A delegate class having common logic between Outbox Event Routers for SQL DBs and MongoDB

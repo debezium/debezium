@@ -133,8 +133,8 @@ public class ExtractNewDocumentStateUpdateFieldOperatorTestIT extends AbstractEx
     /**
      * @see <a href="https://docs.mongodb.com/v3.6/reference/operator/update/set/#up._S_set">MongoDB operator update $set</a>
      * For more extensive tests for the $set operator please check:
-     * {@link io.debezium.connector.mongodb.transforms.ExtractNewDocumentStateTest}
-     * {@link io.debezium.connector.mongodb.transforms.ExtractNewDocumentStateTestIT}
+     * {@link io.debezium.connector.mongodb.transforms.LegacyExtractNewDocumentStateTest}
+     * {@link io.debezium.connector.mongodb.transforms.LegacyExtractNewDocumentStateTestIT}
      */
     @Test
     public void shouldTransformOperationSet() throws InterruptedException {
