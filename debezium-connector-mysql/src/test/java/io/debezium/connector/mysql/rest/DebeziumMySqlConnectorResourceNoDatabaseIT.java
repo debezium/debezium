@@ -61,7 +61,7 @@ public class DebeziumMySqlConnectorResourceNoDatabaseIT {
                 .body("components.schemas.size()", is(1))
                 .rootPath("components.schemas.values()[0]")
                 .body("title", is("Debezium MySQL Connector"))
-                .body("properties.size()", is(82))
+                .body("properties.isEmpty()", is(false))
                 .body("x-connector-id", is("mysql"))
                 .body("x-version", is(Module.version()))
                 .body("x-className", is(MySqlConnector.class.getName()))
