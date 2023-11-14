@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.util;
+package io.debezium.transforms;
 
 import static io.debezium.data.Envelope.FieldName.AFTER;
 import static io.debezium.data.Envelope.FieldName.BEFORE;

@@ -13,7 +13,7 @@ import org.apache.kafka.connect.transforms.InsertField;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.util.ConnectRecordUtil;
+import io.debezium.transforms.ConnectRecordUtil;
 
 /**
  * An abstract implementation of {@link ExtractRecordStrategy}.

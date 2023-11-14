@@ -28,9 +28,9 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState;
 import io.debezium.connector.mongodb.transforms.MongoDataConverter;
 import io.debezium.time.Timestamp;
+import io.debezium.transforms.ConnectRecordUtil;
 import io.debezium.transforms.outbox.EventRouterConfigDefinition;
 import io.debezium.transforms.outbox.EventRouterDelegate;
-import io.debezium.util.ConnectRecordUtil;
 
 /**
  * Debezium MongoDB Outbox Event Router SMT

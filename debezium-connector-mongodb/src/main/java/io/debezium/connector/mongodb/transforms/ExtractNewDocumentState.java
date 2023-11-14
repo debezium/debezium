@@ -38,7 +38,7 @@ import io.debezium.data.Envelope;
 import io.debezium.schema.FieldNameSelector;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.transforms.AbstractExtractNewRecordState;
-import io.debezium.util.ConnectRecordUtil;
+import io.debezium.transforms.ConnectRecordUtil;
 
 /**
  * Debezium Mongo Connector generates the CDC records in String format. Sink connectors usually are not able to parse
