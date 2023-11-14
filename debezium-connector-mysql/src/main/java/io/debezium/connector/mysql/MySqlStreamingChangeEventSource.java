@@ -36,6 +36,7 @@ import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
 import javax.net.ssl.X509TrustManager;
 
+import io.debezium.relational.Table;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.event.Level;
@@ -763,6 +764,24 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
         informAboutUnknownTableIfRequired(partition, offsetContext, event, tableId, null);
     }
 
+    private void validateChangeEventWithTable(Table table, Object[] before, Object[] after) {
+        if (table != null) {
+             int columnSize = table.columns().size();
+             String message = "Error processing {} of row in {} because it's different column size with internal schema size {}, but {} size {}, " +
+             "restart connector with schema recovery mode.";
+             if (before != null && columnSize != before.length) {
+                 LOGGER.error(message, "before", table.id().table(), columnSize, "before", before.length);
+                 throw new DebeziumException("Error processing row in " + table.id().table() + ", internal schema size " + columnSize + ", but row size " + before.length + " , " +
+                 "restart connector with schema recovery mode.");
+             }
+             if (after != null && columnSize != after.length) {
+                 LOGGER.error(message, "after", table.id().table(), columnSize, "after", after.length);
+                 throw new DebeziumException("Error processing row in " + table.id().table() + ", internal schema size " + columnSize + ", but row size " + after.length + " , " +
+                 "restart connector with schema recovery mode.");
+             }
+         }
+    }
+
     /**
      * Generate source records for the supplied event with an {@link WriteRowsEventData}.
      *
@@ -771,10 +790,12 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
      * @throws InterruptedException if this thread is interrupted while blocking
      */
     protected void handleInsert(MySqlPartition partition, MySqlOffsetContext offsetContext, Event event) throws InterruptedException {
-        handleChange(partition, offsetContext, event, Operation.CREATE, WriteRowsEventData.class, x -> taskContext.getSchema().getTableId(x.getTableId()),
+        handleChange(partition, offsetContext, event, Operation.CREATE, WriteRowsEventData.class,
+                x -> taskContext.getSchema().getTableId(x.getTableId()),
                 WriteRowsEventData::getRows,
                 (tableId, row) -> eventDispatcher.dispatchDataChangeEvent(partition, tableId,
-                        new MySqlChangeRecordEmitter(partition, offsetContext, clock, Operation.CREATE, null, row, connectorConfig)));
+                        new MySqlChangeRecordEmitter(partition, offsetContext, clock, Operation.CREATE, null, row, connectorConfig)),
+                (tableId, row) -> validateChangeEventWithTable(taskContext.getSchema().tableFor(tableId), null, row));
     }
 
     /**
@@ -785,11 +806,12 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
      * @throws InterruptedException if this thread is interrupted while blocking
      */
     protected void handleUpdate(MySqlPartition partition, MySqlOffsetContext offsetContext, Event event) throws InterruptedException {
-        handleChange(partition, offsetContext, event, Operation.UPDATE, UpdateRowsEventData.class, x -> taskContext.getSchema().getTableId(x.getTableId()),
+        handleChange(partition, offsetContext, event, Operation.UPDATE, UpdateRowsEventData.class,
+                x -> taskContext.getSchema().getTableId(x.getTableId()),
                 UpdateRowsEventData::getRows,
                 (tableId, row) -> eventDispatcher.dispatchDataChangeEvent(partition, tableId,
-                        new MySqlChangeRecordEmitter(partition, offsetContext, clock, Operation.UPDATE, row.getKey(), row.getValue(),
-                                connectorConfig)));
+                        new MySqlChangeRecordEmitter(partition, offsetContext, clock, Operation.UPDATE, row.getKey(), row.getValue(), connectorConfig)),
+         (tableId, row) -> validateChangeEventWithTable(taskContext.getSchema().tableFor(tableId), row.getKey(), row.getValue()));
     }
 
     /**
@@ -800,16 +822,20 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
      * @throws InterruptedException if this thread is interrupted while blocking
      */
     protected void handleDelete(MySqlPartition partition, MySqlOffsetContext offsetContext, Event event) throws InterruptedException {
-        handleChange(partition, offsetContext, event, Operation.DELETE, DeleteRowsEventData.class, x -> taskContext.getSchema().getTableId(x.getTableId()),
+        handleChange(partition, offsetContext, event, Operation.DELETE, DeleteRowsEventData.class,
+                x -> taskContext.getSchema().getTableId(x.getTableId()),
                 DeleteRowsEventData::getRows,
                 (tableId, row) -> eventDispatcher.dispatchDataChangeEvent(partition, tableId,
-                        new MySqlChangeRecordEmitter(partition, offsetContext, clock, Operation.DELETE, row, null, connectorConfig)));
+                        new MySqlChangeRecordEmitter(partition, offsetContext, clock, Operation.DELETE, row, null, connectorConfig)),
+         (tableId, row) -> validateChangeEventWithTable(taskContext.getSchema().tableFor(tableId), row, null));
     }
 
     private <T extends EventData, U> void handleChange(MySqlPartition partition, MySqlOffsetContext offsetContext, Event event, Operation operation,
                                                        Class<T> eventDataClass,
                                                        TableIdProvider<T> tableIdProvider,
-                                                       RowsProvider<T, U> rowsProvider, BinlogChangeEmitter<U> changeEmitter)
+                                                       RowsProvider<T, U> rowsProvider,
+                                                       BinlogChangeEmitter<U> changeEmitter,
+                                                       ChangeEventValidator<U> changeEventValidator)
             throws InterruptedException {
         if (skipEvent) {
             // We can skip this because we should already be at least this far ...
@@ -829,10 +855,12 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
             int count = 0;
             int numRows = rows.size();
             if (startingRowNumber < numRows) {
-                for (int row = startingRowNumber; row != numRows; ++row) {
-                    offsetContext.setRowNumber(row, numRows);
+                for (int rowIndex = startingRowNumber; rowIndex != numRows; ++rowIndex) {
+                    U row = rows.get(rowIndex);
+                    changeEventValidator.validate(tableId, row);
+                    offsetContext.setRowNumber(rowIndex, numRows);
                     offsetContext.event(tableId, eventTimestamp);
-                    changeEmitter.emit(tableId, rows.get(row));
+                    changeEmitter.emit(tableId, row);
                     count++;
                 }
                 if (LOGGER.isDebugEnabled()) {
@@ -1361,5 +1389,10 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
     @FunctionalInterface
     private interface RowsProvider<E extends EventData, U> {
         List<U> getRows(E data);
+    }
+
+    @FunctionalInterface
+    private interface ChangeEventValidator<U> {
+        void validate(TableId tableId, U row);
     }
 }
