@@ -37,13 +37,13 @@ public interface OffsetCommitPolicy {
      */
     class PeriodicCommitOffsetPolicy implements OffsetCommitPolicy {
 
+        private static final Duration DEFAULT_COMMIT_OFFSET_INTERVAL = Duration.ofMinutes(1);
         private final Duration minimumTime;
 
         public PeriodicCommitOffsetPolicy(Properties config) {
-            final long interval = config.containsKey(DebeziumEngine.OFFSET_FLUSH_INTERVAL_MS_PROP)
-                    ? Long.valueOf(config.getProperty(DebeziumEngine.OFFSET_FLUSH_INTERVAL_MS_PROP))
-                    : 60000L;
-            minimumTime = Duration.ofMillis(interval);
+            minimumTime = config.containsKey(DebeziumEngine.OFFSET_FLUSH_INTERVAL_MS_PROP)
+                    ? Duration.ofMillis(Long.valueOf(config.getProperty(DebeziumEngine.OFFSET_FLUSH_INTERVAL_MS_PROP)))
+                    : DEFAULT_COMMIT_OFFSET_INTERVAL;
         }
 
         @Override
