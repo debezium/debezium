@@ -36,7 +36,6 @@ import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
 import javax.net.ssl.X509TrustManager;
 
-import io.debezium.relational.Table;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.event.Level;
@@ -78,6 +77,7 @@ import io.debezium.function.BlockingConsumer;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
+import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
@@ -766,20 +766,22 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
 
     private void validateChangeEventWithTable(Table table, Object[] before, Object[] after) {
         if (table != null) {
-             int columnSize = table.columns().size();
-             String message = "Error processing {} of row in {} because it's different column size with internal schema size {}, but {} size {}, " +
-             "restart connector with schema recovery mode.";
-             if (before != null && columnSize != before.length) {
-                 LOGGER.error(message, "before", table.id().table(), columnSize, "before", before.length);
-                 throw new DebeziumException("Error processing row in " + table.id().table() + ", internal schema size " + columnSize + ", but row size " + before.length + " , " +
-                 "restart connector with schema recovery mode.");
-             }
-             if (after != null && columnSize != after.length) {
-                 LOGGER.error(message, "after", table.id().table(), columnSize, "after", after.length);
-                 throw new DebeziumException("Error processing row in " + table.id().table() + ", internal schema size " + columnSize + ", but row size " + after.length + " , " +
-                 "restart connector with schema recovery mode.");
-             }
-         }
+            int columnSize = table.columns().size();
+            String message = "Error processing {} of row in {} because it's different column size with internal schema size {}, but {} size {}, " +
+                    "restart connector with schema recovery mode.";
+            if (before != null && columnSize != before.length) {
+                LOGGER.error(message, "before", table.id().table(), columnSize, "before", before.length);
+                throw new DebeziumException(
+                        "Error processing row in " + table.id().table() + ", internal schema size " + columnSize + ", but row size " + before.length + " , " +
+                                "restart connector with schema recovery mode.");
+            }
+            if (after != null && columnSize != after.length) {
+                LOGGER.error(message, "after", table.id().table(), columnSize, "after", after.length);
+                throw new DebeziumException(
+                        "Error processing row in " + table.id().table() + ", internal schema size " + columnSize + ", but row size " + after.length + " , " +
+                                "restart connector with schema recovery mode.");
+            }
+        }
     }
 
     /**
