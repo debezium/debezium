@@ -5,21 +5,11 @@
  */
 package io.debezium.connector.mysql;
 
-import static io.debezium.util.Strings.isNullOrEmpty;
-
 import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.security.KeyStore;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
-import java.security.UnrecoverableKeyException;
-import java.security.cert.CertificateException;
-import java.security.cert.X509Certificate;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.EnumMap;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -28,13 +18,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Predicate;
-
-import javax.net.ssl.KeyManager;
-import javax.net.ssl.KeyManagerFactory;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.TrustManagerFactory;
-import javax.net.ssl.X509TrustManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,14 +40,9 @@ import com.github.shyiko.mysql.binlog.event.TableMapEventData;
 import com.github.shyiko.mysql.binlog.event.TransactionPayloadEventData;
 import com.github.shyiko.mysql.binlog.event.UpdateRowsEventData;
 import com.github.shyiko.mysql.binlog.event.WriteRowsEventData;
-import com.github.shyiko.mysql.binlog.event.deserialization.EventDataDeserializationException;
 import com.github.shyiko.mysql.binlog.event.deserialization.EventDeserializer;
-import com.github.shyiko.mysql.binlog.event.deserialization.GtidEventDataDeserializer;
-import com.github.shyiko.mysql.binlog.io.ByteArrayInputStream;
 import com.github.shyiko.mysql.binlog.network.AuthenticationException;
-import com.github.shyiko.mysql.binlog.network.DefaultSSLSocketFactory;
 import com.github.shyiko.mysql.binlog.network.SSLMode;
-import com.github.shyiko.mysql.binlog.network.SSLSocketFactory;
 import com.github.shyiko.mysql.binlog.network.ServerException;
 
 import io.debezium.DebeziumException;
@@ -72,6 +50,8 @@ import io.debezium.annotation.SingleThreadAccess;
 import io.debezium.config.CommonConnectorConfig.EventProcessingFailureHandlingMode;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
+import io.debezium.connector.mysql.strategy.AbstractConnectorConnection;
+import io.debezium.connector.mysql.strategy.ConnectorAdapter;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.pipeline.ErrorHandler;
@@ -112,13 +92,13 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
     private final AtomicLong totalRecordCounter = new AtomicLong();
     private volatile Map<String, ?> lastOffset = null;
     private com.github.shyiko.mysql.binlog.GtidSet gtidSet;
-    private final float heartbeatIntervalFactor = 0.8f;
     private final Map<String, Thread> binaryLogClientThreads = new ConcurrentHashMap<>(4);
     private final MySqlTaskContext taskContext;
     private final MySqlConnectorConfig connectorConfig;
-    private final MySqlConnection connection;
+    private final AbstractConnectorConnection connection;
     private final EventDispatcher<MySqlPartition, TableId> eventDispatcher;
     private final ErrorHandler errorHandler;
+    private final ConnectorAdapter connectorAdapter;
 
     @SingleThreadAccess("binlog client thread")
     private Instant eventTimestamp;
@@ -184,7 +164,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
         void emit(TableId tableId, T data) throws InterruptedException;
     }
 
-    public MySqlStreamingChangeEventSource(MySqlConnectorConfig connectorConfig, MySqlConnection connection,
+    public MySqlStreamingChangeEventSource(MySqlConnectorConfig connectorConfig, AbstractConnectorConnection connection,
                                            EventDispatcher<MySqlPartition, TableId> dispatcher, ErrorHandler errorHandler, Clock clock,
                                            MySqlTaskContext taskContext, MySqlStreamingChangeEventSourceMetrics metrics) {
 
@@ -195,131 +175,21 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
         this.eventDispatcher = dispatcher;
         this.errorHandler = errorHandler;
         this.metrics = metrics;
+        this.connectorAdapter = connectorConfig.getConnectorAdapter();
 
         eventDeserializationFailureHandlingMode = connectorConfig.getEventProcessingFailureHandlingMode();
         inconsistentSchemaHandlingMode = connectorConfig.inconsistentSchemaFailureHandlingMode();
 
         // Set up the log reader ...
-        client = taskContext.getBinaryLogClient();
-        // BinaryLogClient will overwrite thread names later
-        client.setThreadFactory(
+        client = connectorAdapter.getBinaryLogClientConfigurator().configure(
+                taskContext.getBinaryLogClient(),
                 Threads.threadFactory(MySqlConnector.class, connectorConfig.getLogicalName(), "binlog-client", false, false,
-                        x -> binaryLogClientThreads.put(x.getName(), x)));
-        client.setServerId(connectorConfig.serverId());
-        client.setSSLMode(sslModeFor(connectorConfig.sslMode()));
-        if (connectorConfig.sslModeEnabled()) {
-            SSLSocketFactory sslSocketFactory = getBinlogSslSocketFactory(connectorConfig, connection);
-            if (sslSocketFactory != null) {
-                client.setSslSocketFactory(sslSocketFactory);
-            }
-        }
-        if (connection.isMariaDb()) {
-            // This makes sure BEGIN events are emitted via QUERY events rather than GTIDs.
-            client.setMariaDbSlaveCapability(2);
-        }
-        Configuration configuration = connectorConfig.getConfig();
-        client.setKeepAlive(configuration.getBoolean(MySqlConnectorConfig.KEEP_ALIVE));
-        final long keepAliveInterval = configuration.getLong(MySqlConnectorConfig.KEEP_ALIVE_INTERVAL_MS);
-        client.setKeepAliveInterval(keepAliveInterval);
-        // Considering heartbeatInterval should be less than keepAliveInterval, we use the heartbeatIntervalFactor
-        // multiply by keepAliveInterval and set the result value to heartbeatInterval.The default value of heartbeatIntervalFactor
-        // is 0.8, and we believe the left time (0.2 * keepAliveInterval) is enough to process the packet received from the MySQL server.
-        client.setHeartbeatInterval((long) (keepAliveInterval * heartbeatIntervalFactor));
+                        x -> binaryLogClientThreads.put(x.getName(), x)),
+                connection);
 
+        Configuration configuration = connectorConfig.getConfig();
         boolean filterDmlEventsByGtidSource = configuration.getBoolean(MySqlConnectorConfig.GTID_SOURCE_FILTER_DML_EVENTS);
         gtidDmlSourceFilter = filterDmlEventsByGtidSource ? connectorConfig.gtidSourceFilter() : null;
-
-        // Set up the event deserializer with additional type(s) ...
-        final Map<Long, TableMapEventData> tableMapEventByTableId = new HashMap<Long, TableMapEventData>();
-        EventDeserializer eventDeserializer = new EventDeserializer() {
-            @Override
-            public Event nextEvent(ByteArrayInputStream inputStream) throws IOException {
-                try {
-                    // Delegate to the superclass ...
-                    Event event = super.nextEvent(inputStream);
-
-                    // We have to record the most recent TableMapEventData for each table number for our custom deserializers ...
-                    if (event.getHeader().getEventType() == EventType.TABLE_MAP) {
-                        TableMapEventData tableMapEvent = event.getData();
-                        tableMapEventByTableId.put(tableMapEvent.getTableId(), tableMapEvent);
-                    }
-
-                    // DBZ-2663 Handle for transaction payload and capture the table map event and add it to the map
-                    if (event.getHeader().getEventType() == EventType.TRANSACTION_PAYLOAD) {
-                        TransactionPayloadEventData transactionPayloadEventData = (TransactionPayloadEventData) event.getData();
-                        /**
-                         * Loop over the uncompressed events in the transaction payload event and add the table map
-                         * event in the map of table events
-                         **/
-                        for (Event uncompressedEvent : transactionPayloadEventData.getUncompressedEvents()) {
-                            if (uncompressedEvent.getHeader().getEventType() == EventType.TABLE_MAP
-                                    && uncompressedEvent.getData() != null) {
-                                TableMapEventData tableMapEvent = (TableMapEventData) uncompressedEvent.getData();
-                                tableMapEventByTableId.put(tableMapEvent.getTableId(), tableMapEvent);
-                            }
-                        }
-                    }
-
-                    // DBZ-5126 Clean cache on rotate event to prevent it from growing indefinitely.
-                    if (event.getHeader().getEventType() == EventType.ROTATE && event.getHeader().getTimestamp() != 0) {
-                        tableMapEventByTableId.clear();
-                    }
-                    return event;
-                }
-                // DBZ-217 In case an event couldn't be read we create a pseudo-event for the sake of logging
-                catch (EventDataDeserializationException edde) {
-                    // DBZ-3095 As of Java 15, when reaching EOF in the binlog stream, the polling loop in
-                    // BinaryLogClient#listenForEventPackets() keeps returning values != -1 from peek();
-                    // this causes the loop to never finish
-                    // Propagating the exception (either EOF or socket closed) causes the loop to be aborted
-                    // in this case
-                    if (edde.getCause() instanceof IOException) {
-                        throw edde;
-                    }
-
-                    EventHeaderV4 header = new EventHeaderV4();
-                    header.setEventType(EventType.INCIDENT);
-                    header.setTimestamp(edde.getEventHeader().getTimestamp());
-                    header.setServerId(edde.getEventHeader().getServerId());
-
-                    if (edde.getEventHeader() instanceof EventHeaderV4) {
-                        header.setEventLength(((EventHeaderV4) edde.getEventHeader()).getEventLength());
-                        header.setNextPosition(((EventHeaderV4) edde.getEventHeader()).getNextPosition());
-                        header.setFlags(((EventHeaderV4) edde.getEventHeader()).getFlags());
-                    }
-
-                    EventData data = new EventDataDeserializationExceptionData(edde);
-                    return new Event(header, data);
-                }
-            }
-        };
-
-        // Add our custom deserializers ...
-        eventDeserializer.setEventDataDeserializer(EventType.STOP, new StopEventDataDeserializer());
-        eventDeserializer.setEventDataDeserializer(EventType.GTID, new GtidEventDataDeserializer());
-        eventDeserializer.setEventDataDeserializer(EventType.WRITE_ROWS,
-                new RowDeserializers.WriteRowsDeserializer(tableMapEventByTableId, eventDeserializationFailureHandlingMode));
-        eventDeserializer.setEventDataDeserializer(EventType.UPDATE_ROWS,
-                new RowDeserializers.UpdateRowsDeserializer(tableMapEventByTableId, eventDeserializationFailureHandlingMode));
-        eventDeserializer.setEventDataDeserializer(EventType.DELETE_ROWS,
-                new RowDeserializers.DeleteRowsDeserializer(tableMapEventByTableId, eventDeserializationFailureHandlingMode));
-        eventDeserializer.setEventDataDeserializer(EventType.EXT_WRITE_ROWS,
-                new RowDeserializers.WriteRowsDeserializer(
-                        tableMapEventByTableId, eventDeserializationFailureHandlingMode).setMayContainExtraInformation(true));
-        eventDeserializer.setEventDataDeserializer(EventType.EXT_UPDATE_ROWS,
-                new RowDeserializers.UpdateRowsDeserializer(
-                        tableMapEventByTableId, eventDeserializationFailureHandlingMode).setMayContainExtraInformation(true));
-        eventDeserializer.setEventDataDeserializer(EventType.EXT_DELETE_ROWS,
-                new RowDeserializers.DeleteRowsDeserializer(
-                        tableMapEventByTableId, eventDeserializationFailureHandlingMode).setMayContainExtraInformation(true));
-        eventDeserializer.setEventDataDeserializer(EventType.TRANSACTION_PAYLOAD,
-                new TransactionPayloadDeserializer(tableMapEventByTableId, eventDeserializationFailureHandlingMode));
-
-        if (connection.isMariaDb()) {
-            eventDeserializer.setCompatibilityMode(EventDeserializer.CompatibilityMode.CHAR_AND_BINARY_AS_BYTE_ARRAY);
-        }
-
-        client.setEventDeserializer(eventDeserializer);
     }
 
     protected void onEvent(MySqlOffsetContext offsetContext, Event event) {
@@ -547,19 +417,8 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
      * @param event the database change data event to be processed; may not be null
      */
     protected void handleRecordingQuery(MySqlOffsetContext offsetContext, Event event) {
-        final String query;
-        if (!connection.isMariaDb()) {
-            // Unwrap the RowsQueryEvent
-            final RowsQueryEventData lastRowsQueryEventData = unwrapData(event);
-            query = lastRowsQueryEventData.getQuery();
-        }
-        else {
-            // Unwrap the AnnotateRowsEventData
-            final AnnotateRowsEventData annotateRowsEventData = unwrapData(event);
-            query = annotateRowsEventData.getRowsQuery();
-        }
         // Set the query on the source
-        offsetContext.setQuery(query);
+        offsetContext.setQuery(connectorAdapter.getRecordingQueryFromEvent(unwrapData(event)));
     }
 
     /**
@@ -975,16 +834,8 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
 
         // Conditionally register ROWS_QUERY handler to parse SQL statements.
         if (connectorConfig.includeSqlQuery()) {
-            if (!connection.isMariaDb()) {
-                eventHandlers.put(EventType.ROWS_QUERY, (event) -> handleRecordingQuery(effectiveOffsetContext, event));
-            }
-            else {
-                // Binlog client explicitly needs to be told to enable ANNOTATE_ROWS events, which is the
-                // MariaDB equivalent of ROWS_QUERY. This must be done ahead of the connection to make
-                // sure that the right negotiation bits are set during handshake.
-                client.setUseSendAnnotateRowsEvent(true);
-                eventHandlers.put(EventType.ANNOTATE_ROWS, (event) -> handleRecordingQuery(effectiveOffsetContext, event));
-            }
+            final EventType eventType = connectorAdapter.getBinaryLogClientConfigurator().getIncludeSqlQueryEventType();
+            eventHandlers.put(eventType, (event) -> handleRecordingQuery(effectiveOffsetContext, event));
         }
 
         BinaryLogClient.EventListener listener;
@@ -1007,19 +858,19 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
         metrics.setIsGtidModeEnabled(isGtidModeEnabled);
 
         // Get the current GtidSet from MySQL so we can get a filtered/merged GtidSet based off of the last Debezium checkpoint.
-        String availableServerGtidStr = connection.knownGtidSet();
         if (isGtidModeEnabled) {
             // The server is using GTIDs, so enable the handler ...
             eventHandlers.put(EventType.GTID, (event) -> handleGtidEvent(effectiveOffsetContext, event));
 
             // Now look at the GTID set from the server and what we've previously seen ...
-            GtidSet availableServerGtidSet = new GtidSet(availableServerGtidStr);
+            GtidSet availableServerGtidSet = connection.knownGtidSet();
 
             // also take into account purged GTID logs
             GtidSet purgedServerGtidSet = connection.purgedGtidSet();
             LOGGER.info("GTID set purged on server: {}", purgedServerGtidSet);
 
-            GtidSet filteredGtidSet = filterGtidSet(effectiveOffsetContext, availableServerGtidSet, purgedServerGtidSet);
+            GtidSet filteredGtidSet = connection.filterGtidSet(connectorConfig.gtidSourceFilter(),
+                    effectiveOffsetContext.gtidSet(), availableServerGtidSet, purgedServerGtidSet);
             if (filteredGtidSet != null) {
                 // We've seen at least some GTIDs, so start reading from the filtered GTID set ...
                 LOGGER.info("Registering binlog reader with GTID set: {}", filteredGtidSet);
@@ -1130,82 +981,6 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
         return effectiveOffsetContext;
     }
 
-    private SSLSocketFactory getBinlogSslSocketFactory(MySqlConnectorConfig connectorConfig, MySqlConnection connection) {
-        String acceptedTlsVersion = connection.getSessionVariableForSslVersion();
-        if (!isNullOrEmpty(acceptedTlsVersion)) {
-            SSLMode sslMode = sslModeFor(connectorConfig.sslMode());
-            LOGGER.info("Enable ssl " + sslMode + " mode for connector " + connectorConfig.getLogicalName());
-
-            final char[] keyPasswordArray = connection.connectionConfig().sslKeyStorePassword();
-            final String keyFilename = connection.connectionConfig().sslKeyStore();
-            final char[] trustPasswordArray = connection.connectionConfig().sslTrustStorePassword();
-            final String trustFilename = connection.connectionConfig().sslTrustStore();
-            KeyManager[] keyManagers = null;
-            if (keyFilename != null) {
-                try {
-                    KeyStore ks = connection.loadKeyStore(keyFilename, keyPasswordArray);
-
-                    KeyManagerFactory kmf = KeyManagerFactory.getInstance("NewSunX509");
-                    kmf.init(ks, keyPasswordArray);
-
-                    keyManagers = kmf.getKeyManagers();
-                }
-                catch (KeyStoreException | NoSuchAlgorithmException | UnrecoverableKeyException e) {
-                    throw new DebeziumException("Could not load keystore", e);
-                }
-            }
-            TrustManager[] trustManagers;
-            try {
-                KeyStore ks = null;
-                if (trustFilename != null) {
-                    ks = connection.loadKeyStore(trustFilename, trustPasswordArray);
-                }
-
-                if (ks == null && (sslMode == SSLMode.PREFERRED || sslMode == SSLMode.REQUIRED)) {
-                    trustManagers = new TrustManager[]{
-                            new X509TrustManager() {
-
-                                @Override
-                                public void checkClientTrusted(X509Certificate[] x509Certificates, String s)
-                                        throws CertificateException {
-                                }
-
-                                @Override
-                                public void checkServerTrusted(X509Certificate[] x509Certificates, String s)
-                                        throws CertificateException {
-                                }
-
-                                @Override
-                                public X509Certificate[] getAcceptedIssuers() {
-                                    return new X509Certificate[0];
-                                }
-                            }
-                    };
-                }
-                else {
-                    TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
-                    tmf.init(ks);
-                    trustManagers = tmf.getTrustManagers();
-                }
-            }
-            catch (KeyStoreException | NoSuchAlgorithmException e) {
-                throw new DebeziumException("Could not load truststore", e);
-            }
-            // DBZ-1208 Resembles the logic from the upstream BinaryLogClient, only that
-            // the accepted TLS version is passed to the constructed factory
-            final KeyManager[] finalKMS = keyManagers;
-            return new DefaultSSLSocketFactory(acceptedTlsVersion) {
-
-                @Override
-                protected void initSSLContext(SSLContext sc) throws GeneralSecurityException {
-                    sc.init(finalKMS, trustManagers, null);
-                }
-            };
-        }
-
-        return null;
-    }
-
     private void logStreamingSourceState() {
         logStreamingSourceState(Level.ERROR);
     }
@@ -1227,54 +1002,6 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
             default:
                 LOGGER.error(message, lastOffset, position);
         }
-    }
-
-    /**
-     * Apply the include/exclude GTID source filters to the current {@link MySqlOffsetContext#gtidSet() GTID set} and merge them onto the
-     * currently available GTID set from a MySQL server.
-     *
-     * The merging behavior of this method might seem a bit strange at first. It's required in order for Debezium to consume a
-     * MySQL binlog that has multi-source replication enabled, if a failover has to occur. In such a case, the server that
-     * Debezium is failed over to might have a different set of sources, but still include the sources required for Debezium
-     * to continue to function. MySQL does not allow downstream replicas to connect if the GTID set does not contain GTIDs for
-     * all channels that the server is replicating from, even if the server does have the data needed by the client. To get
-     * around this, we can have Debezium merge its GTID set with whatever is on the server, so that MySQL will allow it to
-     * connect. See <a href="https://issues.jboss.org/browse/DBZ-143">DBZ-143</a> for details.
-     *
-     * This method does not mutate any state in the context.
-     *
-     * @param availableServerGtidSet the GTID set currently available in the MySQL server
-     * @param purgedServerGtid the GTID set already purged by the MySQL server
-     * @return A GTID set meant for consuming from a MySQL binlog; may return null if the SourceInfo has no GTIDs and therefore
-     *         none were filtered
-     */
-    public GtidSet filterGtidSet(MySqlOffsetContext offsetContext, GtidSet availableServerGtidSet, GtidSet purgedServerGtid) {
-        String gtidStr = offsetContext.gtidSet();
-        if (gtidStr == null) {
-            return null;
-        }
-        LOGGER.info("Attempting to generate a filtered GTID set");
-        LOGGER.info("GTID set from previous recorded offset: {}", gtidStr);
-        GtidSet filteredGtidSet = new GtidSet(gtidStr);
-        Predicate<String> gtidSourceFilter = connectorConfig.gtidSourceFilter();
-        if (gtidSourceFilter != null) {
-            filteredGtidSet = filteredGtidSet.retainAll(gtidSourceFilter);
-            LOGGER.info("GTID set after applying GTID source includes/excludes to previous recorded offset: {}", filteredGtidSet);
-        }
-        LOGGER.info("GTID set available on server: {}", availableServerGtidSet);
-
-        final GtidSet knownGtidSet = filteredGtidSet;
-        LOGGER.info("Using first available positions for new GTID channels");
-        final GtidSet relevantAvailableServerGtidSet = (gtidSourceFilter != null) ? availableServerGtidSet.retainAll(gtidSourceFilter) : availableServerGtidSet;
-        LOGGER.info("Relevant GTID set available on server: {}", relevantAvailableServerGtidSet);
-
-        GtidSet mergedGtidSet = relevantAvailableServerGtidSet
-                .retainAll(uuid -> knownGtidSet.forServerWithId(uuid) != null)
-                .with(purgedServerGtid)
-                .with(filteredGtidSet);
-
-        LOGGER.info("Final merged GTID set to use when connecting to MySQL: {}", mergedGtidSet);
-        return mergedGtidSet;
     }
 
     MySqlStreamingChangeEventSourceMetrics getMetrics() {

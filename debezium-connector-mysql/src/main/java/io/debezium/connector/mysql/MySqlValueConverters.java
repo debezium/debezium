@@ -39,8 +39,11 @@ import com.github.shyiko.mysql.binlog.event.deserialization.json.JsonBinary;
 
 import io.debezium.DebeziumException;
 import io.debezium.annotation.Immutable;
+import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
+import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
+import io.debezium.connector.mysql.strategy.ConnectorAdapter;
 import io.debezium.data.Json;
 import io.debezium.data.SpecialValueDecimal;
 import io.debezium.jdbc.JdbcValueConverters;
@@ -115,6 +118,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
     }
 
     private final ParsingErrorHandler parsingErrorHandler;
+    private final ConnectorAdapter connectorAdapter;
 
     /**
      * Create a new instance that always uses UTC for the default time zone when_needed converting values without timezone information
@@ -128,9 +132,16 @@ public class MySqlValueConverters extends JdbcValueConverters {
      *            {@link io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode#PRECISE} is to be used
      * @param binaryMode how binary columns should be represented
      */
+    @VisibleForTesting
     public MySqlValueConverters(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, BigIntUnsignedMode bigIntUnsignedMode,
                                 BinaryHandlingMode binaryMode) {
-        this(decimalMode, temporalPrecisionMode, bigIntUnsignedMode, binaryMode, x -> x, MySqlValueConverters::defaultParsingErrorHandler);
+        this(decimalMode, temporalPrecisionMode, bigIntUnsignedMode, binaryMode, x -> x, MySqlValueConverters::defaultParsingErrorHandler, resolveDefaultAdapter());
+    }
+
+    private static ConnectorAdapter resolveDefaultAdapter() {
+        Configuration config = Configuration.empty();
+        MySqlConnectorConfig connectorConfig = new MySqlConnectorConfig(config);
+        return MySqlConnectorConfig.ConnectorAdapterMode.MYSQL.getAdapter(connectorConfig);
     }
 
     /**
@@ -145,12 +156,14 @@ public class MySqlValueConverters extends JdbcValueConverters {
      *            {@link io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode#PRECISE} is to be used
      * @param binaryMode how binary columns should be represented
      * @param adjuster a temporal adjuster to make a database specific time modification before conversion
+     * @param connectorAdapter the connector adapter
      */
     public MySqlValueConverters(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, BigIntUnsignedMode bigIntUnsignedMode,
                                 BinaryHandlingMode binaryMode,
-                                TemporalAdjuster adjuster, ParsingErrorHandler parsingErrorHandler) {
+                                TemporalAdjuster adjuster, ParsingErrorHandler parsingErrorHandler, ConnectorAdapter connectorAdapter) {
         super(decimalMode, temporalPrecisionMode, ZoneOffset.UTC, adjuster, bigIntUnsignedMode, binaryMode);
         this.parsingErrorHandler = parsingErrorHandler;
+        this.connectorAdapter = connectorAdapter;
     }
 
     @Override
@@ -331,10 +344,10 @@ public class MySqlValueConverters extends JdbcValueConverters {
             logger.warn("Column is missing a character set: {}", column);
             return null;
         }
-        String encoding = MySqlConnection.getJavaEncodingForMysqlCharSet(mySqlCharsetName);
+        String encoding = connectorAdapter.getJavaEncodingForCharSet(mySqlCharsetName);
         if (encoding == null) {
             logger.debug("Column uses MySQL character set '{}', which has no mapping to a Java character set, will try it in lowercase", mySqlCharsetName);
-            encoding = MySqlConnection.getJavaEncodingForMysqlCharSet(mySqlCharsetName.toLowerCase());
+            encoding = connectorAdapter.getJavaEncodingForCharSet(mySqlCharsetName.toLowerCase());
         }
         if (encoding == null) {
             logger.warn("Column uses MySQL character set '{}', which has no mapping to a Java character set", mySqlCharsetName);

@@ -19,9 +19,12 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
-import io.debezium.connector.mysql.MySqlConnection.MySqlConnectionConfiguration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.BigIntUnsignedHandlingMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
+import io.debezium.connector.mysql.strategy.AbstractConnectorConnection;
+import io.debezium.connector.mysql.strategy.ConnectorAdapter;
+import io.debezium.connector.mysql.strategy.mysql.MySqlConnection;
+import io.debezium.connector.mysql.strategy.mysql.MySqlConnectionConfiguration;
 import io.debezium.document.DocumentReader;
 import io.debezium.jdbc.DefaultMainConnectionProvidingConnectionFactory;
 import io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode;
@@ -56,7 +59,7 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
 
     private volatile MySqlTaskContext taskContext;
     private volatile ChangeEventQueue<DataChangeEvent> queue;
-    private volatile MySqlConnection connection;
+    private volatile AbstractConnectorConnection connection;
     private volatile ErrorHandler errorHandler;
     private volatile MySqlDatabaseSchema schema;
 
@@ -81,8 +84,10 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
                 .withDefault("database.useCursorFetch", connectorConfig.useCursorFetch())
                 .build();
 
-        MainConnectionProvidingConnectionFactory<MySqlConnection> connectionFactory = new DefaultMainConnectionProvidingConnectionFactory<>(
-                () -> new MySqlConnection(new MySqlConnectionConfiguration(config), getFieldReader(connectorConfig)));
+        final ConnectorAdapter adapter = connectorConfig.getConnectorAdapter();
+
+        MainConnectionProvidingConnectionFactory<AbstractConnectorConnection> connectionFactory = new DefaultMainConnectionProvidingConnectionFactory<>(
+                () -> adapter.createConnection(config));
 
         connection = connectionFactory.mainConnection();
 
@@ -214,7 +219,7 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
         final boolean timeAdjusterEnabled = configuration.getConfig().getBoolean(MySqlConnectorConfig.ENABLE_TIME_ADJUSTER);
         return new MySqlValueConverters(decimalMode, timePrecisionMode, bigIntUnsignedMode,
                 configuration.binaryHandlingMode(), timeAdjusterEnabled ? MySqlValueConverters::adjustTemporal : x -> x,
-                MySqlValueConverters::defaultParsingErrorHandler);
+                MySqlValueConverters::defaultParsingErrorHandler, configuration.getConnectorAdapter());
     }
 
     private MySqlFieldReader getFieldReader(MySqlConnectorConfig configuration) {
@@ -278,70 +283,6 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
         }
     }
 
-    /**
-     * Determine whether the binlog position as set on the {@link MySqlOffsetContext} is available in the server.
-     *
-     * @return {@code true} if the server has the binlog coordinates, or {@code false} otherwise
-     */
-    protected boolean isBinlogAvailable(MySqlConnectorConfig config, MySqlOffsetContext offset) {
-        String gtidStr = offset.gtidSet();
-        if (gtidStr != null) {
-            if (gtidStr.trim().isEmpty()) {
-                return true; // start at beginning ...
-            }
-            String availableGtidStr = connection.knownGtidSet();
-            if (availableGtidStr == null || availableGtidStr.trim().isEmpty()) {
-                // Last offsets had GTIDs but the server does not use them ...
-                LOGGER.info("Connector used GTIDs previously, but MySQL does not know of any GTIDs or they are not enabled");
-                return false;
-            }
-            // GTIDs are enabled, and we used them previously, but retain only those GTID ranges for the allowed source UUIDs ...
-            GtidSet gtidSet = new GtidSet(gtidStr).retainAll(config.gtidSourceFilter());
-            // Get the GTID set that is available in the server ...
-            GtidSet availableGtidSet = new GtidSet(availableGtidStr);
-            if (gtidSet.isContainedWithin(availableGtidSet)) {
-                LOGGER.info("MySQL current GTID set {} does contain the GTID set required by the connector {}", availableGtidSet, gtidSet);
-                final GtidSet knownServerSet = availableGtidSet.retainAll(config.gtidSourceFilter());
-                final GtidSet gtidSetToReplicate = connection.subtractGtidSet(knownServerSet, gtidSet);
-                final GtidSet purgedGtidSet = connection.purgedGtidSet();
-                LOGGER.info("Server has already purged {} GTIDs", purgedGtidSet);
-                final GtidSet nonPurgedGtidSetToReplicate = connection.subtractGtidSet(gtidSetToReplicate, purgedGtidSet);
-                LOGGER.info("GTIDs known by the server but not processed yet {}, for replication are available only {}", gtidSetToReplicate, nonPurgedGtidSetToReplicate);
-                if (!gtidSetToReplicate.equals(nonPurgedGtidSetToReplicate)) {
-                    LOGGER.info("Some of the GTIDs needed to replicate have been already purged");
-                    return false;
-                }
-                return true;
-            }
-            LOGGER.info("Connector last known GTIDs are {}, but MySQL has {}", gtidSet, availableGtidSet);
-            return false;
-        }
-
-        String binlogFilename = offset.getSource().binlogFilename();
-        if (binlogFilename == null) {
-            return true; // start at current position
-        }
-        if (binlogFilename.equals("")) {
-            return true; // start at beginning
-        }
-
-        // Accumulate the available binlog filenames ...
-        List<String> logNames = connection.availableBinlogFiles();
-
-        // And compare with the one we're supposed to use ...
-        boolean found = logNames.stream().anyMatch(binlogFilename::equals);
-        if (!found) {
-            if (LOGGER.isInfoEnabled()) {
-                LOGGER.info("Connector requires binlog file '{}', but MySQL only has {}", binlogFilename, String.join(", ", logNames));
-            }
-        }
-        else {
-            LOGGER.info("MySQL has the binlog file '{}' required by the connector", binlogFilename);
-        }
-
-        return found;
-    }
-
     private boolean validateAndLoadSchemaHistory(MySqlConnectorConfig config, MySqlPartition partition, MySqlOffsetContext offset, MySqlDatabaseSchema schema) {
         if (offset == null) {
             if (config.getSnapshotMode().shouldSnapshotOnSchemaError()) {
@@ -357,7 +298,7 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
             LOGGER.warn("Database schema history was not found but was expected");
             if (config.getSnapshotMode().shouldSnapshotOnSchemaError()) {
                 // But check to see if the server still has those binlog coordinates ...
-                if (!isBinlogAvailable(config, offset)) {
+                if (!connection.isBinlogPositionAvailable(config, offset.gtidSet(), offset.getSource().binlogFilename())) {
                     throw new DebeziumException("The connector is trying to read binlog starting at " + offset.getSource() + ", but this is no longer "
                             + "available on the server. Reconfigure the connector to use a snapshot when needed.");
                 }
@@ -388,7 +329,7 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
             }
             else {
                 // But check to see if the server still has those binlog coordinates ...
-                if (!isBinlogAvailable(config, offset)) {
+                if (!connection.isBinlogPositionAvailable(config, offset.gtidSet(), offset.getSource().binlogFilename())) {
                     if (!config.getSnapshotMode().shouldSnapshotOnDataError()) {
                         throw new DebeziumException("The connector is trying to read binlog starting at " + offset.getSource() + ", but this is no longer "
                                 + "available on the server. Reconfigure the connector to use a snapshot when needed.");
@@ -422,10 +363,8 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
                              SignalProcessor<MySqlPartition, MySqlOffsetContext> signalProcessor) {
         boolean isKafkaChannelEnabled = connectorConfig.getEnabledChannels().contains(KafkaSignalChannel.CHANNEL_NAME);
         if (previousOffset != null && isKafkaChannelEnabled && connectorConfig.isReadOnlyConnection()) {
-            MySqlReadOnlyIncrementalSnapshotContext<TableId> readOnlyIncrementalSnapshotContext = (MySqlReadOnlyIncrementalSnapshotContext<TableId>) previousOffset
-                    .getIncrementalSnapshotContext();
             KafkaSignalChannel kafkaSignal = signalProcessor.getSignalChannel(KafkaSignalChannel.class);
-            Long signalOffset = readOnlyIncrementalSnapshotContext.getSignalOffset();
+            Long signalOffset = connectorConfig.getConnectorAdapter().getReadOnlyIncrementalSnapshotSignalOffset(previousOffset);
             if (signalOffset != null) {
                 LOGGER.info("Resetting Kafka Signal offset to {}", signalOffset);
                 kafkaSignal.reset(signalOffset);

@@ -220,6 +220,9 @@ public class UniqueDatabase {
             builder.with(FileSchemaHistory.FILE_PATH, dbHistoryPath);
         }
 
+        String connectorAdapter = System.getProperty("connector.adapter", "mysql");
+        builder.with(MySqlConnectorConfig.CONNECTOR_ADAPTER, connectorAdapter);
+
         return builder;
     }
 

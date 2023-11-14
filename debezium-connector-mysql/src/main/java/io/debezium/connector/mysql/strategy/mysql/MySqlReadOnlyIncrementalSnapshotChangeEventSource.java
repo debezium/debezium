@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.mysql;
+package io.debezium.connector.mysql.strategy.mysql;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -14,6 +14,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.connector.mysql.MySqlOffsetContext;
+import io.debezium.connector.mysql.MySqlPartition;
+import io.debezium.connector.mysql.SourceInfo;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
@@ -174,14 +177,14 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
         getExecutedGtidSet(getContext()::setHighWatermark);
     }
 
-    private void getExecutedGtidSet(Consumer<GtidSet> watermark) {
+    private void getExecutedGtidSet(Consumer<MySqlGtidSet> watermark) {
         try {
             jdbcConnection.query(SHOW_MASTER_STMT, rs -> {
                 if (rs.next()) {
                     if (rs.getMetaData().getColumnCount() > 4) {
                         // This column exists only in MySQL 5.6.5 or later ...
                         final String gtidSet = rs.getString(5); // GTID set, may be null, blank, or contain a GTID set
-                        watermark.accept(new GtidSet(gtidSet));
+                        watermark.accept(new MySqlGtidSet(gtidSet));
                     }
                     else {
                         throw new UnsupportedOperationException("Need to add support for executed GTIDs for versions prior to 5.6.5");

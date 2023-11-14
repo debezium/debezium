@@ -25,6 +25,10 @@ import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
+import io.debezium.connector.mysql.strategy.ConnectorAdapter;
+import io.debezium.connector.mysql.strategy.mariadb.MariaDbConnectorAdapter;
+import io.debezium.connector.mysql.strategy.mariadb.hybrid.MariaDbHybridConnectorAdapter;
+import io.debezium.connector.mysql.strategy.mysql.MySqlConnectorAdapter;
 import io.debezium.function.Predicates;
 import io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
@@ -508,6 +512,92 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     }
 
     /**
+     * Set of predefined connector adapter modes.
+     */
+    public enum ConnectorAdapterMode implements EnumeratedValue {
+        /**
+         * Expects the target database to be MySQL using the MySQL driver.
+         * This should also be used if the target database is MySQL compliant but isn't MariaDB.
+         */
+        MYSQL("mysql") {
+            @Override
+            protected ConnectorAdapter getAdapter(MySqlConnectorConfig connectorConfig) {
+                LOGGER.info("Using " + MySqlConnectorAdapter.class.getName());
+                return new MySqlConnectorAdapter(connectorConfig);
+            }
+        },
+
+        /**
+         * Expects the target database to be MariaDB using the MariaDB driver.
+         */
+        MARIADB("mariadb") {
+            @Override
+            protected ConnectorAdapter getAdapter(MySqlConnectorConfig connectorConfig) {
+                LOGGER.info("Using " + MariaDbConnectorAdapter.class.getName());
+                return new MariaDbConnectorAdapter(connectorConfig);
+            }
+        },
+
+        /**
+         * Expects the target database to be MariaDB but uses the MySQL driver.
+         */
+        MARIADB_HYBRID("mariadb-hybrid") {
+            @Override
+            protected ConnectorAdapter getAdapter(MySqlConnectorConfig connectorConfig) {
+                LOGGER.info("Using " + MariaDbHybridConnectorAdapter.class.getName());
+                return new MariaDbHybridConnectorAdapter(connectorConfig);
+            }
+        };
+
+        private final String value;
+
+        protected abstract ConnectorAdapter getAdapter(MySqlConnectorConfig connectorConfig);
+
+        ConnectorAdapterMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static ConnectorAdapterMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (ConnectorAdapterMode option : ConnectorAdapterMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static ConnectorAdapterMode parse(String value, String defaultValue) {
+            ConnectorAdapterMode mode = parse(value);
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+            return mode;
+        }
+    }
+
+    /**
      * {@link Integer#MIN_VALUE Minimum value} used for fetch size hint.
      * See <a href="https://issues.jboss.org/browse/DBZ-94">DBZ-94</a> for details.
      *
@@ -877,6 +967,14 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
             .withImportance(Importance.LOW)
             .withDescription("Switched connector to use alternative methods to deliver signals to Debezium instead of writing to signaling table");
 
+    public static final Field CONNECTOR_ADAPTER = Field.create("connector.adapter")
+            .withDisplayName("Connection adapter to be used")
+            .withEnum(ConnectorAdapterMode.class, ConnectorAdapterMode.MYSQL)
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 28))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("Specifies the connection adapter to be used");
+
     public static final Field SOURCE_INFO_STRUCT_MAKER = CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER
             .withDefault(MySqlSourceInfoStructMaker.class.getName());
 
@@ -920,7 +1018,8 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
                     ROW_COUNT_FOR_STREAMING_RESULT_SETS,
                     INCREMENTAL_SNAPSHOT_CHUNK_SIZE,
                     INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES,
-                    STORE_ONLY_CAPTURED_DATABASES_DDL)
+                    STORE_ONLY_CAPTURED_DATABASES_DDL,
+                    CONNECTOR_ADAPTER)
             .events(
                     INCLUDE_SQL_QUERY,
                     TABLE_IGNORE_BUILTIN,
@@ -967,6 +1066,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     private final Predicate<String> gtidSourceFilter;
     private final EventProcessingFailureHandlingMode inconsistentSchemaFailureHandlingMode;
     private final boolean readOnlyConnection;
+    private final ConnectorAdapter connectorAdapter;
 
     public MySqlConnectorConfig(Configuration config) {
         super(
@@ -999,6 +1099,9 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
                 : (gtidSetExcludes != null ? Predicates.excludesUuids(gtidSetExcludes) : null);
 
         this.storeOnlyCapturedDatabasesDdl = config.getBoolean(STORE_ONLY_CAPTURED_DATABASES_DDL);
+
+        // This should always be last to guarantee the full configuration is passed in the constructor
+        this.connectorAdapter = ConnectorAdapterMode.parse(config.getString(CONNECTOR_ADAPTER)).getAdapter(this);
     }
 
     public boolean useCursorFetch() {
@@ -1156,6 +1259,10 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
         return config.getInteger(MySqlConnectorConfig.BUFFER_SIZE_FOR_BINLOG_READER);
     }
 
+    public ConnectorAdapter getConnectorAdapter() {
+        return connectorAdapter;
+    }
+
     /**
      * Get the predicate function that will return {@code true} if a GTID source is to be included, or {@code false} if
      * a GTID source is to be excluded.
@@ -1180,7 +1287,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
 
     @Override
     protected HistoryRecordComparator getHistoryRecordComparator() {
-        return new MySqlHistoryRecordComparator(gtidSourceFilter());
+        return connectorAdapter.getHistoryRecordComparator();
     }
 
     public static boolean isBuiltInDatabase(String databaseName) {

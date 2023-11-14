@@ -68,7 +68,8 @@ public class MySqlDatabaseSchemaTest {
                 BigIntUnsignedMode.LONG,
                 BinaryHandlingMode.BYTES,
                 MySqlValueConverters::adjustTemporal,
-                MySqlValueConverters::defaultParsingErrorHandler);
+                MySqlValueConverters::defaultParsingErrorHandler,
+                connectorConfig.getConnectorAdapter());
         return new MySqlDatabaseSchema(
                 connectorConfig,
                 mySqlValueConverters,
