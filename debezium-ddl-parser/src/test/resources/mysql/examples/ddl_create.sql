@@ -584,6 +584,34 @@ END IF;
 END
 #end
 #begin
+CREATE PROCEDURE test_union()
+BEGIN
+(SELECT id FROM test_auto_inc)
+UNION ALL
+SELECT id FROM test_auto_inc;
+END
+#end
+#begin
+CREATE PROCEDURE test_union()
+BEGIN
+(SELECT id FROM test_auto_inc)
+UNION ALL
+SELECT id FROM test_auto_inc
+UNION ALL
+SELECT id FROM test_auto_inc ORDER BY id;
+END
+#end
+#begin
+CREATE PROCEDURE test_union()
+BEGIN
+(SELECT id FROM test_auto_inc)
+UNION ALL
+(SELECT id FROM test_auto_inc)
+UNION ALL
+SELECT id FROM test_auto_inc ORDER BY id;
+END
+#end
+#begin
 -- Create Role
 create role 'RL_COMPLIANCE_NSA';
 create role if not exists 'RL_COMPLIANCE_NSA';
