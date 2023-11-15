@@ -3177,6 +3177,21 @@ For example, to define a `selector` parameter that specifies the subset of colum
 `verify_ca` behaves like `required` but additionally it verifies the server TLS certificate against the configured Certificate Authority (CA) certificates and fails if the server TLS certificate does not match any valid CA certificates. +
  +
 `verify_identity` behaves like `verify_ca` but additionally verifies that the server certificate matches the host of the remote connection.
+|[[mysql-property-database-ssl-keystore]]<<mysql-property-database-ssl-keystore, `+database.ssl.keystore+`>>
+|No defaults
+|The location of the key store file.
+ This is optional and can be used for two-way authentication between the client and the MySQL Server.
+|[[mysql-property-database-ssl-keystore-password]]<<mysql-property-database-ssl-keystore-password, `+database.ssl.keystore.password+`>>
+|No defaults
+|The password for the key store file.
+ This is optional and only needed if xref:{context}-mysql-property-database-ssl-keystore[`database.ssl.keystore`] is configured.
+|[[mysql-property-database-ssl-truststore]]<<mysql-property-database-ssl-truststore, `+database.ssl.truststore+`>>
+|No defaults
+|The location of the trust store file for the server certificate verification.
+|[[mysql-property-database-ssl-truststore-password]]<<mysql-property-database-ssl-truststore-password, `+database.ssl.truststore.password+`>>
+|No defaults
+|The password for the trust store file.
+ Used to check the integrity of the truststore, and unlock the truststore.
 ifdef::community[]
 |[[mysql-property-binlog-buffer-size]]<<mysql-property-binlog-buffer-size, `+binlog.buffer.size+`>>
 |0
