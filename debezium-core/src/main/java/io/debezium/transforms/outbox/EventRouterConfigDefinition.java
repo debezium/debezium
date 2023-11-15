@@ -328,9 +328,9 @@ public class EventRouterConfigDefinition {
         if (extraFieldsMapping != null) {
             for (String field : extraFieldsMapping.split(",")) {
                 final String[] parts = field.split(":");
-                final String fieldName = parts[0];
-                AdditionalFieldPlacement placement = AdditionalFieldPlacement.parse(parts[1]);
-                final AdditionalField addField = new AdditionalField(placement, fieldName, parts.length == 3 ? parts[2] : fieldName);
+                final String fieldName = parts[0].trim();
+                AdditionalFieldPlacement placement = AdditionalFieldPlacement.parse(parts[1].trim());
+                final AdditionalField addField = new AdditionalField(placement, fieldName, parts.length == 3 ? parts[2].trim() : fieldName);
                 additionalFields.add(addField);
             }
         }
