@@ -651,7 +651,7 @@ public class EventRouterTest {
         final Map<String, String> config = new HashMap<>();
         config.put(
                 EventRouterConfigDefinition.FIELDS_ADDITIONAL_PLACEMENT.name(),
-                "type:envelope:payloadType,aggregateid:envelope:payloadId,type:header:payloadType");
+                "type:envelope:payloadType, aggregateid:envelope:payloadId,type:header:payloadType");
         router.configure(config);
 
         final SourceRecord eventRecord = createEventRecord();
