@@ -41,7 +41,6 @@ public class DebeziumResourceIT {
             "io.debezium.transforms.SchemaChangeEventFilter",
             "io.debezium.transforms.TimezoneConverter",
             "io.debezium.transforms.outbox.EventRouter",
-            "io.debezium.transforms.partitions.ComputePartition",
             "io.debezium.transforms.partitions.PartitionRouting",
             "io.debezium.transforms.tracing.ActivateTracingSpan",
             "org.apache.kafka.connect.transforms.Cast",

@@ -156,7 +156,7 @@ For information about how to send events to topics other than their default dest
 [[migrate-debezium-compute-partition-smt]]
 == Migrating from the {prodname} ComputePartition SMT
 
-The {prodname} `ComputePartition` SMT is to be discontinued in a future release.
+The {prodname} `ComputePartition` SMT has been discontinued.
 The information in the following section describes how migrate from the  `ComputePartition` SMT to the new `PartitionRouting` SMT.
 
 Assuming that the configuration sets the same number of partitions for all topics, replace the following `ComputePartition`configuration with the `PartitionRouting` SMT.
