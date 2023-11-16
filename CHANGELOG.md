@@ -2,6 +2,57 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.4.1.Final
+November 16th 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12414496)
+
+### New features since 2.4.0.Final
+
+* Provide capability to set image pull secrets in DS k8s CRD [DBZ-6962](https://issues.redhat.com/browse/DBZ-6962)
+* Add displayName and description metadata to DebeziumServer CRD in OLM Bundle [DBZ-7011](https://issues.redhat.com/browse/DBZ-7011)
+* Provide resources to set pod requests and limits in DS k8s CRD [DBZ-7052](https://issues.redhat.com/browse/DBZ-7052)
+* Provide svc to better collects dbz-server metrics  in DS k8s [DBZ-7053](https://issues.redhat.com/browse/DBZ-7053)
+
+
+### Breaking changes since 2.4.0.Final
+
+None
+
+
+### Fixes since 2.4.0.Final
+
+* Oracle RAC throws ORA-00310: archive log sequence required [DBZ-5350](https://issues.redhat.com/browse/DBZ-5350)
+* oracle missing CDC data [DBZ-5656](https://issues.redhat.com/browse/DBZ-5656)
+* Missing oracle cdc records [DBZ-5750](https://issues.redhat.com/browse/DBZ-5750)
+* Multiple debezium:offsets Redis clients [DBZ-6952](https://issues.redhat.com/browse/DBZ-6952)
+* Wrong case-behavior for non-avro column name in sink connector [DBZ-6958](https://issues.redhat.com/browse/DBZ-6958)
+* Missing events from Oracle 19c [DBZ-6963](https://issues.redhat.com/browse/DBZ-6963)
+* Handle properly bytea field for jdbc sink to postgresql [DBZ-6967](https://issues.redhat.com/browse/DBZ-6967)
+* Debezium jdbc sink process truncate event failure [DBZ-6970](https://issues.redhat.com/browse/DBZ-6970)
+* Debezium jdbc sink should throw not supporting schema change topic exception [DBZ-6990](https://issues.redhat.com/browse/DBZ-6990)
+* OLM bundle version for GA releases is invalid [DBZ-6994](https://issues.redhat.com/browse/DBZ-6994)
+* ALTER TABLE fails when adding multiple columns to JDBC sink target [DBZ-6999](https://issues.redhat.com/browse/DBZ-6999)
+* Invalid Link to zulip chat in CSV metadata [DBZ-7000](https://issues.redhat.com/browse/DBZ-7000)
+* Make sure to terminate the task once connectivity is lost to either the rebalance or sync topic [DBZ-7001](https://issues.redhat.com/browse/DBZ-7001)
+* Missing .metadata.annotations.repository field in CSV metadata [DBZ-7003](https://issues.redhat.com/browse/DBZ-7003)
+* Single quote replication and loss of data [DBZ-7006](https://issues.redhat.com/browse/DBZ-7006)
+* Oracle connector: Payload size over 76020 bytes are getting truncated [DBZ-7018](https://issues.redhat.com/browse/DBZ-7018)
+* DDL statement couldn't be parsed [DBZ-7030](https://issues.redhat.com/browse/DBZ-7030)
+* Debezium Embedded Infinispan Performs Slowly [DBZ-7047](https://issues.redhat.com/browse/DBZ-7047)
+* Field exclusion does not work with events of removed fields [DBZ-7058](https://issues.redhat.com/browse/DBZ-7058)
+* Debezium crashes on parsing MySQL DDL statement (specific INSERT) [DBZ-7119](https://issues.redhat.com/browse/DBZ-7119)
+* Debezium-ddl-parser crashes on parsing MySQL DDL statement (specific UNION) [DBZ-7140](https://issues.redhat.com/browse/DBZ-7140)
+
+
+### Other changes since 2.4.0.Final
+
+* Further refactoring to correct downstream rendering of incremental snapshots topics [DBZ-6997](https://issues.redhat.com/browse/DBZ-6997)
+* Use optional schema for Timezone Converter tests [DBZ-7020](https://issues.redhat.com/browse/DBZ-7020)
+* Update operator dependencies and add qosdk platform bom [DBZ-7048](https://issues.redhat.com/browse/DBZ-7048)
+* Consolidate resource labels and annotations [DBZ-7064](https://issues.redhat.com/browse/DBZ-7064)
+* Allow DS JMX to use username-password authentication on k8 [DBZ-7087](https://issues.redhat.com/browse/DBZ-7087)
+
+
+
 ## 2.4.0.Final
 October 3rd 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12411356)
 
