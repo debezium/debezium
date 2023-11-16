@@ -1928,6 +1928,12 @@ Change events exceeding the maximum BSON size will be split using the https://ww
 |Specifies the maximum number of milliseconds the oplog/change stream cursor will wait for the server to produce a result before causing an execution timeout exception.
 A value of `0` indicates using the server/driver default wait timeout.
 
+|[[mongodb-property-cursor-inactivity-pause-ms]]<<mongodb-property-cursor-inactivity-pause-ms, `+cursor.inactivity.pause.ms+`>>
+|`500`
+|Specifies the number of milliseconds the connector will pause for when no additional event is available.
+
+In some cases (e.g. heavy use of bulk writes by data producers), lowering this value can lead to a significant connector throughput increase.
+
 |[[mongodb-property-signal-data-collection]]<<mongodb-property-signal-data-collection, `+signal.data.collection+`>>
 |No default
 | Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}#debezium-signaling-enabling-source-signaling-channel[signals] to the connector.
