@@ -106,6 +106,10 @@ class EventBuffer {
                 consumeEvent(partition, offsetContext, event);
             }
         }
+        else if (event.getHeader().getEventType() == EventType.MARIADB_GTID) {
+            // signals a new transaction for MariaDB, treat like QUERY events with BEGIN
+            beginTransaction(partition, offsetContext, event);
+        }
         else if (event.getHeader().getEventType() == EventType.XID) {
             completeTransaction(partition, offsetContext, true, event);
         }
