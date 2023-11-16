@@ -33,6 +33,7 @@ import com.github.shyiko.mysql.binlog.event.EventHeader;
 import com.github.shyiko.mysql.binlog.event.EventHeaderV4;
 import com.github.shyiko.mysql.binlog.event.EventType;
 import com.github.shyiko.mysql.binlog.event.GtidEventData;
+import com.github.shyiko.mysql.binlog.event.MariadbGtidEventData;
 import com.github.shyiko.mysql.binlog.event.QueryEventData;
 import com.github.shyiko.mysql.binlog.event.RotateEventData;
 import com.github.shyiko.mysql.binlog.event.RowsQueryEventData;
@@ -42,14 +43,12 @@ import com.github.shyiko.mysql.binlog.event.UpdateRowsEventData;
 import com.github.shyiko.mysql.binlog.event.WriteRowsEventData;
 import com.github.shyiko.mysql.binlog.event.deserialization.EventDeserializer;
 import com.github.shyiko.mysql.binlog.network.AuthenticationException;
-import com.github.shyiko.mysql.binlog.network.SSLMode;
 import com.github.shyiko.mysql.binlog.network.ServerException;
 
 import io.debezium.DebeziumException;
 import io.debezium.annotation.SingleThreadAccess;
 import io.debezium.config.CommonConnectorConfig.EventProcessingFailureHandlingMode;
 import io.debezium.config.Configuration;
-import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.mysql.strategy.AbstractConnectorConnection;
 import io.debezium.connector.mysql.strategy.ConnectorAdapter;
 import io.debezium.data.Envelope.Operation;
@@ -92,6 +91,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
     private final AtomicLong totalRecordCounter = new AtomicLong();
     private volatile Map<String, ?> lastOffset = null;
     private com.github.shyiko.mysql.binlog.GtidSet gtidSet;
+    private com.github.shyiko.mysql.binlog.MariadbGtidSet mariaGtidSet;
     private final Map<String, Thread> binaryLogClientThreads = new ConcurrentHashMap<>(4);
     private final MySqlTaskContext taskContext;
     private final MySqlConnectorConfig connectorConfig;
@@ -410,6 +410,30 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
         metrics.onGtidChange(gtid);
     }
 
+    protected void handleMariaDbGtidEvent(MySqlPartition partition, MySqlOffsetContext offsetContext, Event event) throws InterruptedException {
+        LOGGER.debug("MariaDB GTID transaction: {}", event);
+
+        // NOTE: MariadbGtidEventData (GTID_EVENT) does not include the server id in the event data payload.
+        // We need to manually construct the GTID combining the data from the GTID_EVENT payload and header.
+        MariadbGtidEventData gtidEvent = unwrapData(event);
+        String gtid = String.format("%d-%d-%d", gtidEvent.getDomainId(), event.getHeader().getServerId(), gtidEvent.getSequence());
+
+        // String gtid = gtidEvent.toString();
+        mariaGtidSet.add(gtid);
+        offsetContext.startGtid(gtid, mariaGtidSet.toString());
+        ignoreDmlEventByGtidSource = false;
+        if (gtidDmlSourceFilter != null && gtid != null) {
+            String uuid = gtidEvent.getDomainId() + "-" + gtidEvent.getServerId();
+            if (!gtidDmlSourceFilter.test(uuid)) {
+                ignoreDmlEventByGtidSource = true;
+            }
+        }
+        metrics.onGtidChange(gtid);
+
+        // With compatibility mode 4, this event equates to a new transaction.
+        handleTransactionBegin(partition, offsetContext, event, null);
+    }
+
     /**
      * Handle the supplied event with an {@link RowsQueryEventData} or {@link AnnotateRowsEventData} by
      * recording the original SQL query that generated the event.
@@ -435,16 +459,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
         LOGGER.debug("Received query command: {}", event);
         String sql = command.getSql().trim();
         if (sql.equalsIgnoreCase("BEGIN")) {
-            // We are starting a new transaction ...
-            offsetContext.startNextTransaction();
-            eventDispatcher.dispatchTransactionStartedEvent(partition, offsetContext.getTransactionId(), offsetContext, eventTime);
-            offsetContext.setBinlogThread(command.getThreadId());
-            if (initialEventsToSkip != 0) {
-                LOGGER.debug("Restarting partially-processed transaction; change events will not be created for the first {} events plus {} more rows in the next event",
-                        initialEventsToSkip, startingRowNumber);
-                // We are restarting, so we need to skip the events in this transaction that we processed previously...
-                skipEvent = true;
-            }
+            handleTransactionBegin(partition, offsetContext, event, command.getThreadId());
             return;
         }
         if (sql.equalsIgnoreCase("COMMIT")) {
@@ -498,6 +513,22 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
         }
         catch (InterruptedException e) {
             LOGGER.info("Processing interrupted");
+        }
+    }
+
+    private void handleTransactionBegin(MySqlPartition partition, MySqlOffsetContext offsetContext, Event event, Long threadId) throws InterruptedException {
+        Instant eventTime = Conversions.toInstantFromMillis(eventTimestamp.toEpochMilli());
+        // We are starting a new transaction ...
+        offsetContext.startNextTransaction();
+        eventDispatcher.dispatchTransactionStartedEvent(partition, offsetContext.getTransactionId(), offsetContext, eventTime);
+        if (threadId != null) {
+            offsetContext.setBinlogThread(threadId);
+        }
+        if (initialEventsToSkip != 0) {
+            LOGGER.debug("Restarting partially-processed transaction; change events will not be created for the first {} events plus {} more rows in the next event",
+                    initialEventsToSkip, startingRowNumber);
+            // We are restarting, so we need to skip the events in this transaction that we processed previously...
+            skipEvent = true;
         }
     }
 
@@ -769,22 +800,6 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
         // do nothing
     }
 
-    private SSLMode sslModeFor(SecureConnectionMode mode) {
-        switch (mode) {
-            case DISABLED:
-                return SSLMode.DISABLED;
-            case PREFERRED:
-                return SSLMode.PREFERRED;
-            case REQUIRED:
-                return SSLMode.REQUIRED;
-            case VERIFY_CA:
-                return SSLMode.VERIFY_CA;
-            case VERIFY_IDENTITY:
-                return SSLMode.VERIFY_IDENTITY;
-        }
-        return null;
-    }
-
     @Override
     public void init(MySqlOffsetContext offsetContext) {
 
@@ -860,6 +875,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
         // Get the current GtidSet from MySQL so we can get a filtered/merged GtidSet based off of the last Debezium checkpoint.
         if (isGtidModeEnabled) {
             // The server is using GTIDs, so enable the handler ...
+            eventHandlers.put(EventType.MARIADB_GTID, (event) -> handleMariaDbGtidEvent(partition, effectiveOffsetContext, event));
             eventHandlers.put(EventType.GTID, (event) -> handleGtidEvent(effectiveOffsetContext, event));
 
             // Now look at the GTID set from the server and what we've previously seen ...
@@ -867,22 +883,29 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
 
             // also take into account purged GTID logs
             GtidSet purgedServerGtidSet = connection.purgedGtidSet();
-            LOGGER.info("GTID set purged on server: {}", purgedServerGtidSet);
+            LOGGER.info("GTID set purged on server: '{}'", purgedServerGtidSet);
 
             GtidSet filteredGtidSet = connection.filterGtidSet(connectorConfig.gtidSourceFilter(),
                     effectiveOffsetContext.gtidSet(), availableServerGtidSet, purgedServerGtidSet);
             if (filteredGtidSet != null) {
                 // We've seen at least some GTIDs, so start reading from the filtered GTID set ...
-                LOGGER.info("Registering binlog reader with GTID set: {}", filteredGtidSet);
+                LOGGER.info("Registering binlog reader with GTID set: '{}'", filteredGtidSet);
                 String filteredGtidSetStr = filteredGtidSet.toString();
                 client.setGtidSet(filteredGtidSetStr);
                 effectiveOffsetContext.setCompletedGtidSet(filteredGtidSetStr);
-                gtidSet = new com.github.shyiko.mysql.binlog.GtidSet(filteredGtidSetStr);
+                // todo: avoid this when creating separate streaming event source impls
+                if (connection.isMariaDb()) {
+                    mariaGtidSet = new com.github.shyiko.mysql.binlog.MariadbGtidSet(filteredGtidSetStr);
+                }
+                else {
+                    gtidSet = new com.github.shyiko.mysql.binlog.GtidSet(filteredGtidSetStr);
+                }
             }
             else {
                 // We've not yet seen any GTIDs, so that means we have to start reading the binlog from the beginning ...
                 client.setBinlogFilename(effectiveOffsetContext.getSource().binlogFilename());
                 client.setBinlogPosition(effectiveOffsetContext.getSource().binlogPosition());
+                mariaGtidSet = new com.github.shyiko.mysql.binlog.MariadbGtidSet("");
                 gtidSet = new com.github.shyiko.mysql.binlog.GtidSet("");
             }
         }
@@ -1076,7 +1099,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
             taskContext.configureLoggingContext("binlog");
 
             // The event row number will be used when processing the first event ...
-            LOGGER.info("Connected to MySQL binlog at {}:{}, starting at {}", connectorConfig.hostname(), connectorConfig.port(), offsetContext);
+            LOGGER.info("Connected to binlog at {}:{}, starting at {}", connectorConfig.hostname(), connectorConfig.port(), offsetContext);
         }
 
         @Override

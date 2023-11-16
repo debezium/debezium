@@ -324,19 +324,20 @@ public abstract class AbstractConnectorConnection extends JdbcConnection {
 
             // GTIDs are enabled, used previously, retain only the ranges allowed
             GtidSet gtidSet = createGtidSet(gtid).retainAll(config.gtidSourceFilter());
+            LOGGER.info("GTID Set retained: '{}'", gtidSet);
 
             // Get the GTID set that is available on the server
             if (gtidSet.isContainedWithin(availableGtidSet)) {
-                LOGGER.info("The current GTID set {} does not contain the GTID set required by the connector {}",
+                LOGGER.info("The current GTID set '{}' does not contain the GTID set '{}' required by the connector",
                         availableGtidSet, gtidSet);
 
                 final GtidSet knownServerSet = availableGtidSet.retainAll(config.gtidSourceFilter());
                 final GtidSet gtidSetToReplicate = subtractGtidSet(knownServerSet, gtidSet);
                 final GtidSet purgedGtidSet = purgedGtidSet();
-                LOGGER.info("Serer has already purged {} GTIDs", purgedGtidSet);
+                LOGGER.info("Server has already purged '{}' GTIDs", purgedGtidSet);
 
                 final GtidSet nonPurgedGtidSetTemplate = subtractGtidSet(gtidSetToReplicate, purgedGtidSet);
-                LOGGER.info("GTIDs known by the server but not processed yet {}, for replication are available only {}",
+                LOGGER.info("GTIDs known by the server but not processed yet '{}', for replication are available only '{}'",
                         gtidSetToReplicate, nonPurgedGtidSetTemplate);
 
                 if (!gtidSetToReplicate.equals(nonPurgedGtidSetTemplate)) {
@@ -346,7 +347,7 @@ public abstract class AbstractConnectorConnection extends JdbcConnection {
                 return true;
             }
 
-            LOGGER.info("Connector last known GTIDs are {}, but server has {}", gtidSet, availableGtidSet);
+            LOGGER.info("Connector last known GTIDs are '{}', but server has '{}'", gtidSet, availableGtidSet);
             return false;
         }
 
@@ -399,6 +400,8 @@ public abstract class AbstractConnectorConnection extends JdbcConnection {
      */
     public abstract GtidSet purgedGtidSet();
 
+    public abstract boolean isMariaDb();
+
     /**
      * Apply the include/exclude GTID source filters to the current {@link MySqlOffsetContext#gtidSet() GTID set} and merge them onto the
      * currently available GTID set from a MySQL server.
@@ -413,12 +416,13 @@ public abstract class AbstractConnectorConnection extends JdbcConnection {
      *
      * This method does not mutate any state in the context.
      *
+     * @param gtidSourceFilter the source filter
+     * @param offsetGtids the gtids from the offsets
      * @param availableServerGtidSet the GTID set currently available in the MySQL server
-     * @param purgedServerGtid the GTID set already purged by the MySQL server
+     * @param purgedServerGtidSet the GTID set already purged by the MySQL server
      * @return A GTID set meant for consuming from a MySQL binlog; may return null if the SourceInfo has no GTIDs and therefore
      *         none were filtered
      */
-
     public abstract GtidSet filterGtidSet(Predicate<String> gtidSourceFilter, String offsetGtids, GtidSet availableServerGtidSet, GtidSet purgedServerGtidSet);
 
     /**

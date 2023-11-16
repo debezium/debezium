@@ -126,6 +126,11 @@ public class MySqlConnection extends AbstractConnectorConnection {
     }
 
     @Override
+    public boolean isMariaDb() {
+        return false;
+    }
+
+    @Override
     protected GtidSet createGtidSet(String gtids) {
         return new MySqlGtidSet(gtids);
     }

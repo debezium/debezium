@@ -46,7 +46,8 @@ public class MariaDbBinaryLogClientConfigurator extends AbstractBinaryLogClientC
     @Override
     protected void configureReplicaCompatibility(BinaryLogClient client) {
         // This makes sure BEGIN events are emitted via QUERY events rather than GTIDs.
-        client.setMariaDbSlaveCapability(2);
+        // todo: this has to change back to 4 to support receiving GTID transaction status events
+        client.setMariaDbSlaveCapability(4);
     }
 
     @Override

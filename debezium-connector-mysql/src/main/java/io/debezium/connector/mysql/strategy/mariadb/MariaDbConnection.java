@@ -15,6 +15,7 @@ import io.debezium.DebeziumException;
 import io.debezium.connector.mysql.GtidSet;
 import io.debezium.connector.mysql.MySqlFieldReader;
 import io.debezium.connector.mysql.strategy.AbstractConnectorConnection;
+import io.debezium.connector.mysql.strategy.mariadb.MariaDbGtidSet.MariaDbGtid;
 
 /**
  * An {@link AbstractConnectorConnection} for MariaDB.
@@ -45,7 +46,6 @@ public class MariaDbConnection extends AbstractConnectorConnection {
         try {
             return queryAndMap("SHOW GLOBAL VARIABLES LIKE 'GTID_BINLOG_POS'", rs -> {
                 if (rs.next()) {
-                    LOGGER.info("knownGtidSet = {}", rs.getString(2));
                     return new MariaDbGtidSet(rs.getString(2));
                 }
                 return new MariaDbGtidSet("");
@@ -58,26 +58,51 @@ public class MariaDbConnection extends AbstractConnectorConnection {
 
     @Override
     public GtidSet subtractGtidSet(GtidSet set1, GtidSet set2) {
-        throw new DebeziumException("GtidSet subtraction not yet implemented by MariaDB");
+        return set1.subtract(set2);
     }
 
     @Override
     public GtidSet purgedGtidSet() {
-        // MariaDB does not store purged GTID details in a variable like MySQL; however, it stores the
-        // information in the `gtid_slave_pos` table in the `mysql` database, but this information has
-        // slightly different semantics. The purging is handled by MariaDB through the binary log's
-        // expiration settings and the `RESET MASTER` or `PURGE BINARY LOGS` statements.
-        //
-        // In order to calculate the purged state, we would need to get the `gtid_binlog_pos` variable
-        // that shows the current position of the GTID in the binary log, used by the primary, and
-        // compare this with the `gtid_slave_pos` variable on the replica server, which indicates the
-        // position of the GTIDs that have been applied.
-        throw new DebeziumException("Fetching purged GtidSet details is not yet supported");
+        // todo: have an open question to the MariaDB community on this to understand can this be deduced
+        return new MariaDbGtidSet("");
     }
 
     @Override
     public GtidSet filterGtidSet(Predicate<String> gtidSourceFilter, String offsetGtids, GtidSet availableServerGtidSet, GtidSet purgedServerGtidSet) {
-        throw new DebeziumException("NYI");
+        String gtidStr = offsetGtids;
+        if (gtidStr == null) {
+            return null;
+        }
+        LOGGER.info("Attempting to generate a filtered GTID set");
+        LOGGER.info("GTID set from previous recorded offset: {}", gtidStr);
+        MariaDbGtidSet filteredGtidSet = new MariaDbGtidSet(gtidStr);
+        if (gtidSourceFilter != null) {
+            filteredGtidSet = (MariaDbGtidSet) filteredGtidSet.retainAll(gtidSourceFilter);
+            LOGGER.info("GTID set after applying GTID source includes/excludes to previous recorded offset: {}", filteredGtidSet);
+        }
+        LOGGER.info("GTID set available on server: {}", availableServerGtidSet);
+
+        final MariaDbGtidSet knownGtidSet = filteredGtidSet;
+        LOGGER.info("Using first available positions for new GTID channels");
+        final GtidSet relevantAvailableServerGtidSet = (gtidSourceFilter != null) ? availableServerGtidSet.retainAll(gtidSourceFilter) : availableServerGtidSet;
+        LOGGER.info("Relevant GTID set available on server: {}", relevantAvailableServerGtidSet);
+
+        GtidSet mergedGtidSet = relevantAvailableServerGtidSet
+                .retainAll(serverId -> {
+                    // ServerId in this context is "<domain-id>-<server-id>"
+                    final MariaDbGtid compliantGtid = MariaDbGtid.parse(serverId + "-0");
+                    return knownGtidSet.forGtidStream(compliantGtid) != null;
+                })
+                .with(purgedServerGtidSet)
+                .with(filteredGtidSet);
+
+        LOGGER.info("Final merged GTID set to use when connecting to MariaDB: {}", mergedGtidSet);
+        return mergedGtidSet;
+    }
+
+    @Override
+    public boolean isMariaDb() {
+        return true;
     }
 
     @Override

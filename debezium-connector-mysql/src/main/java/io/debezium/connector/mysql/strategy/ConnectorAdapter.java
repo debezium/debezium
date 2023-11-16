@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.mysql.strategy;
 
+import java.util.Map;
+
 import com.github.shyiko.mysql.binlog.event.EventData;
 
 import io.debezium.config.Configuration;
@@ -36,6 +38,17 @@ public interface ConnectorAdapter {
 
     BinaryLogClientConfigurator getBinaryLogClientConfigurator();
 
+    /**
+     * Sets the offset context binlog details.
+     *
+     * @param offsetContext the offset context to be mutated
+     * @param connection the database connection to be used
+     * @throws Exception if an exception is thrown
+     */
+    void setOffsetContextBinlogPositionAndGtidDetailsForSnapshot(MySqlOffsetContext offsetContext,
+                                                                 AbstractConnectorConnection connection)
+            throws Exception;
+
     // todo: should we consider splitting value converters, it may prove useful in the future
     // doing so would imply we won't likely need this method as it can be encapsulated?
     String getJavaEncodingForCharSet(String charSetName);
@@ -48,6 +61,8 @@ public interface ConnectorAdapter {
     AbstractHistoryRecordComparator getHistoryRecordComparator();
 
     <T> IncrementalSnapshotContext<T> getIncrementalSnapshotContext();
+
+    <T> IncrementalSnapshotContext<T> loadIncrementalSnapshotContextFromOffset(Map<String, ?> offset);
 
     Long getReadOnlyIncrementalSnapshotSignalOffset(MySqlOffsetContext previousOffsets);
 
