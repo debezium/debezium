@@ -23,7 +23,7 @@ class InMemoryPendingTransactionsCache {
         }
     }
 
-    String put(String transactionId) {
+    String putOrIncrement(String transactionId) {
         Integer i = pendingTransactionInEventsCache.get(transactionId);
         if (i == null) {
             pendingTransactionInEventsCache.put(transactionId, 1);
@@ -34,7 +34,12 @@ class InMemoryPendingTransactionsCache {
         return transactionId;
     }
 
+    public void initKey(String transactionId, int count) {
+        pendingTransactionInEventsCache.put(transactionId, count);
+    }
+
     public Integer remove(String transactionId) {
         return pendingTransactionInEventsCache.remove(transactionId);
     }
+
 }

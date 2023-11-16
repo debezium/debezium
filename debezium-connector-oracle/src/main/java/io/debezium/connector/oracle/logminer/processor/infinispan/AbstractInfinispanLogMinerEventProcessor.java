@@ -76,6 +76,21 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
         AbstractInfinispanLogMinerEventProcessor.instance = this;
     }
 
+    protected void reCreateInMemoryCache() {
+        try (Stream<String> trStream = getTransactionCache().keySet().stream()) {
+            trStream.forEach(tr -> {
+                try (Stream<String> eventStream = getEventCache().keySet().stream()) {
+                    int count = (int) eventStream.filter(k -> k.startsWith(tr + "-")).count();
+                    LOGGER.info("Re-creating in memory cache of event count for transaction '" + tr + "'. No of events found: " + count);
+                    inMemoryPendingTransactionsCache.initKey(tr, count);
+                }
+            });
+        }
+    }
+
+    /**
+     * Can be used for reporting in Debezium Embedded mode
+     */
     public static void logCacheStats() {
         AbstractInfinispanLogMinerEventProcessor.instance.displayCacheStatistics();
     }
@@ -287,7 +302,7 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
                 LOGGER.trace("Transaction {}, adding event reference at key {}", transactionId, eventKey);
                 getEventCache().put(eventKey, eventSupplier.get());
                 metrics.calculateLagFromSource(row.getChangeTime());
-                inMemoryPendingTransactionsCache.put(transaction.getTransactionId());                
+                inMemoryPendingTransactionsCache.putOrIncrement(transaction.getTransactionId());
             }
             // When using Infinispan, this extra put is required so that the state is properly synchronized
             getTransactionCache().put(transactionId, transaction);

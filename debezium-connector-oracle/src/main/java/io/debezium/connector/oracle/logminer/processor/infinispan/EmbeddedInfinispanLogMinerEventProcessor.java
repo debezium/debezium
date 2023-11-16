@@ -83,6 +83,7 @@ public class EmbeddedInfinispanLogMinerEventProcessor extends AbstractInfinispan
         this.schemaChangesCache = createCache(SCHEMA_CHANGES_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_SCHEMA_CHANGES);
         this.eventCache = createCache(EVENTS_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_EVENTS);
 
+        reCreateInMemoryCache();
         displayCacheStatistics();
     }
 
