@@ -179,6 +179,7 @@
         <mysql.database.adapter>mysql</mysql.database.adapter>
         <mysql.database.protocol>jdbc:mysql</mysql.database.protocol>
         <mysql.database.jdbc.driver>com.mysql.cj.jdbc.Driver</mysql.database.jdbc.driver>
+        <mysql.replica.fileset.path>${project.basedir}/src/test/docker/init-replica</mysql.replica.fileset.path>
         <!--
         MariaDB specific
         -->
@@ -422,7 +423,7 @@
                                                 <outputDirectory>etc/mysql</outputDirectory>
                                             </fileSet>
                                             <fileSet>
-                                                <directory>${project.basedir}/src/test/docker/init-replica</directory>
+                                                <directory>${mysql.replica.fileset.path}</directory>
                                                 <outputDirectory>docker-entrypoint-initdb.d</outputDirectory>
                                             </fileSet>
                                         </fileSets>
@@ -943,6 +944,7 @@
                 <mysql.database.adapter>mariadb</mysql.database.adapter>
                 <mysql.database.protocol>jdbc:mariadb</mysql.database.protocol>
                 <mysql.database.jdbc.driver>org.mariadb.jdbc.Driver</mysql.database.jdbc.driver>
+                <mysql.replica.fileset.path>${project.basedir}/src/test/docker/init-mariadb-replica</mysql.replica.fileset.path>
             </properties>
         </profile>
 
