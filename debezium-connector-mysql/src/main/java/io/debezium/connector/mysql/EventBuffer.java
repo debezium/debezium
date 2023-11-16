@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 
 import com.github.shyiko.mysql.binlog.event.Event;
 import com.github.shyiko.mysql.binlog.event.EventType;
+import com.github.shyiko.mysql.binlog.event.MariadbGtidEventData;
 import com.github.shyiko.mysql.binlog.event.QueryEventData;
 
 import io.debezium.connector.mysql.MySqlStreamingChangeEventSource.BinlogPosition;
@@ -107,8 +108,14 @@ class EventBuffer {
             }
         }
         else if (event.getHeader().getEventType() == EventType.MARIADB_GTID) {
-            // signals a new transaction for MariaDB, treat like QUERY events with BEGIN
-            beginTransaction(partition, offsetContext, event);
+            // When the GTID_EVENT has flag 1 set (meaning there is no following commit),
+            // then we don't create a new transaction for this. This typically happens
+            // for DDL operations which are always transaction scoped.
+            MariadbGtidEventData gtidEventData = (MariadbGtidEventData) event.getData();
+            if ((gtidEventData.getFlags() & 0x01) != 0x01) {
+                // signals a new transaction for MariaDB, treat like QUERY events with BEGIN
+                beginTransaction(partition, offsetContext, event);
+            }
         }
         else if (event.getHeader().getEventType() == EventType.XID) {
             completeTransaction(partition, offsetContext, true, event);
