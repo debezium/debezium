@@ -5,9 +5,15 @@
  */
 package io.debezium.connector.mysql.strategy.mysql;
 
+import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.github.shyiko.mysql.binlog.event.EventData;
 import com.github.shyiko.mysql.binlog.event.RowsQueryEventData;
 
+import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlBinaryProtocolFieldReader;
 import io.debezium.connector.mysql.MySqlConnectorConfig;
@@ -39,6 +45,8 @@ import io.debezium.util.Clock;
  */
 public class MySqlConnectorAdapter implements ConnectorAdapter {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(MySqlConnectorAdapter.class);
+
     private final MySqlConnectorConfig connectorConfig;
     private final MySqlBinaryLogClientConfigurator binaryLogClientConfigurator;
 
@@ -56,6 +64,35 @@ public class MySqlConnectorAdapter implements ConnectorAdapter {
     @Override
     public BinaryLogClientConfigurator getBinaryLogClientConfigurator() {
         return binaryLogClientConfigurator;
+    }
+
+    @Override
+    public void setOffsetContextBinlogPositionAndGtidDetailsForSnapshot(MySqlOffsetContext offsetContext,
+                                                                        AbstractConnectorConnection connection)
+            throws Exception {
+        LOGGER.info("Read binlog position of MySQL primary server");
+        final String showMasterStmt = "SHOW MASTER STATUS";
+        connection.query(showMasterStmt, rs -> {
+            if (rs.next()) {
+                final String binlogFilename = rs.getString(1);
+                final long binlogPosition = rs.getLong(2);
+                offsetContext.setBinlogStartPoint(binlogFilename, binlogPosition);
+                if (rs.getMetaData().getColumnCount() > 4) {
+                    // This column exists only in MySQL 5.6.5 or later ...
+                    final String gtidSet = rs.getString(5); // GTID set, may be null, blank, or contain a GTID set
+                    offsetContext.setCompletedGtidSet(gtidSet);
+                    LOGGER.info("\t using binlog '{}' at position '{}' and gtid '{}'", binlogFilename, binlogPosition,
+                            gtidSet);
+                }
+            }
+            else if (!connectorConfig.getSnapshotMode().shouldStream()) {
+                LOGGER.warn("Failed retrieving binlog position, continuing as streaming CDC wasn't requested");
+            }
+            else {
+                throw new DebeziumException("Cannot read the binlog filename and position via '" + showMasterStmt
+                        + "'. Make sure your server is correctly configured");
+            }
+        });
     }
 
     @Override
@@ -79,6 +116,14 @@ public class MySqlConnectorAdapter implements ConnectorAdapter {
             return new MySqlReadOnlyIncrementalSnapshotContext<>();
         }
         return new SignalBasedIncrementalSnapshotContext<>();
+    }
+
+    @Override
+    public <T> IncrementalSnapshotContext<T> loadIncrementalSnapshotContextFromOffset(Map<String, ?> offset) {
+        if (connectorConfig.isReadOnlyConnection()) {
+            return MySqlReadOnlyIncrementalSnapshotContext.load(offset);
+        }
+        return SignalBasedIncrementalSnapshotContext.load(offset);
     }
 
     @Override

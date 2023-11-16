@@ -295,6 +295,7 @@ jobs:
     needs: [ check_style, file_changes ]
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mysql-changed == 'true' || needs.file_changes.outputs.mysql-ddl-parser-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' }}
     strategy:
+      fail-fast: false
       matrix:
         profile: [ 'mysql-ci', 'mysql-ci-gtids', 'mysql-ci-percona', 'mysql-ci-ssl' ]
     name: "MySQL 8.0 (${{ matrix.profile }})"
@@ -331,6 +332,7 @@ jobs:
     needs: [check_style, file_changes]
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mysql-changed == 'true' || needs.file_changes.outputs.mysql-ddl-parser-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' }}
     strategy:
+      fail-fast: false
       matrix:
         profile: [ 'mysql-ci', 'mysql-ci-gtids', 'mysql-ci-percona', 'mysql-ci-ssl' ]
     name: "MySQL (${{ matrix.profile }})"
@@ -365,7 +367,11 @@ jobs:
   build_mariadb:
     needs: [check_style, file_changes]
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mysql-changed == 'true' || needs.file_changes.outputs.mysql-ddl-parser-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' }}
-    name: "MariaDB"
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [ 'mysql-ci', 'mysql-ci-gtids' ]
+    name: "MariaDB (${{ matrix.profile }})"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action
@@ -391,7 +397,7 @@ jobs:
         # utilizes the MariaDB database rather than MySQL at this time. It also gives us a chance
         # to see how changes react to MariaDB as they're contributed.
         run: >
-          ./mvnw clean install -B -pl debezium-connector-mysql -am -Pmariadb
+          ./mvnw clean install -B -pl debezium-connector-mysql -am -Pmariadb,${{ matrix.profile }}
           -Dcheckstyle.skip=true
           -Dformat.skip=true
           -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn

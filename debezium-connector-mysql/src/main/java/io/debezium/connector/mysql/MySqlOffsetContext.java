@@ -14,10 +14,8 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.errors.ConnectException;
 
 import io.debezium.connector.SnapshotRecord;
-import io.debezium.connector.mysql.strategy.mysql.MySqlReadOnlyIncrementalSnapshotContext;
 import io.debezium.pipeline.CommonOffsetContext;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
-import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotContext;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.TableId;
@@ -178,13 +176,8 @@ public class MySqlOffsetContext extends CommonOffsetContext<SourceInfo> {
                 throw new ConnectException("Source offset '" + SourceInfo.BINLOG_FILENAME_OFFSET_KEY + "' parameter is missing");
             }
             long binlogPosition = longOffsetValue(offset, SourceInfo.BINLOG_POSITION_OFFSET_KEY);
-            IncrementalSnapshotContext<TableId> incrementalSnapshotContext;
-            if (connectorConfig.isReadOnlyConnection()) {
-                incrementalSnapshotContext = MySqlReadOnlyIncrementalSnapshotContext.load(offset);
-            }
-            else {
-                incrementalSnapshotContext = SignalBasedIncrementalSnapshotContext.load(offset);
-            }
+            IncrementalSnapshotContext<TableId> incrementalSnapshotContext = connectorConfig.getConnectorAdapter()
+                    .loadIncrementalSnapshotContextFromOffset(offset);
             final MySqlOffsetContext offsetContext = new MySqlOffsetContext(snapshot, snapshotCompleted,
                     TransactionContext.load(offset), incrementalSnapshotContext,
                     new SourceInfo(connectorConfig));
