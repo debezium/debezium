@@ -29,7 +29,9 @@ import io.debezium.connector.mysql.MySqlConnectorConfig;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
 import io.debezium.connector.mysql.MySqlTestConnection;
 import io.debezium.connector.mysql.UniqueDatabase;
+import io.debezium.connector.mysql.junit.SkipTestDependingOnDatabaseRule;
 import io.debezium.connector.mysql.junit.SkipTestDependingOnGtidModeRule;
+import io.debezium.connector.mysql.junit.SkipWhenDatabaseIs;
 import io.debezium.connector.mysql.junit.SkipWhenGtidModeIs;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
@@ -43,6 +45,7 @@ import io.debezium.util.Testing;
  * @author Jiri Pechanec
  */
 @SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 6, reason = "DDL uses fractional second data types, not supported until MySQL 5.6")
+@SkipWhenDatabaseIs(value = SkipWhenDatabaseIs.Type.MARIADB, reason = "MariaDB does not support purged GTID sets")
 @SkipWhenGtidModeIs(value = SkipWhenGtidModeIs.GtidMode.OFF)
 public class ZZZGtidSetIT extends AbstractConnectorTest {
 
@@ -56,6 +59,8 @@ public class ZZZGtidSetIT extends AbstractConnectorTest {
 
     @Rule
     public TestRule skipTest = new SkipTestDependingOnGtidModeRule();
+    @Rule
+    public TestRule skipTest2 = new SkipTestDependingOnDatabaseRule();
 
     @Before
     public void beforeEach() {
