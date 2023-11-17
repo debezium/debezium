@@ -62,7 +62,6 @@ public class MySqlOffsetContext extends CommonOffsetContext<SourceInfo> {
     public MySqlOffsetContext(MySqlConnectorConfig connectorConfig, boolean snapshot, boolean snapshotCompleted, SourceInfo sourceInfo) {
         this(snapshot, snapshotCompleted, new TransactionContext(),
                 connectorConfig.getConnectorAdapter().getIncrementalSnapshotContext(),
-                // connectorConfig.isReadOnlyConnection() ? new MySqlReadOnlyIncrementalSnapshotContext<>() : new SignalBasedIncrementalSnapshotContext<>(),
                 sourceInfo);
     }
 
