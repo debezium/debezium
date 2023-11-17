@@ -116,9 +116,7 @@ public class MariaDbReadOnlyIncrementalSnapshotContext<T> extends AbstractIncrem
     }
 
     private MariaDbStreamSet getStreamSetForGtid(MariaDbGtid currentGtid) {
-        return highWatermark.isKnown(currentGtid)
-                ? highWatermark.forGtidStream(currentGtid)
-                : lowWatermark.forGtidStream(currentGtid);
+        return highWatermark.isEmpty() ? lowWatermark.forGtidStream(currentGtid) : highWatermark.forGtidStream(currentGtid);
     }
 
     public boolean serverStreamSetChanged() {
