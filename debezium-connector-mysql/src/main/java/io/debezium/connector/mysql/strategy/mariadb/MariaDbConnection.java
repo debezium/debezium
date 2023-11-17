@@ -63,7 +63,9 @@ public class MariaDbConnection extends AbstractConnectorConnection {
 
     @Override
     public GtidSet purgedGtidSet() {
-        // todo: have an open question to the MariaDB community on this to understand can this be deduced
+        // The MariaDB community mentioned we could get the purged GTID values from the GTID_LIST_EVENT; however,
+        // this value is only available after we connect and would require a temporary binlog connection to get
+        // the data, so for now simply returning an empty set until we split the code base.
         return new MariaDbGtidSet("");
     }
 
