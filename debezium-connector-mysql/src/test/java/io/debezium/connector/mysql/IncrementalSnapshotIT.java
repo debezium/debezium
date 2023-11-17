@@ -28,6 +28,8 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.CommonConnectorConfig.SchemaNameAdjustmentMode;
@@ -224,6 +226,8 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
     public void updates() throws Exception {
         // Testing.Print.enable();
 
+        Logger logger = LoggerFactory.getLogger(IncrementalSnapshotIT.class);
+
         populateTable();
         startConnector();
 
@@ -246,6 +250,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
                 x -> ((Struct) x.getValue().value()).getStruct("after").getInt32(valueFieldName()) >= 2000, null);
         for (int i = 0; i < expectedRecordCount; i++) {
             SourceRecord record = dbChanges.get(i + 1);
+            logger.info("Record {}: {}", i, record);
             final int value = ((Struct) record.value()).getStruct("after").getInt32(valueFieldName());
             assertEquals(i + 2000, value);
             Object query = ((Struct) record.value()).getStruct("source").get("query");
