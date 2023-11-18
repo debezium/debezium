@@ -213,7 +213,7 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
                     .isEqualTo(schemaEventsCount);
             assertThat(schemaChanges.ddlRecordsForDatabaseOrEmpty("").size()
                     + schemaChanges.ddlRecordsForDatabaseOrEmpty(OTHER_DATABASE.getDatabaseName()).size())
-                    .isEqualTo(useGlobalLock ? 1 : 5);
+                    .isEqualTo(1);
         }
 
         if (!useGlobalLock) {

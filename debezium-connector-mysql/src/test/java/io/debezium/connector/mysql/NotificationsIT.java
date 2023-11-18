@@ -49,7 +49,8 @@ public class NotificationsIT extends AbstractNotificationsIT<MySqlConnector> {
     @Override
     protected Configuration.Builder config() {
         return DATABASE.defaultConfig()
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL.getValue());
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL.getValue())
+                .with(MySqlConnectorConfig.STORE_ONLY_CAPTURED_DATABASES_DDL, false);
     }
 
     @Override
