@@ -1,37 +1,37 @@
+/*
+ * Copyright Debezium Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
 package io.debezium.connector.oracle.logminer.processor.infinispan;
 
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * An in-memory pending transaction cache, used for performance reasons.
+ */
 class InMemoryPendingTransactionsCache {
     /***
      * Map of transaction ids to the number of events in cache
      */
-    private Map<String, Integer> pendingTransactionInEventsCache = new HashMap<>();
-
-    boolean contains(String transactionId) {
-        return pendingTransactionInEventsCache.containsKey(transactionId);
-    }
+    private final Map<String, Integer> pendingTransactionInEventsCache = new HashMap<>();
 
     Integer getNumPending(String transactionId) {
-        Integer i = pendingTransactionInEventsCache.get(transactionId);
-        if (i == null) {
-            return 0;
-        }
-        else {
-            return i;
-        }
+        return pendingTransactionInEventsCache.getOrDefault(transactionId, 0);
     }
 
     String putOrIncrement(String transactionId) {
-        Integer i = pendingTransactionInEventsCache.get(transactionId);
-        if (i == null) {
-            pendingTransactionInEventsCache.put(transactionId, 1);
-        }
-        else {
-            pendingTransactionInEventsCache.put(transactionId, i + 1);
-        }
+        final Integer i = pendingTransactionInEventsCache.getOrDefault(transactionId, 0);
+        pendingTransactionInEventsCache.put(transactionId, i + 1);
         return transactionId;
+    }
+
+    void decrement(String transactionId) {
+        final int i = pendingTransactionInEventsCache.getOrDefault(transactionId, 0);
+        if (i > 0) {
+            pendingTransactionInEventsCache.put(transactionId, i - 1);
+        }
     }
 
     public void initKey(String transactionId, int count) {

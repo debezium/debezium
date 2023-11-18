@@ -139,7 +139,7 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
                     if (event != null && event.getRowId().equals(row.getRowId())) {
                         Loggings.logDebugAndTraceRecord(LOGGER, row, "Undo change on table '{}' applied to transaction '{}'", row.getTableId(), eventKey);
                         getEventCache().remove(eventKey);
-                        inMemoryPendingTransactionsCache.remove(row.getTransactionId());
+                        inMemoryPendingTransactionsCache.decrement(row.getTransactionId());
                         return;
                     }
                 }
@@ -160,7 +160,7 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
                 if (event != null && event.getRowId().equals(row.getRowId())) {
                     LOGGER.debug("Undo applied for event {}.", event);
                     getEventCache().remove(eventKey);
-                    inMemoryPendingTransactionsCache.remove(row.getTransactionId());
+                    inMemoryPendingTransactionsCache.decrement(row.getTransactionId());
                     return;
                 }
             }
