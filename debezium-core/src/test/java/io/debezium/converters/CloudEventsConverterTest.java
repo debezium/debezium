@@ -6,6 +6,7 @@
 package io.debezium.converters;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
@@ -18,6 +19,7 @@ import java.util.function.Consumer;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.connect.data.SchemaAndValue;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.header.Headers;
 import org.apache.kafka.connect.json.JsonConverter;
@@ -497,6 +499,84 @@ public class CloudEventsConverterTest {
             assertThat(valueJson.fieldNames()).noneMatch(fieldName -> fieldName.startsWith("iodebezium"));
             // a cloud event should contain only "basic" attributes the number of which is 7
             assertThat(Iterators.size(valueJson.fields())).isEqualTo(7);
+        }
+        catch (Throwable t) {
+            Testing.Print.enable();
+            Testing.print("Problem with message on topic '" + record.topic() + "':");
+            Testing.printError(t);
+            Testing.print("error " + msg);
+            Testing.print("  value: " + SchemaUtil.asString(record.value()));
+            Testing.print("  value deserialized from CloudEvents in JSON: " + prettyJson(valueJson));
+            if (t instanceof AssertionError) {
+                throw t;
+            }
+            fail("error " + msg + ": " + t.getMessage());
+        }
+    }
+
+    public static void shouldThrowExceptionWhenDeserializingNotCloudEventJson(SourceRecord record) throws Exception {
+        Map<String, Object> jsonConverterConfig = new HashMap<>();
+        jsonConverterConfig.put(JsonConverterConfig.SCHEMAS_ENABLE_CONFIG, false);
+        jsonConverterConfig.put(JsonConverterConfig.TYPE_CONFIG, "value");
+
+        JsonConverter jsonConverter = new JsonConverter();
+        jsonConverter.configure(jsonConverterConfig);
+
+        Map<String, Object> config = new HashMap<>();
+        config.put("serializer.type", "json");
+        config.put("data.serializer.type", "json");
+
+        CloudEventsConverter cloudEventsConverter = new CloudEventsConverter();
+        cloudEventsConverter.configure(config, false);
+
+        JsonNode valueJson = null;
+        String msg = null;
+
+        try {
+            msg = "converting value using wrong - plain JSON - converter";
+            byte[] valueBytes = jsonConverter.fromConnectData(record.topic(), convertHeadersFor(record), record.valueSchema(), record.value());
+
+            Exception exception = assertThrows(DataException.class, () -> cloudEventsConverter.toConnectData(record.topic(), valueBytes));
+
+            assertThat(exception.getMessage()).startsWith("A deserialized record's value is not a CloudEvent: value={");
+        }
+        catch (Throwable t) {
+            Testing.Print.enable();
+            Testing.print("Problem with message on topic '" + record.topic() + "':");
+            Testing.printError(t);
+            Testing.print("error " + msg);
+            Testing.print("  value: " + SchemaUtil.asString(record.value()));
+            Testing.print("  value deserialized from CloudEvents in JSON: " + prettyJson(valueJson));
+            if (t instanceof AssertionError) {
+                throw t;
+            }
+            fail("error " + msg + ": " + t.getMessage());
+        }
+    }
+
+    public static void shouldThrowExceptionWhenDeserializingNotCloudEventAvro(SourceRecord record) throws Exception {
+        Map<String, Object> config = new HashMap<>();
+        config.put("serializer.type", "avro");
+        config.put("data.serializer.type", "avro");
+        config.put("avro.schema.registry.url", "http://fake-url");
+
+        MockSchemaRegistryClient ceSchemaRegistry = new MockSchemaRegistryClient();
+        AvroConverter avroConverter = new AvroConverter(ceSchemaRegistry);
+        avroConverter.configure(Configuration.from(config).subset("avro", true).asMap(), false);
+
+        CloudEventsConverter cloudEventsConverter = new CloudEventsConverter(avroConverter);
+        cloudEventsConverter.configure(config, false);
+
+        JsonNode valueJson = null;
+        String msg = null;
+
+        try {
+            msg = "converting value using wrong - plain Avro - converter";
+            byte[] valueBytes = avroConverter.fromConnectData(record.topic(), convertHeadersFor(record), record.valueSchema(), record.value());
+
+            Exception exception = assertThrows(DataException.class, () -> cloudEventsConverter.toConnectData(record.topic(), valueBytes));
+
+            assertThat(exception.getMessage()).startsWith("A deserialized record's value is not a CloudEvent: value=Struct{");
         }
         catch (Throwable t) {
             Testing.Print.enable();
