@@ -104,6 +104,11 @@ public class LogMinerHelper {
     @VisibleForTesting
     public static boolean hasLogFilesStartingBeforeOrAtScn(List<LogFile> logs, Scn scn) {
         final Map<Integer, List<LogFile>> threadLogs = logs.stream().collect(Collectors.groupingBy(LogFile::getThread));
+
+        // NOTE:
+        // This check verifies that each redo thread has at least a single log that starts on or before the
+        // specified start SCN point. There is no need to check the sequence validity if there is a log
+        // currently missing for a redo thread that doesn't come before the log read position.
         for (Map.Entry<Integer, List<LogFile>> entry : threadLogs.entrySet()) {
             if (!entry.getValue().stream().anyMatch(l -> l.getFirstScn().compareTo(scn) <= 0)) {
                 LOGGER.debug("Redo thread {} does not yet have any logs before or at SCN {}.", entry.getKey(), scn);
@@ -111,27 +116,34 @@ public class LogMinerHelper {
             }
         }
 
-        // Now that we have at least one log per thread, verify the ranges have no gaps.
-        // To do this we first gather the min/max sequences for the logs detected.
-        long min = Long.MAX_VALUE;
-        long max = Long.MIN_VALUE;
-        for (LogFile logFile : logs) {
-            min = Math.min(logFile.getSequence().longValue(), min);
-            max = Math.max(logFile.getSequence().longValue(), max);
-        }
-
-        // Now iterate the logs and verify that we have no sequence gap.
-        for (long sequenceId = min; sequenceId <= max; sequenceId++) {
-            boolean found = false;
-            for (LogFile logFile : logs) {
-                if (logFile.getSequence().longValue() == sequenceId) {
-                    found = true;
-                    break;
-                }
+        // NOTE:
+        // Each Oracle Redo Thread (one in standalone and one per node with Oracle RAC) maintain a series of
+        // consecutive (continuous) sequences for logs and while the same sequences may be shared across one
+        // or more Oracle RAC nodes, the data they contain does not interleave and the sequences should be
+        // treated as independent values. Therefore, we need to iterate the redo thread log set, calculate
+        // the min/max sequence values and guarantee that there are no sequence gaps per redo thread.
+        for (Map.Entry<Integer, List<LogFile>> entry : threadLogs.entrySet()) {
+            long min = Long.MAX_VALUE;
+            long max = Long.MIN_VALUE;
+            for (LogFile logFile : entry.getValue()) {
+                min = Math.min(logFile.getSequence().longValue(), min);
+                max = Math.max(logFile.getSequence().longValue(), max);
             }
-            if (!found) {
-                LOGGER.warn("Failed to find a log file with sequence {}, forcing re-check.", sequenceId);
-                return false;
+            LOGGER.debug("Redo thread {} - min: {}, max: {}", entry.getKey(), min, max);
+
+            // Now iterate the logs and verify that we have no sequence gap.
+            for (long sequenceId = min; sequenceId <= max; sequenceId++) {
+                boolean found = false;
+                for (LogFile logFile : entry.getValue()) {
+                    if (logFile.getSequence().longValue() == sequenceId) {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    LOGGER.warn("Failed to find a log file with sequence {}, forcing re-check.", sequenceId);
+                    return false;
+                }
             }
         }
 
