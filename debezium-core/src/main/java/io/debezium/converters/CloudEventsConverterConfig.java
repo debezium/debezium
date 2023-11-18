@@ -41,9 +41,6 @@ public class CloudEventsConverterConfig extends ConverterConfig {
             + "'avro' replaces the characters that cannot be used in the Avro type name with underscore (default)"
             + "'none' does not apply any adjustment";
 
-    @Deprecated
-    public static final String CLOUDEVENTS_METADATA_LOCATION_CONFIG = "metadata.location";
-
     public static final String CLOUDEVENTS_METADATA_SOURCE_CONFIG = "metadata.source";
     public static final String CLOUDEVENTS_METADATA_SOURCE_DEFAULT = "value,id:generate,type:generate";
     private static final String CLOUDEVENTS_METADATA_SOURCE_DOC = "Specify from where to retrieve metadata";

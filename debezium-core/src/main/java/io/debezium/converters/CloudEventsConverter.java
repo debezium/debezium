@@ -55,6 +55,7 @@ import io.debezium.converters.recordandmetadata.RecordAndMetadataBaseImpl;
 import io.debezium.converters.recordandmetadata.RecordAndMetadataHeaderImpl;
 import io.debezium.converters.spi.CloudEventsMaker;
 import io.debezium.converters.spi.CloudEventsProvider;
+import io.debezium.converters.spi.CloudEventsValidator;
 import io.debezium.converters.spi.RecordParser;
 import io.debezium.converters.spi.SerializerType;
 import io.debezium.data.Envelope;
@@ -156,6 +157,8 @@ public class CloudEventsConverter implements Converter {
     private boolean extensionAttributesEnable;
 
     private MetadataSource metadataSource;
+
+    private final CloudEventsValidator cloudEventsValidator = new CloudEventsValidator();
 
     public CloudEventsConverter() {
         this(null);
@@ -374,6 +377,7 @@ public class CloudEventsConverter implements Converter {
                     // The conversion back thus must be schemaless.
                     // If data are in schema/payload envelope they are extracted
                     final SchemaAndValue connectData = jsonCloudEventsConverter.toConnectData(topic, value);
+                    cloudEventsValidator.verifyIsCloudEvent(connectData, ceSerializerType);
 
                     final JsonNode jsonValue = jsonDeserializer.deserialize(topic, value);
                     SchemaAndValue dataField = reconvertData(topic, jsonValue.get(CloudEventsMaker.FieldName.DATA), dataSerializerType, enableJsonSchemas);
@@ -388,6 +392,7 @@ public class CloudEventsConverter implements Converter {
                 // First reconvert the whole CloudEvents
                 // Then reconvert the "data" field
                 SchemaAndValue ceSchemaAndValue = avroConverter.toConnectData(topic, value);
+                cloudEventsValidator.verifyIsCloudEvent(ceSchemaAndValue, ceSerializerType);
                 Schema incompleteSchema = ceSchemaAndValue.schema();
                 Struct ceValue = (Struct) ceSchemaAndValue.value();
                 byte[] data = ceValue.getBytes(CloudEventsMaker.FieldName.DATA);
@@ -433,9 +438,7 @@ public class CloudEventsConverter implements Converter {
             final byte[] serializedData = data.isBinary() ? data.binaryValue() : null;
             switch (dataType) {
                 case JSON:
-                    JsonNode jsonValue;
-
-                    jsonValue = data.isBinary() ? jsonDeserializer.deserialize(topic, serializedData) : data;
+                    JsonNode jsonValue = data.isBinary() ? jsonDeserializer.deserialize(topic, serializedData) : data;
 
                     if (!enableSchemas) {
                         ObjectNode envelope = JsonNodeFactory.instance.objectNode();

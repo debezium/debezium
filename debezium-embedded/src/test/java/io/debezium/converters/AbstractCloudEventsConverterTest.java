@@ -166,6 +166,42 @@ public abstract class AbstractCloudEventsConverterTest<T extends SourceConnector
         insertHeader.close();
     }
 
+    @Test
+    @FixFor({ "DBZ-7159" })
+    public void shouldThrowExceptionWhenDeserializingNotCloudEventJson() throws Exception {
+        createTable();
+
+        databaseConnection().execute(createInsert());
+
+        SourceRecords streamingRecords = consumeRecordsByTopic(1);
+        assertThat(streamingRecords.allRecordsInOrder()).hasSize(1);
+
+        SourceRecord record = streamingRecords.recordsForTopic(topicName()).get(0);
+
+        assertThat(record).isNotNull();
+        assertThat(record.value()).isInstanceOf(Struct.class);
+
+        CloudEventsConverterTest.shouldThrowExceptionWhenDeserializingNotCloudEventJson(record);
+    }
+
+    @Test
+    @FixFor({ "DBZ-7159" })
+    public void shouldThrowExceptionWhenDeserializingNotCloudEventAvro() throws Exception {
+        createTable();
+
+        databaseConnection().execute(createInsert());
+
+        SourceRecords streamingRecords = consumeRecordsByTopic(1);
+        assertThat(streamingRecords.allRecordsInOrder()).hasSize(1);
+
+        SourceRecord record = streamingRecords.recordsForTopic(topicName()).get(0);
+
+        assertThat(record).isNotNull();
+        assertThat(record.value()).isInstanceOf(Struct.class);
+
+        CloudEventsConverterTest.shouldThrowExceptionWhenDeserializingNotCloudEventAvro(record);
+    }
+
     private void startConnector() throws Exception {
         Configuration.Builder configBuilder = getConfigurationBuilder();
         start(getConnectorClass(), configBuilder.build());

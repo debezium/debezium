@@ -193,6 +193,48 @@ public class CloudEventsConverterIT extends AbstractMongoConnectorIT {
         insertHeader.close();
     }
 
+    @Test
+    @FixFor({ "DBZ-7159" })
+    public void shouldThrowExceptionWhenDeserializingNotCloudEventJson() throws Exception {
+        try (var client = connect()) {
+            client.getDatabase(DB_NAME).getCollection(COLLECTION_NAME)
+                    .insertOne(new Document()
+                            .append("pk", 1)
+                            .append("aa", 1));
+        }
+
+        SourceRecords streamingRecords = consumeRecordsByTopic(1);
+        assertThat(streamingRecords.allRecordsInOrder()).hasSize(1);
+
+        SourceRecord record = streamingRecords.recordsForTopic("mongo1.dbA.c1").get(0);
+
+        assertThat(record).isNotNull();
+        assertThat(record.value()).isInstanceOf(Struct.class);
+
+        CloudEventsConverterTest.shouldThrowExceptionWhenDeserializingNotCloudEventJson(record);
+    }
+
+    @Test
+    @FixFor({ "DBZ-7159" })
+    public void shouldThrowExceptionWhenDeserializingNotCloudEventAvro() throws Exception {
+        try (var client = connect()) {
+            client.getDatabase(DB_NAME).getCollection(COLLECTION_NAME)
+                    .insertOne(new Document()
+                            .append("pk", 1)
+                            .append("aa", 1));
+        }
+
+        SourceRecords streamingRecords = consumeRecordsByTopic(1);
+        assertThat(streamingRecords.allRecordsInOrder()).hasSize(1);
+
+        SourceRecord record = streamingRecords.recordsForTopic("mongo1.dbA.c1").get(0);
+
+        assertThat(record).isNotNull();
+        assertThat(record.value()).isInstanceOf(Struct.class);
+
+        CloudEventsConverterTest.shouldThrowExceptionWhenDeserializingNotCloudEventAvro(record);
+    }
+
     private Configuration getConfiguration() {
         return TestHelper.getConfiguration(mongo)
                 .edit()
