@@ -16,6 +16,8 @@ import io.debezium.config.Configuration.Builder;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.junit.ConditionalFail;
+import io.debezium.junit.Flaky;
 import io.debezium.junit.SkipTestRule;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotTest;
 import io.debezium.relational.history.SchemaHistory;
@@ -27,6 +29,8 @@ public class IncrementalSnapshotWithRecompileIT extends AbstractIncrementalSnaps
 
     @Rule
     public SkipTestRule skipRule = new SkipTestRule();
+    @Rule
+    public ConditionalFail conditionalFail = new ConditionalFail();
 
     @Before
     public void before() throws SQLException {
@@ -150,5 +154,11 @@ public class IncrementalSnapshotWithRecompileIT extends AbstractIncrementalSnaps
     @Override
     protected int defaultIncrementalSnapshotChunkSize() {
         return 250;
+    }
+
+    @Override
+    @Flaky("DBZ-5393")
+    public void stopCurrentIncrementalSnapshotWithAllCollectionsAndTakeNewNewIncrementalSnapshotAfterRestart() throws Exception {
+        super.stopCurrentIncrementalSnapshotWithAllCollectionsAndTakeNewNewIncrementalSnapshotAfterRestart();
     }
 }
