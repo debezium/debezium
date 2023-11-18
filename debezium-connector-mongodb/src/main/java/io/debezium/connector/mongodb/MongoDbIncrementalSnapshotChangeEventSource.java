@@ -605,7 +605,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
         for (BsonDocument doc : collection.find(predicate).sort(new Document(DOCUMENT_ID, 1))) {
             rows++;
             final Object[] row = new Object[]{ doc };
-            final Struct keyStruct = currentCollection.keyFromDocumentSnapshot(doc);
+            final Struct keyStruct = currentCollection.keyFromDocument(doc);
             window.put(keyStruct, row);
             if (logTimer.expired()) {
                 long stop = clock.currentTimeInMillis();
