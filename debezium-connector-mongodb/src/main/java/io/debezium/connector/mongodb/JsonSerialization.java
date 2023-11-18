@@ -67,17 +67,7 @@ class JsonSerialization {
     }
 
     public String getDocumentIdChangeStream(BsonDocument document) {
-        if (document == null) {
-            return null;
-        }
-        // The serialized value is in format {"_": xxx} so we need to remove the starting dummy field name and closing brace
-        final String keyValue = document.toJson(SIMPLE_JSON_SETTINGS);
-        final int start = 8;
-        final int end = keyValue.length() - 1;
-        if (!(end > start)) {
-            throw new IllegalStateException("Serialized JSON object '" + keyValue + "' is not in expected format");
-        }
-        return keyValue.substring(start, end);
+        return getDocumentIdSnapshot(document);
     }
 
     public String getDocumentValue(BsonDocument document) {
