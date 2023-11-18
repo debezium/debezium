@@ -37,20 +37,18 @@ public class MongoDbCollectionSchema implements DataCollectionSchema {
     private final Schema keySchema;
     private final Envelope envelopeSchema;
     private final Schema valueSchema;
-    private final Function<BsonDocument, Object> keyGeneratorSnapshot;
-    private final Function<BsonDocument, Object> keyGeneratorChangeStream;
+    private final Function<BsonDocument, Object> keyGenerator;
     private final Function<BsonDocument, String> valueGenerator;
 
-    public MongoDbCollectionSchema(CollectionId id, FieldFilter fieldFilter, Schema keySchema, Function<BsonDocument, Object> keyGeneratorSnapshot,
-                                   Function<BsonDocument, Object> keyGeneratorChangeStream, Envelope envelopeSchema, Schema valueSchema,
+    public MongoDbCollectionSchema(CollectionId id, FieldFilter fieldFilter, Schema keySchema,
+                                   Function<BsonDocument, Object> keyGenerator, Envelope envelopeSchema, Schema valueSchema,
                                    Function<BsonDocument, String> valueGenerator) {
         this.id = id;
         this.fieldFilter = fieldFilter;
         this.keySchema = keySchema;
         this.envelopeSchema = envelopeSchema;
         this.valueSchema = valueSchema;
-        this.keyGeneratorSnapshot = keyGeneratorSnapshot != null ? keyGeneratorSnapshot : (Document) -> null;
-        this.keyGeneratorChangeStream = keyGeneratorChangeStream != null ? keyGeneratorChangeStream : (BsonDocument) -> null;
+        this.keyGenerator = keyGenerator != null ? keyGenerator : (BsonDocument) -> null;
         this.valueGenerator = valueGenerator != null ? valueGenerator : (Document) -> null;
     }
 
@@ -73,12 +71,8 @@ public class MongoDbCollectionSchema implements DataCollectionSchema {
         return envelopeSchema;
     }
 
-    public Struct keyFromDocumentSnapshot(BsonDocument document) {
-        return document == null ? null : new Struct(keySchema).put("id", keyGeneratorSnapshot.apply(document));
-    }
-
     public Struct keyFromDocument(BsonDocument document) {
-        return document == null ? null : new Struct(keySchema).put("id", keyGeneratorChangeStream.apply(document));
+        return document == null ? null : new Struct(keySchema).put("id", keyGenerator.apply(document));
     }
 
     public Struct valueFromDocumentSnapshot(BsonDocument document, Envelope.Operation operation) {

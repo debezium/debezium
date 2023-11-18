@@ -22,7 +22,7 @@ public class JsonSerializationTest {
         var composite = new BsonDocument("email", new BsonString("foo@bar.com"))
                 .append("_id", id);
 
-        var key = serialization.getDocumentIdChangeStream(composite);
+        var key = serialization.getDocumentId(composite);
 
         Assertions.assertThat(key).isEqualTo("42");
     }
@@ -34,8 +34,8 @@ public class JsonSerializationTest {
         var composite = new BsonDocument("email", new BsonString("foo@bar.com"))
                 .append("_id", id);
 
-        var simpleKey = serialization.getDocumentIdChangeStream(simple);
-        var compositeKey = serialization.getDocumentIdChangeStream(composite);
+        var simpleKey = serialization.getDocumentId(simple);
+        var compositeKey = serialization.getDocumentId(composite);
 
         Assertions.assertThat(compositeKey).isEqualTo(simpleKey);
     }

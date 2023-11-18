@@ -52,7 +52,7 @@ class JsonSerialization {
         transformer = (doc) -> doc.toJson(COMPACT_JSON_SETTINGS);
     }
 
-    public String getDocumentIdSnapshot(BsonDocument document) {
+    public String getDocumentId(BsonDocument document) {
         if (document == null) {
             return null;
         }
@@ -64,10 +64,6 @@ class JsonSerialization {
             throw new IllegalStateException("Serialized JSON object '" + keyValue + "' is not in expected format");
         }
         return keyValue.substring(start, end);
-    }
-
-    public String getDocumentIdChangeStream(BsonDocument document) {
-        return getDocumentIdSnapshot(document);
     }
 
     public String getDocumentValue(BsonDocument document) {

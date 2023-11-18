@@ -39,7 +39,7 @@ public class MongoDbSnapshotRecordEmitter extends AbstractChangeRecordEmitter<Mo
 
     @Override
     protected void emitReadRecord(Receiver receiver, MongoDbCollectionSchema schema) throws InterruptedException {
-        final Object newKey = schema.keyFromDocumentSnapshot(event);
+        final Object newKey = schema.keyFromDocument(event);
         assert newKey != null;
 
         final Struct value = schema.valueFromDocumentSnapshot(event, getOperation());

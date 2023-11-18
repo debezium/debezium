@@ -103,7 +103,7 @@ public class ShardedIncrementalSnapshotIT extends AbstractShardedMongoConnectorI
                 .stream()
                 .map(d -> d.toBsonDocument())
                 .collect(toMap(
-                        d -> serialization.getDocumentIdSnapshot(d),
+                        d -> serialization.getDocumentId(d),
                         d -> d.getInt32(valueFieldName()).getValue()));
 
         assertThat(dbChanges).containsAllEntriesOf(expected);
