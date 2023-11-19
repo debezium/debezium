@@ -121,6 +121,8 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
             NotificationService<MongoDbPartition, MongoDbOffsetContext> notificationService = new NotificationService<>(getNotificationChannels(),
                     connectorConfig, SchemaFactory.get(), dispatcher::enqueueNotification);
 
+            MongoDbChangeEventSourceMetricsFactory metricsFactory = new MongoDbChangeEventSourceMetricsFactory();
+
             ChangeEventSourceCoordinator<MongoDbPartition, MongoDbOffsetContext> coordinator = new ChangeEventSourceCoordinator<>(
                     // TODO pass offsets from all the partitions
                     Offsets.of(Collections.singletonMap(new MongoDbPartition(), previousOffset)),
@@ -134,8 +136,9 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
                             clock,
                             replicaSets,
                             taskContext,
-                            schema),
-                    new MongoDbChangeEventSourceMetricsFactory(),
+                            schema,
+                            metricsFactory.getStreamingMetrics(taskContext, queue, metadataProvider)),
+                    metricsFactory,
                     dispatcher,
                     schema,
                     signalProcessor,
