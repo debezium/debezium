@@ -30,6 +30,7 @@ import io.debezium.DebeziumException;
 import io.debezium.connector.mongodb.connection.ConnectionContext;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.connector.mongodb.connection.ReplicaSet;
+import io.debezium.connector.mongodb.metrics.MongoDbStreamingChangeEventSourceMetricsMBean;
 import io.debezium.connector.mongodb.recordemitter.MongoDbChangeRecordEmitter;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
@@ -61,7 +62,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
     public MongoDbStreamingChangeEventSource(MongoDbConnectorConfig connectorConfig, MongoDbTaskContext taskContext,
                                              MongoDbConnection.ChangeEventSourceConnectionFactory connections, ReplicaSets replicaSets,
                                              EventDispatcher<MongoDbPartition, CollectionId> dispatcher,
-                                             ErrorHandler errorHandler, Clock clock) {
+                                             ErrorHandler errorHandler, Clock clock, MongoDbStreamingChangeEventSourceMetricsMBean streamingMetrics) {
         this.connectorConfig = connectorConfig;
         this.connectionContext = taskContext.getConnectionContext();
         this.dispatcher = dispatcher;
