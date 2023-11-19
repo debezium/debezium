@@ -46,7 +46,7 @@ public class CloudEventsValidator {
             case AVRO:
                 return schemaAndValue.schema().name().endsWith(CLOUD_EVENTS_SCHEMA_NAME_SUFFIX) && schemaAndValue.value() instanceof Struct;
             default:
-                throw new DataException("No such serializer for \"" + serializerType + "\" format");
+                throw new DataException("Can't check whether a record is a CloudEvent for serializer type \"" + serializerType + "\"");
         }
     }
 
@@ -61,7 +61,7 @@ public class CloudEventsValidator {
                 fieldNames = ((Struct) value).schema().fields().stream().map(Field::name).collect(Collectors.toList());
                 break;
             default:
-                throw new DataException("No such serializer for \"" + serializerType + "\" format");
+                throw new DataException("Can't check whether a record is a CloudEvent for serializer type \"" + serializerType + "\"");
         }
 
         return fieldNames.size() >= 4 && fieldNames.containsAll(cloudEventsSpecRequiredFields);
