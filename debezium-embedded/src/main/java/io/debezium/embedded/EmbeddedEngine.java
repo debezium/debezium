@@ -349,15 +349,8 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord>, Embed
         keyConverter.configure(internalConverterConfig, true);
         valueConverter = Instantiator.getInstance(JsonConverter.class.getName());
         valueConverter.configure(internalConverterConfig, false);
-
         transformations = new Transformations(config);
-
-        // Create the worker config, adding extra fields that are required for validation of a worker config
-        // but that are not used within the embedded engine (since the source records are never serialized) ...
-        Map<String, String> embeddedConfig = config.asMap(EmbeddedEngineConfig.ALL_FIELDS);
-        embeddedConfig.put(WorkerConfig.KEY_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
-        embeddedConfig.put(WorkerConfig.VALUE_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
-        workerConfig = new EmbeddedWorkerConfig(embeddedConfig);
+        workerConfig = new EmbeddedWorkerConfig(config.asMap(EmbeddedEngineConfig.ALL_FIELDS));
     }
 
     /**
