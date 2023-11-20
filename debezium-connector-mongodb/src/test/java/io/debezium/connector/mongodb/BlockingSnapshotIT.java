@@ -86,7 +86,7 @@ public class BlockingSnapshotIT extends AbstractMongoConnectorIT {
 
         assertRecordsFromSnapshotAndStreamingArePresent(ROW_COUNT * 2);
 
-        sendAdHocBlockingSnapshotSignal("[A-z].*" + fullDataCollectionName());
+        sendAdHocBlockingSnapshotSignal(fullDataCollectionName());
 
         waitForLogMessage("Snapshot completed", AbstractSnapshotChangeEventSource.class);
 
@@ -112,7 +112,7 @@ public class BlockingSnapshotIT extends AbstractMongoConnectorIT {
 
         Thread.sleep(2000); // Let's start stream some insert
 
-        sendAdHocBlockingSnapshotSignal("[A-z].*" + fullDataCollectionName());
+        sendAdHocBlockingSnapshotSignal(fullDataCollectionName());
 
         waitForLogMessage("Snapshot completed", AbstractSnapshotChangeEventSource.class);
 
@@ -142,7 +142,7 @@ public class BlockingSnapshotIT extends AbstractMongoConnectorIT {
 
         sendAdHocSnapshotSignalWithAdditionalConditionsWithSurrogateKey(
                 Map.of(fullDataCollectionNames().get(1), "{ aa: { $lt: 500 } }"),
-                "[A-z].*" + fullDataCollectionNames().get(1));
+                fullDataCollectionNames().get(1));
 
         waitForLogMessage("Snapshot completed", AbstractSnapshotChangeEventSource.class);
 
@@ -168,7 +168,7 @@ public class BlockingSnapshotIT extends AbstractMongoConnectorIT {
                 .with(MongoDbConnectorConfig.SIGNAL_DATA_COLLECTION, SIGNAL_COLLECTION_NAME)
                 .with(MongoDbConnectorConfig.SIGNAL_POLL_INTERVAL_MS, 5)
                 .with(MongoDbConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 10)
-                .with(MongoDbConnectorConfig.SNAPSHOT_MODE_TABLES, "[A-z].*dbA.c1")
+                .with(MongoDbConnectorConfig.SNAPSHOT_MODE_TABLES, "dbA.c1")
                 .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.INITIAL);
     }
 
