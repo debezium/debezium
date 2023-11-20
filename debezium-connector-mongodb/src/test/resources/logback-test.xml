@@ -17,7 +17,7 @@
         <appender-ref ref="CONSOLE" />
     </logger>
     <logger
-            name="io.debezium.embedded.EmbeddedEngine$EmbeddedConfig"
+            name="io.debezium.embedded.EmbeddedWorkerConfig"
             level="warn" additivity="false">
         <appender-ref ref="CONSOLE" />
     </logger>
