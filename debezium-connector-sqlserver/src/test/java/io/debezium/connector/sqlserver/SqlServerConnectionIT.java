@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
+import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.awaitility.Awaitility;
@@ -214,7 +215,8 @@ public class SqlServerConnectionIT {
                     new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null),
                     connection.getDefaultValueConverter(),
                     SchemaNameAdjuster.NO_OP, new CustomConverterRegistry(null), SchemaBuilder.struct().build(),
-                    FieldNameSelector.defaultSelector(SchemaNameAdjuster.NO_OP), true);
+                    FieldNameSelector.defaultSelector(SchemaNameAdjuster.NO_OP), true,
+                    EventConvertingFailureHandlingMode.FAIL);
 
             assertColumnHasNotDefaultValue(table, "int_no_default_not_null");
             assertColumnHasDefaultValue(table, "int_no_default", null, tableSchemaBuilder);
@@ -385,7 +387,8 @@ public class SqlServerConnectionIT {
                     new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null),
                     connection.getDefaultValueConverter(),
                     SchemaNameAdjuster.NO_OP, new CustomConverterRegistry(null), SchemaBuilder.struct().build(),
-                    FieldNameSelector.defaultSelector(SchemaNameAdjuster.NO_OP), true);
+                    FieldNameSelector.defaultSelector(SchemaNameAdjuster.NO_OP), true,
+                    EventConvertingFailureHandlingMode.FAIL);
 
             assertColumnHasNotDefaultValue(table, "int_no_default_not_null");
             assertColumnHasDefaultValue(table, "int_no_default", null, tableSchemaBuilder);

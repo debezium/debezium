@@ -12,6 +12,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -35,6 +36,8 @@ import io.debezium.schema.FieldNameSelector.FieldNamer;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Loggings;
+
+import static io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode.*;
 
 /**
  * Builder that constructs {@link TableSchema} instances for {@link Table} definitions.
@@ -62,6 +65,8 @@ public class TableSchemaBuilder {
     private final FieldNamer<Column> fieldNamer;
     private final CustomConverterRegistry customConverterRegistry;
     private final boolean multiPartitionMode;
+    private final EventConvertingFailureHandlingMode eventConvertingFailureHandlingMode;
+
 
     /**
      * Create a new instance of the builder.
@@ -75,9 +80,11 @@ public class TableSchemaBuilder {
                               CustomConverterRegistry customConverterRegistry,
                               Schema sourceInfoSchema,
                               FieldNamer<Column> fieldNamer,
-                              boolean multiPartitionMode) {
+                              boolean multiPartitionMode,
+                              EventConvertingFailureHandlingMode eventConvertingFailureHandlingMode) {
         this(valueConverterProvider, null, schemaNameAdjuster,
-                customConverterRegistry, sourceInfoSchema, fieldNamer, multiPartitionMode);
+                customConverterRegistry, sourceInfoSchema, fieldNamer, multiPartitionMode,
+                eventConvertingFailureHandlingMode);
     }
 
     /**
@@ -95,7 +102,8 @@ public class TableSchemaBuilder {
                               CustomConverterRegistry customConverterRegistry,
                               Schema sourceInfoSchema,
                               FieldNamer<Column> fieldNamer,
-                              boolean multiPartitionMode) {
+                              boolean multiPartitionMode,
+                              EventConvertingFailureHandlingMode eventConvertingFailureHandlingMode) {
         this.schemaNameAdjuster = schemaNameAdjuster;
         this.valueConverterProvider = valueConverterProvider;
         this.defaultValueConverter = Optional.ofNullable(defaultValueConverter)
@@ -104,6 +112,7 @@ public class TableSchemaBuilder {
         this.fieldNamer = fieldNamer;
         this.customConverterRegistry = customConverterRegistry;
         this.multiPartitionMode = multiPartitionMode;
+        this.eventConvertingFailureHandlingMode = eventConvertingFailureHandlingMode;
     }
 
     /**
@@ -281,17 +290,24 @@ public class TableSchemaBuilder {
                             value = converter.convert(value);
                             result.put(fields[i], value);
                         }
-                        catch (DataException | IllegalArgumentException e) {
-                            Column col = columns.get(i);
-                            Loggings.logErrorAndTraceRecord(LOGGER, row,
-                                    "Failed to properly convert data value for '{}.{}' of type {}", tableId,
-                                    col.name(), col.typeName(), e);
-                        }
                         catch (final Exception e) {
+                            // TODO(nicholas): 여기서 에러가 핸들링되면서 에러 처리되지 않는다.
                             Column col = columns.get(i);
                             Loggings.logErrorAndTraceRecord(LOGGER, row,
                                     "Failed to properly convert data value for '{}.{}' of type {}", tableId,
                                     col.name(), col.typeName(), e);
+                            if (eventConvertingFailureHandlingMode == FAIL) {
+                                throw e;
+                            } else if (eventConvertingFailureHandlingMode == WARN) {
+                                // TODO
+                                LOGGER.info("WARN");
+                            } else if (eventConvertingFailureHandlingMode == IGNORE) {
+                                // TODO
+                                LOGGER.info("IGNORE");
+                            } else if (eventConvertingFailureHandlingMode == SKIP) {
+                                // TODO
+                                LOGGER.info("SKIP");
+                            }
                         }
                     }
                 }

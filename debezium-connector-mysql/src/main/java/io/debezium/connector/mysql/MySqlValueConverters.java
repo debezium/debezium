@@ -332,6 +332,14 @@ public class MySqlValueConverters extends JdbcValueConverters {
         return super.converter(column, fieldDefn);
     }
 
+    @Override
+    protected Object handleUnknownData(Column column, Field fieldDefn, Object data) {
+        Class<?> dataClass = data.getClass();
+        String clazzName = dataClass.isArray() ? dataClass.getSimpleName() : dataClass.getName();
+        throw new IllegalArgumentException("Unexpected value for JDBC type " + column.jdbcType() + " and column " + column +
+                ": class=" + clazzName);
+    }
+
     /**
      * Return the {@link Charset} instance with the MySQL-specific character set name used by the given column.
      *

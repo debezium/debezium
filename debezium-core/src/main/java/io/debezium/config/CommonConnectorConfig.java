@@ -434,6 +434,56 @@ public abstract class CommonConnectorConfig {
         }
     }
 
+    public enum EventConvertingFailureHandlingMode implements EnumeratedValue {
+        /**
+         * Problematic events will be skipped.
+         */
+        SKIP("skip"),
+
+        /**
+         * The position of problematic events will be logged and events will be skipped.
+         */
+        WARN("warn"),
+
+        /**
+         * An exception indicating the problematic events and their position is raised, causing the connector to be stopped.
+         */
+        FAIL("fail");
+
+        private final String value;
+
+        EventConvertingFailureHandlingMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static EventConvertingFailureHandlingMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+
+            value = value.trim();
+
+            for (EventConvertingFailureHandlingMode option : EventConvertingFailureHandlingMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+
+            return null;
+        }
+    }
+
     private static final String CONFLUENT_AVRO_CONVERTER = "io.confluent.connect.avro.AvroConverter";
     private static final String APICURIO_AVRO_CONVERTER = "io.apicurio.registry.utils.converter.AvroConverter";
 
@@ -793,6 +843,14 @@ public abstract class CommonConnectorConfig {
                     + "'insert_insert' both open and close signal is written into signal data collection (default); "
                     + "'insert_delete' only open signal is written on signal data collection, the close will delete the relative open signal;");
 
+    public static final Field EVENT_CONVERTING_FAILURE_HANDLING_MODE = Field.create("event.converting.failure.handling.mode")
+            .withDisplayName("Event deserialization failure handling")
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 26))
+            .withEnum(EventConvertingFailureHandlingMode.class, EventConvertingFailureHandlingMode.FAIL)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("blahblah");
+
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
             .connector(
                     EVENT_PROCESSING_FAILURE_HANDLING_MODE,
@@ -848,6 +906,7 @@ public abstract class CommonConnectorConfig {
     private final BinaryHandlingMode binaryHandlingMode;
     private final SchemaNameAdjustmentMode schemaNameAdjustmentMode;
     private final FieldNameAdjustmentMode fieldNameAdjustmentMode;
+    private final EventConvertingFailureHandlingMode eventConvertingFailureHandlingMode;
     private final String signalingDataCollection;
 
     private final Duration signalPollInterval;
@@ -887,6 +946,7 @@ public abstract class CommonConnectorConfig {
         this.incrementalSnapshotAllowSchemaChanges = config.getBoolean(INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES);
         this.schemaNameAdjustmentMode = SchemaNameAdjustmentMode.parse(config.getString(SCHEMA_NAME_ADJUSTMENT_MODE));
         this.fieldNameAdjustmentMode = FieldNameAdjustmentMode.parse(config.getString(FIELD_NAME_ADJUSTMENT_MODE));
+        this.eventConvertingFailureHandlingMode = EventConvertingFailureHandlingMode.parse(config.getString(EVENT_CONVERTING_FAILURE_HANDLING_MODE));
         this.sourceInfoStructMaker = getSourceInfoStructMaker(Version.V2);
         this.shouldProvideTransactionMetadata = config.getBoolean(PROVIDE_TRANSACTION_METADATA);
         this.eventProcessingFailureHandlingMode = EventProcessingFailureHandlingMode.parse(config.getString(EVENT_PROCESSING_FAILURE_HANDLING_MODE));
@@ -1123,6 +1183,10 @@ public abstract class CommonConnectorConfig {
 
     public WatermarkStrategy getIncrementalSnapshotWatermarkingStrategy() {
         return incrementalSnapshotWatermarkingStrategy;
+    }
+
+    public EventConvertingFailureHandlingMode getEventConvertingFailureHandlingMode() {
+        return eventConvertingFailureHandlingMode;
     }
 
     /**
