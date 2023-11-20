@@ -30,7 +30,7 @@ import io.debezium.DebeziumException;
 import io.debezium.connector.mongodb.connection.ConnectionContext;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.connector.mongodb.connection.ReplicaSet;
-import io.debezium.connector.mongodb.metrics.MongoDbStreamingChangeEventSourceMetricsMBean;
+import io.debezium.connector.mongodb.metrics.MongoDbStreamingChangeEventSourceMetrics;
 import io.debezium.connector.mongodb.recordemitter.MongoDbChangeRecordEmitter;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
@@ -57,12 +57,13 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
     private final ReplicaSets replicaSets;
     private final MongoDbTaskContext taskContext;
     private final MongoDbConnection.ChangeEventSourceConnectionFactory connections;
+    private final MongoDbStreamingChangeEventSourceMetrics streamingMetrics;
     private MongoDbOffsetContext effectiveOffset;
 
     public MongoDbStreamingChangeEventSource(MongoDbConnectorConfig connectorConfig, MongoDbTaskContext taskContext,
                                              MongoDbConnection.ChangeEventSourceConnectionFactory connections, ReplicaSets replicaSets,
                                              EventDispatcher<MongoDbPartition, CollectionId> dispatcher,
-                                             ErrorHandler errorHandler, Clock clock, MongoDbStreamingChangeEventSourceMetricsMBean streamingMetrics) {
+                                             ErrorHandler errorHandler, Clock clock, MongoDbStreamingChangeEventSourceMetrics streamingMetrics) {
         this.connectorConfig = connectorConfig;
         this.connectionContext = taskContext.getConnectionContext();
         this.dispatcher = dispatcher;
@@ -71,6 +72,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         this.replicaSets = replicaSets;
         this.taskContext = taskContext;
         this.connections = connections;
+        this.streamingMetrics = streamingMetrics;
     }
 
     @Override
@@ -184,7 +186,10 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             while (context.isRunning()) {
                 // Use tryNext which will return null if no document is yet available from the cursor.
                 // In this situation if not document is available, we'll pause.
+                var beforeEventPollTime = clock.currentTimeAsInstant();
                 ChangeStreamDocument<BsonDocument> event = cursor.tryNext();
+                streamingMetrics.onSourceEventPolled(event, clock, beforeEventPollTime);
+
                 if (event != null) {
                     LOGGER.trace("Arrived Change Stream event: {}", event);
                     noMessageIterations = 0;

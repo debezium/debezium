@@ -16,7 +16,7 @@ import io.debezium.DebeziumException;
 import io.debezium.connector.mongodb.connection.ConnectionContext;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.connector.mongodb.connection.ReplicaSet;
-import io.debezium.connector.mongodb.metrics.MongoDbStreamingChangeEventSourceMetricsMBean;
+import io.debezium.connector.mongodb.metrics.MongoDbStreamingChangeEventSourceMetrics;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
@@ -47,12 +47,12 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
     private final MongoDbTaskContext taskContext;
     private final MongoDbConnection.ChangeEventSourceConnectionFactory connections;
     private final MongoDbSchema schema;
-    private final MongoDbStreamingChangeEventSourceMetricsMBean streamingMetrics;
+    private final MongoDbStreamingChangeEventSourceMetrics streamingMetrics;
 
     public MongoDbChangeEventSourceFactory(MongoDbConnectorConfig configuration, ErrorHandler errorHandler,
                                            EventDispatcher<MongoDbPartition, CollectionId> dispatcher, Clock clock,
                                            ReplicaSets replicaSets, MongoDbTaskContext taskContext, MongoDbSchema schema,
-                                           MongoDbStreamingChangeEventSourceMetricsMBean streamingMetrics) {
+                                           MongoDbStreamingChangeEventSourceMetrics streamingMetrics) {
         this.configuration = configuration;
         this.errorHandler = errorHandler;
         this.dispatcher = dispatcher;
