@@ -27,7 +27,6 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.Config;
-import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectorContext;
 import org.apache.kafka.connect.connector.Task;
 import org.apache.kafka.connect.errors.RetriableException;
@@ -55,7 +54,6 @@ import org.slf4j.LoggerFactory;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
-import io.debezium.config.Field;
 import io.debezium.config.Instantiator;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.StopEngineException;
@@ -359,7 +357,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord>, Embed
         Map<String, String> embeddedConfig = config.asMap(EmbeddedEngineConfig.ALL_FIELDS);
         embeddedConfig.put(WorkerConfig.KEY_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
         embeddedConfig.put(WorkerConfig.VALUE_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
-        workerConfig = new EmbeddedConfig(embeddedConfig);
+        workerConfig = new EmbeddedWorkerConfig(embeddedConfig);
     }
 
     /**
@@ -1008,23 +1006,6 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord>, Embed
     private DelayStrategy delayStrategy(Configuration config) {
         return DelayStrategy.exponential(Duration.ofMillis(config.getInteger(EmbeddedEngineConfig.ERRORS_RETRY_DELAY_INITIAL_MS)),
                 Duration.ofMillis(config.getInteger(EmbeddedEngineConfig.ERRORS_RETRY_DELAY_MAX_MS)));
-    }
-
-    protected static class EmbeddedConfig extends WorkerConfig {
-        private static final ConfigDef CONFIG;
-
-        static {
-            ConfigDef config = baseConfigDef();
-            Field.group(config, "file", EmbeddedEngineConfig.OFFSET_STORAGE_FILE_FILENAME);
-            Field.group(config, "kafka", EmbeddedEngineConfig.OFFSET_STORAGE_KAFKA_TOPIC);
-            Field.group(config, "kafka", EmbeddedEngineConfig.OFFSET_STORAGE_KAFKA_PARTITIONS);
-            Field.group(config, "kafka", EmbeddedEngineConfig.OFFSET_STORAGE_KAFKA_REPLICATION_FACTOR);
-            CONFIG = config;
-        }
-
-        protected EmbeddedConfig(Map<String, String> props) {
-            super(CONFIG, props);
-        }
     }
 
     private class HandlerErrors {

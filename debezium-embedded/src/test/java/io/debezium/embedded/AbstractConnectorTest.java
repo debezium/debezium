@@ -70,7 +70,6 @@ import org.slf4j.LoggerFactory;
 import io.debezium.config.Configuration;
 import io.debezium.config.Instantiator;
 import io.debezium.data.VerifyRecord;
-import io.debezium.embedded.EmbeddedEngine.EmbeddedConfig;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.function.BooleanConsumer;
 import io.debezium.junit.SkipTestRule;
@@ -1156,7 +1155,7 @@ public abstract class AbstractConnectorTest implements Testing {
         Map<String, String> embeddedConfig = config.asMap(EmbeddedEngineConfig.ALL_FIELDS);
         embeddedConfig.put(WorkerConfig.KEY_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
         embeddedConfig.put(WorkerConfig.VALUE_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
-        WorkerConfig workerConfig = new EmbeddedConfig(embeddedConfig);
+        WorkerConfig workerConfig = new EmbeddedWorkerConfig(embeddedConfig);
 
         FileOffsetBackingStore offsetStore = KafkaConnectUtil.fileOffsetBackingStore();
         offsetStore.configure(workerConfig);
@@ -1188,7 +1187,7 @@ public abstract class AbstractConnectorTest implements Testing {
         Map<String, String> embeddedConfig = config.asMap(EmbeddedEngineConfig.ALL_FIELDS);
         embeddedConfig.put(WorkerConfig.KEY_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
         embeddedConfig.put(WorkerConfig.VALUE_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
-        WorkerConfig workerConfig = new EmbeddedConfig(embeddedConfig);
+        WorkerConfig workerConfig = new EmbeddedWorkerConfig(embeddedConfig);
 
         FileOffsetBackingStore offsetStore = KafkaConnectUtil.fileOffsetBackingStore();
         offsetStore.configure(workerConfig);
