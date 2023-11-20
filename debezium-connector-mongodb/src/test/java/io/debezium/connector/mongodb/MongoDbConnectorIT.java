@@ -1575,7 +1575,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.INITIAL)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
-                .with(CommonConnectorConfig.SNAPSHOT_MODE_TABLES, "[A-z].*dbit.restaurants1")
+                .with(CommonConnectorConfig.SNAPSHOT_MODE_TABLES, "dbit.restaurants1")
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
                 .build();
 

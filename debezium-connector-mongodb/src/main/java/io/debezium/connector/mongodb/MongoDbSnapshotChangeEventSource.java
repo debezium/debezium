@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mongodb;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -19,6 +20,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.bson.BsonDocument;
 import org.bson.Document;
@@ -55,6 +57,7 @@ import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.spi.SnapshotResult;
 import io.debezium.pipeline.txmetadata.TransactionContext;
+import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
 import io.debezium.util.Strings;
 import io.debezium.util.Threads;
@@ -420,6 +423,19 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
         }
 
         offsetContext.stopReplicaSetSnapshot(replicaSet.replicaSetName());
+    }
+
+    @Override
+    protected <T extends DataCollectionId> Stream<T> determineDataCollectionsToBeSnapshotted(final Collection<T> allDataCollections,
+                                                                                             Set<Pattern> snapshotAllowedDataCollections) {
+        if (snapshotAllowedDataCollections.isEmpty()) {
+            return allDataCollections.stream();
+        }
+        else {
+            return allDataCollections.stream()
+                    .filter(dataCollectionId -> snapshotAllowedDataCollections.stream()
+                            .anyMatch(s -> s.matcher(((CollectionId) dataCollectionId).namespace()).matches()));
+        }
     }
 
     private void createDataEventsForCollection(ChangeEventSourceContext sourceContext,
