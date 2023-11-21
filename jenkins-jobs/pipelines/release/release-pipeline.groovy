@@ -432,6 +432,7 @@ node('release-node') {
                 def buildArgs = "-Dversion.debezium=$RELEASE_VERSION"
                 dir(id) {
                     sh "git checkout -b $CANDIDATE_BRANCH"
+                    sh "mvn clean install -DskipTests -DskipITs -Passembly"
                     modifyFile("pom.xml") {
                         it.replaceFirst('<version>.+</version>\n    </parent>', "<version>$RELEASE_VERSION</version>\n    </parent>")
                     }
