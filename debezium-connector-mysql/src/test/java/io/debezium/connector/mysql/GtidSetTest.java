@@ -101,6 +101,19 @@ public class GtidSetTest {
     }
 
     @Test
+    public void shouldCorrectlyDetermineIfComplexGtidSetIsContainedWithinBrokenRanges() {
+        GtidSet server = new GtidSet("7388bf7d-2aac-11ed-9237-021082410453:1-351497416,"
+                + "7d187d03-4f6c-11ed-a5ac-0e393478d1e3:1-1291577186,"
+                + "820d71d6-eeea-11ec-95a8-0e2ad29b0edb:1-487962549,"
+                + "9475ad1f-a911-11ed-ae57-0e3cf2efaa99:1-1128180377:1325715925-1325725070,"
+                + "d6853f74-3bdf-11e9-9867-0a635193bf30:1-1074470477,"
+                + "e6330d3c-cd8d-11ec-bf02-02d395688cf9:1-568778112,");
+        GtidSet connector = new GtidSet("9475ad1f-a911-11ed-ae57-0e3cf2efaa99:1325715925-1325725070");
+
+        assertThat(connector.isContainedWithin(server)).isTrue();
+    }
+
+    @Test
     public void shouldCorrectlyDetermineIfComplexGtidSetWithVariousLineSeparatorsIsContainedWithinAnother() {
         GtidSet connector = new GtidSet("036d85a9-64e5-11e6-9b48-42010af0000c:1-2,"
                 + "7145bf69-d1ca-11e5-a588-0242ac110004:1-3200,"
