@@ -61,8 +61,8 @@ public class DebeziumMongoDbConnectorResource implements SchemaResource, Connect
 
     @Override
     public List<DataCollection> getMatchingCollections(Configuration configuration) {
-        try (MongoDbConnection primary = getConnection(configuration)) {
-            return primary.collections().stream()
+        try (MongoDbConnection connection = getConnection(configuration)) {
+            return connection.collections().stream()
                     .map(collectionId -> new DataCollection(collectionId.replicaSetName(), collectionId.dbName(), collectionId.name()))
                     .collect(Collectors.toList());
         }
