@@ -53,6 +53,11 @@ class EmbeddedEngineChangeEvent<K, V, H> implements ChangeEvent<K, V>, RecordCha
         return sourceRecord.topic();
     }
 
+    @Override
+    public Integer partition() {
+        return sourceRecord.kafkaPartition();
+    }
+
     public SourceRecord sourceRecord() {
         return sourceRecord;
     }

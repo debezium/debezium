@@ -28,4 +28,9 @@ public interface ChangeEvent<K, V> {
      * @return A name of the logical destination for which the event is intended
      */
     String destination();
+
+    /**
+     * @return The partition number for the event. Can be null.
+     */
+    Integer partition();
 }
