@@ -22,9 +22,9 @@ import org.apache.kafka.connect.connector.Connector;
 import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.Module;
-import io.debezium.connector.mysql.MySqlConnection;
 import io.debezium.connector.mysql.MySqlConnector;
 import io.debezium.connector.mysql.MySqlConnectorConfig;
+import io.debezium.connector.mysql.strategy.AbstractConnectorConnection;
 import io.debezium.relational.TableId;
 import io.debezium.rest.ConnectionValidationResource;
 import io.debezium.rest.FilterValidationResource;
@@ -56,8 +56,7 @@ public class DebeziumMySqlConnectorResource implements SchemaResource, Connectio
     @Override
     public List<DataCollection> getMatchingCollections(Configuration configuration) {
         final MySqlConnectorConfig config = new MySqlConnectorConfig(configuration);
-        final MySqlConnection.MySqlConnectionConfiguration connectionConfig = new MySqlConnection.MySqlConnectionConfiguration(configuration);
-        try (MySqlConnection connection = new MySqlConnection(connectionConfig)) {
+        try (AbstractConnectorConnection connection = config.getConnectorAdapter().createConnection(configuration)) {
             Set<TableId> tables;
 
             final List<String> databaseNames = new ArrayList<>();
