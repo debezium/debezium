@@ -254,7 +254,9 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
     @Override
     protected void finalizeTransactionCommit(String transactionId, Scn commitScn) {
         // cache recently committed transactions by transaction id
-        getProcessedTransactionsCache().put(transactionId, commitScn.toString());
+        if (getConfig().isLobEnabled()) {
+            getProcessedTransactionsCache().put(transactionId, commitScn.toString());
+        }
     }
 
     @Override
@@ -264,7 +266,9 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
             removeEventsWithTransaction(transaction);
             getTransactionCache().remove(transactionId);
         }
-        getProcessedTransactionsCache().put(transactionId, rollbackScn.toString());
+        if (getConfig().isLobEnabled()) {
+            getProcessedTransactionsCache().put(transactionId, rollbackScn.toString());
+        }
     }
 
     @Override
@@ -346,8 +350,7 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
             purgeCache(minCacheScn);
         }
         else {
-            getProcessedTransactionsCache().clear();
-            getSchemaChangesCache().clear();
+            getSchemaChangesCache().entrySet().removeIf(e -> true);
         }
 
         if (getConfig().isLobEnabled()) {
@@ -357,6 +360,7 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
             }
             else {
                 if (!minCacheScn.isNull()) {
+                    getProcessedTransactionsCache().entrySet().removeIf(entry -> Scn.valueOf(entry.getValue()).compareTo(minCacheScn) < 0);
                     offsetContext.setScn(minCacheScn.subtract(Scn.valueOf(1)));
                     dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
                 }
