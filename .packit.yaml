@@ -128,46 +128,6 @@ jobs:
   - job: tests
     trigger: pull_request
     # Suffix for job name
-    identifier: "mysql-5-none"
-    targets:
-      - centos-stream-8-x86_64
-    skip_build: true
-    manual_trigger: true
-    labels:
-      - mysql
-    tf_extra_params:
-      test:
-        tmt:
-          name: mysql
-      environments:
-        - variables:
-            MYSQL_VERSION: 5.7
-            PROFILE: none
-
-  ###############################################################################################
-  - job: tests
-    trigger: pull_request
-    # Suffix for job name
-    identifier: "mysql-5-assembly"
-    targets:
-      - centos-stream-8-x86_64
-    skip_build: true
-    manual_trigger: true
-    labels:
-      - mysql
-    tf_extra_params:
-      test:
-        tmt:
-          name: mysql
-      environments:
-        - variables:
-            MYSQL_VERSION: 5.7
-            PROFILE: assembly
-
-  ###############################################################################################
-  - job: tests
-    trigger: pull_request
-    # Suffix for job name
     identifier: "sqlserver-2017"
     targets:
       - centos-stream-8-x86_64
