@@ -27,7 +27,7 @@ public class DebeziumPostgresConnectRestExtension implements ConnectRestExtensio
 
     @Override
     public void register(ConnectRestExtensionContext restPluginContext) {
-        restPluginContext.configurable().register(new DebeziumPostgresConnectorResource());
+        restPluginContext.configurable().register(new DebeziumPostgresConnectorResource(restPluginContext.clusterState()));
     }
 
     @Override

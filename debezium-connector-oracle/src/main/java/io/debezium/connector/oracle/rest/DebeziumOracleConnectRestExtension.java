@@ -27,7 +27,7 @@ public class DebeziumOracleConnectRestExtension implements ConnectRestExtension 
 
     @Override
     public void register(ConnectRestExtensionContext restPluginContext) {
-        restPluginContext.configurable().register(new DebeziumOracleConnectorResource());
+        restPluginContext.configurable().register(new DebeziumOracleConnectorResource(restPluginContext.clusterState()));
     }
 
     @Override

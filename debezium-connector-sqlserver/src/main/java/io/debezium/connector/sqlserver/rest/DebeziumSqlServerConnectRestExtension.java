@@ -27,7 +27,7 @@ public class DebeziumSqlServerConnectRestExtension implements ConnectRestExtensi
 
     @Override
     public void register(ConnectRestExtensionContext restPluginContext) {
-        restPluginContext.configurable().register(new DebeziumSqlServerConnectorResource());
+        restPluginContext.configurable().register(new DebeziumSqlServerConnectorResource(restPluginContext.clusterState()));
     }
 
     @Override

@@ -27,7 +27,7 @@ public class DebeziumMySqlConnectRestExtension implements ConnectRestExtension {
 
     @Override
     public void register(ConnectRestExtensionContext restPluginContext) {
-        restPluginContext.configurable().register(new DebeziumMySqlConnectorResource());
+        restPluginContext.configurable().register(new DebeziumMySqlConnectorResource(restPluginContext.clusterState()));
     }
 
     @Override
