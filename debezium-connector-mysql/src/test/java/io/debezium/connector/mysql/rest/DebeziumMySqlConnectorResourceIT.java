@@ -25,6 +25,7 @@ import io.debezium.connector.mysql.Module;
 import io.debezium.connector.mysql.MySqlConnector;
 import io.debezium.connector.mysql.MySqlConnectorConfig;
 import io.debezium.storage.kafka.history.KafkaSchemaHistory;
+import io.debezium.testing.testcontainers.Connector;
 import io.debezium.testing.testcontainers.ConnectorConfiguration;
 import io.debezium.testing.testcontainers.testhelper.RestExtensionTestInfrastructure;
 import io.restassured.http.ContentType;
@@ -205,8 +206,37 @@ public class DebeziumMySqlConnectorResourceIT {
                         "The 'database.exclude.list' value is invalid: A comma-separated list of valid regular expressions is expected, but Dangling meta character '+' near index 0\n+\n^"));
     }
 
+    @Test
+    public void testMetricsEndpoint() {
+        ConnectorConfiguration config = getMySqlConnectorConfiguration(1);
+
+        var connectorName = "my-mysql-connector";
+        RestExtensionTestInfrastructure.getDebeziumContainer().registerConnector(
+                connectorName,
+                config);
+
+        RestExtensionTestInfrastructure.getDebeziumContainer().ensureConnectorState(connectorName, Connector.State.RUNNING);
+        RestExtensionTestInfrastructure.waitForConnectorTaskStatus(connectorName, 0, Connector.State.RUNNING);
+
+        given()
+                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .when().contentType(ContentType.JSON).accept(ContentType.JSON).body(config.toJson())
+                .get(DebeziumMySqlConnectorResource.BASE_PATH + DebeziumMySqlConnectorResource.CONNECTOR_METRICS_ENDPOINT, connectorName)
+                .then().log().all()
+                .statusCode(200)
+                .assertThat().body("size()", is(3))
+                .body("[0].request.attribute", is("Connected"))
+                .body("[0].value", equalTo(true))
+                .body("[1].request.attribute", is("MilliSecondsSinceLastEvent"))
+                .body("[1].value", equalTo(0))
+                .body("[2].request.attribute", is("TotalNumberOfEventsSeen"))
+                .body("[2].value", equalTo(14234));
+    }
+
     public static ConnectorConfiguration getMySqlConnectorConfiguration(int id, String... options) {
         final ConnectorConfiguration config = ConnectorConfiguration.forJdbcContainer(RestExtensionTestInfrastructure.getMySqlContainer())
+                .with(MySqlConnectorConfig.USER.name(), "debezium")
+                .with(MySqlConnectorConfig.PASSWORD.name(), "dbz")
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE.name(), "never") // temporarily disable snapshot mode globally until we can check if connectors inside testcontainers are in SNAPSHOT or STREAMING mode (wait for snapshot finished!)
                 .with(MySqlConnectorConfig.TOPIC_PREFIX.name(), "dbserver" + id)
                 .with(KafkaSchemaHistory.BOOTSTRAP_SERVERS.name(), RestExtensionTestInfrastructure.KAFKA_HOSTNAME + ":9092")

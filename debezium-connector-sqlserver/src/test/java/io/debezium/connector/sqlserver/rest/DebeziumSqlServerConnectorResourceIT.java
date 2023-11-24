@@ -26,6 +26,7 @@ import io.debezium.connector.sqlserver.Module;
 import io.debezium.connector.sqlserver.SqlServerConnector;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig;
 import io.debezium.storage.kafka.history.KafkaSchemaHistory;
+import io.debezium.testing.testcontainers.Connector;
 import io.debezium.testing.testcontainers.ConnectorConfiguration;
 import io.debezium.testing.testcontainers.testhelper.RestExtensionTestInfrastructure;
 import io.restassured.http.ContentType;
@@ -183,6 +184,33 @@ public class DebeziumSqlServerConnectorResourceIT {
                 .body("property", equalTo("table.exclude.list"))
                 .body("message", equalTo(
                         "The 'table.exclude.list' value is invalid: A comma-separated list of valid regular expressions is expected, but Dangling meta character '+' near index 0\n+\n^"));
+    }
+
+    @Test
+    public void testMetricsEndpoint() {
+        ConnectorConfiguration config = getSqlServerConnectorConfiguration(1);
+
+        var connectorName = "my-sqlserver-connector";
+        RestExtensionTestInfrastructure.getDebeziumContainer().registerConnector(
+                connectorName,
+                config);
+
+        RestExtensionTestInfrastructure.getDebeziumContainer().ensureConnectorState(connectorName, Connector.State.RUNNING);
+        RestExtensionTestInfrastructure.waitForConnectorTaskStatus(connectorName, 0, Connector.State.RUNNING);
+
+        given()
+                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .when().contentType(ContentType.JSON).accept(ContentType.JSON).body(config.toJson())
+                .get(DebeziumSqlServerConnectorResource.BASE_PATH + DebeziumSqlServerConnectorResource.CONNECTOR_METRICS_ENDPOINT, connectorName)
+                .then().log().all()
+                .statusCode(200)
+                .assertThat().body("size()", is(3))
+                .body("[0].request.attribute", is("Connected"))
+                .body("[0].value", equalTo(true))
+                .body("[1].request.attribute", is("MilliSecondsSinceLastEvent"))
+                .body("[1].value", equalTo(-1))
+                .body("[2].request.attribute", is("TotalNumberOfEventsSeen"))
+                .body("[2].value", equalTo(0));
     }
 
     public static ConnectorConfiguration getSqlServerConnectorConfiguration(int id, String... options) {

@@ -27,7 +27,7 @@ public class DebeziumMongoDbConnectRestExtension implements ConnectRestExtension
 
     @Override
     public void register(ConnectRestExtensionContext restPluginContext) {
-        restPluginContext.configurable().register(new DebeziumMongoDbConnectorResource());
+        restPluginContext.configurable().register(new DebeziumMongoDbConnectorResource(restPluginContext.clusterState()));
     }
 
     @Override

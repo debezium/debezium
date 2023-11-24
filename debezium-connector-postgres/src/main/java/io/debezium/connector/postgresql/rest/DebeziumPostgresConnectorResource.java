@@ -14,12 +14,17 @@ import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 
+import org.apache.kafka.connect.health.ConnectClusterState;
+import org.json.simple.JSONObject;
+
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.Module;
 import io.debezium.connector.postgresql.PostgresConnector;
 import io.debezium.rest.ConnectionValidationResource;
 import io.debezium.rest.FilterValidationResource;
+import io.debezium.rest.MetricsResource;
 import io.debezium.rest.SchemaResource;
+import io.debezium.rest.jolokia.JolokiaClient;
 import io.debezium.rest.model.DataCollection;
 
 /**
@@ -30,10 +35,15 @@ import io.debezium.rest.model.DataCollection;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class DebeziumPostgresConnectorResource
-        implements SchemaResource, ConnectionValidationResource<PostgresConnector>, FilterValidationResource<PostgresConnector> {
+        implements SchemaResource, ConnectionValidationResource<PostgresConnector>, FilterValidationResource<PostgresConnector>, MetricsResource {
 
     public static final String BASE_PATH = "/debezium/postgres";
     public static final String VERSION_ENDPOINT = "/version";
+    private final ConnectClusterState connectClusterState;
+
+    public DebeziumPostgresConnectorResource(ConnectClusterState connectClusterState) {
+        this.connectClusterState = connectClusterState;
+    }
 
     @GET
     @Path(VERSION_ENDPOINT)
@@ -47,6 +57,17 @@ public class DebeziumPostgresConnectorResource
     }
 
     @Override
+    public String getAttributesFilePath() {
+        return "META-INF/postgres-attributes.txt";
+    }
+
+    @Override
+    public List<JSONObject> getMetrics(String connectorName, JolokiaClient client, List<String> attributes) {
+        String serverName = connectClusterState.connectorConfig(connectorName).get("topic.prefix");
+        String task = connectClusterState.connectorConfig(connectorName).get("tasks.max");
+        return client.getConnectorMetrics("postgres", serverName, Integer.valueOf(task), attributes);
+    }
+
     public String getSchemaFilePath() {
         return "/META-INF/resources/postgres.json";
     }
