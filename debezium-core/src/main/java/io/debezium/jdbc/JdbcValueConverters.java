@@ -1283,14 +1283,6 @@ public class JdbcValueConverters implements ValueConverterProvider {
     protected Object handleUnknownData(Column column, Field fieldDefn, Object data) {
         Class<?> dataClass = data.getClass();
         String clazzName = dataClass.isArray() ? dataClass.getSimpleName() : dataClass.getName();
-        if (column.isOptional() || fieldDefn.schema().isOptional()) {
-
-            if (logger.isWarnEnabled()) {
-                logger.warn("Unexpected value for JDBC type {} and column {}: class={}", column.jdbcType(), column,
-                        clazzName); // don't include value in case its sensitive
-            }
-            return null;
-        }
         throw new IllegalArgumentException("Unexpected value for JDBC type " + column.jdbcType() + " and column " + column +
                 ": class=" + clazzName); // don't include value in case its sensitive
     }
