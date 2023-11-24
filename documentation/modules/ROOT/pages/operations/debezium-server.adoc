@@ -1471,6 +1471,7 @@ When the alternative implementations are not available then the default ones are
 By default the same name is used.
 |===
 ==== RabbitMQ Native Stream
+
 Since https://www.rabbitmq.com/[RabbitMQ 3.9], https://www.rabbitmq.com/streams.html[Streams] were introduced to RabbitMQ, utilizing a new blazingly-fast protocol that can be used alongside AMQP 0.9.1.
 Streams are great for large fan-outs, replay & time travel, and large logs, all with very high throughput (million messages per second).
 
