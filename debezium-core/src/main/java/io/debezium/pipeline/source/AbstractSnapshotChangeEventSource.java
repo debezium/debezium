@@ -50,7 +50,7 @@ public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O e
     private final CommonConnectorConfig connectorConfig;
     private final SnapshotProgressListener<P> snapshotProgressListener;
 
-    private final NotificationService<P, O> notificationService;
+    protected final NotificationService<P, O> notificationService;
 
     public AbstractSnapshotChangeEventSource(CommonConnectorConfig connectorConfig, SnapshotProgressListener<P> snapshotProgressListener,
                                              NotificationService<P, O> notificationService) {
