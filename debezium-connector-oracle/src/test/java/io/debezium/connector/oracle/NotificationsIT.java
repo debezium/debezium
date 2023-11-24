@@ -7,6 +7,7 @@
 package io.debezium.connector.oracle;
 
 import java.sql.SQLException;
+import java.util.List;
 
 import org.junit.After;
 import org.junit.Before;
@@ -35,6 +36,10 @@ public class NotificationsIT extends AbstractNotificationsIT<OracleConnector> {
     @After
     public void after() {
         stopConnector();
+    }
+
+    protected List<String> collections() {
+        return List.of("a");
     }
 
     @Override

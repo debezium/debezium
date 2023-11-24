@@ -133,6 +133,8 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
                                                              MongoDbOffsetContext prevOffsetCtx,
                                                              SnapshotContext<MongoDbPartition, MongoDbOffsetContext> snapshotContext,
                                                              SnapshottingTask snapshottingTask) {
+        Offsets<MongoDbPartition, OffsetContext> offsets = getOffsets(snapshotContext, prevOffsetCtx, snapshottingTask);
+
         final MongoDbSnapshottingTask mongoDbSnapshottingTask = (MongoDbSnapshottingTask) snapshottingTask;
         final MongoDbSnapshotContext mongoDbSnapshotContext = (MongoDbSnapshotContext) snapshotContext;
 
@@ -155,7 +157,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
             executor.submit(() -> {
                 try {
                     taskContext.configureLoggingContext(replicaSet.replicaSetName());
-                    snapshotReplicaSet(context, mongoDbSnapshotContext, replicaSet, snapshottingTask);
+                    snapshotReplicaSet(context, mongoDbSnapshotContext, replicaSet, snapshottingTask, offsets);
                 }
                 catch (Throwable t) {
                     LOGGER.error("Snapshot for replica set {} failed", replicaSet.replicaSetName(), t);
@@ -225,10 +227,10 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
     }
 
     private void snapshotReplicaSet(ChangeEventSourceContext sourceCtx, MongoDbSnapshotContext snapshotCtx, ReplicaSet replicaSet,
-                                    SnapshottingTask snapshottingTask)
+                                    SnapshottingTask snapshottingTask, Offsets<MongoDbPartition, OffsetContext> offsets)
             throws InterruptedException {
         try (MongoDbConnection mongo = connections.get(replicaSet, snapshotCtx.partition)) {
-            createDataEvents(sourceCtx, snapshotCtx, replicaSet, mongo, snapshottingTask);
+            createDataEvents(sourceCtx, snapshotCtx, replicaSet, mongo, snapshottingTask, offsets);
         }
     }
 
@@ -300,13 +302,13 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
     }
 
     private void createDataEvents(ChangeEventSourceContext sourceCtx, MongoDbSnapshotContext snapshotCtx, ReplicaSet replicaSet,
-                                  MongoDbConnection mongo, SnapshottingTask snapshottingTask)
+                                  MongoDbConnection mongo, SnapshottingTask snapshottingTask, Offsets<MongoDbPartition, OffsetContext> offsets)
             throws InterruptedException {
         initReplicaSetSnapshotStartOffsets(snapshotCtx, replicaSet, mongo);
         SnapshotReceiver<MongoDbPartition> snapshotReceiver = dispatcher.getSnapshotChangeEventReceiver();
         snapshotCtx.offset.preSnapshotStart();
 
-        createDataEventsForReplicaSet(sourceCtx, snapshotCtx, snapshotReceiver, replicaSet, mongo, snapshottingTask);
+        createDataEventsForReplicaSet(sourceCtx, snapshotCtx, snapshotReceiver, replicaSet, mongo, snapshottingTask, offsets);
 
         snapshotCtx.offset.preSnapshotCompletion();
         snapshotReceiver.completeSnapshot();
@@ -319,7 +321,8 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
     private void createDataEventsForReplicaSet(ChangeEventSourceContext sourceContext,
                                                MongoDbSnapshotContext snapshotContext,
                                                SnapshotReceiver<MongoDbPartition> snapshotReceiver,
-                                               ReplicaSet replicaSet, MongoDbConnection mongo, SnapshottingTask snapshottingTask)
+                                               ReplicaSet replicaSet, MongoDbConnection mongo, SnapshottingTask snapshottingTask,
+                                               Offsets<MongoDbPartition, OffsetContext> offsets)
             throws InterruptedException {
 
         final String rsName = replicaSet.replicaSetName();
@@ -373,7 +376,8 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
                                     snapshotReceiver,
                                     replicaSet,
                                     id,
-                                    mongo, snapshottingTask.getFilterQueries());
+                                    mongo, snapshottingTask.getFilterQueries(),
+                                    offsets);
                         }
                     }
                     catch (InterruptedException e) {
@@ -418,7 +422,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
                         snapshotReceiver,
                         replicaSet,
                         collectionId,
-                        mongo, snapshottingTask.getFilterQueries());
+                        mongo, snapshottingTask.getFilterQueries(), offsets);
             }
         }
 
@@ -442,11 +446,13 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
                                                MongoDbSnapshotContext snapshotContext,
                                                SnapshotReceiver<MongoDbPartition> snapshotReceiver,
                                                ReplicaSet replicaSet, CollectionId collectionId, MongoDbConnection mongo,
-                                               Map<String, String> snapshotFilterQueryForCollection)
+                                               Map<String, String> snapshotFilterQueryForCollection, Offsets<MongoDbPartition, OffsetContext> offsets)
             throws InterruptedException {
 
         long exportStart = clock.currentTimeInMillis();
         LOGGER.info("\t Exporting data for collection '{}'", collectionId);
+        notificationService.initialSnapshotNotificationService().notifyTableInProgress(offsets.getTheOnlyPartition(), offsets.getTheOnlyOffset(),
+                collectionId.namespace());
 
         mongo.execute("sync '" + collectionId + "'", client -> {
             final MongoDatabase database = client.getDatabase(collectionId.dbName());
@@ -485,6 +491,8 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
                     snapshotContext.offset.markSnapshotRecord(SnapshotRecord.LAST);
                 }
 
+                notificationService.initialSnapshotNotificationService().notifyCompletedTableSuccessfully(offsets.getTheOnlyPartition(), offsets.getTheOnlyOffset(),
+                        collectionId.namespace());
                 LOGGER.info("\t Finished snapshotting {} records for collection '{}'; total duration '{}'", docs, collectionId,
                         Strings.duration(clock.currentTimeInMillis() - exportStart));
                 snapshotProgressListener.dataCollectionSnapshotCompleted(snapshotContext.partition, collectionId, docs);

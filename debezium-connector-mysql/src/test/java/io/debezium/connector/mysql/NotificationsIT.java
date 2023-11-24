@@ -8,6 +8,7 @@ package io.debezium.connector.mysql;
 
 import java.nio.file.Path;
 import java.sql.SQLException;
+import java.util.List;
 
 import org.junit.After;
 import org.junit.Before;
@@ -39,6 +40,10 @@ public class NotificationsIT extends AbstractNotificationsIT<MySqlConnector> {
         finally {
             Testing.Files.delete(SCHEMA_HISTORY_PATH);
         }
+    }
+
+    protected List<String> collections() {
+        return List.of("a", "b", "c", "a4", "a42", "a_dt", "a_date", "debezium_signal");
     }
 
     @Override

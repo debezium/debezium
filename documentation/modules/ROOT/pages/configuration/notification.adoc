@@ -97,6 +97,107 @@ The following example shows a typical notification that provides the status of a
 * `ABORTED`
 * `SKIPPED`
 
+The following table shows examples of the different payloads that might be present in notifications that report the status of initial snapshots:
+
+|===
+|Status|Payload
+
+|STARTED
+a|[source, json]
+----
+  {
+      "id":"ff81ba59-15ea-42ae-b5d0-4d74f1f4038f",
+      "aggregate_type":"Initial Snapshot",
+      "type":"STARTED",
+      "additional_data":{
+         "connector_name":"my-connector"
+      },
+      "timestamp": "1695817046353"
+}
+----
+|IN_PROGRESS
+a|[source, json]
+----
+{
+   "id":"6d82a3ec-ba86-4b36-9168-7423b0dd5c1d",
+   "aggregate_type":"Initial Snapshot",
+   "type":"IN_PROGRESS",
+   "additional_data":{
+      "connector_name":"my-connector",
+      "data_collections":"table1, table2",
+      "current_collection_in_progress":"table1"
+   },
+   "timestamp": "1695817046353"
+}
+----
+Field `data_collection` are currently not supported for Mongo connector
+|COMPLETED
+
+|TABLE_SCAN_COMPLETED
+a|[source, json]
+----
+{
+   "id":"6d82a3ec-ba86-4b36-9168-7423b0dd5c1d",
+   "aggregate_type":"Initial Snapshot",
+   "type":"TABLE_SCAN_COMPLETED",
+   "additional_data":{
+      "connector_name":"my-connector",
+      "data_collection":"table1, table2",
+      "scanned_collection":"table1",
+      "total_rows_scanned":"100",
+      "status":"SUCCEEDED"
+   },
+   "timestamp": "1695817046353"
+}
+----
+
+In the preceding example, the `additional_data.status` field can contain one of the following values:
+
+`SQL_EXCEPTION`:: A SQL exception occurred while performing the snapshot.
+`SUCCEEDED`:: The snapshot completed successfully.
+
+Fields `total_rows_scanned` and `data_collection` are currently not supported for Mongo connector
+|COMPLETED
+a|[source, json]
+----
+  {
+      "id":"ff81ba59-15ea-42ae-b5d0-4d74f1f4038f",
+      "aggregate_type":"Initial Snapshot",
+      "type":"COMPLETED",
+      "additional_data":{
+         "connector_name":"my-connector"
+      },
+      "timestamp": "1695817046353"
+}
+----
+|ABORTED
+a|[source, json]
+----
+  {
+      "id":"ff81ba59-15ea-42ae-b5d0-4d74f1f4038f",
+      "aggregate_type":"Initial Snapshot",
+      "type":"ABORTED",
+      "additional_data":{
+         "connector_name":"my-connector"
+      },
+      "timestamp": "1695817046353"
+}
+----
+|SKIPPED
+a|[source, json]
+----
+  {
+      "id":"ff81ba59-15ea-42ae-b5d0-4d74f1f4038f",
+      "aggregate_type":"Initial Snapshot",
+      "type":"SKIPPED",
+      "additional_data":{
+         "connector_name":"my-connector"
+      },
+      "timestamp": "1695817046353"
+}
+----
+|===
+
 // Type: reference
 // Title: Example: {prodname} notifications that report on the progress of incremental snapshots
 [id="debezium-notifications-about-the-progress-of-incremental-snapshots"]
