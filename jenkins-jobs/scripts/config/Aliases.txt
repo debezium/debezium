@@ -238,3 +238,4 @@ laughingman7743,Tomoyuki Nakamura
 dtseiler,Don Seiler
 markducommun,Mark Ducommun
 Lars M Johansson,Lars M. Johansson
+ahmedrachid,Ahmed Rachid Hazourli
