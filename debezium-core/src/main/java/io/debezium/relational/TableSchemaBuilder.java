@@ -37,8 +37,6 @@ import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Loggings;
 
-import static io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode.*;
-
 /**
  * Builder that constructs {@link TableSchema} instances for {@link Table} definitions.
  * <p>
@@ -280,35 +278,30 @@ public class TableSchemaBuilder {
 
                     if (converter != null) {
                         LOGGER.trace("converter for value object: *** {} ***", converter);
-                    }
-                    else {
-                        LOGGER.trace("converter is null...");
-                    }
-
-                    if (converter != null) {
                         try {
                             value = converter.convert(value);
                             result.put(fields[i], value);
                         }
                         catch (final Exception e) {
-                            // TODO(nicholas): 여기서 에러가 핸들링되면서 에러 처리되지 않는다.
                             Column col = columns.get(i);
-                            Loggings.logErrorAndTraceRecord(LOGGER, row,
-                                    "Failed to properly convert data value for '{}.{}' of type {}", tableId,
-                                    col.name(), col.typeName(), e);
-                            if (eventConvertingFailureHandlingMode == FAIL) {
-                                throw e;
-                            } else if (eventConvertingFailureHandlingMode == WARN) {
-                                // TODO
-                                LOGGER.info("WARN");
-                            } else if (eventConvertingFailureHandlingMode == IGNORE) {
-                                // TODO
-                                LOGGER.info("IGNORE");
-                            } else if (eventConvertingFailureHandlingMode == SKIP) {
-                                // TODO
-                                LOGGER.info("SKIP");
+                            String message = "Failed to properly convert data value for '{}.{}' of type {}";
+                            switch (eventConvertingFailureHandlingMode) {
+                                case FAIL:
+                                    Loggings.logErrorAndTraceRecord(LOGGER, row, message, tableId,
+                                            col.name(), col.typeName(), e);
+                                    throw new DebeziumException("Failed to properly convert data value for '" +
+                                            tableId + "." + col.name() + "' of type " + col.typeName(), e.getCause());
+                                case WARN:
+                                    Loggings.logWarningAndTraceRecord(LOGGER, row, message, tableId,
+                                            col.name(), col.typeName(), e);
+                                case SKIP:
+                                    Loggings.logDebugAndTraceRecord(LOGGER, row, message, tableId,
+                                            col.name(), col.typeName(), e);
                             }
                         }
+                    }
+                    else {
+                        LOGGER.trace("converter is null...");
                     }
                 }
                 return result;

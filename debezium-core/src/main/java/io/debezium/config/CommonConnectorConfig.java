@@ -846,10 +846,10 @@ public abstract class CommonConnectorConfig {
     public static final Field EVENT_CONVERTING_FAILURE_HANDLING_MODE = Field.create("event.converting.failure.handling.mode")
             .withDisplayName("Event deserialization failure handling")
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 26))
-            .withEnum(EventConvertingFailureHandlingMode.class, EventConvertingFailureHandlingMode.FAIL)
+            .withEnum(EventConvertingFailureHandlingMode.class, EventConvertingFailureHandlingMode.WARN)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
-            .withDescription("blahblah");
+            .withDescription("TODO");
 
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
             .connector(
