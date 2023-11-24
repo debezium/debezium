@@ -233,7 +233,7 @@ public class PostgresOffsetContext implements OffsetContext {
         try {
             LOGGER.info("Creating initial offset context");
             final Lsn lsn = Lsn.valueOf(jdbcConnection.currentXLogLocation());
-            final long txId = jdbcConnection.currentTransactionId().longValue();
+            final Long txId = jdbcConnection.currentTransactionId();
             LOGGER.info("Read xlogStart at '{}' from transaction '{}'", lsn, txId);
             return new PostgresOffsetContext(
                     connectorConfig,
