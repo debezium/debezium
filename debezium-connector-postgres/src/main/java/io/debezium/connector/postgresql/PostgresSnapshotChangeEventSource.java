@@ -151,7 +151,7 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
 
     private void updateOffsetForSnapshot(PostgresOffsetContext offset) throws SQLException {
         final Lsn xlogStart = getTransactionStartLsn();
-        final long txId = jdbcConnection.currentTransactionId().longValue();
+        final Long txId = jdbcConnection.currentTransactionId();
         LOGGER.info("Read xlogStart at '{}' from transaction '{}'", xlogStart, txId);
 
         // use the old xmin, as we don't want to update it if in xmin recovery
