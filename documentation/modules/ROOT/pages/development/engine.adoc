@@ -85,8 +85,9 @@ Here's an example of code that configures and runs an embedded xref:{link-mysql-
 [source,java,indent=0]
 ----
     // Define the configuration for the Debezium Engine with MySQL connector...
-    final Properties props = config.asProperties();
+    final Properties props = new Properties();
     props.setProperty("name", "engine");
+    props.setProperty("connector.class", "io.debezium.connector.mysql.MySqlConnector");
     props.setProperty("offset.storage", "org.apache.kafka.connect.storage.FileOffsetBackingStore");
     props.setProperty("offset.storage.file.filename", "/tmp/offsets.dat");
     props.setProperty("offset.flush.interval.ms", "60000");
@@ -123,7 +124,7 @@ Let's look into this code in more detail, starting with the first few lines that
 [source,java,indent=0]
 ----
     // Define the configuration for the Debezium Engine with MySQL connector...
-    final Properties props = config.asProperties();
+    final Properties props = new Properties();
     props.setProperty("name", "engine");
     props.setProperty("connector.class", "io.debezium.connector.mysql.MySqlConnector");
     props.setProperty("offset.storage", "org.apache.kafka.connect.storage.FileOffsetBackingStore");
