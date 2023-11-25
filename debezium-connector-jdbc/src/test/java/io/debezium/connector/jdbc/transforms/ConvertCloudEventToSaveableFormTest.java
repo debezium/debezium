@@ -6,6 +6,7 @@
 package io.debezium.connector.jdbc.transforms;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -14,7 +15,6 @@ import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.sink.SinkRecord;
-import org.junit.Assert;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -25,7 +25,7 @@ import io.debezium.converters.spi.SerializerType;
 import io.debezium.doc.FixFor;
 
 /**
- * Unit tests for {@link ConvertCloudEventToSaveableFormTest}
+ * Unit tests for {@link ConvertCloudEventToSaveableForm}
  *
  * @author Roman Kudryashov
  */
@@ -36,8 +36,11 @@ class ConvertCloudEventToSaveableFormTest {
     void testConvertCloudEventRecordWithEmptyConfig() {
         try (ConvertCloudEventToSaveableForm transform = new ConvertCloudEventToSaveableForm()) {
             final Map<String, String> config = new HashMap<>();
-            Assert.assertThrows("Invalid value null for configuration serializer.type: Serialization/deserialization type of CloudEvents converter is required",
-                    ConfigException.class, () -> transform.configure(config));
+
+            Exception exception = assertThrows(ConfigException.class, () -> transform.configure(config));
+
+            assertThat(exception.getMessage())
+                    .isEqualTo("Invalid value null for configuration serializer.type: Serialization/deserialization type of CloudEvents converter is required");
         }
     }
 
