@@ -426,10 +426,11 @@ public class MongoDataConverter {
                 final SchemaBuilder documentSchemaBuilder = SchemaBuilder.struct().name(builder.name() + "." + key).optional();
                 final Map<String, BsonType> union = new HashMap<>();
                 if (value.isArray()) {
-                    value.asArray().forEach(f -> subSchema(documentSchemaBuilder, union, f.asDocument(), true));
-                    if (documentSchemaBuilder.fields().size() == 0) {
-                        value.asArray().forEach(f -> subSchema(documentSchemaBuilder, union, f.asDocument(), false));
-                    }
+                    value.asArray().forEach(f -> {
+                        if (documentSchemaBuilder.fields().size() < f.asDocument().size()) {
+                            subSchema(documentSchemaBuilder, union, f.asDocument(), false);
+                        }
+                    });
                 }
                 else {
                     subSchema(documentSchemaBuilder, union, value.asDocument(), false);
