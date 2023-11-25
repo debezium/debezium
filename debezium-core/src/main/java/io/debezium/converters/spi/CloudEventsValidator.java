@@ -29,17 +29,23 @@ public class CloudEventsValidator {
             CloudEventsMaker.FieldName.SPECVERSION,
             CloudEventsMaker.FieldName.TYPE);
 
-    public boolean isCloudEvent(SchemaAndValue schemaAndValue, SerializerType serializerType) {
-        return baseCheck(schemaAndValue, serializerType) && checkFields(schemaAndValue.value(), serializerType);
+    private SerializerType serializerType;
+
+    public void configure(SerializerType serializerType) {
+        this.serializerType = serializerType;
     }
 
-    public void verifyIsCloudEvent(SchemaAndValue schemaAndValue, SerializerType serializerType) {
-        if (!isCloudEvent(schemaAndValue, serializerType)) {
+    public boolean isCloudEvent(SchemaAndValue schemaAndValue) {
+        return baseCheck(schemaAndValue) && checkFields(schemaAndValue.value());
+    }
+
+    public void verifyIsCloudEvent(SchemaAndValue schemaAndValue) {
+        if (!isCloudEvent(schemaAndValue)) {
             throw new DataException("A deserialized record's value is not a CloudEvent: value=" + schemaAndValue.value());
         }
     }
 
-    private boolean baseCheck(SchemaAndValue schemaAndValue, SerializerType serializerType) {
+    private boolean baseCheck(SchemaAndValue schemaAndValue) {
         switch (serializerType) {
             case JSON:
                 return schemaAndValue.schema() == null && schemaAndValue.value() instanceof Map;
@@ -50,7 +56,7 @@ public class CloudEventsValidator {
         }
     }
 
-    private boolean checkFields(Object value, SerializerType serializerType) {
+    private boolean checkFields(Object value) {
         final List<String> fieldNames;
         switch (serializerType) {
             case JSON:
