@@ -195,18 +195,6 @@ public final class SourceInfo extends BaseSourceInfo {
         this.serverId = serverId;
     }
 
-    /**
-     * Set the number of <em>seconds</em> since Unix epoch (January 1, 1970) as found within the MySQL binary log file.
-     * Note that the value in the binlog events is in seconds, but the library we use returns the value in milliseconds
-     * (with only second precision and therefore all fractions of a second are zero). We capture this as seconds
-     * since that is the precision that MySQL uses.
-     *
-     * @param timestampInSeconds the timestamp in <em>seconds</em> found within the binary log file
-     */
-    public void setBinlogTimestampSeconds(long timestampInSeconds) {
-        this.sourceTime = Instant.ofEpochSecond(timestampInSeconds);
-    }
-
     public void setSourceTime(Instant timestamp) {
         sourceTime = timestamp;
     }
@@ -270,10 +258,6 @@ public final class SourceInfo extends BaseSourceInfo {
 
     long getCurrentBinlogPosition() {
         return currentBinlogPosition;
-    }
-
-    long getBinlogTimestampSeconds() {
-        return (sourceTime == null) ? 0 : sourceTime.getEpochSecond();
     }
 
     int getCurrentRowNumber() {
