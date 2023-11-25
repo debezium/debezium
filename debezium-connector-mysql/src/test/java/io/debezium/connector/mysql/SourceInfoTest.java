@@ -8,6 +8,7 @@ package io.debezium.connector.mysql;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertTrue;
 
+import java.time.Instant;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -625,7 +626,7 @@ public class SourceInfoTest {
     @Test
     public void shouldHaveTimestamp() {
         sourceWith(offset(100, 5, true));
-        source.setBinlogTimestampSeconds(1_024);
+        source.setSourceTime(Instant.ofEpochSecond(1_024, 0));
         source.databaseEvent("mysql");
         assertThat(source.struct().get("ts_ms")).isEqualTo(1_024_000L);
     }
