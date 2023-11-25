@@ -11,11 +11,11 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaAndValue;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.converters.spi.CloudEventsMaker;
+import io.debezium.converters.spi.CloudEventsValidator;
 import io.debezium.converters.spi.SerializerType;
 import io.debezium.transforms.outbox.AdditionalFieldsValidator;
 
@@ -42,8 +43,6 @@ public class ConvertCloudEventToSaveableForm implements Transformation<SinkRecor
     private static final Logger LOGGER = LoggerFactory.getLogger(ConvertCloudEventToSaveableForm.class);
 
     private static final String FIELD_NAME_SEPARATOR = ":";
-
-    private static final String CLOUD_EVENTS_SCHEMA_NAME_SUFFIX = ".CloudEvents.Envelope";
 
     private static final Field FIELDS_MAPPING = Field.create("fields.mapping")
             .withDisplayName("Specifies a list of pairs with mappings between a CloudEvent's fields and names of database columns")
@@ -66,11 +65,9 @@ public class ConvertCloudEventToSaveableForm implements Transformation<SinkRecor
 
     private final JsonConverter jsonDataConverter = new JsonConverter();
 
-    private final Set<String> cloudEventsSpecRequiredFields = Set.of(CloudEventsMaker.FieldName.ID, CloudEventsMaker.FieldName.SOURCE,
-            CloudEventsMaker.FieldName.SPECVERSION,
-            CloudEventsMaker.FieldName.TYPE);
-
     private final Map<String, Schema> cloudEventsFieldToColumnSchema = new HashMap<>();
+
+    private final CloudEventsValidator cloudEventsValidator = new CloudEventsValidator();
 
     @Override
     public ConfigDef config() {
@@ -104,6 +101,8 @@ public class ConvertCloudEventToSaveableForm implements Transformation<SinkRecor
         cloudEventsFieldToColumnSchema.put(CloudEventsMaker.FieldName.DATASCHEMA, Schema.STRING_SCHEMA);
         cloudEventsFieldToColumnSchema.put(CloudEventsMaker.FieldName.TIME, Schema.STRING_SCHEMA);
         cloudEventsFieldToColumnSchema.put(CloudEventsMaker.FieldName.DATA, Schema.STRING_SCHEMA);
+
+        cloudEventsValidator.configure(serializerType);
     }
 
     private Map<String, String> parseFieldsMapping(List<String> rawFieldsMapping) {
@@ -125,7 +124,7 @@ public class ConvertCloudEventToSaveableForm implements Transformation<SinkRecor
 
     @Override
     public SinkRecord apply(final SinkRecord record) {
-        if (record == null || !isCloudEvent(record) || fieldsMapping.isEmpty()) {
+        if (record == null || !cloudEventsValidator.isCloudEvent(new SchemaAndValue(record.valueSchema(), record.value())) || fieldsMapping.isEmpty()) {
             return record;
         }
 
@@ -151,20 +150,6 @@ public class ConvertCloudEventToSaveableForm implements Transformation<SinkRecor
                 newValue,
                 record.timestamp(),
                 record.headers());
-    }
-
-    private boolean isCloudEvent(SinkRecord record) {
-        if (serializerType == SerializerType.JSON) {
-            boolean valueIsMap = record.value() instanceof Map;
-            if (valueIsMap && record.valueSchema() == null) {
-                final Map<String, Object> cloudEventMap = getCloudEventFieldsMap(record);
-                return cloudEventMap.size() >= 4 && cloudEventsSpecRequiredFields.stream().allMatch(cloudEventMap::containsKey);
-            }
-            return false;
-        }
-        else {
-            return record.valueSchema().name().endsWith(CLOUD_EVENTS_SCHEMA_NAME_SUFFIX);
-        }
     }
 
     private Map<String, Object> getCloudEventFieldsMap(SinkRecord record) {
