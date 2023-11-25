@@ -234,6 +234,8 @@ public class CloudEventsConverter implements Converter {
                 avroConverter.configure(avroConfig.asMap(), false);
             }
         }
+
+        cloudEventsValidator.configure(ceSerializerType);
     }
 
     protected Map<String, String> configureConverterType(boolean isKey, Map<String, String> config) {
@@ -377,7 +379,7 @@ public class CloudEventsConverter implements Converter {
                     // The conversion back thus must be schemaless.
                     // If data are in schema/payload envelope they are extracted
                     final SchemaAndValue connectData = jsonCloudEventsConverter.toConnectData(topic, value);
-                    cloudEventsValidator.verifyIsCloudEvent(connectData, ceSerializerType);
+                    cloudEventsValidator.verifyIsCloudEvent(connectData);
 
                     final JsonNode jsonValue = jsonDeserializer.deserialize(topic, value);
                     SchemaAndValue dataField = reconvertData(topic, jsonValue.get(CloudEventsMaker.FieldName.DATA), dataSerializerType, enableJsonSchemas);
@@ -392,7 +394,7 @@ public class CloudEventsConverter implements Converter {
                 // First reconvert the whole CloudEvents
                 // Then reconvert the "data" field
                 SchemaAndValue ceSchemaAndValue = avroConverter.toConnectData(topic, value);
-                cloudEventsValidator.verifyIsCloudEvent(ceSchemaAndValue, ceSerializerType);
+                cloudEventsValidator.verifyIsCloudEvent(ceSchemaAndValue);
                 Schema incompleteSchema = ceSchemaAndValue.schema();
                 Struct ceValue = (Struct) ceSchemaAndValue.value();
                 byte[] data = ceValue.getBytes(CloudEventsMaker.FieldName.DATA);
