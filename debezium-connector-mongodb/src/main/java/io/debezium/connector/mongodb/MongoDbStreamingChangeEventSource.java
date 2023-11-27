@@ -146,33 +146,11 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
 
     private void readChangeStream(MongoClient client, ReplicaSet replicaSet, ChangeEventSourceContext context,
                                   MongoDbOffsetContext offsetContext) {
+        LOGGER.info("Reading change stream for '{}'", replicaSet);
         final ReplicaSetPartition rsPartition = effectiveOffset.getReplicaSetPartition(replicaSet);
         final ReplicaSetOffsetContext rsOffsetContext = effectiveOffset.getReplicaSetOffsetContext(replicaSet);
+        final ChangeStreamIterable<BsonDocument> rsChangeStream = initChangeStream(client, rsOffsetContext);
 
-        LOGGER.info("Reading change stream for '{}'", replicaSet);
-
-        final ChangeStreamIterable<BsonDocument> rsChangeStream = MongoUtil.openChangeStream(client, taskContext);
-        if (taskContext.getCaptureMode().isFullUpdate()) {
-            rsChangeStream.fullDocument(FullDocument.UPDATE_LOOKUP);
-        }
-        if (taskContext.getCaptureMode().isIncludePreImage()) {
-            rsChangeStream.fullDocumentBeforeChange(FullDocumentBeforeChange.WHEN_AVAILABLE);
-        }
-        if (rsOffsetContext.lastResumeToken() != null) {
-            LOGGER.info("Resuming streaming from token '{}'", rsOffsetContext.lastResumeToken());
-
-            final BsonDocument doc = new BsonDocument();
-            doc.put("_data", new BsonString(rsOffsetContext.lastResumeToken()));
-            rsChangeStream.resumeAfter(doc);
-        }
-        else if (rsOffsetContext.lastTimestamp() != null) {
-            LOGGER.info("Resuming streaming from operation time '{}'", rsOffsetContext.lastTimestamp());
-            rsChangeStream.startAtOperationTime(rsOffsetContext.lastTimestamp());
-        }
-
-        if (connectorConfig.getCursorMaxAwaitTime() > 0) {
-            rsChangeStream.maxAwaitTime(connectorConfig.getCursorMaxAwaitTime(), TimeUnit.MILLISECONDS);
-        }
 
         final List<ChangeStreamDocument<BsonDocument>> fragmentBuffer = new ArrayList<>(16);
 
@@ -273,10 +251,37 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                     catch (InterruptedException e) {
                         break;
                     }
-
                 }
             }
         }
+    }
+
+    protected ChangeStreamIterable<BsonDocument> initChangeStream(MongoClient client, ReplicaSetOffsetContext offsetContext) {
+        final ChangeStreamIterable<BsonDocument> stream = MongoUtil.openChangeStream(client, taskContext);
+
+        if (taskContext.getCaptureMode().isFullUpdate()) {
+            stream.fullDocument(FullDocument.UPDATE_LOOKUP);
+        }
+        if (taskContext.getCaptureMode().isIncludePreImage()) {
+            stream.fullDocumentBeforeChange(FullDocumentBeforeChange.WHEN_AVAILABLE);
+        }
+        if (offsetContext.lastResumeToken() != null) {
+            LOGGER.info("Resuming streaming from token '{}'", offsetContext.lastResumeToken());
+
+            final BsonDocument doc = new BsonDocument();
+            doc.put("_data", new BsonString(offsetContext.lastResumeToken()));
+            stream.resumeAfter(doc);
+        }
+        else if (offsetContext.lastTimestamp() != null) {
+            LOGGER.info("Resuming streaming from operation time '{}'", offsetContext.lastTimestamp());
+            stream.startAtOperationTime(offsetContext.lastTimestamp());
+        }
+
+        if (connectorConfig.getCursorMaxAwaitTime() > 0) {
+            stream.maxAwaitTime(connectorConfig.getCursorMaxAwaitTime(), TimeUnit.MILLISECONDS);
+        }
+        
+        return stream;
     }
 
     protected MongoDbOffsetContext emptyOffsets(MongoDbConnectorConfig connectorConfig) {
