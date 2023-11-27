@@ -1046,7 +1046,7 @@ handlerCloseStatement
     ;
 
 singleUpdateStatement
-    : UPDATE priority=LOW_PRIORITY? IGNORE? tableName (AS? uid)?
+    : UPDATE priority=LOW_PRIORITY? IGNORE? tableSources (AS? uid)?
       SET updatedElement (',' updatedElement)*
       (WHERE expression)? orderByClause? limitClause?
     ;
