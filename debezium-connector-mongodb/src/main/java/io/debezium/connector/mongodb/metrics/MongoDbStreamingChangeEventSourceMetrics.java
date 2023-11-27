@@ -9,8 +9,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.bson.BsonDocument;
-
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
 
 import io.debezium.annotation.ThreadSafe;
@@ -72,7 +70,7 @@ public class MongoDbStreamingChangeEventSourceMetrics extends DefaultStreamingCh
         return numberOfEmptyPolls.get();
     }
 
-    public void onSourceEventPolled(ChangeStreamDocument<BsonDocument> event, Clock clock, Instant prePollTimestamp) {
+    public void onSourceEventPolled(ChangeStreamDocument<?> event, Clock clock, Instant prePollTimestamp) {
         var now = clock.currentTimeAsInstant();
         var duration = Duration.between(prePollTimestamp, now).toMillis();
 
