@@ -5,14 +5,10 @@
  */
 package io.debezium.connector.mongodb;
 
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
-import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
 
 import org.bson.BsonDocument;
 import org.bson.BsonString;
@@ -26,10 +22,10 @@ import com.mongodb.client.model.changestream.ChangeStreamDocument;
 import com.mongodb.client.model.changestream.FullDocument;
 import com.mongodb.client.model.changestream.FullDocumentBeforeChange;
 
-import io.debezium.DebeziumException;
 import io.debezium.connector.mongodb.connection.ConnectionContext;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.connector.mongodb.connection.ReplicaSet;
+import io.debezium.connector.mongodb.events.SplitEventHandler;
 import io.debezium.connector.mongodb.metrics.MongoDbStreamingChangeEventSourceMetrics;
 import io.debezium.connector.mongodb.recordemitter.MongoDbChangeRecordEmitter;
 import io.debezium.pipeline.ErrorHandler;
@@ -149,10 +145,8 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         LOGGER.info("Reading change stream for '{}'", replicaSet);
         final ReplicaSetPartition rsPartition = effectiveOffset.getReplicaSetPartition(replicaSet);
         final ReplicaSetOffsetContext rsOffsetContext = effectiveOffset.getReplicaSetOffsetContext(replicaSet);
+        final SplitEventHandler<BsonDocument> splitHandler = new SplitEventHandler<>();
         final ChangeStreamIterable<BsonDocument> rsChangeStream = initChangeStream(client, rsOffsetContext);
-
-
-        final List<ChangeStreamDocument<BsonDocument>> fragmentBuffer = new ArrayList<>(16);
 
         try (MongoChangeStreamCursor<ChangeStreamDocument<BsonDocument>> cursor = rsChangeStream.cursor()) {
             // In Replicator, this used cursor.hasNext() but this is a blocking call and I observed that this can
@@ -171,39 +165,19 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                 if (event != null) {
                     LOGGER.trace("Arrived Change Stream event: {}", event);
                     noMessageIterations = 0;
-                    var split = event.getSplitEvent();
-
-                    if (split != null) {
-                        var currentFragment = split.getFragment();
-                        var totalFragments = split.getOf();
-                        LOGGER.trace("Change Stream event is a fragment: {} of {}", currentFragment, totalFragments);
-                        fragmentBuffer.add(event);
-
-                        // move to the next fragment if expected
-                        if (currentFragment != totalFragments) {
+                    try {
+                        var maybeEvent = splitHandler.handle(event);
+                        if (maybeEvent.isEmpty()) {
                             continue;
                         }
+                        final var completeEvent = maybeEvent.get();
 
-                        // reconstruct the event
-                        event = mergeEventFragments(fragmentBuffer);
+                        rsOffsetContext.changeStreamEvent(maybeEvent.get());
+                        CollectionId collectionId = new CollectionId(
+                                replicaSet.replicaSetName(),
+                                completeEvent.getNamespace().getDatabaseName(),
+                                completeEvent.getNamespace().getCollectionName());
 
-                        // clear the fragment buffer
-                        fragmentBuffer.clear();
-                    }
-
-                    if (split == null && !fragmentBuffer.isEmpty()) {
-                        LOGGER.error("Expected event fragment but a new event arrived");
-                        errorHandler.setProducerThrowable(new DebeziumException("Missing event fragment"));
-                        return;
-                    }
-
-                    rsOffsetContext.changeStreamEvent(event);
-                    CollectionId collectionId = new CollectionId(
-                            replicaSet.replicaSetName(),
-                            event.getNamespace().getDatabaseName(),
-                            event.getNamespace().getCollectionName());
-
-                    try {
                         // Note that this will trigger a heartbeat request
                         dispatcher.dispatchDataChangeEvent(
                                 rsPartition,
@@ -212,7 +186,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                                         rsPartition,
                                         rsOffsetContext,
                                         clock,
-                                        event, connectorConfig));
+                                        completeEvent, connectorConfig));
                     }
                     catch (Exception e) {
                         errorHandler.setProducerThrowable(e);
@@ -280,7 +254,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         if (connectorConfig.getCursorMaxAwaitTime() > 0) {
             stream.maxAwaitTime(connectorConfig.getCursorMaxAwaitTime(), TimeUnit.MILLISECONDS);
         }
-        
+
         return stream;
     }
 
@@ -290,46 +264,5 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                 new SourceInfo(connectorConfig),
                 new TransactionContext(),
                 new MongoDbIncrementalSnapshotContext<>(false));
-    }
-
-    @SuppressWarnings("DuplicatedCode")
-    private static ChangeStreamDocument<BsonDocument> mergeEventFragments(List<ChangeStreamDocument<BsonDocument>> events) {
-        var operationTypeString = firstOrNull(events, ChangeStreamDocument::getOperationTypeString);
-        var resumeToken = events.get(events.size() - 1).getResumeToken();
-        var namespaceDocument = firstOrNull(events, ChangeStreamDocument::getNamespaceDocument);
-        var destinationNamespaceDocument = firstOrNull(events, ChangeStreamDocument::getDestinationNamespaceDocument);
-        var fullDocument = firstOrNull(events, ChangeStreamDocument::getFullDocument);
-        var fullDocumentBeforeChange = firstOrNull(events, ChangeStreamDocument::getFullDocumentBeforeChange);
-        var documentKey = firstOrNull(events, ChangeStreamDocument::getDocumentKey);
-        var clusterTime = firstOrNull(events, ChangeStreamDocument::getClusterTime);
-        var updateDescription = firstOrNull(events, ChangeStreamDocument::getUpdateDescription);
-        var txnNumber = firstOrNull(events, ChangeStreamDocument::getTxnNumber);
-        var lsid = firstOrNull(events, ChangeStreamDocument::getLsid);
-        var wallTime = firstOrNull(events, ChangeStreamDocument::getWallTime);
-        var extraElements = firstOrNull(events, ChangeStreamDocument::getExtraElements);
-
-        return new ChangeStreamDocument<>(
-                operationTypeString,
-                resumeToken,
-                namespaceDocument,
-                destinationNamespaceDocument,
-                fullDocument,
-                fullDocumentBeforeChange,
-                documentKey,
-                clusterTime,
-                updateDescription,
-                txnNumber,
-                lsid,
-                wallTime,
-                null,
-                extraElements);
-    }
-
-    private static <T> T firstOrNull(Collection<ChangeStreamDocument<BsonDocument>> events, Function<ChangeStreamDocument<BsonDocument>, T> getter) {
-        return events.stream()
-                .map(getter)
-                .filter(Objects::nonNull)
-                .findFirst()
-                .orElse(null);
     }
 }
