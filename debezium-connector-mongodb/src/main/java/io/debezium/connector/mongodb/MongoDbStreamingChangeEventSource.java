@@ -73,10 +73,15 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
 
     @Override
     public void init(MongoDbOffsetContext offsetContext) {
-
         this.effectiveOffset = offsetContext == null ? emptyOffsets(connectorConfig) : offsetContext;
     }
 
+    /**
+     *
+     * @param context contextual information for this source's execution
+     * @param partition the source partition from which the changes should be streamed
+     * @param offsetContext unused as effective offset is build by {@link #init(MongoDbOffsetContext)}
+     */
     @Override
     public void execute(ChangeEventSourceContext context, MongoDbPartition partition, MongoDbOffsetContext offsetContext)
             throws InterruptedException {
@@ -84,11 +89,11 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
 
         if (validReplicaSets.size() == 1) {
             // Streams the replica-set changes in the current thread
-            streamChangesForReplicaSet(context, partition, validReplicaSets.get(0), offsetContext);
+            streamChangesForReplicaSet(context, partition, validReplicaSets.get(0));
         }
         else if (validReplicaSets.size() > 1) {
             // Starts a thread for each replica-set and executes the streaming process
-            streamChangesForReplicaSets(context, partition, validReplicaSets, offsetContext);
+            streamChangesForReplicaSets(context, partition, validReplicaSets);
         }
     }
 
@@ -97,11 +102,10 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         return effectiveOffset;
     }
 
-    private void streamChangesForReplicaSet(ChangeEventSourceContext context, MongoDbPartition partition,
-                                            ReplicaSet replicaSet, MongoDbOffsetContext offsetContext) {
+    private void streamChangesForReplicaSet(ChangeEventSourceContext context, MongoDbPartition partition, ReplicaSet replicaSet) {
         try (MongoDbConnection mongo = connections.get(replicaSet, partition)) {
             mongo.execute("read from change stream on '" + replicaSet + "'", client -> {
-                readChangeStream(client, replicaSet, context, offsetContext);
+                readChangeStream(client, replicaSet, context);
             });
         }
         catch (Throwable t) {
@@ -110,8 +114,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         }
     }
 
-    private void streamChangesForReplicaSets(ChangeEventSourceContext context, MongoDbPartition partition,
-                                             List<ReplicaSet> replicaSets, MongoDbOffsetContext offsetContext) {
+    private void streamChangesForReplicaSets(ChangeEventSourceContext context, MongoDbPartition partition, List<ReplicaSet> replicaSets) {
         final int threads = replicaSets.size();
         final ExecutorService executor = Threads.newFixedThreadPool(MongoDbConnector.class, taskContext.serverName(), "replicator-streaming", threads);
         final CountDownLatch latch = new CountDownLatch(threads);
@@ -121,7 +124,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         replicaSets.forEach(replicaSet -> {
             executor.submit(() -> {
                 try {
-                    streamChangesForReplicaSet(context, partition, replicaSet, offsetContext);
+                    streamChangesForReplicaSet(context, partition, replicaSet);
                 }
                 finally {
                     latch.countDown();
@@ -140,8 +143,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         executor.shutdown();
     }
 
-    private void readChangeStream(MongoClient client, ReplicaSet replicaSet, ChangeEventSourceContext context,
-                                  MongoDbOffsetContext offsetContext) {
+    private void readChangeStream(MongoClient client, ReplicaSet replicaSet, ChangeEventSourceContext context) {
         LOGGER.info("Reading change stream for '{}'", replicaSet);
         final ReplicaSetPartition rsPartition = effectiveOffset.getReplicaSetPartition(replicaSet);
         final ReplicaSetOffsetContext rsOffsetContext = effectiveOffset.getReplicaSetOffsetContext(replicaSet);
