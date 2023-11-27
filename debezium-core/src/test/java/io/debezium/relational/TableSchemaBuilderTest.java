@@ -14,7 +14,6 @@ import java.sql.Types;
 import java.util.Collections;
 import java.util.Properties;
 
-import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode;
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -23,6 +22,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode;
 import io.debezium.config.Configuration;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;

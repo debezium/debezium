@@ -20,13 +20,13 @@ import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
-import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.awaitility.Awaitility;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcValueConverters;
@@ -216,7 +216,7 @@ public class SqlServerConnectionIT {
                     connection.getDefaultValueConverter(),
                     SchemaNameAdjuster.NO_OP, new CustomConverterRegistry(null), SchemaBuilder.struct().build(),
                     FieldNameSelector.defaultSelector(SchemaNameAdjuster.NO_OP), true,
-                    EventConvertingFailureHandlingMode.FAIL);
+                    EventConvertingFailureHandlingMode.WARN);
 
             assertColumnHasNotDefaultValue(table, "int_no_default_not_null");
             assertColumnHasDefaultValue(table, "int_no_default", null, tableSchemaBuilder);
@@ -388,7 +388,7 @@ public class SqlServerConnectionIT {
                     connection.getDefaultValueConverter(),
                     SchemaNameAdjuster.NO_OP, new CustomConverterRegistry(null), SchemaBuilder.struct().build(),
                     FieldNameSelector.defaultSelector(SchemaNameAdjuster.NO_OP), true,
-                    EventConvertingFailureHandlingMode.FAIL);
+                    EventConvertingFailureHandlingMode.WARN);
 
             assertColumnHasNotDefaultValue(table, "int_no_default_not_null");
             assertColumnHasDefaultValue(table, "int_no_default", null, tableSchemaBuilder);
