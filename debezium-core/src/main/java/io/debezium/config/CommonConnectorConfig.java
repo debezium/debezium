@@ -850,9 +850,9 @@ public abstract class CommonConnectorConfig {
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
             .withDescription("Specify how failures during converting of event should be handled, including: "
-                + "'fail' throw an exception that the column of event conversion is failed with unmatched schema type, causing the connector to be stopped. it needs schema recovery to covert successfully; "
-                + "'warn' (the default) the value of column of event that conversion failed will be null and be logged with warn level; "
-                + "'skip' the value of column of event that conversion failed will be null and be logged with debug level.");
+                    + "'fail' throw an exception that the column of event conversion is failed with unmatched schema type, causing the connector to be stopped. it needs schema recovery to covert successfully; "
+                    + "'warn' (the default) the value of column of event that conversion failed will be null and be logged with warn level; "
+                    + "'skip' the value of column of event that conversion failed will be null and be logged with debug level.");
 
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
             .connector(

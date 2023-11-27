@@ -12,7 +12,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -26,6 +25,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.DebeziumException;
 import io.debezium.annotation.Immutable;
 import io.debezium.annotation.ThreadSafe;
+import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode;
 import io.debezium.data.Envelope;
 import io.debezium.data.SchemaUtil;
 import io.debezium.relational.Key.KeyMapper;
@@ -64,7 +64,6 @@ public class TableSchemaBuilder {
     private final CustomConverterRegistry customConverterRegistry;
     private final boolean multiPartitionMode;
     private final EventConvertingFailureHandlingMode eventConvertingFailureHandlingMode;
-
 
     /**
      * Create a new instance of the builder.
