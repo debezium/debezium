@@ -1482,27 +1482,27 @@ Debezium Server is enhanced to support publishing captured change events to nati
 |Default
 |Description
 
-|[[rabbitmq-type]]<<rabbitmq-type, `debezium.sink.type`>>
+|[[rabbitmqstream-type]]<<rabbitmqstream-type, `debezium.sink.type`>>
 |
 |Must be set to `rabbitmqstream`.
 
-|[[rabbitmq-host]]<<rabbitmq-host, `debezium.sink.rabbitmq.connection.host`>>
+|[[rabbitmqstream-host]]<<rabbitmqstream-host, `debezium.sink.rabbitmqstream.connection.host`>>
 | localhost
 |Host of RabbitMQ server.
 
-|[[rabbitmq-port]]<<rabbitmq-port, `debezium.sink.rabbitmq.connection.port`>>
+|[[rabbitmqstream-port]]<<rabbitmqstream-port, `debezium.sink.rabbitmqstream.connection.port`>>
 | 5552
 |Port of RabbitMQ Stream Protocol.
 
-|[[rabbitmq-connection]]<<rabbitmq-connection, `debezium.sink.rabbitmq.connection.*`>>
+|[[rabbitmqstream-connection]]<<rabbitmqstream-connection, `debezium.sink.rabbitmqstream.connection.*`>>
 |
 |The RabbitMQ module supports pass-through configuration.
-The connection https://github.com/rabbitmq/rabbitmq-java-client/blob/main/src/main/java/com/rabbitmq/client/ConnectionFactoryConfigurator.java[configuration properties] are passed to the RabbitMQ client with the prefix removed.
+The connection https://github.com/rabbitmq/rabbitmqstream-java-client/blob/main/src/main/java/com/rabbitmq/client/ConnectionFactoryConfigurator.java[configuration properties] are passed to the RabbitMQ client with the prefix removed.
 
-|[[rabbitmq-ack-timeout]]<<rabbitmq-ack-timeout, `debezium.sink.rabbitmq.ackTimeout`>>
+|[[rabbitmqstream-ack-timeout]]<<rabbitmqstream-ack-timeout, `debezium.sink.rabbitmqstream.ackTimeout`>>
 | 30000
 | Defines the maximum time in milliseconds to wait a confirm from the broker after publishing a message.
-|[[rabbitmq-null-value]]<<rabbitmq-null-value, `debezium.sink.rabbitmq.null.value`>>
+|[[rabbitmqstream-null-value]]<<rabbitmqstream-null-value, `debezium.sink.rabbitmqstream.null.value`>>
 |`default`
 |RabbitMQ does not support the notion of null payloads, as is the case with tombstone events.
 So this string will be used as value for records without a payload.
