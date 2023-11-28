@@ -7,8 +7,12 @@ package io.debezium.connector.jdbc.integration;
 
 import static org.fest.assertions.Assertions.assertThat;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
+import io.debezium.doc.FixFor;
+import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.assertj.db.api.TableAssert;
 import org.assertj.db.type.ValueType;
@@ -347,5 +351,34 @@ public abstract class AbstractJdbcSinkInsertModeTest extends AbstractJdbcSinkTes
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER);
         getSink().assertColumnType(tableAssert, "name", ValueType.TEXT);
         getSink().assertColumnType(tableAssert, "nick_name$", ValueType.TEXT);
+    }
+
+    @FixFor("DBZ-7191")
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    public void testRecordDefaultValueUsedOnlyWithRequiredFieldWithNullValue(SinkRecordFactory factory) {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_KEY.getValue());
+        properties.put(JdbcSinkConnectorConfig.INSERT_MODE, InsertMode.INSERT.getValue());
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server1", "schema", tableName);
+
+        final SinkRecord createRecord = factory.createRecordWithSchemaValue(topicName,
+                (byte) 1,
+                List.of( "optional_with_default_null_value"),
+                List.of(SchemaBuilder.string().defaultValue("default").optional().build()),
+                Arrays.asList(new Object[]{null}));
+
+        consume(createRecord);
+
+        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName(createRecord));
+        tableAssert.exists().hasNumberOfRows(1).hasNumberOfColumns(2);
+
+        getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1);
+        getSink().assertColumnHasNullValue(tableAssert, "optional_with_default_null_value");
     }
 }
