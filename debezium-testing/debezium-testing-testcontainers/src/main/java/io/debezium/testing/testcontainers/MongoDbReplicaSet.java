@@ -332,7 +332,7 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
         await()
                 .atMost(1, MINUTES)
                 .pollDelay(1, SECONDS)
-                .ignoreException(IllegalArgumentException.class)
+                .ignoreException(IllegalStateException.class)
                 .until(() -> tryPrimary().isPresent());
     }
 
