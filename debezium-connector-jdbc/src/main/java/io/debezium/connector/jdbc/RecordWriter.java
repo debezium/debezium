@@ -117,9 +117,17 @@ public class RecordWriter {
     }
 
     private int bindFieldValuesToQuery(SinkRecordDescriptor record, QueryBinder query, int index, Struct source, List<String> fields) {
+
         for (String fieldName : fields) {
             final SinkRecordDescriptor.FieldDescriptor field = record.getFields().get(fieldName);
-            List<ValueBindDescriptor> boundValues = dialect.bindValue(field, index, source.get(fieldName));
+
+            Object value;
+            if (field.getSchema().isOptional()) {
+                value = source.getWithoutDefault(fieldName);
+            } else {
+                value = source.get(fieldName);
+            }
+            List<ValueBindDescriptor> boundValues = dialect.bindValue(field, index, value);
 
             boundValues.forEach(query::bind);
             index += boundValues.size();
