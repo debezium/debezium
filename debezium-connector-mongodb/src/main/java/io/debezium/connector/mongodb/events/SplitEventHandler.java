@@ -18,11 +18,17 @@ import org.slf4j.LoggerFactory;
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
 
 import io.debezium.DebeziumException;
+import io.debezium.connector.mongodb.events.BufferingChangeStreamCursor.ResumableChangeStreamEvent;
 
 public class SplitEventHandler<TResult> {
     private static final Logger LOGGER = LoggerFactory.getLogger(SplitEventHandler.class);
 
     final List<ChangeStreamDocument<TResult>> fragmentBuffer = new ArrayList<>(16);
+
+    public Optional<ChangeStreamDocument<TResult>> handle(ResumableChangeStreamEvent<TResult> event) {
+        var document = event.document.orElseThrow();
+        return handle(document);
+    }
 
     public Optional<ChangeStreamDocument<TResult>> handle(ChangeStreamDocument<TResult> event) {
         var split = event.getSplitEvent();

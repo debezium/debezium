@@ -16,15 +16,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.mongodb.client.ChangeStreamIterable;
-import com.mongodb.client.MongoChangeStreamCursor;
 import com.mongodb.client.MongoClient;
-import com.mongodb.client.model.changestream.ChangeStreamDocument;
 import com.mongodb.client.model.changestream.FullDocument;
 import com.mongodb.client.model.changestream.FullDocumentBeforeChange;
 
 import io.debezium.connector.mongodb.connection.ConnectionContext;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.connector.mongodb.connection.ReplicaSet;
+import io.debezium.connector.mongodb.events.BufferingChangeStreamCursor;
 import io.debezium.connector.mongodb.events.SplitEventHandler;
 import io.debezium.connector.mongodb.metrics.MongoDbStreamingChangeEventSourceMetrics;
 import io.debezium.connector.mongodb.recordemitter.MongoDbChangeRecordEmitter;
@@ -33,7 +32,6 @@ import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.util.Clock;
-import io.debezium.util.DelayStrategy;
 import io.debezium.util.Threads;
 
 /**
@@ -42,8 +40,6 @@ import io.debezium.util.Threads;
 public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSource<MongoDbPartition, MongoDbOffsetContext> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbStreamingChangeEventSource.class);
-
-    private static final int THROTTLE_NO_MESSAGE_BEFORE_PAUSE = 5;
 
     private final MongoDbConnectorConfig connectorConfig;
     private final EventDispatcher<MongoDbPartition, CollectionId> dispatcher;
@@ -150,31 +146,23 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         final SplitEventHandler<BsonDocument> splitHandler = new SplitEventHandler<>();
         final ChangeStreamIterable<BsonDocument> rsChangeStream = initChangeStream(client, rsOffsetContext);
 
-        try (MongoChangeStreamCursor<ChangeStreamDocument<BsonDocument>> cursor = rsChangeStream.cursor()) {
-            // In Replicator, this used cursor.hasNext() but this is a blocking call and I observed that this can
-            // delay the shutdown of the connector by up to 15 seconds or longer. By introducing a Metronome, we
-            // can respond to the stop request much faster and without much overhead.
-            DelayStrategy pause = DelayStrategy.constant(connectorConfig.getPollInterval());
-            int noMessageIterations = 0;
-
+        try (var cursor = BufferingChangeStreamCursor.fromIterable(rsChangeStream, taskContext, streamingMetrics, clock).start()) {
             while (context.isRunning()) {
-                // Use tryNext which will return null if no document is yet available from the cursor.
-                // In this situation if not document is available, we'll pause.
-                var beforeEventPollTime = clock.currentTimeAsInstant();
-                ChangeStreamDocument<BsonDocument> event = cursor.tryNext();
-                streamingMetrics.onSourceEventPolled(event, clock, beforeEventPollTime);
+                var resumableEvent = cursor.tryNext();
+                if (resumableEvent == null) {
+                    continue;
+                }
 
-                if (event != null) {
-                    LOGGER.trace("Arrived Change Stream event: {}", event);
-                    noMessageIterations = 0;
+                if (resumableEvent.hasDocument()) {
+                    LOGGER.trace("Arrived Change Stream event: {}", resumableEvent);
                     try {
-                        var maybeEvent = splitHandler.handle(event);
-                        if (maybeEvent.isEmpty()) {
+                        var event = splitHandler.handle(resumableEvent);
+                        if (event.isEmpty()) {
                             continue;
                         }
-                        final var completeEvent = maybeEvent.get();
+                        final var completeEvent = event.get();
 
-                        rsOffsetContext.changeStreamEvent(maybeEvent.get());
+                        rsOffsetContext.changeStreamEvent(completeEvent);
                         CollectionId collectionId = new CollectionId(
                                 replicaSet.replicaSetName(),
                                 completeEvent.getNamespace().getDatabaseName(),
@@ -196,8 +184,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                     }
                 }
                 else {
-                    // No event was returned, so trigger a heartbeat
-                    noMessageIterations++;
+                    LOGGER.trace("No Change Stream event, triggering heartbeat");
                     try {
                         // Guard against `null` to be protective of issues like SERVER-63772, and situations called out in the Javadocs:
                         // > resume token [...] can be null if the cursor has either not been iterated yet, or the cursor is closed.
@@ -210,11 +197,6 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                         LOGGER.info("Replicator thread is interrupted");
                         Thread.currentThread().interrupt();
                         return;
-                    }
-
-                    if (noMessageIterations >= THROTTLE_NO_MESSAGE_BEFORE_PAUSE) {
-                        noMessageIterations = 0;
-                        pause.sleepWhen(true);
                     }
                 }
 
