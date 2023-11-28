@@ -5,6 +5,9 @@
  */
 package io.debezium.connector.postgresql;
 
+import java.util.HashSet;
+import java.util.Arrays;
+import java.util.Set;
 import io.debezium.connector.postgresql.connection.AbstractReplicationMessageColumn;
 
 /**
@@ -31,6 +34,15 @@ public class UnchangedToastedReplicationMessageColumn extends AbstractReplicatio
     public static final Object UNCHANGED_HSTORE_TOAST_VALUE = new Object();
     public static final Object UNCHANGED_UUID_TOAST_VALUE = new Object();
 
+    private static final Set<Object> UNCHANGED_TOAST_VALUES = new HashSet<>(Arrays.asList(
+            UnchangedToastedReplicationMessageColumn.UNCHANGED_TOAST_VALUE,
+            UnchangedToastedReplicationMessageColumn.UNCHANGED_TEXT_ARRAY_TOAST_VALUE,
+            UnchangedToastedReplicationMessageColumn.UNCHANGED_BINARY_ARRAY_TOAST_VALUE,
+            UnchangedToastedReplicationMessageColumn.UNCHANGED_INT_ARRAY_TOAST_VALUE,
+            UnchangedToastedReplicationMessageColumn.UNCHANGED_BIGINT_ARRAY_TOAST_VALUE,
+            UnchangedToastedReplicationMessageColumn.UNCHANGED_HSTORE_TOAST_VALUE,
+            UnchangedToastedReplicationMessageColumn.UNCHANGED_UUID_TOAST_VALUE
+    ));
     private Object unchangedToastValue;
 
     public UnchangedToastedReplicationMessageColumn(String columnName, PostgresType type, String typeWithModifiers, boolean optional) {
@@ -41,6 +53,10 @@ public class UnchangedToastedReplicationMessageColumn extends AbstractReplicatio
     @Override
     public boolean isToastedColumn() {
         return true;
+    }
+
+    public static boolean isUnchangedToastedValue(Object value) {
+        return UNCHANGED_TOAST_VALUES.contains(value);
     }
 
     @Override

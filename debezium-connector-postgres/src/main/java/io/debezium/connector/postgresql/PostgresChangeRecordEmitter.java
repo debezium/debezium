@@ -181,7 +181,7 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter<P
                     cachedOldToastedValues.put(columnName, value);
                 }
                 else {
-                    if (value == UnchangedToastedReplicationMessageColumn.UNCHANGED_TOAST_VALUE) {
+                    if (UnchangedToastedReplicationMessageColumn.isUnchangedToastedValue(value)) {
                         final Object candidate = cachedOldToastedValues.get(columnName);
                         if (candidate != null) {
                             value = candidate;
