@@ -25,6 +25,7 @@ import io.debezium.connector.mongodb.connection.ConnectionContext;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.connector.mongodb.connection.ReplicaSet;
 import io.debezium.connector.mongodb.events.BufferingChangeStreamCursor;
+import io.debezium.connector.mongodb.events.BufferingChangeStreamCursor.ResumableChangeStreamEvent;
 import io.debezium.connector.mongodb.events.SplitEventHandler;
 import io.debezium.connector.mongodb.metrics.MongoDbStreamingChangeEventSourceMetrics;
 import io.debezium.connector.mongodb.recordemitter.MongoDbChangeRecordEmitter;
@@ -158,7 +159,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
 
                 var result = resumableEvent.document
                         .map(doc -> processChangeStreamDocument(doc, splitHandler, replicaSet, rsPartition, rsOffsetContext))
-                        .orElseGet(() -> errorHandled(() -> dispatchHeartbeatEvent(cursor, rsPartition, rsOffsetContext)));
+                        .orElseGet(() -> errorHandled(() -> dispatchHeartbeatEvent(resumableEvent, rsPartition, rsOffsetContext)));
 
                 if (result == StreamStatus.ERROR) {
                     return;
@@ -208,15 +209,15 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
     }
 
     private void dispatchHeartbeatEvent(
-                                        BufferingChangeStreamCursor<BsonDocument> cursor,
+                                        ResumableChangeStreamEvent<BsonDocument> event,
                                         ReplicaSetPartition rsPartition,
                                         ReplicaSetOffsetContext rsOffsetContext)
             throws InterruptedException {
         LOGGER.trace("No Change Stream event arrived");
         // Guard against `null` to be protective of issues like SERVER-63772, and situations called out in the Javadocs:
         // > resume token [...] can be null if the cursor has either not been iterated yet, or the cursor is closed.
-        if (cursor.getResumeToken() != null) {
-            rsOffsetContext.noEvent(cursor);
+        if (event.resumeToken != null) {
+            rsOffsetContext.noEvent(event);
             dispatcher.dispatchHeartbeatEvent(rsPartition, rsOffsetContext);
         }
     }

@@ -26,6 +26,7 @@ import io.debezium.annotation.Immutable;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.common.BaseSourceInfo;
+import io.debezium.connector.mongodb.events.BufferingChangeStreamCursor.ResumableChangeStreamEvent;
 import io.debezium.util.Collect;
 
 /**
@@ -266,28 +267,39 @@ public final class SourceInfo extends BaseSourceInfo {
         }
     }
 
+    public void noEvent(String replicaSetName, ResumableChangeStreamEvent<BsonDocument> event) {
+        if (event.resumeToken == null || event.hasDocument()) {
+            return;
+        }
+        noEvent(replicaSetName, ResumeTokens.getDataString(event.resumeToken));
+    }
+
     public void noEvent(String replicaSetName, MongoChangeStreamCursor<?> cursor) {
         if (cursor == null || cursor.getResumeToken() == null) {
             return;
         }
-
-        String namespace = "";
-        long wallTime = 0L;
-        String resumeToken = ResumeTokens.getDataString(cursor.getResumeToken());
-        Position position = Position.changeStreamPosition(null, resumeToken, null);
-        positionsByReplicaSetName.put(replicaSetName, position);
-
-        onEvent(replicaSetName, CollectionId.parse(replicaSetName, namespace), position, wallTime);
+        noEvent(replicaSetName, ResumeTokens.getDataString(cursor.getResumeToken()));
     }
 
     public void noEvent(String replicaSetName, BsonTimestamp timestamp) {
         if (timestamp == null) {
             return;
         }
+        Position position = Position.changeStreamPosition(timestamp, null, null);
+        noEvent(replicaSetName, position);
+    }
 
+    private void noEvent(String replicaSetName, String resumeToken) {
+        if (resumeToken == null) {
+            return;
+        }
+        Position position = Position.changeStreamPosition(null, resumeToken, null);
+        noEvent(replicaSetName, position);
+    }
+
+    private void noEvent(String replicaSetName, Position position) {
         String namespace = "";
         long wallTime = 0L;
-        Position position = Position.changeStreamPosition(timestamp, null, null);
         positionsByReplicaSetName.put(replicaSetName, position);
 
         onEvent(replicaSetName, CollectionId.parse(replicaSetName, namespace), position, wallTime);
