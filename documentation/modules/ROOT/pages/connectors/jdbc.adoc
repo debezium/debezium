@@ -788,6 +788,21 @@ When the default setting (`false`) is in effect, an `INSERT` or `UPSERT` operati
 Note that if you set `_consumer.max.poll.records_` in the Connect worker properties to a value lower than `_batch.size_`, batch processing will be caped by `_consumer.max.poll.records_` and the desired `_batch.size_` won’t be reached.
 You can also configure the connector’s underlying consumer’s `_max.poll.records_` using `_consumer.override.max.poll.records_` in the connector configuration.
 ====
+
+|[[jdbc-property-field-include-list]]<<jdbc-property-field-include-list, `+field.include.list+`>>
+|_empty string_
+|An optional, comma-separated list of field names that match the fully-qualified names of fields to include from the change event value.
+Fully-qualified names for fields are of the form `_fieldName_` or `_topicName_:_fieldName_`. +
+ +
+If you include this property in the configuration, do not set the `field.exclude.list` property.
+
+|[[jdbc-property-field-exclude-list]]<<jdbc-property-field-exclude-list, `+field.exclude.list+`>>
+|_empty string_
+|An optional, comma-separated list of field names that match the fully-qualified names of fields to exclude from the change event value.
+Fully-qualified names for fields are of the form `_fieldName_` or `_topicName_:_fieldName_`. +
+ +
+If you include this property in the configuration, do not set the `field.include.list` property.
+
 |===
 
 [[jdbc-connector-properties-extendable]]
