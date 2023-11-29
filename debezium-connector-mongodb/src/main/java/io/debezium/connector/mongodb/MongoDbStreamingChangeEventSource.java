@@ -214,12 +214,8 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                                         ReplicaSetOffsetContext rsOffsetContext)
             throws InterruptedException {
         LOGGER.trace("No Change Stream event arrived");
-        // Guard against `null` to be protective of issues like SERVER-63772, and situations called out in the Javadocs:
-        // > resume token [...] can be null if the cursor has either not been iterated yet, or the cursor is closed.
-        if (event.resumeToken != null) {
-            rsOffsetContext.noEvent(event);
-            dispatcher.dispatchHeartbeatEvent(rsPartition, rsOffsetContext);
-        }
+        rsOffsetContext.noEvent(event);
+        dispatcher.dispatchHeartbeatEvent(rsPartition, rsOffsetContext);
     }
 
     private StreamStatus errorHandled(BlockingRunnable action) {
