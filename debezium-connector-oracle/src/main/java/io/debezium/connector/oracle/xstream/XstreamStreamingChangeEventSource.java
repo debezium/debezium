@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.connector.oracle.OracleConnection;
+import io.debezium.connector.oracle.OracleConnection.OracleConnectionConfiguration;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleDatabaseVersion;
@@ -107,7 +108,7 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
                 TableNameCaseSensitivity.INSENSITIVE.equals(connectorConfig.getAdapter().getTableNameCaseSensitivity(jdbcConnection)),
                 this, streamingMetrics);
 
-        try (OracleConnection xsConnection = new OracleConnection(jdbcConnection.config())) {
+        try (OracleConnection xsConnection = new OracleConnection(new OracleConnectionConfiguration(jdbcConnection.config()))) {
             try {
                 // 1. connect
                 final byte[] startPosition;
