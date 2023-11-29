@@ -104,7 +104,6 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
     private Scn lastProcessedScn = Scn.NULL;
     private boolean sequenceUnavailable = false;
 
-
     private final Set<String> abandonedTransactionsCache = new HashSet<>();
 
     public AbstractLogMinerEventProcessor(ChangeEventSourceContext context,
@@ -134,7 +133,6 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
     protected Set<String> getAbandonedTransactionsCache() {
         return abandonedTransactionsCache;
     }
-
 
     protected OracleConnectorConfig getConfig() {
         return connectorConfig;
@@ -621,7 +619,8 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
     protected void cleanupAfterTransactionRemovedFromCache(T transaction, boolean isAbandoned) {
         if (isAbandoned) {
             abandonedTransactionsCache.remove(transaction.getTransactionId());
-        } else {
+        }
+        else {
             abandonedTransactionsCache.add(transaction.getTransactionId());
         }
     }
