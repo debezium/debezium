@@ -14,9 +14,11 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -102,6 +104,9 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
     private Scn lastProcessedScn = Scn.NULL;
     private boolean sequenceUnavailable = false;
 
+
+    private final Set<String> abandonedTransactionsCache = new HashSet<>();
+
     public AbstractLogMinerEventProcessor(ChangeEventSourceContext context,
                                           OracleConnectorConfig connectorConfig,
                                           OracleDatabaseSchema schema,
@@ -125,6 +130,11 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         this.sqlQuery = LogMinerQueryBuilder.build(connectorConfig);
         this.jdbcConnection = jdbcConnection;
     }
+
+    protected Set<String> getAbandonedTransactionsCache() {
+        return abandonedTransactionsCache;
+    }
+
 
     protected OracleConnectorConfig getConfig() {
         return connectorConfig;
@@ -450,7 +460,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                         + "Offset Commit SCN {}, Transaction Commit SCN {}, Last Seen Commit SCN {}.",
                         transactionId, offsetContext.getCommitScn(), commitScn, lastCommittedScn);
             }
-            removeTransactionAndEventsFromCache(transaction);
+            cleanupAfterTransactionRemovedFromCache(transaction, false);
             metrics.setActiveTransactionCount(getTransactionCache().size());
             return;
         }
@@ -559,7 +569,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         metrics.calculateLagFromSource(row.getChangeTime());
 
         finalizeTransactionCommit(transactionId, commitScn);
-        removeTransactionAndEventsFromCache(transaction);
+        cleanupAfterTransactionRemovedFromCache(transaction, false);
 
         metrics.incrementCommittedTransactionCount();
         metrics.setActiveTransactionCount(getTransactionCache().size());
@@ -575,7 +585,10 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
      * @param row the result set row
      */
     protected void handleCommitNotFoundInBuffer(LogMinerEventRow row) {
-        // no-op
+        // In the event the transaction was prematurely removed due to retention policy, when we do find
+        // the transaction's commit in the logs in the future, we should remove the entry if it exists
+        // to avoid any potential memory-leak with the cache.
+        abandonedTransactionsCache.remove(row.getTransactionId());
     }
 
     /**
@@ -585,7 +598,10 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
      * @param row the result set row
      */
     protected void handleRollbackNotFoundInBuffer(LogMinerEventRow row) {
-        // no-op
+        // In the event the transaction was prematurely removed due to retention policy, when we do find
+        // the transaction's rollback in the logs in the future, we should remove the entry if it exists
+        // to avoid any potential memory-leak with the cache.
+        abandonedTransactionsCache.remove(row.getTransactionId());
     }
 
     /**
@@ -597,11 +613,18 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
     protected abstract T getAndRemoveTransactionFromCache(String transactionId);
 
     /**
-     * Removes the transaction and all its associated event entries from the connector's caches.
+     * Removes the items associated with the transaction (e.g. events if they are stored independently.
      *
      * @param transaction the transaction instance, should never be {@code null}
+     * @param isAbandoned whether the removal is because transaction is being abandoned
      */
-    protected abstract void removeTransactionAndEventsFromCache(T transaction);
+    protected void cleanupAfterTransactionRemovedFromCache(T transaction, boolean isAbandoned) {
+        if (isAbandoned) {
+            abandonedTransactionsCache.remove(transaction.getTransactionId());
+        } else {
+            abandonedTransactionsCache.add(transaction.getTransactionId());
+        }
+    }
 
     /**
      * Get an iterator over the events that are part of the specified transaction.
@@ -1388,6 +1411,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         LOGGER.warn("Transaction {} exceeds maximum allowed number of events, transaction will be abandoned.", transaction.getTransactionId());
         metrics.incrementWarningCount();
         getAndRemoveTransactionFromCache(transaction.getTransactionId());
+        abandonedTransactionsCache.add(transaction.getTransactionId());
         metrics.incrementOversizedTransactionCount();
     }
 
@@ -1412,16 +1436,13 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                                     entry.getKey(), entry.getValue().getStartScn(), entry.getValue().getChangeTime(),
                                     entry.getValue().getRedoThreadId(), entry.getValue().getNumberOfEvents());
 
-                            if (getAbandonedTransactionsCache() != null) {
-                                getAbandonedTransactionsCache().add(entry.getKey());
-                            }
+                            cleanupAfterTransactionRemovedFromCache(entry.getValue(), true);
                             iterator.remove();
 
                             metrics.addAbandonedTransactionId(entry.getKey());
                             metrics.setActiveTransactionCount(getTransactionCache().size());
                         }
                     }
-
 
                     // Update the oldest scn metric are transaction abandonment
                     final Optional<T> oldestTransaction = getOldestTransactionInCache();

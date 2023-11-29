@@ -33,5 +33,4 @@ public interface LogMinerEventProcessor extends AutoCloseable {
      */
     void abandonTransactions(Duration retention) throws InterruptedException;
 
-    Set<String> getAbandonedTransactionsCache();
 }

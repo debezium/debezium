@@ -14,7 +14,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -205,9 +204,9 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
     }
 
     @Override
-    protected void removeTransactionAndEventsFromCache(InfinispanTransaction transaction) {
+    protected void cleanupAfterTransactionRemovedFromCache(InfinispanTransaction transaction, boolean isAbandoned) {
+        super.cleanupAfterTransactionRemovedFromCache(transaction, isAbandoned);
         removeEventsWithTransaction(transaction);
-        getTransactionCache().remove(transaction.getTransactionId());
     }
 
     @Override
@@ -247,6 +246,7 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
 
     @Override
     protected void finalizeTransactionCommit(String transactionId, Scn commitScn) {
+        getAbandonedTransactionsCache().remove(transactionId);
         // cache recently committed transactions by transaction id
         if (getConfig().isLobEnabled()) {
             getProcessedTransactionsCache().put(transactionId, commitScn.toString());
@@ -260,6 +260,7 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
             removeEventsWithTransaction(transaction);
             getTransactionCache().remove(transactionId);
         }
+        getAbandonedTransactionsCache().remove(transactionId);
         if (getConfig().isLobEnabled()) {
             getProcessedTransactionsCache().put(transactionId, rollbackScn.toString());
         }
@@ -282,6 +283,10 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
 
     @Override
     protected void addToTransaction(String transactionId, LogMinerEventRow row, Supplier<LogMinerEvent> eventSupplier) {
+        if (getAbandonedTransactionsCache().contains(transactionId)) {
+            LOGGER.warn("Event for abandoned transaction {}, skipped.", transactionId);
+            return;
+        }
         if (!isRecentlyProcessed(transactionId)) {
             InfinispanTransaction transaction = getTransactionCache().get(transactionId);
             if (transaction == null) {
@@ -341,7 +346,7 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
         }
 
         if (!minCacheScn.isNull()) {
-            abandonTransactions(getConfig().getLogMiningTransactionRetention());            
+            abandonTransactions(getConfig().getLogMiningTransactionRetention());
             purgeCache(minCacheScn);
         }
         else {
@@ -421,11 +426,6 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
             getEventCache().remove(transaction.getEventId(i));
         }
         inMemoryPendingTransactionsCache.remove(transaction.getTransactionId());
-    }
-
-    @Override
-    public Set<String> getAbandonedTransactionsCache() {
-        return null;
     }
 
     /**
