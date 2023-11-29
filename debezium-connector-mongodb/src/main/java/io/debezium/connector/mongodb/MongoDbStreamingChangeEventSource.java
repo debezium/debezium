@@ -212,23 +212,30 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                         return;
                     }
 
-                    try {
-                        if (noMessageIterations >= THROTTLE_NO_MESSAGE_BEFORE_PAUSE) {
-                            noMessageIterations = 0;
-                            pause.sleepWhen(true);
-                        }
-                        if (context.isPaused()) {
-                            LOGGER.info("Streaming will now pause");
-                            context.streamingPaused();
-                            context.waitSnapshotCompletion();
-                            LOGGER.info("Streaming resumed");
-                        }
-                    }
-                    catch (InterruptedException e) {
-                        break;
+                    if (noMessageIterations >= THROTTLE_NO_MESSAGE_BEFORE_PAUSE) {
+                        noMessageIterations = 0;
+                        pause.sleepWhen(true);
                     }
                 }
+
+                try {
+                    waitWhenStreamingPaused(context);
+                }
+                catch (InterruptedException e) {
+                    LOGGER.info("Replicator thread is interrupted");
+                    Thread.currentThread().interrupt();
+                    return;
+                }
             }
+        }
+    }
+
+    private void waitWhenStreamingPaused(ChangeEventSourceContext context) throws InterruptedException {
+        if (context.isPaused()) {
+            LOGGER.info("Streaming will now pause");
+            context.streamingPaused();
+            context.waitSnapshotCompletion();
+            LOGGER.info("Streaming resumed");
         }
     }
 
