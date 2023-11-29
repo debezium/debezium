@@ -217,7 +217,7 @@ public class DebeziumMySqlConnectorResourceIT {
 
         RestExtensionTestInfrastructure.getDebeziumContainer().ensureConnectorState(connectorName, Connector.State.RUNNING);
         RestExtensionTestInfrastructure.waitForConnectorTaskStatus(connectorName, 0, Connector.State.RUNNING);
-        RestExtensionTestInfrastructure.waitForStreamingRunning("mysql", "dbserver1");
+        RestExtensionTestInfrastructure.getDebeziumContainer().waitForStreamingRunning("mysql", config.asProperties().getProperty("topic.prefix"));
 
         given()
                 .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
@@ -228,8 +228,8 @@ public class DebeziumMySqlConnectorResourceIT {
                 .body("name", equalTo(connectorName))
                 .body("connector.metrics.Connected", equalTo("true"))
                 .body("tasks[0].id", equalTo(0))
-                .body("tasks[0].namespaces[0].metrics.MilliSecondsSinceLastEvent", equalTo("-1"))
-                .body("tasks[0].namespaces[0].metrics.TotalNumberOfEventsSeen", equalTo("0"));
+                .body("tasks[0].namespaces[0].metrics.MilliSecondsSinceLastEvent", equalTo("0"))
+                .body("tasks[0].namespaces[0].metrics.TotalNumberOfEventsSeen", equalTo("14234"));
     }
 
     public static ConnectorConfiguration getMySqlConnectorConfiguration(int id, String... options) {

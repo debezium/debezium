@@ -13,6 +13,15 @@ import java.util.Objects;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
+import javax.management.InstanceNotFoundException;
+import javax.management.JMException;
+import javax.management.MBeanServerConnection;
+import javax.management.MalformedObjectNameException;
+import javax.management.ObjectName;
+import javax.management.remote.JMXConnector;
+import javax.management.remote.JMXConnectorFactory;
+import javax.management.remote.JMXServiceURL;
+
 import org.awaitility.Awaitility;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.KafkaContainer;
@@ -44,6 +53,7 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
     private static final String DEBEZIUM_NIGHTLY_TAG = "nightly";
 
     private static final int KAFKA_CONNECT_PORT = 8083;
+    private static final Integer DEFAULT_JMX_PORT = 13333;
     private static final Duration DEBEZIUM_CONTAINER_STARTUP_TIMEOUT = Duration.ofSeconds(waitTimeForRecords() * 30);
     private static final String TEST_PROPERTY_PREFIX = "debezium.test.";
     public static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
@@ -114,9 +124,16 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
         return self();
     }
 
-    public DebeziumContainer enableJolokia() {
-        withEnv("ENABLE_JOLOKIA", "true");
-        withExposedPorts(8778);
+    public DebeziumContainer enableJMX() {
+        return enableJMX(DEFAULT_JMX_PORT);
+    }
+
+    public DebeziumContainer enableJMX(Integer jmxPort) {
+        withEnv("JMXHOST", "localhost")
+                .withEnv("JMXPORT", String.valueOf(jmxPort))
+                .withEnv("JMXAUTH", "false")
+                .withEnv("JMXSSL", "false");
+        addFixedExposedPort(jmxPort, jmxPort);
         return self();
     }
 
@@ -398,6 +415,45 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
         Awaitility.await()
                 .atMost(waitTimeForRecords() * 5L, TimeUnit.SECONDS)
                 .until(() -> Objects.equals(expectedValue, getConnectorConfigProperty(connectorName, propertyName)));
+    }
+
+    public void waitForStreamingRunning(String connectorTypeId, String server) throws InterruptedException {
+        waitForStreamingRunning(connectorTypeId, server, "streaming");
+    }
+
+    public void waitForStreamingRunning(String connectorTypeId, String server, String contextName) {
+        waitForStreamingRunning(connectorTypeId, server, contextName, null);
+    }
+
+    public void waitForStreamingRunning(String connectorTypeId, String server, String contextName, String task) {
+        Awaitility.await()
+                .atMost(120, TimeUnit.SECONDS)
+                .ignoreException(InstanceNotFoundException.class)
+                .until(() -> isStreamingRunning(connectorTypeId, server, contextName, task));
+    }
+
+    public boolean isStreamingRunning(String connectorTypeId, String server, String contextName, String task) throws JMException {
+        MBeanServerConnection mBeanServerConnection;
+        try {
+            JMXServiceURL url = new JMXServiceURL("service:jmx:rmi:///jndi/rmi://localhost:" + DEFAULT_JMX_PORT + "/jmxrmi");
+            try (JMXConnector connectorJmx = JMXConnectorFactory.connect(url, null)) {
+                mBeanServerConnection = connectorJmx.getMBeanServerConnection();
+                ObjectName streamingMetricsObjectName = task != null ? getStreamingMetricsObjectName(connectorTypeId, server, contextName, task)
+                        : getStreamingMetricsObjectName(connectorTypeId, server, contextName);
+                return (boolean) mBeanServerConnection.getAttribute(streamingMetricsObjectName, "Connected");
+            }
+        }
+        catch (IOException e) {
+            throw new RuntimeException("Unable to connect to JMX service", e);
+        }
+    }
+
+    private static ObjectName getStreamingMetricsObjectName(String connector, String server, String context) throws MalformedObjectNameException {
+        return new ObjectName("debezium." + connector + ":type=connector-metrics,context=" + context + ",server=" + server);
+    }
+
+    private static ObjectName getStreamingMetricsObjectName(String connector, String server, String context, String task) throws MalformedObjectNameException {
+        return new ObjectName("debezium." + connector + ":type=connector-metrics,context=" + context + ",server=" + server + ",task=" + task);
     }
 
     public static ConnectorConfiguration getPostgresConnectorConfiguration(PostgreSQLContainer<?> postgresContainer, int id, String... options) {
