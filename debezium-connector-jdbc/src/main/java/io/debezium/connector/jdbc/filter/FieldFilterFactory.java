@@ -5,12 +5,13 @@
  */
 package io.debezium.connector.jdbc.filter;
 
+import io.debezium.util.Strings;
+
 /**
  * A generalized {@link FieldFilterFactory} implementation.
  *
  * @author Anisha Mohanty
  */
-
 public class FieldFilterFactory {
 
     @FunctionalInterface
@@ -18,6 +19,9 @@ public class FieldFilterFactory {
         boolean matches(String topicName, String columnName);
 
     }
+
+    /** Default filter that always includes a field */
+    public static FieldNameFilter DEFAULT_FILTER = (topicName, columnName) -> true;
 
     private static FieldNameFilter createFilter(String fieldList, boolean include) {
         String[] entries = fieldList.split(",");
@@ -33,11 +37,24 @@ public class FieldFilterFactory {
         };
     }
 
-    public static FieldNameFilter createIncludeFilter(String fieldIncludeList) {
+    private static FieldNameFilter createIncludeFilter(String fieldIncludeList) {
         return createFilter(fieldIncludeList, true);
     }
 
-    public static FieldNameFilter createExcludeFilter(String fieldExcludeList) {
+    private static FieldNameFilter createExcludeFilter(String fieldExcludeList) {
         return createFilter(fieldExcludeList, false);
+    }
+
+    public static FieldNameFilter createFieldFilter(String includeList, String excludeList) {
+        if (!Strings.isNullOrEmpty(excludeList)) {
+            return createExcludeFilter(excludeList);
+        }
+        else if (!Strings.isNullOrEmpty(includeList)) {
+            return createIncludeFilter(includeList);
+        }
+        else {
+            // Always match and include as no filters were specified.
+            return DEFAULT_FILTER;
+        }
     }
 }

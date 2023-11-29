@@ -168,7 +168,6 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                     .withPrimaryKeyMode(config.getPrimaryKeyMode())
                     .withPrimaryKeyFields(config.getPrimaryKeyFields())
                     .withFieldFilters(config.getFieldsFilter())
-                    .withFiltered(config.isFieldFiltered())
                     .withSinkRecord(record)
                     .withDialect(dialect)
                     .build();

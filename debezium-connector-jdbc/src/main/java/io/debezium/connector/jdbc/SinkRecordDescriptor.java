@@ -25,6 +25,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.annotation.Immutable;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.PrimaryKeyMode;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
+import io.debezium.connector.jdbc.filter.FieldFilterFactory;
 import io.debezium.connector.jdbc.filter.FieldFilterFactory.FieldNameFilter;
 import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 import io.debezium.connector.jdbc.type.Type;
@@ -267,8 +268,7 @@ public class SinkRecordDescriptor {
         // External contributed builder state
         private PrimaryKeyMode primaryKeyMode;
         private Set<String> primaryKeyFields;
-        private FieldNameFilter fieldFilter;
-        private boolean isFiltered;
+        private FieldNameFilter fieldFilter = FieldFilterFactory.DEFAULT_FILTER;
         private SinkRecord sinkRecord;
         private DatabaseDialect dialect;
 
@@ -299,11 +299,6 @@ public class SinkRecordDescriptor {
 
         public Builder withFieldFilters(FieldNameFilter fieldFilter) {
             this.fieldFilter = fieldFilter;
-            return this;
-        }
-
-        public Builder withFiltered(boolean isFiltered) {
-            this.isFiltered = isFiltered;
             return this;
         }
 
@@ -443,10 +438,7 @@ public class SinkRecordDescriptor {
         }
 
         private void addKeyField(String topic, Field field) {
-            if (isFiltered && fieldFilter.matches(topic, field.name())) {
-                addKeyField(field.name(), field.schema());
-            }
-            else if (!isFiltered) {
+            if (fieldFilter.matches(topic, field.name())) {
                 addKeyField(field.name(), field.schema());
             }
         }
@@ -480,10 +472,7 @@ public class SinkRecordDescriptor {
         private void applyNonKeyFields(String topic, Schema schema) {
             for (Field field : schema.fields()) {
                 if (!keyFieldNames.contains(field.name())) {
-                    if (isFiltered && fieldFilter.matches(topic, field.name())) {
-                        applyNonKeyField(field.name(), field.schema());
-                    }
-                    else if (!isFiltered) {
+                    if (fieldFilter.matches(topic, field.name())) {
                         applyNonKeyField(field.name(), field.schema());
                     }
                 }
