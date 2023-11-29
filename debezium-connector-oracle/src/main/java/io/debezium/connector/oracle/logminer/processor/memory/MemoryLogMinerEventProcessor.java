@@ -59,8 +59,6 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
     private final Map<String, Scn> recentlyProcessedTransactionsCache = new HashMap<>();
     private final Set<Scn> schemaChangesCache = new HashSet<>();
 
-    private final Set<String> abandonedTransactionsCache = new HashSet<>();
-
     public MemoryLogMinerEventProcessor(ChangeEventSourceContext context,
                                         OracleConnectorConfig connectorConfig,
                                         OracleConnection jdbcConnection,
@@ -145,18 +143,13 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
     }
 
     @Override
-    protected void removeTransactionAndEventsFromCache(MemoryTransaction transaction) {
-        abandonedTransactionsCache.remove(transaction.getTransactionId());
-    }
-
-    @Override
     protected Iterator<LogMinerEvent> getTransactionEventIterator(MemoryTransaction transaction) {
         return transaction.getEvents().iterator();
     }
 
     @Override
     protected void finalizeTransactionCommit(String transactionId, Scn commitScn) {
-        abandonedTransactionsCache.remove(transactionId);
+        getAbandonedTransactionsCache().remove(transactionId);
         if (getConfig().isLobEnabled()) {
             // cache recently committed transactions by transaction id
             recentlyProcessedTransactionsCache.put(transactionId, commitScn);
@@ -166,7 +159,7 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
     @Override
     protected void finalizeTransactionRollback(String transactionId, Scn rollbackScn) {
         transactionCache.remove(transactionId);
-        abandonedTransactionsCache.remove(transactionId);
+        getAbandonedTransactionsCache().remove(transactionId);
         if (getConfig().isLobEnabled()) {
             recentlyProcessedTransactionsCache.put(transactionId, rollbackScn);
         }
@@ -187,24 +180,8 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
     }
 
     @Override
-    protected void handleCommitNotFoundInBuffer(LogMinerEventRow row) {
-        // In the event the transaction was prematurely removed due to retention policy, when we do find
-        // the transaction's commit in the logs in the future, we should remove the entry if it exists
-        // to avoid any potential memory-leak with the cache.
-        abandonedTransactionsCache.remove(row.getTransactionId());
-    }
-
-    @Override
-    protected void handleRollbackNotFoundInBuffer(LogMinerEventRow row) {
-        // In the event the transaction was prematurely removed due to retention policy, when we do find
-        // the transaction's rollback in the logs in the future, we should remove the entry if it exists
-        // to avoid any potential memory-leak with the cache.
-        abandonedTransactionsCache.remove(row.getTransactionId());
-    }
-
-    @Override
     protected void addToTransaction(String transactionId, LogMinerEventRow row, Supplier<LogMinerEvent> eventSupplier) {
-        if (abandonedTransactionsCache.contains(transactionId)) {
+        if (getAbandonedTransactionsCache().contains(transactionId)) {
             LOGGER.warn("Event for abandoned transaction {}, skipped.", transactionId);
             return;
         }
@@ -295,12 +272,6 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
     }
 
     @Override
-    protected void abandonTransactionOverEventThreshold(MemoryTransaction transaction) {
-        super.abandonTransactionOverEventThreshold(transaction);
-        abandonedTransactionsCache.add(transaction.getTransactionId());
-    }
-
-    @Override
     protected Scn getTransactionCacheMinimumScn() {
         return transactionCache.values().stream()
                 .map(MemoryTransaction::getStartScn)
@@ -329,10 +300,6 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
             }
         }
         return Optional.ofNullable(transaction);
-    }
-
-    public Set<String> getAbandonedTransactionsCache() {
-        return abandonedTransactionsCache;
     }
 
 }
