@@ -7,7 +7,6 @@ package io.debezium.connector.oracle.logminer.processor;
 
 import java.sql.SQLException;
 import java.time.Duration;
-import java.util.Set;
 
 import io.debezium.connector.oracle.Scn;
 
