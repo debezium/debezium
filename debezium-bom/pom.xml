@@ -65,6 +65,8 @@
         <version.cassandra.unit>3.5.0.1</version.cassandra.unit>
         <version.rest-assured>4.3.3</version.rest-assured>
         <version.logback>1.2.13</version.logback>
+        <version.rest-assured>5.3.2</version.rest-assured>
+        <version.jolokia.client>2.0.0-M4</version.jolokia.client>
     </properties>
 
     <dependencyManagement>
@@ -764,6 +766,13 @@
                 <artifactId>debezium-connector-mysql</artifactId>
                 <version>${project.version}</version>
                 <type>test-jar</type>
+            </dependency>
+
+            <!-- Jolokia Client -->
+            <dependency>
+                <groupId>org.jolokia</groupId>
+                <artifactId>jolokia-client-java</artifactId>
+                <version>${version.jolokia.client}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
