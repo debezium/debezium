@@ -23,7 +23,8 @@ import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
-import io.debezium.connector.jdbc.filter.ColumnFilterFactory;
+import io.debezium.connector.jdbc.filter.FieldFilterFactory;
+import io.debezium.connector.jdbc.filter.FieldFilterFactory.FieldNameFilter;
 import io.debezium.connector.jdbc.naming.ColumnNamingStrategy;
 import io.debezium.connector.jdbc.naming.DefaultColumnNamingStrategy;
 import io.debezium.connector.jdbc.naming.DefaultTableNamingStrategy;
@@ -65,8 +66,8 @@ public class JdbcSinkConnectorConfig {
     public static final String POSTGRES_POSTGIS_SCHEMA = "dialect.postgres.postgis.schema";
     public static final String SQLSERVER_IDENTITY_INSERT = "dialect.sqlserver.identity.insert";
     public static final String BATCH_SIZE = "batch.size";
-    public static final String COLUMN_INCLUDE_LIST = "column.include.list";
-    public static final String COLUMN_EXCLUDE_LIST = "column.exclude.list";
+    public static final String FIELD_INCLUDE_LIST = "field.include.list";
+    public static final String FIELD_EXCLUDE_LIST = "field.exclude.list";
 
     // todo add support for the ValueConverter contract
 
@@ -277,8 +278,8 @@ public class JdbcSinkConnectorConfig {
             .withDescription("Specifies how many records to attempt to batch together into the destination table, when possible. " +
                     "You can also configure the connector’s underlying consumer’s max.poll.records using consumer.override.max.poll.records in the connector configuration.");
 
-    public static final Field COLUMN_INCLUDE_LIST_FIELD = Field.create(COLUMN_INCLUDE_LIST)
-            .withDisplayName("Include Columns")
+    public static final Field FIELD_INCLUDE_LIST_FIELD = Field.create(FIELD_INCLUDE_LIST)
+            .withDisplayName("Include Fields")
             .withType(Type.LIST)
             .withGroup(Field.createGroupEntry(Field.Group.FILTERS, 1))
             .withWidth(ConfigDef.Width.LONG)
@@ -287,8 +288,8 @@ public class JdbcSinkConnectorConfig {
             .withDescription("A comma-separated list of regular expressions matching fully-qualified names of fields that "
                     + "should be included in change events. The field names must be delimited by the format <topic>:<field> ");
 
-    public static final Field COLUMN_EXCLUDE_LIST_FIELD = Field.create(COLUMN_EXCLUDE_LIST)
-            .withDisplayName("Exclude Columns")
+    public static final Field FIELD_EXCLUDE_LIST_FIELD = Field.create(FIELD_EXCLUDE_LIST)
+            .withDisplayName("Exclude Fields")
             .withType(Type.LIST)
             .withGroup(Field.createGroupEntry(Field.Group.FILTERS, 2))
             .withWidth(ConfigDef.Width.LONG)
@@ -321,8 +322,8 @@ public class JdbcSinkConnectorConfig {
                     POSTGRES_POSTGIS_SCHEMA_FIELD,
                     SQLSERVER_IDENTITY_INSERT_FIELD,
                     BATCH_SIZE_FIELD,
-                    COLUMN_INCLUDE_LIST_FIELD,
-                    COLUMN_EXCLUDE_LIST_FIELD)
+                    FIELD_INCLUDE_LIST_FIELD,
+                    FIELD_EXCLUDE_LIST_FIELD)
             .create();
 
     /**
@@ -494,8 +495,8 @@ public class JdbcSinkConnectorConfig {
     private final String databaseTimezone;
     private final String postgresPostgisSchema;
     private final boolean sqlServerIdentityInsert;
-    private ColumnFilterFactory.ColumnNameFilter columnFilter;
-    private final boolean columnsFiltered;
+    private FieldNameFilter fieldsFilter;
+    private final boolean fieldsFiltered;
 
     private final long batchSize;
 
@@ -517,16 +518,16 @@ public class JdbcSinkConnectorConfig {
         this.sqlServerIdentityInsert = config.getBoolean(SQLSERVER_IDENTITY_INSERT_FIELD);
         this.batchSize = config.getLong(BATCH_SIZE_FIELD);
 
-        String columnExcludeList = config.getString(COLUMN_EXCLUDE_LIST);
-        String columnIncludeList = config.getString(COLUMN_INCLUDE_LIST);
+        String fieldExcludeList = config.getString(FIELD_EXCLUDE_LIST);
+        String fieldIncludeList = config.getString(FIELD_INCLUDE_LIST);
 
-        this.columnsFiltered = !(Strings.isNullOrEmpty(columnExcludeList) && Strings.isNullOrEmpty(columnIncludeList));
+        this.fieldsFiltered = !(Strings.isNullOrEmpty(fieldExcludeList) && Strings.isNullOrEmpty(fieldIncludeList));
 
-        if (!Strings.isNullOrEmpty(columnExcludeList)) {
-            this.columnFilter = ColumnFilterFactory.createExcludeFilter(columnExcludeList);
+        if (!Strings.isNullOrEmpty(fieldExcludeList)) {
+            this.fieldsFilter = FieldFilterFactory.createExcludeFilter(fieldExcludeList);
         }
-        else if (!Strings.isNullOrEmpty(columnIncludeList)) {
-            this.columnFilter = ColumnFilterFactory.createIncludeFilter(columnIncludeList);
+        else if (!Strings.isNullOrEmpty(fieldIncludeList)) {
+            this.fieldsFilter = FieldFilterFactory.createIncludeFilter(fieldIncludeList);
         }
     }
 
@@ -542,8 +543,8 @@ public class JdbcSinkConnectorConfig {
             });
         }
 
-        String columnExcludeList = config.getString(COLUMN_EXCLUDE_LIST);
-        String columnIncludeList = config.getString(COLUMN_INCLUDE_LIST);
+        String columnExcludeList = config.getString(FIELD_EXCLUDE_LIST);
+        String columnIncludeList = config.getString(FIELD_INCLUDE_LIST);
 
         if (!Strings.isNullOrEmpty(columnExcludeList) && !Strings.isNullOrEmpty(columnIncludeList)) {
             throw new ConnectException("Cannot define both column.exclude.list and column.include.list. Please specify only one.");
@@ -609,12 +610,12 @@ public class JdbcSinkConnectorConfig {
         return columnNamingStrategy;
     }
 
-    public ColumnFilterFactory.ColumnNameFilter getColumnFilter() {
-        return columnFilter;
+    public FieldNameFilter getFieldsFilter() {
+        return fieldsFilter;
     }
 
-    public boolean isColumnFiltered() {
-        return columnsFiltered;
+    public boolean isFieldFiltered() {
+        return fieldsFiltered;
     }
 
     public String getDatabaseTimeZone() {

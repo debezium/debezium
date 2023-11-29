@@ -25,7 +25,7 @@ import io.debezium.connector.jdbc.util.SinkRecordFactory;
 import io.debezium.doc.FixFor;
 
 /**
- * Column filter tests for PostgreSQL.
+ * Field filter tests for PostgreSQL.
  *
  * @author Anisha Mohanty
  */
@@ -33,23 +33,23 @@ import io.debezium.doc.FixFor;
 @Tag("it")
 @Tag("it-postgresql")
 @ExtendWith(PostgresSinkDatabaseContextProvider.class)
-public class JdbcSinkColumnFilterIT extends AbstractJdbcSinkTest {
+public class JdbcSinkFieldFilterIT extends AbstractJdbcSinkTest {
 
-    public JdbcSinkColumnFilterIT(Sink sink) {
+    public JdbcSinkFieldFilterIT(Sink sink) {
         super(sink);
     }
 
     @ParameterizedTest
     @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
     @FixFor("DBZ-6636")
-    public void testColumnIncludeListWithInsertMode(SinkRecordFactory factory) throws Exception {
+    public void testFieldIncludeListWithInsertMode(SinkRecordFactory factory) throws Exception {
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
         final Map<String, String> properties = getDefaultSinkConfig();
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.BASIC.getValue());
         properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.INSERT.getValue());
-        properties.put(JdbcSinkConnectorConfig.COLUMN_INCLUDE_LIST, topicName + ":name," + topicName + ":id");
+        properties.put(JdbcSinkConnectorConfig.FIELD_INCLUDE_LIST, topicName + ":name," + topicName + ":id");
 
         startSinkConnector(properties);
         assertSinkConnectorIsRunning();
@@ -66,14 +66,14 @@ public class JdbcSinkColumnFilterIT extends AbstractJdbcSinkTest {
     @ParameterizedTest
     @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
     @FixFor("DBZ-6636")
-    public void testColumnExcludeListWithInsertMode(SinkRecordFactory factory) throws Exception {
+    public void testFieldExcludeListWithInsertMode(SinkRecordFactory factory) throws Exception {
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
         final Map<String, String> properties = getDefaultSinkConfig();
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.BASIC.getValue());
         properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.INSERT.getValue());
-        properties.put(JdbcSinkConnectorConfig.COLUMN_EXCLUDE_LIST, topicName + ":name");
+        properties.put(JdbcSinkConnectorConfig.FIELD_EXCLUDE_LIST, topicName + ":name");
 
         startSinkConnector(properties);
         assertSinkConnectorIsRunning();
@@ -91,7 +91,7 @@ public class JdbcSinkColumnFilterIT extends AbstractJdbcSinkTest {
     @ParameterizedTest
     @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
     @FixFor("DBZ-6636")
-    public void testColumnIncludeListWithUpsertMode(SinkRecordFactory factory) throws Exception {
+    public void testFieldIncludeListWithUpsertMode(SinkRecordFactory factory) throws Exception {
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
@@ -100,7 +100,7 @@ public class JdbcSinkColumnFilterIT extends AbstractJdbcSinkTest {
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_VALUE.getValue());
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_FIELDS, "id");
         properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
-        properties.put(JdbcSinkConnectorConfig.COLUMN_INCLUDE_LIST, topicName + ":name," + topicName + ":id");
+        properties.put(JdbcSinkConnectorConfig.FIELD_INCLUDE_LIST, topicName + ":name," + topicName + ":id");
 
         startSinkConnector(properties);
         assertSinkConnectorIsRunning();
