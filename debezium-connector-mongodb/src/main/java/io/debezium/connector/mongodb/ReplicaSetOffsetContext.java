@@ -19,6 +19,7 @@ import com.mongodb.client.model.changestream.ChangeStreamDocument;
 
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.connector.mongodb.connection.ReplicaSet;
+import io.debezium.connector.mongodb.events.BufferingChangeStreamCursor.ResumableChangeStreamEvent;
 import io.debezium.pipeline.CommonOffsetContext;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -119,8 +120,8 @@ public class ReplicaSetOffsetContext extends CommonOffsetContext<SourceInfo> {
         sourceInfo.noEvent(replicaSetName, timestamp);
     }
 
-    public void noEvent(MongoChangeStreamCursor<?> cursor) {
-        sourceInfo.noEvent(replicaSetName, cursor);
+    public void noEvent(ResumableChangeStreamEvent<BsonDocument> event) {
+        sourceInfo.noEvent(replicaSetName, event);
     }
 
     public void changeStreamEvent(ChangeStreamDocument<BsonDocument> changeStreamEvent) {
