@@ -496,7 +496,6 @@ public class JdbcSinkConnectorConfig {
     private final String postgresPostgisSchema;
     private final boolean sqlServerIdentityInsert;
     private FieldNameFilter fieldsFilter;
-    private final boolean fieldsFiltered;
 
     private final long batchSize;
 
@@ -520,15 +519,7 @@ public class JdbcSinkConnectorConfig {
 
         String fieldExcludeList = config.getString(FIELD_EXCLUDE_LIST);
         String fieldIncludeList = config.getString(FIELD_INCLUDE_LIST);
-
-        this.fieldsFiltered = !(Strings.isNullOrEmpty(fieldExcludeList) && Strings.isNullOrEmpty(fieldIncludeList));
-
-        if (!Strings.isNullOrEmpty(fieldExcludeList)) {
-            this.fieldsFilter = FieldFilterFactory.createExcludeFilter(fieldExcludeList);
-        }
-        else if (!Strings.isNullOrEmpty(fieldIncludeList)) {
-            this.fieldsFilter = FieldFilterFactory.createIncludeFilter(fieldIncludeList);
-        }
+        this.fieldsFilter = FieldFilterFactory.createFieldFilter(fieldIncludeList, fieldExcludeList);
     }
 
     public void validate() {
@@ -612,10 +603,6 @@ public class JdbcSinkConnectorConfig {
 
     public FieldNameFilter getFieldsFilter() {
         return fieldsFilter;
-    }
-
-    public boolean isFieldFiltered() {
-        return fieldsFiltered;
     }
 
     public String getDatabaseTimeZone() {
