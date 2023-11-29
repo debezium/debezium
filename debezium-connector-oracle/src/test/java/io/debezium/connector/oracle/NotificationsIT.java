@@ -39,7 +39,7 @@ public class NotificationsIT extends AbstractNotificationsIT<OracleConnector> {
     }
 
     protected List<String> collections() {
-        return List.of("a");
+        return List.of("A");
     }
 
     @Override
