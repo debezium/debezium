@@ -790,7 +790,7 @@ public class OracleConnection extends JdbcConnection {
 
             final Configuration.Builder jdbcConfigBuilder = dbConfig
                     .edit()
-                    .with(JDBC_PROPERTY_JSON_DEFAULT_GET_OBJECT_TYPE, "java.lang.String");
+                    .withDefault(JDBC_PROPERTY_JSON_DEFAULT_GET_OBJECT_TYPE, "java.lang.String");
 
             this.jdbcConfig = JdbcConfiguration.adapt(jdbcConfigBuilder.build());
 
