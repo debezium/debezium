@@ -188,8 +188,9 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
         AtomicReference<Integer> partition = new AtomicReference<>();
 
         additionalFields.forEach((additionalField -> {
-            if (!additionalFieldsErrorOnMissing && eventStruct.schema().field(additionalField.getField()) == null)
+            if (!additionalFieldsErrorOnMissing && eventStruct.schema().field(additionalField.getField()) == null) {
                 return;
+            }
             switch (additionalField.getPlacement()) {
                 case ENVELOPE:
                     structValue.put(
