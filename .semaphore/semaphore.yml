@@ -1,0 +1,83 @@
+# This file is managed by ServiceBot plugin - Semaphore. The content in this file is created using a common
+# template and configurations in service.yml.
+# Any modifications made to ths file will be overwritten by the generated content in nightly runs.
+# For more information, please refer to the page:
+# https://confluentinc.atlassian.net/wiki/spaces/Foundations/pages/2871296194/Add+SemaphoreCI
+version: v1.0
+name: build-test-release
+agent:
+  machine:
+    type: s1-prod-ubuntu20-04-amd64-1
+
+fail_fast:
+  cancel:
+    when: "true"
+
+execution_time_limit:
+  hours: 4
+
+queue:
+  - when: "branch != 'master' and branch !~ '[0-9]+\\.[0-9]+\\.x' and branch !~ 'v\\d+\\.\\d+\\.\\d+\\-hotfix\\-x'"
+    processing: parallel
+
+global_job_config:
+  prologue:
+    commands:
+      - checkout
+      - sem-version java 11
+      - . cache-maven restore
+
+blocks:
+  - name: Test
+    dependencies: []
+    run:
+      # don't run the tests on non-functional changes...
+      when: "change_in('/', {exclude: ['/.deployed-versions/', '.github/']})"
+    task:
+      jobs:
+        - name: Test
+          commands:
+            - mvn -Dcloud -Passembly -pl debezium-connector-mysql,debezium-connector-postgres,debezium-connector-sqlserver -am -U -Dmaven.wagon.http.retryHandler.count=10 --batch-mode --no-transfer-progress
+              clean verify install dependency:analyze validate
+            - . cve-scan
+            - . cache-maven store
+      env_vars:
+        - name: SEMAPHORE_AGENT_UPLOAD_JOB_LOGS
+          value: when-trimmed
+      epilogue:
+        always:
+          commands:
+            - . publish-test-results
+            - artifact push workflow target/test-results
+
+  - name: Release
+    dependencies: ["Test"]
+    run:
+      when: "branch = 'master' or branch =~ '[0-9]+\\.[0-9]+\\.x'"
+    task:
+      jobs:
+        - name: Release
+          commands:
+            - git config remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"
+            - git fetch --unshallow || true
+            - mvn -Dcloud -Passembly -pl debezium-connector-mysql,debezium-connector-postgres,debezium-connector-sqlserver -am -U -Dmaven.wagon.http.retryHandler.count=10 --batch-mode -DaltDeploymentRepository=confluent-codeartifact-internal::default::https://confluent-519856050701.d.codeartifact.us-west-2.amazonaws.com/maven/maven-snapshots/
+              -DrepositoryId=confluent-codeartifact-internal deploy -DskipTests
+
+
+after_pipeline:
+  task:
+    agent:
+      machine:
+        type: s1-prod-ubuntu20-04-arm64-0
+    jobs:
+      - name: Metrics
+        commands:
+          - emit-ci-metrics -p -a test-results
+      - name: Publish Test Results
+        commands:
+          - test-results gen-pipeline-report
+      - name: SonarQube
+        commands:
+          - checkout
+          - sem-version java 11
+          - emit-sonarqube-data -a test-results
