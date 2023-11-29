@@ -5,22 +5,12 @@
  */
 package io.debezium.testing.testcontainers.testhelper;
 
-import java.io.IOException;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
-
-import javax.management.InstanceNotFoundException;
-import javax.management.JMException;
-import javax.management.MBeanServerConnection;
-import javax.management.MalformedObjectNameException;
-import javax.management.ObjectName;
-import javax.management.remote.JMXConnector;
-import javax.management.remote.JMXConnectorFactory;
-import javax.management.remote.JMXServiceURL;
 
 import org.awaitility.Awaitility;
 import org.slf4j.Logger;
@@ -185,15 +175,10 @@ public class RestExtensionTestInfrastructure {
                 .withBuildArg("DEBEZIUM_VERSION", debeziumVersion))
                 .withEnv("ENABLE_DEBEZIUM_SCRIPTING", "true")
                 .withEnv("CONNECT_REST_EXTENSION_CLASSES", restExtensionClasses)
-                .withEnv("ENABLE_JOLOKIA", "true")
-                .withEnv("JMXHOST", "0.0.0.0")
-                .withEnv("JMXPORT", "3000")
-                .withEnv("JMXAUTH", "false")
-                .withEnv("JMXSSL", "false")
-                .withExposedPorts(8083, 8778, 3000)
                 .withNetwork(NETWORK)
                 .withKafka(KAFKA_CONTAINER.getNetwork(), KAFKA_HOSTNAME + ":9092")
                 .withLogConsumer(new Slf4jLogConsumer(LOGGER))
+                .enableJMX()
                 .dependsOn(KAFKA_CONTAINER);
     }
 
@@ -231,51 +216,5 @@ public class RestExtensionTestInfrastructure {
                 // retries on certain failure conditions with a 10s between them.
                 .atMost(120, TimeUnit.SECONDS)
                 .until(() -> RestExtensionTestInfrastructure.getDebeziumContainer().getConnectorTaskState(connectorName, taskNumber) == state);
-    }
-
-    public static void waitForStreamingRunning(String connector, String server) throws InterruptedException {
-        waitForStreamingRunning(connector, server, "streaming");
-    }
-
-    public static void waitForStreamingRunning(String connector, String server, String contextName) {
-        waitForStreamingRunning(connector, server, contextName, null);
-    }
-
-    public static void waitForStreamingRunning(String connector, String server, String contextName, String task) {
-        Awaitility.await()
-                .atMost(120, TimeUnit.SECONDS)
-                .ignoreException(InstanceNotFoundException.class)
-                .until(() -> isStreamingRunning(connector, server, contextName, task));
-    }
-
-    public static boolean isStreamingRunning(String connector, String server, String contextName, String task) throws IOException {
-        JMXServiceURL url;
-        JMXConnector connectorJmx;
-        MBeanServerConnection mBeanServerConnection;
-        try {
-            url = new JMXServiceURL("service:jmx:rmi:///jndi/rmi://0.0.0.0:" + getDebeziumContainer().getMappedPort(3000) + "/jmxrmi");
-            connectorJmx = JMXConnectorFactory.connect(url, null);
-            mBeanServerConnection = connectorJmx.getMBeanServerConnection();
-        }
-        catch (IOException e) {
-            throw new RuntimeException("Unable to connect to JMX service", e);
-        }
-
-        try {
-            ObjectName streamingMetricsObjectName = task != null ? getStreamingMetricsObjectName(connector, contextName, server, task)
-                    : getStreamingMetricsObjectName(connector, contextName, server);
-            return (boolean) mBeanServerConnection.getAttribute(streamingMetricsObjectName, "Connected");
-        }
-        catch (JMException ignored) {
-        }
-        return false;
-    }
-
-    public static ObjectName getStreamingMetricsObjectName(String connector, String server, String context) throws MalformedObjectNameException {
-        return new ObjectName("debezium." + connector + ":type=connector-metrics,context=" + context + ",server=" + server);
-    }
-
-    public static ObjectName getStreamingMetricsObjectName(String connector, String server, String context, String task) throws MalformedObjectNameException {
-        return new ObjectName("debezium." + connector + ":type=connector-metrics,context=" + context + ",server=" + server + ",task=" + task);
     }
 }

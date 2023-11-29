@@ -155,9 +155,6 @@
 
         <!-- MySQL server image name -->
         <mysql.server.image.source>container-registry.oracle.com/mysql/community-server</mysql.server.image.source>
-
-        <!-- Jolokia -->
-        <version.jolokia.client>1.7.2</version.jolokia.client>
     </properties>
 
     <modules>
