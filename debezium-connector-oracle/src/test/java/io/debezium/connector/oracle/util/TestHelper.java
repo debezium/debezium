@@ -706,9 +706,9 @@ public class TestHelper {
 
     // expects user passed in the config to be any local user account on the Oracle DB instance
     private static OracleConnection createConnection(ConnectorConfiguration config, boolean autoCommit) {
-        Configuration testConnectionConfig = getTestConnectionConfiguration(config);
-        OracleConnectionConfiguration connectorConfig = new OracleConnectionConfiguration(JdbcConfiguration.adapt(testConnectionConfig));
-        OracleConnection connection = new OracleConnection(connectorConfig);
+        Configuration connectionConfiguration = getTestConnectionConfiguration(config);
+        final JdbcConfiguration jdbcConfig = JdbcConfiguration.adapt(connectionConfiguration);
+        OracleConnection connection = new OracleConnection(new OracleConnectionConfiguration(jdbcConfig));
         try {
             connection.setAutoCommit(autoCommit);
             return connection;
