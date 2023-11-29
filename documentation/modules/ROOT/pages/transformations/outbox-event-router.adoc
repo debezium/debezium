@@ -417,6 +417,11 @@ The second value is the placement and it must always be `header` or `envelope`.
 
 Configuration examples are in xref:emitting-messages-with-additional-fields[emitting additional fields in {prodname} outbox messages].
 
+|[[outbox-event-router-property-table-fields-additional-error-on-missing]]<<outbox-event-router-property-table-fields-additional-error-on-missing, `table.fields.additional.error.on.missing`>>
+|`true`
+|Table, Envelope
+a|Specifies whether this transformation will throw an error if any field specified by the `tabe.fields.additional.placement` property is not found in the Outbox payload.
+
 |[[outbox-event-router-property-table-field-event-schema-version]]<<outbox-event-router-property-table-field-event-schema-version, `table.field.event.schema.version`>>
 |
 |Table, Schema
