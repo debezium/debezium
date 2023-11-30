@@ -5,9 +5,10 @@
  */
 package io.debezium.connector.postgresql;
 
-import java.util.HashSet;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Set;
+
 import io.debezium.connector.postgresql.connection.AbstractReplicationMessageColumn;
 
 /**
@@ -41,8 +42,7 @@ public class UnchangedToastedReplicationMessageColumn extends AbstractReplicatio
             UnchangedToastedReplicationMessageColumn.UNCHANGED_INT_ARRAY_TOAST_VALUE,
             UnchangedToastedReplicationMessageColumn.UNCHANGED_BIGINT_ARRAY_TOAST_VALUE,
             UnchangedToastedReplicationMessageColumn.UNCHANGED_HSTORE_TOAST_VALUE,
-            UnchangedToastedReplicationMessageColumn.UNCHANGED_UUID_TOAST_VALUE
-    ));
+            UnchangedToastedReplicationMessageColumn.UNCHANGED_UUID_TOAST_VALUE));
     private Object unchangedToastValue;
 
     public UnchangedToastedReplicationMessageColumn(String columnName, PostgresType type, String typeWithModifiers, boolean optional) {
