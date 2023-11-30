@@ -158,16 +158,14 @@ public class TableSchemaBuilderTest {
     @Test(expected = NullPointerException.class)
     public void shouldFailToBuildTableSchemaFromNullTable() {
         new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
-                SchemaBuilder.struct().build(), defaultFieldNamer, false,
-                EventConvertingFailureHandlingMode.FAIL)
+                SchemaBuilder.struct().build(), defaultFieldNamer, false)
                 .create(topicNamingStrategy, null, null, null, null);
     }
 
     @Test
     public void shouldBuildTableSchemaFromTable() {
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
-                SchemaBuilder.struct().build(), defaultFieldNamer, false,
-                EventConvertingFailureHandlingMode.FAIL)
+                SchemaBuilder.struct().build(), defaultFieldNamer, false)
                 .create(topicNamingStrategy, table, null, null, null);
         assertThat(schema).isNotNull();
     }
@@ -177,8 +175,7 @@ public class TableSchemaBuilderTest {
     public void shouldBuildCorrectSchemaNames() {
         // table id with catalog and schema
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
-                SchemaBuilder.struct().build(), defaultFieldNamer, false,
-                EventConvertingFailureHandlingMode.FAIL)
+                SchemaBuilder.struct().build(), defaultFieldNamer, false)
                 .create(topicNamingStrategy, table, null, null, null);
         assertThat(schema).isNotNull();
         assertThat(schema.keySchema().name()).isEqualTo("test.schema.table.Key");
@@ -190,8 +187,7 @@ public class TableSchemaBuilderTest {
                 .create();
 
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
-                SchemaBuilder.struct().build(), defaultFieldNamer, false,
-                EventConvertingFailureHandlingMode.FAIL)
+                SchemaBuilder.struct().build(), defaultFieldNamer, false)
                 .create(new DefaultTopicNamingStrategy(topicProperties), table, null, null, null);
 
         assertThat(schema).isNotNull();
@@ -204,8 +200,7 @@ public class TableSchemaBuilderTest {
                 .create();
 
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
-                SchemaBuilder.struct().build(), defaultFieldNamer, false,
-                EventConvertingFailureHandlingMode.FAIL)
+                SchemaBuilder.struct().build(), defaultFieldNamer, false)
                 .create(topicNamingStrategy, table, null, null, null);
 
         assertThat(schema).isNotNull();
@@ -218,8 +213,7 @@ public class TableSchemaBuilderTest {
                 .create();
 
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
-                SchemaBuilder.struct().build(), defaultFieldNamer, false,
-                EventConvertingFailureHandlingMode.FAIL)
+                SchemaBuilder.struct().build(), defaultFieldNamer, false)
                 .create(topicNamingStrategy, table, null, null, null);
 
         assertThat(schema).isNotNull();
@@ -237,8 +231,7 @@ public class TableSchemaBuilderTest {
 
         // table id with catalog and schema
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
-                SchemaBuilder.struct().build(), defaultFieldNamer, false,
-                EventConvertingFailureHandlingMode.FAIL)
+                SchemaBuilder.struct().build(), defaultFieldNamer, false)
                 .create(topicNamingStrategy, table, null, null, null);
         assertThat(schema).isNotNull();
         assertThat(schema.keySchema().name()).isEqualTo("_3prefix.schema.table.Key");
@@ -250,8 +243,7 @@ public class TableSchemaBuilderTest {
                 .create();
 
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
-                SchemaBuilder.struct().build(), defaultFieldNamer, false,
-                EventConvertingFailureHandlingMode.FAIL)
+                SchemaBuilder.struct().build(), defaultFieldNamer, false)
                 .create(new DefaultTopicNamingStrategy(topicProperties), table, null, null, null);
 
         assertThat(schema).isNotNull();
@@ -264,8 +256,7 @@ public class TableSchemaBuilderTest {
                 .create();
 
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
-                SchemaBuilder.struct().build(), defaultFieldNamer, false,
-                EventConvertingFailureHandlingMode.FAIL)
+                SchemaBuilder.struct().build(), defaultFieldNamer, false)
                 .create(topicNamingStrategy, table, null, null, null);
 
         assertThat(schema).isNotNull();
@@ -278,8 +269,7 @@ public class TableSchemaBuilderTest {
                 .create();
 
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
-                SchemaBuilder.struct().build(), defaultFieldNamer, false,
-                EventConvertingFailureHandlingMode.FAIL)
+                SchemaBuilder.struct().build(), defaultFieldNamer, false)
                 .create(topicNamingStrategy, table, null, null, null);
 
         assertThat(schema).isNotNull();
@@ -292,8 +282,7 @@ public class TableSchemaBuilderTest {
     public void shouldBuildCorrectSchemaNamesInMultiPartitionMode() {
         // table id with catalog and schema
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
-                SchemaBuilder.struct().build(), defaultFieldNamer, true,
-                EventConvertingFailureHandlingMode.FAIL)
+                SchemaBuilder.struct().build(), defaultFieldNamer, true)
                 .create(new SchemaTopicNamingStrategy(topicProperties, true), table, null, null, null);
         assertThat(schema).isNotNull();
         assertThat(schema.keySchema().name()).isEqualTo("test.catalog.schema.table.Key");
@@ -304,8 +293,7 @@ public class TableSchemaBuilderTest {
     public void shouldBuildTableSchemaFromTableWithoutPrimaryKey() {
         table = table.edit().setPrimaryKeyNames().create();
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
-                SchemaBuilder.struct().build(), defaultFieldNamer, false,
-                EventConvertingFailureHandlingMode.FAIL)
+                SchemaBuilder.struct().build(), defaultFieldNamer, false)
                 .create(topicNamingStrategy, table, null, null, null);
         assertThat(schema).isNotNull();
         // Check the keys ...
@@ -366,8 +354,7 @@ public class TableSchemaBuilderTest {
     public void shouldSanitizeFieldNamesAndBuildTableSchemaFromTableWithoutPrimaryKey() {
         table = table.edit().setPrimaryKeyNames().create();
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
-                SchemaBuilder.struct().build(), avroFieldNamer, false,
-                EventConvertingFailureHandlingMode.FAIL)
+                SchemaBuilder.struct().build(), avroFieldNamer, false)
                 .create(topicNamingStrategy, table, null, null, null);
         assertThat(schema).isNotNull();
         // Check the keys ...
@@ -434,8 +421,7 @@ public class TableSchemaBuilderTest {
     public void shouldSanitizeUnicodeFieldNamesAndBuildTableSchemaFromTableWithoutPrimaryKey() {
         table = table.edit().setPrimaryKeyNames().create();
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
-                SchemaBuilder.struct().build(), FieldNameSelector.defaultSelector(SchemaNameAdjuster.AVRO_UNICODE_FIELD_NAMER),
-                false, EventConvertingFailureHandlingMode.FAIL)
+                SchemaBuilder.struct().build(), FieldNameSelector.defaultSelector(SchemaNameAdjuster.AVRO_UNICODE_FIELD_NAMER), false)
                 .create(topicNamingStrategy, table, null, null, null);
         assertThat(schema).isNotNull();
         // Check the keys ...
@@ -507,8 +493,7 @@ public class TableSchemaBuilderTest {
         LogInterceptor logInterceptor = new LogInterceptor(TableSchemaBuilder.class);
 
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
-                SchemaBuilder.struct().build(), avroFieldNamer, false,
-                EventConvertingFailureHandlingMode.FAIL)
+                SchemaBuilder.struct().build(), avroFieldNamer, false)
                 .create(topicNamingStrategy, table, null, null, null);
 
         Struct key = schema.keyFromColumnData(keyData);
@@ -527,8 +512,7 @@ public class TableSchemaBuilderTest {
     public void shouldBuildTableSchemaFromTableWithCustomKey() {
         table = table.edit().setPrimaryKeyNames().create();
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
-                SchemaBuilder.struct().build(), defaultFieldNamer, false,
-                EventConvertingFailureHandlingMode.FAIL)
+                SchemaBuilder.struct().build(), defaultFieldNamer, false)
                 .create(topicNamingStrategy, table, null, null, CustomKeyMapper.getInstance("(.*).table:C2,C3", null));
         assertThat(schema).isNotNull();
         Schema keys = schema.keySchema();
@@ -542,8 +526,7 @@ public class TableSchemaBuilderTest {
     @FixFor("DBZ-1015")
     public void shouldOverrideIdentityKey() {
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
-                SchemaBuilder.struct().build(), defaultFieldNamer, false,
-                EventConvertingFailureHandlingMode.FAIL)
+                SchemaBuilder.struct().build(), defaultFieldNamer, false)
                 .create(topicNamingStrategy, table, null, null, CustomKeyMapper.getInstance("(.*).table:C2,C3", null));
         assertThat(schema).isNotNull();
         Schema keys = schema.keySchema();
@@ -558,8 +541,7 @@ public class TableSchemaBuilderTest {
     @FixFor("DBZ-1015")
     public void shouldFallbackToIdentyKeyWhenCustomMapperIsNull() {
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
-                SchemaBuilder.struct().build(), defaultFieldNamer, false,
-                EventConvertingFailureHandlingMode.FAIL)
+                SchemaBuilder.struct().build(), defaultFieldNamer, false)
                 .create(topicNamingStrategy, table, null, null, null);
         assertThat(schema).isNotNull();
         Schema keys = schema.keySchema();
@@ -591,8 +573,7 @@ public class TableSchemaBuilderTest {
         KeyMapper keyMapper = CustomKeyMapper.getInstance("(.*).table:C2,C3;(.*).table2:C1", null);
 
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
-                SchemaBuilder.struct().build(), defaultFieldNamer, false,
-                EventConvertingFailureHandlingMode.FAIL)
+                SchemaBuilder.struct().build(), defaultFieldNamer, false)
                 .create(topicNamingStrategy, table, null, null, keyMapper);
 
         assertThat(schema).isNotNull();
@@ -604,8 +585,7 @@ public class TableSchemaBuilderTest {
         assertThat(keys.field("C3").name()).isEqualTo("C3");
 
         TableSchema schema2 = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
-                SchemaBuilder.struct().build(), defaultFieldNamer, false,
-                EventConvertingFailureHandlingMode.FAIL)
+                SchemaBuilder.struct().build(), defaultFieldNamer, false)
                 .create(topicNamingStrategy, table2, null, null, keyMapper);
 
         assertThat(schema2).isNotNull();
@@ -633,8 +613,7 @@ public class TableSchemaBuilderTest {
                 .create();
 
         TableSchema schema2 = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
-                SchemaBuilder.struct().build(), defaultFieldNamer, false,
-                EventConvertingFailureHandlingMode.FAIL)
+                SchemaBuilder.struct().build(), defaultFieldNamer, false)
                 .create(topicNamingStrategy, table2, null, null, null);
 
         Schema key2 = schema2.keySchema();
@@ -666,8 +645,7 @@ public class TableSchemaBuilderTest {
         ColumnMappers mappers = ColumnMappers.create(new TestRelationalDatabaseConfig(config, null, null, 0));
 
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
-                SchemaBuilder.struct().build(), defaultFieldNamer, false,
-                EventConvertingFailureHandlingMode.FAIL)
+                SchemaBuilder.struct().build(), defaultFieldNamer, false)
                 .create(topicNamingStrategy, table2, null, mappers, null);
 
         Struct value = schema.valueFromColumnData(data);
@@ -679,8 +657,7 @@ public class TableSchemaBuilderTest {
     public void shouldUseDefaultOrCustomTopicNamingStrategySchemaRecordPrefix() {
         // table id with catalog and SchemaTopicNamingStrategy
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
-                SchemaBuilder.struct().build(), defaultFieldNamer, false,
-                EventConvertingFailureHandlingMode.FAIL)
+                SchemaBuilder.struct().build(), defaultFieldNamer, false)
                 .create(topicNamingStrategy, table, null, null, null);
         assertThat(schema).isNotNull();
         assertThat(schema.keySchema().name()).isEqualTo("test.schema.table.Key");
@@ -689,8 +666,7 @@ public class TableSchemaBuilderTest {
 
         // custom topic naming strategy with custom record prefix
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
-                SchemaBuilder.struct().build(), defaultFieldNamer, false,
-                EventConvertingFailureHandlingMode.FAIL)
+                SchemaBuilder.struct().build(), defaultFieldNamer, false)
                 .create(new CustomTopicNamingStrategy(topicProperties, null, "testSchemaPrefix"), table, null, null, null);
 
         assertThat(schema).isNotNull();
@@ -700,13 +676,81 @@ public class TableSchemaBuilderTest {
 
         // custom topic naming strategy with custom data change topic and schema prefix.
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
-                SchemaBuilder.struct().build(), defaultFieldNamer, false,
-                EventConvertingFailureHandlingMode.FAIL)
+                SchemaBuilder.struct().build(), defaultFieldNamer, false)
                 .create(new CustomTopicNamingStrategy(topicProperties, "testDataTopic", "testSchemaPrefix"), table, null, null, null);
 
         assertThat(schema).isNotNull();
         assertThat(schema.keySchema().name()).isEqualTo("testSchemaPrefix.Key");
         assertThat(schema.valueSchema().name()).isEqualTo("testSchemaPrefix.Value");
         assertThat(schema.getEnvelopeSchema().schema().name()).isEqualTo("testDataTopic.Envelope");
+    }
+
+    @Test
+    @FixFor("DBZ-7143")
+    public void shouldLogMessageOrThrowExceptionWhenConversionIsFailedWithEventConvertingFailureHandlingMode() {
+        LogInterceptor logInterceptor = new LogInterceptor(TableSchemaBuilder.class);
+
+        // converter should be failed because C4 column is COUNTER(INTEGER) type but value is string type("converting_failed_value")
+        Object[] data = new Object[]{ "c1value", 3.142d, null, "converting_failed_value", null, null, null,
+                null, null, null };
+        String errorMessage = "Failed to properly convert data value for 'catalog.schema.table.C4' of type COUNTER";
+
+        // only error log without exception if eventConvertingFailureHandlingMode is null
+        schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
+                SchemaBuilder.struct().build(), defaultFieldNamer, false, null)
+                .create(topicNamingStrategy, table, null, null, null);
+        try {
+            schema.valueFromColumnData(data);
+        }
+        catch (Exception e) {
+            fail();
+        }
+
+        assertThat(logInterceptor.containsErrorMessage(errorMessage)).isTrue();
+        logInterceptor.clear();
+
+        // error log and exception if eventConvertingFailureHandlingMode is FAIL
+        schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
+                SchemaBuilder.struct().build(), defaultFieldNamer, false, EventConvertingFailureHandlingMode.FAIL)
+                .create(topicNamingStrategy, table, null, null, null);
+
+        try {
+            schema.valueFromColumnData(data);
+            fail();
+        }
+        catch (Exception e) {
+            assertThat(e.getMessage().contains(errorMessage)).isTrue();
+        }
+
+        // warn log without exception if eventConvertingFailureHandlingMode is WARN
+        schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
+                SchemaBuilder.struct().build(), defaultFieldNamer, false, EventConvertingFailureHandlingMode.WARN)
+                .create(topicNamingStrategy, table, null, null, null);
+
+        try {
+            schema.valueFromColumnData(data);
+        }
+        catch (Exception e) {
+            fail();
+        }
+
+        assertThat(logInterceptor.containsWarnMessage(errorMessage)).isTrue();
+        logInterceptor.clear();
+
+        // only debug log without exception if eventConvertingFailureHandlingMode is SKIP
+        schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
+                SchemaBuilder.struct().build(), defaultFieldNamer, false, EventConvertingFailureHandlingMode.SKIP)
+                .create(topicNamingStrategy, table, null, null, null);
+
+        try {
+            schema.valueFromColumnData(data);
+        }
+        catch (Exception e) {
+            fail();
+        }
+
+        assertThat(logInterceptor.containsErrorMessage(errorMessage)).isFalse();
+        assertThat(logInterceptor.containsWarnMessage(errorMessage)).isFalse();
+        logInterceptor.clear();
     }
 }

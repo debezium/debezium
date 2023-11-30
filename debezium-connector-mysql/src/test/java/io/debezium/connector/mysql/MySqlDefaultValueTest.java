@@ -23,7 +23,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
-import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcValueConverters;
@@ -62,8 +61,7 @@ public class MySqlDefaultValueTest {
                 converters,
                 new MySqlDefaultValueConverter(converters),
                 SchemaNameAdjuster.NO_OP, new CustomConverterRegistry(null), SchemaBuilder.struct().build(),
-                FieldNameSelector.defaultSelector(SchemaNameAdjuster.NO_OP), false,
-                EventConvertingFailureHandlingMode.FAIL);
+                FieldNameSelector.defaultSelector(SchemaNameAdjuster.NO_OP), false);
 
     }
 
@@ -202,8 +200,7 @@ public class MySqlDefaultValueTest {
                 converters,
                 new MySqlDefaultValueConverter(converters),
                 SchemaNameAdjuster.NO_OP, new CustomConverterRegistry(null), SchemaBuilder.struct().build(),
-                FieldNameSelector.defaultSelector(SchemaNameAdjuster.NO_OP), false,
-                EventConvertingFailureHandlingMode.FAIL);
+                FieldNameSelector.defaultSelector(SchemaNameAdjuster.NO_OP), false);
 
         String sql = "CREATE TABLE UNSIGNED_BIGINT_TABLE (\n" +
                 "  A BIGINT UNSIGNED NULL DEFAULT 0,\n" +
@@ -361,8 +358,7 @@ public class MySqlDefaultValueTest {
                 converters,
                 new MySqlDefaultValueConverter(converters),
                 SchemaNameAdjuster.NO_OP, new CustomConverterRegistry(null), SchemaBuilder.struct().build(),
-                FieldNameSelector.defaultSelector(SchemaNameAdjuster.NO_OP), false,
-                EventConvertingFailureHandlingMode.FAIL);
+                FieldNameSelector.defaultSelector(SchemaNameAdjuster.NO_OP), false);
         String sql = "CREATE TABLE NUMERIC_DECIMAL_TABLE (\n" +
                 "  A NUMERIC NOT NULL DEFAULT 1.23,\n" +
                 "  B DECIMAL(5,3) NOT NULL DEFAULT 2.321,\n" +
@@ -597,8 +593,7 @@ public class MySqlDefaultValueTest {
                 converters,
                 new MySqlDefaultValueConverter(converters),
                 SchemaNameAdjuster.NO_OP, new CustomConverterRegistry(null), SchemaBuilder.struct().build(),
-                FieldNameSelector.defaultSelector(SchemaNameAdjuster.NO_OP), false,
-                EventConvertingFailureHandlingMode.FAIL);
+                FieldNameSelector.defaultSelector(SchemaNameAdjuster.NO_OP), false);
         String ddl = "CREATE TABLE `tbl_default` (  \n"
                 + "`id` int(11) NOT NULL AUTO_INCREMENT,\n"
                 + "c0 tinyint not null default '10.01',\n"

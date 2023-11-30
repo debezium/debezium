@@ -77,11 +77,27 @@ public class TableSchemaBuilder {
                               CustomConverterRegistry customConverterRegistry,
                               Schema sourceInfoSchema,
                               FieldNamer<Column> fieldNamer,
-                              boolean multiPartitionMode,
-                              EventConvertingFailureHandlingMode eventConvertingFailureHandlingMode) {
+                              boolean multiPartitionMode) {
         this(valueConverterProvider, null, schemaNameAdjuster,
-                customConverterRegistry, sourceInfoSchema, fieldNamer, multiPartitionMode,
-                eventConvertingFailureHandlingMode);
+                customConverterRegistry, sourceInfoSchema, fieldNamer, multiPartitionMode, null);
+    }
+
+    /**
+     * Create a new instance of the builder.
+     *
+     * @param valueConverterProvider the provider for obtaining {@link ValueConverter}s and {@link SchemaBuilder}s; may not be
+     *            null
+     * @param schemaNameAdjuster the adjuster for schema names; may not be null
+     */
+    public TableSchemaBuilder(ValueConverterProvider valueConverterProvider,
+                              DefaultValueConverter defaultValueConverter,
+                              SchemaNameAdjuster schemaNameAdjuster,
+                              CustomConverterRegistry customConverterRegistry,
+                              Schema sourceInfoSchema,
+                              FieldNamer<Column> fieldNamer,
+                              boolean multiPartitionMode) {
+        this(valueConverterProvider, defaultValueConverter, schemaNameAdjuster,
+                customConverterRegistry, sourceInfoSchema, fieldNamer, multiPartitionMode, null);
     }
 
     /**
@@ -284,18 +300,26 @@ public class TableSchemaBuilder {
                         catch (final Exception e) {
                             Column col = columns.get(i);
                             String message = "Failed to properly convert data value for '{}.{}' of type {}";
-                            switch (eventConvertingFailureHandlingMode) {
-                                case FAIL:
-                                    Loggings.logErrorAndTraceRecord(LOGGER, row, message, tableId,
-                                            col.name(), col.typeName(), e);
-                                    throw new DebeziumException("Failed to properly convert data value for '" +
-                                            tableId + "." + col.name() + "' of type " + col.typeName(), e.getCause());
-                                case WARN:
-                                    Loggings.logWarningAndTraceRecord(LOGGER, row, message, tableId,
-                                            col.name(), col.typeName(), e);
-                                case SKIP:
-                                    Loggings.logDebugAndTraceRecord(LOGGER, row, message, tableId,
-                                            col.name(), col.typeName(), e);
+
+                            if (eventConvertingFailureHandlingMode == null) {
+                                Loggings.logErrorAndTraceRecord(LOGGER, row,
+                                        message, tableId,
+                                        col.name(), col.typeName(), e);
+                            }
+                            else {
+                                switch (eventConvertingFailureHandlingMode) {
+                                    case FAIL:
+                                        Loggings.logErrorAndTraceRecord(LOGGER, row, message, tableId,
+                                                col.name(), col.typeName(), e);
+                                        throw new DebeziumException("Failed to properly convert data value for '" +
+                                                tableId + "." + col.name() + "' of type " + col.typeName(), e.getCause());
+                                    case WARN:
+                                        Loggings.logWarningAndTraceRecord(LOGGER, row, message, tableId,
+                                                col.name(), col.typeName(), e);
+                                    case SKIP:
+                                        Loggings.logDebugAndTraceRecord(LOGGER, row, message, tableId,
+                                                col.name(), col.typeName(), e);
+                                }
                             }
                         }
                     }
