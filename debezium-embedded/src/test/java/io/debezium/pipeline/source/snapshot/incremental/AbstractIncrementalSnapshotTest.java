@@ -914,6 +914,80 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         assertCorrectIncrementalSnapshotNotification(notifications);
     }
 
+    @Test
+    public void insertInsertWatermarkingStrategy() throws Exception {
+        // Testing.Print.enable();
+
+        populateTable();
+        startConnector();
+
+        sendAdHocSnapshotSignal();
+
+        try (JdbcConnection connection = databaseConnection()) {
+            connection.setAutoCommit(false);
+            for (int i = 0; i < ROW_COUNT; i++) {
+                connection.executeWithoutCommitting(String.format("INSERT INTO %s (%s, aa) VALUES (%s, %s)",
+                        tableName(),
+                        connection.quotedColumnIdString(pkFieldName()),
+                        i + ROW_COUNT + 1,
+                        i + ROW_COUNT));
+            }
+            connection.commit();
+        }
+
+        final int expectedRecordCount = ROW_COUNT * 2;
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
+        for (int i = 0; i < expectedRecordCount; i++) {
+            assertThat(dbChanges).contains(entry(i + 1, i));
+        }
+
+        assertOpenCloseEventCount(rs -> {
+            rs.next();
+            assertThat(rs.getInt(1)).isNotZero();
+        });
+    }
+
+    private void assertOpenCloseEventCount(JdbcConnection.ResultSetConsumer consumer) throws SQLException {
+        try (JdbcConnection connection = databaseConnection()) {
+            connection.query("SELECT count(id) from " + signalTableName() + " where id like '%close'", consumer);
+        }
+    }
+
+    @Test
+    public void insertDeleteWatermarkingStrategy() throws Exception {
+        // Testing.Print.enable();
+
+        populateTable();
+        startConnector(x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_WATERMARKING_STRATEGY, "insert_delete")
+                .with(CommonConnectorConfig.TOMBSTONES_ON_DELETE, false)); // Remove tombstone to avoid failure of VerifyRecord.isValid
+
+        sendAdHocSnapshotSignal();
+
+        try (JdbcConnection connection = databaseConnection()) {
+            connection.setAutoCommit(false);
+            for (int i = 0; i < ROW_COUNT; i++) {
+                connection.executeWithoutCommitting(String.format("INSERT INTO %s (%s, aa) VALUES (%s, %s)",
+                        tableName(),
+                        connection.quotedColumnIdString(pkFieldName()),
+                        i + ROW_COUNT + 1,
+                        i + ROW_COUNT));
+            }
+            connection.commit();
+        }
+
+        final int expectedRecordCount = ROW_COUNT * 2;
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
+
+        for (int i = 0; i < expectedRecordCount; i++) {
+            assertThat(dbChanges).contains(entry(i + 1, i));
+        }
+
+        assertOpenCloseEventCount(rs -> {
+            rs.next();
+            assertThat(rs.getInt(1)).isZero();
+        });
+    }
+
     protected int defaultIncrementalSnapshotChunkSize() {
         return 1;
     }

@@ -46,6 +46,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Oracl
         TestHelper.dropTable(connection, "debezium_signal");
         connection.execute("CREATE TABLE debezium_signal (id varchar2(64), type varchar2(32), data varchar2(2048))");
         connection.execute("GRANT INSERT on debezium_signal to " + TestHelper.getConnectorUserName());
+        connection.execute("GRANT DELETE on debezium_signal to " + TestHelper.getConnectorUserName());
         TestHelper.streamTable(connection, "debezium_signal");
 
         setConsumeTimeout(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS);

@@ -377,6 +377,59 @@ public abstract class CommonConnectorConfig {
         }
     }
 
+    /**
+     * The set of predefined incremental snapshot watermarking strategies
+     */
+    public enum WatermarkStrategy implements EnumeratedValue {
+        INSERT_INSERT("INSERT_INSERT"),
+        INSERT_DELETE("INSERT_DELETE");
+
+        private final String value;
+
+        WatermarkStrategy(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static WatermarkStrategy parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (WatermarkStrategy option : WatermarkStrategy.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static WatermarkStrategy parse(String value, String defaultValue) {
+            WatermarkStrategy mode = parse(value);
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+            return mode;
+        }
+    }
+
     private static final String CONFLUENT_AVRO_CONVERTER = "io.confluent.connect.avro.AvroConverter";
     private static final String APICURIO_AVRO_CONVERTER = "io.apicurio.registry.utils.converter.AvroConverter";
 
@@ -718,6 +771,15 @@ public abstract class CommonConnectorConfig {
                     + "which should be appended the end of regular name, each key would represent a tag for the MBean object name, "
                     + "and the corresponding value would be the value of that tag the key is. For example: k1=v1,k2=v2");
 
+    public static final Field INCREMENTAL_SNAPSHOT_WATERMARKING_STRATEGY = Field.create("incremental.snapshot.watermarking.strategy")
+            .withDisplayName("Incremental snapshot watermarking strategy")
+            .withEnum(WatermarkStrategy.class, WatermarkStrategy.INSERT_INSERT)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.LOW)
+            .withDescription("Specify the strategy used for watermarking during an incremental snapshot: "
+                    + "'insert_insert' both open and close signal is written into signal data collection (default); "
+                    + "'insert_delete' only open signal is written on signal data collection, the close will delete the relative open signal;");
+
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
             .connector(
                     EVENT_PROCESSING_FAILURE_HANDLING_MODE,
@@ -733,7 +795,8 @@ public abstract class CommonConnectorConfig {
                     SNAPSHOT_MAX_THREADS,
                     RETRIABLE_RESTART_WAIT,
                     QUERY_FETCH_SIZE,
-                    MAX_RETRIES_ON_ERROR)
+                    MAX_RETRIES_ON_ERROR,
+                    INCREMENTAL_SNAPSHOT_WATERMARKING_STRATEGY)
             .events(
                     CUSTOM_CONVERTERS,
                     TOMBSTONES_ON_DELETE,
@@ -783,6 +846,7 @@ public abstract class CommonConnectorConfig {
     private final String notificationTopicName;
     private final List<String> enabledNotificationChannels;
     private final Map<String, String> customMetricTags;
+    private WatermarkStrategy incrementalSnapshotWatermarkingStrategy;
 
     protected CommonConnectorConfig(Configuration config, int defaultSnapshotFetchSize) {
         this.config = config;
@@ -818,6 +882,7 @@ public abstract class CommonConnectorConfig {
         this.skipMessagesWithoutChange = config.getBoolean(SKIP_MESSAGES_WITHOUT_CHANGE);
         this.maxRetriesOnError = config.getInteger(MAX_RETRIES_ON_ERROR);
         this.customMetricTags = createCustomMetricTags(config);
+        this.incrementalSnapshotWatermarkingStrategy = WatermarkStrategy.parse(config.getString(INCREMENTAL_SNAPSHOT_WATERMARKING_STRATEGY));
     }
 
     private static List<String> getSignalEnabledChannels(Configuration config) {
@@ -1026,6 +1091,10 @@ public abstract class CommonConnectorConfig {
         }
 
         return result;
+    }
+
+    public WatermarkStrategy getIncrementalSnapshotWatermarkingStrategy() {
+        return incrementalSnapshotWatermarkingStrategy;
     }
 
     /**
