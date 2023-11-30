@@ -22,7 +22,5 @@ public interface MongoDbStreamingChangeEventSourceMetricsMBean extends Streaming
 
     long getLastEmptyPollTime();
 
-    long getNumberOfSourceEvents();
-
     long getNumberOfEmptyPolls();
 }

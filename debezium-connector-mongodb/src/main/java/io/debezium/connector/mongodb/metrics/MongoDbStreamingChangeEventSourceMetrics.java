@@ -68,33 +68,21 @@ public class MongoDbStreamingChangeEventSourceMetrics extends DefaultStreamingCh
     }
 
     @Override
-    public long getNumberOfSourceEvents() {
-        return numberOfSourceEvents.get();
-    }
-
-    @Override
     public long getNumberOfEmptyPolls() {
         return numberOfEmptyPolls.get();
     }
 
     public void onSourceEventPolled(ChangeStreamDocument<BsonDocument> event, Clock clock, Instant prePollTimestamp) {
         var now = clock.currentTimeAsInstant();
-
-        AtomicLong counter;
-        AtomicLong timer;
+        var duration = Duration.between(prePollTimestamp, now).toMillis();
 
         if (event == null) {
-            counter = numberOfEmptyPolls;
-            timer = lastEmptyPollTime;
+            lastEmptyPollTime.set(duration);
+            numberOfEmptyPolls.incrementAndGet();
         }
         else {
-            counter = numberOfSourceEvents;
-            timer = lastSourceEventPollTime;
+            lastSourceEventPollTime.set(duration);
         }
-
-        var duration = Duration.between(prePollTimestamp, now).toMillis();
-        timer.set(duration);
-        counter.incrementAndGet();
     }
 
     @Override
