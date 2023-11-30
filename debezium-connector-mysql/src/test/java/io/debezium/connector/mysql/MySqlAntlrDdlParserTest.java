@@ -35,7 +35,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
-import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcValueConverters;
@@ -87,8 +86,7 @@ public class MySqlAntlrDdlParserTest {
                 converters,
                 new MySqlDefaultValueConverter(converters),
                 SchemaNameAdjuster.NO_OP, new CustomConverterRegistry(null), SchemaBuilder.struct().build(),
-                FieldNameSelector.defaultSelector(SchemaNameAdjuster.NO_OP), false,
-                EventConvertingFailureHandlingMode.FAIL);
+                FieldNameSelector.defaultSelector(SchemaNameAdjuster.NO_OP), false);
         properties = new Properties();
         properties.put("topic.prefix", "test");
     }

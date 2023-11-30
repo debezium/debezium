@@ -26,7 +26,6 @@ import org.awaitility.Awaitility;
 import org.junit.Before;
 import org.junit.Test;
 
-import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcValueConverters;
@@ -215,8 +214,7 @@ public class SqlServerConnectionIT {
                     new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null),
                     connection.getDefaultValueConverter(),
                     SchemaNameAdjuster.NO_OP, new CustomConverterRegistry(null), SchemaBuilder.struct().build(),
-                    FieldNameSelector.defaultSelector(SchemaNameAdjuster.NO_OP), true,
-                    EventConvertingFailureHandlingMode.WARN);
+                    FieldNameSelector.defaultSelector(SchemaNameAdjuster.NO_OP), true);
 
             assertColumnHasNotDefaultValue(table, "int_no_default_not_null");
             assertColumnHasDefaultValue(table, "int_no_default", null, tableSchemaBuilder);
@@ -387,8 +385,7 @@ public class SqlServerConnectionIT {
                     new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null),
                     connection.getDefaultValueConverter(),
                     SchemaNameAdjuster.NO_OP, new CustomConverterRegistry(null), SchemaBuilder.struct().build(),
-                    FieldNameSelector.defaultSelector(SchemaNameAdjuster.NO_OP), true,
-                    EventConvertingFailureHandlingMode.WARN);
+                    FieldNameSelector.defaultSelector(SchemaNameAdjuster.NO_OP), true);
 
             assertColumnHasNotDefaultValue(table, "int_no_default_not_null");
             assertColumnHasDefaultValue(table, "int_no_default", null, tableSchemaBuilder);
