@@ -91,6 +91,8 @@ unit_statement
     | data_manipulation_language_statements
     | truncate_table
     | drop_table
+    | drop_tablespace
+    | drop_tablespace_set
     | drop_view
     | drop_index
     | drop_user
@@ -2548,8 +2550,20 @@ drop_table
     : DROP TABLE tableview_name (AS tableview_name)? (CASCADE CONSTRAINTS)? PURGE? (AS quoted_string)? FORCE?
     ;
 
+drop_tablespace
+    : DROP TABLESPACE ts = id_expression ((DROP | KEEP) QUOTA?)? including_contents_clause?
+    ;
+
+drop_tablespace_set
+    : DROP TABLESPACE SET tss = id_expression including_contents_clause?
+    ;
+
 drop_view
     : DROP VIEW tableview_name (CASCADE CONSTRAINT)? SEMICOLON
+    ;
+
+including_contents_clause
+    : INCLUDING CONTENTS ((AND | KEEP) DATAFILES)? (CASCADE CONSTRAINTS)?
     ;
 
 comment_on_column
