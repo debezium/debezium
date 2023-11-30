@@ -675,6 +675,24 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withImportance(Importance.LOW)
             .withDescription("The maximum processing time in milliseconds to wait for the oplog cursor to process a single poll request");
 
+    public static final Field MONGODB_MULTI_TASK_ENABLED = Field.create("mongodb.multi.task.enabled")
+            .withDisplayName("Enable Mongo DB multi-task")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDefault(false)
+            .withValidation(Field::isBoolean)
+            .withDescription("Should the multi-task connector setup be enabled to the MongoDB instance, only valid if the connector manages a single replset");
+
+    public static final Field MONGODB_MULTI_TASK_GEN = Field.create("mongodb.multi.task.gen")
+            .withDisplayName("Mongo DB multi-task generation")
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDefault(-1)
+            .withValidation(Field::isInteger)
+            .withDescription("Define multi-task generation to be enabled on MongoDB instance");
+
     private static final ConfigDefinition CONFIG_DEFINITION = CommonConnectorConfig.CONFIG_DEFINITION.edit()
             .name("MongoDB")
             .type(
@@ -698,7 +716,9 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                     AUTO_DISCOVER_MEMBERS,
                     SSL_ENABLED,
                     SSL_ALLOW_INVALID_HOSTNAMES,
-                    CURSOR_MAX_AWAIT_TIME_MS)
+                    CURSOR_MAX_AWAIT_TIME_MS,
+                    MONGODB_MULTI_TASK_ENABLED,
+                    MONGODB_MULTI_TASK_GEN)
             .events(
                     DATABASE_WHITELIST,
                     DATABASE_INCLUDE_LIST,
@@ -744,6 +764,10 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
     private final int streamingShardId;
 
+    private final boolean multiTaskEnabled;
+
+    private final int multiTaskGen;
+
     public MongoDbConnectorConfig(Configuration config) {
         super(config, config.getString(LOGICAL_NAME), DEFAULT_SNAPSHOT_FETCH_SIZE);
 
@@ -762,6 +786,9 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         this.incrementalSnapshotThreads = config.getInteger(MongoDbConnectorConfig.INCREMENTAL_SNAPSHOT_THREADS, 1);
         this.streamingShards = config.getInteger(MongoDbConnectorConfig.STREAMING_SHARDS, 1);
         this.streamingShardId = config.getInteger(MongoDbConnectorConfig.STREAMING_SHARD_ID, 0);
+
+        this.multiTaskEnabled = config.getBoolean(MongoDbConnectorConfig.MONGODB_MULTI_TASK_ENABLED, false);
+        this.multiTaskGen = config.getInteger(MongoDbConnectorConfig.MONGODB_MULTI_TASK_GEN, -1);
     }
 
     private static int validateHosts(Configuration config, Field field, ValidationOutput problems) {
