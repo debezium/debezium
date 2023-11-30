@@ -90,7 +90,12 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
      * Can be used for reporting in Debezium Embedded mode
      */
     public static void logCacheStats() {
-        AbstractInfinispanLogMinerEventProcessor.instance.displayCacheStatistics();
+        if (instance != null) {
+            AbstractInfinispanLogMinerEventProcessor.instance.displayCacheStatistics();
+        }
+        else {
+            LOGGER.trace("AbstractInfinispanLogMinerEventProcessor is not initialized, skipping logging stats.");
+        }
     }
 
     @Override
