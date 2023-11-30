@@ -189,10 +189,21 @@ public abstract class AbstractSnapshotTest<T extends SourceConnector> extends Ab
                                                                       String topicName,
                                                                       Consumer<List<SourceRecord>> recordConsumer)
             throws InterruptedException {
+        return consumeMixedWithIncrementalSnapshot(recordCount, dataCompleted, idCalculator, valueConverter, topicName, recordConsumer, true);
+    }
+
+    protected <V> Map<Integer, V> consumeMixedWithIncrementalSnapshot(int recordCount,
+                                                                      Predicate<Map.Entry<Integer, V>> dataCompleted,
+                                                                      Function<Struct, Integer> idCalculator,
+                                                                      Function<SourceRecord, V> valueConverter,
+                                                                      String topicName,
+                                                                      Consumer<List<SourceRecord>> recordConsumer,
+                                                                      boolean assertRecords)
+            throws InterruptedException {
         final Map<Integer, V> dbChanges = new HashMap<>();
         int noRecords = 0;
         for (;;) {
-            final SourceRecords records = consumeRecordsByTopic(1);
+            final SourceRecords records = consumeRecordsByTopic(1, assertRecords);
             final List<SourceRecord> dataRecords = records.recordsForTopic(topicName);
             if (records.allRecordsInOrder().isEmpty()) {
                 noRecords++;

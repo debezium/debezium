@@ -5,16 +5,19 @@
  */
 package io.debezium.pipeline.source.snapshot.incremental;
 
+import static io.debezium.config.CommonConnectorConfig.WatermarkStrategy.INSERT_DELETE;
+
 import java.sql.SQLException;
+import java.util.Objects;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.NotThreadSafe;
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
-import io.debezium.pipeline.signal.actions.snapshotting.CloseIncrementalSnapshotWindow;
 import io.debezium.pipeline.signal.actions.snapshotting.OpenIncrementalSnapshotWindow;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
@@ -31,6 +34,7 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SignalBasedIncrementalSnapshotChangeEventSource.class);
     private final String signalWindowStatement;
+    private final String signalWindowDeleteStatement;
 
     public SignalBasedIncrementalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig config,
                                                            JdbcConnection jdbcConnection,
@@ -42,6 +46,7 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
         super(config, jdbcConnection, dispatcher, databaseSchema, clock, progressListener, dataChangeEventListener, notificationService);
         signalWindowStatement = "INSERT INTO " + getSignalTableName(config.getSignalingDataCollectionId())
                 + " VALUES (?, ?, null)";
+        signalWindowDeleteStatement = "DELETE FROM " + getSignalTableName(config.getSignalingDataCollectionId()) + " WHERE id = ?";
     }
 
     @Override
@@ -70,11 +75,20 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
 
     @Override
     protected void emitWindowClose(Partition partition, OffsetContext offsetContext) throws SQLException {
-        jdbcConnection.prepareUpdate(signalWindowStatement, x -> {
-            LOGGER.trace("Emitting close window for chunk = '{}'", context.currentChunkId());
-            x.setString(1, context.currentChunkId() + "-close");
-            x.setString(2, CloseIncrementalSnapshotWindow.NAME);
-        });
-        jdbcConnection.commit();
+
+        String signalTableName = getSignalTableName(connectorConfig.getSignalingDataCollectionId());
+
+        WatermarkWindowCloser watermarkWindowCloser = getWatermarkWindowCloser(connectorConfig, jdbcConnection, signalTableName);
+
+        watermarkWindowCloser.closeWindows(partition, offsetContext, context.currentChunkId());
+    }
+
+    private WatermarkWindowCloser getWatermarkWindowCloser(CommonConnectorConfig connectorConfig, JdbcConnection jdbcConnection, String signalTable) {
+
+        if (Objects.requireNonNull(connectorConfig.getIncrementalSnapshotWatermarkingStrategy()) == INSERT_DELETE) {
+            return new DeleteWindowCloser<>(jdbcConnection, signalTable, this);
+        }
+
+        return new InsertWindowCloser(jdbcConnection, signalTable);
     }
 }

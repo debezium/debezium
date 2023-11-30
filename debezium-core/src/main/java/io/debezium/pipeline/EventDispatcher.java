@@ -274,7 +274,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
 
                         LOGGER.trace("Received change record {} for {} operation on key {} with context {}", value, operation, key, offset);
 
-                        if (operation == Operation.CREATE && connectorConfig.isSignalDataCollection(dataCollectionId) && sourceSignalChannel != null) {
+                        if (isASignalEventToProcess(dataCollectionId, operation) && sourceSignalChannel != null) {
                             sourceSignalChannel.process(value);
 
                             if (signalProcessor != null) {
@@ -292,6 +292,11 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                             }
                             streamingReceiver.changeRecord(partition, schema, operation, key, value, offset, headers);
                         }
+                    }
+
+                    private boolean isASignalEventToProcess(T dataCollectionId, Operation operation) {
+                        return operation == Operation.CREATE &&
+                                connectorConfig.isSignalDataCollection(dataCollectionId);
                     }
                 });
                 handled = true;
