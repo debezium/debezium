@@ -355,17 +355,15 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
     }
 
     @Test
-    @SkipWhenGtidModeIs(value = SkipWhenGtidModeIs.GtidMode.ON, reason = "Signal based watermarking not available when GTID_MODE is ON")
     @Override
     public void insertInsertWatermarkingStrategy() throws Exception {
-        super.insertInsertWatermarkingStrategy();
+        // test has not to be executed on read only
     }
 
     @Test
-    @SkipWhenGtidModeIs(value = SkipWhenGtidModeIs.GtidMode.ON, reason = "Signal based watermarking not available when GTID_MODE is ON")
     @Override
     public void insertDeleteWatermarkingStrategy() throws Exception {
-        super.insertDeleteWatermarkingStrategy();
+        // test has not to be executed on read only
     }
 
     private void sendExecuteSnapshotFileSignal(String fullTableNames) throws IOException {
