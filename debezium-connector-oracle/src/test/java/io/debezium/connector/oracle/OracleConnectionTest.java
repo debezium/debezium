@@ -46,7 +46,7 @@ public class OracleConnectionTest {
         when(jdbcConfiguration.subset(anyString(), anyBoolean())).thenReturn(jdbcConfiguration);
         when(jdbcConfiguration.merge(jdbcConfiguration)).thenReturn(jdbcConfiguration);
         when(jdbcConfiguration.edit()).thenReturn(configurationBuilder);
-        when(configurationBuilder.with(anyString(), anyString())).thenReturn(configurationBuilder);
+        when(configurationBuilder.withDefault(anyString(), anyString())).thenReturn(configurationBuilder);
         when(configurationBuilder.build()).thenReturn(jdbcConfiguration);
 
     }
