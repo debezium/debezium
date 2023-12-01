@@ -11,10 +11,12 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
@@ -74,6 +76,68 @@ class InterruptedTask extends SimpleSourceConnector.SimpleConnectorTask {
     @Override
     public List<SourceRecord> poll() throws InterruptedException {
         throw new InterruptedException();
+    }
+}
+
+class NoOpConnector extends SimpleSourceConnector {
+
+    @Override
+    public Class<? extends Task> taskClass() {
+        return NoOpTask.class;
+    }
+}
+
+class NoOpTask extends SimpleSourceConnector.SimpleConnectorTask {
+
+    @Override
+    public List<SourceRecord> poll() throws InterruptedException {
+        return new ArrayList<SourceRecord>();
+    }
+}
+
+class MultiTaskSimpleSourceConnector extends SimpleSourceConnector {
+
+    private Map<String, String> config;
+
+    @Override
+    public void start(Map<String, String> props) {
+        config = props;
+    }
+
+    @Override
+    public List<Map<String, String>> taskConfigs(int maxTasks) {
+        List<Map<String, String>> configs = new ArrayList<>();
+        for (int i = 0; i < maxTasks; i++) {
+            configs.add(config);
+        }
+        return configs;
+    }
+}
+
+class RandomlyFailingDuringStartConnector extends MultiTaskSimpleSourceConnector {
+
+    @Override
+    public Class<? extends Task> taskClass() {
+        return RandomlyFailingDuringStartTask.class;
+    }
+}
+
+class RandomlyFailingDuringStartTask extends SimpleSourceConnector.SimpleConnectorTask {
+
+    Random rand = new Random();
+
+    @Override
+    public void start(Map<String, String> props) {
+        if (rand.nextBoolean()) {
+            try {
+                // Give other tasks chance to start
+                Thread.sleep(100);
+            }
+            catch (InterruptedException e) {
+                throw new IllegalStateException("Unexpected interrupted exception");
+            }
+            throw new IllegalStateException("Exception during start of the task");
+        }
     }
 }
 
