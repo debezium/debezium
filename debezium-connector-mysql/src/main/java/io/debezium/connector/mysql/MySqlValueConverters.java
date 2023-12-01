@@ -336,6 +336,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
     protected Object handleUnknownData(Column column, Field fieldDefn, Object data) {
         Class<?> dataClass = data.getClass();
         String clazzName = dataClass.isArray() ? dataClass.getSimpleName() : dataClass.getName();
+        // exception will be handled in TableSchemaBuilder.createValueGenerator
         throw new IllegalArgumentException("Unexpected value for JDBC type " + column.jdbcType() + " and column " + column +
                 ": class=" + clazzName);
     }
