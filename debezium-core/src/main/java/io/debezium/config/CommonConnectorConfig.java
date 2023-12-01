@@ -844,13 +844,13 @@ public abstract class CommonConnectorConfig {
                     + "'insert_delete' only open signal is written on signal data collection, the close will delete the relative open signal;");
 
     public static final Field EVENT_CONVERTING_FAILURE_HANDLING_MODE = Field.create("event.converting.failure.handling.mode")
-            .withDisplayName("Event converting failure handling")
+            .withDisplayName("Event converting failure handling mode")
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 26))
             .withEnum(EventConvertingFailureHandlingMode.class, EventConvertingFailureHandlingMode.WARN)
-            .withWidth(Width.SHORT)
+            .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
             .withDescription("Specify how failures during converting of event should be handled, including: "
-                    + "'fail' throw an exception that the column of event conversion is failed with unmatched schema type, causing the connector to be stopped. it needs schema recovery to covert successfully; "
+                    + "'fail' throw an exception that the column of event conversion is failed with unmatched schema type, causing the connector to be stopped. it could need schema recovery to covert successfully; "
                     + "'warn' (the default) the value of column of event that conversion failed will be null and be logged with warn level; "
                     + "'skip' the value of column of event that conversion failed will be null and be logged with debug level.");
 
