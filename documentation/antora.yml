@@ -17,7 +17,7 @@ asciidoc:
     modules: '../../modules'
     mysql-version: '8.0'
     strimzi-version: '0.18.0'
-    apicurio-version: '2.4.3.Final'
+    apicurio-version: '2.5.3.Final'
     db2-version: '11.5.0.0'
     ojdbc8-version: '21.6.0.0'
     community: true
