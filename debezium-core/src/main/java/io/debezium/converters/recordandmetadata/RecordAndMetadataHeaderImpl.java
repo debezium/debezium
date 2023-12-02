@@ -34,11 +34,6 @@ public class RecordAndMetadataHeaderImpl extends RecordAndMetadataBaseImpl imple
     }
 
     @Override
-    public Schema dataSchema(String... dataFields) {
-        return getValueFromHeaderOrByDefault(metadataSource.global(), null, null, () -> super.dataSchema, () -> super.dataSchema(dataFields));
-    }
-
-    @Override
     public String id() {
         return getValueFromHeaderOrByDefault(metadataSource.id(), CloudEventsMaker.FieldName.ID, false, null, super::id);
     }
@@ -70,6 +65,11 @@ public class RecordAndMetadataHeaderImpl extends RecordAndMetadataBaseImpl imple
             Schema ts_msSchema = this.source().schema().field(Envelope.FieldName.TIMESTAMP).schema();
             return new SchemaAndValue(ts_msSchema, ts_ms);
         }, super::timestamp);
+    }
+
+    @Override
+    public Schema dataSchema(String... dataFields) {
+        return getValueFromHeaderOrByDefault(metadataSource.global(), null, null, super::dataSchema, () -> super.dataSchema(dataFields));
     }
 
     private <T> T getValueFromHeaderOrByDefault(MetadataSourceValue metadataSourceValue,

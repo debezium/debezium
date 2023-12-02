@@ -6,6 +6,7 @@
 
 package io.debezium.converters.recordandmetadata;
 
+import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaAndValue;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -28,13 +29,6 @@ public class RecordAndMetadataBaseImpl implements RecordAndMetadata {
     @Override
     public Struct record() {
         return record;
-    }
-
-    @Override
-    public Schema dataSchema(String... dataFields) {
-        Struct source = record.getStruct(Envelope.FieldName.SOURCE);
-        String connectorType = source.getString(AbstractSourceInfo.DEBEZIUM_CONNECTOR_KEY);
-        return getDataSchema(this.dataSchema, connectorType, dataFields);
     }
 
     @Override
@@ -69,12 +63,22 @@ public class RecordAndMetadataBaseImpl implements RecordAndMetadata {
         return new SchemaAndValue(ts_msSchema, ts_ms);
     }
 
-    private static Schema getDataSchema(Schema schema, String connectorType, String... fields) {
+    @Override
+    public Schema dataSchema(String... dataFields) {
+        String connectorType = source().getString(AbstractSourceInfo.DEBEZIUM_CONNECTOR_KEY);
         String dataSchemaName = "io.debezium.connector." + connectorType + ".Data";
         SchemaBuilder builder = SchemaBuilder.struct().name(dataSchemaName);
 
-        for (String field : fields) {
-            builder.field(field, schema.field(field).schema());
+        if (dataFields.length == 0) {
+            // copy fields from original data schema
+            for (Field field : dataSchema.fields()) {
+                builder.field(field.name(), field.schema());
+            }
+        }
+        else {
+            for (String field : dataFields) {
+                builder.field(field, dataSchema.field(field).schema());
+            }
         }
 
         return builder.build();

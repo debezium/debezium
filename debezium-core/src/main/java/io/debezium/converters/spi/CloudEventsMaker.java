@@ -108,7 +108,7 @@ public abstract class CloudEventsMaker {
      * @return the type field of CloudEvents envelope
      */
     public String ceType() {
-        return "io.debezium." + recordParser.connectorType() + ".datachangeevent";
+        return "io.debezium.connector." + recordParser.connectorType() + ".DataChangeEvent";
     }
 
     /**
