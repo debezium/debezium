@@ -19,8 +19,6 @@ public interface RecordAndMetadata {
 
     Struct record();
 
-    Schema dataSchema(String... dataFields);
-
     String id();
 
     String type();
@@ -32,4 +30,6 @@ public interface RecordAndMetadata {
     Struct transaction();
 
     SchemaAndValue timestamp();
+
+    Schema dataSchema(String... dataFields);
 }

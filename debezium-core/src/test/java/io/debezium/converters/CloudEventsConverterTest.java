@@ -105,6 +105,8 @@ public class CloudEventsConverterTest {
             assertThat(valueJson.get(CloudEventsMaker.FieldName.SPECVERSION)).isNotNull();
             assertThat(valueJson.get(CloudEventsMaker.FieldName.DATASCHEMA)).isNull();
             assertThat(valueJson.get(CloudEventsMaker.FieldName.TYPE)).isNotNull();
+            assertThat(valueJson.get(CloudEventsMaker.FieldName.TYPE).asText()).startsWith("io.debezium.connector.");
+            assertThat(valueJson.get(CloudEventsMaker.FieldName.TYPE).asText()).endsWith(".DataChangeEvent");
             assertThat(valueJson.get(CloudEventsMaker.FieldName.DATACONTENTTYPE)).isNotNull();
             assertThat(valueJson.get(CloudEventsMaker.FieldName.TIME)).isNotNull();
             assertThat(valueJson.get(CloudEventsMaker.FieldName.DATA)).isNotNull();
@@ -120,6 +122,8 @@ public class CloudEventsConverterTest {
             msg = "inspecting the data field in the value";
             dataJson = valueJson.get(CloudEventsMaker.FieldName.DATA);
             assertThat(dataJson.get(CloudEventsMaker.FieldName.SCHEMA_FIELD_NAME)).isNotNull();
+            assertThat(dataJson.get(CloudEventsMaker.FieldName.SCHEMA_FIELD_NAME).get("name").asText()).startsWith("io.debezium.connector.");
+            assertThat(dataJson.get(CloudEventsMaker.FieldName.SCHEMA_FIELD_NAME).get("name").asText()).endsWith(".Data");
             assertThat(dataJson.get(CloudEventsMaker.FieldName.PAYLOAD_FIELD_NAME)).isNotNull();
             // before field may be null
             assertThat(dataJson.get(CloudEventsMaker.FieldName.PAYLOAD_FIELD_NAME).get(Envelope.FieldName.AFTER)).isNotNull();
@@ -205,6 +209,8 @@ public class CloudEventsConverterTest {
             assertThat(valueJson.get(CloudEventsMaker.FieldName.DATACONTENTTYPE).asText()).isEqualTo("application/avro");
             assertThat(valueJson.get(CloudEventsMaker.FieldName.DATASCHEMA).asText()).startsWith("http://fake-url/schemas/ids/");
             assertThat(valueJson.get(CloudEventsMaker.FieldName.TYPE)).isNotNull();
+            assertThat(valueJson.get(CloudEventsMaker.FieldName.TYPE).asText()).startsWith("io.debezium.connector.");
+            assertThat(valueJson.get(CloudEventsMaker.FieldName.TYPE).asText()).endsWith(".DataChangeEvent");
             assertThat(valueJson.get(CloudEventsMaker.FieldName.TIME)).isNotNull();
             assertThat(valueJson.get(CloudEventsMaker.FieldName.DATA)).isNotNull();
             msg = "inspecting required CloudEvents extension attributes for Debezium";
@@ -222,6 +228,8 @@ public class CloudEventsConverterTest {
 
             avroConverter.configure(Collections.singletonMap("schema.registry.url", "http://fake-url"), false);
             SchemaAndValue data = avroConverter.toConnectData(record.topic(), Base64.getDecoder().decode(dataJson.asText()));
+            assertThat(data.schema().name()).startsWith("io.debezium.connector.");
+            assertThat(data.schema().name()).endsWith(".Data");
             assertThat(data.value()).isInstanceOf(Struct.class);
             assertThat(((Struct) data.value()).get(fieldName)).describedAs("Field must be set: " + fieldName)
                     .isNotNull();
@@ -292,7 +300,7 @@ public class CloudEventsConverterTest {
             assertThat(avroValue.get(CloudEventsMaker.FieldName.ID)).isNotNull();
             assertThat(avroValue.getString(CloudEventsMaker.FieldName.SOURCE)).isEqualTo("/debezium/" + connectorName + "/" + serverName);
             assertThat(avroValue.get(CloudEventsMaker.FieldName.SPECVERSION)).isEqualTo("1.0");
-            assertThat(avroValue.get(CloudEventsMaker.FieldName.TYPE)).isEqualTo("io.debezium." + connectorName + ".datachangeevent");
+            assertThat(avroValue.get(CloudEventsMaker.FieldName.TYPE)).isEqualTo("io.debezium.connector." + connectorName + ".DataChangeEvent");
             assertThat(avroValue.get(CloudEventsMaker.FieldName.DATACONTENTTYPE)).isEqualTo("application/avro");
             assertThat(avroValue.getString(CloudEventsMaker.FieldName.DATASCHEMA)).startsWith("http://fake-url/schemas/ids/");
             assertThat(avroValue.get(CloudEventsMaker.FieldName.TIME)).isNotNull();
@@ -308,6 +316,7 @@ public class CloudEventsConverterTest {
             }
             msg = "inspecting the data field in the value";
             Struct avroDataField = avroValue.getStruct(CloudEventsMaker.FieldName.DATA);
+            assertThat(avroDataField.schema().name()).startsWith("io.debezium.connector." + connectorName + ".Data");
             // before field may be null
             assertThat(avroDataField.schema().field(Envelope.FieldName.AFTER)).isNotNull();
         }
@@ -372,6 +381,7 @@ public class CloudEventsConverterTest {
             msg = "inspecting the data field in the value";
             dataJson = valueJson.get(CloudEventsMaker.FieldName.DATA);
             assertThat(dataJson.get(CloudEventsMaker.FieldName.SCHEMA_FIELD_NAME)).isNotNull();
+            assertThat(dataJson.get(CloudEventsMaker.FieldName.SCHEMA_FIELD_NAME).get("name").asText()).isEqualTo("io.debezium.connector." + connectorName + ".Data");
             assertThat(dataJson.get(CloudEventsMaker.FieldName.PAYLOAD_FIELD_NAME)).isNotNull();
             assertThat(dataJson.get(CloudEventsMaker.FieldName.PAYLOAD_FIELD_NAME).get("someField1").textValue()).isEqualTo("some value 1");
             assertThat(dataJson.get(CloudEventsMaker.FieldName.PAYLOAD_FIELD_NAME).get("someField2").intValue()).isEqualTo(7005);
@@ -421,7 +431,7 @@ public class CloudEventsConverterTest {
             assertThat(valueJson.get(CloudEventsMaker.FieldName.SOURCE).asText()).isEqualTo("/debezium/" + connectorName + "/" + serverName);
             assertThat(valueJson.get(CloudEventsMaker.FieldName.SPECVERSION).asText()).isEqualTo("1.0");
             assertThat(valueJson.get(CloudEventsMaker.FieldName.DATASCHEMA)).isNull();
-            assertThat(valueJson.get(CloudEventsMaker.FieldName.TYPE).asText()).isEqualTo("io.debezium." + connectorName + ".datachangeevent");
+            assertThat(valueJson.get(CloudEventsMaker.FieldName.TYPE).asText()).isEqualTo("io.debezium.connector." + connectorName + ".DataChangeEvent");
             assertThat(valueJson.get(CloudEventsMaker.FieldName.DATACONTENTTYPE).asText()).isEqualTo("application/json");
             assertThat(valueJson.get(CloudEventsMaker.FieldName.TIME)).isNotNull();
             assertThat(valueJson.get(CloudEventsMaker.FieldName.DATA)).isNotNull();
@@ -435,6 +445,7 @@ public class CloudEventsConverterTest {
             msg = "inspecting the data field in the value";
             dataJson = valueJson.get(CloudEventsMaker.FieldName.DATA);
             assertThat(dataJson.get(CloudEventsMaker.FieldName.SCHEMA_FIELD_NAME)).isNotNull();
+            assertThat(dataJson.get(CloudEventsMaker.FieldName.SCHEMA_FIELD_NAME).get("name").asText()).isEqualTo("io.debezium.connector." + connectorName + ".Data");
             assertThat(dataJson.get(CloudEventsMaker.FieldName.PAYLOAD_FIELD_NAME)).isNotNull();
             // before field may be null
             assertThat(dataJson.get(CloudEventsMaker.FieldName.PAYLOAD_FIELD_NAME).get(Envelope.FieldName.AFTER)).isNotNull();
@@ -484,7 +495,8 @@ public class CloudEventsConverterTest {
             assertThat(valueJson.get(CloudEventsMaker.FieldName.SOURCE).asText()).isNotNull();
             assertThat(valueJson.get(CloudEventsMaker.FieldName.SPECVERSION).asText()).isEqualTo("1.0");
             assertThat(valueJson.get(CloudEventsMaker.FieldName.DATASCHEMA)).isNull();
-            assertThat(valueJson.get(CloudEventsMaker.FieldName.TYPE).asText()).isNotNull();
+            assertThat(valueJson.get(CloudEventsMaker.FieldName.TYPE).asText()).startsWith("io.debezium.connector.");
+            assertThat(valueJson.get(CloudEventsMaker.FieldName.TYPE).asText()).endsWith(".DataChangeEvent");
             assertThat(valueJson.get(CloudEventsMaker.FieldName.DATACONTENTTYPE).asText()).isEqualTo("application/json");
             assertThat(valueJson.get(CloudEventsMaker.FieldName.TIME)).isNotNull();
             assertThat(valueJson.get(CloudEventsMaker.FieldName.DATA)).isNotNull();
@@ -492,6 +504,8 @@ public class CloudEventsConverterTest {
             msg = "inspecting the data field in the value";
             dataJson = valueJson.get(CloudEventsMaker.FieldName.DATA);
             assertThat(dataJson.get(CloudEventsMaker.FieldName.SCHEMA_FIELD_NAME)).isNotNull();
+            assertThat(dataJson.get(CloudEventsMaker.FieldName.SCHEMA_FIELD_NAME).get("name").asText()).startsWith("io.debezium.connector.");
+            assertThat(dataJson.get(CloudEventsMaker.FieldName.SCHEMA_FIELD_NAME).get("name").asText()).endsWith(".Data");
             assertThat(dataJson.get(CloudEventsMaker.FieldName.PAYLOAD_FIELD_NAME)).isNotNull();
             // before field may be null
             assertThat(dataJson.get(CloudEventsMaker.FieldName.PAYLOAD_FIELD_NAME).get(Envelope.FieldName.AFTER)).isNotNull();
