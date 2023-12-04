@@ -12,8 +12,11 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigValue;
@@ -21,9 +24,12 @@ import org.apache.kafka.connect.connector.Task;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.RelationalBaseSourceConnector;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.relational.TableId;
+import io.debezium.rest.model.DataCollection;
 
 /**
  * The main connector class used to instantiate configuration and execution classes
@@ -155,5 +161,31 @@ public class SqlServerConnector extends RelationalBaseSourceConnector {
     private SqlServerConnection connect(SqlServerConnectorConfig sqlServerConfig) {
         return new SqlServerConnection(sqlServerConfig, null, Collections.emptySet(),
                 sqlServerConfig.useSingleDatabase());
+    }
+
+    @Override
+    public List<DataCollection> getMatchingCollections(Configuration config) {
+        final SqlServerConnectorConfig sqlServerConfig = new SqlServerConnectorConfig(config);
+        final List<String> databaseNames = sqlServerConfig.getDatabaseNames();
+
+        try (SqlServerConnection connection = connect(sqlServerConfig)) {
+            Set<TableId> tables = new HashSet<>();
+            databaseNames.forEach(databaseName -> {
+                try {
+                    tables.addAll(connection.readTableNames(databaseName, null, null, new String[]{ "TABLE" }));
+                }
+                catch (SQLException e) {
+                    throw new DebeziumException(e);
+                }
+            });
+
+            return tables.stream()
+                    .filter(tableId -> sqlServerConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId))
+                    .map(tableId -> new DataCollection(tableId.catalog(), tableId.schema(), tableId.table()))
+                    .collect(Collectors.toList());
+        }
+        catch (SQLException e) {
+            throw new RuntimeException("Could not retrieve real database name", e);
+        }
     }
 }

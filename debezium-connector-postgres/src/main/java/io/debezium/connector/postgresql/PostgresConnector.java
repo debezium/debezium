@@ -11,6 +11,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigValue;
@@ -19,10 +21,13 @@ import org.apache.kafka.connect.source.ExactlyOnceSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.RelationalBaseSourceConnector;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.relational.TableId;
+import io.debezium.rest.model.DataCollection;
 
 /**
  * A Kafka Connect source connector that creates tasks which use Postgresql streaming replication off a logical replication slot
@@ -164,5 +169,20 @@ public class PostgresConnector extends RelationalBaseSourceConnector {
     @Override
     protected Map<String, ConfigValue> validateAllFields(Configuration config) {
         return config.validate(PostgresConnectorConfig.ALL_FIELDS);
+    }
+
+    @Override
+    public List<DataCollection> getMatchingCollections(Configuration config) {
+        PostgresConnectorConfig postgresConnectorConfig = new PostgresConnectorConfig(config);
+        try (PostgresConnection connection = new PostgresConnection(postgresConnectorConfig.getJdbcConfig(), PostgresConnection.CONNECTION_GENERAL)) {
+            Set<TableId> tables = connection.readTableNames(postgresConnectorConfig.databaseName(), null, null, new String[]{ "TABLE" });
+            return tables.stream()
+                    .filter(tableId -> postgresConnectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId))
+                    .map(tableId -> new DataCollection(tableId.schema(), tableId.table()))
+                    .collect(Collectors.toList());
+        }
+        catch (SQLException e) {
+            throw new DebeziumException(e);
+        }
     }
 }

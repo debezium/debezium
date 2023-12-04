@@ -6,6 +6,7 @@
 package io.debezium.connector.common;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.kafka.common.config.Config;
@@ -16,6 +17,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.rest.model.DataCollection;
 import io.debezium.util.Strings;
 
 /**
@@ -52,4 +54,6 @@ public abstract class RelationalBaseSourceConnector extends SourceConnector {
     protected abstract void validateConnection(Map<String, ConfigValue> configValues, Configuration config);
 
     protected abstract Map<String, ConfigValue> validateAllFields(Configuration config);
+
+    public abstract List<DataCollection> getMatchingCollections(Configuration config);
 }

@@ -1974,11 +1974,11 @@ public interface Configuration {
         fields.forEach(field -> configValuesByFieldName.put(field.name(), new ConfigValue(field.name())));
 
         // If any dependents don't exist ...
-        fields.forEachMissingDependent(missingDepedent -> {
-            ConfigValue undefinedConfigValue = new ConfigValue(missingDepedent);
-            undefinedConfigValue.addErrorMessage(missingDepedent + " is referred in the dependents, but not defined.");
+        fields.forEachMissingDependent(missingDependent -> {
+            ConfigValue undefinedConfigValue = new ConfigValue(missingDependent);
+            undefinedConfigValue.addErrorMessage(missingDependent + " is referred in the dependents, but not defined.");
             undefinedConfigValue.visible(false);
-            configValuesByFieldName.put(missingDepedent, undefinedConfigValue);
+            configValuesByFieldName.put(missingDependent, undefinedConfigValue);
         });
 
         // Now validate each top-level field ...
