@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
+import io.debezium.util.Stopwatch;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.sink.SinkRecord;
@@ -133,9 +134,13 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                     flushBuffer(tableId, deleteBufferByTable.get(tableId).flush());
                 }
 
+                Stopwatch updateBufferStopwatch = Stopwatch.reusable();
+                updateBufferStopwatch.start();
                 RecordBuffer tableIdBuffer = updateBufferByTable.computeIfAbsent(tableId, k -> new RecordBuffer(config));
-
                 List<SinkRecordDescriptor> toFlush = tableIdBuffer.add(sinkRecordDescriptor);
+                updateBufferStopwatch.stop();
+
+                LOGGER.trace("[PERF] Update buffer execution time {}", updateBufferStopwatch.durations());
                 flushBuffer(tableId, toFlush);
             }
 
@@ -185,19 +190,26 @@ public class JdbcChangeEventSink implements ChangeEventSink {
 
     private void flushBuffer(TableId tableId, List<SinkRecordDescriptor> toFlush) {
 
+        Stopwatch flushBufferStopwatch = Stopwatch.reusable();
+        Stopwatch tableChangesStopwatch = Stopwatch.reusable();
         if (!toFlush.isEmpty()) {
             LOGGER.debug("Flushing records in JDBC Writer for table: {}", tableId.getTableName());
             try {
-
+                tableChangesStopwatch.start();
                 final TableDescriptor table = checkAndApplyTableChangesIfNeeded(tableId, toFlush.get(0));
+                tableChangesStopwatch.stop();
                 String sqlStatement = getSqlStatement(table, toFlush.get(0));
+                flushBufferStopwatch.start();
                 recordWriter.write(toFlush, sqlStatement);
+                flushBufferStopwatch.stop();
+
+                LOGGER.trace("[PERF] Flush buffer execution time {}", flushBufferStopwatch.durations());
+                LOGGER.trace("[PERF] Table changes execution time {}", tableChangesStopwatch.durations());
             }
             catch (Exception e) {
                 throw new ConnectException("Failed to process a sink record", e);
             }
         }
-
     }
 
     private Optional<TableId> getTableId(SinkRecord record) {
