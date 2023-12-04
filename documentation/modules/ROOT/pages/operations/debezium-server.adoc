@@ -925,6 +925,23 @@ https://docs.microsoft.com/azure/event-hubs/event-hubs-about[Azure Event Hubs] i
 
 |===
 
+===== Using partitions in EventHubs
+
+By default, when neither of the optional <<partition-id, `debezium.sink.eventhubs.partitionid`>> or <<partition-key, `debezium.sink.eventhubs.partitionkey`>> properties are defined, the EventHubs sink will send events round-robin to all available partitions.
+
+You can enforce all messages to be sent to a single, fixed, partition by setting the <<partition-id, `debezium.sink.eventhubs.partitionid`>> property. Alternatively, you can use the <<partition-key, `debezium.sink.eventhubs.partitionkey`>> property to specify a fixed partition key that EventHubs will use to route all events to a specific partition.
+
+If you have more specific routing requirements you can use the xref:transformations/partition-routing.adoc[Partition Routing] transformer. Ensure that the number of partitions specified in the transformer's `partition.topic.num` setting is equal or less to the number of partitions available in your EventHubs namespace, so that events cannot be routed to non-existing partition IDs. As an example, to route all events to 5 partitions based on their source schema name, you can set the following in your application.properties:
+
+[source]
+----
+# Uses a hash of `source.db` to calculate which partition to send the event to. Ensures all events from the same source schema are sent to the same partition.
+debezium.transforms=PartitionRouter
+debezium.transforms.PartitionRouter.type=io.debezium.transforms.partitions.PartitionRouting
+debezium.transforms.PartitionRouter.partition.payload.fields=source.db
+debezium.transforms.PartitionRouter.partition.topic.num=5
+----
+
 ===== Injection points
 
 The default sink behaviour can be modified by a custom logic providing alternative implementations for specific functionalities.
