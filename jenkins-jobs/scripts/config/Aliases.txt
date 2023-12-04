@@ -239,8 +239,10 @@ dtseiler,Don Seiler
 markducommun,Mark Ducommun
 Lars M Johansson,Lars M. Johansson
 ahmedrachid,Ahmed Rachid Hazourli
+ahazourli,Ahmed Rachid Hazourli
 sherpa003,Jiri Kulhanek
 slknijnenburg,Sebastiaan Knijnenburg
 baabgai,baabgai
 methodmissing,Lourens Naudé
 Prabhu19,Pavithrananda Prabhu
+Lourens Naude,Lourens Naudé
