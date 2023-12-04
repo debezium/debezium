@@ -8,6 +8,7 @@ package io.debezium.connector.postgresql;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
+
 import io.debezium.connector.postgresql.connection.AbstractReplicationMessageColumn;
 
 /**
