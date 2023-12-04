@@ -2,6 +2,79 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.5.0.Beta1
+December 4th 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12416250)
+
+### New features since 2.5.0.Alpha2
+
+* Support for mariadb GTID [DBZ-1482](https://issues.redhat.com/browse/DBZ-1482)
+* Include only certain columns in JDBC sink connector [DBZ-6636](https://issues.redhat.com/browse/DBZ-6636)
+* Support native RabbitMQ Streams [DBZ-6703](https://issues.redhat.com/browse/DBZ-6703)
+* Add support for partitioning with Azure EventHubs  [DBZ-6723](https://issues.redhat.com/browse/DBZ-6723)
+* Enhance Notification information and more notifications for Initial Snapshots [DBZ-6878](https://issues.redhat.com/browse/DBZ-6878)
+* Add handling for CDB and non-CDB / PDB in Oracle REST Extension tests [DBZ-7091](https://issues.redhat.com/browse/DBZ-7091)
+* Check schema length when create value to find missed DDL by SQL_BIN_LOG=OFF [DBZ-7093](https://issues.redhat.com/browse/DBZ-7093)
+* Add service account parameter to DebeziumServer CRD [DBZ-7111](https://issues.redhat.com/browse/DBZ-7111)
+* Inactivity pause in MongoDB connector should be configurable [DBZ-7146](https://issues.redhat.com/browse/DBZ-7146)
+* Oracle Infinispan event processor speed-up using in memory cache [DBZ-7153](https://issues.redhat.com/browse/DBZ-7153)
+* Add last event process time, number of events, number of heartbeat events metrics to MongoDb connector [DBZ-7162](https://issues.redhat.com/browse/DBZ-7162)
+* LogMiner ISPN event buffer recent transaction optimization [DBZ-7169](https://issues.redhat.com/browse/DBZ-7169)
+* Support logical decoding from Postgres 16 stand-bys [DBZ-7181](https://issues.redhat.com/browse/DBZ-7181)
+* Support MySQL 8 high resolution replication timestamps from GTID events [DBZ-7183](https://issues.redhat.com/browse/DBZ-7183)
+* Use buffer queue when reading MongoDB change stream events [DBZ-7184](https://issues.redhat.com/browse/DBZ-7184)
+* Cleanup event processing loop in streaming event source of MongoDB connector [DBZ-7186](https://issues.redhat.com/browse/DBZ-7186)
+* Oracle Infinispan - implement support for abandoned transactions [DBZ-7192](https://issues.redhat.com/browse/DBZ-7192)
+* Add ability to avoid throwing an exception for missing additional fields  [DBZ-7197](https://issues.redhat.com/browse/DBZ-7197)
+* XStream attach should be retriable [DBZ-7207](https://issues.redhat.com/browse/DBZ-7207)
+
+
+### Breaking changes since 2.5.0.Alpha2
+
+* MongoDB data collection filter requires replica set specification on blocking/initial snapshot execution [DBZ-7139](https://issues.redhat.com/browse/DBZ-7139)
+* Remove deprecated ComputePartition SMT [DBZ-7141](https://issues.redhat.com/browse/DBZ-7141)
+* JDBC connector wrongly uses default value when value is NULL on optional fields [DBZ-7191](https://issues.redhat.com/browse/DBZ-7191)
+
+
+### Fixes since 2.5.0.Alpha2
+
+* Test Avro adjustment for MongoDb connector and ExtractNewDocumentState SMT [DBZ-6809](https://issues.redhat.com/browse/DBZ-6809)
+* The DefaultDeleteHandlingStrategy couldn't add the rewrite "__deleted" field to a non-struct value  [DBZ-7066](https://issues.redhat.com/browse/DBZ-7066)
+* Debezium server has no default for offset.flush.interval.ms  [DBZ-7099](https://issues.redhat.com/browse/DBZ-7099)
+*  Failed to authenticate to the MySQL database after snapshot [DBZ-7132](https://issues.redhat.com/browse/DBZ-7132)
+* Failure reading CURRENT_TIMESTAMP on Informix 12.10 [DBZ-7137](https://issues.redhat.com/browse/DBZ-7137)
+* Debezium-ddl-parser crashes on parsing MySQL DDL statement (specific UNION) [DBZ-7140](https://issues.redhat.com/browse/DBZ-7140)
+* outbox.EventRouter SMT throws NullPointerException when there is a whitespace in fields.additional.placement value [DBZ-7142](https://issues.redhat.com/browse/DBZ-7142)
+* Debezium-ddl-parser crashes on parsing MySQL DDL statement (specific UPDATE) [DBZ-7152](https://issues.redhat.com/browse/DBZ-7152)
+* JsonSerialisation is unable to process changes from sharded collections with composite sharding key [DBZ-7157](https://issues.redhat.com/browse/DBZ-7157)
+* Log sequence check should treat each redo thread independently [DBZ-7158](https://issues.redhat.com/browse/DBZ-7158)
+* Fix DebeziumMySqlConnectorResource not using the new MySQL adatper structure to support different MySQL flavors [DBZ-7179](https://issues.redhat.com/browse/DBZ-7179)
+* Parsing MySQL indexes for JSON field fails, when casting is used with types double and float [DBZ-7189](https://issues.redhat.com/browse/DBZ-7189)
+* Unchanged toasted array columns  are substituted with unavailable.value.placeholder, even when REPLICA IDENTITY FULL is configured. [DBZ-7193](https://issues.redhat.com/browse/DBZ-7193)
+* MongoDB streaming pauses for Blocking Snapshot only when there is no event [DBZ-7206](https://issues.redhat.com/browse/DBZ-7206)
+* NPE on AbstractInfinispanLogMinerEventProcessor.logCacheStats [DBZ-7211](https://issues.redhat.com/browse/DBZ-7211)
+
+
+### Other changes since 2.5.0.Alpha2
+
+* Generate sundrio fluent builders for operator model [DBZ-6550](https://issues.redhat.com/browse/DBZ-6550)
+* Convert operator source into multi module project [DBZ-6551](https://issues.redhat.com/browse/DBZ-6551)
+* Implement "validate filters" endpoint in connector-specific Connect REST extensions [DBZ-6762](https://issues.redhat.com/browse/DBZ-6762)
+* Implement IT tests against Cloud Spanner emulator in main repo. [DBZ-6906](https://issues.redhat.com/browse/DBZ-6906)
+* Implement strategy pattern for MariaDB and MySQL differences [DBZ-7083](https://issues.redhat.com/browse/DBZ-7083)
+* Run MySQL CI builds in parallel [DBZ-7135](https://issues.redhat.com/browse/DBZ-7135)
+* Add matrix strategy to workflows [DBZ-7154](https://issues.redhat.com/browse/DBZ-7154)
+* Add Unit Tests for ServiceAccountDependent Class in Debezium Operator Repository [DBZ-7155](https://issues.redhat.com/browse/DBZ-7155)
+* Fail fast during deserialization if a value is not a CloudEvent [DBZ-7159](https://issues.redhat.com/browse/DBZ-7159)
+* Correctly calculate Max LSN [DBZ-7175](https://issues.redhat.com/browse/DBZ-7175)
+* Upgrade to Infinispan 14.0.20 [DBZ-7187](https://issues.redhat.com/browse/DBZ-7187)
+* Upgrade Outbox Extension to Quarkus 3.5.3 [DBZ-7188](https://issues.redhat.com/browse/DBZ-7188)
+* Enable ability to stream changes against Oracle 23c for LogMiner [DBZ-7194](https://issues.redhat.com/browse/DBZ-7194)
+* Add modify range_partitions to modify_table_partition rule in parsing PL/SQL [DBZ-7196](https://issues.redhat.com/browse/DBZ-7196)
+*  Handle Drop Tablespace in PL/SQL [DBZ-7208](https://issues.redhat.com/browse/DBZ-7208)
+* Upgrade logback to 1.2.12 [DBZ-7209](https://issues.redhat.com/browse/DBZ-7209)
+
+
+
 ## 2.5.0.Alpha2
 November 10th 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12415492)
 
