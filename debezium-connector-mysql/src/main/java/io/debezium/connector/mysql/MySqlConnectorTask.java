@@ -232,7 +232,7 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
         final boolean timeAdjusterEnabled = configuration.getConfig().getBoolean(MySqlConnectorConfig.ENABLE_TIME_ADJUSTER);
         return new MySqlValueConverters(decimalMode, timePrecisionMode, bigIntUnsignedMode,
                 configuration.binaryHandlingMode(), timeAdjusterEnabled ? MySqlValueConverters::adjustTemporal : x -> x,
-                MySqlValueConverters::defaultParsingErrorHandler, configuration.getConnectorAdapter());
+                configuration.getConnectorAdapter(), configuration.getEventConvertingFailureHandlingMode());
     }
 
     private MySqlFieldReader getFieldReader(MySqlConnectorConfig configuration) {

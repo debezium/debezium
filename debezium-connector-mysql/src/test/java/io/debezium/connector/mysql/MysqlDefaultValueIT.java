@@ -58,8 +58,8 @@ import io.debezium.util.Testing;
 @SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 6, reason = "DDL uses fractional second data types, not supported until MySQL 5.6")
 public class MysqlDefaultValueIT extends AbstractConnectorTest {
 
-    // 4 meta events (set character_set etc.) and then 15 tables with 3 events each (drop DDL, create DDL, insert)
-    private static final int EVENT_COUNT = 4 + 15 * 3;
+    // 4 meta events (set character_set etc.) and then 14 tables with 3 events each (drop DDL, create DDL, insert)
+    private static final int EVENT_COUNT = 4 + 14 * 3;
 
     private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-connect.txt").toAbsolutePath();
     private final UniqueDatabase DATABASE = new UniqueDatabase("myServer1", "default_value")
@@ -729,7 +729,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
     public void timeTypeWithConnectMode() throws Exception {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
-                .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("DATE_TIME_TABLE_CONNECT_MODE"))
+                .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("DATE_TIME_TABLE"))
                 .with(MySqlConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.CONNECT)
                 .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
                 .build();
@@ -738,7 +738,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         // Testing.Print.enable();
 
         SourceRecords records = consumeRecordsByTopic(7);
-        final SourceRecord record = records.recordsForTopic(DATABASE.topicForTable("DATE_TIME_TABLE_CONNECT_MODE")).get(0);
+        final SourceRecord record = records.recordsForTopic(DATABASE.topicForTable("DATE_TIME_TABLE")).get(0);
 
         validate(record);
 

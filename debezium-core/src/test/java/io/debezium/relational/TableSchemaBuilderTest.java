@@ -687,7 +687,7 @@ public class TableSchemaBuilderTest {
 
     @Test
     @FixFor("DBZ-7143")
-    public void shouldLogMessageOrThrowExceptionWhenConversionIsFailedWithEventConvertingFailureHandlingMode() {
+    public void shouldLogMessageOrThrowExceptionWhenConversionIsFailed() {
         LogInterceptor logInterceptor = new LogInterceptor(TableSchemaBuilder.class);
 
         // converter should be failed because C4 column is COUNTER(INTEGER) type but value is string type("converting_failed_value")
@@ -709,7 +709,7 @@ public class TableSchemaBuilderTest {
         assertThat(logInterceptor.containsErrorMessage(errorMessage)).isTrue();
         logInterceptor.clear();
 
-        // error log and exception if eventConvertingFailureHandlingMode is FAIL
+        // throw the exception if eventConvertingFailureHandlingMode is not null
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
                 SchemaBuilder.struct().build(), defaultFieldNamer, false, EventConvertingFailureHandlingMode.FAIL)
                 .create(topicNamingStrategy, table, null, null, null);
@@ -719,38 +719,7 @@ public class TableSchemaBuilderTest {
             fail();
         }
         catch (Exception e) {
-            assertThat(e.getMessage().contains(errorMessage)).isTrue();
+            assertThat(e.getMessage().contains("For input string: \"converting_failed_value\"")).isTrue();
         }
-
-        // warn log without exception if eventConvertingFailureHandlingMode is WARN
-        schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
-                SchemaBuilder.struct().build(), defaultFieldNamer, false, EventConvertingFailureHandlingMode.WARN)
-                .create(topicNamingStrategy, table, null, null, null);
-
-        try {
-            schema.valueFromColumnData(data);
-        }
-        catch (Exception e) {
-            fail();
-        }
-
-        assertThat(logInterceptor.containsWarnMessage(errorMessage)).isTrue();
-        logInterceptor.clear();
-
-        // only debug log without exception if eventConvertingFailureHandlingMode is SKIP
-        schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
-                SchemaBuilder.struct().build(), defaultFieldNamer, false, EventConvertingFailureHandlingMode.SKIP)
-                .create(topicNamingStrategy, table, null, null, null);
-
-        try {
-            schema.valueFromColumnData(data);
-        }
-        catch (Exception e) {
-            fail();
-        }
-
-        assertThat(logInterceptor.containsErrorMessage(errorMessage)).isFalse();
-        assertThat(logInterceptor.containsWarnMessage(errorMessage)).isFalse();
-        logInterceptor.clear();
     }
 }

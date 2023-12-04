@@ -19,6 +19,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
+import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode;
 import io.debezium.config.Configuration;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode;
@@ -68,8 +69,8 @@ public class MySqlDatabaseSchemaTest {
                 BigIntUnsignedMode.LONG,
                 BinaryHandlingMode.BYTES,
                 MySqlValueConverters::adjustTemporal,
-                MySqlValueConverters::defaultParsingErrorHandler,
-                connectorConfig.getConnectorAdapter());
+                connectorConfig.getConnectorAdapter(),
+                EventConvertingFailureHandlingMode.WARN);
         return new MySqlDatabaseSchema(
                 connectorConfig,
                 mySqlValueConverters,

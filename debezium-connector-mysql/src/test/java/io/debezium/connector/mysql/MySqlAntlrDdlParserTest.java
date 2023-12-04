@@ -35,6 +35,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
+import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcValueConverters;
@@ -81,7 +82,8 @@ public class MySqlAntlrDdlParserTest {
                 JdbcValueConverters.DecimalMode.DOUBLE,
                 TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS,
                 JdbcValueConverters.BigIntUnsignedMode.PRECISE,
-                BinaryHandlingMode.BYTES);
+                BinaryHandlingMode.BYTES,
+                EventConvertingFailureHandlingMode.WARN);
         tableSchemaBuilder = new TableSchemaBuilder(
                 converters,
                 new MySqlDefaultValueConverter(converters),

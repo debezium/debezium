@@ -157,19 +157,3 @@ CREATE TABLE DBZ_771_CUSTOMERS (
 
 INSERT INTO DBZ_771_CUSTOMERS
 VALUES (1, 'b2b');
-
-CREATE TABLE DATE_TIME_TABLE_CONNECT_MODE (
-                                 A DATE NOT NULL DEFAULT '1976-08-23',
-                                 B TIMESTAMP DEFAULT '1970-01-01 00:00:01',
-                                 C DATETIME DEFAULT '2018-01-03 00:00:10',
-                                 D DATETIME(1) DEFAULT '2018-01-03 00:00:10.7',
-                                 E DATETIME(6) DEFAULT '2018-01-03 00:00:10.123456',
-                                 F YEAR NOT NULL DEFAULT 1,
-                                 G TIME DEFAULT '00:00:00',
-                                 H TIME(1) DEFAULT '23:00:00.7',
-                                 I TIME(6) DEFAULT '23:00:00.123456',
-                                 J TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                                 K TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP
-);
-INSERT INTO DATE_TIME_TABLE_CONNECT_MODE
-VALUES (DEFAULT, DEFAULT, DEFAULT, DEFAULT, DEFAULT, DEFAULT, DEFAULT, DEFAULT, DEFAULT, DEFAULT, NULL);
