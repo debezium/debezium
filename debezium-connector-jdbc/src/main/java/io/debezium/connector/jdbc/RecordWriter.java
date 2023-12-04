@@ -11,12 +11,15 @@ import java.sql.Statement;
 import java.util.List;
 import java.util.Objects;
 
+import io.debezium.util.Stopwatch;
 import org.apache.kafka.connect.data.Struct;
 import org.hibernate.SharedSessionContract;
 import org.hibernate.Transaction;
 import org.hibernate.jdbc.Work;
 
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Effectively writes the batches using Hibernate {@link Work}
@@ -25,6 +28,7 @@ import io.debezium.connector.jdbc.dialect.DatabaseDialect;
  */
 public class RecordWriter {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(RecordWriter.class);
     private final SharedSessionContract session;
     private final QueryBinderResolver queryBinderResolver;
     private final JdbcSinkConnectorConfig config;
@@ -39,6 +43,8 @@ public class RecordWriter {
 
     public void write(List<SinkRecordDescriptor> records, String sqlStatement) {
 
+        Stopwatch writeStopwatch = Stopwatch.reusable();
+        writeStopwatch.start();
         final Transaction transaction = session.beginTransaction();
 
         try {
@@ -49,6 +55,8 @@ public class RecordWriter {
             transaction.rollback();
             throw e;
         }
+        writeStopwatch.stop();
+        LOGGER.trace("[PERF] Total write execution time {}", writeStopwatch.durations());
     }
 
     private Work processBatch(List<SinkRecordDescriptor> records, String sqlStatement) {
@@ -58,19 +66,36 @@ public class RecordWriter {
             try (PreparedStatement prepareStatement = conn.prepareStatement(sqlStatement)) {
 
                 QueryBinder queryBinder = queryBinderResolver.resolve(prepareStatement);
+                Stopwatch allbindStopwatch = Stopwatch.reusable();
+                allbindStopwatch.start();
                 for (SinkRecordDescriptor sinkRecordDescriptor : records) {
 
+                    Stopwatch singlebindStopwatch = Stopwatch.reusable();
+                    singlebindStopwatch.start();
                     bindValues(sinkRecordDescriptor, queryBinder);
+                    singlebindStopwatch.stop();
 
+                    Stopwatch addBatchStopwatch = Stopwatch.reusable();
+                    addBatchStopwatch.start();
                     prepareStatement.addBatch();
-                }
+                    addBatchStopwatch.stop();
 
+                    LOGGER.trace("[PERF] Bind single record execution time {}", singlebindStopwatch.durations());
+                    LOGGER.trace("[PERF] Add batch execution time {}", addBatchStopwatch.durations());
+                }
+                allbindStopwatch.stop();
+                LOGGER.trace("[PERF] All records bind execution time {}", allbindStopwatch.durations());
+
+                Stopwatch executeStopwatch = Stopwatch.reusable();
+                executeStopwatch.start();
                 int[] batchResult = prepareStatement.executeBatch();
+                executeStopwatch.stop();
                 for (int updateCount : batchResult) {
                     if (updateCount == Statement.EXECUTE_FAILED) {
                         throw new BatchUpdateException("Execution failed for part of the batch", batchResult);
                     }
                 }
+                LOGGER.trace("[PERF] Execute batch execution time {}", executeStopwatch.durations());
             }
         };
     }
