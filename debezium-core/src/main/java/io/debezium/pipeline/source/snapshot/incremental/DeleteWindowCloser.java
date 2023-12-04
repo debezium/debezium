@@ -32,7 +32,7 @@ public class DeleteWindowCloser<P extends Partition, T extends DataCollectionId>
     }
 
     @Override
-    public void closeWindows(Partition partition, OffsetContext offsetContext, String chunkId) throws SQLException {
+    public void closeWindow(Partition partition, OffsetContext offsetContext, String chunkId) throws SQLException {
 
         jdbcConnection.prepareUpdate(signalWindowStatement, x -> {
             LOGGER.trace("Deleting open window for chunk = '{}'", chunkId);

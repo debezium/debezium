@@ -3,8 +3,9 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.mongodb;
+package io.debezium.connector.mongodb.snapshot;
 
+import static io.debezium.config.CommonConnectorConfig.WatermarkStrategy.INSERT_DELETE;
 import static io.debezium.pipeline.notification.IncrementalSnapshotNotificationService.TableScanCompletionStatus.EMPTY;
 import static io.debezium.pipeline.notification.IncrementalSnapshotNotificationService.TableScanCompletionStatus.SKIPPED;
 import static io.debezium.pipeline.notification.IncrementalSnapshotNotificationService.TableScanCompletionStatus.SUCCEEDED;
@@ -14,6 +15,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -33,23 +35,35 @@ import com.mongodb.client.model.Projections;
 
 import io.debezium.DebeziumException;
 import io.debezium.annotation.NotThreadSafe;
+import io.debezium.config.CommonConnectorConfig;
+import io.debezium.connector.mongodb.CollectionId;
+import io.debezium.connector.mongodb.MongoDbCollectionSchema;
+import io.debezium.connector.mongodb.MongoDbConnector;
+import io.debezium.connector.mongodb.MongoDbConnectorConfig;
+import io.debezium.connector.mongodb.MongoDbOffsetContext;
+import io.debezium.connector.mongodb.MongoDbPartition;
+import io.debezium.connector.mongodb.MongoDbSchema;
+import io.debezium.connector.mongodb.ReplicaSetOffsetContext;
+import io.debezium.connector.mongodb.ReplicaSetPartition;
+import io.debezium.connector.mongodb.ReplicaSets;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.connector.mongodb.connection.ReplicaSet;
 import io.debezium.connector.mongodb.recordemitter.MongoDbSnapshotRecordEmitter;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.signal.SignalPayload;
-import io.debezium.pipeline.signal.actions.snapshotting.CloseIncrementalSnapshotWindow;
 import io.debezium.pipeline.signal.actions.snapshotting.OpenIncrementalSnapshotWindow;
 import io.debezium.pipeline.signal.actions.snapshotting.SnapshotConfiguration;
 import io.debezium.pipeline.source.AbstractSnapshotChangeEventSource;
 import io.debezium.pipeline.source.snapshot.incremental.DataCollection;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
+import io.debezium.pipeline.source.snapshot.incremental.WatermarkWindowCloser;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.spi.ChangeRecordEmitter;
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.spi.Partition;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
 import io.debezium.util.Strings;
@@ -149,10 +163,6 @@ public class MongoDbIncrementalSnapshotChangeEventSource
         }
     }
 
-    protected String getSignalCollectionName(String dataCollectionId) {
-        return dataCollectionId;
-    }
-
     protected void sendWindowEvents(OffsetContext offsetContext) throws InterruptedException {
         LOGGER.debug("Sending {} events from window buffer", window.size());
         offsetContext.incrementalSnapshotEvents();
@@ -230,22 +240,20 @@ public class MongoDbIncrementalSnapshotChangeEventSource
     /**
      * Update high watermark for the incremental snapshot chunk
      */
-    protected void emitWindowClose() throws InterruptedException {
-        final CollectionId collectionId = signallingCollectionId;
-        final String id = context.currentChunkId() + "-close";
-        mongo.execute(
-                "emit window close for chunk '" + context.currentChunkId() + "'",
-                client -> {
-                    final MongoDatabase database = client.getDatabase(collectionId.dbName());
-                    final MongoCollection<Document> collection = database.getCollection(collectionId.name());
+    protected void emitWindowClose(Partition partition, OffsetContext offsetContext) throws Exception {
 
-                    LOGGER.trace("Emitting close window for chunk = '{}'", context.currentChunkId());
-                    final Document signal = new Document();
-                    signal.put(DOCUMENT_ID, id);
-                    signal.put("type", CloseIncrementalSnapshotWindow.NAME);
-                    signal.put("payload", "");
-                    collection.insertOne(signal);
-                });
+        WatermarkWindowCloser watermarkWindowCloser = getWatermarkWindowCloser(connectorConfig, mongo, signallingCollectionId);
+
+        watermarkWindowCloser.closeWindow(partition, offsetContext, context.currentChunkId());
+    }
+
+    private WatermarkWindowCloser getWatermarkWindowCloser(CommonConnectorConfig connectorConfig, MongoDbConnection mongoDbConnection, CollectionId collectionId) {
+
+        if (Objects.requireNonNull(connectorConfig.getIncrementalSnapshotWatermarkingStrategy()) == INSERT_DELETE) {
+            return new MongoDbDeleteWindowCloser(mongoDbConnection, collectionId, this);
+        }
+
+        return new MongoDbInsertWindowCloser(mongoDbConnection, collectionId);
     }
 
     @Override
@@ -355,11 +363,11 @@ public class MongoDbIncrementalSnapshotChangeEventSource
                     break;
                 }
             }
-            emitWindowClose();
+            emitWindowClose(partition, offsetContext);
         }
-        // catch (InterruptedException e) {
-        // throw new DebeziumException(String.format("Database error while executing incremental snapshot for table '%s'", context.currentDataCollectionId()), e);
-        // }
+        catch (Exception e) {
+            throw new DebeziumException(String.format("Database error while executing incremental snapshot for table '%s'", context.currentDataCollectionId()), e);
+        }
         finally {
             postReadChunk(context);
             if (!context.snapshotRunning()) {

@@ -38,9 +38,13 @@ import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoDatabase;
+
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig.SnapshotMode;
+import io.debezium.connector.mongodb.snapshot.MongoDbIncrementalSnapshotChangeEventSource;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
 import io.debezium.engine.DebeziumEngine;
@@ -171,10 +175,6 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
 
             updateDocumentsInTx(DATABASE_NAME, COLLECTION_NAME, filter, update);
         }
-    }
-
-    protected void startConnector(DebeziumEngine.CompletionCallback callback) {
-        startConnector(Function.identity(), callback);
     }
 
     protected void startConnector(Function<Configuration.Builder, Configuration.Builder> custConfig) {
@@ -748,6 +748,66 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
         Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount - beforeResume);
         for (int i = beforeResume + 1; i < expectedRecordCount; i++) {
             assertThat(dbChanges).contains(entry(i + 1, i));
+        }
+    }
+
+    @Test
+    public void insertInsertWatermarkingStrategy() throws Exception {
+        // Testing.Print.enable();
+
+        populateDataCollection();
+
+        startConnector();
+
+        waitForConnectorToStart();
+
+        insertAdditionalData();
+
+        sendAdHocSnapshotSignal();
+
+        final int expectedRecordCount = ROW_COUNT * 2;
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
+        for (int i = 0; i < expectedRecordCount; i++) {
+            assertThat(dbChanges).contains(entry(i + 1, i));
+        }
+
+        assertCloseEventCount(closeEventCount -> assertThat(closeEventCount).isNotZero());
+
+    }
+
+    @Test
+    public void insertDeleteWatermarkingStrategy() throws Exception {
+        // Testing.Print.enable();
+
+        populateDataCollection();
+        startConnector(x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_WATERMARKING_STRATEGY, "insert_delete")
+                .with(CommonConnectorConfig.TOMBSTONES_ON_DELETE, false)); // Remove tombstone to avoid failure of VerifyRecord.isValid
+
+        sendAdHocSnapshotSignal();
+
+        insertAdditionalData();
+
+        final int expectedRecordCount = ROW_COUNT * 2;
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
+
+        for (int i = 0; i < expectedRecordCount; i++) {
+            assertThat(dbChanges).contains(entry(i + 1, i));
+        }
+
+        assertCloseEventCount(closeEventCount -> assertThat(closeEventCount).isZero());
+    }
+
+    private void assertCloseEventCount(Consumer<Long> consumer) {
+
+        try (var client = TestHelper.connect(mongo)) {
+
+            MongoDatabase db = client.getDatabase(DATABASE_NAME);
+
+            MongoCollection<Document> collection = db.getCollection("signals");
+            Document filter = new Document();
+            filter.put("type", "snapshot-window-close");
+
+            consumer.accept(collection.countDocuments(filter));
         }
     }
 

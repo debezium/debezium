@@ -213,7 +213,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     /**
      * Update high watermark for the incremental snapshot chunk
      */
-    protected abstract void emitWindowClose(P partition, OffsetContext offsetContext) throws SQLException, InterruptedException;
+    protected abstract void emitWindowClose(P partition, OffsetContext offsetContext) throws Exception;
 
     protected String buildChunkQuery(Table table, Optional<String> additionalCondition) {
         return buildChunkQuery(table, connectorConfig.getIncrementalSnapshotChunkSize(), additionalCondition);
@@ -407,7 +407,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             }
             emitWindowClose(partition, offsetContext);
         }
-        catch (SQLException e) {
+        catch (Exception e) {
             throw new DebeziumException(String.format("Database error while executing incremental snapshot for table '%s'", context.currentDataCollectionId()), e);
         }
         finally {

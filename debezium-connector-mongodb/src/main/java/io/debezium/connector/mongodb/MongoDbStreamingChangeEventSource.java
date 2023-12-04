@@ -29,6 +29,7 @@ import io.debezium.connector.mongodb.events.BufferingChangeStreamCursor.Resumabl
 import io.debezium.connector.mongodb.events.SplitEventHandler;
 import io.debezium.connector.mongodb.metrics.MongoDbStreamingChangeEventSourceMetrics;
 import io.debezium.connector.mongodb.recordemitter.MongoDbChangeRecordEmitter;
+import io.debezium.connector.mongodb.snapshot.MongoDbIncrementalSnapshotContext;
 import io.debezium.function.BlockingRunnable;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
