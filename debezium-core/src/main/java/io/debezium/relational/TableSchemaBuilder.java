@@ -300,26 +300,14 @@ public class TableSchemaBuilder {
                         catch (final Exception e) {
                             Column col = columns.get(i);
                             String message = "Failed to properly convert data value for '{}.{}' of type {}";
-
                             if (eventConvertingFailureHandlingMode == null) {
                                 Loggings.logErrorAndTraceRecord(LOGGER, row,
-                                        message, tableId,
-                                        col.name(), col.typeName(), e);
+                                        message, tableId, col.name(), col.typeName(), e);
                             }
                             else {
-                                switch (eventConvertingFailureHandlingMode) {
-                                    case FAIL:
-                                        Loggings.logErrorAndTraceRecord(LOGGER, row, message, tableId,
-                                                col.name(), col.typeName(), e);
-                                        throw new DebeziumException("Failed to properly convert data value for '" +
-                                                tableId + "." + col.name() + "' of type " + col.typeName(), e.getCause());
-                                    case WARN:
-                                        Loggings.logWarningAndTraceRecord(LOGGER, row, message, tableId,
-                                                col.name(), col.typeName(), e);
-                                    case SKIP:
-                                        Loggings.logDebugAndTraceRecord(LOGGER, row, message, tableId,
-                                                col.name(), col.typeName(), e);
-                                }
+                                Loggings.logDebugAndTraceRecord(LOGGER, row,
+                                        message, tableId, col.name(), col.typeName(), e);
+                                throw e;
                             }
                         }
                     }

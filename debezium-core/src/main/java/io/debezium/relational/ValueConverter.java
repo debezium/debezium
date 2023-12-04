@@ -5,11 +5,18 @@
  */
 package io.debezium.relational;
 
+import io.debezium.DebeziumException;
+import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode;
+import io.debezium.util.Loggings;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * A function that converts from a column data value into another value.
  */
 @FunctionalInterface
 public interface ValueConverter {
+    Logger LOGGER = LoggerFactory.getLogger(ValueConverter.class);
 
     /**
      * Convert the column's data value.
@@ -62,6 +69,34 @@ public interface ValueConverter {
                 return null;
             }
             return convert(data);
+        };
+    }
+
+    /**
+     *
+     * @param mode
+     * @return
+     */
+    default ValueConverter withEventConvertingFailureHandlingMode(EventConvertingFailureHandlingMode mode) {
+        return (data) -> {
+            try {
+                Object ret = convert(data);
+                return ret;
+            }
+            catch (Exception e) {
+                switch (mode) {
+                    case FAIL:
+                        Loggings.logErrorAndTraceRecord(LOGGER, data, "Failed to convert {}", data, e);
+                        throw new DebeziumException("Failed to convert", e);
+                    case WARN:
+                        Loggings.logWarningAndTraceRecord(LOGGER, data, "Failed to convert {}", data, e);
+                        return null;
+                    case SKIP:
+                        Loggings.logDebugAndTraceRecord(LOGGER, data, "Failed to convert {}", data, e);
+                        return null;
+                }
+            }
+            return null;
         };
     }
 

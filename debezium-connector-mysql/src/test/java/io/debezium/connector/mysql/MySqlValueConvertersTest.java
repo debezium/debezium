@@ -14,13 +14,13 @@ import java.time.LocalDateTime;
 import java.time.Month;
 import java.time.ZonedDateTime;
 import java.time.temporal.TemporalAdjuster;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.kafka.connect.data.Field;
 import org.junit.Test;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
+import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcValueConverters;
@@ -81,7 +81,8 @@ public class MySqlValueConvertersTest {
         String sql = "CREATE TABLE JSON_TABLE (" + "    A JSON," + "    B JSON NOT NULL" + ");";
 
         MySqlValueConverters converters = new MySqlValueConverters(JdbcValueConverters.DecimalMode.DOUBLE,
-                TemporalPrecisionMode.CONNECT, JdbcValueConverters.BigIntUnsignedMode.LONG, BinaryHandlingMode.BYTES);
+                TemporalPrecisionMode.CONNECT, JdbcValueConverters.BigIntUnsignedMode.LONG, BinaryHandlingMode.BYTES,
+                EventConvertingFailureHandlingMode.WARN);
 
         DdlParser parser = new MySqlAntlrDdlParser();
         Tables tables = new Tables();
@@ -110,16 +111,13 @@ public class MySqlValueConvertersTest {
     }
 
     @Test
-    @FixFor("DBZ-2563")
+    @FixFor({"DBZ-2563", "DBZ-7143"})
     public void testSkipInvalidJsonValues() {
-        final AtomicInteger errorCount = new AtomicInteger(0);
         String sql = "CREATE TABLE JSON_TABLE (" + "    A JSON," + "    B JSON NOT NULL" + ");";
 
         MySqlValueConverters converters = new MySqlValueConverters(JdbcValueConverters.DecimalMode.DOUBLE,
                 TemporalPrecisionMode.CONNECT, JdbcValueConverters.BigIntUnsignedMode.LONG, BinaryHandlingMode.BYTES,
-                x -> x, (message, exception) -> {
-                    errorCount.incrementAndGet();
-                }, null);
+                x -> x, null, EventConvertingFailureHandlingMode.WARN);
 
         DdlParser parser = new MySqlAntlrDdlParser();
         Tables tables = new Tables();
@@ -130,25 +128,21 @@ public class MySqlValueConvertersTest {
         Column colA = table.columnWithName("A");
         Field fieldA = new Field(colA.name(), -1, converters.schemaBuilder(colA).optional().build());
         assertThat(converters.converter(colA, fieldA).convert(INVALID_JSON)).isEqualTo(null);
-        assertThat(errorCount.get()).isEqualTo(1);
 
         // ColB - NOT NUll column
         Column colB = table.columnWithName("B");
         Field fieldB = new Field(colB.name(), -1, converters.schemaBuilder(colB).build());
         assertThat(converters.converter(colB, fieldB).convert(INVALID_JSON)).isEqualTo("{}");
-        assertThat(errorCount.get()).isEqualTo(2);
     }
 
     @Test(expected = DebeziumException.class)
-    @FixFor("DBZ-2563")
+    @FixFor({"DBZ-2563", "DBZ-7143"})
     public void testErrorOnInvalidJsonValues() {
         String sql = "CREATE TABLE JSON_TABLE (" + "    A JSON," + "    B JSON NOT NULL" + ");";
 
         MySqlValueConverters converters = new MySqlValueConverters(JdbcValueConverters.DecimalMode.DOUBLE,
                 TemporalPrecisionMode.CONNECT, JdbcValueConverters.BigIntUnsignedMode.LONG, BinaryHandlingMode.BYTES,
-                x -> x, (message, exception) -> {
-                    throw new DebeziumException(message, exception);
-                }, null);
+                x -> x, null, EventConvertingFailureHandlingMode.FAIL);
 
         DdlParser parser = new MySqlAntlrDdlParser();
         Tables tables = new Tables();
@@ -169,9 +163,7 @@ public class MySqlValueConvertersTest {
 
         MySqlValueConverters converters = new MySqlValueConverters(JdbcValueConverters.DecimalMode.PRECISE,
                 TemporalPrecisionMode.CONNECT, JdbcValueConverters.BigIntUnsignedMode.LONG, BinaryHandlingMode.BYTES,
-                x -> x, (message, exception) -> {
-                    throw new DebeziumException(message, exception);
-                }, null);
+                x -> x, null, EventConvertingFailureHandlingMode.WARN);
 
         DdlParser parser = new MySqlAntlrDdlParser();
         Tables tables = new Tables();
@@ -192,9 +184,7 @@ public class MySqlValueConvertersTest {
 
         MySqlValueConverters converters = new MySqlValueConverters(JdbcValueConverters.DecimalMode.PRECISE,
                 TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS, JdbcValueConverters.BigIntUnsignedMode.LONG, BinaryHandlingMode.BYTES,
-                x -> x, (message, exception) -> {
-                    throw new DebeziumException(message, exception);
-                }, null);
+                x -> x, null, EventConvertingFailureHandlingMode.WARN);
 
         DdlParser parser = new MySqlAntlrDdlParser();
         Tables tables = new Tables();

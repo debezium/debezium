@@ -23,6 +23,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
+import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcValueConverters;
@@ -54,7 +55,8 @@ public class MySqlDefaultValueTest {
         converters = new MySqlValueConverters(JdbcValueConverters.DecimalMode.DOUBLE,
                 TemporalPrecisionMode.CONNECT,
                 JdbcValueConverters.BigIntUnsignedMode.LONG,
-                BinaryHandlingMode.BYTES);
+                BinaryHandlingMode.BYTES,
+                EventConvertingFailureHandlingMode.WARN);
         parser = new MySqlAntlrDdlParser(converters);
         tables = new Tables();
         tableSchemaBuilder = new TableSchemaBuilder(
@@ -194,7 +196,8 @@ public class MySqlDefaultValueTest {
         final MySqlValueConverters converters = new MySqlValueConverters(JdbcValueConverters.DecimalMode.DOUBLE,
                 TemporalPrecisionMode.CONNECT,
                 JdbcValueConverters.BigIntUnsignedMode.PRECISE,
-                BinaryHandlingMode.BYTES);
+                BinaryHandlingMode.BYTES,
+                EventConvertingFailureHandlingMode.WARN);
         final AbstractDdlParser parser = new MySqlAntlrDdlParser(converters);
         final TableSchemaBuilder tableSchemaBuilder = new TableSchemaBuilder(
                 converters,
@@ -352,7 +355,8 @@ public class MySqlDefaultValueTest {
         final MySqlValueConverters converters = new MySqlValueConverters(JdbcValueConverters.DecimalMode.PRECISE,
                 TemporalPrecisionMode.CONNECT,
                 JdbcValueConverters.BigIntUnsignedMode.LONG,
-                BinaryHandlingMode.BYTES);
+                BinaryHandlingMode.BYTES,
+                EventConvertingFailureHandlingMode.WARN);
         final AbstractDdlParser parser = new MySqlAntlrDdlParser(converters);
         final TableSchemaBuilder tableSchemaBuilder = new TableSchemaBuilder(
                 converters,
