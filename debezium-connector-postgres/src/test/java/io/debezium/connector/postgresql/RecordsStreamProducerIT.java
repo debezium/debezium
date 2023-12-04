@@ -2039,8 +2039,8 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         // after record should contain the toasted value
         assertRecordSchemaAndValues(Arrays.asList(
-                        new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 10),
-                        new SchemaAndValueField("mandatory_text_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).build(), Arrays.asList(toastedValue))),
+                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 10),
+                new SchemaAndValueField("mandatory_text_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).build(), Arrays.asList(toastedValue))),
                 consumer.remove(),
                 Envelope.FieldName.AFTER);
 
@@ -2058,12 +2058,12 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         // before and after record should contain the toasted value
         assertRecordSchemaAndValues(Arrays.asList(
-                        new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 10),
-                        new SchemaAndValueField("mandatory_text_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).build(), Arrays.asList(toastedValue))),
+                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 10),
+                new SchemaAndValueField("mandatory_text_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).build(), Arrays.asList(toastedValue))),
                 updatedRecord, Envelope.FieldName.BEFORE);
         assertRecordSchemaAndValues(Arrays.asList(
-                        new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 20),
-                        new SchemaAndValueField("mandatory_text_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).build(), Arrays.asList(toastedValue))),
+                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 20),
+                new SchemaAndValueField("mandatory_text_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).build(), Arrays.asList(toastedValue))),
                 updatedRecord, Envelope.FieldName.AFTER);
     }
 
@@ -2089,8 +2089,8 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         // after record should contain the toasted value
         assertRecordSchemaAndValues(Arrays.asList(
-                        new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 10),
-                        new SchemaAndValueField("mandatory_text_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).build(), Arrays.asList(toastedValue))),
+                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 10),
+                new SchemaAndValueField("mandatory_text_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).build(), Arrays.asList(toastedValue))),
                 consumer.remove(),
                 Envelope.FieldName.AFTER);
 
@@ -2108,12 +2108,12 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         // before and after record should contain the toasted value
         assertRecordSchemaAndValues(Arrays.asList(
-                        new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 10),
-                        new SchemaAndValueField("mandatory_text_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).build(), Arrays.asList(toastedValue))),
+                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 10),
+                new SchemaAndValueField("mandatory_text_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).build(), Arrays.asList(toastedValue))),
                 updatedRecord, Envelope.FieldName.BEFORE);
         assertRecordSchemaAndValues(Arrays.asList(
-                        new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 20),
-                        new SchemaAndValueField("mandatory_text_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).build(), Arrays.asList(toastedValue))),
+                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 20),
+                new SchemaAndValueField("mandatory_text_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).build(), Arrays.asList(toastedValue))),
                 updatedRecord, Envelope.FieldName.AFTER);
     }
 
@@ -2140,10 +2140,10 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         // after record should contain the toasted value
         assertRecordSchemaAndValues(Arrays.asList(
-                        new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 10),
-                        new SchemaAndValueField("date_array",
-                                SchemaBuilder.array(SchemaBuilder.int32().name("io.debezium.time.Date").optional().version(1).build()).optional().build(),
-                                intList)),
+                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 10),
+                new SchemaAndValueField("date_array",
+                        SchemaBuilder.array(SchemaBuilder.int32().name("io.debezium.time.Date").optional().version(1).build()).optional().build(),
+                        intList)),
                 consumer.remove(),
                 Envelope.FieldName.AFTER);
 
@@ -2161,16 +2161,16 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         // before and after record should contain the toasted value
         assertRecordSchemaAndValues(Arrays.asList(
-                        new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 10),
-                        new SchemaAndValueField("date_array",
-                                SchemaBuilder.array(SchemaBuilder.int32().name("io.debezium.time.Date").optional().version(1).build()).optional().build(),
-                                intList)),
+                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 10),
+                new SchemaAndValueField("date_array",
+                        SchemaBuilder.array(SchemaBuilder.int32().name("io.debezium.time.Date").optional().version(1).build()).optional().build(),
+                        intList)),
                 updatedRecord, Envelope.FieldName.BEFORE);
         assertRecordSchemaAndValues(Arrays.asList(
-                        new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 20),
-                        new SchemaAndValueField("date_array",
-                                SchemaBuilder.array(SchemaBuilder.int32().name("io.debezium.time.Date").optional().version(1).build()).optional().build(),
-                                intList)),
+                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 20),
+                new SchemaAndValueField("date_array",
+                        SchemaBuilder.array(SchemaBuilder.int32().name("io.debezium.time.Date").optional().version(1).build()).optional().build(),
+                        intList)),
                 updatedRecord, Envelope.FieldName.AFTER);
     }
 
@@ -2197,9 +2197,9 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         // after record should contain the toasted value
         assertRecordSchemaAndValues(Arrays.asList(
-                        new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 10),
-                        new SchemaAndValueField("bytea_array",
-                                SchemaBuilder.array(Schema.OPTIONAL_BYTES_SCHEMA).optional().build(), Arrays.asList(ByteBuffer.wrap(toastedValue.getBytes())))),
+                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 10),
+                new SchemaAndValueField("bytea_array",
+                        SchemaBuilder.array(Schema.OPTIONAL_BYTES_SCHEMA).optional().build(), Arrays.asList(ByteBuffer.wrap(toastedValue.getBytes())))),
                 consumer.remove(),
                 Envelope.FieldName.AFTER);
 
@@ -2217,16 +2217,16 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         // before and after record should contain the toasted value
         assertRecordSchemaAndValues(Arrays.asList(
-                        new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 10),
-                        new SchemaAndValueField("bytea_array",
-                                SchemaBuilder.array(Schema.OPTIONAL_BYTES_SCHEMA).optional().build(),
-                                Arrays.asList(ByteBuffer.wrap(toastedValue.getBytes())))),
+                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 10),
+                new SchemaAndValueField("bytea_array",
+                        SchemaBuilder.array(Schema.OPTIONAL_BYTES_SCHEMA).optional().build(),
+                        Arrays.asList(ByteBuffer.wrap(toastedValue.getBytes())))),
                 updatedRecord, Envelope.FieldName.BEFORE);
         assertRecordSchemaAndValues(Arrays.asList(
-                        new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 20),
-                        new SchemaAndValueField("bytea_array",
-                                SchemaBuilder.array(Schema.OPTIONAL_BYTES_SCHEMA).optional().build(),
-                                Arrays.asList(ByteBuffer.wrap(toastedValue.getBytes())))),
+                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 20),
+                new SchemaAndValueField("bytea_array",
+                        SchemaBuilder.array(Schema.OPTIONAL_BYTES_SCHEMA).optional().build(),
+                        Arrays.asList(ByteBuffer.wrap(toastedValue.getBytes())))),
                 updatedRecord, Envelope.FieldName.AFTER);
     }
 
@@ -2254,8 +2254,8 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         // after record should contain the toasted value
         assertRecordSchemaAndValues(Arrays.asList(
-                        new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 10),
-                        new SchemaAndValueField("int_array", SchemaBuilder.array(Schema.OPTIONAL_INT32_SCHEMA).optional().build(), intList)),
+                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 10),
+                new SchemaAndValueField("int_array", SchemaBuilder.array(Schema.OPTIONAL_INT32_SCHEMA).optional().build(), intList)),
                 consumer.remove(),
                 Envelope.FieldName.AFTER);
 
@@ -2273,12 +2273,12 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         // before and after record should contain the toasted value
         assertRecordSchemaAndValues(Arrays.asList(
-                        new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 10),
-                        new SchemaAndValueField("int_array", SchemaBuilder.array(Schema.OPTIONAL_INT32_SCHEMA).optional().build(), intList)),
+                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 10),
+                new SchemaAndValueField("int_array", SchemaBuilder.array(Schema.OPTIONAL_INT32_SCHEMA).optional().build(), intList)),
                 updatedRecord, Envelope.FieldName.BEFORE);
         assertRecordSchemaAndValues(Arrays.asList(
-                        new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 20),
-                        new SchemaAndValueField("int_array", SchemaBuilder.array(Schema.OPTIONAL_INT32_SCHEMA).optional().build(), intList)),
+                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 20),
+                new SchemaAndValueField("int_array", SchemaBuilder.array(Schema.OPTIONAL_INT32_SCHEMA).optional().build(), intList)),
                 updatedRecord, Envelope.FieldName.AFTER);
     }
 
@@ -2306,8 +2306,8 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         // after record should contain the toasted value
         assertRecordSchemaAndValues(Arrays.asList(
-                        new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 10),
-                        new SchemaAndValueField("bigint_array", SchemaBuilder.array(Schema.OPTIONAL_INT64_SCHEMA).optional().build(), bigintList)),
+                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 10),
+                new SchemaAndValueField("bigint_array", SchemaBuilder.array(Schema.OPTIONAL_INT64_SCHEMA).optional().build(), bigintList)),
                 consumer.remove(),
                 Envelope.FieldName.AFTER);
 
@@ -2325,12 +2325,12 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         // before and after record should contain the toasted value
         assertRecordSchemaAndValues(Arrays.asList(
-                        new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 10),
-                        new SchemaAndValueField("bigint_array", SchemaBuilder.array(Schema.OPTIONAL_INT64_SCHEMA).optional().build(), bigintList)),
+                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 10),
+                new SchemaAndValueField("bigint_array", SchemaBuilder.array(Schema.OPTIONAL_INT64_SCHEMA).optional().build(), bigintList)),
                 updatedRecord, Envelope.FieldName.BEFORE);
         assertRecordSchemaAndValues(Arrays.asList(
-                        new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 20),
-                        new SchemaAndValueField("bigint_array", SchemaBuilder.array(Schema.OPTIONAL_INT64_SCHEMA).optional().build(), bigintList)),
+                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 20),
+                new SchemaAndValueField("bigint_array", SchemaBuilder.array(Schema.OPTIONAL_INT64_SCHEMA).optional().build(), bigintList)),
                 updatedRecord, Envelope.FieldName.AFTER);
     }
 
@@ -2359,10 +2359,10 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         // after record should contain the toasted value
         assertRecordSchemaAndValues(Arrays.asList(
-                        new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 10),
-                        new SchemaAndValueField("uuid_array",
-                                SchemaBuilder.array(io.debezium.data.Uuid.builder().optional().build()).optional().build(),
-                                Arrays.asList(toastedValueArray))),
+                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 10),
+                new SchemaAndValueField("uuid_array",
+                        SchemaBuilder.array(io.debezium.data.Uuid.builder().optional().build()).optional().build(),
+                        Arrays.asList(toastedValueArray))),
                 consumer.remove(),
                 Envelope.FieldName.AFTER);
 
@@ -2380,16 +2380,16 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         // before and after record should contain the toasted value
         assertRecordSchemaAndValues(Arrays.asList(
-                        new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 10),
-                        new SchemaAndValueField("uuid_array",
-                                SchemaBuilder.array(io.debezium.data.Uuid.builder().optional().build()).optional().build(),
-                                Arrays.asList(toastedValueArray))),
+                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 10),
+                new SchemaAndValueField("uuid_array",
+                        SchemaBuilder.array(io.debezium.data.Uuid.builder().optional().build()).optional().build(),
+                        Arrays.asList(toastedValueArray))),
                 updatedRecord, Envelope.FieldName.BEFORE);
         assertRecordSchemaAndValues(Arrays.asList(
-                        new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 20),
-                        new SchemaAndValueField("uuid_array",
-                                SchemaBuilder.array(io.debezium.data.Uuid.builder().optional().build()).optional().build(),
-                                Arrays.asList(toastedValueArray))),
+                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 20),
+                new SchemaAndValueField("uuid_array",
+                        SchemaBuilder.array(io.debezium.data.Uuid.builder().optional().build()).optional().build(),
+                        Arrays.asList(toastedValueArray))),
                 updatedRecord, Envelope.FieldName.AFTER);
     }
 
