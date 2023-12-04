@@ -129,12 +129,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
         // -------------------
         // Get the list of databases ...
         LOGGER.info("Read list of available databases");
-        final List<String> databaseNames = new ArrayList<>();
-        connection.query("SHOW DATABASES", rs -> {
-            while (rs.next()) {
-                databaseNames.add(rs.getString(1));
-            }
-        });
+        final List<String> databaseNames = connection.availableDatabases();
         LOGGER.info("\t list of available databases is: {}", databaseNames);
 
         // ----------------
@@ -258,7 +253,9 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
                 }
 
                 for (final SchemaChangeEvent event : schemaEvents) {
-                    if (databaseSchema.storeOnlyCapturedTables() && event.getDatabase() != null && event.getDatabase().length() != 0
+                    if (databaseSchema.storeOnlyCapturedTables()
+                            && event.getDatabase() != null
+                            && !event.getDatabase().isEmpty()
                             && !connectorConfig.getTableFilters().databaseFilter().test(event.getDatabase())) {
                         LOGGER.debug("Skipping schema event as it belongs to a non-captured database: '{}'", event);
                         continue;
@@ -419,7 +416,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
                     .filter(id -> !delayedSchemaSnapshotTables.contains(id))
                     .collect(Collectors.toList());
         }
-        if (realTablesToRead.size() > 0) {
+        if (!realTablesToRead.isEmpty()) {
             CompletionService<Map<TableId, String>> completionService = new ExecutorCompletionService<>(executorService);
             for (TableId tableId : realTablesToRead) {
                 completionService.submit(createDdlForTableCallable(tableId, connectionPool));

@@ -160,6 +160,26 @@ public abstract class AbstractConnectorConnection extends JdbcConnection {
     }
 
     /**
+     * Query the available databases.
+     *
+     * @return list of databases
+     */
+    public List<String> availableDatabases() {
+        final List<String> databaseNames = new ArrayList<>();
+        try {
+            query("SHOW DATABASES", rs -> {
+                while (rs.next()) {
+                    databaseNames.add(rs.getString(1));
+                }
+            });
+            return databaseNames;
+        }
+        catch (SQLException e) {
+            throw new DebeziumException("Unexpected error while getting available databases: ", e);
+        }
+    }
+
+    /**
      * Get the estimated table size, aka number of rows.
      *
      * @param tableId the table identifier; should never be null

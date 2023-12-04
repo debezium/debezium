@@ -15,7 +15,8 @@ import io.debezium.pipeline.source.spi.EventMetadataProvider;
  * @author Randall Hauch
  *
  */
-class MySqlSnapshotChangeEventSourceMetrics extends DefaultSnapshotChangeEventSourceMetrics<MySqlPartition> implements MySqlSnapshotChangeEventSourceMetricsMXBean {
+public class MySqlSnapshotChangeEventSourceMetrics extends DefaultSnapshotChangeEventSourceMetrics<MySqlPartition>
+        implements MySqlSnapshotChangeEventSourceMetricsMXBean {
 
     private final AtomicBoolean holdingGlobalLock = new AtomicBoolean();
 

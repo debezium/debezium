@@ -6,10 +6,13 @@
 package io.debezium.connector.mysql;
 
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigValue;
@@ -17,12 +20,15 @@ import org.apache.kafka.connect.connector.Task;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.annotation.Immutable;
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.RelationalBaseSourceConnector;
 import io.debezium.connector.mysql.strategy.AbstractConnectorConnection;
 import io.debezium.connector.mysql.strategy.ConnectorAdapter;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.relational.TableId;
+import io.debezium.rest.model.DataCollection;
 
 /**
  * A Kafka Connect source connector that creates tasks that read the MySQL binary log and generate the corresponding
@@ -114,5 +120,33 @@ public class MySqlConnector extends RelationalBaseSourceConnector {
     private static ConnectorAdapter adapter(Configuration config) {
         // todo: find a better way to handle this
         return new MySqlConnectorConfig(config).getConnectorAdapter();
+    }
+
+    @Override
+    public List<DataCollection> getMatchingCollections(Configuration config) {
+        final MySqlConnectorConfig mySqlConnectorConfig = new MySqlConnectorConfig(config);
+        try (AbstractConnectorConnection connection = adapter(config).createConnection(config)) {
+            Set<TableId> tables;
+
+            final List<String> databaseNames = connection.availableDatabases();
+
+            List<DataCollection> allMatchingTables = new ArrayList<>();
+
+            for (String databaseName : databaseNames) {
+                if (!mySqlConnectorConfig.getTableFilters().databaseFilter().test(databaseName)) {
+                    continue;
+                }
+                tables = connection.readTableNames(databaseName, null, null, new String[]{ "TABLE" });
+                var matchingTables = tables.stream()
+                        .filter(tableId -> mySqlConnectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId))
+                        .map(tableId -> new DataCollection(tableId.catalog(), tableId.table()))
+                        .collect(Collectors.toList());
+                allMatchingTables.addAll(matchingTables);
+            }
+            return allMatchingTables;
+        }
+        catch (SQLException e) {
+            throw new DebeziumException(e);
+        }
     }
 }
