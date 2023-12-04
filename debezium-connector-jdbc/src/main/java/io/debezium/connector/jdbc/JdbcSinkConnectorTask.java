@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 
+import io.debezium.util.Stopwatch;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.connect.errors.ConnectException;
@@ -86,7 +87,10 @@ public class JdbcSinkConnectorTask extends SinkTask {
 
     @Override
     public void put(Collection<SinkRecord> records) {
-
+        Stopwatch putStopWatch = Stopwatch.reusable();
+        Stopwatch executeStopWatch = Stopwatch.reusable();
+        Stopwatch markProcessedStopWatch = Stopwatch.reusable();
+        putStopWatch.start();
         if (previousPutException != null) {
             LOGGER.error("JDBC sink connector failure", previousPutException);
             throw new ConnectException("JDBC sink connector failure", previousPutException);
@@ -95,9 +99,12 @@ public class JdbcSinkConnectorTask extends SinkTask {
         LOGGER.debug("Received {} changes.", records.size());
 
         try {
-
+            executeStopWatch.start();
             changeEventSink.execute(records);
+            executeStopWatch.stop();
+            markProcessedStopWatch.start();
             records.forEach(this::markProcessed);
+            markProcessedStopWatch.stop();
         }
         catch (Throwable throwable) {
 
@@ -108,6 +115,11 @@ public class JdbcSinkConnectorTask extends SinkTask {
             // Stash all records
             records.forEach(this::markNotProcessed);
         }
+
+        putStopWatch.stop();
+        LOGGER.trace("[PERF] Total put execution time {}", putStopWatch.durations());
+        LOGGER.trace("[PERF] Sink execute execution time {}", executeStopWatch.durations());
+        LOGGER.trace("[PERF] Mark processed execution time {}", markProcessedStopWatch.durations());
     }
 
     @Override
