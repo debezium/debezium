@@ -5,12 +5,10 @@
  */
 package io.debezium.pipeline.source.snapshot.incremental;
 
-import java.sql.SQLException;
-
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
 
 public interface WatermarkWindowCloser {
 
-    void closeWindows(Partition partition, OffsetContext offsetContext, String chunkId) throws SQLException;
+    void closeWindow(Partition partition, OffsetContext offsetContext, String chunkId) throws Exception;
 }

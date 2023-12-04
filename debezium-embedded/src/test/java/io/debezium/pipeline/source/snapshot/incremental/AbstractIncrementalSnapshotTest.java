@@ -947,12 +947,6 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         });
     }
 
-    private void assertOpenCloseEventCount(JdbcConnection.ResultSetConsumer consumer) throws SQLException {
-        try (JdbcConnection connection = databaseConnection()) {
-            connection.query("SELECT count(id) from " + signalTableName() + " where id like '%close'", consumer);
-        }
-    }
-
     @Test
     public void insertDeleteWatermarkingStrategy() throws Exception {
         // Testing.Print.enable();
@@ -986,6 +980,12 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
             rs.next();
             assertThat(rs.getInt(1)).isZero();
         });
+    }
+
+    private void assertOpenCloseEventCount(JdbcConnection.ResultSetConsumer consumer) throws SQLException {
+        try (JdbcConnection connection = databaseConnection()) {
+            connection.query("SELECT count(id) from " + signalTableName() + " where type='snapshot-window-close'", consumer);
+        }
     }
 
     protected int defaultIncrementalSnapshotChunkSize() {

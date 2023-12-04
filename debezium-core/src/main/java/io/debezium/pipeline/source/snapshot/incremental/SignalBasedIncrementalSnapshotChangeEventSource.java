@@ -74,13 +74,13 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
     }
 
     @Override
-    protected void emitWindowClose(Partition partition, OffsetContext offsetContext) throws SQLException {
+    protected void emitWindowClose(Partition partition, OffsetContext offsetContext) throws Exception {
 
         String signalTableName = getSignalTableName(connectorConfig.getSignalingDataCollectionId());
 
         WatermarkWindowCloser watermarkWindowCloser = getWatermarkWindowCloser(connectorConfig, jdbcConnection, signalTableName);
 
-        watermarkWindowCloser.closeWindows(partition, offsetContext, context.currentChunkId());
+        watermarkWindowCloser.closeWindow(partition, offsetContext, context.currentChunkId());
     }
 
     private WatermarkWindowCloser getWatermarkWindowCloser(CommonConnectorConfig connectorConfig, JdbcConnection jdbcConnection, String signalTable) {

@@ -29,7 +29,7 @@ public class InsertWindowCloser implements WatermarkWindowCloser {
     }
 
     @Override
-    public void closeWindows(Partition partition, OffsetContext offsetContext, String chunkId) throws SQLException {
+    public void closeWindow(Partition partition, OffsetContext offsetContext, String chunkId) throws SQLException {
 
         jdbcConnection.prepareUpdate(signalWindowStatement, x -> {
             LOGGER.trace("Emitting close window for chunk = '{}'", chunkId);
