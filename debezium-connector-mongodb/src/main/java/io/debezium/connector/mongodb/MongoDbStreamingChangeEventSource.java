@@ -137,7 +137,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                 final AtomicReference<MongoPrimary> primaryReference = new AtomicReference<>(primaryClient);
                 primaryClient.execute("read from oplog on '" + replicaSet + "'", primary -> {
                     if (taskContext.getCaptureMode().isChangeStreams()) {
-                        readChangeStream(primary, primaryReference.get(), replicaSet, context, offsetContext, shardId);
+                        readChangeStream(primary, primaryReference.get(), replicaSet, context, offsetContext, shardId, connectorConfig.getMultiTaskEnabled());
                     }
                     else {
                         readOplog(primary, primaryReference.get(), replicaSet, context, offsetContext, shardId);
@@ -316,7 +316,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
     }
 
     private void readChangeStream(MongoClient primary, MongoPrimary primaryClient, ReplicaSet replicaSet, ChangeEventSourceContext context,
-                                  MongoDbOffsetContext offsetContext, int shardId) {
+                                  MongoDbOffsetContext offsetContext, int shardId, boolean enableMultiTask) {
         final ReplicaSetPartition rsPartition = offsetContext.getReplicaSetPartition(replicaSet);
         final ReplicaSetOffsetContext rsOffsetContext = offsetContext.getReplicaSetOffsetContext(replicaSet);
 
@@ -380,13 +380,25 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                             continue;
                         }
 
-                        // UPDATE TO ID
-                        if (event.getClusterTime() != null && event.getClusterTime().getValue() % connectorConfig.getStreamingShards() != shardId) {
-                            LOGGER.debug("shard id doesn't match, skip change stream event {}:{}", shardId, event.getClusterTime().getValue());
-                            continue;
+                        // Distribution of events to tasks or connectors is enabled
+                        // It uses timestamps as the property to distribute events
+                        if (enableMultiTask) {
+                            if (event.getClusterTime() != null && event.getClusterTime().getValue() % connectorConfig.getMaxTasks() != taskContext.getMongoTaskId()) {
+                                LOGGER.debug("task id doesn't match, skip change stream event {}:{}", taskContext.getMongoTaskId(), event.getClusterTime().getValue());
+                                continue;
+                            }
+                            else {
+                                LOGGER.debug("task id match, process stream event {}:{}", taskContext.getMongoTaskId(), event.getClusterTime().getValue());
+                            }
                         }
-                        else {
-                            LOGGER.debug("shard id match, process stream event {}:{}", shardId, event.getClusterTime().getValue());
+                        else if (connectorConfig.getStreamingShards() > 0) {
+                            if (event.getClusterTime() != null && event.getClusterTime().getValue() % connectorConfig.getStreamingShards() != shardId) {
+                                LOGGER.debug("shard id doesn't match, skip change stream event {}:{}", shardId, event.getClusterTime().getValue());
+                                continue;
+                            }
+                            else {
+                                LOGGER.debug("shard id match, process stream event {}:{}", shardId, event.getClusterTime().getValue());
+                            }
                         }
 
                         oplogContext.getOffset().getOffset();

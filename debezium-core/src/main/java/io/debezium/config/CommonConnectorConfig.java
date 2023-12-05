@@ -49,6 +49,7 @@ import io.debezium.util.Strings;
  */
 public abstract class CommonConnectorConfig {
     public static final String TASK_ID = "task.id";
+    public static final String TASKS_MAX = "tasks.max";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CommonConnectorConfig.class);
 
@@ -604,6 +605,7 @@ public abstract class CommonConnectorConfig {
     private final String signalingDataCollection;
     private final EnumSet<Operation> skippedOperations;
     private final String transactionTopic;
+    private final int maxTasks;
     private final String taskId;
 
     protected CommonConnectorConfig(Configuration config, String logicalName, int defaultSnapshotFetchSize) {
@@ -633,6 +635,7 @@ public abstract class CommonConnectorConfig {
         this.signalingDataCollection = config.getString(SIGNAL_DATA_COLLECTION);
         this.skippedOperations = determineSkippedOperations(config);
         this.transactionTopic = config.getString(TRANSACTION_TOPIC).replace("${database.server.name}", logicalName);
+        this.maxTasks = config.getInteger(TASKS_MAX, 1);
         this.taskId = config.getString(TASK_ID);
     }
 
@@ -952,5 +955,9 @@ public abstract class CommonConnectorConfig {
 
     public String getTaskId() {
         return taskId;
+    }
+
+    public int getMaxTasks() {
+        return maxTasks;
     }
 }

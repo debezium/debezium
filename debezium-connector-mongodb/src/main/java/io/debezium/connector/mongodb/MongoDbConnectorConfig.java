@@ -547,7 +547,9 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                     + "Options include: "
                     + "'oplog' to capture changes from the oplog; "
                     + "'change_streams' to capture changes via MongoDB Change Streams, update events do not contain full documents; "
-                    + "'change_streams_update_full' (the default) to capture changes via MongoDB Change Streams, update events contain full documents");
+                    + "'change_streams_update_full' (the default) to capture changes via MongoDB Change Streams, update events contain full documents;"
+                    + "'change_streams_with_pre_image' to capture changes via MongoDB Change Streams with pre images, update events do not contain full documents; "
+                    + "'change_streams_update_full_with_pre_image' to capture changes via MongoDB Change Streams with pre images, update events contain full documents");
 
     public static final Field RAW_OPLOG_ENABLED = Field.create("mongodb.raw_oplog.enabled")
             .withDisplayName("Enable populate raw oplog for MongoDB")
@@ -681,8 +683,9 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
             .withDefault(false)
-            .withValidation(Field::isBoolean)
-            .withDescription("Should the multi-task connector setup be enabled to the MongoDB instance, only valid if the connector manages a single replset");
+            .withValidation(MongoDbConnectorConfig::validateMultiTaskSetup)
+            .withDescription("Should the multi-task connector setup be enabled to the MongoDB instance, only valid if the connector manages a single replset. "
+                    + "Has no effect when the capture mode is oplog");
 
     public static final Field MONGODB_MULTI_TASK_GEN = Field.create("mongodb.multi.task.gen")
             .withDisplayName("Mongo DB multi-task generation")
@@ -875,6 +878,19 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         return 0;
     }
 
+    private static int validateMultiTaskSetup(Configuration config, Field field, ValidationOutput problems) {
+        if (!config.getBoolean(field)) {
+            return 0;
+        }
+        String hosts = config.getString(HOSTS);
+        if (ReplicaSets.parse(hosts).replicaSetCount() > 1) {
+            problems.accept(MONGODB_MULTI_TASK_ENABLED, true,
+                    String.format("multi-task is not supported for multiple replica sets. received %s replica sets", ReplicaSets.parse(hosts).replicaSetCount()));
+            return 1;
+        }
+        return 0;
+    }
+
     public SnapshotMode getSnapshotMode() {
         return snapshotMode;
     }
@@ -927,6 +943,10 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     @Override
     public int getSnapshotMaxThreads() {
         return snapshotMaxThreads;
+    }
+
+    public boolean getMultiTaskEnabled() {
+        return multiTaskEnabled;
     }
 
     @Override

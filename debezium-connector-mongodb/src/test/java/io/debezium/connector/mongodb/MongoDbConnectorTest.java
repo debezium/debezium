@@ -7,12 +7,18 @@ package io.debezium.connector.mongodb;
 
 import static org.fest.assertions.Assertions.assertThat;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.ConfigKey;
 import org.apache.kafka.connect.connector.Connector;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.junit.Assert;
 import org.junit.Test;
+
+import io.debezium.config.Configuration;
 
 /**
  * @author Randall Hauch
@@ -67,5 +73,72 @@ public class MongoDbConnectorTest {
         Assert.assertThrows(ConnectException.class, () -> connector.validateReplicaSets(expectedHostString, ReplicaSets.parse("1.2.3.4:27017")));
         Assert.assertThrows(ConnectException.class, () -> connector.validateReplicaSets(expectedHostString, ReplicaSets.parse("rs1")));
         Assert.assertThrows(ConnectException.class, () -> connector.validateReplicaSets(expectedHostString, ReplicaSets.parse("")));
+    }
+
+    @Test
+    public void assertCreateTaskConfigs() {
+        MongoDbConnector connector = new MongoDbConnector();
+
+        connector.start(
+                Configuration.create()
+                        .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
+                        .with(MongoDbConnectorConfig.HOSTS, "rs1/")
+                        .build()
+                        .asMap());
+
+        // Case 1: Regular setup with single replset
+        // Since number of tasks > number of replsets, only two tasks should be assigned to the two replset
+        String replset1 = "rs1/1.2.3.4:27017";
+        String replset2 = "rs2/2.3.4.5:27017";
+        int numTasks = 3;
+        ReplicaSets actualReplicaSets = ReplicaSets.parse(String.format("%s;%s", replset1, replset2));
+        List<Map<String, String>> taskConfigs = new ArrayList<>();
+        connector.createTaskConfigs(numTasks, actualReplicaSets, taskConfigs);
+
+        assertThat(taskConfigs.size()).isEqualTo(2);
+        String[] output1 = new String[]{ taskConfigs.get(0).get(MongoDbConnectorConfig.HOSTS.name()), taskConfigs.get(1).get(MongoDbConnectorConfig.HOSTS.name()) };
+        assertThat(output1).containsOnly(replset1, replset2);
+        assertThat(taskConfigs.get(0).get(MongoDbConnectorConfig.TASK_ID.name())).isEqualTo("0");
+        assertThat(taskConfigs.get(1).get(MongoDbConnectorConfig.TASK_ID.name())).isEqualTo("1");
+
+        // Case 2: Regular setup with multiple replset
+        // Since number of tasks < number of replsets, a task will be assigned to two replsets
+        String replset3 = "rs3/1.2.3.4:27017";
+        String replset4 = "rs4/1.2.3.4:27017";
+        actualReplicaSets = ReplicaSets.parse(String.format("%s;%s;%s;%s", replset1, replset2, replset3, replset4));
+        taskConfigs = new ArrayList<>();
+        connector.createTaskConfigs(numTasks, actualReplicaSets, taskConfigs);
+
+        assertThat(taskConfigs.size()).isEqualTo(3);
+        List<ReplicaSet> output2 = new ArrayList<>();
+        for (int i = 0; i < taskConfigs.size(); i++) {
+            ReplicaSets replicaSets = ReplicaSets.parse(taskConfigs.get(i).get(MongoDbConnectorConfig.HOSTS.name()));
+            assertThat(replicaSets.replicaSetCount()).isIn(1, 2); // the set has either 1 or 2 replsets
+            output2.addAll(replicaSets.all());
+            assertThat(taskConfigs.get(i).get(MongoDbConnectorConfig.TASK_ID.name())).isEqualTo(String.valueOf(i));
+        }
+        // Check that all the replsets collected from the tasks in output2 are exactly actualReplicaSets
+        assertThat(output2.size()).isEqualTo(actualReplicaSets.replicaSetCount());
+        assertThat(output2).containsOnly(actualReplicaSets.all().toArray(new ReplicaSet[0]));
+
+        // Case 3: Multitask setup
+        // The single replset should be assigned to all tasks
+        connector.start(
+                Configuration.create()
+                        .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
+                        .with(MongoDbConnectorConfig.HOSTS, "rs1/")
+                        .with(MongoDbConnectorConfig.MONGODB_MULTI_TASK_ENABLED, true)
+                        .build()
+                        .asMap());
+
+        actualReplicaSets = ReplicaSets.parse(replset1);
+        taskConfigs = new ArrayList<>();
+        connector.createTaskConfigs(numTasks, actualReplicaSets, taskConfigs);
+
+        assertThat(taskConfigs.size()).isEqualTo(numTasks);
+        for (int i = 0; i < taskConfigs.size(); i++) {
+            assertThat(taskConfigs.get(i).get(MongoDbConnectorConfig.HOSTS.name())).isEqualTo(replset1);
+            assertThat(taskConfigs.get(i).get(MongoDbConnectorConfig.TASK_ID.name())).isEqualTo(String.valueOf(i));
+        }
     }
 }

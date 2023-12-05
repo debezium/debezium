@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.Config;
@@ -155,24 +156,39 @@ public class MongoDbConnector extends SourceConnector {
             ReplicaSets replicaSets = monitorThread.getReplicaSets(10, TimeUnit.SECONDS);
             if (replicaSets != null) {
                 validateReplicaSets(config.getString(MongoDbConnectorConfig.HOSTS), replicaSets);
-                logger.info("Subdividing {} MongoDB replica set(s) into at most {} task(s)",
-                        replicaSets.replicaSetCount(), maxTasks);
-                replicaSets.subdivide(maxTasks, replicaSetsForTask -> {
-                    // Create the configuration for each task ...
-                    int taskId = taskConfigs.size();
-                    logger.info("Configuring MongoDB connector task {} to capture events for replica set(s) at {}", taskId, replicaSetsForTask.hosts());
-                    taskConfigs.add(config.edit()
-                            .with(MongoDbConnectorConfig.HOSTS, replicaSetsForTask.hosts())
-                            .with(MongoDbConnectorConfig.TASK_ID, taskId)
-                            .build()
-                            .asMap());
-                });
+                createTaskConfigs(maxTasks, replicaSets, taskConfigs);
             }
             logger.debug("Configuring {} MongoDB connector task(s)", taskConfigs.size());
             return taskConfigs;
         }
         finally {
             previousLogContext.restore();
+        }
+    }
+
+    protected void createTaskConfigs(int maxTasks, ReplicaSets replicaSets, List<Map<String, String>> taskConfigs) {
+        Consumer<ReplicaSets> consumer = replicaSetsForTask -> {
+            // Create the configuration for each task ...
+            int taskId = taskConfigs.size();
+            logger.info("Configuring MongoDB connector task {} to capture events for replica set(s) at {}", taskId, replicaSetsForTask.hosts());
+            taskConfigs.add(config.edit()
+                    .with(MongoDbConnectorConfig.HOSTS, replicaSetsForTask.hosts())
+                    .with(MongoDbConnectorConfig.TASK_ID, taskId)
+                    .build()
+                    .asMap());
+        };
+
+        if (config.getBoolean(MongoDbConnectorConfig.MONGODB_MULTI_TASK_ENABLED)) {
+            // there should be only one replica set, which is checked in config validation
+            // assign all the tasks to this replica set
+            logger.info("Assigning the MongoDB replica set to {} task(s)", maxTasks);
+            replicaSets.assignToMultiTasks(maxTasks, consumer);
+        }
+        else {
+            logger.info(
+                    "Subdividing {} MongoDB replica set(s) into at most {} task(s)",
+                    replicaSets.replicaSetCount(), maxTasks);
+            replicaSets.subdivide(maxTasks, consumer);
         }
     }
 

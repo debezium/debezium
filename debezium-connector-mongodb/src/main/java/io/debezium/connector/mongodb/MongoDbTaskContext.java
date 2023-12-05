@@ -29,7 +29,10 @@ public class MongoDbTaskContext extends CdcSourceTaskContext {
      * @param config the configuration
      */
     public MongoDbTaskContext(Configuration config) {
-        super(Module.contextName(), config.getString(MongoDbConnectorConfig.LOGICAL_NAME), Collections::emptySet);
+        super(Module.contextName(),
+                config.getString(MongoDbConnectorConfig.LOGICAL_NAME),
+                String.valueOf(config.getInteger(MongoDbConnectorConfig.TASK_ID, 0)),
+                Collections::emptySet);
 
         final String serverName = config.getString(MongoDbConnectorConfig.LOGICAL_NAME);
         this.filters = new Filters(config);
@@ -78,5 +81,9 @@ public class MongoDbTaskContext extends CdcSourceTaskContext {
 
     public void overrideCaptureMode(CaptureMode captureModeUsed) {
         this.captureMode = captureModeUsed;
+    }
+
+    public int getMongoTaskId() {
+        return Integer.parseInt(getTaskId());
     }
 }

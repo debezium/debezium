@@ -135,6 +135,19 @@ public class ReplicaSets {
     }
 
     /**
+     * Assign the replset to the consumer.
+     * Currently, should only be called when there is only one replset.
+     *
+     * @param numTasks the number of tasks to assign this replset to
+     * @param consumer the function to be called for each task; may not be null
+     */
+    public void assignToMultiTasks(int numTasks, Consumer<ReplicaSets> consumer) {
+        for (int i = 0; i < numTasks; i++) {
+            consumer.accept(this);
+        }
+    }
+
+    /**
      * Get a copy of all of the {@link ReplicaSet} objects.
      *
      * @return the replica set objects; never null but possibly empty

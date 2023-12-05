@@ -15,6 +15,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.BsonDocument;
 import org.bson.BsonString;
 import org.bson.Document;
@@ -168,5 +169,17 @@ public class TestHelper {
         else {
             Assertions.assertThat(removedFields).isNull();
         }
+    }
+
+    static String formatObjectId(ObjectId objId) {
+        return "{\"$oid\": \"" + objId + "\"}";
+    }
+
+    static Document getFilterFromId(ObjectId id) {
+        return Document.parse("{\"_id\": {\"$oid\": \"" + id + "\"}}");
+    }
+
+    static String getDocumentId(SourceRecord record) {
+        return ((Struct) record.key()).getString("id");
     }
 }

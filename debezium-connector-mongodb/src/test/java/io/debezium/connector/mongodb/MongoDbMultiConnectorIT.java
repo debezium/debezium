@@ -11,6 +11,7 @@ import static org.fest.assertions.Assertions.assertThat;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
+
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.Document;
@@ -24,10 +25,6 @@ import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
 
 public class MongoDbMultiConnectorIT extends AbstractMongoConnectorIT {
-
-    /**
-     * Verifies that the connector doesn't run with an invalid configuration. This does not actually connect to the Mongo server.
-     */
 
     static String db = "multiDb";
     static String collection = "multiCol";
@@ -59,6 +56,9 @@ public class MongoDbMultiConnectorIT extends AbstractMongoConnectorIT {
         }
     }
 
+    /**
+     * Verifies that the connector doesn't run with an invalid configuration. This does not actually connect to the Mongo server.
+     */
     @Test
     public void shouldNotStartWithInvalidConfiguration() {
         config = Configuration.create()
@@ -76,7 +76,7 @@ public class MongoDbMultiConnectorIT extends AbstractMongoConnectorIT {
 
     protected void startConnector(Configuration c) {
         start(MongoDbConnector.class, c);
-        //waitForConnectorToStart();
+        // waitForConnectorToStart();
         waitForStreamingRunning("mongodb", "mongo");
 
         waitForAvailableRecords(5, TimeUnit.SECONDS);
@@ -90,7 +90,7 @@ public class MongoDbMultiConnectorIT extends AbstractMongoConnectorIT {
         int process = 1; // Currently IT only support single connectors
         ArrayList<Configuration> configs = new ArrayList<>(streamingShardCount);
         for (int i = 0; i < streamingShardCount; i++) {
-            Configuration c =Configuration.copy(config)
+            Configuration c = Configuration.copy(config)
                     .with(MongoDbConnectorConfig.STREAMING_SHARDS, streamingShardCount)
                     .with(MongoDbConnectorConfig.STREAMING_SHARD_ID, i)
                     .with(MongoDbConnectorConfig.CAPTURE_MODE, "oplog")
@@ -115,7 +115,7 @@ public class MongoDbMultiConnectorIT extends AbstractMongoConnectorIT {
             stopConnector();
         }
 
-        assertThat(totalRecordsRead).isEqualTo(nRecords/streamingShardCount);
+        assertThat(totalRecordsRead).isEqualTo(nRecords / streamingShardCount);
         assertNoRecordsToConsume();
     }
 
@@ -125,7 +125,7 @@ public class MongoDbMultiConnectorIT extends AbstractMongoConnectorIT {
         int process = 1; // Currently IT only support single connectors
         ArrayList<Configuration> configs = new ArrayList<>(streamingShardCount);
         for (int i = 0; i < streamingShardCount; i++) {
-            Configuration c =Configuration.copy(config)
+            Configuration c = Configuration.copy(config)
                     .with(MongoDbConnectorConfig.STREAMING_SHARDS, streamingShardCount)
                     .with(MongoDbConnectorConfig.STREAMING_SHARD_ID, i)
                     .build();
@@ -149,7 +149,7 @@ public class MongoDbMultiConnectorIT extends AbstractMongoConnectorIT {
             stopConnector();
         }
 
-        assertThat(totalRecordsRead).isEqualTo(nRecords/streamingShardCount);
+        assertThat(totalRecordsRead).isEqualTo(nRecords / streamingShardCount);
         assertNoRecordsToConsume();
     }
 
