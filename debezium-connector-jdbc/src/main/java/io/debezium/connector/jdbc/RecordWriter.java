@@ -11,15 +11,15 @@ import java.sql.Statement;
 import java.util.List;
 import java.util.Objects;
 
-import io.debezium.util.Stopwatch;
 import org.apache.kafka.connect.data.Struct;
 import org.hibernate.SharedSessionContract;
 import org.hibernate.Transaction;
 import org.hibernate.jdbc.Work;
-
-import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import io.debezium.connector.jdbc.dialect.DatabaseDialect;
+import io.debezium.util.Stopwatch;
 
 /**
  * Effectively writes the batches using Hibernate {@link Work}
