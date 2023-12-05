@@ -2391,6 +2391,14 @@ Increasing the chunk size provides greater efficiency, because the snapshot runs
 However, larger chunk sizes also require more memory to buffer the snapshot data.
 Adjust the chunk size to a value that provides the best performance in your environment.
 
+|[[informix-property-incremental-snapshot-watermarking-strategy]]<<informix-property-incremental-snapshot-watermarking-strategy, `+incremental.snapshot.watermarking.strategy+`>>
+|`insert_insert`
+|Specify the strategy used for watermarking during an incremental snapshot: +
++
+`insert_insert`: both open and close signal is written into signal data collection. +
++
+`insert_delete`: only open signal is written into signal data collection, the close one will delete the relative open signal. Useful to keep signal data collection size low. +
+
 
 |[[informix-property-topic-naming-strategy]]<<informix-property-topic-naming-strategy, `topic.naming.strategy`>>
 |`io.debezium.schema.SchemaTopicNamingStrategy`
