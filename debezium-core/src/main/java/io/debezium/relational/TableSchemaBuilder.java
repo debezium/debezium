@@ -305,9 +305,20 @@ public class TableSchemaBuilder {
                                         message, tableId, col.name(), col.typeName(), e);
                             }
                             else {
-                                Loggings.logDebugAndTraceRecord(LOGGER, row,
-                                        message, tableId, col.name(), col.typeName(), e);
-                                throw e;
+                                // NOTE: what if failed column is not accept null?
+                                switch (eventConvertingFailureHandlingMode) {
+                                    case FAIL:
+                                        Loggings.logErrorAndTraceRecord(LOGGER, row, message, tableId,
+                                                col.name(), col.typeName(), e);
+                                        throw new DebeziumException("Failed to properly convert data value for '" +
+                                                tableId + "." + col.name() + "' of type " + col.typeName(), e.getCause());
+                                    case WARN:
+                                        Loggings.logWarningAndTraceRecord(LOGGER, row, message, tableId,
+                                                col.name(), col.typeName(), e);
+                                    case SKIP:
+                                        Loggings.logDebugAndTraceRecord(LOGGER, row, message, tableId,
+                                                col.name(), col.typeName(), e);
+                                }
                             }
                         }
                     }
@@ -395,9 +406,7 @@ public class TableSchemaBuilder {
      * @param mapper the mapping function for the column; may be null if the columns is not to be mapped to different values
      */
     protected void addField(SchemaBuilder builder, Table table, Column column, ColumnMapper mapper) {
-        final Object defaultValue = column.defaultValueExpression()
-                .flatMap(e -> defaultValueConverter.parseDefaultValue(column, e))
-                .orElse(null);
+        final Object defaultValue = parseDefaultValue(table.id(), column);
 
         final SchemaBuilder fieldBuilder = customConverterRegistry.registerConverterFor(table.id(), column, defaultValue)
                 .orElse(valueConverterProvider.schemaBuilder(column));
@@ -456,5 +465,40 @@ public class TableSchemaBuilder {
      */
     protected ValueConverter createValueConverterFor(TableId tableId, Column column, Field fieldDefn) {
         return customConverterRegistry.getValueConverter(tableId, column).orElse(valueConverterProvider.converter(column, fieldDefn));
+    }
+
+    // parse default value of column.
+    // if fail to parse, it's handled by value of eventConvertingFailureHandlingMode.
+    private Object parseDefaultValue(TableId tableId, Column column) {
+        try {
+            return column.defaultValueExpression()
+                    .flatMap(e -> defaultValueConverter.parseDefaultValue(column, e))
+                    .orElse(null);
+        }
+        catch (Exception e) {
+            String message = "Unexpected default value for JDBC type '{}.{}' and column '{}'";
+            if (eventConvertingFailureHandlingMode == null) {
+                Loggings.logErrorAndTraceRecord(LOGGER, column.defaultValueExpression(),
+                        message, column.typeName(), column.name(), e);
+            }
+            else {
+                switch (eventConvertingFailureHandlingMode) {
+                    case FAIL:
+                        Loggings.logErrorAndTraceRecord(LOGGER, column.defaultValueExpression(),
+                                message, tableId, column.typeName(), column.name(), e);
+                        throw new DebeziumException("Failed to properly convert default value for '" +
+                                tableId + "." + column.name() + "' of type " + column.typeName(), e.getCause());
+                    case WARN:
+                        Loggings.logWarningAndTraceRecord(LOGGER, column.defaultValueExpression(),
+                                message, tableId, column.typeName(), column.name(), e);
+                        return null;
+                    case SKIP:
+                        Loggings.logDebugAndTraceRecord(LOGGER, column.defaultValueExpression(),
+                                message, tableId, column.typeName(), column.name(), e);
+                        return null;
+                }
+            }
+        }
+        return null;
     }
 }

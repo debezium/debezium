@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.mysql;
 
+import static io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode.FAIL;
+
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.ByteOrder;
@@ -54,8 +56,6 @@ import io.debezium.relational.Table;
 import io.debezium.relational.ValueConverter;
 import io.debezium.time.Year;
 import io.debezium.util.Strings;
-
-import static io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode.FAIL;
 
 /**
  * MySQL-specific customization of the conversions from JDBC values obtained from the MySQL binlog client library.
@@ -241,19 +241,6 @@ public class MySqlValueConverters extends JdbcValueConverters {
 
     @Override
     public ValueConverter converter(Column column, Field fieldDefn) {
-        return valueConverter(column, fieldDefn).withEventConvertingFailureHandlingMode(eventConvertingFailureHandlingMode);
-    }
-
-    @Override
-    protected Object handleUnknownData(Column column, Field fieldDefn, Object data) {
-        Class<?> dataClass = data.getClass();
-        String clazzName = dataClass.isArray() ? dataClass.getSimpleName() : dataClass.getName();
-        // exception will be handled in TableSchemaBuilder.createValueGenerator
-        throw new IllegalArgumentException("Unexpected value for JDBC type " + column.jdbcType() + " and column " + column +
-                ": class=" + clazzName);
-    }
-
-    protected ValueConverter valueConverter(Column column, Field fieldDefn) {
         // Handle a few MySQL-specific types based upon how they are handled by the MySQL binlog client ...
         String typeName = column.typeName().toUpperCase();
         if (matches(typeName, "JSON")) {
@@ -348,6 +335,15 @@ public class MySqlValueConverters extends JdbcValueConverters {
 
         // Otherwise, let the base class handle it ...
         return super.converter(column, fieldDefn);
+    }
+
+    @Override
+    protected Object handleUnknownData(Column column, Field fieldDefn, Object data) {
+        Class<?> dataClass = data.getClass();
+        String clazzName = dataClass.isArray() ? dataClass.getSimpleName() : dataClass.getName();
+        // exception will be handled in TableSchemaBuilder.createValueGenerator
+        throw new IllegalArgumentException("Unexpected value for JDBC type " + column.jdbcType() + " and column " + column +
+                ": class=" + clazzName);
     }
 
     /**
