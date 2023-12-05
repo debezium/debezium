@@ -3476,6 +3476,19 @@ public class MySqlAntlrDdlParserTest {
         assertColumn(table, "c", "NATIONAL CHAR", Types.NCHAR, 1, "utf8", true);
     }
 
+    @FixFor("DBZ-7230")
+    @Test
+    public void shouldParseCreateTableWithBitDefaultLength() {
+        String ddl = "CREATE TABLE t ( c1 BIT NULL );";
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(1);
+        Table t = tables.forTable(new TableId(null, null, "t"));
+        assertThat(t).isNotNull();
+        assertThat(t.retrieveColumnNames()).containsExactly("c1");
+        assertThat(t.primaryKeyColumnNames()).isEmpty();
+        assertColumn(t, "c1", "BIT", Types.BIT, 1, -1, true, false, false);
+    }
+
     private String toIsoString(String timestamp) {
         return ZonedTimestamp.toIsoString(Timestamp.valueOf(timestamp).toInstant().atZone(ZoneId.systemDefault()), null, null);
     }
