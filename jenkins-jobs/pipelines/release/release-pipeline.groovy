@@ -495,7 +495,7 @@ node('release-node') {
             }
             echo "MD5 sums calculated: ${sums}"
             def serverSum = sh(script: "md5sum -b $LOCAL_MAVEN_REPO/io/debezium/debezium-server-dist/$RELEASE_VERSION/debezium-server-dist-${RELEASE_VERSION}.tar.gz | awk '{print \$1}'", returnStdout: true).trim()
-            def operatorSum = sh(script: "md5sum -b $LOCAL_MAVEN_REPO/io/debezium/debezium-operator/$RELEASE_VERSION/debezium-operator-${RELEASE_VERSION}.tar.gz | awk '{print \$1}'", returnStdout: true).trim()
+            def operatorSum = sh(script: "md5sum -b $LOCAL_MAVEN_REPO/io/debezium/debezium-operator-dist/$RELEASE_VERSION/debezium-operator-dist-${RELEASE_VERSION}.tar.gz | awk '{print \$1}'", returnStdout: true).trim()
             sums['SCRIPTING'] = sh(script: "md5sum -b $LOCAL_MAVEN_REPO/io/debezium/debezium-scripting/$RELEASE_VERSION/debezium-scripting-${RELEASE_VERSION}.tar.gz | awk '{print \$1}'", returnStdout: true).trim()
             sums['KCRESTEXT'] = sh(script: "md5sum -b $LOCAL_MAVEN_REPO/io/debezium/debezium-connect-rest-extension/$RELEASE_VERSION/debezium-connect-rest-extension-${RELEASE_VERSION}.tar.gz | awk '{print \$1}'", returnStdout: true).trim()
             dir("$IMAGES_DIR/connect/$IMAGE_TAG") {

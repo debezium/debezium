@@ -70,7 +70,7 @@ December 4th 2023 [Detailed release notes](https://issues.redhat.com/secure/Rele
 * Upgrade Outbox Extension to Quarkus 3.5.3 [DBZ-7188](https://issues.redhat.com/browse/DBZ-7188)
 * Enable ability to stream changes against Oracle 23c for LogMiner [DBZ-7194](https://issues.redhat.com/browse/DBZ-7194)
 * Add modify range_partitions to modify_table_partition rule in parsing PL/SQL [DBZ-7196](https://issues.redhat.com/browse/DBZ-7196)
-*  Handle Drop Tablespace in PL/SQL [DBZ-7208](https://issues.redhat.com/browse/DBZ-7208)
+* Handle Drop Tablespace in PL/SQL [DBZ-7208](https://issues.redhat.com/browse/DBZ-7208)
 * Upgrade logback to 1.2.12 [DBZ-7209](https://issues.redhat.com/browse/DBZ-7209)
 
 
