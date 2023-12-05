@@ -111,7 +111,7 @@ public class MySqlValueConvertersTest {
     }
 
     @Test
-    @FixFor({"DBZ-2563", "DBZ-7143"})
+    @FixFor({ "DBZ-2563", "DBZ-7143" })
     public void testSkipInvalidJsonValues() {
         String sql = "CREATE TABLE JSON_TABLE (" + "    A JSON," + "    B JSON NOT NULL" + ");";
 
@@ -136,7 +136,7 @@ public class MySqlValueConvertersTest {
     }
 
     @Test(expected = DebeziumException.class)
-    @FixFor({"DBZ-2563", "DBZ-7143"})
+    @FixFor({ "DBZ-2563", "DBZ-7143" })
     public void testErrorOnInvalidJsonValues() {
         String sql = "CREATE TABLE JSON_TABLE (" + "    A JSON," + "    B JSON NOT NULL" + ");";
 

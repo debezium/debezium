@@ -5,6 +5,19 @@
  */
 package io.debezium.connector.mysql;
 
+import static io.debezium.junit.EqualityCheck.LESS_THAN;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.fail;
+
+import java.nio.file.Path;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
+
+import org.apache.kafka.connect.source.SourceRecord;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
 import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
@@ -13,18 +26,6 @@ import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.junit.SkipWhenDatabaseVersion;
-import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-
-import java.nio.file.Path;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
-
-import static io.debezium.junit.EqualityCheck.LESS_THAN;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.fail;
 
 /**
  * @author Inki Hwang
@@ -306,7 +307,8 @@ public class MySqlConnectorConvertingFailureIT extends AbstractConnectorTest {
             try (JdbcConnection connection = db.connect()) {
                 // CONNECT mode should be in range from 00:00:00 to 24:00:00
                 // the values of default is replaced to null with WARN mode.
-                connection.execute("CREATE TABLE default_time_table (id INT NOT NULL, A TIME(1) DEFAULT '-23:45:56.7', B TIME(6) DEFAULT '123:00:00.123456', C TIME(1) NULL, PRIMARY KEY(id));");
+                connection.execute(
+                        "CREATE TABLE default_time_table (id INT NOT NULL, A TIME(1) DEFAULT '-23:45:56.7', B TIME(6) DEFAULT '123:00:00.123456', C TIME(1) NULL, PRIMARY KEY(id));");
                 connection.execute("INSERT INTO default_time_table VALUES (201, DEFAULT, DEFAULT, DEFAULT);");
             }
         }
@@ -324,37 +326,5 @@ public class MySqlConnectorConvertingFailureIT extends AbstractConnectorTest {
         assertValueField(insertEvent, "after/A", null);
         assertValueField(insertEvent, "after/B", null);
         assertValueField(insertEvent, "after/C", null);
-    }
-
-    @Test
-    @FixFor("DBZ-7143")
-    public void shouldFailConversionDefaultTimeTypeWithConnectModeWhenFailMode() throws Exception {
-        config = DATABASE.defaultConfig()
-                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
-                .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("default_time_table"))
-                .with(MySqlConnectorConfig.EVENT_CONVERTING_FAILURE_HANDLING_MODE, EventConvertingFailureHandlingMode.FAIL)
-                .with(MySqlConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.CONNECT)
-                .build();
-
-        AtomicReference<Throwable> exception = new AtomicReference<>();
-        start(MySqlConnector.class, config, (success, message, error) -> exception.set(error));
-
-        waitForSnapshotToBeCompleted("mysql", DATABASE.getServerName());
-
-        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
-            try (JdbcConnection connection = db.connect()) {
-                // CONNECT mode should be in range from 00:00:00 to 24:00:00
-                // it throws exception by FAIL mode when parse DDL because default value is invalid in CONNECT mode.
-                connection.execute("CREATE TABLE default_time_table (id INT NOT NULL, A TIME(1) DEFAULT '-23:45:56.7', B TIME(6) DEFAULT '123:00:00.123456', C TIME(1) NULL, PRIMARY KEY(id));");
-            }
-        }
-        waitForConnectorShutdown("mysql", DATABASE.getServerName());
-
-        final Throwable e = exception.get();
-        if (e == null) {
-            // it should be thrown
-            fail();
-        }
     }
 }

@@ -7,6 +7,7 @@ package io.debezium.connector.mysql;
 
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.fail;
 
 import java.math.BigDecimal;
 import java.nio.file.Path;
@@ -26,6 +27,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAccessor;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
@@ -34,6 +36,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
@@ -783,6 +786,41 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         Duration duration2 = Duration.between(LocalTime.MIN, LocalTime.from(DateTimeFormatter.ofPattern("HH:mm:ss.SSSSSS").parse("23:00:00.123456")));
         assertThat(schemaI.defaultValue()).isEqualTo(new java.util.Date(io.debezium.time.Time.toMilliOfDay(duration2, false)));
         assertEmptyFieldValue(record, "K");
+    }
+
+    @Test
+    @FixFor("DBZ-7143")
+    @SkipWhenKafkaVersion(check = EqualityCheck.EQUAL, value = KafkaVersion.KAFKA_1XX, description = "Not compatible with Kafka 1.x")
+    public void timeTypeWithConnectModeWhenEventConvertingFail() throws Exception {
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
+                .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("DATE_TIME_TABLE_CONNECT_FAIL"))
+                .with(MySqlConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.CONNECT)
+                .with(CommonConnectorConfig.EVENT_CONVERTING_FAILURE_HANDLING_MODE, CommonConnectorConfig.EventConvertingFailureHandlingMode.FAIL)
+                .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
+                .build();
+
+        AtomicReference<Throwable> exception = new AtomicReference<>();
+        start(MySqlConnector.class, config, (success, message, error) -> exception.set(error));
+
+        waitForSnapshotToBeCompleted("mysql", DATABASE.getServerName());
+
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+            try (JdbcConnection connection = db.connect()) {
+                // CONNECT mode should be in range from 00:00:00 to 24:00:00
+                // it throws exception by FAIL mode when parse DDL because default value is invalid in CONNECT mode.
+                connection.execute("CREATE TABLE DATE_TIME_TABLE_CONNECT_FAIL (A TIME(1) DEFAULT '-23:45:56.7', B TIME(6) DEFAULT '123:00:00.123456');");
+            }
+        }
+        // Testing.Print.enable();
+
+        waitForConnectorShutdown("mysql", DATABASE.getServerName());
+
+        final Throwable e = exception.get();
+        if (e == null) {
+            // it should be thrown
+            fail();
+        }
     }
 
     @Test
