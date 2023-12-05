@@ -3505,6 +3505,15 @@ Increasing the chunk size provides greater efficiency, because the snapshot runs
 However, larger chunk sizes also require more memory to buffer the snapshot data.
 Adjust the chunk size to a value that provides the best performance in your environment.
 
+|[[postgresql-property-incremental-snapshot-watermarking-strategy]]<<postgresql-property-incremental-snapshot-watermarking-strategy, `+incremental.snapshot.watermarking.strategy+`>>
+|`insert_insert`
+|Specify the strategy used for watermarking during an incremental snapshot: +
+ +
+`insert_insert`: both open and close signal is written into signal data collection. +
+ +
+`insert_delete`: only open signal is written into signal data collection, the close one will delete the relative open signal. Useful to keep signal data collection size low. +
+
+
 |[[postgresql-property-xmin-fetch-interval-ms]]<<postgresql-property-xmin-fetch-interval-ms, `+xmin.fetch.interval.ms+`>>
 |`0`
 |How often, in milliseconds, the XMIN will be read from the replication slot.

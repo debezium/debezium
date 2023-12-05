@@ -1967,6 +1967,17 @@ ifdef::product[]
 Incremental snapshots is a Technology Preview feature for the {prodname} MongoDB connector.
 endif::product[]
 
+|[[mongodb-property-incremental-snapshot-watermarking-strategy]]<<mongodb-property-incremental-snapshot-watermarking-strategy, `+incremental.snapshot.watermarking.strategy+`>>
+|`insert_insert`
+|Specify the strategy used for watermarking during an incremental snapshot: +
++
+`insert_insert`: both open and close signal is written into signal data collection. +
++
+`insert_delete`: only open signal is written into signal data collection, the close one will delete the relative open signal. Useful to keep signal data collection size low. +
+ifdef::product[]
+Incremental snapshots is a Technology Preview feature for the {prodname} MongoDB connector.
+endif::product[]
+
 |[[mongodb-property-topic-naming-strategy]]<<mongodb-property-topic-naming-strategy, `topic.naming.strategy`>>
 |`io.debezium.schema.DefaultTopicNamingStrategy`
 |The name of the TopicNamingStrategy class that should be used to determine the topic name for data change, schema change, transaction, heartbeat event etc., defaults to `DefaultTopicNamingStrategy`.
