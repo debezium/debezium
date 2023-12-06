@@ -10,6 +10,11 @@ import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.awaitility.Awaitility.await;
 
+import java.io.ByteArrayOutputStream;
+import java.io.OutputStream;
+import java.io.PipedInputStream;
+import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -17,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -24,6 +30,8 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.testing.system.tools.databases.DatabaseExecListener;
+import io.debezium.testing.system.tools.databases.DatabaseInitListener;
 import io.debezium.testing.system.tools.operatorutil.OpenshiftOperatorEnum;
 import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.EnvVar;
@@ -42,6 +50,9 @@ import io.fabric8.kubernetes.api.model.networking.v1.NetworkPolicy;
 import io.fabric8.kubernetes.api.model.networking.v1.NetworkPolicyBuilder;
 import io.fabric8.kubernetes.api.model.networking.v1.NetworkPolicyPort;
 import io.fabric8.kubernetes.client.ConfigBuilder;
+import io.fabric8.kubernetes.client.dsl.ExecWatch;
+import io.fabric8.kubernetes.client.dsl.PodResource;
+import io.fabric8.kubernetes.client.dsl.TtyExecErrorChannelable;
 import io.fabric8.openshift.api.model.Route;
 import io.fabric8.openshift.api.model.RouteBuilder;
 import io.fabric8.openshift.api.model.operatorhub.v1.OperatorGroup;
@@ -49,6 +60,8 @@ import io.fabric8.openshift.api.model.operatorhub.v1.OperatorGroupBuilder;
 import io.fabric8.openshift.api.model.operatorhub.v1.OperatorGroupSpecBuilder;
 import io.fabric8.openshift.client.DefaultOpenShiftClient;
 import io.fabric8.openshift.client.OpenShiftClient;
+
+import lombok.Getter;
 
 /**
  * Utility methods for working with OpenShift
@@ -317,9 +330,8 @@ public class OpenShiftUtils {
      * Wait until Deployment of given operator exists in given namespace for DEPLOYMENT_EXISTS_TIMEOUT seconds
      * @param namespace
      * @param operator
-     * @throws InterruptedException
      */
-    public void waitForOperatorDeploymentExists(String namespace, OpenshiftOperatorEnum operator) throws InterruptedException {
+    public void waitForOperatorDeploymentExists(String namespace, OpenshiftOperatorEnum operator) {
         LOGGER.info("Waiting for operator " + operator.getName() + " to be created");
         await().atMost(scaled(2), TimeUnit.MINUTES)
                 .pollInterval(Duration.ofSeconds(2))
@@ -332,5 +344,75 @@ public class OpenShiftUtils {
                 .withTrustCerts(true);
 
         return new DefaultOpenShiftClient(configBuilder.build());
+    }
+
+    public TtyExecErrorChannelable<String, OutputStream, PipedInputStream, ExecWatch> prepareExec(Deployment deployment, String project, PrintStream commandOutput,
+                                                                                                  PrintStream errorOutput) {
+        var pods = podsForDeployment(deployment);
+        if (pods.size() > 1) {
+            throw new IllegalArgumentException("Executing command on deployment scaled to more than 1");
+        }
+        Pod pod = pods.get(0);
+        return getPodResource(pod, project)
+                .inContainer(pod.getMetadata().getLabels().get("app"))
+                .writingOutput(commandOutput)
+                .writingError(errorOutput);
+    }
+
+    private PodResource<Pod> getPodResource(Pod pod, String project) {
+        return client.pods().inNamespace(project).withName(pod.getMetadata().getName());
+    }
+
+    public CommandOutputs executeCommand(Deployment deployment, String project, boolean debugLogs, String... commands) throws InterruptedException {
+        ByteArrayOutputStream captureOut = new ByteArrayOutputStream();
+        ByteArrayOutputStream captureErr = new ByteArrayOutputStream();
+        PrintStream pso = new PrintStream(captureOut);
+        PrintStream pse = new PrintStream(captureErr);
+
+        CountDownLatch latch = new CountDownLatch(1);
+        try (var ignored = prepareExec(deployment, project, pso, pse)
+                .usingListener(new DatabaseExecListener(deployment.getMetadata().getName(), latch))
+                .exec(commands)) {
+            if (debugLogs) {
+                LOGGER.info("Waiting on " + deployment.getMetadata().getName() + " for commands " + Arrays.toString(commands));
+            }
+            latch.await(scaled(1), MINUTES);
+        }
+
+        if (debugLogs) {
+            LOGGER.info(captureOut.toString());
+            LOGGER.info(captureErr.toString());
+        }
+        return new CommandOutputs(captureOut.toString(StandardCharsets.UTF_8), captureErr.toString(StandardCharsets.UTF_8));
+    }
+
+    @Getter
+    public static class CommandOutputs {
+        String stdOut;
+        String stdErr;
+
+        public CommandOutputs(String stdOut, String stdErr) {
+            this.stdOut = stdOut;
+            this.stdErr = stdErr;
+        }
+
+        @Override
+        public String toString() {
+            return "CommandOutputs{" +
+                    "stdOut='" + stdOut + '\'' +
+                    ", stdErr='" + stdErr + '\'' +
+                    '}';
+        }
+    }
+
+    public void executeInitCommand(Deployment deployment, String project, String... commands) throws InterruptedException {
+        CountDownLatch latch = new CountDownLatch(1);
+        String containerName = deployment.getMetadata().getLabels().get("app");
+        try (var ignored = prepareExec(deployment, project, null, null)
+                .usingListener(new DatabaseInitListener(containerName, latch))
+                .exec(commands)) {
+            LOGGER.info("Waiting until database is initialized");
+            latch.await(scaled(1), MINUTES);
+        }
     }
 }

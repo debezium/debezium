@@ -17,12 +17,14 @@ db.runCommand({
 });
 
 db.createUser({
-    user: 'debezium',
-    pwd: 'dbz',
+    user: "${userName}",
+    pwd: "${password}",
     roles: [
         { role: "listDatabases", db: "admin" },
         { role: "readChangeStream", db: "admin" },
         { role: "readAnyDatabase", db: "admin" },
-        { role: "readWriteAnyDatabase", db: "admin" }
+        { role: "readWriteAnyDatabase", db: "admin" },
+        { role: "read", db: "config" },
+        {role: "read", db: "local"}
     ]
 });

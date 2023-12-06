@@ -21,13 +21,14 @@ import io.debezium.testing.system.fixtures.connectors.ShardedMongoConnector;
 import io.debezium.testing.system.fixtures.databases.ocp.OcpMongoSharded;
 import io.debezium.testing.system.fixtures.kafka.OcpKafka;
 import io.debezium.testing.system.fixtures.operator.OcpStrimziOperator;
-import io.debezium.testing.system.tools.databases.mongodb.OcpMongoShardedController;
+import io.debezium.testing.system.tools.databases.mongodb.sharded.OcpMongoShardedController;
 import io.debezium.testing.system.tools.kafka.ConnectorConfigBuilder;
 import io.debezium.testing.system.tools.kafka.KafkaConnectController;
 import io.debezium.testing.system.tools.kafka.KafkaController;
 
 import fixture5.FixtureExtension;
 import fixture5.annotations.Fixture;
+import freemarker.template.TemplateException;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Tag("acceptance")
@@ -47,10 +48,13 @@ public class OcpShardedMongoConnectorIT extends ShardedMongoTests {
     }
 
     @Test
-    public void shouldStreamInShardedMode(OcpMongoShardedController dbController) throws IOException, InterruptedException {
+    public void shouldStreamInShardedMode(OcpMongoShardedController dbController) throws IOException, InterruptedException, TemplateException {
+        String topic = connectorConfig.getConnectorName() + ".inventory.customers";
+        assertions.assertTopicsExist(topic, connectorConfig.getConnectorName() + ".inventory.products");
+        awaitAssert(() -> assertions.assertRecordsCount(topic, 4));
+
         insertCustomer(dbController, "Adam", "Sharded", "ashard@test.com", 1005);
 
-        String topic = connectorConfig.getConnectorName() + ".inventory.customers";
         awaitAssert(() -> assertions.assertRecordsContain(topic, "ashard@test.com"));
         awaitAssert(() -> assertions.assertRecordsCount(topic, 5));
 
