@@ -490,10 +490,6 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                 offsetContext.setTableId(event.getTableId());
                 offsetContext.setRedoThread(row.getThread());
                 offsetContext.setRsId(event.getRsId());
-                if (eventsProcessed == numEvents) {
-                    // reached the last event update the commit scn in the offsets
-                    offsetContext.getCommitScn().recordCommit(row);
-                }
 
                 final DmlEvent dmlEvent = (DmlEvent) event;
                 if (!skipExcludedUserName) {
@@ -530,6 +526,12 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
             }
         };
 
+        // When a COMMIT is received, regardless of the number of events it has, it still
+        // must be recorded in the commit scn for the node to guarantee updates to the
+        // offsets. This must be done prior to dispatching the transaction-commit or the
+        // heartbeat event that follows commit dispatch.
+        offsetContext.getCommitScn().recordCommit(row);
+
         Instant start = Instant.now();
         int dispatchedEventCount = 0;
         if (numEvents > 0) {
@@ -545,13 +547,6 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                     commitConsumer.accept(event);
                 }
             }
-        }
-        else {
-            // When a COMMIT is received, regardless of the number of events it has, it still
-            // must be recorded in the commit scn for the node to guarantee updates to the
-            // offsets. This must be done prior to dispatching the transaction-commit or the
-            // heartbeat event that follows commit dispatch.
-            offsetContext.getCommitScn().recordCommit(row);
         }
 
         offsetContext.setEventScn(commitScn);

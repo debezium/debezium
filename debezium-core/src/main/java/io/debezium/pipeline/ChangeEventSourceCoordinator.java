@@ -335,6 +335,8 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
                 notificationService.stop();
             }
             eventDispatcher.close();
+
+            connectorConfig.postProcessorRegistry().close();
         }
         finally {
             snapshotMetrics.unregister();

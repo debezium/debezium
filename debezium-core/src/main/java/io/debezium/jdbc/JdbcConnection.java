@@ -44,7 +44,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
+import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -1587,4 +1589,37 @@ public class JdbcConnection implements AutoCloseable {
             throw new DebeziumException("Error loading keystore", e);
         }
     }
+
+    public TableId createTableId(String databaseName, String schemaName, String tableName) {
+        return new TableId(databaseName, schemaName, tableName);
+    }
+
+    public String getQualifiedTableName(TableId tableId) {
+        return tableId.schema() + "." + tableId.table();
+    }
+
+    public String buildReselectColumnQuery(TableId tableId, List<String> columns, List<String> keyColumns, Struct source) {
+        return String.format("SELECT %s FROM %s WHERE %s",
+                columns.stream().map(this::quotedColumnIdString).collect(Collectors.joining(",")),
+                quotedTableIdString(tableId),
+                keyColumns.stream().map(key -> key + "=?").collect(Collectors.joining(" AND ")));
+    }
+
+    public Map<String, Object> reselectColumns(String query, TableId tableId, List<String> columns, List<Object> bindValues) throws SQLException {
+        final Map<String, Object> results = new HashMap<>();
+        prepareQuery(query, bindValues, (params, rs) -> {
+            if (!rs.next()) {
+                LOGGER.warn("No data found for re-selection on table {}.", tableId);
+                return;
+            }
+            for (String columnName : columns) {
+                results.put(columnName, rs.getObject(columnName));
+            }
+            if (rs.next()) {
+                LOGGER.warn("Re-selection detected multiple rows for the same key in table {}, using first.", tableId);
+            }
+        });
+        return results;
+    }
+
 }
