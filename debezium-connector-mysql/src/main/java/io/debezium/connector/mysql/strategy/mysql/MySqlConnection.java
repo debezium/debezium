@@ -17,6 +17,7 @@ import io.debezium.DebeziumException;
 import io.debezium.connector.mysql.GtidSet;
 import io.debezium.connector.mysql.MySqlFieldReader;
 import io.debezium.connector.mysql.strategy.AbstractConnectorConnection;
+import io.debezium.relational.TableId;
 
 /**
  * An {@link AbstractConnectorConnection} to be used with MySQL.
@@ -128,6 +129,11 @@ public class MySqlConnection extends AbstractConnectorConnection {
     @Override
     public boolean isMariaDb() {
         return false;
+    }
+
+    @Override
+    public String getQualifiedTableName(TableId tableId) {
+        return tableId.catalog() + "." + tableId.table();
     }
 
     @Override

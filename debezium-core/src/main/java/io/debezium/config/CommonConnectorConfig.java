@@ -44,6 +44,8 @@ import io.debezium.heartbeat.HeartbeatErrorHandler;
 import io.debezium.heartbeat.HeartbeatImpl;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.notification.channels.SinkNotificationChannel;
+import io.debezium.processors.PostProcessorRegistry;
+import io.debezium.processors.spi.PostProcessor;
 import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.schema.SchemaTopicNamingStrategy;
@@ -440,6 +442,7 @@ public abstract class CommonConnectorConfig {
     public static final String DATABASE_CONFIG_PREFIX = "database.";
     public static final String DRIVER_CONFIG_PREFIX = "driver.";
     private static final String CONVERTER_TYPE_SUFFIX = ".type";
+    private static final String POST_PROCESSOR_TYPE_SUFFIX = ".type";
     public static final long DEFAULT_RETRIABLE_RESTART_WAIT = 10000L;
     public static final long DEFAULT_MAX_QUEUE_SIZE_IN_BYTES = 0; // In case we don't want to pass max.queue.size.in.bytes;
     public static final String NOTIFICATION_CONFIGURATION_FIELD_PREFIX_STRING = "notification.";
@@ -605,6 +608,15 @@ public abstract class CommonConnectorConfig {
             .withImportance(Importance.LOW)
             .withDescription("Optional list of custom converters that would be used instead of default ones. "
                     + "The converters are defined using '<converter.prefix>.type' config option and configured using options '<converter.prefix>.<option>'");
+
+    public static final Field CUSTOM_POST_PROCESSORS = Field.create("post.processors")
+            .withDisplayName("List of change event post processors.")
+            .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 998))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.LOW)
+            .withDescription("Optional list of post processors. "
+                    + "The processors are defined using '<post.processor.prefix>.type' config option and configured using options '<post.processor.prefix.<option>'");
 
     public static final Field SKIPPED_OPERATIONS = Field.create("skipped.operations")
             .withDisplayName("Skipped Operations")
@@ -799,6 +811,7 @@ public abstract class CommonConnectorConfig {
                     INCREMENTAL_SNAPSHOT_WATERMARKING_STRATEGY)
             .events(
                     CUSTOM_CONVERTERS,
+                    CUSTOM_POST_PROCESSORS,
                     TOMBSTONES_ON_DELETE,
                     Heartbeat.HEARTBEAT_INTERVAL,
                     Heartbeat.HEARTBEAT_TOPICS_PREFIX,
@@ -831,6 +844,7 @@ public abstract class CommonConnectorConfig {
     private final boolean shouldProvideTransactionMetadata;
     private final EventProcessingFailureHandlingMode eventProcessingFailureHandlingMode;
     private final CustomConverterRegistry customConverterRegistry;
+    private final PostProcessorRegistry postProcessorRegistry;
     private final BinaryHandlingMode binaryHandlingMode;
     private final SchemaNameAdjustmentMode schemaNameAdjustmentMode;
     private final FieldNameAdjustmentMode fieldNameAdjustmentMode;
@@ -871,6 +885,7 @@ public abstract class CommonConnectorConfig {
         this.shouldProvideTransactionMetadata = config.getBoolean(PROVIDE_TRANSACTION_METADATA);
         this.eventProcessingFailureHandlingMode = EventProcessingFailureHandlingMode.parse(config.getString(EVENT_PROCESSING_FAILURE_HANDLING_MODE));
         this.customConverterRegistry = new CustomConverterRegistry(getCustomConverters());
+        this.postProcessorRegistry = new PostProcessorRegistry(getPostProcessors());
         this.binaryHandlingMode = BinaryHandlingMode.parse(config.getString(BINARY_HANDLING_MODE));
         this.signalingDataCollection = config.getString(SIGNAL_DATA_COLLECTION);
         this.signalPollInterval = Duration.ofMillis(config.getLong(SIGNAL_POLL_INTERVAL_MS));
@@ -1006,6 +1021,10 @@ public abstract class CommonConnectorConfig {
         return customConverterRegistry;
     }
 
+    public PostProcessorRegistry postProcessorRegistry() {
+        return postProcessorRegistry;
+    }
+
     /**
      * Whether a particular connector supports an optimized way for implementing operation skipping, or not.
      */
@@ -1049,6 +1068,20 @@ public abstract class CommonConnectorConfig {
                     CustomConverter<SchemaBuilder, ConvertedField> converter = config.getInstance(name + CONVERTER_TYPE_SUFFIX, CustomConverter.class);
                     converter.configure(config.subset(name, true).asProperties());
                     return converter;
+                })
+                .collect(Collectors.toList());
+    }
+
+    @SuppressWarnings("rawtypes")
+    private List<PostProcessor> getPostProcessors() {
+        final String postProcessorNameList = config.getString(CUSTOM_POST_PROCESSORS);
+        final List<String> postProcessorNames = Strings.listOf(postProcessorNameList, x -> x.split(","), String::trim);
+
+        return postProcessorNames.stream()
+                .map(name -> {
+                    PostProcessor processor = config.getInstance(name + POST_PROCESSOR_TYPE_SUFFIX, PostProcessor.class);
+                    processor.configure(config.subset(name, true).asMap());
+                    return processor;
                 })
                 .collect(Collectors.toList());
     }

@@ -92,6 +92,8 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
 
         schema.recover(offsets);
 
+        connectorConfig.postProcessorRegistry().injectDependencies(valueConverters, metadataConnection, schema, connectorConfig);
+
         taskContext = new SqlServerTaskContext(connectorConfig, schema);
 
         // Set up the task record queue ...

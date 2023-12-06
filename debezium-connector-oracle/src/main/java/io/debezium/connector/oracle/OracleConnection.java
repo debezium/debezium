@@ -20,6 +20,7 @@ import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.RetriableException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -567,4 +568,46 @@ public class OracleConnection extends JdbcConnection {
             super(message);
         }
     }
+
+    @Override
+    public String buildReselectColumnQuery(TableId tableId, List<String> columns, List<String> keyColumns, Struct source) {
+        final String commitScn = source.getString(SourceInfo.COMMIT_SCN_KEY);
+        if (Strings.isNullOrEmpty(commitScn)) {
+            return super.buildReselectColumnQuery(tableId, columns, keyColumns, source);
+        }
+
+        return String.format("SELECT %s FROM (SELECT * FROM %s AS OF SCN %s) WHERE %s",
+                columns.stream().map(this::quotedColumnIdString).collect(Collectors.joining(",")),
+                quotedTableIdString(new TableId(null, tableId.schema(), tableId.table())),
+                commitScn,
+                keyColumns.stream().map(key -> key + "=?").collect(Collectors.joining(" AND ")));
+    }
+
+    @Override
+    public Map<String, Object> reselectColumns(String query, TableId tableId, List<String> columns, List<Object> bindValues) throws SQLException {
+        return optionallyDoInContainer(() -> super.reselectColumns(query, tableId, columns, bindValues));
+    }
+
+    private <T> T optionallyDoInContainer(ContainerWork<T> work) throws SQLException {
+        boolean swapped = false;
+        try {
+            final String pdbName = config().getString("pdb.name");
+            if (!Strings.isNullOrEmpty(pdbName)) {
+                setSessionToPdb(pdbName);
+                swapped = true;
+            }
+            return work.execute();
+        }
+        finally {
+            if (swapped) {
+                resetSessionToCdb();
+            }
+        }
+    }
+
+    @FunctionalInterface
+    interface ContainerWork<T> {
+        T execute() throws SQLException;
+    }
+
 }

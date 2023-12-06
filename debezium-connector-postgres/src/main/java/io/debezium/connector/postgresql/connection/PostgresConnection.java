@@ -797,6 +797,11 @@ public class PostgresConnection extends JdbcConnection {
         }
     }
 
+    @Override
+    public TableId createTableId(String databaseName, String schemaName, String tableName) {
+        return new TableId(null, schemaName, tableName);
+    }
+
     @FunctionalInterface
     public interface PostgresValueConverterBuilder {
         PostgresValueConverter build(TypeRegistry registry);
