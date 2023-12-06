@@ -38,5 +38,5 @@ public interface CloudEventsProvider {
      * @param dataSchemaUriBase the URI of the schema in case of Avro; may be null
      * @return a concrete CloudEvents maker
      */
-    CloudEventsMaker createMaker(RecordParser parser, SerializerType contentType, String dataSchemaUriBase);
+    CloudEventsMaker createMaker(RecordParser parser, SerializerType contentType, String dataSchemaUriBase, String cloudEventsSchemaName);
 }

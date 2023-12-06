@@ -59,10 +59,12 @@ public abstract class CloudEventsMaker {
     }
 
     public static final String CLOUDEVENTS_SPECVERSION = "1.0";
+    public static final String CLOUDEVENTS_SCHEMA_SUFFIX = "CloudEvents.Envelope";
 
     private final SerializerType dataContentType;
     private final String dataSchemaUriBase;
     private final Schema ceDataAttributeSchema;
+    private final String cloudEventsSchemaName;
 
     protected final RecordParser recordParser;
 
@@ -70,11 +72,12 @@ public abstract class CloudEventsMaker {
             SerializerType.JSON, "application/json",
             SerializerType.AVRO, "application/avro");
 
-    protected CloudEventsMaker(RecordParser parser, SerializerType contentType, String dataSchemaUriBase) {
+    protected CloudEventsMaker(RecordParser parser, SerializerType contentType, String dataSchemaUriBase, String cloudEventsSchemaName) {
         this.recordParser = parser;
         this.dataContentType = contentType;
         this.dataSchemaUriBase = dataSchemaUriBase;
         this.ceDataAttributeSchema = recordParser.dataSchema();
+        this.cloudEventsSchemaName = cloudEventsSchemaName;
     }
 
     /**
@@ -166,9 +169,10 @@ public abstract class CloudEventsMaker {
      *
      * @return the name of the schema of CloudEvents envelope
      */
-    public String ceEnvelopeSchemaName() {
-        return recordParser.getMetadata(AbstractSourceInfo.SERVER_NAME_KEY) + "."
-                + recordParser.getMetadata(AbstractSourceInfo.DATABASE_NAME_KEY) + "."
-                + "CloudEvents.Envelope";
+    public String ceSchemaName() {
+        return cloudEventsSchemaName != null ? cloudEventsSchemaName
+                : recordParser.getMetadata(AbstractSourceInfo.SERVER_NAME_KEY) + "."
+                        + recordParser.getMetadata(AbstractSourceInfo.DATABASE_NAME_KEY) + "."
+                        + CLOUDEVENTS_SCHEMA_SUFFIX;
     }
 }

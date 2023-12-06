@@ -17,8 +17,8 @@ import io.debezium.converters.spi.SerializerType;
  */
 public class PostgresCloudEventsMaker extends CloudEventsMaker {
 
-    public PostgresCloudEventsMaker(RecordParser parser, SerializerType contentType, String dataSchemaUriBase) {
-        super(parser, contentType, dataSchemaUriBase);
+    public PostgresCloudEventsMaker(RecordParser parser, SerializerType contentType, String dataSchemaUriBase, String cloudEventsSchemaName) {
+        super(parser, contentType, dataSchemaUriBase, cloudEventsSchemaName);
     }
 
     @Override

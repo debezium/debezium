@@ -41,6 +41,10 @@ public class CloudEventsConverterConfig extends ConverterConfig {
             + "'avro' replaces the characters that cannot be used in the Avro type name with underscore (default)"
             + "'none' does not apply any adjustment";
 
+    public static final String CLOUDEVENTS_SCHEMA_CLOUDEVENTS_NAME_CONFIG = "schema.cloudevents.name";
+    public static final String CLOUDEVENTS_SCHEMA_CLOUDEVENTS_NAME_DEFAULT = null;
+    private static final String CLOUDEVENTS_SCHEMA_CLOUDEVENTS_NAME_DOC = "Specify CloudEvents schema name by which the schema will be registered in a Schema Registry";
+
     public static final String CLOUDEVENTS_METADATA_SOURCE_CONFIG = "metadata.source";
     public static final String CLOUDEVENTS_METADATA_SOURCE_DEFAULT = "value,id:generate,type:generate";
     private static final String CLOUDEVENTS_METADATA_SOURCE_DOC = "Specify from where to retrieve metadata";
@@ -58,6 +62,8 @@ public class CloudEventsConverterConfig extends ConverterConfig {
                 CLOUDEVENTS_EXTENSION_ATTRIBUTES_ENABLE_DOC);
         CONFIG.define(CLOUDEVENTS_SCHEMA_NAME_ADJUSTMENT_MODE_CONFIG, ConfigDef.Type.STRING, CLOUDEVENTS_SCHEMA_NAME_ADJUSTMENT_MODE_DEFAULT, ConfigDef.Importance.LOW,
                 CLOUDEVENTS_SCHEMA_NAME_ADJUSTMENT_MODE_DOC);
+        CONFIG.define(CLOUDEVENTS_SCHEMA_CLOUDEVENTS_NAME_CONFIG, ConfigDef.Type.STRING, CLOUDEVENTS_SCHEMA_CLOUDEVENTS_NAME_DEFAULT, ConfigDef.Importance.LOW,
+                CLOUDEVENTS_SCHEMA_CLOUDEVENTS_NAME_DOC);
         CONFIG.define(CLOUDEVENTS_METADATA_SOURCE_CONFIG, ConfigDef.Type.LIST, CLOUDEVENTS_METADATA_SOURCE_DEFAULT, ConfigDef.Importance.HIGH,
                 CLOUDEVENTS_METADATA_SOURCE_DOC);
     }
@@ -104,6 +110,15 @@ public class CloudEventsConverterConfig extends ConverterConfig {
      */
     public SchemaNameAdjustmentMode schemaNameAdjustmentMode() {
         return SchemaNameAdjustmentMode.parse(getString(CLOUDEVENTS_SCHEMA_NAME_ADJUSTMENT_MODE_CONFIG));
+    }
+
+    /**
+     * Return CloudEvents schema name by which the schema will be registered in a Schema Registry
+     *
+     * @return CloudEvents schema name
+     */
+    public String schemaCloudEventsName() {
+        return getString(CLOUDEVENTS_SCHEMA_CLOUDEVENTS_NAME_CONFIG);
     }
 
     /**

@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 import org.apache.kafka.common.header.internals.RecordHeaders;
+import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaAndValue;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
@@ -297,6 +298,8 @@ public class CloudEventsConverterTest {
             avroSchemaAndValue = cloudEventsConverter.toConnectData(record.topic(), valueBytes);
             msg = "inspecting all required CloudEvents fields in the value";
             avroValue = (Struct) avroSchemaAndValue.value();
+            assertThat(avroValue.schema().name()).startsWith(serverName + ".");
+            assertThat(avroValue.schema().name()).endsWith(".CloudEvents.Envelope");
             assertThat(avroValue.get(CloudEventsMaker.FieldName.ID)).isNotNull();
             assertThat(avroValue.getString(CloudEventsMaker.FieldName.SOURCE)).isEqualTo("/debezium/" + connectorName + "/" + serverName);
             assertThat(avroValue.get(CloudEventsMaker.FieldName.SPECVERSION)).isEqualTo("1.0");
@@ -599,6 +602,49 @@ public class CloudEventsConverterTest {
             Testing.print("error " + msg);
             Testing.print("  value: " + SchemaUtil.asString(record.value()));
             Testing.print("  value deserialized from CloudEvents in JSON: " + prettyJson(valueJson));
+            if (t instanceof AssertionError) {
+                throw t;
+            }
+            fail("error " + msg + ": " + t.getMessage());
+        }
+    }
+
+    public static void shouldConvertToCloudEventsInAvroWithCustomCloudEventsSchemaName(SourceRecord record) {
+        Map<String, Object> config = new HashMap<>();
+        config.put("serializer.type", "avro");
+        config.put("data.serializer.type", "avro");
+        config.put("avro.schema.registry.url", "http://fake-url");
+        config.put("schema.cloudevents.name", "TestSchemaName1");
+
+        MockSchemaRegistryClient ceSchemaRegistry = new MockSchemaRegistryClient();
+        AvroConverter avroConverter = new AvroConverter(ceSchemaRegistry);
+        avroConverter.configure(Configuration.from(config).subset("avro", true).asMap(), false);
+
+        CloudEventsConverter cloudEventsConverter = new CloudEventsConverter(avroConverter);
+        cloudEventsConverter.configure(config, false);
+
+        SchemaAndValue avroSchemaAndValue = null;
+        String msg = null;
+
+        try {
+            // Convert the value and inspect it ...
+            msg = "converting value using CloudEvents Avro converter";
+            byte[] valueBytes = cloudEventsConverter.fromConnectData(record.topic(), record.valueSchema(), record.value());
+            msg = "deserializing value using Avro deserializer";
+            avroSchemaAndValue = cloudEventsConverter.toConnectData(record.topic(), valueBytes);
+            msg = "inspecting all required CloudEvents fields in the value";
+            Schema avroSchema = avroSchemaAndValue.schema();
+            assertThat(avroSchema.name()).isEqualTo("TestSchemaName1");
+        }
+        catch (Throwable t) {
+            Testing.Print.enable();
+            Testing.print("Problem with message on topic '" + record.topic() + "':");
+            Testing.printError(t);
+            Testing.print("error " + msg);
+            Testing.print("  value: " + SchemaUtil.asString(record.value()));
+            if (avroSchemaAndValue != null) {
+                Testing.print("  value to/from Avro: " + SchemaUtil.asString(avroSchemaAndValue.value()));
+            }
             if (t instanceof AssertionError) {
                 throw t;
             }
