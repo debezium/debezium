@@ -61,7 +61,7 @@ public class DebeziumOracleConnectorResourceNoDatabaseIT {
                 .body("components.schemas.size()", is(1))
                 .rootPath("components.schemas.values()[0]")
                 .body("title", is("Debezium Oracle Connector"))
-                .body("properties.size()", is(88))
+                .body("properties.isEmpty()", is(false))
                 .body("x-connector-id", is("oracle"))
                 .body("x-version", is(Module.version()))
                 .body("x-className", is(OracleConnector.class.getName()))

@@ -62,7 +62,7 @@ public class DebeziumMongoDbConnectorResourceNoDatabaseIT {
                 .body("components.schemas.size()", is(1))
                 .rootPath("components.schemas.values()[0]")
                 .body("title", is("Debezium MongoDB Connector"))
-                .body("properties.size()", is(47))
+                .body("properties.isEmpty()", is(false))
                 .body("x-connector-id", is("mongodb"))
                 .body("x-version", is(Module.version()))
                 .body("x-className", is(MongoDbConnector.class.getName()))

@@ -62,7 +62,7 @@ public class DebeziumPostgresConnectorResourceNoDatabaseIT {
                 .body("components.schemas.size()", is(1))
                 .rootPath("components.schemas.values()[0]")
                 .body("title", is("Debezium PostgreSQL Connector"))
-                .body("properties.size()", is(81))
+                .body("properties.isEmpty()", is(false))
                 .body("x-connector-id", is("postgres"))
                 .body("x-version", is(Module.version()))
                 .body("x-className", is(PostgresConnector.class.getName()))

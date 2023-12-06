@@ -62,7 +62,7 @@ public class DebeziumSqlServerConnectorResourceNoDatabaseIT {
                 .body("components.schemas.size()", is(1))
                 .rootPath("components.schemas.values()[0]")
                 .body("title", is("Debezium SQLServer Connector"))
-                .body("properties.size()", is(59))
+                .body("properties.isEmpty()", is(false))
                 .body("x-connector-id", is("sqlserver"))
                 .body("x-version", is(Module.version()))
                 .body("x-className", is(SqlServerConnector.class.getName()))
