@@ -1,13 +1,4 @@
-// SETUP SHARDING
-
 db = db.getSiblingDB('inventory');
-sh.enableSharding("inventory");
-
-sh.shardCollection("inventory.customers", { _id: 1 } );
-sh.shardCollection("inventory.products", { _id: "hashed" } );
-
-sh.addShardToZone("shard1rs", "ONE");
-sh.addShardToZone("shard2rs", "TWO");
 
 // CREATE TEST DATA
 db.products.insertMany([

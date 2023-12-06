@@ -8,7 +8,7 @@ package io.debezium.testing.system.fixtures.connectors;
 import org.junit.jupiter.api.extension.ExtensionContext;
 
 import io.debezium.testing.system.resources.ConnectorFactories;
-import io.debezium.testing.system.tools.databases.mongodb.OcpMongoShardedController;
+import io.debezium.testing.system.tools.databases.mongodb.sharded.OcpMongoShardedController;
 import io.debezium.testing.system.tools.kafka.ConnectorConfigBuilder;
 import io.debezium.testing.system.tools.kafka.KafkaConnectController;
 import io.debezium.testing.system.tools.kafka.KafkaController;
