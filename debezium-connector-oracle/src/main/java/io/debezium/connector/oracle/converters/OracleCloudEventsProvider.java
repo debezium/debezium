@@ -29,7 +29,7 @@ public class OracleCloudEventsProvider implements CloudEventsProvider {
     }
 
     @Override
-    public CloudEventsMaker createMaker(RecordParser parser, SerializerType contentType, String dataSchemaUriBase) {
-        return new OracleCloudEventsMaker(parser, contentType, dataSchemaUriBase);
+    public CloudEventsMaker createMaker(RecordParser parser, SerializerType contentType, String dataSchemaUriBase, String cloudEventsSchemaName) {
+        return new OracleCloudEventsMaker(parser, contentType, dataSchemaUriBase, cloudEventsSchemaName);
     }
 }

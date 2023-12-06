@@ -29,7 +29,7 @@ public class SqlServerCloudEventsProvider implements CloudEventsProvider {
     }
 
     @Override
-    public CloudEventsMaker createMaker(RecordParser parser, SerializerType contentType, String dataSchemaUriBase) {
-        return new SqlServerCloudEventsMaker(parser, contentType, dataSchemaUriBase);
+    public CloudEventsMaker createMaker(RecordParser parser, SerializerType contentType, String dataSchemaUriBase, String cloudEventsSchemaName) {
+        return new SqlServerCloudEventsMaker(parser, contentType, dataSchemaUriBase, cloudEventsSchemaName);
     }
 }

@@ -155,7 +155,7 @@ public class CloudEventsConverter implements Converter {
     private SchemaNameAdjuster schemaNameAdjuster;
 
     private boolean extensionAttributesEnable;
-
+    private String cloudEventsSchemaName;
     private MetadataSource metadataSource;
 
     private final CloudEventsValidator cloudEventsValidator = new CloudEventsValidator();
@@ -180,6 +180,7 @@ public class CloudEventsConverter implements Converter {
         dataSerializerType = ceConfig.cloudeventsDataSerializerTypeConfig();
         schemaNameAdjuster = ceConfig.schemaNameAdjustmentMode().createAdjuster();
         extensionAttributesEnable = ceConfig.extensionAttributesEnable();
+        cloudEventsSchemaName = ceConfig.schemaCloudEventsName();
         metadataSource = ceConfig.metadataSource();
 
         Map<String, Object> jsonHeaderConverterConfig = new HashMap<>();
@@ -235,7 +236,7 @@ public class CloudEventsConverter implements Converter {
             }
         }
 
-        cloudEventsValidator.configure(ceSerializerType);
+        cloudEventsValidator.configure(ceSerializerType, cloudEventsSchemaName);
     }
 
     protected Map<String, String> configureConverterType(boolean isKey, Map<String, String> config) {
@@ -287,7 +288,7 @@ public class CloudEventsConverter implements Converter {
         RecordParser parser = provider.createParser(recordAndMetadata);
 
         CloudEventsMaker maker = provider.createMaker(parser, dataSerializerType,
-                (schemaRegistryUrls == null) ? null : String.join(",", schemaRegistryUrls));
+                (schemaRegistryUrls == null) ? null : String.join(",", schemaRegistryUrls), cloudEventsSchemaName);
 
         if (ceSerializerType == SerializerType.JSON) {
             if (dataSerializerType == SerializerType.JSON) {
@@ -482,7 +483,7 @@ public class CloudEventsConverter implements Converter {
 
         // construct schema of CloudEvents envelope
         CESchemaBuilder ceSchemaBuilder = defineSchema()
-                .withName(schemaNameAdjuster.adjust(maker.ceEnvelopeSchemaName()))
+                .withName(schemaNameAdjuster.adjust(maker.ceSchemaName()))
                 .withSchema(CloudEventsMaker.FieldName.ID, Schema.STRING_SCHEMA)
                 .withSchema(CloudEventsMaker.FieldName.SOURCE, Schema.STRING_SCHEMA)
                 .withSchema(CloudEventsMaker.FieldName.SPECVERSION, Schema.STRING_SCHEMA)

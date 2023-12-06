@@ -23,16 +23,16 @@ import org.apache.kafka.connect.errors.DataException;
  */
 public class CloudEventsValidator {
 
-    private static final String CLOUD_EVENTS_SCHEMA_NAME_SUFFIX = ".CloudEvents.Envelope";
-
     private final Set<String> cloudEventsSpecRequiredFields = Set.of(CloudEventsMaker.FieldName.ID, CloudEventsMaker.FieldName.SOURCE,
             CloudEventsMaker.FieldName.SPECVERSION,
             CloudEventsMaker.FieldName.TYPE);
 
     private SerializerType serializerType;
+    private String cloudEventsSchemaName;
 
-    public void configure(SerializerType serializerType) {
+    public void configure(SerializerType serializerType, String cloudEventsSchemaName) {
         this.serializerType = serializerType;
+        this.cloudEventsSchemaName = cloudEventsSchemaName;
     }
 
     public boolean isCloudEvent(SchemaAndValue schemaAndValue) {
@@ -50,7 +50,10 @@ public class CloudEventsValidator {
             case JSON:
                 return schemaAndValue.schema() == null && schemaAndValue.value() instanceof Map;
             case AVRO:
-                return schemaAndValue.schema().name().endsWith(CLOUD_EVENTS_SCHEMA_NAME_SUFFIX) && schemaAndValue.value() instanceof Struct;
+                String schemaName = schemaAndValue.schema().name();
+                final boolean schemaNameIsValid = cloudEventsSchemaName != null ? schemaName.equals(cloudEventsSchemaName)
+                        : schemaName.endsWith(CloudEventsMaker.CLOUDEVENTS_SCHEMA_SUFFIX);
+                return schemaNameIsValid && schemaAndValue.value() instanceof Struct;
             default:
                 throw new DataException("Can't check whether a record is a CloudEvent for serializer type \"" + serializerType + "\"");
         }
