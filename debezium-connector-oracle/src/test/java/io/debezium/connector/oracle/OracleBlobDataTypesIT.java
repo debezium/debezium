@@ -1194,15 +1194,7 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
             record = table.get(0);
             after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
             assertThat(after.get("ID")).isEqualTo(3);
-            if (logMinerAdapter) {
-                // With LogMiner, the first event only contains the initialization of id
-                assertThat(after.get("DATA")).isNull();
-            }
-            else {
-                // Xstream combines the insert and subsequent LogMiner update into a single insert event
-                // automatically, so we receive the value here where the LogMiner implementation doesn't.
-                assertThat(after.get("DATA")).isEqualTo(getByteBufferFromBlob(blob1));
-            }
+            assertThat(after.get("DATA")).isNull();
             assertThat(((Struct) record.value()).get("op")).isEqualTo("c");
 
             // LogMiner will pickup a separate update for BLOB fields.
@@ -1213,22 +1205,14 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
                 record = table.get(1);
                 after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
                 assertThat(after.get("ID")).isEqualTo(3);
-                assertThat(after.get("DATA")).isEqualTo(getByteBufferFromBlob(blob1));
+                assertThat(after.get("DATA")).isNull();
                 assertThat(((Struct) record.value()).get("op")).isEqualTo("u");
             }
 
             record = table.get(logMinerAdapter ? 2 : 1);
             after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
             assertThat(after.get("ID")).isEqualTo(4);
-            if (logMinerAdapter) {
-                // the second insert won't emit an update due to the clob field being set by using the
-                // SELECT_LOB_LOCATOR, LOB_WRITE, and LOB_TRIM operators when using LogMiner and the
-                assertThat(after.get("DATA")).isNull();
-            }
-            else {
-                // Xstream gets this value; it will be supplied.
-                assertThat(after.get("DATA")).isEqualTo(getByteBufferFromBlob(blob2));
-            }
+            assertThat(after.get("DATA")).isNull();
             assertThat(((Struct) record.value()).get("op")).isEqualTo("c");
 
             // Test updates with small blob values
@@ -1241,9 +1225,9 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
             VerifyRecord.isValidUpdate(table.get(0), "ID", 3);
 
             // When updating a table that contains a small BLOB value but the update does not modify
-            // any of the non-BLOB fields, we expect the placeholder in the before and the value in the after.
-            assertThat(getBeforeField(table.get(0), "DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
-            assertThat(getAfterField(table.get(0), "DATA")).isEqualTo(getByteBufferFromBlob(blob1u));
+            // any of the non-BLOB fields, we expect a null/empty value since LOB is disabled.
+            assertThat(getBeforeField(table.get(0), "DATA")).isNull();
+            assertThat(getAfterField(table.get(0), "DATA")).isNull();
             assertNoRecordsToConsume();
 
             // Test updates with large blob values
@@ -1262,8 +1246,8 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
                 sourceRecords = consumeRecordsByTopic(1);
                 table = sourceRecords.recordsForTopic(topicName("DBZ3645"));
                 VerifyRecord.isValidUpdate(table.get(0), "ID", 4);
-                assertThat(getBeforeField(table.get(0), "DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
-                assertThat(getAfterField(table.get(0), "DATA")).isEqualTo(getByteBufferFromBlob(blob2u));
+                assertThat(getBeforeField(table.get(0), "DATA")).isNull();
+                assertThat(getAfterField(table.get(0), "DATA")).isNull();
             }
 
             assertNoRecordsToConsume();
@@ -1280,10 +1264,10 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
             VerifyRecord.isValidInsert(table.get(2), "ID", 5);
 
             // When updating a table that contains a small BLOB value but the update does not modify
-            // any of the BLOB fields, we expect the placeholder.
+            // any of the BLOB fields, we expect null/empty since LOB is disabled.
             record = table.get(2);
             after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
-            assertThat(after.get("DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
+            assertThat(after.get("DATA")).isNull();
             assertNoRecordsToConsume();
 
             // Test update large blob row by changing non-blob fields
@@ -1298,9 +1282,9 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
             VerifyRecord.isValidInsert(table.get(2), "ID", 6);
 
             // When updating a table that contains a large BLOB value but the update does not modify
-            // any of the BLOB fields, we expect the placeholder.
-            assertThat(getBeforeField(table.get(0), "DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
-            assertThat(getAfterField(table.get(2), "DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
+            // any of the BLOB fields, we expect null/empty since LOB is disabled.
+            assertThat(getBeforeField(table.get(0), "DATA")).isNull();
+            assertThat(getAfterField(table.get(2), "DATA")).isNull();
             assertNoRecordsToConsume();
 
             // Test updating both small blob and non-blob fields
@@ -1327,15 +1311,15 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
             }
 
             // When updating a table's small blob and non-blob columns
-            assertThat(getBeforeField(table.get(0), "DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
+            assertThat(getBeforeField(table.get(0), "DATA")).isNull();
             if (logMinerAdapter) {
-                assertThat(getAfterField(table.get(2), "DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
-                assertThat(getBeforeField(table.get(3), "DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
-                assertThat(getAfterField(table.get(3), "DATA")).isEqualTo(getByteBufferFromBlob(blob1u2));
+                assertThat(getAfterField(table.get(2), "DATA")).isNull();
+                assertThat(getBeforeField(table.get(3), "DATA")).isNull();
+                assertThat(getAfterField(table.get(3), "DATA")).isNull();
             }
             else {
                 // Xstream combines the insert/update into a single insert
-                assertThat(getAfterField(table.get(2), "DATA")).isEqualTo(getByteBufferFromBlob(blob1u2));
+                assertThat(getAfterField(table.get(2), "DATA")).isNull();
             }
             assertNoRecordsToConsume();
 
@@ -1352,16 +1336,9 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
             VerifyRecord.isValidTombstone(table.get(1), "ID", 6);
             VerifyRecord.isValidInsert(table.get(2), "ID", 8);
 
-            // When updating a table's large blob and non-blob columns, we expect placeholder in after
-            assertThat(getBeforeField(table.get(0), "DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
-            if (logMinerAdapter) {
-                // LogMiner is unable to provide the value, so it gets emitted with the placeholder.
-                assertThat(getAfterField(table.get(2), "DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
-            }
-            else {
-                // Xstream gets the value, so its provided.
-                assertThat(getAfterField(table.get(2), "DATA")).isEqualTo(getByteBufferFromBlob(blob2u2));
-            }
+            // When updating a table's large blob and non-blob columns, we expect empty/null since LOB disabled
+            assertThat(getBeforeField(table.get(0), "DATA")).isNull();
+            assertThat(getAfterField(table.get(2), "DATA")).isNull();
             assertNoRecordsToConsume();
 
             // Test deleting a row from a table with a small blob column
@@ -1375,7 +1352,7 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
             VerifyRecord.isValidTombstone(table.get(1), "ID", 7);
 
             // when deleting, we expect placeholder
-            assertThat(getBeforeField(table.get(0), "DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
+            assertThat(getBeforeField(table.get(0), "DATA")).isNull();
             assertNoRecordsToConsume();
 
             // Test deleting a row from a table with a large blob column
@@ -1388,8 +1365,8 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
             VerifyRecord.isValidDelete(table.get(0), "ID", 8);
             VerifyRecord.isValidTombstone(table.get(1), "ID", 8);
 
-            // when deleting, we expect placeholder
-            assertThat(getBeforeField(table.get(0), "DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
+            // when deleting, we expect null/empty since LOB is disabled
+            assertThat(getBeforeField(table.get(0), "DATA")).isNull();
 
             // As a sanity, there should be no more records.
             assertNoRecordsToConsume();

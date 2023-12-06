@@ -1585,15 +1585,7 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
             record = table.get(0);
             after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
             assertThat(after.get("ID")).isEqualTo(3);
-            if (logMinerAdapter) {
-                // With LogMiner, the first event only contains the initialization of id
-                assertThat(after.get("DATA")).isNull();
-            }
-            else {
-                // Xstream combines the insert and subsequent LogMiner update into a single insert event
-                // automatically, so we receive the value here where the LogMiner implementation doesn't.
-                assertThat(after.get("DATA")).isEqualTo("Test3");
-            }
+            assertThat(after.get("DATA")).isNull();
             assertThat(((Struct) record.value()).get("op")).isEqualTo("c");
 
             // LogMiner will pickup a separate update for CLOB fields.
@@ -1604,22 +1596,14 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
                 record = table.get(1);
                 after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
                 assertThat(after.get("ID")).isEqualTo(3);
-                assertThat(after.get("DATA")).isEqualTo("Test3");
+                assertThat(after.get("DATA")).isNull();
                 assertThat(((Struct) record.value()).get("op")).isEqualTo("u");
             }
 
             record = table.get(logMinerAdapter ? 2 : 1);
             after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
             assertThat(after.get("ID")).isEqualTo(4);
-            if (logMinerAdapter) {
-                // the second insert won't emit an update due to the clob field being set by using the
-                // SELECT_LOB_LOCATOR, LOB_WRITE, and LOB_TRIM operators when using LogMiner and the
-                assertThat(after.get("DATA")).isNull();
-            }
-            else {
-                // Xstream gets this value; it will be supplied.
-                assertThat(after.get("DATA")).isEqualTo(getClobString(clob1));
-            }
+            assertThat(after.get("DATA")).isNull();
             assertThat(((Struct) record.value()).get("op")).isEqualTo("c");
 
             // Test updates with small clob fields
@@ -1632,9 +1616,9 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
             VerifyRecord.isValidUpdate(table.get(0), "ID", 3);
 
             // When updating a table that contains a small CLOB value but the update does not modify
-            // any of the non-CLOB fields, we expect the placeholder in the before and the value in the after.
-            assertThat(getBeforeField(table.get(0), "DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
-            assertThat(getAfterField(table.get(0), "DATA")).isEqualTo("Test3U");
+            // any of the non-CLOB fields, we don't expect the placeholder since LOB is disabled
+            assertThat(getBeforeField(table.get(0), "DATA")).isNull();
+            assertThat(getAfterField(table.get(0), "DATA")).isNull();
             assertNoRecordsToConsume();
 
             // Test updates with large clob fields
@@ -1653,8 +1637,8 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
                 sourceRecords = consumeRecordsByTopic(1);
                 table = sourceRecords.recordsForTopic(topicName("DBZ3645"));
                 VerifyRecord.isValidUpdate(table.get(0), "ID", 4);
-                assertThat(getBeforeField(table.get(0), "DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
-                assertThat(getAfterField(table.get(0), "DATA")).isEqualTo(getClobString(clob2));
+                assertThat(getBeforeField(table.get(0), "DATA")).isNull();
+                assertThat(getAfterField(table.get(0), "DATA")).isNull();
             }
 
             assertNoRecordsToConsume();
@@ -1672,9 +1656,9 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
             VerifyRecord.isValidInsert(table.get(2), "ID", 5);
 
             // When updating a table that contains a CLOB value but the update does not modify
-            // any of the CLOB fields, we expect the placeholder.
-            assertThat(getBeforeField(table.get(0), "DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
-            assertThat(getAfterField(table.get(2), "DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
+            // any of the CLOB fields, we expect null/empty because LOB isn't enabled.
+            assertThat(getBeforeField(table.get(0), "DATA")).isNull();
+            assertThat(getAfterField(table.get(2), "DATA")).isNull();
             assertNoRecordsToConsume();
 
             // Test update large clob row by changing non-clob fields
@@ -1690,9 +1674,9 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
             VerifyRecord.isValidInsert(table.get(2), "ID", 6);
 
             // When updating a table that contains a large CLOB value but the update does not modify
-            // any of the CLOB fields, we expect the placeholder.
-            assertThat(getBeforeField(table.get(0), "DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
-            assertThat(getAfterField(table.get(2), "DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
+            // any of the CLOB fields, we expect null/empty since LOB is not enabled.
+            assertThat(getBeforeField(table.get(0), "DATA")).isNull();
+            assertThat(getAfterField(table.get(2), "DATA")).isNull();
             assertNoRecordsToConsume();
 
             // Test updating both small clob and non-clob fields
@@ -1720,15 +1704,15 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
             }
 
             // When updating a table's small clob and non-clob columns
-            assertThat(getBeforeField(table.get(0), "DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
+            assertThat(getBeforeField(table.get(0), "DATA")).isNull();
             if (logMinerAdapter) {
-                assertThat(getAfterField(table.get(2), "DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
-                assertThat(getBeforeField(table.get(3), "DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
-                assertThat(getAfterField(table.get(3), "DATA")).isEqualTo(getClobString(clob1u2));
+                assertThat(getAfterField(table.get(2), "DATA")).isNull();
+                assertThat(getBeforeField(table.get(3), "DATA")).isNull();
+                assertThat(getAfterField(table.get(3), "DATA")).isNull();
             }
             else {
                 // Xstream combines the insert/update into a single insert
-                assertThat(getAfterField(table.get(2), "DATA")).isEqualTo(getClobString(clob1u2));
+                assertThat(getAfterField(table.get(2), "DATA")).isNull();
             }
             assertNoRecordsToConsume();
 
@@ -1746,15 +1730,8 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
             VerifyRecord.isValidInsert(table.get(2), "ID", 8);
 
             // When updating a table's large clob and non-clob columns, we expect placeholder in before
-            assertThat(getBeforeField(table.get(0), "DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
-            if (logMinerAdapter) {
-                // LogMiner is unable to provide the value, so it gets emitted with the placeholder.
-                assertThat(getAfterField(table.get(2), "DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
-            }
-            else {
-                // Xstream gets the value, so its provided.
-                assertThat(getAfterField(table.get(2), "DATA")).isEqualTo(getClobString(clob2u2));
-            }
+            assertThat(getBeforeField(table.get(0), "DATA")).isNull();
+            assertThat(getAfterField(table.get(2), "DATA")).isNull();
             assertNoRecordsToConsume();
 
             if (!logMinerAdapter) {
@@ -1771,9 +1748,9 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
             VerifyRecord.isValidDelete(table.get(0), "ID", 7);
             VerifyRecord.isValidTombstone(table.get(1), "ID", 7);
 
-            // When delete from a table that contains a CLOB value we always expect the placeholder
-            // to be supplied, even when LOB support is disabled.
-            assertThat(getBeforeField(table.get(0), "DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
+            // When delete from a table that contains a CLOB value we should get null/empty
+            // when LOB is disabled.
+            assertThat(getBeforeField(table.get(0), "DATA")).isNull();
             assertNoRecordsToConsume();
 
             // Test deleting a row from a table with a large clob column
@@ -1786,9 +1763,9 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
             VerifyRecord.isValidDelete(table.get(0), "ID", 8);
             VerifyRecord.isValidTombstone(table.get(1), "ID", 8);
 
-            // When delete from a table that contains a CLOB value we always expect the placeholder
-            // to be supplied, even when LOB support is disabled.
-            assertThat(getBeforeField(table.get(0), "DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
+            // When delete from a table that contains a CLOB value, we should get a null/empty value
+            // because LOB support is disabled.
+            assertThat(getBeforeField(table.get(0), "DATA")).isNull();
 
             // As a sanity, there should be no more records.
             assertNoRecordsToConsume();

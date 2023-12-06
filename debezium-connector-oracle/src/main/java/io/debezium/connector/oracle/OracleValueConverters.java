@@ -214,11 +214,14 @@ public class OracleValueConverters extends JdbcValueConverters {
             case Types.NCHAR:
             case Types.NVARCHAR:
             case Types.STRUCT:
-            case Types.CLOB:
             case OracleTypes.ROWID:
                 return data -> convertString(column, fieldDefn, data);
+            case Types.CLOB:
+            case Types.NCLOB:
+            case Types.SQLXML:
+                return data -> convertClob(column, fieldDefn, data);
             case Types.BLOB:
-                return data -> convertBinary(column, fieldDefn, data, binaryMode);
+                return data -> convertBlob(column, fieldDefn, data, binaryMode);
             case OracleTypes.BINARY_FLOAT:
                 return data -> convertFloat(column, fieldDefn, data);
             case OracleTypes.BINARY_DOUBLE:
@@ -284,17 +287,26 @@ public class OracleValueConverters extends JdbcValueConverters {
         if (data instanceof CHAR) {
             return ((CHAR) data).stringValue();
         }
-        if (data instanceof Clob) {
-            if (!lobEnabled) {
-                if (column.isOptional()) {
-                    return null;
-                }
-                return "";
+        if (data instanceof String) {
+            String s = (String) data;
+            if (UnistrHelper.isUnistrFunction(s)) {
+                return UnistrHelper.convert(s);
             }
+        }
+        return super.convertString(column, fieldDefn, data);
+    }
+
+    protected Object convertClob(Column column, Field fieldDefn, Object data) {
+        // Exit quick if LOB is not enabled
+        if (!lobEnabled) {
+            return column.isOptional() ? null : "";
+        }
+
+        if (data instanceof Clob) {
             try {
                 Clob clob = (Clob) data;
-                // Note that java.sql.Clob specifies that the first character starts at 1
-                // and that length must be greater-than or equal to 0. So for an empty
+                // Note that java.sql.Clob specifies the first character starts at 1
+                // and that length must be greater than or equal to 0. So for an empty
                 // clob field, a call to getSubString(1, 0) is perfectly valid.
                 return clob.getSubString(1, (int) clob.length());
             }
@@ -302,13 +314,14 @@ public class OracleValueConverters extends JdbcValueConverters {
                 throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
             }
         }
+
         if (data instanceof String) {
-            String s = (String) data;
-            if (EMPTY_CLOB_FUNCTION.equals(s)) {
+            String value = (String) data;
+            if (EMPTY_CLOB_FUNCTION.equals(value)) {
                 return column.isOptional() ? null : "";
             }
-            else if (UnistrHelper.isUnistrFunction(s)) {
-                return UnistrHelper.convert(s);
+            else if (UnistrHelper.isUnistrFunction(value)) {
+                return UnistrHelper.convert(value);
             }
         }
 
@@ -324,43 +337,59 @@ public class OracleValueConverters extends JdbcValueConverters {
         try {
             if (data instanceof String) {
                 String str = (String) data;
-                if (EMPTY_BLOB_FUNCTION.equals(str)) {
-                    if (column.isOptional()) {
-                        return null;
-                    }
-                    data = "";
-                }
-                else if (isHexToRawFunctionCall(str)) {
+                if (isHexToRawFunctionCall(str)) {
                     data = RAW.hexString2Bytes(getHexToRawHexString(str));
-                }
-            }
-            else if (data instanceof Blob) {
-                if (!lobEnabled) {
-                    if (column.isOptional()) {
-                        return null;
-                    }
-                    else {
-                        data = NumberConversions.BYTE_ZERO;
-                    }
-                }
-                else {
-                    Blob blob = (Blob) data;
-                    data = blob.getBytes(1, Long.valueOf(blob.length()).intValue());
                 }
             }
             else if (data instanceof RAW) {
                 data = ((RAW) data).getBytes();
             }
-
-            if (data == UNAVAILABLE_VALUE) {
-                data = unavailableValuePlaceholderBinary;
-            }
-
             return super.convertBinary(column, fieldDefn, data, mode);
         }
         catch (SQLException e) {
             throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
         }
+    }
+
+    protected Object convertBlob(Column column, Field fieldDefn, Object data, BinaryHandlingMode mode) {
+        // Exit quick if LOB is not enabled
+        if (!lobEnabled) {
+            return column.isOptional() ? null : NumberConversions.BYTE_ZERO;
+        }
+
+        if (data instanceof Blob) {
+            try {
+                Blob blob = (Blob) data;
+                data = blob.getBytes(1, Long.valueOf(blob.length()).intValue());
+            }
+            catch (SQLException e) {
+                throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
+            }
+        }
+
+        if (data instanceof String) {
+            String value = (String) data;
+            if (EMPTY_BLOB_FUNCTION.equals(value)) {
+                if (column.isOptional()) {
+                    return null;
+                }
+                data = "";
+            }
+            else if (isHexToRawFunctionCall(value)) {
+                try {
+                    data = RAW.hexString2Bytes(getHexToRawHexString(value));
+                }
+                catch (SQLException e) {
+                    throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
+                }
+            }
+        }
+
+        if (data == UNAVAILABLE_VALUE) {
+            data = unavailableValuePlaceholderBinary;
+        }
+
+        return super.convertBinary(column, fieldDefn, data, mode);
     }
 
     @Override
