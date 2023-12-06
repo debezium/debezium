@@ -93,6 +93,8 @@ The following example shows a typical notification that provides the status of a
 <1> The `type` field can contain one of the following values:
 
 * `STARTED`
+* `IN_PROGRESS`
+* `TABLE_SCAN_COMPLETED`
 * `COMPLETED`
 * `ABORTED`
 * `SKIPPED`
@@ -131,7 +133,6 @@ a|[source, json]
 }
 ----
 Field `data_collection` are currently not supported for Mongo connector
-|COMPLETED
 
 |TABLE_SCAN_COMPLETED
 a|[source, json]
@@ -150,7 +151,6 @@ a|[source, json]
    "timestamp": "1695817046353"
 }
 ----
-
 In the preceding example, the `additional_data.status` field can contain one of the following values:
 
 `SQL_EXCEPTION`:: A SQL exception occurred while performing the snapshot.
