@@ -611,17 +611,17 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
     protected abstract T getAndRemoveTransactionFromCache(String transactionId);
 
     /**
-     * Removes the items associated with the transaction (e.g. events if they are stored independently.
+     * Removes the items associated with the transaction (e.g. events if they are stored independently).
      *
      * @param transaction the transaction instance, should never be {@code null}
      * @param isAbandoned whether the removal is because transaction is being abandoned
      */
     protected void cleanupAfterTransactionRemovedFromCache(T transaction, boolean isAbandoned) {
         if (isAbandoned) {
-            abandonedTransactionsCache.remove(transaction.getTransactionId());
+            abandonedTransactionsCache.add(transaction.getTransactionId());
         }
         else {
-            abandonedTransactionsCache.add(transaction.getTransactionId());
+            abandonedTransactionsCache.remove(transaction.getTransactionId());
         }
     }
 
