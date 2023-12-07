@@ -670,12 +670,8 @@ public class MySqlValueConverters extends JdbcValueConverters {
             if (data instanceof byte[]) {
                 // The binlog utility sends a byte array for any Geometry type, we will use our own binaryParse to parse the byte to WKB, hence
                 // to the suitable class
-                if (data instanceof byte[]) {
-                    // The binlog utility sends a byte array for any Geometry type, we will use our own binaryParse to parse the byte to WKB, hence
-                    // to the suitable class
-                    MySqlGeometry mySqlGeometry = MySqlGeometry.fromBytes((byte[]) data);
-                    r.deliver(io.debezium.data.geometry.Geometry.createValue(fieldDefn.schema(), mySqlGeometry.getWkb(), mySqlGeometry.getSrid()));
-                }
+                MySqlGeometry mySqlGeometry = MySqlGeometry.fromBytes((byte[]) data);
+                r.deliver(io.debezium.data.geometry.Geometry.createValue(fieldDefn.schema(), mySqlGeometry.getWkb(), mySqlGeometry.getSrid()));
             }
         });
     }
