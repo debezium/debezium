@@ -60,7 +60,7 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
         this.clock = clock;
         this.replicaSets = replicaSets;
         this.taskContext = taskContext;
-        this.connections = getMongoDbConnectionFactory(taskContext.getConnectionContext());
+        this.connections = createMongoDbConnectionFactory(taskContext.getConnectionContext());
         this.schema = schema;
         this.streamingMetrics = streamingMetrics;
     }
@@ -117,7 +117,11 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
         return Optional.of(incrementalSnapshotChangeEventSource);
     }
 
-    public MongoDbConnection.ChangeEventSourceConnectionFactory getMongoDbConnectionFactory(ConnectionContext connectionContext) {
+    public MongoDbConnection.ChangeEventSourceConnectionFactory getMongoDbConnectionFactory() {
+        return connections;
+    }
+
+    private MongoDbConnection.ChangeEventSourceConnectionFactory createMongoDbConnectionFactory(ConnectionContext connectionContext) {
         return (ReplicaSet replicaSet, MongoDbPartition partition) -> connectionContext.connect(
                 replicaSet, taskContext.filters(), connectionErrorHandler(partition));
     }

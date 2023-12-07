@@ -5,13 +5,11 @@
  */
 package io.debezium.processors.spi;
 
-import io.debezium.jdbc.JdbcConnection;
-
 /**
- * Contract that allows injecting a {@link JdbcConnection}.
+ * Contract that allows injecting a database connection.
  *
  * @author Chris Cranford
  */
-public interface JdbcConnectionAware {
-    void setDatabaseConnection(JdbcConnection connection);
+public interface ConnectionAware<T> {
+    void setDatabaseConnection(T connection);
 }

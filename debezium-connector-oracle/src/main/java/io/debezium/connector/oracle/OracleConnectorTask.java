@@ -74,7 +74,13 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         this.schema = new OracleDatabaseSchema(connectorConfig, valueConverters, defaultValueConverter, schemaNameAdjuster,
                 topicNamingStrategy, tableNameCaseSensitivity);
 
-        connectorConfig.postProcessorRegistry().injectDependencies(valueConverters, connectionFactory.newConnection(), schema, connectorConfig);
+        connectorConfig.postProcessorRegistry()
+                .injectionBuilder()
+                .withValueConverter(valueConverters)
+                .withConnection(connectionFactory.newConnection())
+                .withRelationalSchema(schema)
+                .withConnectorConfig(connectorConfig)
+                .apply();
 
         Offsets<OraclePartition, OracleOffsetContext> previousOffsets = getPreviousOffsets(new OraclePartition.Provider(connectorConfig),
                 connectorConfig.getAdapter().getOffsetContextLoader());

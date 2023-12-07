@@ -92,7 +92,13 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
 
         schema.recover(offsets);
 
-        connectorConfig.postProcessorRegistry().injectDependencies(valueConverters, metadataConnection, schema, connectorConfig);
+        connectorConfig.postProcessorRegistry()
+                .injectionBuilder()
+                .withValueConverter(valueConverters)
+                .withConnection(metadataConnection)
+                .withRelationalSchema(schema)
+                .withConnectorConfig(connectorConfig)
+                .apply();
 
         taskContext = new SqlServerTaskContext(connectorConfig, schema);
 

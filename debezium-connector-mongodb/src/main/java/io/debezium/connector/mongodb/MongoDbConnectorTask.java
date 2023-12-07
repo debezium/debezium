@@ -123,21 +123,29 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
 
             MongoDbChangeEventSourceMetricsFactory metricsFactory = new MongoDbChangeEventSourceMetricsFactory();
 
+            MongoDbChangeEventSourceFactory mongoDbChangeEventSourceFactory = new MongoDbChangeEventSourceFactory(
+                    connectorConfig,
+                    errorHandler,
+                    dispatcher,
+                    clock,
+                    replicaSets,
+                    taskContext,
+                    schema,
+                    metricsFactory.getStreamingMetrics(taskContext, queue, metadataProvider));
+
+            connectorConfig.postProcessorRegistry()
+                    .injectionBuilder()
+                    .withConnection(mongoDbChangeEventSourceFactory.getMongoDbConnectionFactory())
+                    .withConnectorConfig(connectorConfig)
+                    .apply();
+
             ChangeEventSourceCoordinator<MongoDbPartition, MongoDbOffsetContext> coordinator = new ChangeEventSourceCoordinator<>(
                     // TODO pass offsets from all the partitions
                     Offsets.of(Collections.singletonMap(new MongoDbPartition(), previousOffset)),
                     errorHandler,
                     MongoDbConnector.class,
                     connectorConfig,
-                    new MongoDbChangeEventSourceFactory(
-                            connectorConfig,
-                            errorHandler,
-                            dispatcher,
-                            clock,
-                            replicaSets,
-                            taskContext,
-                            schema,
-                            metricsFactory.getStreamingMetrics(taskContext, queue, metadataProvider)),
+                    mongoDbChangeEventSourceFactory,
                     metricsFactory,
                     dispatcher,
                     schema,

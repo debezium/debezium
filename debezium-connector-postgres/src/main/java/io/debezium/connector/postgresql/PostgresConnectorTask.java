@@ -112,7 +112,13 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
         final Clock clock = Clock.system();
         final PostgresOffsetContext previousOffset = previousOffsets.getTheOnlyOffset();
 
-        connectorConfig.postProcessorRegistry().injectDependencies(valueConverter, connectionFactory.newConnection(), schema, connectorConfig);
+        connectorConfig.postProcessorRegistry()
+                .injectionBuilder()
+                .withValueConverter(valueConverter)
+                .withConnection(connectionFactory.newConnection())
+                .withRelationalSchema(schema)
+                .withConnectorConfig(connectorConfig)
+                .apply();
 
         LoggingContext.PreviousContext previousContext = taskContext.configureLoggingContext(CONTEXT_NAME);
         try {
