@@ -3144,7 +3144,7 @@ The following table describes xref:mysql-advanced-connector-configuration-proper
 For example, `boolean`. +
 This property is required to enable the connector to use a custom converter.
 
-For each converter that you configure for a connector, you must also add a `.type` property, which specifies the fully-qualifed name of the class that implements the converter interface.
+For each converter that you configure for a connector, you must also add a `.type` property, which specifies the fully-qualified name of the class that implements the converter interface.
 The `.type` property uses the following format: +
 
 `_<converterSymbolicName>_.type` +
