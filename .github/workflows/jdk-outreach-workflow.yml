@@ -15,6 +15,7 @@ jobs:
     strategy:
       matrix:
         feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true' }, { release: ea, args: '' } ]
+      fail-fast: false
     name: SQL Server - Java ${{ matrix.feature.release }}
     steps:
       - uses: actions/checkout@v4
@@ -32,6 +33,7 @@ jobs:
     strategy:
       matrix:
         feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true' }, { release: ea, args: '' } ]
+      fail-fast: false
     name: MySQL - Java ${{ matrix.feature.release }}
     steps:
       - uses: actions/checkout@v4
@@ -49,6 +51,7 @@ jobs:
     strategy:
       matrix:
         feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true' }, { release: ea, args: '' } ]
+      fail-fast: false
     name: PostgreSQL Pgoutput - Java ${{ matrix.feature.release }}
     steps:
       - uses: actions/checkout@v4
@@ -66,6 +69,7 @@ jobs:
     strategy:
       matrix:
         feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true' }, { release: ea, args: '' } ]
+      fail-fast: false
     name: MongoDB 4.0 - Java ${{ matrix.feature.release }}
     steps:
       - uses: actions/checkout@v4
@@ -83,6 +87,7 @@ jobs:
     strategy:
       matrix:
         feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true' }, { release: ea, args: '' } ]
+      fail-fast: false
     name: Oracle - Java ${{ matrix.feature.release }}
     steps:
       - uses: actions/checkout@v4
@@ -100,6 +105,7 @@ jobs:
     strategy:
       matrix:
         feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true' }, { release: ea, args: '' } ]
+      fail-fast: false
     name: Cassandra - Java ${{ matrix.feature.release }}
     steps:
       - name: Checkout Core
@@ -128,6 +134,7 @@ jobs:
     strategy:
       matrix:
         feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true' }, { release: ea, args: '' } ]
+      fail-fast: false
     name: Db2 - Java ${{ matrix.feature.release }}
     steps:
       - name: Checkout Core
@@ -153,6 +160,7 @@ jobs:
     strategy:
       matrix:
         feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true' }, { release: ea, args: '' } ]
+      fail-fast: false
     name: Spanner - Java ${{ matrix.feature.release }}
     steps:
       - name: Checkout Core
@@ -178,6 +186,7 @@ jobs:
     strategy:
       matrix:
         feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true' }, { release: ea, args: '' } ]
+      fail-fast: false
     name: Vitess - Java ${{ matrix.feature.release }}
     steps:
       - name: Checkout Core
@@ -203,6 +212,7 @@ jobs:
     strategy:
       matrix:
         feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true' }, { release: ea, args: '' } ]
+      fail-fast: false
     name: Quarkus Outbox Extension - Java ${{ matrix.feature.release }}
     steps:
       - uses: actions/checkout@v4
@@ -220,6 +230,7 @@ jobs:
     strategy:
       matrix:
         feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true' }, { release: ea, args: '' } ]
+      fail-fast: false
     name: Rest Extension - Java ${{ matrix.feature.release }}
     steps:
       - uses: actions/checkout@v4
@@ -237,6 +248,7 @@ jobs:
     strategy:
       matrix:
         feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true' }, { release: ea, args: '' } ]
+      fail-fast: false
     name: Testing - Java ${{ matrix.feature.release }}
     steps:
       - uses: actions/checkout@v4
@@ -254,6 +266,7 @@ jobs:
     strategy:
       matrix:
         feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true' }, { release: ea, args: '' } ]
+      fail-fast: false
     name: Server - Java ${{ matrix.feature.release }}
     steps:
       - name: Checkout Core
