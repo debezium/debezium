@@ -163,7 +163,6 @@ public class MySqlValueConverters extends JdbcValueConverters {
         this(decimalMode, temporalPrecisionMode, bigIntUnsignedMode, binaryMode, adjuster, connectorAdapter, WARN);
     }
 
-
     private static ConnectorAdapter resolveDefaultAdapter() {
         Configuration config = Configuration.empty();
         MySqlConnectorConfig connectorConfig = new MySqlConnectorConfig(config);
