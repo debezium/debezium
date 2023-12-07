@@ -53,6 +53,7 @@ import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
 import io.debezium.util.Stopwatch;
+import io.debezium.util.Strings;
 
 /**
  * A {@link StreamingChangeEventSource} based on Oracle's LogMiner utility.
@@ -167,7 +168,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                 }
 
                 checkDatabaseAndTableState(jdbcConnection, connectorConfig.getPdbName(), schema);
-
+                checkArchiveLogDestination(jdbcConnection, connectorConfig.getLogMiningArchiveDestinationName());
                 logOnlineRedoLogSizes(connectorConfig);
 
                 try (LogMinerEventProcessor processor = createProcessor(context, partition, offsetContext)) {
@@ -919,6 +920,21 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
             }
         }
         LOGGER.trace("Database and table state check finished after {} ms", Duration.between(start, Instant.now()).toMillis());
+    }
+
+    private void checkArchiveLogDestination(OracleConnection connection, String destinationName) throws SQLException {
+        if (!Strings.isNullOrBlank(destinationName)) {
+            if (!connection.isArchiveLogDestinationValid(destinationName)) {
+                LOGGER.warn("Archive log destination '{}' may not be valid, please check the database.", destinationName);
+            }
+        }
+        else {
+            if (!connection.isOnlyOneArchiveLogDestinationValid()) {
+                LOGGER.warn("There are multiple valid archive log destinations. " +
+                        "Please add '{}' to the connector configuration to avoid log availability problems.",
+                        OracleConnectorConfig.LOG_MINING_ARCHIVE_DESTINATION_NAME.name());
+            }
+        }
     }
 
     /**

@@ -505,6 +505,29 @@ public class OracleConnection extends JdbcConnection {
         }
     }
 
+    public boolean isArchiveLogDestinationValid(String archiveDestinationName) throws SQLException {
+        return prepareQueryAndMap("SELECT STATUS, TYPE FROM V$ARCHIVE_DEST_STATUS WHERE DEST_NAME=?",
+                st -> st.setString(1, archiveDestinationName),
+                rs -> {
+                    if (!rs.next()) {
+                        throw new DebeziumException(
+                                String.format("Archive log destination name '%s' is unknown to Oracle",
+                                        archiveDestinationName));
+                    }
+                    return "VALID".equals(rs.getString("STATUS")) && "LOCAL".equals(rs.getString("TYPE"));
+                });
+    }
+
+    public boolean isOnlyOneArchiveLogDestinationValid() throws SQLException {
+        return queryAndMap("SELECT COUNT(1) FROM V$ARCHIVE_DEST_STATUS WHERE STATUS='VALID' AND TYPE='LOCAL'",
+                rs -> {
+                    if (!rs.next()) {
+                        throw new DebeziumException("Unable to resolve number of archive log destinations");
+                    }
+                    return rs.getLong(1) == 1L;
+                });
+    }
+
     @Override
     protected ColumnEditor overrideColumn(ColumnEditor column) {
         // This allows the column state to be overridden before default-value resolution so that the
