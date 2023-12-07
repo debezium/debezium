@@ -124,7 +124,13 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
             throw new DebeziumException(e);
         }
 
-        connectorConfig.postProcessorRegistry().injectDependencies(valueConverters, connectionFactory.newConnection(), schema, connectorConfig);
+        connectorConfig.postProcessorRegistry()
+                .injectionBuilder()
+                .withValueConverter(valueConverters)
+                .withConnection(connectionFactory.newConnection())
+                .withRelationalSchema(schema)
+                .withConnectorConfig(connectorConfig)
+                .apply();
 
         // If the binlog position is not available it is necessary to reexecute snapshot
         if (validateSnapshotFeasibility(connectorConfig, previousOffset)) {

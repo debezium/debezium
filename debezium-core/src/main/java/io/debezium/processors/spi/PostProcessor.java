@@ -19,14 +19,14 @@ import io.debezium.common.annotation.Incubating;
  * operates on the raw {@link Struct} objects which are still mutable, allowing for a variety of
  * use cases that wish to have the full data set of a row for the post-processing step.
  *
- * In additoin, there are several injection-aware contracts that can be used in conjunction with
+ * In addition, there are several injection-aware contracts that can be used in conjunction with
  * the post processor to automatically have specific Debezium internal objects injected into the
  * post processor automatically at connector start-up.
  *
  * @author Chris Cranford
  *
  * @see ConnectorConfigurationAware
- * @see JdbcConnectionAware
+ * @see ConnectionAware
  * @see RelationalDatabaseSchemaAware
  * @see ValueConverterAware
  */

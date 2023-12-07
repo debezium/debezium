@@ -14,13 +14,12 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.Immutable;
 import io.debezium.annotation.ThreadSafe;
-import io.debezium.jdbc.JdbcConnection;
+import io.debezium.config.CommonConnectorConfig;
+import io.debezium.processors.spi.ConnectionAware;
 import io.debezium.processors.spi.ConnectorConfigurationAware;
-import io.debezium.processors.spi.JdbcConnectionAware;
 import io.debezium.processors.spi.PostProcessor;
 import io.debezium.processors.spi.RelationalDatabaseSchemaAware;
 import io.debezium.processors.spi.ValueConverterAware;
-import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.ValueConverterProvider;
 
@@ -32,7 +31,7 @@ import io.debezium.relational.ValueConverterProvider;
 @ThreadSafe
 public class PostProcessorRegistry implements Closeable {
 
-    private final Logger LOGGER = LoggerFactory.getLogger(PostProcessorRegistry.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(PostProcessorRegistry.class);
 
     @Immutable
     private final List<PostProcessor> processors;
@@ -59,27 +58,68 @@ public class PostProcessorRegistry implements Closeable {
     }
 
     /**
-     * Set the optional dependencies needed by a post processor
+     * Get the injection builder for applying dependency injection to post-processors.
      *
-     * @param valueConverterProvider the value converter
-     * @param connection the JDBC connection
+     * @return the injection builder
+     * @param <T> the connection type implementation
      */
-    public void injectDependencies(ValueConverterProvider valueConverterProvider, JdbcConnection connection, RelationalDatabaseSchema schema,
-                                   RelationalDatabaseConnectorConfig connectorConfig) {
-        for (PostProcessor processor : processors) {
-            if (processor instanceof JdbcConnectionAware) {
-                ((JdbcConnectionAware) processor).setDatabaseConnection(connection);
-            }
-            if (processor instanceof ValueConverterAware) {
-                ((ValueConverterAware) processor).setValueConverter(valueConverterProvider);
-            }
-            if (processor instanceof RelationalDatabaseSchemaAware) {
-                ((RelationalDatabaseSchemaAware) processor).setDatabaseSchema(schema);
-            }
-            if (processor instanceof ConnectorConfigurationAware) {
-                ((ConnectorConfigurationAware) processor).setConnectorConfig(connectorConfig);
+    public <T> InjectionBuilder<T> injectionBuilder() {
+        return new InjectionBuilder<>(this);
+    }
+
+    /**
+     * Builder contract for injecting dependencies.
+     *
+     * @param <T> the connection type
+     */
+    public static class InjectionBuilder<T> {
+        private final PostProcessorRegistry registry;
+
+        private ValueConverterProvider valueConverterProvider;
+        private T connection;
+        private RelationalDatabaseSchema relationalSchema;
+        private CommonConnectorConfig connectorConfig;
+
+        InjectionBuilder(PostProcessorRegistry registry) {
+            this.registry = registry;
+        }
+
+        public InjectionBuilder<T> withValueConverter(ValueConverterProvider valueConverterProvider) {
+            this.valueConverterProvider = valueConverterProvider;
+            return this;
+        }
+
+        public InjectionBuilder<T> withConnection(T connection) {
+            this.connection = connection;
+            return this;
+        }
+
+        public InjectionBuilder<T> withRelationalSchema(RelationalDatabaseSchema schema) {
+            this.relationalSchema = schema;
+            return this;
+        }
+
+        public InjectionBuilder<T> withConnectorConfig(CommonConnectorConfig connectorConfig) {
+            this.connectorConfig = connectorConfig;
+            return this;
+        }
+
+        @SuppressWarnings("unchecked")
+        public void apply() {
+            for (PostProcessor processor : registry.getProcessors()) {
+                if (connection != null && processor instanceof ConnectionAware) {
+                    ((ConnectionAware<T>) processor).setDatabaseConnection(connection);
+                }
+                if (valueConverterProvider != null && processor instanceof ValueConverterAware) {
+                    ((ValueConverterAware) processor).setValueConverter(valueConverterProvider);
+                }
+                if (relationalSchema != null && processor instanceof RelationalDatabaseSchemaAware) {
+                    ((RelationalDatabaseSchemaAware) processor).setDatabaseSchema(relationalSchema);
+                }
+                if (connectorConfig != null && processor instanceof ConnectorConfigurationAware) {
+                    ((ConnectorConfigurationAware) processor).setConnectorConfig(connectorConfig);
+                }
             }
         }
     }
-
 }

@@ -25,8 +25,8 @@ import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.data.Envelope;
 import io.debezium.function.Predicates;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.processors.spi.ConnectionAware;
 import io.debezium.processors.spi.ConnectorConfigurationAware;
-import io.debezium.processors.spi.JdbcConnectionAware;
 import io.debezium.processors.spi.PostProcessor;
 import io.debezium.processors.spi.RelationalDatabaseSchemaAware;
 import io.debezium.processors.spi.ValueConverterAware;
@@ -51,7 +51,8 @@ import io.debezium.util.Strings;
  * @author Chris Cranford
  */
 @Incubating
-public class ReselectColumnsPostProcessor implements PostProcessor, ConnectorConfigurationAware, JdbcConnectionAware, RelationalDatabaseSchemaAware, ValueConverterAware {
+public class ReselectColumnsPostProcessor
+        implements PostProcessor, ConnectorConfigurationAware, ConnectionAware<JdbcConnection>, RelationalDatabaseSchemaAware, ValueConverterAware {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ReselectColumnsPostProcessor.class);
 
