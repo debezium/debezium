@@ -63,7 +63,7 @@ jobs:
           website: jdk.java.net
           release: ${{ matrix.feature.release }}
       - name: Maven Build
-        run: ./mvnw clean install -B -pl debezium-bom,debezium-connector-postgres -am -Passembly,pgoutput-decoder,postgres-10 ${{ matrix.feature.args }} -Ddebezium.test.records.waittime=5 -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dversion.postgres.server=10-devel -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        run: ./mvnw clean install -B -pl debezium-bom,debezium-connector-postgres -am -Passembly,pgoutput-decoder,postgres-16 ${{ matrix.feature.args }} -Ddebezium.test.records.waittime=5 -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
   mongodb-40:
     runs-on: ubuntu-latest
     strategy:
