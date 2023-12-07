@@ -2242,6 +2242,31 @@ If the redo log lacks sufficient capacity, both the database and the {prodname} 
 
 Consult with your database administrator to evaluate whether the database might require increased log capacity.
 
+=== Archive log destinations
+
+Oracle database administrators can configure up to 31 different destinations for archive logs.
+Each destination can be set with various parameters for different activities, including log shipping for physical standbys or external storage allowing for longer retention of the logs.
+All log destination details are found in the `V$ARCHIVED_DEST_STATUS` table in the Oracle database.
+
+The {prodname} Oracle connector only uses destinations that have a status of `VALID` and a type of `LOCAL`.
+If multiple destinations are configured in your Oracle environment that satisfy that criteria, then please consult your Oracle administrator to determine which archive log destination should be used.
+You will need to provide the `log.mining.archive.destination.name` configuration property to control which path {prodname} uses.
+
+As an example, if both the `LOG_ARCHIVE_DEST_2` and `LOG_ARCHIVE_DEST_3` destinations satisfy the criteria and the administrator has confirmed that destination three should be used, you would provide this configuration using the `log.mining.archive.destination.name` property as follows:
+
+[source,json]
+----
+{
+  "log.mining.archive.destination.name": "LOG_ARCHIVE_DEST_3"
+}
+----
+
+[WARNING]
+====
+If multiple valid paths are configured as `LOCAL` and the destination name is not provided in the connector configuration, the {prodname} Oracle connector will use a random path.
+This can lead to missing logfile problems sporadically, especially if the retention policy for one path that is picked is less than the others.
+====
+
 // Type: procedure
 // ModuleID: creating-an-oracle-user-for-the-debezium-oracle-connector
 // Title: Creating an Oracle user for the {prodname} Oracle connector
