@@ -6,6 +6,7 @@
 package io.debezium.connector.mysql;
 
 import static io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode.FAIL;
+import static io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode.WARN;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -137,9 +138,31 @@ public class MySqlValueConverters extends JdbcValueConverters {
      */
     @VisibleForTesting
     public MySqlValueConverters(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, BigIntUnsignedMode bigIntUnsignedMode,
-                                BinaryHandlingMode binaryMode, EventConvertingFailureHandlingMode eventConvertingFailureHandlingMode) {
-        this(decimalMode, temporalPrecisionMode, bigIntUnsignedMode, binaryMode, x -> x, resolveDefaultAdapter(), eventConvertingFailureHandlingMode);
+                                BinaryHandlingMode binaryMode) {
+        this(decimalMode, temporalPrecisionMode, bigIntUnsignedMode, binaryMode, x -> x, resolveDefaultAdapter(), WARN);
     }
+
+    /**
+     * Create a new instance that always uses UTC for the default time zone when converting values without timezone information
+     * to values that require timezones.
+     * <p>
+     *
+     * @param decimalMode how {@code DECIMAL} and {@code NUMERIC} values should be treated; may be null if
+     *            {@link io.debezium.jdbc.JdbcValueConverters.DecimalMode#PRECISE} is to be used
+     * @param temporalPrecisionMode temporal precision mode based on {@link io.debezium.jdbc.TemporalPrecisionMode}
+     * @param bigIntUnsignedMode how {@code BIGINT UNSIGNED} values should be treated; may be null if
+     *            {@link io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode#PRECISE} is to be used
+     * @param binaryMode how binary columns should be represented
+     * @param adjuster a temporal adjuster to make a database specific time modification before conversion
+     * @param connectorAdapter the connector adapter
+     */
+    @VisibleForTesting
+    public MySqlValueConverters(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, BigIntUnsignedMode bigIntUnsignedMode,
+                                BinaryHandlingMode binaryMode,
+                                TemporalAdjuster adjuster, ConnectorAdapter connectorAdapter) {
+        this(decimalMode, temporalPrecisionMode, bigIntUnsignedMode, binaryMode, adjuster, connectorAdapter, WARN);
+    }
+
 
     private static ConnectorAdapter resolveDefaultAdapter() {
         Configuration config = Configuration.empty();

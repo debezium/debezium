@@ -81,8 +81,7 @@ public class MySqlValueConvertersTest {
         String sql = "CREATE TABLE JSON_TABLE (" + "    A JSON," + "    B JSON NOT NULL" + ");";
 
         MySqlValueConverters converters = new MySqlValueConverters(JdbcValueConverters.DecimalMode.DOUBLE,
-                TemporalPrecisionMode.CONNECT, JdbcValueConverters.BigIntUnsignedMode.LONG, BinaryHandlingMode.BYTES,
-                EventConvertingFailureHandlingMode.WARN);
+                TemporalPrecisionMode.CONNECT, JdbcValueConverters.BigIntUnsignedMode.LONG, BinaryHandlingMode.BYTES);
 
         DdlParser parser = new MySqlAntlrDdlParser();
         Tables tables = new Tables();
@@ -163,7 +162,7 @@ public class MySqlValueConvertersTest {
 
         MySqlValueConverters converters = new MySqlValueConverters(JdbcValueConverters.DecimalMode.PRECISE,
                 TemporalPrecisionMode.CONNECT, JdbcValueConverters.BigIntUnsignedMode.LONG, BinaryHandlingMode.BYTES,
-                x -> x, null, EventConvertingFailureHandlingMode.WARN);
+                x -> x, null);
 
         DdlParser parser = new MySqlAntlrDdlParser();
         Tables tables = new Tables();
@@ -184,7 +183,7 @@ public class MySqlValueConvertersTest {
 
         MySqlValueConverters converters = new MySqlValueConverters(JdbcValueConverters.DecimalMode.PRECISE,
                 TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS, JdbcValueConverters.BigIntUnsignedMode.LONG, BinaryHandlingMode.BYTES,
-                x -> x, null, EventConvertingFailureHandlingMode.WARN);
+                x -> x, null);
 
         DdlParser parser = new MySqlAntlrDdlParser();
         Tables tables = new Tables();
