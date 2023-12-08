@@ -16,7 +16,6 @@ import io.debezium.connector.mysql.GtidSet;
 import io.debezium.connector.mysql.MySqlFieldReader;
 import io.debezium.connector.mysql.strategy.AbstractConnectorConnection;
 import io.debezium.connector.mysql.strategy.mariadb.MariaDbGtidSet.MariaDbGtid;
-import io.debezium.relational.TableId;
 
 /**
  * An {@link AbstractConnectorConnection} for MariaDB.
@@ -106,11 +105,6 @@ public class MariaDbConnection extends AbstractConnectorConnection {
     @Override
     public boolean isMariaDb() {
         return true;
-    }
-
-    @Override
-    public String getQualifiedTableName(TableId tableId) {
-        return tableId.catalog() + "." + tableId.table();
     }
 
     @Override

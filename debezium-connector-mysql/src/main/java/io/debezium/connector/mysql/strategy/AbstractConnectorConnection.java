@@ -70,6 +70,11 @@ public abstract class AbstractConnectorConnection extends JdbcConnection {
         return tableId.toQuotedString('`');
     }
 
+    @Override
+    public String getQualifiedTableName(TableId tableId) {
+        return tableId.catalog() + "." + tableId.table();
+    }
+
     public String connectionString() {
         return connectionString(AbstractConnectionConfiguration.URL_PATTERN);
     }
