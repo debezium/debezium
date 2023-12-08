@@ -25,10 +25,6 @@ import io.debezium.common.annotation.Incubating;
  *
  * @author Chris Cranford
  *
- * @see ConnectorConfigurationAware
- * @see ConnectionAware
- * @see RelationalDatabaseSchemaAware
- * @see ValueConverterAware
  */
 @Incubating
 public interface PostProcessor extends AutoCloseable {

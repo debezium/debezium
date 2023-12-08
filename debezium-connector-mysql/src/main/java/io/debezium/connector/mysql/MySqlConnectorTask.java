@@ -15,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.bean.StandardBeanNames;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
@@ -124,13 +125,15 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
             throw new DebeziumException(e);
         }
 
-        connectorConfig.postProcessorRegistry()
-                .injectionBuilder()
-                .withValueConverter(valueConverters)
-                .withConnection(connectionFactory.newConnection())
-                .withRelationalSchema(schema)
-                .withConnectorConfig(connectorConfig)
-                .apply();
+        // Manual Bean Registration
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.CONFIGURATION, config);
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.CONNECTOR_CONFIG, connectorConfig);
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.DATABASE_SCHEMA, schema);
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.JDBC_CONNECTION, connectionFactory.newConnection());
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.VALUE_CONVERTER, valueConverters);
+
+        // Service providers
+        registerServiceProviders(connectorConfig.getServiceRegistry());
 
         // If the binlog position is not available it is necessary to reexecute snapshot
         if (validateSnapshotFeasibility(connectorConfig, previousOffset)) {

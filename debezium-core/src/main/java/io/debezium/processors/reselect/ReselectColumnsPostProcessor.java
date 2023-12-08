@@ -18,18 +18,15 @@ import org.apache.kafka.connect.data.Struct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.bean.StandardBeanNames;
+import io.debezium.bean.spi.BeanRegistry;
 import io.debezium.common.annotation.Incubating;
-import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.data.Envelope;
 import io.debezium.function.Predicates;
 import io.debezium.jdbc.JdbcConnection;
-import io.debezium.processors.spi.ConnectionAware;
-import io.debezium.processors.spi.ConnectorConfigurationAware;
 import io.debezium.processors.spi.PostProcessor;
-import io.debezium.processors.spi.RelationalDatabaseSchemaAware;
-import io.debezium.processors.spi.ValueConverterAware;
 import io.debezium.relational.Column;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalDatabaseSchema;
@@ -37,6 +34,8 @@ import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.ValueConverter;
 import io.debezium.relational.ValueConverterProvider;
+import io.debezium.service.spi.ServiceRegistry;
+import io.debezium.service.spi.ServiceRegistryAware;
 import io.debezium.util.Strings;
 
 /**
@@ -51,8 +50,7 @@ import io.debezium.util.Strings;
  * @author Chris Cranford
  */
 @Incubating
-public class ReselectColumnsPostProcessor
-        implements PostProcessor, ConnectorConfigurationAware, ConnectionAware<JdbcConnection>, RelationalDatabaseSchemaAware, ValueConverterAware {
+public class ReselectColumnsPostProcessor implements PostProcessor, ServiceRegistryAware {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ReselectColumnsPostProcessor.class);
 
@@ -159,27 +157,17 @@ public class ReselectColumnsPostProcessor
     }
 
     @Override
-    public void setConnectorConfig(CommonConnectorConfig connectorConfig) {
-        if (connectorConfig instanceof RelationalDatabaseConnectorConfig) {
-            final RelationalDatabaseConnectorConfig config = (RelationalDatabaseConnectorConfig) connectorConfig;
-            this.unavailableValuePlaceholder = new String(config.getUnavailableValuePlaceholder());
-            this.unavailableValuePlaceholderBytes = config.getUnavailableValuePlaceholder();
-        }
-    }
+    public void injectServiceRegistry(ServiceRegistry serviceRegistry) {
+        final BeanRegistry beanRegistry = serviceRegistry.getService(BeanRegistry.class);
 
-    @Override
-    public void setValueConverter(ValueConverterProvider valueConverter) {
-        this.valueConverterProvider = valueConverter;
-    }
+        final RelationalDatabaseConnectorConfig connectorConfig = beanRegistry.lookupByName(
+                StandardBeanNames.CONNECTOR_CONFIG, RelationalDatabaseConnectorConfig.class);
+        this.unavailableValuePlaceholder = new String(connectorConfig.getUnavailableValuePlaceholder());
+        this.unavailableValuePlaceholderBytes = connectorConfig.getUnavailableValuePlaceholder();
 
-    @Override
-    public void setDatabaseConnection(JdbcConnection connection) {
-        this.jdbcConnection = connection;
-    }
-
-    @Override
-    public void setDatabaseSchema(RelationalDatabaseSchema schema) {
-        this.schema = schema;
+        this.valueConverterProvider = beanRegistry.lookupByName(StandardBeanNames.VALUE_CONVERTER, ValueConverterProvider.class);
+        this.jdbcConnection = beanRegistry.lookupByName(StandardBeanNames.JDBC_CONNECTION, JdbcConnection.class);
+        this.schema = beanRegistry.lookupByName(StandardBeanNames.DATABASE_SCHEMA, RelationalDatabaseSchema.class);
     }
 
     private List<String> getRequiredColumnSelections(TableId tableId, Struct after) {

@@ -40,6 +40,8 @@ import io.debezium.pipeline.signal.channels.SignalChannelReader;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.spi.Partition;
+import io.debezium.processors.PostProcessorRegistryServiceProvider;
+import io.debezium.service.spi.ServiceRegistry;
 import io.debezium.util.Clock;
 import io.debezium.util.ElapsedTimeStrategy;
 import io.debezium.util.Metronome;
@@ -403,4 +405,9 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
     public List<NotificationChannel> getNotificationChannels() {
         return notificationChannels;
     }
+
+    protected void registerServiceProviders(ServiceRegistry serviceRegistry) {
+        serviceRegistry.registerServiceProvider(new PostProcessorRegistryServiceProvider());
+    }
+
 }
