@@ -128,7 +128,7 @@ public class ReselectColumnsPostProcessor implements PostProcessor, ServiceRegis
             keyValues.add(key.get(field));
         }
 
-        Map<String, Object> selections = null;
+        Map<String, Object> selections;
         try {
             final String reselectQuery = jdbcConnection.buildReselectColumnQuery(tableId, requiredColumnSelections, keyColumns, source);
             selections = jdbcConnection.reselectColumns(reselectQuery, tableId, requiredColumnSelections, keyValues);
@@ -179,9 +179,9 @@ public class ReselectColumnsPostProcessor implements PostProcessor, ServiceRegis
                         field.name(), tableId);
                 columnSelections.add(field.name());
             }
-            else {
+            else if (value == null) {
                 final String fullyQualifiedName = jdbcConnection.getQualifiedTableName(tableId) + ":" + field.name();
-                if (value == null && selector.test(fullyQualifiedName)) {
+                if (selector.test(fullyQualifiedName)) {
                     LOGGER.debug("Adding empty column {} for table {} to re-select list.", field.name(), tableId);
                     columnSelections.add(field.name());
                 }
