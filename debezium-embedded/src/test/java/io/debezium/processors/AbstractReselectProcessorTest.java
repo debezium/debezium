@@ -71,6 +71,40 @@ public abstract class AbstractReselectProcessorTest<T extends SourceConnector> e
     @Test
     @FixFor("DBZ-4321")
     @SuppressWarnings("resource")
+    public void testNoColumnsReselectedWhenNullAndUnavailableColumnsAreDisabled() throws Exception {
+        LogInterceptor interceptor = new LogInterceptor(ReselectColumnsPostProcessor.class);
+        interceptor.setLoggerLevel(ReselectColumnsPostProcessor.class, Level.DEBUG);
+
+        databaseConnection().execute(getInsertWithNullValue());
+
+        Configuration config = getConfigurationBuilder()
+                .with("snapshot.mode", "initial")
+                .with("reselector.reselect.null.values", "false")
+                .with("reselector.reselect.unavailable.values", "false")
+                .with("reselector.reselect.columns.include.list", reselectColumnsList()).build();
+
+        start(getConnectorClass(), config);
+        assertConnectorIsRunning();
+
+        waitForStreamingStarted();
+
+        assertThat(interceptor.containsMessage("disables both null and unavailable columns, no-reselection will occur")).isTrue();
+
+        final SourceRecords sourceRecords = consumeRecordsByTopicReselectWhenNotNullSnapshot();
+        final List<SourceRecord> tableRecords = sourceRecords.recordsForTopic(topicName());
+
+        // Check read
+        SourceRecord record = tableRecords.get(0);
+        Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+        VerifyRecord.isValidRead(record, fieldName("id"), 1);
+        assertThat(after.get(fieldName("id"))).isEqualTo(1);
+        assertThat(after.get(fieldName("data"))).isNull();
+        assertThat(after.get(fieldName("data2"))).isEqualTo(1);
+    }
+
+    @Test
+    @FixFor("DBZ-4321")
+    @SuppressWarnings("resource")
     public void testNoColumnsReselectedWhenNotNullSnapshot() throws Exception {
         LogInterceptor interceptor = new LogInterceptor(ReselectColumnsPostProcessor.class);
         interceptor.setLoggerLevel(ReselectColumnsPostProcessor.class, Level.DEBUG);
@@ -79,7 +113,7 @@ public abstract class AbstractReselectProcessorTest<T extends SourceConnector> e
 
         Configuration config = getConfigurationBuilder()
                 .with("snapshot.mode", "initial")
-                .with("reselect.columns.list", reselectColumnsList()).build();
+                .with("reselector.reselect.columns.include.list", reselectColumnsList()).build();
 
         start(getConnectorClass(), config);
         assertConnectorIsRunning();
@@ -107,7 +141,10 @@ public abstract class AbstractReselectProcessorTest<T extends SourceConnector> e
         LogInterceptor interceptor = new LogInterceptor(ReselectColumnsPostProcessor.class);
         interceptor.setLoggerLevel(ReselectColumnsPostProcessor.class, Level.DEBUG);
 
-        Configuration config = getConfigurationBuilder().with("reselect.columns.list", reselectColumnsList()).build();
+        Configuration config = getConfigurationBuilder()
+                .with("reselector.reselect.columns.include.list", reselectColumnsList())
+                .build();
+
         start(getConnectorClass(), config);
         assertConnectorIsRunning();
 
@@ -159,7 +196,7 @@ public abstract class AbstractReselectProcessorTest<T extends SourceConnector> e
 
         Configuration config = getConfigurationBuilder()
                 .with("snapshot.mode", "initial")
-                .with("reselect.columns.list", reselectColumnsList())
+                .with("reselector.reselect.columns.include.list", reselectColumnsList())
                 .build();
 
         start(getConnectorClass(), config);
@@ -183,7 +220,10 @@ public abstract class AbstractReselectProcessorTest<T extends SourceConnector> e
     @FixFor("DBZ-4321")
     @SuppressWarnings("resource")
     public void testColumnsReselectedWhenValueIsNullStreaming() throws Exception {
-        Configuration config = getConfigurationBuilder().with("reselect.columns.list", reselectColumnsList()).build();
+        Configuration config = getConfigurationBuilder()
+                .with("reselector.reselect.columns.include.list", reselectColumnsList())
+                .build();
+
         start(getConnectorClass(), config);
         assertConnectorIsRunning();
 

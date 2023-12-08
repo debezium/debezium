@@ -66,8 +66,8 @@ public class PostgresReselectColumnsProcessorIT extends AbstractReselectProcesso
     protected Configuration.Builder getConfigurationBuilder() {
         return TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1\\.dbz4321")
-                .with(PostgresConnectorConfig.CUSTOM_POST_PROCESSORS, "reselect")
-                .with("reselect.type", ReselectColumnsPostProcessor.class.getName());
+                .with(PostgresConnectorConfig.CUSTOM_POST_PROCESSORS, "reselector")
+                .with("reselector.type", ReselectColumnsPostProcessor.class.getName());
     }
 
     @Override
@@ -120,7 +120,7 @@ public class PostgresReselectColumnsProcessorIT extends AbstractReselectProcesso
                 .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1\\.dbz4321_toast")
                 .build();
 
-        start(PostgresConnector.class, TestHelper.defaultConfig().build());
+        start(PostgresConnector.class, config);
         waitForStreamingStarted();
 
         final String text = RandomStringUtils.randomAlphabetic(10000);

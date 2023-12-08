@@ -63,8 +63,8 @@ public class MySqlReselectColumnsProcessorIT extends AbstractReselectProcessorTe
     protected Configuration.Builder getConfigurationBuilder() {
         return DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("dbz4321"))
-                .with(MySqlConnectorConfig.CUSTOM_POST_PROCESSORS, "reselect")
-                .with("reselect.type", ReselectColumnsPostProcessor.class.getName());
+                .with(MySqlConnectorConfig.CUSTOM_POST_PROCESSORS, "reselector")
+                .with("reselector.type", ReselectColumnsPostProcessor.class.getName());
     }
 
     @Override

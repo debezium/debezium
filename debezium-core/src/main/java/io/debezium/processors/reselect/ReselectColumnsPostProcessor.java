@@ -43,10 +43,6 @@ import io.debezium.util.Strings;
  * columns that are populated with the unavailable value placeholder or that the user wishes to have
  * re-queried with the latest state if the column's value happens to be {@code null}.
  *
- * This post-processor also implements a variety of injection-aware contracts to have the necessary
- * Debezium internal components provided at runtime so that various steps can be taken by this
- * post-processor.
- *
  * @author Chris Cranford
  */
 @Incubating
@@ -54,9 +50,14 @@ public class ReselectColumnsPostProcessor implements PostProcessor, ServiceRegis
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ReselectColumnsPostProcessor.class);
 
-    private static final String RESELECT_COLUMNS_LIST = "columns.list";
+    private static final String RESELECT_COLUMNS_INCLUDE_LIST = "reselect.columns.include.list";
+    private static final String RESELECT_COLUMNS_EXCLUDE_LIST = "reselect.columns.exclude.list";
+    private static final String RESELECT_UNAVAILABLE_VALUES = "reselect.unavailable.values";
+    private static final String RESELECT_NULL_VALUES = "reselect.null.values";
 
-    private Predicate<String> selector = x -> true;
+    private Predicate<String> selector;
+    private boolean reselectUnavailableValues;
+    private boolean reselectNullValues;
     private JdbcConnection jdbcConnection;
     private ValueConverterProvider valueConverterProvider;
     private String unavailableValuePlaceholder;
@@ -66,11 +67,15 @@ public class ReselectColumnsPostProcessor implements PostProcessor, ServiceRegis
     @Override
     public void configure(Map<String, ?> properties) {
         final Configuration config = Configuration.from(properties);
-        if (config.hasKey(RESELECT_COLUMNS_LIST)) {
-            final String reselectColumnNames = config.getString(RESELECT_COLUMNS_LIST);
-            if (!Strings.isNullOrEmpty(reselectColumnNames)) {
-                this.selector = Predicates.includes(reselectColumnNames, Pattern.CASE_INSENSITIVE);
-            }
+        this.reselectUnavailableValues = config.getBoolean(RESELECT_UNAVAILABLE_VALUES, true);
+        this.reselectNullValues = config.getBoolean(RESELECT_NULL_VALUES, true);
+        this.selector = new ReselectColumnsPredicateBuilder()
+                .includeColumns(config.getString(RESELECT_COLUMNS_INCLUDE_LIST))
+                .excludeColumns(config.getString(RESELECT_COLUMNS_EXCLUDE_LIST))
+                .build();
+
+        if (!(this.reselectNullValues || this.reselectUnavailableValues)) {
+            LOGGER.warn("Reselect post-processor disables both null and unavailable columns, no-reselection will occur.");
         }
     }
 
@@ -174,12 +179,15 @@ public class ReselectColumnsPostProcessor implements PostProcessor, ServiceRegis
         final List<String> columnSelections = new ArrayList<>();
         for (org.apache.kafka.connect.data.Field field : after.schema().fields()) {
             final Object value = after.get(field);
-            if (isUnavailableValueHolder(field, value)) {
-                LOGGER.debug("Adding column {} for table {} to re-select list due to unavailable value placeholder.",
-                        field.name(), tableId);
-                columnSelections.add(field.name());
+            if (reselectUnavailableValues && isUnavailableValueHolder(field, value)) {
+                final String fullyQualifiedName = jdbcConnection.getQualifiedTableName(tableId) + ":" + field.name();
+                if (selector.test(fullyQualifiedName)) {
+                    LOGGER.debug("Adding column {} for table {} to re-select list due to unavailable value placeholder.",
+                            field.name(), tableId);
+                    columnSelections.add(field.name());
+                }
             }
-            else if (value == null) {
+            else if (reselectNullValues && value == null) {
                 final String fullyQualifiedName = jdbcConnection.getQualifiedTableName(tableId) + ":" + field.name();
                 if (selector.test(fullyQualifiedName)) {
                     LOGGER.debug("Adding empty column {} for table {} to re-select list.", field.name(), tableId);
@@ -226,4 +234,32 @@ public class ReselectColumnsPostProcessor implements PostProcessor, ServiceRegis
 
         return jdbcConnection.createTableId(databaseName, schemaName, tableName);
     }
+
+    private static class ReselectColumnsPredicateBuilder {
+
+        private Predicate<String> reselectColumnInclusions;
+        private Predicate<String> reselectColumnExclusions;
+
+        public ReselectColumnsPredicateBuilder includeColumns(String columnNames) {
+            if (columnNames == null || columnNames.trim().isEmpty()) {
+                reselectColumnInclusions = null;
+            }
+            reselectColumnInclusions = Predicates.includes(columnNames, Pattern.CASE_INSENSITIVE);
+            return this;
+        }
+
+        public ReselectColumnsPredicateBuilder excludeColumns(String columnNames) {
+            if (columnNames == null || columnNames.trim().isEmpty()) {
+                reselectColumnExclusions = null;
+            }
+            reselectColumnExclusions = Predicates.excludes(columnNames, Pattern.CASE_INSENSITIVE);
+            return this;
+        }
+
+        public Predicate<String> build() {
+            Predicate<String> filter = reselectColumnInclusions != null ? reselectColumnInclusions : reselectColumnExclusions;
+            return filter != null ? filter : (x) -> true;
+        }
+    }
+
 }

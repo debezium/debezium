@@ -70,8 +70,8 @@ public class OracleReselectColumnsProcessorIT extends AbstractReselectProcessorT
     protected Configuration.Builder getConfigurationBuilder() {
         return TestHelper.defaultConfig()
                 .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ4321")
-                .with(OracleConnectorConfig.CUSTOM_POST_PROCESSORS, "reselect")
-                .with("reselect.type", ReselectColumnsPostProcessor.class.getName());
+                .with(OracleConnectorConfig.CUSTOM_POST_PROCESSORS, "reselector")
+                .with("reselector.type", ReselectColumnsPostProcessor.class.getName());
     }
 
     @Override
@@ -129,7 +129,10 @@ public class OracleReselectColumnsProcessorIT extends AbstractReselectProcessorT
             connection.execute("CREATE TABLE dbz4321 (id numeric(9,0) primary key, data clob, data2 numeric(9,0))");
             TestHelper.streamTable(connection, "dbz4321");
 
-            Configuration config = getConfigurationBuilder().with(OracleConnectorConfig.LOB_ENABLED, "true").build();
+            Configuration config = getConfigurationBuilder()
+                    .with(OracleConnectorConfig.LOB_ENABLED, "true")
+                    .with("reselector.reselect.columns.include.list", reselectColumnsList())
+                    .build();
             start(OracleConnector.class, config);
             assertConnectorIsRunning();
 
@@ -171,7 +174,10 @@ public class OracleReselectColumnsProcessorIT extends AbstractReselectProcessorT
             connection.execute("CREATE TABLE dbz4321 (id numeric(9,0) primary key, data blob, data2 numeric(9,0))");
             TestHelper.streamTable(connection, "dbz4321");
 
-            Configuration config = getConfigurationBuilder().with(OracleConnectorConfig.LOB_ENABLED, "true").build();
+            Configuration config = getConfigurationBuilder()
+                    .with(OracleConnectorConfig.LOB_ENABLED, "true")
+                    .with("reselector.reselect.columns.include.list", reselectColumnsList())
+                    .build();
             start(OracleConnector.class, config);
             assertConnectorIsRunning();
 
