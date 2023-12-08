@@ -58,8 +58,8 @@ public class SqlServerReselectColumnsProcessorIT extends AbstractReselectProcess
     protected Configuration.Builder getConfigurationBuilder() {
         return TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo\\.dbz4321")
-                .with(SqlServerConnectorConfig.CUSTOM_POST_PROCESSORS, "reselect")
-                .with("reselect.type", ReselectColumnsPostProcessor.class.getName());
+                .with(SqlServerConnectorConfig.CUSTOM_POST_PROCESSORS, "reselector")
+                .with("reselector.type", ReselectColumnsPostProcessor.class.getName());
     }
 
     @Override
