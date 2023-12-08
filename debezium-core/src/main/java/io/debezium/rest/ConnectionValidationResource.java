@@ -10,13 +10,12 @@ import java.util.Map;
 import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 
-import org.apache.kafka.connect.connector.Connector;
-
+import io.debezium.connector.common.BaseSourceConnector;
 import io.debezium.rest.model.ValidationResults;
 
-public interface ConnectionValidationResource {
+public interface ConnectionValidationResource<T extends BaseSourceConnector> {
 
-    Connector getConnector();
+    T getConnector();
 
     String VALIDATE_CONNECTION_ENDPOINT = "/validate/connection";
 

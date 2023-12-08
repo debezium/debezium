@@ -175,7 +175,7 @@ public final class MongoDbConnection implements AutoCloseable {
     }
 
     /**
-     * Executes the ping command (<a href="https://www.mongodb.com/docs/manual/reference/command/ping/">...</a>) using
+     * Executes the ping command (<a href="https://www.mongodb.com/docs/manual/reference/command/ping/">Ping</a>) using
      * the first available database
      *
      * @return timestamp of the executed operation

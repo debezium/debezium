@@ -17,7 +17,6 @@ import org.apache.kafka.common.config.Config;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.connector.Task;
-import org.apache.kafka.connect.source.SourceConnector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,6 +26,7 @@ import com.mongodb.client.MongoClient;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
+import io.debezium.connector.common.BaseSourceConnector;
 import io.debezium.connector.mongodb.connection.ConnectionContext;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.connector.mongodb.connection.ReplicaSet;
@@ -76,7 +76,7 @@ import io.debezium.util.Threads;
  *
  * @author Randall Hauch
  */
-public class MongoDbConnector extends SourceConnector {
+public class MongoDbConnector extends BaseSourceConnector {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
@@ -207,7 +207,7 @@ public class MongoDbConnector extends SourceConnector {
         final Configuration config = Configuration.from(connectorConfigs);
 
         // First, validate all of the individual fields, which is easy since don't make any of the fields invisible ...
-        Map<String, ConfigValue> results = config.validate(MongoDbConnectorConfig.EXPOSED_FIELDS);
+        Map<String, ConfigValue> results = validateAllFields(config);
 
         // Get the config values for each of the connection-related fields ...
         ConfigValue connectionStringValue = results.get(MongoDbConnectorConfig.CONNECTION_STRING.name());
@@ -230,6 +230,12 @@ public class MongoDbConnector extends SourceConnector {
         return new Config(new ArrayList<>(results.values()));
     }
 
+    @Override
+    protected Map<String, ConfigValue> validateAllFields(Configuration config) {
+        return config.validate(MongoDbConnectorConfig.EXPOSED_FIELDS);
+    }
+
+    @Override
     public List<DataCollection> getMatchingCollections(Configuration config) {
         try (MongoDbConnection connection = getConnection(config)) {
             return connection.collections().stream()
@@ -241,7 +247,7 @@ public class MongoDbConnector extends SourceConnector {
         }
     }
 
-    protected MongoDbConnection getConnection(Configuration config) {
+    private MongoDbConnection getConnection(Configuration config) {
         MongoDbTaskContext context = new MongoDbTaskContext(config);
         ReplicaSet replicaSet = new ReplicaSet(context.getConnectionContext().connectionString());
         return context.getConnectionContext().connect(replicaSet, context.filters(), (s, throwable) -> {

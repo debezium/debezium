@@ -5,23 +5,17 @@
  */
 package io.debezium.connector.sqlserver.rest;
 
-import java.util.List;
-
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 
-import org.apache.kafka.connect.connector.Connector;
-
-import io.debezium.config.Configuration;
 import io.debezium.connector.sqlserver.Module;
 import io.debezium.connector.sqlserver.SqlServerConnector;
 import io.debezium.rest.ConnectionValidationResource;
 import io.debezium.rest.FilterValidationResource;
 import io.debezium.rest.SchemaResource;
-import io.debezium.rest.model.DataCollection;
 
 /**
  * A JAX-RS Resource class defining endpoints of the Debezium SQL Server Connect REST Extension
@@ -30,7 +24,8 @@ import io.debezium.rest.model.DataCollection;
 @Path(DebeziumSqlServerConnectorResource.BASE_PATH)
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-public class DebeziumSqlServerConnectorResource implements SchemaResource, ConnectionValidationResource, FilterValidationResource {
+public class DebeziumSqlServerConnectorResource
+        implements SchemaResource, ConnectionValidationResource<SqlServerConnector>, FilterValidationResource<SqlServerConnector> {
 
     public static final String BASE_PATH = "/debezium/sqlserver";
     public static final String VERSION_ENDPOINT = "/version";
@@ -42,13 +37,8 @@ public class DebeziumSqlServerConnectorResource implements SchemaResource, Conne
     }
 
     @Override
-    public Connector getConnector() {
+    public SqlServerConnector getConnector() {
         return new SqlServerConnector();
-    }
-
-    @Override
-    public List<DataCollection> getMatchingCollections(Configuration configuration) {
-        return ((SqlServerConnector) getConnector()).getMatchingCollections(configuration);
     }
 
     @Override
