@@ -9,6 +9,7 @@ import java.io.Closeable;
 
 import io.debezium.common.annotation.Incubating;
 import io.debezium.service.Service;
+import io.debezium.service.UnknownServiceException;
 
 /**
  * Registry of Debezium Services.
@@ -21,10 +22,28 @@ public interface ServiceRegistry extends Closeable {
      * Get a service by class type.
      *
      * @param serviceClass the service class
+     * @return the requested service
+     * @param <T> the service class type
+     * @throws UnknownServiceException if the requested service is not found
+     */
+    <T extends Service> T getService(Class<T> serviceClass);
+
+    /**
+     * Safely get a service if it exists, or null if it does not.
+     *
+     * @param serviceClass the service class
      * @return the requested service or {@code null} if the service was not found
      * @param <T> the service class type
      */
-    <T extends Service> T getService(Class<T> serviceClass);
+    default <T extends Service> T getServiceNoThrow(Class<T> serviceClass) {
+        try {
+            return getService(serviceClass);
+        }
+        catch (UnknownServiceException e) {
+            // ignored
+        }
+        return null;
+    }
 
     /**
      * Register a service provider with the service registry. A provider allows the construction
