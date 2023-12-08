@@ -20,6 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.bean.StandardBeanNames;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
@@ -112,13 +113,15 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
         final Clock clock = Clock.system();
         final PostgresOffsetContext previousOffset = previousOffsets.getTheOnlyOffset();
 
-        connectorConfig.postProcessorRegistry()
-                .injectionBuilder()
-                .withValueConverter(valueConverter)
-                .withConnection(connectionFactory.newConnection())
-                .withRelationalSchema(schema)
-                .withConnectorConfig(connectorConfig)
-                .apply();
+        // Manual Bean Registration
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.CONFIGURATION, config);
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.CONNECTOR_CONFIG, connectorConfig);
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.DATABASE_SCHEMA, schema);
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.JDBC_CONNECTION, connectionFactory.newConnection());
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.VALUE_CONVERTER, valueConverter);
+
+        // Service providers
+        registerServiceProviders(connectorConfig.getServiceRegistry());
 
         LoggingContext.PreviousContext previousContext = taskContext.configureLoggingContext(CONTEXT_NAME);
         try {

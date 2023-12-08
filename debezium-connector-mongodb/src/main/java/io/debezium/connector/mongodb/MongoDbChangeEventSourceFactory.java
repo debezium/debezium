@@ -117,10 +117,6 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
         return Optional.of(incrementalSnapshotChangeEventSource);
     }
 
-    public MongoDbConnection.ChangeEventSourceConnectionFactory getMongoDbConnectionFactory() {
-        return connections;
-    }
-
     private MongoDbConnection.ChangeEventSourceConnectionFactory createMongoDbConnectionFactory(ConnectionContext connectionContext) {
         return (ReplicaSet replicaSet, MongoDbPartition partition) -> connectionContext.connect(
                 replicaSet, taskContext.filters(), connectionErrorHandler(partition));

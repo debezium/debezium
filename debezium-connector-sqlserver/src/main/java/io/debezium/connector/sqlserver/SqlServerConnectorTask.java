@@ -14,6 +14,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.bean.StandardBeanNames;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
@@ -92,13 +93,15 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
 
         schema.recover(offsets);
 
-        connectorConfig.postProcessorRegistry()
-                .injectionBuilder()
-                .withValueConverter(valueConverters)
-                .withConnection(metadataConnection)
-                .withRelationalSchema(schema)
-                .withConnectorConfig(connectorConfig)
-                .apply();
+        // Manual Bean Registration
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.CONFIGURATION, config);
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.CONNECTOR_CONFIG, connectorConfig);
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.DATABASE_SCHEMA, schema);
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.JDBC_CONNECTION, metadataConnection);
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.VALUE_CONVERTER, valueConverters);
+
+        // Service providers
+        registerServiceProviders(connectorConfig.getServiceRegistry());
 
         taskContext = new SqlServerTaskContext(connectorConfig, schema);
 

@@ -19,6 +19,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.annotation.ThreadSafe;
+import io.debezium.bean.StandardBeanNames;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
@@ -107,6 +108,13 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
                     DocumentReader.defaultReader(),
                     Offsets.of(Collections.singletonMap(new MongoDbPartition(), previousOffset)));
 
+            // Manually Register Beans
+            connectorConfig.getBeanRegistry().add(StandardBeanNames.CONNECTOR_CONFIG, connectorConfig);
+            connectorConfig.getBeanRegistry().add(StandardBeanNames.DATABASE_SCHEMA, schema);
+
+            // Service providers
+            registerServiceProviders(connectorConfig.getServiceRegistry());
+
             final EventDispatcher<MongoDbPartition, CollectionId> dispatcher = new EventDispatcher<>(
                     connectorConfig,
                     taskContext.topicNamingStrategy(),
@@ -123,29 +131,21 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
 
             MongoDbChangeEventSourceMetricsFactory metricsFactory = new MongoDbChangeEventSourceMetricsFactory();
 
-            MongoDbChangeEventSourceFactory mongoDbChangeEventSourceFactory = new MongoDbChangeEventSourceFactory(
-                    connectorConfig,
-                    errorHandler,
-                    dispatcher,
-                    clock,
-                    replicaSets,
-                    taskContext,
-                    schema,
-                    metricsFactory.getStreamingMetrics(taskContext, queue, metadataProvider));
-
-            connectorConfig.postProcessorRegistry()
-                    .injectionBuilder()
-                    .withConnection(mongoDbChangeEventSourceFactory.getMongoDbConnectionFactory())
-                    .withConnectorConfig(connectorConfig)
-                    .apply();
-
             ChangeEventSourceCoordinator<MongoDbPartition, MongoDbOffsetContext> coordinator = new ChangeEventSourceCoordinator<>(
                     // TODO pass offsets from all the partitions
                     Offsets.of(Collections.singletonMap(new MongoDbPartition(), previousOffset)),
                     errorHandler,
                     MongoDbConnector.class,
                     connectorConfig,
-                    mongoDbChangeEventSourceFactory,
+                    new MongoDbChangeEventSourceFactory(
+                            connectorConfig,
+                            errorHandler,
+                            dispatcher,
+                            clock,
+                            replicaSets,
+                            taskContext,
+                            schema,
+                            metricsFactory.getStreamingMetrics(taskContext, queue, metadataProvider)),
                     metricsFactory,
                     dispatcher,
                     schema,

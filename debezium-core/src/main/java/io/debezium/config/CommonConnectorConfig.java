@@ -33,6 +33,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.bean.DefaultBeanRegistry;
+import io.debezium.bean.spi.BeanRegistry;
 import io.debezium.config.Field.ValidationOutput;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
@@ -44,11 +46,11 @@ import io.debezium.heartbeat.HeartbeatErrorHandler;
 import io.debezium.heartbeat.HeartbeatImpl;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.notification.channels.SinkNotificationChannel;
-import io.debezium.processors.PostProcessorRegistry;
-import io.debezium.processors.spi.PostProcessor;
 import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.schema.SchemaTopicNamingStrategy;
+import io.debezium.service.DefaultServiceRegistry;
+import io.debezium.service.spi.ServiceRegistry;
 import io.debezium.spi.converter.ConvertedField;
 import io.debezium.spi.converter.CustomConverter;
 import io.debezium.spi.schema.DataCollectionId;
@@ -442,7 +444,6 @@ public abstract class CommonConnectorConfig {
     public static final String DATABASE_CONFIG_PREFIX = "database.";
     public static final String DRIVER_CONFIG_PREFIX = "driver.";
     private static final String CONVERTER_TYPE_SUFFIX = ".type";
-    private static final String POST_PROCESSOR_TYPE_SUFFIX = ".type";
     public static final long DEFAULT_RETRIABLE_RESTART_WAIT = 10000L;
     public static final long DEFAULT_MAX_QUEUE_SIZE_IN_BYTES = 0; // In case we don't want to pass max.queue.size.in.bytes;
     public static final String NOTIFICATION_CONFIGURATION_FIELD_PREFIX_STRING = "notification.";
@@ -844,7 +845,6 @@ public abstract class CommonConnectorConfig {
     private final boolean shouldProvideTransactionMetadata;
     private final EventProcessingFailureHandlingMode eventProcessingFailureHandlingMode;
     private final CustomConverterRegistry customConverterRegistry;
-    private final PostProcessorRegistry postProcessorRegistry;
     private final BinaryHandlingMode binaryHandlingMode;
     private final SchemaNameAdjustmentMode schemaNameAdjustmentMode;
     private final FieldNameAdjustmentMode fieldNameAdjustmentMode;
@@ -862,7 +862,13 @@ public abstract class CommonConnectorConfig {
     private final Map<String, String> customMetricTags;
     private WatermarkStrategy incrementalSnapshotWatermarkingStrategy;
 
+    // Intentionally protected so that subclasses can access internal contracts
+    protected final DefaultBeanRegistry beanRegistry;
+    protected final DefaultServiceRegistry serviceRegistry;
+
     protected CommonConnectorConfig(Configuration config, int defaultSnapshotFetchSize) {
+        this.beanRegistry = new DefaultBeanRegistry();
+        this.serviceRegistry = new DefaultServiceRegistry(config, beanRegistry);
         this.config = config;
         this.emitTombstoneOnDelete = config.getBoolean(CommonConnectorConfig.TOMBSTONES_ON_DELETE);
         this.maxQueueSize = config.getInteger(MAX_QUEUE_SIZE);
@@ -885,7 +891,6 @@ public abstract class CommonConnectorConfig {
         this.shouldProvideTransactionMetadata = config.getBoolean(PROVIDE_TRANSACTION_METADATA);
         this.eventProcessingFailureHandlingMode = EventProcessingFailureHandlingMode.parse(config.getString(EVENT_PROCESSING_FAILURE_HANDLING_MODE));
         this.customConverterRegistry = new CustomConverterRegistry(getCustomConverters());
-        this.postProcessorRegistry = new PostProcessorRegistry(getPostProcessors());
         this.binaryHandlingMode = BinaryHandlingMode.parse(config.getString(BINARY_HANDLING_MODE));
         this.signalingDataCollection = config.getString(SIGNAL_DATA_COLLECTION);
         this.signalPollInterval = Duration.ofMillis(config.getLong(SIGNAL_POLL_INTERVAL_MS));
@@ -935,6 +940,14 @@ public abstract class CommonConnectorConfig {
     @Deprecated
     public Configuration getConfig() {
         return config;
+    }
+
+    public BeanRegistry getBeanRegistry() {
+        return beanRegistry;
+    }
+
+    public ServiceRegistry getServiceRegistry() {
+        return serviceRegistry;
     }
 
     public boolean isEmitTombstoneOnDelete() {
@@ -1021,10 +1034,6 @@ public abstract class CommonConnectorConfig {
         return customConverterRegistry;
     }
 
-    public PostProcessorRegistry postProcessorRegistry() {
-        return postProcessorRegistry;
-    }
-
     /**
      * Whether a particular connector supports an optimized way for implementing operation skipping, or not.
      */
@@ -1068,20 +1077,6 @@ public abstract class CommonConnectorConfig {
                     CustomConverter<SchemaBuilder, ConvertedField> converter = config.getInstance(name + CONVERTER_TYPE_SUFFIX, CustomConverter.class);
                     converter.configure(config.subset(name, true).asProperties());
                     return converter;
-                })
-                .collect(Collectors.toList());
-    }
-
-    @SuppressWarnings("rawtypes")
-    private List<PostProcessor> getPostProcessors() {
-        final String postProcessorNameList = config.getString(CUSTOM_POST_PROCESSORS);
-        final List<String> postProcessorNames = Strings.listOf(postProcessorNameList, x -> x.split(","), String::trim);
-
-        return postProcessorNames.stream()
-                .map(name -> {
-                    PostProcessor processor = config.getInstance(name + POST_PROCESSOR_TYPE_SUFFIX, PostProcessor.class);
-                    processor.configure(config.subset(name, true).asMap());
-                    return processor;
                 })
                 .collect(Collectors.toList());
     }
@@ -1325,5 +1320,4 @@ public abstract class CommonConnectorConfig {
         sourceInfoStructMaker.init(connector, version, connectorConfig);
         return sourceInfoStructMaker;
     }
-
 }

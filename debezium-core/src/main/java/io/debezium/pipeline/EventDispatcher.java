@@ -40,6 +40,7 @@ import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.pipeline.spi.SchemaChangeEventEmitter;
 import io.debezium.pipeline.txmetadata.TransactionMonitor;
+import io.debezium.processors.PostProcessorRegistry;
 import io.debezium.processors.spi.PostProcessor;
 import io.debezium.relational.history.ConnectTableChangeSerializer;
 import io.debezium.relational.history.HistoryRecord.Fields;
@@ -93,6 +94,8 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
     private final StreamingChangeRecordReceiver streamingReceiver;
 
     private final SignalProcessor<P, ?> signalProcessor;
+
+    private final PostProcessorRegistry postProcessorRegistry;
 
     public EventDispatcher(CommonConnectorConfig connectorConfig, TopicNamingStrategy<T> topicNamingStrategy,
                            DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
@@ -159,6 +162,8 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
         schemaChangeKeySchema = SchemaFactory.get().schemaHistoryConnectorKeySchema(schemaNameAdjuster, connectorConfig);
 
         schemaChangeValueSchema = SchemaFactory.get().schemaHistoryConnectorValueSchema(schemaNameAdjuster, connectorConfig, tableChangesSerializer);
+
+        postProcessorRegistry = connectorConfig.getServiceRegistry().getService(PostProcessorRegistry.class);
     }
 
     public EventDispatcher(CommonConnectorConfig connectorConfig, TopicNamingStrategy<T> topicNamingStrategy,
@@ -191,6 +196,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
         this.heartbeat = heartbeat;
         schemaChangeKeySchema = SchemaFactory.get().schemaHistoryConnectorKeySchema(schemaNameAdjuster, connectorConfig);
         schemaChangeValueSchema = SchemaFactory.get().schemaHistoryConnectorValueSchema(schemaNameAdjuster, connectorConfig, tableChangesSerializer);
+        postProcessorRegistry = connectorConfig.getServiceRegistry().getService(PostProcessorRegistry.class);
     }
 
     public void dispatchSnapshotEvent(P partition, T dataCollectionId, ChangeRecordEmitter<P> changeRecordEmitter,
@@ -696,7 +702,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
 
     @SuppressWarnings("resource")
     protected void doPostProcessing(Object key, Struct value) {
-        for (PostProcessor processor : connectorConfig.postProcessorRegistry().getProcessors()) {
+        for (PostProcessor processor : postProcessorRegistry.getProcessors()) {
             processor.apply(key, value);
         }
     }
