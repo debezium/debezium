@@ -11,17 +11,14 @@ import java.util.Map;
 import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 
-import org.apache.kafka.connect.connector.Connector;
-
 import io.debezium.config.Configuration;
+import io.debezium.connector.common.BaseSourceConnector;
 import io.debezium.rest.model.DataCollection;
 import io.debezium.rest.model.FilterValidationResults;
 
-public interface FilterValidationResource {
+public interface FilterValidationResource<T extends BaseSourceConnector> {
 
-    Connector getConnector();
-
-    List<DataCollection> getMatchingCollections(Configuration configuration);
+    T getConnector();
 
     String VALIDATE_FILTERS_ENDPOINT = "/validate/filters";
 
@@ -37,4 +34,7 @@ public interface FilterValidationResource {
         return validationResults;
     }
 
+    default List<DataCollection> getMatchingCollections(Configuration configuration) {
+        return getConnector().getMatchingCollections(configuration);
+    }
 }
