@@ -25,6 +25,7 @@ import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
+import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -112,6 +113,7 @@ public class MySqlValueConvertersTest {
     @Test
     @FixFor({ "DBZ-2563", "DBZ-7143" })
     public void testSkipInvalidJsonValues() {
+        LogInterceptor logInterceptor = new LogInterceptor(MySqlValueConverters.class);
         String sql = "CREATE TABLE JSON_TABLE (" + "    A JSON," + "    B JSON NOT NULL" + ");";
 
         MySqlValueConverters converters = new MySqlValueConverters(JdbcValueConverters.DecimalMode.DOUBLE,
@@ -127,11 +129,17 @@ public class MySqlValueConvertersTest {
         Column colA = table.columnWithName("A");
         Field fieldA = new Field(colA.name(), -1, converters.schemaBuilder(colA).optional().build());
         assertThat(converters.converter(colA, fieldA).convert(INVALID_JSON)).isEqualTo(null);
+        assertThat(logInterceptor.containsWarnMessage("Failed to parse and read a JSON value on 'A JSON DEFAULT VALUE NULL'"))
+                .describedAs("Expected null value of nullable column when parsing invalid json with WARN mode")
+                .isTrue();
 
         // ColB - NOT NUll column
         Column colB = table.columnWithName("B");
         Field fieldB = new Field(colB.name(), -1, converters.schemaBuilder(colB).build());
         assertThat(converters.converter(colB, fieldB).convert(INVALID_JSON)).isEqualTo("{}");
+        assertThat(logInterceptor.containsWarnMessage("Failed to parse and read a JSON value on 'B JSON NOT NULL'"))
+                .describedAs("Expected '{}' value of non-null column when parsing invalid json with WARN mode")
+                .isTrue();
     }
 
     @Test(expected = DebeziumException.class)

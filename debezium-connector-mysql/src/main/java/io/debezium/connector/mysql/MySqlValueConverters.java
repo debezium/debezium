@@ -56,6 +56,7 @@ import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.ValueConverter;
 import io.debezium.time.Year;
+import io.debezium.util.Loggings;
 import io.debezium.util.Strings;
 
 /**
@@ -74,11 +75,6 @@ import io.debezium.util.Strings;
  */
 @Immutable
 public class MySqlValueConverters extends JdbcValueConverters {
-
-    @FunctionalInterface
-    public interface ParsingErrorHandler {
-        void error(String message, Exception exception);
-    }
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MySqlValueConverters.class);
 
@@ -423,12 +419,13 @@ public class MySqlValueConverters extends JdbcValueConverters {
                     }
                     catch (IOException e) {
                         if (eventConvertingFailureHandlingMode == FAIL) {
-                            throw new DebeziumException("Failed to parse and read a JSON value on '" + column + "' value " + Arrays.toString((byte[]) data), e);
+                            Loggings.logErrorAndTraceRecord(logger, Arrays.toString((byte[]) data),
+                                    "Failed to parse and read a JSON value on '{}'", column, e);
+                            throw new DebeziumException("Failed to parse and read a JSON value on '" + column + "'", e);
                         }
-                        else {
-                            logger.warn("Failed to parse and read a JSON value on '{}' value '{}'", column, Arrays.toString((byte[]) data));
-                            r.deliver(column.isOptional() ? null : "{}");
-                        }
+                        Loggings.logWarningAndTraceRecord(logger, Arrays.toString((byte[]) data),
+                                "Failed to parse and read a JSON value on '{}'", column, e);
+                        r.deliver(column.isOptional() ? null : "{}");
                     }
                 }
             }
