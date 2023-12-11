@@ -90,6 +90,7 @@ unit_statement
     | drop_type
     | data_manipulation_language_statements
     | truncate_table
+    | truncate_cluster
     | drop_table
     | drop_tablespace
     | drop_tablespace_set
@@ -2544,6 +2545,10 @@ upgrade_table_clause
     
 truncate_table
     : TRUNCATE TABLE tableview_name ((PRESERVE | PURGE) MATERIALIZED VIEW LOG)? ((DROP ALL?|REUSE) STORAGE)? CASCADE?
+    ;
+
+truncate_cluster
+    : TRUNCATE CLUSTER cluster_name ((DROP | REUSE) STORAGE)?
     ;
 
 drop_table
