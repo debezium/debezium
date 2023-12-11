@@ -1,0 +1,29 @@
+= Post Processors
+
+[NOTE]
+====
+This feature is currently in incubating state.
+In future versions, we might change the exact semantics, configuration options, and so forth, depending on the feedback we receive.
+Please let us know if you encounter any problems.
+====
+
+While connectors can be configured with transformations to perform lightweight per message mutations, a transformation requires that the immutable `ConnectRecord`, or more aptly the `SourceRecord` has to be re-created.
+A {prodname} Post-Processor is called earlier in the event chain prior to the hand-off to the messaging runtime, and more importantly, operates on the mutable event payload's `Struct` type.
+This allows for a more efficient way to make specific modifications to an event's payload prior to the construction of the `SourceRecord`.
+
+However, there are many other benefits to using a `PostProcessor` over a transformation.
+For example, {prodname} connectors expose both a `BeanRegistry` for looking up connector constructed objects by name and a `ServiceRegistry` for doing service locator acquisition of common {prodname} services using dependency injection.
+In simple terms, this means that a `PostProcessor` can get references to common {prodname} internal objects such as a `JdbcConnection`, `CommonConnectoConfig`, `ValueConverterProvider`, and others.
+This allows creating complex post-processing tasks easy within the {prodname} runtime.
+
+The following post processor implementations are provided by {prodname}:
+
+[cols="30%a,70%a",options="header"]
+|===
+|Post Processor
+|Description
+
+|xref:post-processors/reselect-columns.adoc[Reselect columns]
+|Re-selects specific columns that may not have been provided by the change event, such as TOASTed columns or Oracle LOB columns that were not modified by the current event's change.
+
+|===
