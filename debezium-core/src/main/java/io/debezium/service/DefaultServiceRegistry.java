@@ -5,6 +5,8 @@
  */
 package io.debezium.service;
 
+import java.io.Closeable;
+import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
@@ -26,7 +28,6 @@ import io.debezium.service.spi.ServiceProvider;
 import io.debezium.service.spi.ServiceRegistry;
 import io.debezium.service.spi.ServiceRegistryAware;
 import io.debezium.service.spi.Startable;
-import io.debezium.service.spi.Stoppable;
 
 /**
  * Default implementation of the {@link ServiceRegistry}.
@@ -91,7 +92,12 @@ public class DefaultServiceRegistry implements ServiceRegistry {
             ListIterator<ServiceRegistration<?>> iterator = registrations.listIterator(registrations.size());
             while (iterator.hasPrevious()) {
                 ServiceRegistration<?> registration = iterator.previous();
-                stopService(registration);
+                try {
+                    stopService(registration);
+                }
+                catch (IOException e) {
+                    LOGGER.error("Failed to stop service " + registration.getServiceClass().getName(), e);
+                }
             }
             registrations.clear();
         }
@@ -130,9 +136,9 @@ public class DefaultServiceRegistry implements ServiceRegistry {
         }
     }
 
-    private <T extends Service> void stopService(ServiceRegistration<T> registration) {
-        if (registration.getService() instanceof Stoppable) {
-            ((Stoppable) registration.getService()).stop();
+    private <T extends Service> void stopService(ServiceRegistration<T> registration) throws IOException {
+        if (registration.getService() instanceof Closeable) {
+            ((Closeable) registration.getService()).close();
         }
     }
 

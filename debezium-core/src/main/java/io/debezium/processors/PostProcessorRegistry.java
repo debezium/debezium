@@ -5,6 +5,7 @@
  */
 package io.debezium.processors;
 
+import java.io.Closeable;
 import java.util.Collections;
 import java.util.List;
 
@@ -16,7 +17,6 @@ import io.debezium.processors.spi.PostProcessor;
 import io.debezium.service.Service;
 import io.debezium.service.spi.InjectService;
 import io.debezium.service.spi.Startable;
-import io.debezium.service.spi.Stoppable;
 
 /**
  * Registry of all post processors that are provided by the connector configuration.
@@ -24,7 +24,7 @@ import io.debezium.service.spi.Stoppable;
  * @author Chris Cranford
  */
 @ThreadSafe
-public class PostProcessorRegistry implements Service, Startable, Stoppable {
+public class PostProcessorRegistry implements Service, Startable, Closeable {
 
     @Immutable
     private final List<PostProcessor> processors;
@@ -54,7 +54,7 @@ public class PostProcessorRegistry implements Service, Startable, Stoppable {
     }
 
     @Override
-    public void stop() {
+    public void close() {
         for (PostProcessor postProcessor : processors) {
             postProcessor.close();
         }
