@@ -1,0 +1,73 @@
+= Re-select columns
+
+:toc:
+:toc-placement: macro
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+
+toc::[]
+
+[NOTE]
+====
+This post-processor is supported only for the SQL database connectors.
+====
+
+== Overview
+
+There are use cases where a {prodname} connector may not include a specific column's value in the change event, at not fault of its own but rather that's simply how the source database works.
+For example, TOAST columns in PostgreSQL, LOB columns in Oracle or Extended String columns with Oracle Exadata all come to mind.
+
+The `ReselectColumnsPostProcessor` provides a simple way to re-select one or more columns using an out-of-bands query to fetch the current column's state from the database table.
+The post processor can be configured to re-select columns that are `null`, columns that are emitted that use the configured `unavailable.value.placeholder` sentinel value.
+
+== Configuration example
+
+Configure a `PostProcessor` much in the same way that you would configure a `CustomConverter` or `Transformation`.
+To enable the connector to use the `ReselectColumnsPostProcessor`, add the following options to the connector configuration:
+[source,json]
+----
+  "post-processors": "reselector", // <1>
+  "reselector.type": "io.debezium.processors.reselect.ReselectColumnsPostProcessor", // <2>
+  "reselector.reselect.columns.include.list": "<schema_name>.<table_name>:<colA>,<schema_name>.<table_name>:<colB>", // <3>
+  "reselector.reselect.unavailable.values": "true", // <4>
+  "reselector.reselect.null.values": "true" // <5>
+----
+<1> Comma-separated list of post-processor prefixes
+<2> The fully-qualified class type name for the post-processor
+<3> Comma-separated list of columns using the format `<schema>.<table>:<column>`
+<4> Enables or disables the re-selection of columns that contain the `unavailable.value.placeholder` sentinel value
+<5> Enables or disables the re-selection of columns that are `null`
+
+== Configuration options
+
+The following table lists the configuration options that you can set for the Reselect Columns post-processor.
+
+.Reselect columns post processor configuration options
+[cols="30%a,25%a,45%a"]
+|===
+|Property
+|Default
+|Description
+
+|[[reselect-columns-post-processor-property-reselect-columns-include-list]]<<reselect-columns-post-processor-property-reselect-columns-include-list, `+reselect.columns.include.list+`>>
+|No default
+|Comma-separated list of columns that should be re-selected from the source database, using the format `_<schema>_._<table>_:_<column>_` for each re-selectable column. +
+ +
+This is mutually exclusive with `reselect.columns.exclude.list`.
+
+|[[reselect-columns-post-processor-property-reselect-columns-exclude-list]]<<reselect-columns-post-processor-property-reselect-columns-exclude-list, `+reselect.columns.exclude.list+`>>
+|No default
+|Comma-separated list of columns that should not be re-selected from the source database, using the format `_<schema>_._<table>_:_<column>_`. +
+ +
+This is mutually exclusive with `reselect.columns.include.list`.
+
+|[[reselect-columns-post-processor-property-reselect-unavailable-values]]<<reselect-columns-post-processor-property-reselect-unavailable-values, `+reselect.unavailable.values+`>>
+|`true`
+|Specifies whether any column that matches the inclusion filter that has the value specified by the `unavailable.value.placeholder` connector configuration property will be re-selected.
+
+|[[reselect-columns-post-processor-property-reselect-null-values]]<<reselect-columns-post-processor-property-reselect-null-values, `+reselect.null.values+`>>
+|`true`
+|Specifies whether any column that matches the inclusion filter that has a `null` value will be re-selected.
+
+|===
