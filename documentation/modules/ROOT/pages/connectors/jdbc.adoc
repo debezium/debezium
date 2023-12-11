@@ -663,7 +663,7 @@ Do not use this property in combination with the xref:jdbc-property-connection-t
 |`5`
 |Specifies the minimum number of connections in the pool.
 
-|[[jdbc-property-connection-pool-max-size]]<<jdbc-property-connection-pool-max-size, `+connection.pool.min_size+`>>
+|[[jdbc-property-connection-pool-max-size]]<<jdbc-property-connection-pool-max-size, `+connection.pool.max_size+`>>
 |`32`
 |Specifies the maximum number of concurrent connections that the pool maintains.
 
