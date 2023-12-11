@@ -35,7 +35,7 @@ public interface ServiceRegistry extends Closeable {
      * @return the requested service or {@code null} if the service was not found
      * @param <T> the service class type
      */
-    default <T extends Service> T getServiceNoThrow(Class<T> serviceClass) {
+    default <T extends Service> T tryGetService(Class<T> serviceClass) {
         try {
             return getService(serviceClass);
         }

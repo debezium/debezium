@@ -163,7 +163,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
 
         schemaChangeValueSchema = SchemaFactory.get().schemaHistoryConnectorValueSchema(schemaNameAdjuster, connectorConfig, tableChangesSerializer);
 
-        postProcessorRegistry = connectorConfig.getServiceRegistry().getServiceNoThrow(PostProcessorRegistry.class);
+        postProcessorRegistry = connectorConfig.getServiceRegistry().tryGetService(PostProcessorRegistry.class);
     }
 
     public EventDispatcher(CommonConnectorConfig connectorConfig, TopicNamingStrategy<T> topicNamingStrategy,
@@ -196,7 +196,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
         this.heartbeat = heartbeat;
         schemaChangeKeySchema = SchemaFactory.get().schemaHistoryConnectorKeySchema(schemaNameAdjuster, connectorConfig);
         schemaChangeValueSchema = SchemaFactory.get().schemaHistoryConnectorValueSchema(schemaNameAdjuster, connectorConfig, tableChangesSerializer);
-        postProcessorRegistry = connectorConfig.getServiceRegistry().getServiceNoThrow(PostProcessorRegistry.class);
+        postProcessorRegistry = connectorConfig.getServiceRegistry().tryGetService(PostProcessorRegistry.class);
     }
 
     public void dispatchSnapshotEvent(P partition, T dataCollectionId, ChangeRecordEmitter<P> changeRecordEmitter,
