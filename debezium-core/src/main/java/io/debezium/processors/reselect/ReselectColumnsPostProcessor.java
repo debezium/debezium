@@ -20,6 +20,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.bean.StandardBeanNames;
 import io.debezium.bean.spi.BeanRegistry;
+import io.debezium.bean.spi.BeanRegistryAware;
 import io.debezium.common.annotation.Incubating;
 import io.debezium.config.Configuration;
 import io.debezium.connector.AbstractSourceInfo;
@@ -34,8 +35,6 @@ import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.ValueConverter;
 import io.debezium.relational.ValueConverterProvider;
-import io.debezium.service.spi.ServiceRegistry;
-import io.debezium.service.spi.ServiceRegistryAware;
 import io.debezium.util.Strings;
 
 /**
@@ -46,7 +45,7 @@ import io.debezium.util.Strings;
  * @author Chris Cranford
  */
 @Incubating
-public class ReselectColumnsPostProcessor implements PostProcessor, ServiceRegistryAware {
+public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistryAware {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ReselectColumnsPostProcessor.class);
 
@@ -162,9 +161,7 @@ public class ReselectColumnsPostProcessor implements PostProcessor, ServiceRegis
     }
 
     @Override
-    public void injectServiceRegistry(ServiceRegistry serviceRegistry) {
-        final BeanRegistry beanRegistry = serviceRegistry.getService(BeanRegistry.class);
-
+    public void injectBeanRegistry(BeanRegistry beanRegistry) {
         final RelationalDatabaseConnectorConfig connectorConfig = beanRegistry.lookupByName(
                 StandardBeanNames.CONNECTOR_CONFIG, RelationalDatabaseConnectorConfig.class);
         this.unavailableValuePlaceholder = new String(connectorConfig.getUnavailableValuePlaceholder());
