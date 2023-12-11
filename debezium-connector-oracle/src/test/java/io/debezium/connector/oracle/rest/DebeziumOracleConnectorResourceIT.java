@@ -197,13 +197,11 @@ public class DebeziumOracleConnectorResourceIT {
                 .get(DebeziumOracleConnectorResource.BASE_PATH + DebeziumOracleConnectorResource.CONNECTOR_METRICS_ENDPOINT, connectorName)
                 .then().log().all()
                 .statusCode(200)
-                .assertThat().body("size()", is(3))
-                .body("[0].request.attribute", is("Connected"))
-                .body("[0].value", equalTo(true))
-                .body("[1].request.attribute", is("MilliSecondsSinceLastEvent"))
-                .body("[1].value", equalTo(-1))
-                .body("[2].request.attribute", is("TotalNumberOfEventsSeen"))
-                .body("[2].value", equalTo(0));
+                .body("name", equalTo(connectorName))
+                .body("connector.metrics.Connected", equalTo("true"))
+                .body("tasks[0].id", equalTo(0))
+                .body("tasks[0].database[0].metrics.MilliSecondsSinceLastEvent", equalTo("-1"))
+                .body("tasks[0].database[0].metrics.TotalNumberOfEventsSeen", equalTo("0"));
     }
 
 }

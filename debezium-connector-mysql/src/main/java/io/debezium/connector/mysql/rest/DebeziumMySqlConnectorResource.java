@@ -6,8 +6,12 @@
 package io.debezium.connector.mysql.rest;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
+import javax.management.MBeanServer;
+import javax.management.MalformedObjectNameException;
+import javax.management.ObjectName;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -15,7 +19,6 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 
 import org.apache.kafka.connect.health.ConnectClusterState;
-import org.json.simple.JSONObject;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.Module;
@@ -24,7 +27,8 @@ import io.debezium.rest.ConnectionValidationResource;
 import io.debezium.rest.FilterValidationResource;
 import io.debezium.rest.MetricsResource;
 import io.debezium.rest.SchemaResource;
-import io.debezium.rest.jolokia.JolokiaClient;
+import io.debezium.rest.metrics.MetricsAttributes;
+import io.debezium.rest.metrics.MetricsDescriptor;
 import io.debezium.rest.model.DataCollection;
 
 /**
@@ -56,15 +60,21 @@ public class DebeziumMySqlConnectorResource
     }
 
     @Override
-    public String getAttributesFilePath() {
-        return "META-INF/mysql-attributes.txt";
-    }
+    public MetricsDescriptor getMetrics(String connectorName, MBeanServer mBeanServer) throws MalformedObjectNameException {
+        Map<String, String> connectorConfig = connectClusterState.connectorConfig(connectorName);
+        String serverName = connectorConfig.get("topic.prefix");
+        String tasksMax = connectorConfig.get("tasks.max");
 
-    @Override
-    public List<JSONObject> getMetrics(String connectorName, JolokiaClient client, List<String> attributes) {
-        String serverName = connectClusterState.connectorConfig(connectorName).get("topic.prefix");
-        String task = connectClusterState.connectorConfig(connectorName).get("tasks.max");
-        return client.getConnectorMetrics("mysql", serverName, Integer.valueOf(task), attributes);
+        ObjectName objectName = getObjectName("mysql", "streaming", serverName);
+        Map<String, String> connectionAttributes = getAttributes(MetricsAttributes.getConnectionAttributes(), objectName, connectorName,
+                mBeanServer);
+        Map<String, String> connectorAttributes = getAttributes(MetricsAttributes.getConnectorAttributes(), objectName, connectorName,
+                mBeanServer);
+
+        MetricsDescriptor.Connector connector = new MetricsDescriptor.Connector(connectionAttributes);
+        List<MetricsDescriptor.Task> tasks = List.of(new MetricsDescriptor.Task(0, List.of(new MetricsDescriptor.Database("", connectorAttributes))));
+
+        return new MetricsDescriptor(connectorName, tasksMax, connector, tasks);
     }
 
     @GET
