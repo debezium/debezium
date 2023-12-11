@@ -572,13 +572,14 @@ public class OracleConnection extends JdbcConnection {
     @Override
     public String buildReselectColumnQuery(TableId tableId, List<String> columns, List<String> keyColumns, Struct source) {
         final String commitScn = source.getString(SourceInfo.COMMIT_SCN_KEY);
+        final TableId oracleTableId = new TableId(null, tableId.schema(), tableId.table());
         if (Strings.isNullOrEmpty(commitScn)) {
-            return super.buildReselectColumnQuery(tableId, columns, keyColumns, source);
+            return super.buildReselectColumnQuery(oracleTableId, columns, keyColumns, source);
         }
 
         return String.format("SELECT %s FROM (SELECT * FROM %s AS OF SCN %s) WHERE %s",
                 columns.stream().map(this::quotedColumnIdString).collect(Collectors.joining(",")),
-                quotedTableIdString(new TableId(null, tableId.schema(), tableId.table())),
+                quotedTableIdString(oracleTableId),
                 commitScn,
                 keyColumns.stream().map(key -> key + "=?").collect(Collectors.joining(" AND ")));
     }
