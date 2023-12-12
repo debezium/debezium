@@ -217,6 +217,7 @@ public class DebeziumMySqlConnectorResourceIT {
 
         RestExtensionTestInfrastructure.getDebeziumContainer().ensureConnectorState(connectorName, Connector.State.RUNNING);
         RestExtensionTestInfrastructure.waitForConnectorTaskStatus(connectorName, 0, Connector.State.RUNNING);
+        RestExtensionTestInfrastructure.waitForStreamingRunning("mysql", "dbserver1");
 
         given()
                 .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
