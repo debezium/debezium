@@ -1231,6 +1231,22 @@ At least `bootstrap.servers`, `key.serializer` and `value.serializer` properties
 
 |===
 
+===== Injection points
+
+The Kafka sink behaviour can be modified by a custom logic providing alternative implementations for specific functionalities.
+When the alternative implementations are not available then the default ones are used.
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Interface
+|CDI classifier
+|Description
+
+|[[kafka-producer-ext-stream-name-mapper]]<<kafka-producer-ext-stream-name-mapper, `io.debezium.server.StreamNameMapper`>>
+|
+|Custom implementation maps the original destination (topic) name into another Kafka topic. By default, the same name is used.
+|===
+
 ==== Pravega
 
 https://pravega.io/[Pravega] is a cloud-native storage system for event streams and data streams. This sink offers two modes: non-transactional and transactional. The non-transactional mode individually writes each event in a {prodname} batch to Pravega. The transactional mode writes the {prodname} batch to a Pravega transaction that commits when the batch is completed.
