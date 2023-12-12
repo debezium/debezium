@@ -6,6 +6,7 @@
 package io.debezium.rest;
 
 import java.lang.management.ManagementFactory;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -25,14 +26,11 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 
 import org.apache.kafka.connect.connector.Connector;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import io.debezium.rest.metrics.MetricsDescriptor;
+import io.debezium.rest.model.MetricsAttributes;
+import io.debezium.rest.model.MetricsDescriptor;
 
-public interface MetricsResource {
-    Logger LOGGER = LoggerFactory.getLogger(MetricsResource.class);
-
+public interface MetricsResource extends MetricsAttributes {
     String CONNECTOR_METRICS_ENDPOINT = "/connectors/{connector-name}/metrics";
 
     Connector getConnector();
@@ -69,6 +67,53 @@ public interface MetricsResource {
         catch (Exception e) {
             throw new RuntimeException("Failed to get attribute " + attribute + " for connector " + connectorName + e);
         }
+    }
+
+    default MetricsDescriptor queryMetrics(String connectorName, String connector, String context, MBeanServer mBeanServer, String serverName, String tasksMax,
+                                           String[] namespaces)
+            throws MalformedObjectNameException {
+        List<MetricsDescriptor.Task> tasksPayload = new ArrayList<>();
+        MetricsDescriptor.Connector connectorPayload = null;
+
+        for (int task = 0; task < Integer.parseInt(tasksMax); task++) {
+            ObjectName objectName;
+            if (connector.equals("sql_server") || connector.equals("mongodb")) {
+                objectName = getObjectNameWithTask(connector, context, serverName, String.valueOf(task));
+            }
+            else {
+                objectName = getObjectName(connector, context, serverName);
+            }
+
+            Map<String, String> connectionAttributes = getAttributes(getConnectionAttributes(), objectName, connectorName, mBeanServer);
+            connectorPayload = new MetricsDescriptor.Connector(connectionAttributes);
+
+            List<MetricsDescriptor.Namespace> namespacesPayload = new ArrayList<>();
+            Map<String, String> connectorAttributes;
+            if (namespaces != null) {
+                for (String namespace : namespaces) {
+                    ObjectName objectNameWithNamespace = getObjectNameWithDatabase(connector, context, serverName, String.valueOf(task), namespace);
+                    connectorAttributes = getAttributes(getConnectorAttributes(), objectNameWithNamespace, connectorName, mBeanServer);
+                    namespacesPayload.add(new MetricsDescriptor.Namespace(namespace, connectorAttributes));
+                }
+            }
+            else {
+                connectorAttributes = getAttributes(getConnectorAttributes(), objectName, connectorName, mBeanServer);
+                namespacesPayload.add(new MetricsDescriptor.Namespace("", connectorAttributes));
+            }
+            tasksPayload.add(new MetricsDescriptor.Task(task, namespacesPayload));
+        }
+
+        return new MetricsDescriptor(connectorName, tasksMax, connectorPayload, tasksPayload);
+    }
+
+    @Override
+    default List<String> getConnectionAttributes() {
+        return CONNECTION_ATTRIBUTES;
+    }
+
+    @Override
+    default List<String> getConnectorAttributes() {
+        return CONNECTOR_ATTRIBUTES;
     }
 
     @GET

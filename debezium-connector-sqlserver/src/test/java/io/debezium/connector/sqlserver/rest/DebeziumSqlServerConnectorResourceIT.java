@@ -21,6 +21,8 @@ import org.junit.Assume;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.sqlserver.Module;
 import io.debezium.connector.sqlserver.SqlServerConnector;
@@ -32,6 +34,8 @@ import io.debezium.testing.testcontainers.testhelper.RestExtensionTestInfrastruc
 import io.restassured.http.ContentType;
 
 public class DebeziumSqlServerConnectorResourceIT {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(DebeziumSqlServerConnectorResourceIT.class);
 
     @BeforeClass
     public static void checkCondition() {
@@ -206,12 +210,12 @@ public class DebeziumSqlServerConnectorResourceIT {
                 .statusCode(200)
                 .body("name", equalTo(connectorName))
                 .body("connector.metrics.Connected", equalTo("true"))
-                .body("tasks[0].database[0].name", equalTo("testDB"))
-                .body("tasks[0].database[0].metrics.MilliSecondsSinceLastEvent", equalTo("-1"))
-                .body("tasks[0].database[0].metrics.TotalNumberOfEventsSeen", equalTo("0"))
-                .body("tasks[0].database[1].name", equalTo("testDB2"))
-                .body("tasks[0].database[1].metrics.MilliSecondsSinceLastEvent", equalTo("-1"))
-                .body("tasks[0].database[1].metrics.TotalNumberOfEventsSeen", equalTo("0"));
+                .body("tasks[0].namespaces[0].name", equalTo("testDB"))
+                .body("tasks[0].namespaces[0].metrics.MilliSecondsSinceLastEvent", equalTo("-1"))
+                .body("tasks[0].namespaces[0].metrics.TotalNumberOfEventsSeen", equalTo("0"))
+                .body("tasks[0].namespaces[1].name", equalTo("testDB2"))
+                .body("tasks[0].namespaces[1].metrics.MilliSecondsSinceLastEvent", equalTo("-1"))
+                .body("tasks[0].namespaces[1].metrics.TotalNumberOfEventsSeen", equalTo("0"));
 
     }
 

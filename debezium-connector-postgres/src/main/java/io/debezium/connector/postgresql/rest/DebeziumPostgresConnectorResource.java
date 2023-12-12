@@ -12,7 +12,6 @@ import java.util.stream.Collectors;
 
 import javax.management.MBeanServer;
 import javax.management.MalformedObjectNameException;
-import javax.management.ObjectName;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -28,9 +27,8 @@ import io.debezium.rest.ConnectionValidationResource;
 import io.debezium.rest.FilterValidationResource;
 import io.debezium.rest.MetricsResource;
 import io.debezium.rest.SchemaResource;
-import io.debezium.rest.metrics.MetricsAttributes;
-import io.debezium.rest.metrics.MetricsDescriptor;
 import io.debezium.rest.model.DataCollection;
+import io.debezium.rest.model.MetricsDescriptor;
 
 /**
  * A JAX-RS Resource class defining endpoints of the Debezium Postgres Connect REST Extension
@@ -67,16 +65,7 @@ public class DebeziumPostgresConnectorResource
         String serverName = connectorConfig.get("topic.prefix");
         String tasksMax = connectorConfig.get("tasks.max");
 
-        ObjectName objectName = getObjectName("postgres", "streaming", serverName);
-        Map<String, String> connectionAttributes = getAttributes(MetricsAttributes.getConnectionAttributes(), objectName, connectorName,
-                mBeanServer);
-        Map<String, String> connectorAttributes = getAttributes(MetricsAttributes.getConnectorAttributes(), objectName, connectorName,
-                mBeanServer);
-
-        MetricsDescriptor.Connector connector = new MetricsDescriptor.Connector(connectionAttributes);
-        List<MetricsDescriptor.Task> tasks = List.of(new MetricsDescriptor.Task(0, List.of(new MetricsDescriptor.Database("", connectorAttributes))));
-
-        return new MetricsDescriptor(connectorName, tasksMax, connector, tasks);
+        return queryMetrics(connectorName, Module.logicalName(), "streaming", mBeanServer, serverName, tasksMax, null);
     }
 
     public String getSchemaFilePath() {

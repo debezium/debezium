@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.rest.metrics;
+package io.debezium.rest.model;
 
 import java.util.List;
 import java.util.Map;
@@ -52,24 +52,24 @@ public class MetricsDescriptor {
         @JsonProperty("id")
         private int id;
 
-        @JsonProperty("database")
-        private List<Database> databases;
+        @JsonProperty("namespaces")
+        private List<Namespace> namespaces;
 
-        public Task(int id, List<Database> databases) {
+        public Task(int id, List<Namespace> namespaces) {
             this.id = id;
-            this.databases = databases;
+            this.namespaces = namespaces;
         }
     }
 
     @JsonInclude(JsonInclude.Include.NON_EMPTY)
-    public static class Database {
+    public static class Namespace {
         @JsonProperty("name")
         private String name;
 
         @JsonProperty()
         private Map<String, String> metrics;
 
-        public Database(String name, Map<String, String> metrics) {
+        public Namespace(String name, Map<String, String> metrics) {
             this.name = name;
             this.metrics = metrics;
         }
