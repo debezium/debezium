@@ -21,6 +21,8 @@ import io.debezium.relational.TableEditor;
 import io.debezium.relational.TableId;
 import io.debezium.text.ParsingException;
 
+import oracle.jdbc.OracleTypes;
+
 public class CreateTableParserListener extends BaseParserListener {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CreateTableParserListener.class);
@@ -43,8 +45,8 @@ public class CreateTableParserListener extends BaseParserListener {
 
     @Override
     public void enterCreate_table(PlSqlParser.Create_tableContext ctx) {
-        if (ctx.relational_table() == null) {
-            throw new ParsingException(null, "Only relational tables are supported");
+        if (ctx.relational_table() == null && ctx.xmltype_table() == null) {
+            throw new ParsingException(null, "Only relational and xml tables are supported");
         }
         TableId tableId = new TableId(catalogName, schemaName, getTableName(ctx.tableview_name()));
         if (parser.getTableFilter().isIncluded(tableId)) {
@@ -79,6 +81,23 @@ public class CreateTableParserListener extends BaseParserListener {
         }, tableEditor);
 
         super.exitCreate_table(ctx);
+    }
+
+    @Override
+    public void exitXmltype_table(PlSqlParser.Xmltype_tableContext ctx) {
+        parser.runIfNotNull(() -> {
+            // Oracle creates a synthetic column SYS_NC_ROWINFO$ in this use case.
+            // We want to explicitly register this column manually as the DDL does
+            // not include this column reference directly.
+            if (tableEditor.columns().isEmpty()) {
+                tableEditor.addColumn(Column.editor()
+                        .name("SYS_NC_ROWINFO$")
+                        .jdbcType(OracleTypes.SQLXML)
+                        .type("XMLTYPE")
+                        .create());
+            }
+        }, tableEditor);
+        super.exitXmltype_table(ctx);
     }
 
     @Override

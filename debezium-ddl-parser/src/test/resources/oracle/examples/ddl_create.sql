@@ -587,6 +587,13 @@ CREATE TABLE "ZZZ"."TASKVOLUME"
   SUBPARTITION "VOL_3_02"  VALUES (02) ,
   SUBPARTITION "VOL_3_03"  VALUES (03) ,
   SUBPARTITION "VOL_3_04"  VALUES (04) ));
+CREATE TABLE test OF XMLTYPE;
+CREATE TABLE test OF XMLTYPE XMLTYPE STORE AS BINARY XML XMLSCHEMA "schema.xsd" ELEMENT "root";
+CREATE TABLE test OF XMLTYPE XMLTYPE STORE AS CLOB;
+CREATE TABLE test OF XMLTYPE OID '03155ACC25FF09F8E063040011AC8A1C';
+CREATE TABLE purchaseorder_as_table OF XMLType XMLSCHEMA "http://xmlns.oracle.com/xdb/documentation/purchaseOrder.xsd" ELEMENT "PurchaseOrder";
+CREATE TABLE purchaseorder_as_column OF XMLType XMLTYPE COLUMN xml_document ELEMENT "http://xmlns.oracle.com/xdb/documentation/purchaseOrder.xsd#PurchaseOrder";
+CREATE TABLE po_binaryxml OF XMLType XMLTYPE STORE AS BINARY XML VIRTUAL COLUMNS (DATE_COL AS (XMLCast(XMLQuery('/PurchaseOrder/@orderDate' PASSING OBJECT_VALUE RETURNING CONTENT) AS DATE))) ;
 -- Create index
 create index hr.name on hr.table (id,data) tablespace ts;
 create unique index idx_eshp_auction_file_history_id on eshp_auction_file_history(history_id);

@@ -227,7 +227,10 @@ public class OracleConnection extends JdbcConnection {
                 // filter nested tables
                 "and nested = 'NO'" +
                 // filter parent tables of nested tables
-                "and table_name not in (select PARENT_TABLE_NAME from ALL_NESTED_TABLES)";
+                "and table_name not in (select PARENT_TABLE_NAME from ALL_NESTED_TABLES)" +
+                "union " +
+                "select owner, table_name from all_xml_tables " +
+                "where table_name not like 'XDB$%' and table_name not like 'BIN$%'";
 
         Set<TableId> tableIds = new HashSet<>();
         query(query, (rs) -> {
@@ -297,9 +300,7 @@ public class OracleConnection extends JdbcConnection {
             // By querying for TABLE_TYPE is null, we are explicitly confirming what if an entry exists
             // that the table is in-fact a relational table and if the result set is empty, the object
             // is another type, likely an object-based table, in which case we cannot generate DDL.
-            final String tableType = "SELECT COUNT(1) FROM ALL_ALL_TABLES WHERE OWNER='" + tableId.schema()
-                    + "' AND TABLE_NAME='" + tableId.table() + "' AND TABLE_TYPE IS NULL";
-            if (queryAndMap(tableType, rs -> rs.next() ? rs.getInt(1) : 0) == 0) {
+            if (!isRelationalTable(tableId) && !isXmlTable(tableId)) {
                 throw new NonRelationalTableException("Table " + tableId + " is not a relational table");
             }
 
@@ -350,6 +351,16 @@ public class OracleConnection extends JdbcConnection {
     public boolean isTableExists(TableId tableId) throws SQLException {
         return queryAndMap("SELECT COUNT(1) FROM ALL_TABLES WHERE OWNER = '" + tableId.schema() + "' AND TABLE_NAME = '" + tableId.table() + "'",
                 rs -> rs.next() && rs.getLong(1) > 0);
+    }
+
+    public boolean isRelationalTable(TableId tableId) throws SQLException {
+        return queryAndMap("SELECT COUNT(1) FROM ALL_ALL_TABLES WHERE OWNER='" + tableId.schema() + "' AND TABLE_NAME='" +
+                tableId.table() + "' AND TABLE_TYPE IS NULL", rs -> rs.next() && rs.getLong(1) > 0);
+    }
+
+    public boolean isXmlTable(TableId tableId) throws SQLException {
+        return queryAndMap("SELECT COUNT(1) FROM ALL_XML_TABLES WHERE OWNER='" + tableId.schema() + "' AND TABLE_NAME='" +
+                tableId.table() + "'", rs -> rs.next() && rs.getLong(1) > 0);
     }
 
     /**

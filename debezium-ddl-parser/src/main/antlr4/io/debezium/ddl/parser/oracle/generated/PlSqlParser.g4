@@ -1824,7 +1824,7 @@ create_cluster
 create_table
     : CREATE (GLOBAL TEMPORARY)? TABLE tableview_name
         (SHARING '=' (NONE | METADATA | DATA | EXTENDED DATA))?
-        (relational_table | object_table | xmltype_table) (USAGE QUEUE)? (AS select_only_statement)?
+        (relational_table | xmltype_table | object_table) (USAGE QUEUE)? (AS select_only_statement)?
     ;
 
 xmltype_table
@@ -1874,6 +1874,8 @@ oid_index_clause
 
 oid_clause
     : OBJECT IDENTIFIER IS (SYSTEM GENERATED | PRIMARY KEY)
+    // This only applies to generated LogMiner REDO SQL, should not be added to upstream
+    | OID CHAR_STRING
     ;
 
 object_properties
