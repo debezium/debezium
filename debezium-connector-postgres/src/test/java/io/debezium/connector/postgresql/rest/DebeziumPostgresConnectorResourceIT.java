@@ -205,7 +205,7 @@ public class DebeziumPostgresConnectorResourceIT {
     }
 
     @Test
-    public void testMetricsEndpoint() {
+    public void testMetricsEndpoint() throws InterruptedException {
         ConnectorConfiguration config = getPostgresConnectorConfiguration(1);
 
         var connectorName = "my-postgres-connector";
@@ -225,8 +225,8 @@ public class DebeziumPostgresConnectorResourceIT {
                 .body("name", equalTo(connectorName))
                 .body("connector.metrics.Connected", equalTo("true"))
                 .body("tasks[0].id", equalTo(0))
-                .body("tasks[0].database[0].metrics.MilliSecondsSinceLastEvent", equalTo("-1"))
-                .body("tasks[0].database[0].metrics.TotalNumberOfEventsSeen", equalTo("0"));
+                .body("tasks[0].namespaces[0].metrics.MilliSecondsSinceLastEvent", equalTo("-1"))
+                .body("tasks[0].namespaces[0].metrics.TotalNumberOfEventsSeen", equalTo("0"));
 
     }
 

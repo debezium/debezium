@@ -5,14 +5,12 @@
  */
 package io.debezium.connector.mongodb.rest;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 import javax.management.MBeanServer;
 import javax.management.MalformedObjectNameException;
-import javax.management.ObjectName;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -28,9 +26,8 @@ import io.debezium.rest.ConnectionValidationResource;
 import io.debezium.rest.FilterValidationResource;
 import io.debezium.rest.MetricsResource;
 import io.debezium.rest.SchemaResource;
-import io.debezium.rest.metrics.MetricsAttributes;
-import io.debezium.rest.metrics.MetricsDescriptor;
 import io.debezium.rest.model.DataCollection;
+import io.debezium.rest.model.MetricsDescriptor;
 
 /**
  * A JAX-RS Resource class defining endpoints of the Debezium MongoDB Connect REST Extension
@@ -68,18 +65,7 @@ public class DebeziumMongoDbConnectorResource
         String serverName = connectorConfig.get("topic.prefix");
         String tasksMax = connectorConfig.get("tasks.max");
 
-        MetricsDescriptor.Connector connector = null;
-        List<MetricsDescriptor.Task> tasks = new ArrayList<>();
-
-        for (int task = 0; task < Integer.parseInt(tasksMax); task++) {
-            ObjectName objectName = getObjectNameWithTask("mongodb", "streaming", serverName, String.valueOf(task));
-            Map<String, String> connectionAttributes = getAttributes(MetricsAttributes.getConnectionAttributes(), objectName, connectorName, mBeanServer);
-            Map<String, String> connectorAttributes = getAttributes(MetricsAttributes.getConnectorAttributes(), objectName, connectorName, mBeanServer);
-
-            connector = new MetricsDescriptor.Connector(connectionAttributes);
-            tasks.add(new MetricsDescriptor.Task(task, List.of(new MetricsDescriptor.Database("", connectorAttributes))));
-        }
-        return new MetricsDescriptor(connectorName, tasksMax, connector, tasks);
+        return queryMetrics(connectorName, Module.name(), "streaming", mBeanServer, serverName, tasksMax, null);
     }
 
     @Override

@@ -200,8 +200,8 @@ public class DebeziumOracleConnectorResourceIT {
                 .body("name", equalTo(connectorName))
                 .body("connector.metrics.Connected", equalTo("true"))
                 .body("tasks[0].id", equalTo(0))
-                .body("tasks[0].database[0].metrics.MilliSecondsSinceLastEvent", equalTo("-1"))
-                .body("tasks[0].database[0].metrics.TotalNumberOfEventsSeen", equalTo("0"));
+                .body("tasks[0].namespaces[0].metrics.MilliSecondsSinceLastEvent", equalTo("-1"))
+                .body("tasks[0].namespaces[0].metrics.TotalNumberOfEventsSeen", equalTo("0"));
     }
 
 }

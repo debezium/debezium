@@ -207,7 +207,7 @@ public class DebeziumMySqlConnectorResourceIT {
     }
 
     @Test
-    public void testMetricsEndpoint() {
+    public void testMetricsEndpoint() throws InterruptedException {
         ConnectorConfiguration config = getMySqlConnectorConfiguration(1);
 
         var connectorName = "my-mysql-connector";
@@ -227,8 +227,8 @@ public class DebeziumMySqlConnectorResourceIT {
                 .body("name", equalTo(connectorName))
                 .body("connector.metrics.Connected", equalTo("true"))
                 .body("tasks[0].id", equalTo(0))
-                .body("tasks[0].database[0].metrics.MilliSecondsSinceLastEvent", equalTo("-1"))
-                .body("tasks[0].database[0].metrics.TotalNumberOfEventsSeen", equalTo("0"));
+                .body("tasks[0].namespaces[0].metrics.MilliSecondsSinceLastEvent", equalTo("-1"))
+                .body("tasks[0].namespaces[0].metrics.TotalNumberOfEventsSeen", equalTo("0"));
     }
 
     public static ConnectorConfiguration getMySqlConnectorConfiguration(int id, String... options) {
