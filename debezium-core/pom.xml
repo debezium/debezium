@@ -48,12 +48,6 @@
             <artifactId>jackson-datatype-jsr310</artifactId>
         </dependency>
 
-        <!-- Temporary workaround for implementing metrics for REST endpoint, until the implementation is switched to MBeanServer -->
-        <dependency>
-            <groupId>org.jolokia</groupId>
-            <artifactId>jolokia-client-java</artifactId>
-        </dependency>
-
         <!-- OpenTelemetry Integration -->
         <dependency>
             <groupId>io.opentelemetry</groupId>
