@@ -280,6 +280,20 @@ public interface ColumnEditor {
     ColumnEditor unsetDefaultValueExpression();
 
     /**
+     * Unsets the {@link Column#UNSET_INT_VALUE} to column's length.
+     *
+     * @return this editor so callers can chain methods together
+     */
+    ColumnEditor unsetLength();
+
+    /**
+     * Unsets the null value to column's scale.
+     *
+     * @return this editor so callers can chain methods together
+     */
+    ColumnEditor unsetScale();
+
+    /**
      * Obtain an immutable column definition representing the current state of this editor. Typically, an editor is created and
      * used to build a column, and then discarded. However, this editor with its current state can be reused after this method,
      * since the resulting column definition no longer refers to any of the data used in this editor.

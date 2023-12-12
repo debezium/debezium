@@ -92,6 +92,51 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
+    @FixFor("DBZ-7251")
+    public void shouldApplyCorrectColumnInfoWhenAlterColumnType() {
+        String ddl = "CREATE TABLE `test` (\n" +
+                " `id` bigint NOT NULL AUTO_INCREMENT,\n" +
+                "  `publish_time` bigint(20) null,\n" +
+                "  `publish_time2` bigint(20) null,\n" +
+                "  `publish_time3` decimal(20, 2) null,\n" +
+                "  `publish_time4` datetime(6) NULL DEFAULT '1970-01-01 00:00:00',\n" +
+                "  PRIMARY KEY (`id`)\n" +
+                ");";
+        parser.parse(ddl, tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+        assertThat(tables.size()).isEqualTo(1);
+
+        ddl = "alter table test modify publish_time datetime NULL DEFAULT '1970-01-01 00:00:00';";
+        parser.parse(ddl, tables);
+        Table table = tables.forTable(null, null, "test");
+        assertThat(table.columnWithName("publish_time").typeName()).isEqualTo("DATETIME");
+        assertThat(table.columnWithName("publish_time").length()).isEqualTo(-1);
+
+        ddl = "alter table test change publish_time2 publish_time2 datetime NULL DEFAULT '1970-01-01 00:00:00';";
+        parser.parse(ddl, tables);
+        table = tables.forTable(null, null, "test");
+        assertThat(table.columnWithName("publish_time2").typeName()).isEqualTo("DATETIME");
+        assertThat(table.columnWithName("publish_time2").length()).isEqualTo(-1);
+        assertThat(table.columnWithName("publish_time2").defaultValueExpression().isPresent()).isEqualTo(true);
+        assertThat(table.columnWithName("publish_time2").defaultValueExpression().get()).isEqualTo("1970-01-01 00:00:00");
+
+        ddl = "alter table test change publish_time3 publish_time3 datetime NULL DEFAULT '1970-01-01 00:00:00';";
+        parser.parse(ddl, tables);
+        table = tables.forTable(null, null, "test");
+        assertThat(table.columnWithName("publish_time3").typeName()).isEqualTo("DATETIME");
+        assertThat(table.columnWithName("publish_time3").length()).isEqualTo(-1);
+        assertThat(table.columnWithName("publish_time3").scale().isPresent()).isEqualTo(false);
+
+        ddl = "alter table test change publish_time4 publish_time4 decimal(20,2) null;";
+        parser.parse(ddl, tables);
+        table = tables.forTable(null, null, "test");
+        assertThat(table.columnWithName("publish_time4").typeName()).isEqualTo("DECIMAL");
+        assertThat(table.columnWithName("publish_time4").length()).isEqualTo(20);
+        assertThat(table.columnWithName("publish_time4").scale().isPresent()).isEqualTo(true);
+        assertThat(table.columnWithName("publish_time4").scale().get()).isEqualTo(2);
+    }
+
+    @Test
     @FixFor("DBZ-6003")
     public void shouldProcessCreateUniqueBeforePrimaryKeyDefinitions() {
         String ddl = "CREATE TABLE `dbz_6003_1` (\n"
