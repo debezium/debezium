@@ -217,6 +217,18 @@ final class ColumnEditorImpl implements ColumnEditor {
     }
 
     @Override
+    public ColumnEditor unsetLength() {
+        this.length = Column.UNSET_INT_VALUE;
+        return this;
+    }
+
+    @Override
+    public ColumnEditor unsetScale() {
+        this.scale = null;
+        return this;
+    }
+
+    @Override
     public ColumnEditor enumValues(List<String> enumValues) {
         this.enumValues = enumValues;
         return this;

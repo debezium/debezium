@@ -158,6 +158,10 @@ public class AlterTableParserListener extends TableCommonParserListener {
                 // I'm going to leave this as is for now, to be prepared for the ability of updating column definitions in 8.0
                 ColumnEditor columnEditor = existingColumn.edit();
                 columnEditor.unsetDefaultValueExpression();
+                columnEditor.unsetLength();
+                if (columnEditor.scale().isPresent()) {
+                    columnEditor.unsetScale();
+                }
 
                 columnDefinitionListener = new ColumnDefinitionParserListener(tableEditor, columnEditor, parser, listeners);
                 listeners.add(columnDefinitionListener);
@@ -197,8 +201,7 @@ public class AlterTableParserListener extends TableCommonParserListener {
             String columnName = parser.parseName(ctx.uid(0));
             Column existingColumn = tableEditor.columnWithName(columnName);
             if (existingColumn != null) {
-                ColumnEditor columnEditor = existingColumn.edit();
-                columnEditor.unsetDefaultValueExpression();
+                ColumnEditor columnEditor = Column.editor().name(columnName);
 
                 columnDefinitionListener = new ColumnDefinitionParserListener(tableEditor, columnEditor, parser, listeners);
                 listeners.add(columnDefinitionListener);
@@ -259,7 +262,7 @@ public class AlterTableParserListener extends TableCommonParserListener {
                 defaultValueColumnEditor = column.edit();
                 if (ctx.SET() != null) {
                     defaultValueListener = new DefaultValueParserListener(defaultValueColumnEditor,
-                            new AtomicReference<Boolean>(column.isOptional()));
+                            new AtomicReference<>(column.isOptional()));
                     listeners.add(defaultValueListener);
                 }
                 else if (ctx.DROP() != null) {
