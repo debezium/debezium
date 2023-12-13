@@ -15,11 +15,16 @@ This post-processor is supported only for the SQL database connectors.
 
 == Overview
 
-There are use cases where a {prodname} connector may not include a specific column's value in the change event, at not fault of its own but rather that's simply how the source database works.
-For example, TOAST columns in PostgreSQL, LOB columns in Oracle or Extended String columns with Oracle Exadata all come to mind.
+In some cases, because of the way that certain source databases function, when a {prodname} connector emits a change event, the event might exclude values for specific column types.
+For example, values for TOAST columns in PostgreSQL, LOB columns in Oracle, or Extended String columns in Oracle Exadata, might all be excluded.
 
-The `ReselectColumnsPostProcessor` provides a simple way to re-select one or more columns using an out-of-bands query to fetch the current column's state from the database table.
-The post processor can be configured to re-select columns that are `null`, columns that are emitted that use the configured `unavailable.value.placeholder` sentinel value.
+The `ReselectColumnsPostProcessor` provides a way to re-select one or more columns from a database table and fetch the current state.
+You can configure the post processor to re-select the following column types:
+
+ * `null` columns.
+ * columns that contain the `unavailable.value.placeholder` sentinel value.
+
+Configuring a `PostProcessor` is similar to configuring a `CustomConverter` or `Transformation`.
 
 == Configuration example
 
@@ -33,11 +38,11 @@ To enable the connector to use the `ReselectColumnsPostProcessor`, add the follo
   "reselector.reselect.unavailable.values": "true", // <4>
   "reselector.reselect.null.values": "true" // <5>
 ----
-<1> Comma-separated list of post-processor prefixes
-<2> The fully-qualified class type name for the post-processor
-<3> Comma-separated list of columns using the format `<schema>.<table>:<column>`
-<4> Enables or disables the re-selection of columns that contain the `unavailable.value.placeholder` sentinel value
-<5> Enables or disables the re-selection of columns that are `null`
+<1> Comma-separated list of post-processor prefixes.
+<2> The fully-qualified class type name for the post-processor.
+<3> Comma-separated list of column names specified by using the following format: `<schema>.<table>:<column>`.
+<4> Enables or disables the re-selection of columns that contain the `unavailable.value.placeholder` sentinel value.
+<5> Enables or disables the re-selection of columns that are `null`.
 
 == Configuration options
 
@@ -52,22 +57,24 @@ The following table lists the configuration options that you can set for the Res
 
 |[[reselect-columns-post-processor-property-reselect-columns-include-list]]<<reselect-columns-post-processor-property-reselect-columns-include-list, `+reselect.columns.include.list+`>>
 |No default
-|Comma-separated list of columns that should be re-selected from the source database, using the format `_<schema>_._<table>_:_<column>_` for each re-selectable column. +
+|Comma-separated list of column names to re-select from the source database.
+Use the following format to specify column names: + `_<schema>_._<table>_:_<column>_`  +
  +
-This is mutually exclusive with `reselect.columns.exclude.list`.
+Do not set this property if you set the `reselect.columns.exclude.list` property.
 
 |[[reselect-columns-post-processor-property-reselect-columns-exclude-list]]<<reselect-columns-post-processor-property-reselect-columns-exclude-list, `+reselect.columns.exclude.list+`>>
 |No default
-|Comma-separated list of columns that should not be re-selected from the source database, using the format `_<schema>_._<table>_:_<column>_`. +
+|Comma-separated list of column names in the source database to exclude from re-selection.
+Use the following format to specify column names: + `_<schema>_._<table>_:_<column>_` +
  +
-This is mutually exclusive with `reselect.columns.include.list`.
+Do not set this property if you set the `reselect.columns.include.list` property.
 
 |[[reselect-columns-post-processor-property-reselect-unavailable-values]]<<reselect-columns-post-processor-property-reselect-unavailable-values, `+reselect.unavailable.values+`>>
 |`true`
-|Specifies whether any column that matches the inclusion filter that has the value specified by the `unavailable.value.placeholder` connector configuration property will be re-selected.
+|Specifies whether the post processor reselects a column that matches the `reselect.columns.include.list` filter if the column value is provided by the connector's `unavailable.value.placeholder` property.
 
 |[[reselect-columns-post-processor-property-reselect-null-values]]<<reselect-columns-post-processor-property-reselect-null-values, `+reselect.null.values+`>>
 |`true`
-|Specifies whether any column that matches the inclusion filter that has a `null` value will be re-selected.
+|Specifies whether the post processor reselects a column that matches the `reselect.columns.include.list` filter if the column value is `null`.
 
 |===
