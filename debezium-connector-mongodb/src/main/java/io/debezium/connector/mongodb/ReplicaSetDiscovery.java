@@ -5,14 +5,10 @@
  */
 package io.debezium.connector.mongodb;
 
-import java.util.HashSet;
-import java.util.Set;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.mongodb.ConnectionString;
-import com.mongodb.client.MongoClient;
 import com.mongodb.connection.ClusterDescription;
 import com.mongodb.connection.ClusterType;
 
@@ -54,41 +50,38 @@ public class ReplicaSetDiscovery {
      *
      * @return the information about the replica sets; never null but possibly empty
      */
-    public ReplicaSets getReplicaSets(MongoClient client) {
+    public ReplicaSet getReplicaSet() {
         ConnectionContext connectionContext = context.getConnectionContext();
-        Set<ReplicaSet> replicaSetSpecs = new HashSet<>();
 
-        LOGGER.info("Reading description of cluster at {}", maskedConnectionSeed);
-        final ClusterDescription clusterDescription = MongoUtil.clusterDescription(client);
+        try (var client = connectionContext.connect()) {
+            LOGGER.info("Reading description of cluster at {}", maskedConnectionSeed);
+            final ClusterDescription clusterDescription = MongoUtil.clusterDescription(client);
 
-        if (clusterDescription.getType() == ClusterType.SHARDED) {
-            LOGGER.info("Cluster identified as sharded cluster");
-            readShardedClusterAsReplicaSet(replicaSetSpecs, connectionContext);
+            if (clusterDescription.getType() == ClusterType.SHARDED) {
+                LOGGER.info("Cluster identified as sharded cluster");
+                return readShardedClusterAsReplicaSet(connectionContext);
+            }
+
+            if (clusterDescription.getType() == ClusterType.REPLICA_SET) {
+                LOGGER.info("Cluster identified as replicaSet");
+                return readReplicaSet(clusterDescription, connectionContext);
+            }
         }
 
-        if (clusterDescription.getType() == ClusterType.REPLICA_SET) {
-            LOGGER.info("Cluster identified as replicaSet");
-            readReplicaSetsFromCluster(replicaSetSpecs, clusterDescription, connectionContext);
-        }
-
-        if (replicaSetSpecs.isEmpty()) {
-            LOGGER.error("Found no replica sets at {}, so there is nothing to monitor and no connector tasks will be started.", maskedConnectionSeed);
-        }
-
-        return new ReplicaSets(replicaSetSpecs);
+        return null;
     }
 
-    private void readShardedClusterAsReplicaSet(Set<ReplicaSet> replicaSetSpecs, ConnectionContext connectionContext) {
+    private ReplicaSet readShardedClusterAsReplicaSet(ConnectionContext connectionContext) {
         LOGGER.info("Using '{}' as sharded cluster connection", maskedConnectionSeed);
         var connectionString = connectionContext.connectionString();
-        replicaSetSpecs.add(new ReplicaSet(connectionString));
+        return new ReplicaSet(connectionString);
     }
 
-    private void readReplicaSetsFromCluster(Set<ReplicaSet> replicaSetSpecs, ClusterDescription clusterDescription, ConnectionContext connectionContext) {
+    private ReplicaSet readReplicaSet(ClusterDescription clusterDescription, ConnectionContext connectionContext) {
         var connectionString = ensureReplicaSetName(connectionContext.connectionSeed(), clusterDescription);
 
         LOGGER.info("Using '{}' as replica set connection string", ConnectionStrings.mask(connectionString));
-        replicaSetSpecs.add(new ReplicaSet(connectionString));
+        return new ReplicaSet(connectionString);
     }
 
     /**

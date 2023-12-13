@@ -9,9 +9,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.common.config.ConfigDef;
@@ -20,7 +17,6 @@ import org.apache.kafka.connect.connector.Task;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.mongodb.ConnectionString;
 import com.mongodb.MongoException;
 import com.mongodb.client.MongoClient;
 
@@ -30,9 +26,7 @@ import io.debezium.connector.common.BaseSourceConnector;
 import io.debezium.connector.mongodb.connection.ConnectionContext;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.connector.mongodb.connection.ReplicaSet;
-import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext.PreviousContext;
-import io.debezium.util.Threads;
 
 /**
  * A Kafka Connect source connector that creates {@link MongoDbConnectorTask tasks} that replicate the context of one or more
@@ -80,10 +74,9 @@ public class MongoDbConnector extends BaseSourceConnector {
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
     private Configuration config;
-    private ReplicaSetMonitorThread monitorThread;
     private MongoDbTaskContext taskContext;
     private ConnectionContext connectionContext;
-    private ExecutorService replicaSetMonitorExecutor;
+    private ReplicaSetDiscovery monitor;
 
     public MongoDbConnector() {
     }
@@ -107,35 +100,11 @@ public class MongoDbConnector extends BaseSourceConnector {
             throw new DebeziumException("Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
         }
         this.config = config;
-
-        // Set up the replication context ...
-        taskContext = new MongoDbTaskContext(config);
+        this.taskContext = new MongoDbTaskContext(config);
         this.connectionContext = taskContext.getConnectionContext();
+        this.monitor = new ReplicaSetDiscovery(taskContext);
 
-        PreviousContext previousLogContext = taskContext.configureLoggingContext("conn");
-        try {
-            logger.info("Starting MongoDB connector and discovering replica set(s) at {}", connectionContext.maskedConnectionSeed());
-
-            // Set up and start the thread that monitors the members of all of the replica sets ...
-            replicaSetMonitorExecutor = Threads.newSingleThreadExecutor(MongoDbConnector.class, taskContext.serverName(), "replica-set-monitor");
-            ReplicaSetDiscovery monitor = new ReplicaSetDiscovery(taskContext);
-            monitorThread = new ReplicaSetMonitorThread(connectionContext, monitor::getReplicaSets, connectionContext.pollInterval(),
-                    Clock.SYSTEM, () -> taskContext.configureLoggingContext("disc"), this::replicaSetsChanged);
-            replicaSetMonitorExecutor.execute(monitorThread);
-            logger.info("Successfully started MongoDB connector, and continuing to discover changes in replica set(s) at {}", connectionContext.maskedConnectionSeed());
-        }
-        finally {
-            previousLogContext.restore();
-        }
-    }
-
-    protected void replicaSetsChanged(ReplicaSets replicaSets) {
-        if (logger.isInfoEnabled()) {
-            logger.info("Requesting task reconfiguration due to new/removed replica set(s) for MongoDB with seeds {}", connectionContext.maskedConnectionSeed());
-            logger.info("New replica sets include:");
-            replicaSets.onEachReplicaSet(replicaSet -> logger.info("  {}", replicaSet));
-        }
-        context.requestTaskReconfiguration();
+        logger.info("Successfully started MongoDB connector, and continuing to discover changes in replica set(s) at {}", connectionContext.maskedConnectionSeed());
     }
 
     @Override
@@ -149,24 +118,14 @@ public class MongoDbConnector extends BaseSourceConnector {
 
             // Partitioning the replica sets amongst the number of tasks ...
             List<Map<String, String>> taskConfigs = new ArrayList<>(maxTasks);
-            ReplicaSets replicaSets = monitorThread.getReplicaSets(10, TimeUnit.SECONDS);
-            if (replicaSets != null) {
-                logger.info("Subdividing {} MongoDB replica set(s) into at most {} task(s)",
-                        replicaSets.size(), maxTasks);
-                replicaSets.subdivide(maxTasks, replicaSetsForTask -> {
-                    // Create the configuration for each task ...
-                    int taskId = taskConfigs.size();
-                    String rsConnectionStrings = replicaSetsForTask.all().stream()
-                            .map(ReplicaSet::connectionString)
-                            .map(ConnectionString::toString)
-                            .collect(Collectors.joining(ReplicaSets.SEPARATOR));
-                    logger.info("Configuring MongoDB connector task {} to capture events for connections to: {}", taskId, rsConnectionStrings);
-                    taskConfigs.add(config.edit()
-                            .with(MongoDbConnectorConfig.TASK_CONNECTION_STRING, rsConnectionStrings)
-                            .with(MongoDbConnectorConfig.TASK_ID, taskId)
-                            .build()
-                            .asMap());
-                });
+            ReplicaSet replicaSet = monitor.getReplicaSet();
+            if (replicaSet != null) {
+                logger.info("Configuring MongoDB connector task to capture events for connections to: {}", replicaSet.connectionString());
+                taskConfigs.add(config.edit()
+                        .with(MongoDbConnectorConfig.TASK_CONNECTION_STRING, replicaSet.connectionString())
+                        .with(MongoDbConnectorConfig.TASK_ID, 0)
+                        .build()
+                        .asMap());
             }
             logger.debug("Configuring {} MongoDB connector task(s)", taskConfigs.size());
             return taskConfigs;
@@ -184,9 +143,6 @@ public class MongoDbConnector extends BaseSourceConnector {
             this.config = null;
             // Clear interrupt flag so the graceful termination is always attempted.
             Thread.interrupted();
-            if (replicaSetMonitorExecutor != null) {
-                replicaSetMonitorExecutor.shutdownNow();
-            }
             logger.info("Stopped MongoDB connector");
         }
         finally {
