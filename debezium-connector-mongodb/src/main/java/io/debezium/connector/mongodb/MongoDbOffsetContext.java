@@ -112,24 +112,23 @@ public class MongoDbOffsetContext extends CommonOffsetContext<SourceInfo> {
 
     public static class Loader {
 
-        private final ReplicaSets replicaSets;
+        private final ReplicaSet replicaSet;
         private final SourceInfo sourceInfo;
 
-        public Loader(MongoDbConnectorConfig connectorConfig, ReplicaSets replicaSets) {
+        public Loader(MongoDbConnectorConfig connectorConfig, ReplicaSet replicaSet) {
             this.sourceInfo = new SourceInfo(connectorConfig);
-            this.replicaSets = replicaSets;
+            this.replicaSet = replicaSet;
         }
 
         public Collection<Map<String, String>> getPartitions() {
+            // todo: Consider looking up shard specific offsets from prior versions (if moving from sharded cluster with RS mode)
             // todo: DBZ-1726 - follow-up by removing partition management from SourceInfo
             final Collection<Map<String, String>> partitions = new ArrayList<>();
-            replicaSets.onEachReplicaSet(replicaSet -> {
-                final String name = replicaSet.replicaSetName(); // may be null for standalone servers
-                if (name != null) {
-                    Map<String, String> partition = sourceInfo.partition(name);
-                    partitions.add(partition);
-                }
-            });
+            final String name = replicaSet.replicaSetName();
+
+            Map<String, String> partition = sourceInfo.partition(name);
+            partitions.add(partition);
+
             return partitions;
         }
 
