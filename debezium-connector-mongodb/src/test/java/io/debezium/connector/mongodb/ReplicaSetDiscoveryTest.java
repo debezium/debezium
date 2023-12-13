@@ -26,6 +26,7 @@ import com.mongodb.connection.ServerConnectionState;
 import com.mongodb.connection.ServerDescription;
 
 import io.debezium.connector.mongodb.connection.ConnectionContext;
+import io.debezium.connector.mongodb.connection.ReplicaSet;
 
 public class ReplicaSetDiscoveryTest {
 
@@ -79,8 +80,7 @@ public class ReplicaSetDiscoveryTest {
 
         when(mongoClient.getClusterDescription()).thenReturn(clusterDescription);
 
-        ReplicaSets replicaSets = replicaSetDiscovery.getReplicaSets(mongoClient);
-        assertThat(replicaSets.all().size()).isEqualTo(1);
-        assertThat(replicaSets.all().get(0).replicaSetName()).isEqualTo("my_rs");
+        ReplicaSet replicaSet = replicaSetDiscovery.getReplicaSet();
+        assertThat(replicaSet.replicaSetName()).isEqualTo("my_rs");
     }
 }
