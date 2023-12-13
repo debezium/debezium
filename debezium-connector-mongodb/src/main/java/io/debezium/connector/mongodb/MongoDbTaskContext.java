@@ -7,11 +7,14 @@ package io.debezium.connector.mongodb;
 
 import java.util.Collections;
 
+import com.mongodb.ConnectionString;
+
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig.CaptureMode;
 import io.debezium.connector.mongodb.connection.ConnectionContext;
+import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.spi.topic.TopicNamingStrategy;
 
 /**
@@ -77,5 +80,13 @@ public class MongoDbTaskContext extends CdcSourceTaskContext {
      */
     public CaptureMode getCaptureMode() {
         return connectorConfig.getCaptureMode();
+    }
+
+    public ConnectionString getConnectionString() {
+        return connectorConfig.getTaskConnectionString().orElseThrow();
+    }
+
+    public MongoDbConnection connect(MongoDbConnection.ErrorHandler errorHandler) {
+        return connectionContext.connect(getConnectionString(), filters, errorHandler);
     }
 }

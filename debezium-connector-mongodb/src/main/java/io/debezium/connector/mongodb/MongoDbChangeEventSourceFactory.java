@@ -13,9 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
-import io.debezium.connector.mongodb.connection.ConnectionContext;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
-import io.debezium.connector.mongodb.connection.ReplicaSet;
 import io.debezium.connector.mongodb.metrics.MongoDbStreamingChangeEventSourceMetrics;
 import io.debezium.connector.mongodb.snapshot.MongoDbIncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.ErrorHandler;
@@ -58,7 +56,7 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
         this.dispatcher = dispatcher;
         this.clock = clock;
         this.taskContext = taskContext;
-        this.connections = createMongoDbConnectionFactory(taskContext.getConnectionContext());
+        this.connections = createMongoDbConnectionFactory(taskContext);
         this.schema = schema;
         this.streamingMetrics = streamingMetrics;
     }
@@ -107,9 +105,8 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
         return Optional.of(incrementalSnapshotChangeEventSource);
     }
 
-    private MongoDbConnection.ChangeEventSourceConnectionFactory createMongoDbConnectionFactory(ConnectionContext connectionContext) {
-        return (ReplicaSet replicaSet, MongoDbPartition partition) -> connectionContext.connect(
-                replicaSet, taskContext.filters(), connectionErrorHandler(partition));
+    public MongoDbConnection.ChangeEventSourceConnectionFactory createMongoDbConnectionFactory(MongoDbTaskContext taskContext) {
+        return (MongoDbPartition partition) -> taskContext.connect(connectionErrorHandler(partition));
     }
 
     private MongoDbConnection.ErrorHandler connectionErrorHandler(MongoDbPartition partition) {

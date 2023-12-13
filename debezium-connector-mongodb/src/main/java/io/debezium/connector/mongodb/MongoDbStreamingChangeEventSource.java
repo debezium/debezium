@@ -90,7 +90,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
     }
 
     private void streamChangesForReplicaSet(ChangeEventSourceContext context, MongoDbPartition partition, ReplicaSet replicaSet) {
-        try (MongoDbConnection mongo = connections.get(replicaSet, partition)) {
+        try (MongoDbConnection mongo = connections.get(partition)) {
             mongo.execute("read from change stream on '" + replicaSet + "'", client -> {
                 readChangeStream(client, replicaSet, context);
             });
