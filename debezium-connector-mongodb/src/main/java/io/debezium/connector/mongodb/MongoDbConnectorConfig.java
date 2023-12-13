@@ -507,7 +507,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withDescription("Internal use only")
             .withType(Type.LIST);
 
-
     public static final Field ALLOW_OFFSET_INVALIDATION = Field.createInternal("mongodb.allow.offset.invalidation")
             .withDescription("Allows offset invalidation when required by change of connection mode")
             .withDefault(false)
@@ -896,6 +895,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     private final int snapshotMaxThreads;
     private final int cursorMaxAwaitTimeMs;
     private final ReplicaSet replicaSet;
+    private final Optional<ConnectionString> taskConnectionString;
     private final CursorPipelineOrder cursorPipelineOrder;
     private final OversizeHandlingMode oversizeHandlingMode;
     private final FiltersMatchMode filtersMatchMode;
@@ -929,6 +929,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         this.snapshotMaxThreads = resolveSnapshotMaxThreads(config);
         this.cursorMaxAwaitTimeMs = config.getInteger(MongoDbConnectorConfig.CURSOR_MAX_AWAIT_TIME_MS, 0);
 
+        this.taskConnectionString = resolveTaskConnectionString(config);
         this.replicaSet = resolveReplicaSet(config);
     }
 
@@ -1114,6 +1115,10 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         return replicaSet;
     }
 
+    public Optional<ConnectionString> getTaskConnectionString() {
+        return taskConnectionString;
+    }
+
     public int getCursorMaxAwaitTime() {
         return cursorMaxAwaitTimeMs;
     }
@@ -1189,8 +1194,15 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     }
 
     private static ReplicaSet resolveReplicaSet(Configuration config) {
+        return resolveTaskConnectionString(config)
+                .map(ReplicaSet::new)
+                .orElse(null);
+    }
+
+    private static Optional<ConnectionString> resolveTaskConnectionString(Configuration config) {
         var connectionString = config.getString(MongoDbConnectorConfig.TASK_CONNECTION_STRING);
-        return new ReplicaSet(connectionString);
+        return Optional.ofNullable(connectionString)
+                .map(ConnectionString::new);
     }
 
     @Override

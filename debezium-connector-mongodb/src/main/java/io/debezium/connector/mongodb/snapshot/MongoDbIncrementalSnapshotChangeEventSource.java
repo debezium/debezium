@@ -258,7 +258,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
     public void init(MongoDbPartition partition, OffsetContext offsetContext) {
         // Only ReplicaSet deployments are supported by incremental snapshot
         // Thus assume replicaSets.size() == 1
-        mongo = connections.get(replicaSet, partition);
+        mongo = connections.get(partition);
 
         if (offsetContext == null) {
             LOGGER.info("Empty incremental snapshot change event source started, no action needed");

@@ -7,6 +7,7 @@ package io.debezium.connector.mongodb.connection;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -19,6 +20,8 @@ import io.debezium.util.Strings;
  * Host string parsing utilities
  */
 public final class ConnectionStrings {
+
+    public static final String CLUSTER_RS_NAME = "cluster";
 
     private ConnectionStrings() {
         // intentionally private;
@@ -95,6 +98,14 @@ public final class ConnectionStrings {
                         credentials.getUserName(),
                         credentials.getSource(),
                         credentials.getPassword() != null ? String.valueOf(credentials.getPassword()) : null);
+    }
+
+    public static String replicaSetName(ConnectionString connectionString) {
+        return Objects.requireNonNullElse(connectionString.getRequiredReplicaSetName(), CLUSTER_RS_NAME);
+    }
+
+    public static String mask(ConnectionString connectionString) {
+        return mask(connectionString.toString());
     }
 
     private static String connectionString(String rsName, String host) {

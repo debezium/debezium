@@ -109,14 +109,13 @@ public class ConnectionContext {
     /**
      * Obtain a client scoped to specific replica set.
      *
-     * @param replicaSet the replica set information; may not be null
      * @param filters the filter configuration
      * @param errorHandler the function to be called whenever the node is unable to
      *            {@link MongoDbConnection#execute(String, BlockingConsumer)}  execute} an operation to completion; may be null
      * @return the client, or {@code null} if no primary could be found for the replica set
      */
-    public MongoDbConnection connect(ReplicaSet replicaSet, Filters filters,
+    public MongoDbConnection connect(ConnectionString connectionString, Filters filters,
                                      MongoDbConnection.ErrorHandler errorHandler) {
-        return new MongoDbConnection(replicaSet, clientFactory, connectorConfig, filters, errorHandler);
+        return new MongoDbConnection(connectionString, clientFactory, connectorConfig, filters, errorHandler);
     }
 }

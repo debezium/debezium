@@ -15,6 +15,7 @@ import java.util.function.Supplier;
 
 import org.bson.BsonTimestamp;
 
+import com.mongodb.ConnectionString;
 import com.mongodb.client.MongoClient;
 
 import io.debezium.DebeziumException;
@@ -51,11 +52,10 @@ public final class MongoDbConnection implements AutoCloseable {
         /**
          * Create connection for given replica set and partition
          *
-         * @param replicaSet    the replica set information; may not be null
          * @param partition      database partition
          * @return connection based on given parameters
          */
-        MongoDbConnection get(ReplicaSet replicaSet, MongoDbPartition partition);
+        MongoDbConnection get(MongoDbPartition partition);
     }
 
     /**
@@ -71,13 +71,13 @@ public final class MongoDbConnection implements AutoCloseable {
     private final Supplier<MongoClient> connectionSupplier;
     private final MongoDbConnectorConfig config;
 
-    protected MongoDbConnection(ReplicaSet replicaSet,
+    protected MongoDbConnection(ConnectionString connectionString,
                                 MongoDbClientFactory clientFactory,
                                 MongoDbConnectorConfig config,
                                 Filters filters,
                                 ErrorHandler errorHandler) {
-        this.name = replicaSet.replicaSetName();
-        this.connectionSupplier = () -> clientFactory.client(replicaSet);
+        this.name = ConnectionStrings.replicaSetName(connectionString);
+        this.connectionSupplier = () -> clientFactory.client(connectionString);
         this.config = config;
         this.filters = filters;
         this.errorHandler = errorHandler;

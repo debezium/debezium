@@ -190,7 +190,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
     private void snapshotReplicaSet(ChangeEventSourceContext sourceCtx, MongoDbSnapshotContext snapshotCtx, ReplicaSet replicaSet,
                                     SnapshottingTask snapshottingTask)
             throws InterruptedException {
-        try (MongoDbConnection mongo = connections.get(replicaSet, snapshotCtx.partition)) {
+        try (MongoDbConnection mongo = connections.get(snapshotCtx.partition)) {
             createDataEvents(sourceCtx, snapshotCtx, replicaSet, mongo, snapshottingTask);
         }
     }
@@ -221,7 +221,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
             return false;
         }
 
-        try (MongoDbConnection mongo = connections.get(replicaSet, partition)) {
+        try (MongoDbConnection mongo = connections.get(partition)) {
             return mongo.execute("Checking change stream", client -> {
                 ChangeStreamIterable<BsonDocument> stream = MongoUtil.openChangeStream(client, taskContext);
                 stream.resumeAfter(token);

@@ -110,6 +110,6 @@ public abstract class AbstractMongoIT {
         }
 
         // Get a connection to the primary ...
-        connection = context.getConnectionContext().connect(replicaSet, context.filters(), TestHelper.connectionErrorHandler(3));
+        connection = context.getConnectionContext().connect(replicaSet.connectionString(), context.filters(), TestHelper.connectionErrorHandler(3));
     }
 }
