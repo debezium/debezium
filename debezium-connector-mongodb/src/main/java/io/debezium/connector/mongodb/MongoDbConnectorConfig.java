@@ -57,6 +57,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .compile("^[*|\\w|\\-|\\s*]+(?:\\.[*|\\w|\\-]+\\.[*|\\w|\\-]+)+(\\.[*|\\w|\\-]+)*:(?:[*|\\w|\\-]+)+\\s*$");
     protected static final String QUALIFIED_FIELD_RENAMES_PATTERN = "<databaseName>.<collectionName>.<fieldName>.<nestedFieldName>:<newNestedFieldName>";
 
+    public static final String ADMIN_DATABASE_NAME = "admin";
+
     /**
      * The set of predefined SnapshotMode options or aliases.
      */
@@ -583,7 +585,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 1))
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
-            .withDefault(ReplicaSetDiscovery.ADMIN_DATABASE_NAME)
+            .withDefault(ADMIN_DATABASE_NAME)
             .withDescription("Database containing user credentials.");
 
     public static final Field SERVER_SELECTION_TIMEOUT_MS = Field.create("mongodb.server.selection.timeout.ms")
