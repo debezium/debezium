@@ -65,8 +65,7 @@ public class ShardedIncrementalSnapshotIT extends AbstractShardedMongoConnectorI
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, fullDataCollectionName() + ",dbA.c1,dbA.c2")
                 .with(MongoDbConnectorConfig.SIGNAL_DATA_COLLECTION, SIGNAL_COLLECTION_NAME)
                 .with(MongoDbConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, CHUNK_SIZE)
-                .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.NEVER)
-                .with(MongoDbConnectorConfig.CONNECTION_MODE, MongoDbConnectorConfig.ConnectionMode.SHARDED);
+                .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.NEVER);
     }
 
     @Test

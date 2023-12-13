@@ -44,7 +44,7 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
     private final ErrorHandler errorHandler;
     private final EventDispatcher<MongoDbPartition, CollectionId> dispatcher;
     private final Clock clock;
-    private final ReplicaSets replicaSets;
+    private final ReplicaSet replicaSet;
     private final MongoDbTaskContext taskContext;
     private final MongoDbConnection.ChangeEventSourceConnectionFactory connections;
     private final MongoDbSchema schema;
@@ -52,13 +52,13 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
 
     public MongoDbChangeEventSourceFactory(MongoDbConnectorConfig configuration, ErrorHandler errorHandler,
                                            EventDispatcher<MongoDbPartition, CollectionId> dispatcher, Clock clock,
-                                           ReplicaSets replicaSets, MongoDbTaskContext taskContext, MongoDbSchema schema,
+                                           ReplicaSet replicaSets, MongoDbTaskContext taskContext, MongoDbSchema schema,
                                            MongoDbStreamingChangeEventSourceMetrics streamingMetrics) {
         this.configuration = configuration;
         this.errorHandler = errorHandler;
         this.dispatcher = dispatcher;
         this.clock = clock;
-        this.replicaSets = replicaSets;
+        this.replicaSet = replicaSets;
         this.taskContext = taskContext;
         this.connections = createMongoDbConnectionFactory(taskContext.getConnectionContext());
         this.schema = schema;
@@ -72,7 +72,7 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
                 configuration,
                 taskContext,
                 connections,
-                replicaSets,
+                replicaSet,
                 dispatcher,
                 clock,
                 snapshotProgressListener,
@@ -86,7 +86,7 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
                 configuration,
                 taskContext,
                 connections,
-                replicaSets,
+                replicaSet,
                 dispatcher,
                 errorHandler,
                 clock,
@@ -99,15 +99,10 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
                                                                                                                                                 SnapshotProgressListener<MongoDbPartition> snapshotProgressListener,
                                                                                                                                                 DataChangeEventListener<MongoDbPartition> dataChangeEventListener,
                                                                                                                                                 NotificationService<MongoDbPartition, MongoDbOffsetContext> notificationService) {
-        if (replicaSets.size() > 1) {
-            LOGGER.info("Only ReplicaSet deployments and Sharded Cluster with connection.mode=sharded are supported by incremental snapshot");
-            return Optional.empty();
-        }
-
         final MongoDbIncrementalSnapshotChangeEventSource incrementalSnapshotChangeEventSource = new MongoDbIncrementalSnapshotChangeEventSource(
                 configuration,
                 connections,
-                replicaSets,
+                replicaSet,
                 dispatcher,
                 schema,
                 clock,

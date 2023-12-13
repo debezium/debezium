@@ -5,9 +5,6 @@
  */
 package io.debezium.connector.mongodb;
 
-import java.util.List;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import org.bson.BsonDocument;
@@ -36,7 +33,6 @@ import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.util.Clock;
-import io.debezium.util.Threads;
 
 /**
  * @author Chris Cranford
@@ -50,14 +46,14 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
     private final ErrorHandler errorHandler;
     private final Clock clock;
     private final ConnectionContext connectionContext;
-    private final ReplicaSets replicaSets;
+    private final ReplicaSet replicaSet;
     private final MongoDbTaskContext taskContext;
     private final MongoDbConnection.ChangeEventSourceConnectionFactory connections;
     private final MongoDbStreamingChangeEventSourceMetrics streamingMetrics;
     private MongoDbOffsetContext effectiveOffset;
 
     public MongoDbStreamingChangeEventSource(MongoDbConnectorConfig connectorConfig, MongoDbTaskContext taskContext,
-                                             MongoDbConnection.ChangeEventSourceConnectionFactory connections, ReplicaSets replicaSets,
+                                             MongoDbConnection.ChangeEventSourceConnectionFactory connections, ReplicaSet replicaSet,
                                              EventDispatcher<MongoDbPartition, CollectionId> dispatcher,
                                              ErrorHandler errorHandler, Clock clock, MongoDbStreamingChangeEventSourceMetrics streamingMetrics) {
         this.connectorConfig = connectorConfig;
@@ -65,7 +61,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         this.dispatcher = dispatcher;
         this.errorHandler = errorHandler;
         this.clock = clock;
-        this.replicaSets = replicaSets;
+        this.replicaSet = replicaSet;
         this.taskContext = taskContext;
         this.connections = connections;
         this.streamingMetrics = streamingMetrics;
@@ -85,16 +81,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
     @Override
     public void execute(ChangeEventSourceContext context, MongoDbPartition partition, MongoDbOffsetContext offsetContext)
             throws InterruptedException {
-        final List<ReplicaSet> validReplicaSets = replicaSets.all();
-
-        if (validReplicaSets.size() == 1) {
-            // Streams the replica-set changes in the current thread
-            streamChangesForReplicaSet(context, partition, validReplicaSets.get(0));
-        }
-        else if (validReplicaSets.size() > 1) {
-            // Starts a thread for each replica-set and executes the streaming process
-            streamChangesForReplicaSets(context, partition, validReplicaSets);
-        }
+        streamChangesForReplicaSet(context, partition, replicaSet);
     }
 
     @Override
@@ -112,35 +99,6 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             LOGGER.error("Streaming for replica set {} failed", replicaSet.replicaSetName(), t);
             errorHandler.setProducerThrowable(t);
         }
-    }
-
-    private void streamChangesForReplicaSets(ChangeEventSourceContext context, MongoDbPartition partition, List<ReplicaSet> replicaSets) {
-        final int threads = replicaSets.size();
-        final ExecutorService executor = Threads.newFixedThreadPool(MongoDbConnector.class, taskContext.serverName(), "replicator-streaming", threads);
-        final CountDownLatch latch = new CountDownLatch(threads);
-
-        LOGGER.info("Starting {} thread(s) to stream changes for replica sets: {}", threads, replicaSets);
-
-        replicaSets.forEach(replicaSet -> {
-            executor.submit(() -> {
-                try {
-                    streamChangesForReplicaSet(context, partition, replicaSet);
-                }
-                finally {
-                    latch.countDown();
-                }
-            });
-        });
-
-        // Wait for the executor service to terminate.
-        try {
-            latch.await();
-        }
-        catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-
-        executor.shutdown();
     }
 
     private void readChangeStream(MongoClient client, ReplicaSet replicaSet, ChangeEventSourceContext context) {

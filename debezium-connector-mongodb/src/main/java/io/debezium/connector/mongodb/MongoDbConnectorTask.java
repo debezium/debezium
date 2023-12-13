@@ -84,8 +84,8 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
         final Schema structSchema = connectorConfig.getSourceInfoStructMaker().schema();
         this.schema = new MongoDbSchema(taskContext.filters(), taskContext.topicNamingStrategy(), structSchema, schemaNameAdjuster);
 
-        final ReplicaSets replicaSets = getReplicaSets(connectorConfig);
-        final MongoDbOffsetContext previousOffset = getPreviousOffset(connectorConfig, replicaSets);
+        final ReplicaSet replicaSet = getReplicaSet(connectorConfig);
+        final MongoDbOffsetContext previousOffset = getPreviousOffset(connectorConfig);
         final Clock clock = Clock.system();
 
         PreviousContext previousLogContext = taskContext.configureLoggingContext(taskName);
@@ -144,7 +144,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
                             errorHandler,
                             dispatcher,
                             clock,
-                            replicaSets,
+                            replicaSet,
                             taskContext,
                             schema,
                             metricsFactory.getStreamingMetrics(taskContext, queue, metadataProvider)),
@@ -187,8 +187,8 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
         return MongoDbConnectorConfig.ALL_FIELDS;
     }
 
-    private MongoDbOffsetContext getPreviousOffset(MongoDbConnectorConfig connectorConfig, ReplicaSets replicaSets) {
-        MongoDbOffsetContext.Loader loader = new MongoDbOffsetContext.Loader(connectorConfig, replicaSets);
+    private MongoDbOffsetContext getPreviousOffset(MongoDbConnectorConfig connectorConfig) {
+        MongoDbOffsetContext.Loader loader = new MongoDbOffsetContext.Loader(connectorConfig, connectorConfig.getReplicaSets());
         Collection<Map<String, String>> partitions = loader.getPartitions();
 
         Map<Map<String, String>, Map<String, Object>> offsets = context.offsetStorageReader().offsets(partitions);
@@ -198,55 +198,17 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
             return offsetContext;
         }
         else {
-            checkShardSpecificOffsetsIfNeeded(connectorConfig, replicaSets);
             return null;
         }
     }
 
-    private void checkShardSpecificOffsetsIfNeeded(MongoDbConnectorConfig connectorConfig, ReplicaSets currentReplicaSets) {
-        if (currentReplicaSets.size() != 1 || !currentReplicaSets.getSnapshotReplicaSet().isClusterRs()) {
-            // We are not running in sharded connection mode, so no check is needed
-            return;
-        }
+    private ReplicaSet getReplicaSet(MongoDbConnectorConfig connectorConfig) {
 
-        logger.info("Previous offset not found, checking shard specific offsets from replica_set connection mode.");
-        var discovery = new ReplicaSetDiscovery(taskContext);
-        var replicaSetSpecs = new HashSet<ReplicaSet>();
-
-        try (var client = taskContext.getConnectionContext().connect()) {
-            discovery.readReplicaSetsFromShardedCluster(replicaSetSpecs, client);
-        }
-        catch (Throwable t) {
-            logger.warn("Unable to read shard topology.");
-            return;
-        }
-
-        var replicaSets = new ReplicaSets(replicaSetSpecs);
-        var loader = new MongoDbOffsetContext.Loader(connectorConfig, replicaSets);
-        Collection<Map<String, String>> partitions = loader.getPartitions();
-        Map<Map<String, String>, Map<String, Object>> offsets = context.offsetStorageReader().offsets(partitions);
-
-        if (offsets != null && offsets.values().stream().anyMatch(Objects::nonNull)) {
-            logger.warn("Found at least one shard specific offset from previous run");
-            if (connectorConfig.isOffsetInvalidationAllowed()) {
-                logger.warn("Offset invalidation is allowed, previous shard specific offsets will be ignored and snapshot re-executed");
-                return;
-            }
-
-            throw new DebeziumException("Found at least one shard specific offset from previous run." +
-                    "The default connection mode for sharded has changed to 'sharded' and previous offsets would be invalidated." +
-                    "Either explicitly set '" + MongoDbConnectorConfig.CONNECTION_MODE.name() + "=replica_set' to postpone the migration " +
-                    "or set '" + MongoDbConnectorConfig.ALLOW_OFFSET_INVALIDATION.name() + "=true' to re-execute snapshot and reset offsets. " +
-                    "In next release the 'replica_set' connection mode will be removed.");
-        }
-    }
-
-    private ReplicaSets getReplicaSets(MongoDbConnectorConfig connectorConfig) {
         final ReplicaSets replicaSets = connectorConfig.getReplicaSets();
         if (replicaSets.size() == 0) {
             throw new DebeziumException("Unable to start MongoDB connector task since no replica sets were found");
         }
-        return replicaSets;
+        return replicaSets.getTheOnlyReplicaSet();
     }
 
     @Override

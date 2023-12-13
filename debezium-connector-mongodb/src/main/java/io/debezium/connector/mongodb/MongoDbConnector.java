@@ -162,7 +162,7 @@ public class MongoDbConnector extends BaseSourceConnector {
                             .collect(Collectors.joining(ReplicaSets.SEPARATOR));
                     logger.info("Configuring MongoDB connector task {} to capture events for connections to: {}", taskId, rsConnectionStrings);
                     taskConfigs.add(config.edit()
-                            .with(MongoDbConnectorConfig.TASK_CONNECTION_STRINGS, rsConnectionStrings)
+                            .with(MongoDbConnectorConfig.TASK_CONNECTION_STRING, rsConnectionStrings)
                             .with(MongoDbConnectorConfig.TASK_ID, taskId)
                             .build()
                             .asMap());

@@ -12,14 +12,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.mongodb.ConnectionString;
-import com.mongodb.MongoException;
-import com.mongodb.MongoInterruptedException;
 import com.mongodb.client.MongoClient;
 import com.mongodb.connection.ClusterDescription;
 import com.mongodb.connection.ClusterType;
 
 import io.debezium.annotation.ThreadSafe;
-import io.debezium.connector.mongodb.MongoDbConnectorConfig.ConnectionMode;
 import io.debezium.connector.mongodb.connection.ConnectionContext;
 import io.debezium.connector.mongodb.connection.ConnectionStrings;
 import io.debezium.connector.mongodb.connection.ReplicaSet;
@@ -31,13 +28,6 @@ import io.debezium.connector.mongodb.connection.ReplicaSet;
  */
 @ThreadSafe
 public class ReplicaSetDiscovery {
-
-    /**
-     * The database that might be used to check for replica set information in a sharded cluster.
-     */
-    public static final String CONFIG_DATABASE_NAME = "config";
-    public static final String SHARDS_COLLECTION_NAME = "shards";
-
     /**
      * The database that might be used to check for member information in a replica set.
      */
@@ -73,19 +63,7 @@ public class ReplicaSetDiscovery {
 
         if (clusterDescription.getType() == ClusterType.SHARDED) {
             LOGGER.info("Cluster identified as sharded cluster");
-            var connectionMode = context.getConnectorConfig().getConnectionMode();
-
-            if (ConnectionMode.SHARDED.equals(connectionMode)) {
-                LOGGER.info("ConnectionMode set to '{}', single connection to sharded cluster will be used", connectionMode.getValue());
-                readShardedClusterAsReplicaSet(replicaSetSpecs, connectionContext);
-            }
-            else if (ConnectionMode.REPLICA_SET.equals(connectionMode)) {
-                LOGGER.info("ConnectionMode set to '{}, individual shard connections will be used", connectionMode.getValue());
-                readReplicaSetsFromShardedCluster(replicaSetSpecs, client);
-            }
-            else {
-                LOGGER.warn("Incompatible connection mode '{}' specified", connectionMode.getValue());
-            }
+            readShardedClusterAsReplicaSet(replicaSetSpecs, connectionContext);
         }
 
         if (clusterDescription.getType() == ClusterType.REPLICA_SET) {
@@ -111,34 +89,6 @@ public class ReplicaSetDiscovery {
 
         LOGGER.info("Using '{}' as replica set connection string", ConnectionStrings.mask(connectionString));
         replicaSetSpecs.add(new ReplicaSet(connectionString));
-    }
-
-    public void readReplicaSetsFromShardedCluster(Set<ReplicaSet> replicaSetSpecs, MongoClient client) {
-        try {
-            var csParams = context.getConnectorConfig().getShardConnectionParameters();
-
-            MongoUtil.onCollectionDocuments(client, CONFIG_DATABASE_NAME, SHARDS_COLLECTION_NAME, doc -> {
-                String shardName = doc.getString("_id");
-                String hostStr = doc.getString("host");
-
-                LOGGER.info("Reading shard details for {}", shardName);
-
-                ConnectionStrings.parseFromHosts(hostStr)
-                        .map(cs -> ConnectionStrings.appendParameters(cs, csParams))
-                        .ifPresentOrElse(
-                                cs -> replicaSetSpecs.add(new ReplicaSet(cs)),
-                                () -> LOGGER.info("Shard {} is not a valid replica set", shardName));
-            });
-        }
-        catch (MongoInterruptedException e) {
-            LOGGER.error("Interrupted while reading the '{}' collection in the '{}' database: {}",
-                    SHARDS_COLLECTION_NAME, CONFIG_DATABASE_NAME, e.getMessage(), e);
-            Thread.currentThread().interrupt();
-        }
-        catch (MongoException e) {
-            LOGGER.error("Error while reading the '{}' collection in the '{}' database: {}",
-                    SHARDS_COLLECTION_NAME, CONFIG_DATABASE_NAME, e.getMessage(), e);
-        }
     }
 
     /**
