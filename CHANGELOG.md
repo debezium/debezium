@@ -2,6 +2,34 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.4.2.Final
+December 13rd 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12416574)
+
+### New features since 2.4.1.Final
+
+None
+
+
+### Breaking changes since 2.4.1.Final
+
+None
+
+
+### Fixes since 2.4.1.Final
+
+* Debezium-ddl-parser crashes on parsing MySQL DDL statement (specific UPDATE) [DBZ-7152](https://issues.redhat.com/browse/DBZ-7152)
+* Log sequence check should treat each redo thread independently [DBZ-7158](https://issues.redhat.com/browse/DBZ-7158)
+* Parsing MySQL indexes for JSON field fails, when casting is used with types double and float [DBZ-7189](https://issues.redhat.com/browse/DBZ-7189)
+* Unchanged toasted array columns  are substituted with unavailable.value.placeholder, even when REPLICA IDENTITY FULL is configured. [DBZ-7193](https://issues.redhat.com/browse/DBZ-7193)
+* Broken support for multi-namespace watching  [DBZ-7254](https://issues.redhat.com/browse/DBZ-7254)
+
+
+### Other changes since 2.4.1.Final
+
+None
+
+
+
 ## 2.4.1.Final
 November 16th 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12414496)
 
