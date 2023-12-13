@@ -57,7 +57,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     protected static final Pattern FIELD_RENAMES_PATTERN = Pattern
             .compile("^[*|\\w|\\-|\\s*]+(?:\\.[*|\\w|\\-]+\\.[*|\\w|\\-]+)+(\\.[*|\\w|\\-]+)*:(?:[*|\\w|\\-]+)+\\s*$");
     protected static final String QUALIFIED_FIELD_RENAMES_PATTERN = "<databaseName>.<collectionName>.<fieldName>.<nestedFieldName>:<newNestedFieldName>";
-    private final String shardConnectionParameters;
 
     /**
      * The set of predefined SnapshotMode options or aliases.
@@ -299,70 +298,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     }
 
     /**
-     * The set of predefined MongoDbConnectionMode options or aliases.
-     */
-    public enum ConnectionMode implements EnumeratedValue {
-        /**
-         * Connect individually to each replica set
-         */
-        REPLICA_SET("replica_set"),
-
-        /**
-         * Connect to sharded cluster with single connection via mongos
-         */
-        SHARDED("sharded");
-
-        private String value;
-
-        ConnectionMode(String value) {
-            this.value = value;
-        }
-
-        @Override
-        public String getValue() {
-            return value;
-        }
-
-        /**
-         * Determine if the supplied value is one of the predefined options.
-         *
-         * @param value the configuration property value; may not be null
-         * @return the matching option, or null if no match is found
-         */
-        public static ConnectionMode parse(String value) {
-            if (value == null) {
-                return null;
-            }
-            value = value.trim();
-
-            for (ConnectionMode option : ConnectionMode.values()) {
-                if (option.getValue().equalsIgnoreCase(value)) {
-                    return option;
-                }
-            }
-
-            return null;
-        }
-
-        /**
-         * Determine if the supplied value is one of the predefined options.
-         *
-         * @param value the configuration property value; may not be null
-         * @param defaultValue the default value; may be null
-         * @return the matching option, or null if no match is found and the non-null default is invalid
-         */
-        public static ConnectionMode parse(String value, String defaultValue) {
-            ConnectionMode mode = parse(value);
-
-            if (mode == null && defaultValue != null) {
-                mode = parse(defaultValue);
-            }
-
-            return mode;
-        }
-    }
-
-    /**
      * The set of predefined CursorPipelineOrder options or aliases.
      */
     public enum CursorPipelineOrder implements EnumeratedValue {
@@ -569,7 +504,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     /**
      * The {@link ReplicaSets#SEPARATOR}-separated list of connection strings
      */
-    public static final Field TASK_CONNECTION_STRINGS = Field.createInternal("mongodb.internal.task.connection.strings")
+    public static final Field TASK_CONNECTION_STRING = Field.createInternal("mongodb.internal.task.connection.string")
             .withDescription("Internal use only")
             .withType(Type.LIST);
 
@@ -590,26 +525,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withImportance(Importance.HIGH)
             .withValidation(MongoDbConnectorConfig::validateConnectionString)
             .withDescription("Database connection string.");
-
-    public static final Field SHARD_CONNECTION_PARAMS = Field.create("mongodb.connection.string.shard.params")
-            .withDisplayName("Shard connection parameters")
-            .withType(Type.STRING)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 6))
-            .withWidth(Width.MEDIUM)
-            .withImportance(Importance.MEDIUM)
-            .withDescription("The connection string parameters used when connecting to individual shards of sharded cluster."
-                    + "Only applicable with replica_set connection mode.");
-
-    public static final Field CONNECTION_MODE = Field.create("mongodb.connection.mode")
-            .withDisplayName("Connection mode")
-            .withEnum(ConnectionMode.class, ConnectionMode.SHARDED)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 2))
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.HIGH)
-            .withDescription("The method used to connect to MongoDB cluster. "
-                    + "Options include: "
-                    + "'replica_set' to individually connect to each replica set / shard "
-                    + "'sharded' (the default) to connect via single connection obtained from connection string");
 
     public static final Field USER = Field.create("mongodb.user")
             .withDisplayName("User")
@@ -938,7 +853,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .type(
                     TOPIC_PREFIX,
                     CONNECTION_STRING,
-                    CONNECTION_MODE,
                     ALLOW_OFFSET_INVALIDATION,
                     USER,
                     PASSWORD,
@@ -981,7 +895,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     private CaptureMode captureMode;
     private final CaptureScope captureScope;
     private final String captureTarget;
-    private final ConnectionMode connectionMode;
     private final boolean offsetInvalidationAllowed;
     private final int snapshotMaxThreads;
     private final int cursorMaxAwaitTimeMs;
@@ -1000,9 +913,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         String captureModeValue = config.getString(MongoDbConnectorConfig.CAPTURE_MODE);
         this.captureMode = CaptureMode.parse(captureModeValue, MongoDbConnectorConfig.CAPTURE_MODE.defaultValueAsString());
 
-        String connectionModeValue = config.getString(MongoDbConnectorConfig.CONNECTION_MODE);
-        this.connectionMode = ConnectionMode.parse(connectionModeValue, MongoDbConnectorConfig.CONNECTION_MODE.defaultValueAsString());
-        this.shardConnectionParameters = config.getString(SHARD_CONNECTION_PARAMS);
         this.offsetInvalidationAllowed = config.getBoolean(ALLOW_OFFSET_INVALIDATION);
 
         String captureScopeValue = config.getString(MongoDbConnectorConfig.CAPTURE_SCOPE);
@@ -1199,16 +1109,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         return Optional.ofNullable(captureTarget);
     }
 
-    public ConnectionMode getConnectionMode() {
-        return connectionMode;
-    }
-
     public boolean isOffsetInvalidationAllowed() {
         return offsetInvalidationAllowed;
-    }
-
-    public String getShardConnectionParameters() {
-        return shardConnectionParameters;
     }
 
     public ReplicaSets getReplicaSets() {
@@ -1290,12 +1192,9 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     }
 
     private static ReplicaSets resolveReplicaSets(Configuration config) {
-        if (!config.hasKey(MongoDbConnectorConfig.TASK_CONNECTION_STRINGS)) {
-            return new ReplicaSets(List.of());
-        }
-
-        var replicaSetSpecs = config.getList(MongoDbConnectorConfig.TASK_CONNECTION_STRINGS, ReplicaSets.SEPARATOR, ReplicaSet::new);
-        return new ReplicaSets(replicaSetSpecs);
+        var connectionString = config.getString(MongoDbConnectorConfig.TASK_CONNECTION_STRING);
+        var replicaSet = new ReplicaSet(connectionString);
+        return new ReplicaSets(List.of(replicaSet));
     }
 
     @Override

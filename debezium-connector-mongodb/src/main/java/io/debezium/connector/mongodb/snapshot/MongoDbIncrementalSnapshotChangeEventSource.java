@@ -7,7 +7,6 @@ package io.debezium.connector.mongodb.snapshot;
 
 import static io.debezium.config.CommonConnectorConfig.WatermarkStrategy.INSERT_DELETE;
 import static io.debezium.pipeline.notification.IncrementalSnapshotNotificationService.TableScanCompletionStatus.EMPTY;
-import static io.debezium.pipeline.notification.IncrementalSnapshotNotificationService.TableScanCompletionStatus.SKIPPED;
 import static io.debezium.pipeline.notification.IncrementalSnapshotNotificationService.TableScanCompletionStatus.SUCCEEDED;
 import static io.debezium.pipeline.notification.IncrementalSnapshotNotificationService.TableScanCompletionStatus.UNKNOWN_SCHEMA;
 
@@ -45,7 +44,6 @@ import io.debezium.connector.mongodb.MongoDbPartition;
 import io.debezium.connector.mongodb.MongoDbSchema;
 import io.debezium.connector.mongodb.ReplicaSetOffsetContext;
 import io.debezium.connector.mongodb.ReplicaSetPartition;
-import io.debezium.connector.mongodb.ReplicaSets;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.connector.mongodb.connection.ReplicaSet;
 import io.debezium.connector.mongodb.recordemitter.MongoDbSnapshotRecordEmitter;
@@ -86,7 +84,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
     private final SnapshotProgressListener<MongoDbPartition> progressListener;
     private final DataChangeEventListener<MongoDbPartition> dataListener;
     private long totalRowsScanned = 0;
-    private final ReplicaSets replicaSets;
+    private final ReplicaSet replicaSet;
     private final MongoDbConnection.ChangeEventSourceConnectionFactory connections;
 
     private MongoDbCollectionSchema currentCollection;
@@ -103,7 +101,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
     private final ExecutorService incrementalSnapshotThreadPool;
 
     public MongoDbIncrementalSnapshotChangeEventSource(MongoDbConnectorConfig config,
-                                                       MongoDbConnection.ChangeEventSourceConnectionFactory connections, ReplicaSets replicaSets,
+                                                       MongoDbConnection.ChangeEventSourceConnectionFactory connections, ReplicaSet replicaSet,
                                                        EventDispatcher<MongoDbPartition, CollectionId> dispatcher,
                                                        MongoDbSchema collectionSchema,
                                                        Clock clock,
@@ -111,7 +109,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
                                                        DataChangeEventListener<MongoDbPartition> dataChangeEventListener,
                                                        NotificationService<MongoDbPartition, ? extends OffsetContext> notificationService) {
         this.connectorConfig = config;
-        this.replicaSets = replicaSets;
+        this.replicaSet = replicaSet;
         this.connections = connections;
         this.dispatcher = dispatcher;
         this.collectionSchema = collectionSchema;
@@ -122,7 +120,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
                 : CollectionId.parse("UNUSED", connectorConfig.getSignalingDataCollectionId());
         this.notificationService = notificationService;
         this.incrementalSnapshotThreadPool = Threads.newFixedThreadPool(MongoDbConnector.class, config.getConnectorName(),
-                "incremental-snapshot-" + replicaSets.all().get(0).replicaSetName(), connectorConfig.getSnapshotMaxThreads());
+                "incremental-snapshot-" + replicaSet.replicaSetName(), connectorConfig.getSnapshotMaxThreads());
     }
 
     @Override
@@ -142,7 +140,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
         if (context.snapshotRunning() && !context.isSnapshotPaused()) {
             context.pauseSnapshot();
             progressListener.snapshotPaused(partition);
-            notifyReplicaSets((incrementalSnapshotContext, replicaSetPartition, replicaSetOffsetContext) -> notificationService.incrementalSnapshotNotificationService()
+            notifyReplicaSet((incrementalSnapshotContext, replicaSetPartition, replicaSetOffsetContext) -> notificationService.incrementalSnapshotNotificationService()
                     .notifyPaused(incrementalSnapshotContext, replicaSetPartition, replicaSetOffsetContext), offsetContext);
         }
     }
@@ -153,7 +151,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
         if (context.snapshotRunning() && context.isSnapshotPaused()) {
             context.resumeSnapshot();
             progressListener.snapshotResumed(partition);
-            notifyReplicaSets(
+            notifyReplicaSet(
                     (incrementalSnapshotContext, replicaSetPartition, replicaSetOffsetContext) -> notificationService.incrementalSnapshotNotificationService()
                             .notifyResumed(incrementalSnapshotContext, replicaSetPartition, replicaSetOffsetContext),
                     offsetContext);
@@ -179,7 +177,6 @@ public class MongoDbIncrementalSnapshotChangeEventSource
         context.sendEvent(keyFromRow(row));
 
         MongoDbOffsetContext mongoDbOffsetContext = getMongoDbOffsetContext(offsetContext);
-        ReplicaSet replicaSet = replicaSets.getSnapshotReplicaSet();
         ReplicaSetOffsetContext replicaSetOffsetContext = mongoDbOffsetContext.getReplicaSetOffsetContext(replicaSet);
         ReplicaSetPartition replicaSetPartition = mongoDbOffsetContext.getReplicaSetPartition(replicaSet);
 
@@ -261,7 +258,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
     public void init(MongoDbPartition partition, OffsetContext offsetContext) {
         // Only ReplicaSet deployments are supported by incremental snapshot
         // Thus assume replicaSets.size() == 1
-        mongo = connections.get(replicaSets.all().get(0), partition);
+        mongo = connections.get(replicaSet, partition);
 
         if (offsetContext == null) {
             LOGGER.info("Empty incremental snapshot change event source started, no action needed");
@@ -302,20 +299,10 @@ public class MongoDbIncrementalSnapshotChangeEventSource
             while (context.snapshotRunning()) {
                 final CollectionId currentDataCollectionId = context.currentDataCollectionId().getId();
                 currentCollection = (MongoDbCollectionSchema) collectionSchema.schemaFor(currentDataCollectionId);
-                if (replicaSets.all().size() > 1) {
-                    LOGGER.warn("Incremental snapshotting supported only for single replica set topology, skipping collection '{}', known collections {}",
-                            currentDataCollectionId);
-                    notifyReplicaSets(
-                            (incrementalSnapshotContext, replicaSetPartition, replicaSetOffsetContext) -> notificationService.incrementalSnapshotNotificationService()
-                                    .notifyTableScanCompleted(incrementalSnapshotContext, replicaSetPartition, replicaSetOffsetContext, totalRowsScanned, SKIPPED),
-                            offsetContext);
-                    nextDataCollection(partition, offsetContext);
-                    continue;
-                }
                 // TODO Collection schema is calculated dynamically, it is necessary to use a different check
                 if (currentCollection == null) {
                     LOGGER.warn("Schema not found for collection '{}', known collections {}", currentDataCollectionId, collectionSchema);
-                    notifyReplicaSets(
+                    notifyReplicaSet(
                             (incrementalSnapshotContext, replicaSetPartition, replicaSetOffsetContext) -> notificationService.incrementalSnapshotNotificationService()
                                     .notifyTableScanCompleted(incrementalSnapshotContext, replicaSetPartition, replicaSetOffsetContext, totalRowsScanned, UNKNOWN_SCHEMA),
                             offsetContext);
@@ -329,7 +316,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
                         LOGGER.info(
                                 "No maximum key returned by the query, incremental snapshotting of collection '{}' finished as it is empty",
                                 currentDataCollectionId);
-                        notifyReplicaSets(
+                        notifyReplicaSet(
                                 (incrementalSnapshotContext, replicaSetPartition, replicaSetOffsetContext) -> notificationService.incrementalSnapshotNotificationService()
                                         .notifyTableScanCompleted(incrementalSnapshotContext, replicaSetPartition, replicaSetOffsetContext, totalRowsScanned, EMPTY),
                                 offsetContext);
@@ -346,7 +333,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
                     LOGGER.info("No data returned by the query, incremental snapshotting of table '{}' finished",
                             currentDataCollectionId);
 
-                    notifyReplicaSets(
+                    notifyReplicaSet(
                             (incrementalSnapshotContext, replicaSetPartition, replicaSetOffsetContext) -> notificationService.incrementalSnapshotNotificationService()
                                     .notifyTableScanCompleted(incrementalSnapshotContext, replicaSetPartition, replicaSetOffsetContext, totalRowsScanned, SUCCEEDED),
                             offsetContext);
@@ -356,7 +343,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
                 }
                 else {
 
-                    notifyReplicaSets(
+                    notifyReplicaSet(
                             (incrementalSnapshotContext, replicaSetPartition, replicaSetOffsetContext) -> notificationService.incrementalSnapshotNotificationService()
                                     .notifyInProgress(incrementalSnapshotContext, replicaSetPartition, replicaSetOffsetContext),
                             offsetContext);
@@ -380,7 +367,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
         context.nextDataCollection();
         if (!context.snapshotRunning()) {
             progressListener.snapshotCompleted(partition);
-            notifyReplicaSets(
+            notifyReplicaSet(
                     (incrementalSnapshotContext, replicaSetPartition, replicaSetOffsetContext) -> notificationService.incrementalSnapshotNotificationService()
                             .notifyCompleted(incrementalSnapshotContext, replicaSetPartition, replicaSetOffsetContext),
                     offsetContext);
@@ -423,7 +410,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
 
         context = (IncrementalSnapshotContext<CollectionId>) offsetContext.getIncrementalSnapshotContext();
         final boolean shouldReadChunk = !context.snapshotRunning();
-        final String rsName = replicaSets.all().get(0).replicaSetName();
+        final String rsName = replicaSet.replicaSetName();
         List<String> dataCollectionIds = snapshotConfiguration.getDataCollections()
                 .stream()
                 .map(x -> rsName + "." + x.toString())
@@ -435,7 +422,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
 
             progressListener.snapshotStarted(partition);
 
-            notifyReplicaSets(
+            notifyReplicaSet(
                     (incrementalSnapshotContext, replicaSetPartition, replicaSetOffsetContext) -> notificationService.incrementalSnapshotNotificationService()
                             .notifyStarted(incrementalSnapshotContext, replicaSetPartition, replicaSetOffsetContext),
                     offsetContext);
@@ -446,15 +433,11 @@ public class MongoDbIncrementalSnapshotChangeEventSource
         }
     }
 
-    public void notifyReplicaSets(ReplicaSetNotifier<CollectionId> notifier, OffsetContext offsetContext) {
-
+    public void notifyReplicaSet(ReplicaSetNotifier<CollectionId> notifier, OffsetContext offsetContext) {
         MongoDbOffsetContext mongoDbOffsetContext = getMongoDbOffsetContext(offsetContext);
-
-        for (ReplicaSet rs : replicaSets.all()) {
-            ReplicaSetOffsetContext replicaSetOffsetContext = mongoDbOffsetContext.getReplicaSetOffsetContext(rs);
-            ReplicaSetPartition replicaSetPartition = mongoDbOffsetContext.getReplicaSetPartition(rs);
-            notifier.apply(context, replicaSetPartition, replicaSetOffsetContext);
-        }
+        ReplicaSetOffsetContext replicaSetOffsetContext = mongoDbOffsetContext.getReplicaSetOffsetContext(replicaSet);
+        ReplicaSetPartition replicaSetPartition = mongoDbOffsetContext.getReplicaSetPartition(replicaSet);
+        notifier.apply(context, replicaSetPartition, replicaSetOffsetContext);
     }
 
     @Override
@@ -476,7 +459,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
 
                     progressListener.snapshotAborted(partition);
 
-                    notifyReplicaSets((incrementalSnapshotContext, replicaSetPartition, replicaSetOffsetContext) -> notificationService
+                    notifyReplicaSet((incrementalSnapshotContext, replicaSetPartition, replicaSetOffsetContext) -> notificationService
                             .incrementalSnapshotNotificationService().notifyAborted(incrementalSnapshotContext, replicaSetPartition, replicaSetOffsetContext),
                             offsetContext);
                 }
@@ -486,7 +469,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
             }
             else {
                 LOGGER.info("Removing '{}' collections from incremental snapshot", dataCollectionPatterns);
-                final String rsName = replicaSets.all().get(0).replicaSetName();
+                final String rsName = replicaSet.replicaSetName();
                 final List<String> dataCollectionIds = dataCollectionPatterns.stream().map(x -> rsName + "." + x.toString()).collect(Collectors.toList());
 
                 for (String dataCollectionId : dataCollectionIds) {
@@ -508,7 +491,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
                     }
                 }
 
-                notifyReplicaSets(
+                notifyReplicaSet(
                         (incrementalSnapshotContext, replicaSetPartition, replicaSetOffsetContext) -> notificationService.incrementalSnapshotNotificationService()
                                 .notifyAborted(incrementalSnapshotContext, replicaSetPartition, replicaSetOffsetContext,
                                         dataCollectionIds),

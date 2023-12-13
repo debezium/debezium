@@ -20,7 +20,6 @@ import com.mongodb.client.model.Updates;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
-import io.debezium.connector.mongodb.MongoDbConnectorConfig.ConnectionMode;
 import io.debezium.data.Envelope;
 
 public class ShardedMongoDbConnectorIT extends AbstractShardedMongoConnectorIT {
@@ -47,16 +46,7 @@ public class ShardedMongoDbConnectorIT extends AbstractShardedMongoConnectorIT {
     }
 
     @Test
-    public void shouldConsumeAllEventsFromDatabaseWithShardedConnectionMode() throws InterruptedException {
-        shouldConsumeAllEventsFromDatabase(ConnectionMode.SHARDED);
-    }
-
-    @Test
-    public void shouldConsumeAllEventsFromDatabaseWithReplicaSetConnectionMode() throws InterruptedException {
-        shouldConsumeAllEventsFromDatabase(ConnectionMode.REPLICA_SET);
-    }
-
-    public void shouldConsumeAllEventsFromDatabase(ConnectionMode connectionMode) throws InterruptedException {
+    public void shouldConsumeAllEventsFromDatabase() throws InterruptedException {
         var documentCount = 0;
         var topic = String.format("%s.%s.%s", TOPIC_PREFIX, shardedDatabase(), shardedCollection());
 
@@ -67,7 +57,6 @@ public class ShardedMongoDbConnectorIT extends AbstractShardedMongoConnectorIT {
         // Use the DB configuration to define the connector's configuration ...
         Configuration config = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
-                .with(MongoDbConnectorConfig.CONNECTION_MODE, connectionMode)
                 .with(CommonConnectorConfig.TOPIC_PREFIX, TOPIC_PREFIX)
                 .build();
 
@@ -77,7 +66,7 @@ public class ShardedMongoDbConnectorIT extends AbstractShardedMongoConnectorIT {
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database
         // ---------------------------------------------------------------------------------------------------------------
-        consumeAndVerifyFromInitialSync(connectionMode, topic, INIT_DOCUMENT_COUNT);
+        consumeAndVerifyFromInitialSync(topic, INIT_DOCUMENT_COUNT);
 
         // At this point, the connector has performed the initial sync and awaits changes ...
 
@@ -118,13 +107,13 @@ public class ShardedMongoDbConnectorIT extends AbstractShardedMongoConnectorIT {
         consumeAndVerifyNotFromInitialSync(topic, 1, Envelope.Operation.UPDATE);
     }
 
-    protected void consumeAndVerifyFromInitialSync(ConnectionMode connectionMode, String topic, int expectedRecords) throws InterruptedException {
+    protected void consumeAndVerifyFromInitialSync(String topic, int expectedRecords) throws InterruptedException {
         var records = consumeRecordsByTopic(expectedRecords);
         assertThat(records.topics().size()).isEqualTo(1);
         assertThat(records.recordsForTopic(topic).size()).isEqualTo(expectedRecords);
 
         AtomicInteger lastCount = new AtomicInteger();
-        var expectedLastCount = connectionMode == ConnectionMode.SHARDED ? 1 : mongo.size();
+        var expectedLastCount = 1;
         records.forEach(record -> {
             // Check that all records are valid, and can be serialized and deserialized ...
             validate(record);
