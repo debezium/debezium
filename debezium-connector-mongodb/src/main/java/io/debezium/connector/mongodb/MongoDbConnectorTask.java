@@ -18,7 +18,6 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.DebeziumException;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.bean.StandardBeanNames;
 import io.debezium.config.Configuration;
@@ -188,7 +187,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
     }
 
     private MongoDbOffsetContext getPreviousOffset(MongoDbConnectorConfig connectorConfig) {
-        MongoDbOffsetContext.Loader loader = new MongoDbOffsetContext.Loader(connectorConfig, connectorConfig.getReplicaSets());
+        MongoDbOffsetContext.Loader loader = new MongoDbOffsetContext.Loader(connectorConfig, connectorConfig.getReplicaSet());
         Collection<Map<String, String>> partitions = loader.getPartitions();
 
         Map<Map<String, String>, Map<String, Object>> offsets = context.offsetStorageReader().offsets(partitions);
@@ -203,12 +202,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
     }
 
     private ReplicaSet getReplicaSet(MongoDbConnectorConfig connectorConfig) {
-
-        final ReplicaSets replicaSets = connectorConfig.getReplicaSets();
-        if (replicaSets.size() == 0) {
-            throw new DebeziumException("Unable to start MongoDB connector task since no replica sets were found");
-        }
-        return replicaSets.getTheOnlyReplicaSet();
+        return connectorConfig.getReplicaSet();
     }
 
     @Override
