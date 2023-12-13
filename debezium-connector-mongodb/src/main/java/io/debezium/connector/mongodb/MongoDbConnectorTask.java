@@ -24,7 +24,6 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
-import io.debezium.connector.mongodb.connection.ReplicaSet;
 import io.debezium.connector.mongodb.metrics.MongoDbChangeEventSourceMetricsFactory;
 import io.debezium.document.DocumentReader;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
@@ -83,7 +82,6 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
         final Schema structSchema = connectorConfig.getSourceInfoStructMaker().schema();
         this.schema = new MongoDbSchema(taskContext.filters(), taskContext.topicNamingStrategy(), structSchema, schemaNameAdjuster);
 
-        final ReplicaSet replicaSet = getReplicaSet(connectorConfig);
         final MongoDbOffsetContext previousOffset = getPreviousOffset(connectorConfig);
         final Clock clock = Clock.system();
 
@@ -143,7 +141,6 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
                             errorHandler,
                             dispatcher,
                             clock,
-                            replicaSet,
                             taskContext,
                             schema,
                             metricsFactory.getStreamingMetrics(taskContext, queue, metadataProvider)),
@@ -199,10 +196,6 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
         else {
             return null;
         }
-    }
-
-    private ReplicaSet getReplicaSet(MongoDbConnectorConfig connectorConfig) {
-        return connectorConfig.getReplicaSet();
     }
 
     @Override

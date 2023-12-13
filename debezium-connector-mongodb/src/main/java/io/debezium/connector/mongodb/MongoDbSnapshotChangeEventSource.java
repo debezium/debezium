@@ -82,7 +82,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
     private final AtomicBoolean aborted = new AtomicBoolean(false);
 
     public MongoDbSnapshotChangeEventSource(MongoDbConnectorConfig connectorConfig, MongoDbTaskContext taskContext,
-                                            MongoDbConnection.ChangeEventSourceConnectionFactory connections, ReplicaSet replicaSet,
+                                            MongoDbConnection.ChangeEventSourceConnectionFactory connections,
                                             EventDispatcher<MongoDbPartition, CollectionId> dispatcher, Clock clock,
                                             SnapshotProgressListener<MongoDbPartition> snapshotProgressListener, ErrorHandler errorHandler,
                                             NotificationService<MongoDbPartition, MongoDbOffsetContext> notificationService) {
@@ -90,7 +90,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
         this.connectorConfig = connectorConfig;
         this.taskContext = taskContext;
         this.connections = connections;
-        this.replicaSet = replicaSet;
+        this.replicaSet = connectorConfig.getReplicaSet();
         this.dispatcher = dispatcher;
         this.clock = clock;
         this.snapshotProgressListener = snapshotProgressListener;

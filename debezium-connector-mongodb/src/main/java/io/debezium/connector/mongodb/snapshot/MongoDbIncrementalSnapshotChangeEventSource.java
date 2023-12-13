@@ -101,7 +101,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
     private final ExecutorService incrementalSnapshotThreadPool;
 
     public MongoDbIncrementalSnapshotChangeEventSource(MongoDbConnectorConfig config,
-                                                       MongoDbConnection.ChangeEventSourceConnectionFactory connections, ReplicaSet replicaSet,
+                                                       MongoDbConnection.ChangeEventSourceConnectionFactory connections,
                                                        EventDispatcher<MongoDbPartition, CollectionId> dispatcher,
                                                        MongoDbSchema collectionSchema,
                                                        Clock clock,
@@ -109,7 +109,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
                                                        DataChangeEventListener<MongoDbPartition> dataChangeEventListener,
                                                        NotificationService<MongoDbPartition, ? extends OffsetContext> notificationService) {
         this.connectorConfig = config;
-        this.replicaSet = replicaSet;
+        this.replicaSet = config.getReplicaSet();
         this.connections = connections;
         this.dispatcher = dispatcher;
         this.collectionSchema = collectionSchema;
