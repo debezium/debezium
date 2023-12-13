@@ -53,7 +53,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
     private MongoDbOffsetContext effectiveOffset;
 
     public MongoDbStreamingChangeEventSource(MongoDbConnectorConfig connectorConfig, MongoDbTaskContext taskContext,
-                                             MongoDbConnection.ChangeEventSourceConnectionFactory connections, ReplicaSet replicaSet,
+                                             MongoDbConnection.ChangeEventSourceConnectionFactory connections,
                                              EventDispatcher<MongoDbPartition, CollectionId> dispatcher,
                                              ErrorHandler errorHandler, Clock clock, MongoDbStreamingChangeEventSourceMetrics streamingMetrics) {
         this.connectorConfig = connectorConfig;
@@ -61,7 +61,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         this.dispatcher = dispatcher;
         this.errorHandler = errorHandler;
         this.clock = clock;
-        this.replicaSet = replicaSet;
+        this.replicaSet = connectorConfig.getReplicaSet();
         this.taskContext = taskContext;
         this.connections = connections;
         this.streamingMetrics = streamingMetrics;
