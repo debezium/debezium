@@ -16,6 +16,7 @@ import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.mongodb.ConnectionString;
 import com.mongodb.client.ChangeStreamIterable;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
@@ -27,6 +28,7 @@ import com.mongodb.connection.ClusterDescription;
 import com.mongodb.connection.ClusterType;
 import com.mongodb.connection.ServerDescription;
 
+import io.debezium.connector.mongodb.connection.ConnectionStrings;
 import io.debezium.function.BlockingConsumer;
 
 /**
@@ -200,6 +202,37 @@ public class MongoUtil {
                 .map(ServerDescription::getSetName)
                 .filter(Objects::nonNull)
                 .findFirst();
+    }
+
+    /**
+     * Ensures connection string contains the replicaSet parameter.If connection string doesn't contain the parameter,
+     * the replica set name is read from cluster description and the parameter is added.
+     *
+     * @param connectionString the original connection string
+     * @param clusterDescription cluster description
+     * @return connection string with replicaSet parameter
+     */
+    public static String ensureReplicaSetName(String connectionString, ClusterDescription clusterDescription) {
+        // If we have replicaSet parameter then just return
+        var cs = new ConnectionString(connectionString);
+        if (cs.getRequiredReplicaSetName() != null) {
+            return connectionString;
+        }
+
+        // Otherwise Java driver is smart enough to connect correctly
+        // However replicaSet parameter is mandatory, and we need the name for offset storage
+        LOGGER.warn("Replica set not specified in '{}'", ConnectionStrings.mask(connectionString));
+        LOGGER.warn("Parameter 'replicaSet' should be added to connection string");
+        LOGGER.warn("Trying to determine replica set name for '{}'", ConnectionStrings.mask(connectionString));
+
+        var rsName = MongoUtil.replicaSetName(clusterDescription);
+        if (rsName.isPresent()) {
+            LOGGER.info("Found '{}' replica set for '{}'", rsName.get(), ConnectionStrings.mask(connectionString));
+            return ConnectionStrings.appendParameter(connectionString, "replicaSet", rsName.get());
+        }
+
+        LOGGER.warn("Unable to find replica set name for '{}'", ConnectionStrings.mask(connectionString));
+        return connectionString;
     }
 
     /**

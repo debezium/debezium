@@ -24,9 +24,9 @@ import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.BaseSourceConnector;
 import io.debezium.connector.mongodb.connection.ConnectionContext;
+import io.debezium.connector.mongodb.connection.ConnectionStrings;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.connector.mongodb.connection.ReplicaSet;
-import io.debezium.util.LoggingContext.PreviousContext;
 
 /**
  * A Kafka Connect source connector that creates {@link MongoDbConnectorTask tasks} that replicate the context of one or more
@@ -74,9 +74,7 @@ public class MongoDbConnector extends BaseSourceConnector {
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
     private Configuration config;
-    private MongoDbTaskContext taskContext;
     private ConnectionContext connectionContext;
-    private ReplicaSetDiscovery monitor;
 
     public MongoDbConnector() {
     }
@@ -100,56 +98,39 @@ public class MongoDbConnector extends BaseSourceConnector {
             throw new DebeziumException("Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
         }
         this.config = config;
-        this.taskContext = new MongoDbTaskContext(config);
-        this.connectionContext = taskContext.getConnectionContext();
-        this.monitor = new ReplicaSetDiscovery(taskContext);
+        this.connectionContext = new ConnectionContext(config);
 
         logger.info("Successfully started MongoDB connector, and continuing to discover changes in replica set(s) at {}", connectionContext.maskedConnectionSeed());
     }
 
     @Override
     public List<Map<String, String>> taskConfigs(int maxTasks) {
-        PreviousContext previousLogContext = taskContext.configureLoggingContext("conn");
-        try {
-            if (config == null) {
-                logger.error("Configuring a maximum of {} tasks with no connector configuration available", maxTasks);
-                return Collections.emptyList();
-            }
+        if (config == null) {
+            logger.error("Configuring a maximum of {} tasks with no connector configuration available", maxTasks);
+            return Collections.emptyList();
+        }
 
-            // Partitioning the replica sets amongst the number of tasks ...
-            List<Map<String, String>> taskConfigs = new ArrayList<>(maxTasks);
-            ReplicaSet replicaSet = monitor.getReplicaSet();
-            if (replicaSet != null) {
-                logger.info("Configuring MongoDB connector task to capture events for connections to: {}", replicaSet.connectionString());
-                taskConfigs.add(config.edit()
-                        .with(MongoDbConnectorConfig.TASK_CONNECTION_STRING, replicaSet.connectionString())
-                        .with(MongoDbConnectorConfig.TASK_ID, 0)
-                        .build()
-                        .asMap());
-            }
-            logger.debug("Configuring {} MongoDB connector task(s)", taskConfigs.size());
-            return taskConfigs;
-        }
-        finally {
-            previousLogContext.restore();
-        }
+        // Partitioning the replica sets amongst the number of tasks ...
+        List<Map<String, String>> taskConfigs = new ArrayList<>(maxTasks);
+        var taskConnectionString = connectionContext.resolveTaskConnectionString();
+
+        logger.info("Configuring MongoDB connector task to capture events for connections to: {}", ConnectionStrings.mask(taskConnectionString));
+        taskConfigs.add(config.edit()
+                .with(MongoDbConnectorConfig.TASK_CONNECTION_STRING, taskConnectionString)
+                .with(MongoDbConnectorConfig.TASK_ID, 0)
+                .build()
+                .asMap());
+        logger.debug("Configuring {} MongoDB connector task(s)", taskConfigs.size());
+        return taskConfigs;
     }
 
     @Override
     public void stop() {
-        PreviousContext previousLogContext = taskContext != null ? taskContext.configureLoggingContext("conn") : null;
-        try {
-            logger.info("Stopping MongoDB connector");
-            this.config = null;
-            // Clear interrupt flag so the graceful termination is always attempted.
-            Thread.interrupted();
-            logger.info("Stopped MongoDB connector");
-        }
-        finally {
-            if (previousLogContext != null) {
-                previousLogContext.restore();
-            }
-        }
+        logger.info("Stopping MongoDB connector");
+        this.config = null;
+        // Clear interrupt flag so the graceful termination is always attempted.
+        Thread.interrupted();
+        logger.info("Stopped MongoDB connector");
     }
 
     @Override
@@ -204,7 +185,7 @@ public class MongoDbConnector extends BaseSourceConnector {
     private MongoDbConnection getConnection(Configuration config) {
         MongoDbTaskContext context = new MongoDbTaskContext(config);
         ReplicaSet replicaSet = new ReplicaSet(context.getConnectionContext().connectionString());
-        return context.getConnectionContext().connect(replicaSet, context.filters(), (s, throwable) -> {
+        return context.getConnectionContext().connect(context.getConnectionContext().connectionString(), context.filters(), (s, throwable) -> {
             throw new DebeziumException(s, throwable);
         });
     }

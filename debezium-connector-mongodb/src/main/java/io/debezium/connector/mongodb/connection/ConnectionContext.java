@@ -13,10 +13,14 @@ import org.slf4j.LoggerFactory;
 
 import com.mongodb.ConnectionString;
 import com.mongodb.client.MongoClient;
+import com.mongodb.connection.ClusterDescription;
+import com.mongodb.connection.ClusterType;
 
+import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.Filters;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig;
+import io.debezium.connector.mongodb.MongoUtil;
 import io.debezium.function.BlockingConsumer;
 
 /**
@@ -89,6 +93,26 @@ public class ConnectionContext {
         return new ConnectionString(connectionSeed());
     }
 
+    public ConnectionString resolveTaskConnectionString() {
+        try (var client = connect()) {
+            LOGGER.info("Reading description of cluster at {}", maskedConnectionSeed());
+            final ClusterDescription clusterDescription = MongoUtil.clusterDescription(client);
+
+            if (clusterDescription.getType() == ClusterType.SHARDED) {
+                LOGGER.info("Cluster identified as sharded cluster");
+                return connectionString();
+            }
+
+            if (clusterDescription.getType() == ClusterType.REPLICA_SET) {
+                LOGGER.info("Cluster identified as replicaSet");
+                var connectionString = MongoUtil.ensureReplicaSetName(connectionSeed(), clusterDescription);
+                return new ConnectionString(connectionString);
+            }
+        }
+
+        throw new DebeziumException("Unable to determine cluster type");
+    }
+
     /**
      * Same as {@link #connectionSeed()} but masks sensitive information
      *
@@ -114,8 +138,7 @@ public class ConnectionContext {
      *            {@link MongoDbConnection#execute(String, BlockingConsumer)}  execute} an operation to completion; may be null
      * @return the client, or {@code null} if no primary could be found for the replica set
      */
-    public MongoDbConnection connect(ConnectionString connectionString, Filters filters,
-                                     MongoDbConnection.ErrorHandler errorHandler) {
+    public MongoDbConnection connect(ConnectionString connectionString, Filters filters, MongoDbConnection.ErrorHandler errorHandler) {
         return new MongoDbConnection(connectionString, clientFactory, connectorConfig, filters, errorHandler);
     }
 }
