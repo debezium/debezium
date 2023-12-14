@@ -15,9 +15,9 @@ import java.util.regex.Pattern;
  */
 public class OracleDatabaseVersion {
     private final static Pattern VERSION_PATTERN = Pattern
-            .compile("Oracle Database.*\\nVersion ([0-9]*)\\.([0-9]*)\\.([0-9]*)\\.([0-9]*)\\.([0-9]*)");
+            .compile("(?:.*)(?:Release )([0-9]+)\\.([0-9]+)\\.([0-9]+)\\.([0-9]+)\\.([0-9]+)(?:.*)");
     private final static Pattern VERSION_18_1_PATTERN = Pattern
-            .compile("(?:.*)(?:\\- Production(?:\\r\\n|\\r|\\n)(?:Version ))([0-9]+)\\.([0-9]+)\\.([0-9]+)\\.([0-9]+)\\.([0-9]+)");
+            .compile("^Oracle Database.*(?:\\r\\n|\\r|\\n)^(?:Version )([0-9]+)\\.([0-9]+)\\.([0-9]+)\\.([0-9]+)\\.([0-9]+)", Pattern.MULTILINE);
 
     private final int major;
     private final int maintenance;
