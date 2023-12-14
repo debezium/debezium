@@ -432,6 +432,10 @@ node('release-node') {
                 def buildArgs = "-Dversion.debezium=$RELEASE_VERSION"
                 dir(id) {
                     sh "git checkout -b $CANDIDATE_BRANCH"
+                    // Obtain dependecies not available in Maven Central (introduced for Cassandra Enerprise)
+                    if (fileExists(INSTALL_ARTIFACTS_SCRIPT)) {
+                        sh "./$INSTALL_ARTIFACTS_SCRIPT"
+                    }
                     sh "mvn clean install -DskipTests -DskipITs -Passembly"
                     modifyFile("pom.xml") {
                         it.replaceFirst('<version>.+</version>\n    </parent>', "<version>$RELEASE_VERSION</version>\n    </parent>")
@@ -453,10 +457,6 @@ node('release-node') {
                         sh "mvn clean install -P$profiles -DskipTests -DskipITs"
                     }
                     sh "git commit -a -m '[release] Stable parent $RELEASE_VERSION for release'"
-                    // Obtain dependecies not available in Maven Central (introduced for Cassandra Enerprise)
-                    if (fileExists(INSTALL_ARTIFACTS_SCRIPT)) {
-                        sh "./$INSTALL_ARTIFACTS_SCRIPT"
-                    }
                     if(id != "operator") {
                         // Don't repeat build for operator
                         sh "mvn clean install -DskipTests -DskipITs"

@@ -201,6 +201,7 @@ Jason Schweier
 Jesse Ehrenzweig
 Jiabao Sun
 Jiri Kulhanek
+Jordan Pittier
 Juan Fiallo
 Jun Zhao
 Hady Willi
@@ -492,6 +493,8 @@ tooptoop4
 Tova Cohen
 Travis Elnicky
 Troy Gaines
+Tudor Plugaru
+V K
 Vadzim Ramanenka
 Vasily Ulianko
 Vedit Firat Arig
