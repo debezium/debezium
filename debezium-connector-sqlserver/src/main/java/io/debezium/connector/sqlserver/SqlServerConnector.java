@@ -12,11 +12,8 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigValue;
@@ -29,7 +26,6 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.common.RelationalBaseSourceConnector;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
-import io.debezium.rest.model.DataCollection;
 
 /**
  * The main connector class used to instantiate configuration and execution classes
@@ -163,13 +159,14 @@ public class SqlServerConnector extends RelationalBaseSourceConnector {
                 sqlServerConfig.useSingleDatabase());
     }
 
+    @SuppressWarnings("unchecked")
     @Override
-    public List<DataCollection> getMatchingCollections(Configuration config) {
+    public List<TableId> getMatchingCollections(Configuration config) {
         final SqlServerConnectorConfig sqlServerConfig = new SqlServerConnectorConfig(config);
         final List<String> databaseNames = sqlServerConfig.getDatabaseNames();
 
         try (SqlServerConnection connection = connect(sqlServerConfig)) {
-            Set<TableId> tables = new HashSet<>();
+            List<TableId> tables = new ArrayList<>();
             databaseNames.forEach(databaseName -> {
                 try {
                     tables.addAll(connection.readTableNames(databaseName, null, null, new String[]{ "TABLE" }));
@@ -179,10 +176,7 @@ public class SqlServerConnector extends RelationalBaseSourceConnector {
                 }
             });
 
-            return tables.stream()
-                    .filter(tableId -> sqlServerConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId))
-                    .map(tableId -> new DataCollection(tableId.catalog(), tableId.schema(), tableId.table()))
-                    .collect(Collectors.toList());
+            return tables;
         }
         catch (SQLException e) {
             throw new RuntimeException("Could not retrieve real database name", e);

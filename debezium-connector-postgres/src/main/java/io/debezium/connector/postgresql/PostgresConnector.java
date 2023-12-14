@@ -7,12 +7,11 @@
 package io.debezium.connector.postgresql;
 
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigValue;
@@ -27,7 +26,6 @@ import io.debezium.connector.common.RelationalBaseSourceConnector;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
-import io.debezium.rest.model.DataCollection;
 
 /**
  * A Kafka Connect source connector that creates tasks which use Postgresql streaming replication off a logical replication slot
@@ -171,15 +169,13 @@ public class PostgresConnector extends RelationalBaseSourceConnector {
         return config.validate(PostgresConnectorConfig.ALL_FIELDS);
     }
 
+    @SuppressWarnings("unchecked")
     @Override
-    public List<DataCollection> getMatchingCollections(Configuration config) {
+    public List<TableId> getMatchingCollections(Configuration config) {
         PostgresConnectorConfig postgresConnectorConfig = new PostgresConnectorConfig(config);
         try (PostgresConnection connection = new PostgresConnection(postgresConnectorConfig.getJdbcConfig(), PostgresConnection.CONNECTION_GENERAL)) {
-            Set<TableId> tables = connection.readTableNames(postgresConnectorConfig.databaseName(), null, null, new String[]{ "TABLE" });
-            return tables.stream()
-                    .filter(tableId -> postgresConnectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId))
-                    .map(tableId -> new DataCollection(tableId.schema(), tableId.table()))
-                    .collect(Collectors.toList());
+            return new ArrayList<>(
+                    connection.readTableNames(postgresConnectorConfig.databaseName(), null, null, new String[]{ "TABLE" }));
         }
         catch (SQLException e) {
             throw new DebeziumException(e);

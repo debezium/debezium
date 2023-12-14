@@ -34,7 +34,5 @@ public interface FilterValidationResource<T extends BaseSourceConnector> {
         return validationResults;
     }
 
-    default List<DataCollection> getMatchingCollections(Configuration configuration) {
-        return getConnector().getMatchingCollections(configuration);
-    }
+    List<DataCollection> getMatchingCollections(Configuration configuration);
 }
