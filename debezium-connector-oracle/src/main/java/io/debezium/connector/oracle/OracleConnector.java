@@ -6,12 +6,11 @@
 package io.debezium.connector.oracle;
 
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigValue;
@@ -24,7 +23,6 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.common.RelationalBaseSourceConnector;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
-import io.debezium.rest.model.DataCollection;
 import io.debezium.util.Strings;
 
 public class OracleConnector extends RelationalBaseSourceConnector {
@@ -92,8 +90,9 @@ public class OracleConnector extends RelationalBaseSourceConnector {
         return config.validate(OracleConnectorConfig.ALL_FIELDS);
     }
 
+    @SuppressWarnings("unchecked")
     @Override
-    public List<DataCollection> getMatchingCollections(Configuration config) {
+    public List<TableId> getMatchingCollections(Configuration config) {
         final OracleConnectorConfig oracleConfig = new OracleConnectorConfig(config);
         final String databaseName = oracleConfig.getCatalogName();
 
@@ -101,15 +100,10 @@ public class OracleConnector extends RelationalBaseSourceConnector {
             if (!Strings.isNullOrBlank(oracleConfig.getPdbName())) {
                 connection.setSessionToPdb(oracleConfig.getPdbName());
             }
-            Set<TableId> tables;
             // @TODO: we need to expose a better method from the connector, particularly getAllTableIds
             // the following's performance is acceptable when using PDBs but not as ideal with non-PDB
-            tables = connection.readTableNames(databaseName, null, null, new String[]{ "TABLE" });
-
-            return tables.stream()
-                    .filter(tableId -> oracleConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId))
-                    .map(tableId -> new DataCollection(tableId.schema(), tableId.table()))
-                    .collect(Collectors.toList());
+            return new ArrayList<>(
+                    connection.readTableNames(databaseName, null, null, new String[]{ "TABLE" }));
         }
         catch (SQLException e) {
             throw new DebeziumException(e);

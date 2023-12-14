@@ -30,7 +30,6 @@ import io.debezium.connector.common.BaseSourceConnector;
 import io.debezium.connector.mongodb.connection.ConnectionContext;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.connector.mongodb.connection.ReplicaSet;
-import io.debezium.rest.model.DataCollection;
 import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext.PreviousContext;
 import io.debezium.util.Threads;
@@ -235,12 +234,11 @@ public class MongoDbConnector extends BaseSourceConnector {
         return config.validate(MongoDbConnectorConfig.EXPOSED_FIELDS);
     }
 
+    @SuppressWarnings("unchecked")
     @Override
-    public List<DataCollection> getMatchingCollections(Configuration config) {
+    public List<CollectionId> getMatchingCollections(Configuration config) {
         try (MongoDbConnection connection = getConnection(config)) {
-            return connection.collections().stream()
-                    .map(collectionId -> new DataCollection(collectionId.replicaSetName(), collectionId.dbName(), collectionId.name()))
-                    .collect(Collectors.toList());
+            return connection.collections();
         }
         catch (InterruptedException e) {
             throw new DebeziumException(e);

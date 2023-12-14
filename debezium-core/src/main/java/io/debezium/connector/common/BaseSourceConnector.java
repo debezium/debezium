@@ -12,7 +12,7 @@ import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.source.SourceConnector;
 
 import io.debezium.config.Configuration;
-import io.debezium.rest.model.DataCollection;
+import io.debezium.spi.schema.DataCollectionId;
 
 /**
  * Base class for Debezium's CDC {@link SourceConnector} implementations.
@@ -22,5 +22,5 @@ public abstract class BaseSourceConnector extends SourceConnector {
 
     protected abstract Map<String, ConfigValue> validateAllFields(Configuration config);
 
-    public abstract List<DataCollection> getMatchingCollections(Configuration config);
+    public abstract <T extends DataCollectionId> List<T> getMatchingCollections(Configuration config);
 }

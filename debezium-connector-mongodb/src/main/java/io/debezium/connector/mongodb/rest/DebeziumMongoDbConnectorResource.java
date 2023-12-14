@@ -5,17 +5,22 @@
  */
 package io.debezium.connector.mongodb.rest;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 
+import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.Module;
 import io.debezium.connector.mongodb.MongoDbConnector;
 import io.debezium.rest.ConnectionValidationResource;
 import io.debezium.rest.FilterValidationResource;
 import io.debezium.rest.SchemaResource;
+import io.debezium.rest.model.DataCollection;
 
 /**
  * A JAX-RS Resource class defining endpoints of the Debezium MongoDB Connect REST Extension
@@ -46,4 +51,10 @@ public class DebeziumMongoDbConnectorResource
         return "/META-INF/resources/mongodb.json";
     }
 
+    @Override
+    public List<DataCollection> getMatchingCollections(Configuration configuration) {
+        return getConnector().getMatchingCollections(configuration).stream()
+                .map(collectionId -> new DataCollection(collectionId.replicaSetName(), collectionId.dbName(), collectionId.name()))
+                .collect(Collectors.toList());
+    }
 }

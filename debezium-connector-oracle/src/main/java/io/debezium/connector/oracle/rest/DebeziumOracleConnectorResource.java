@@ -5,17 +5,22 @@
  */
 package io.debezium.connector.oracle.rest;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 
+import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.Module;
 import io.debezium.connector.oracle.OracleConnector;
 import io.debezium.rest.ConnectionValidationResource;
 import io.debezium.rest.FilterValidationResource;
 import io.debezium.rest.SchemaResource;
+import io.debezium.rest.model.DataCollection;
 
 /**
  * A JAX-RS Resource class defining endpoints of the Debezium Oracle Connect REST Extension
@@ -44,5 +49,12 @@ public class DebeziumOracleConnectorResource
     @Path(VERSION_ENDPOINT)
     public String getConnectorVersion() {
         return Module.version();
+    }
+
+    @Override
+    public List<DataCollection> getMatchingCollections(Configuration configuration) {
+        return getConnector().getMatchingCollections(configuration).stream()
+                .map(tableId -> new DataCollection(tableId.schema(), tableId.table()))
+                .collect(Collectors.toList());
     }
 }
