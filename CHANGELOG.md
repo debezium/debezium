@@ -2,6 +2,42 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.5.0.CR1
+December 14th 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12416252)
+
+### New features since 2.5.0.Beta1
+
+* Explore BLOB support via re-selection [DBZ-4321](https://issues.redhat.com/browse/DBZ-4321)
+* Use the StreamNameMapper in debezium-server-kafka [DBZ-6071](https://issues.redhat.com/browse/DBZ-6071)
+* Provide INSERT/DELETE semantics for incremental snapshot watermarking [DBZ-6834](https://issues.redhat.com/browse/DBZ-6834)
+* AWS SQS as sink type in Debezium standalone server [DBZ-7214](https://issues.redhat.com/browse/DBZ-7214)
+* Oracle LOB to be properly ignored if lob.enabled=false [DBZ-7237](https://issues.redhat.com/browse/DBZ-7237)
+* Upgrade  Kafka to 3.6.1 and ZooKeeper to 3.8.3 [DBZ-7238](https://issues.redhat.com/browse/DBZ-7238)
+
+
+### Breaking changes since 2.5.0.Beta1
+
+* When metadata is in headers, a schema name of a structure in CE `data` field is incorrect [DBZ-7216](https://issues.redhat.com/browse/DBZ-7216)
+* MySQL BIT Type should have a default length 1 [DBZ-7230](https://issues.redhat.com/browse/DBZ-7230)
+
+
+### Fixes since 2.5.0.Beta1
+
+* Oracle abandoned transaction implementation bug causes OoM [DBZ-7236](https://issues.redhat.com/browse/DBZ-7236)
+* Add Grammar Oracle Truncate Cluster [DBZ-7242](https://issues.redhat.com/browse/DBZ-7242)
+* Length value is not removed when changing a column's type [DBZ-7251](https://issues.redhat.com/browse/DBZ-7251)
+* MongoDB table/colelction snapshot notification contain incorrect offsets [DBZ-7252](https://issues.redhat.com/browse/DBZ-7252)
+* Broken support for multi-namespace watching  [DBZ-7254](https://issues.redhat.com/browse/DBZ-7254)
+
+
+### Other changes since 2.5.0.Beta1
+
+* Add tracing logs to track execution time for Debezium JDBC connector  [DBZ-7217](https://issues.redhat.com/browse/DBZ-7217)
+* Validate & clarify multiple archive log destination requirements for Oracle [DBZ-7218](https://issues.redhat.com/browse/DBZ-7218)
+* Upgrade logback to 1.2.13 [DBZ-7232](https://issues.redhat.com/browse/DBZ-7232)
+
+
+
 ## 2.5.0.Beta1
 December 4th 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12416250)
 
