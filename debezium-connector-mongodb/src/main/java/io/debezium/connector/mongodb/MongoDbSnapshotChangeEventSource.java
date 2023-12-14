@@ -377,8 +377,9 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
                                     mongo, snapshottingTask.getFilterQueries());
                         }
                     }
-                    catch (InterruptedException e) {
-                        // Do nothing so that this thread is stopped
+                    catch (Throwable t) {
+                        LOGGER.error("Snapshot for replica set {} failed", replicaSet.replicaSetName(), t);
+                        errorHandler.setProducerThrowable(t);
                         aborted.set(true);
                     }
                     finally {
