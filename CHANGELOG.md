@@ -2,6 +2,36 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.3.5.Final
+December 15th 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12413739)
+
+### New features since 2.3.4.Final
+
+None
+
+
+### Breaking changes since 2.3.4.Final
+
+None
+
+
+### Fixes since 2.3.4.Final
+
+* Remove spaces from Signal and Notification MBean's ObjectName [DBZ-6957](https://issues.redhat.com/browse/DBZ-6957)
+* ParsingException (MySQL/MariaDB): User specification with whitespace [DBZ-6978](https://issues.redhat.com/browse/DBZ-6978)
+* RecordsStreamProducerIT#shouldReceiveChangesForInfinityNumericWithInfinity fails on Postgres < 14 [DBZ-6986](https://issues.redhat.com/browse/DBZ-6986)
+* ALTER TABLE fails when adding multiple columns to JDBC sink target [DBZ-6999](https://issues.redhat.com/browse/DBZ-6999)
+* Single quote replication and loss of data [DBZ-7006](https://issues.redhat.com/browse/DBZ-7006)
+* Oracle connector: Payload size over 76020 bytes are getting truncated [DBZ-7018](https://issues.redhat.com/browse/DBZ-7018)
+* [DBZ-6517] [HF] CloudEventsConverter throws static error on Kafka Connect 3.5+ [DBZ-7263](https://issues.redhat.com/browse/DBZ-7263)
+
+
+### Other changes since 2.3.4.Final
+
+* Further refactoring to correct downstream rendering of incremental snapshots topics [DBZ-6997](https://issues.redhat.com/browse/DBZ-6997)
+
+
+
 ## 2.3.4.Final
 September 21st 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12412661)
 
