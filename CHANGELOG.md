@@ -2,6 +2,34 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.9.8.Final
+December 15th 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12398106)
+
+### New features since 1.9.7.Final
+
+* Postgres existing publication is not updated with the new table [DBZ-3921](https://issues.redhat.com/browse/DBZ-3921)
+* Improve LogMiner query performance by reducing REGEXP_LIKE disjunctions [DBZ-5648](https://issues.redhat.com/browse/DBZ-5648)
+* Restart SQL Server task on "Cannot continue the execution because the session is in the kill state" exception [DBZ-5777](https://issues.redhat.com/browse/DBZ-5777)
+* Replace obsolete DebeziumDownload attribute [DBZ-5835](https://issues.redhat.com/browse/DBZ-5835)
+* Support logical decoding from Postgres 16 stand-bys [DBZ-7181](https://issues.redhat.com/browse/DBZ-7181)
+
+
+### Breaking changes since 1.9.7.Final
+
+None
+
+
+### Fixes since 1.9.7.Final
+
+* MongoConnector's field exclusion configuration does not work with fields with the same name but from different collections [DBZ-4846](https://issues.redhat.com/browse/DBZ-4846)
+* ORA-01003: no statement parsed [DBZ-5352](https://issues.redhat.com/browse/DBZ-5352)
+* NullPointerException thrown during snapshot of tables in Oracle source connector [DBZ-5738](https://issues.redhat.com/browse/DBZ-5738)
+* Exclude Oracle Compression Advisor tables from capture to avoid infinite loop [DBZ-5756](https://issues.redhat.com/browse/DBZ-5756)
+* Using DBMS_LOB.ERASE by itself can lead to an unexpected UPDATE with null BLOB value [DBZ-5773](https://issues.redhat.com/browse/DBZ-5773)
+* No table filters found for filtered publication [DBZ-5949](https://issues.redhat.com/browse/DBZ-5949)
+
+
+
 ## 1.9.7.Final
 October 25th 2022 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12397192)
 
