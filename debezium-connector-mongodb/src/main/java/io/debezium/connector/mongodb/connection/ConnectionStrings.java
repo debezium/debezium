@@ -100,6 +100,10 @@ public final class ConnectionStrings {
                         credentials.getPassword() != null ? String.valueOf(credentials.getPassword()) : null);
     }
 
+    public static String replicaSetName(String connectionString) {
+        return replicaSetName(new ConnectionString(connectionString));
+    }
+
     public static String replicaSetName(ConnectionString connectionString) {
         return Objects.requireNonNullElse(connectionString.getRequiredReplicaSetName(), CLUSTER_RS_NAME);
     }

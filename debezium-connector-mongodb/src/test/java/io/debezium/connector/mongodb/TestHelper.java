@@ -33,7 +33,6 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Configuration.Builder;
 import io.debezium.connector.mongodb.connection.ConnectionStrings;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
-import io.debezium.connector.mongodb.connection.ReplicaSet;
 import io.debezium.testing.testcontainers.MongoDbDeployment;
 import io.debezium.util.Collect;
 
@@ -184,8 +183,4 @@ public class TestHelper {
         }
     }
 
-    public static ReplicaSet replicaSet(MongoDbDeployment mongo) {
-        var cs = connectionString(mongo);
-        return new ReplicaSet(cs);
-    }
 }

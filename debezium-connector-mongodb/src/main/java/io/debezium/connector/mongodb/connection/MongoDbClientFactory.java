@@ -51,11 +51,6 @@ public final class MongoDbClientFactory {
         return client(settings -> settings.applyConnectionString(connectionString));
     }
 
-    public MongoClient client(ReplicaSet replicaSet) {
-        return client(settings -> settings
-                .applyConnectionString(replicaSet.connectionString()));
-    }
-
     private MongoClient client(Consumer<MongoClientSettings.Builder> configurator) {
         MongoClientSettings.Builder settings = settings();
         configurator.accept(settings);

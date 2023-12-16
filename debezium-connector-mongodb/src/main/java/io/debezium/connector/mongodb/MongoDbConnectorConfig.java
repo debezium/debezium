@@ -32,7 +32,6 @@ import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.connector.mongodb.connection.ConnectionStrings;
 import io.debezium.connector.mongodb.connection.DefaultMongoDbAuthProvider;
-import io.debezium.connector.mongodb.connection.ReplicaSet;
 import io.debezium.data.Envelope;
 import io.debezium.schema.DefaultTopicNamingStrategy;
 import io.debezium.spi.schema.DataCollectionId;
@@ -896,7 +895,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     private final boolean offsetInvalidationAllowed;
     private final int snapshotMaxThreads;
     private final int cursorMaxAwaitTimeMs;
-    private final ReplicaSet replicaSet;
     private final Optional<ConnectionString> taskConnectionString;
     private final CursorPipelineOrder cursorPipelineOrder;
     private final OversizeHandlingMode oversizeHandlingMode;
@@ -932,7 +930,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         this.cursorMaxAwaitTimeMs = config.getInteger(MongoDbConnectorConfig.CURSOR_MAX_AWAIT_TIME_MS, 0);
 
         this.taskConnectionString = resolveTaskConnectionString(config);
-        this.replicaSet = resolveReplicaSet(config);
     }
 
     private static int validateHosts(Configuration config, Field field, ValidationOutput problems) {
@@ -1113,10 +1110,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         return offsetInvalidationAllowed;
     }
 
-    public ReplicaSet getReplicaSet() {
-        return replicaSet;
-    }
-
     public Optional<ConnectionString> getTaskConnectionString() {
         return taskConnectionString;
     }
@@ -1193,12 +1186,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
     private static int resolveSnapshotMaxThreads(Configuration config) {
         return config.getInteger(SNAPSHOT_MAX_THREADS);
-    }
-
-    private static ReplicaSet resolveReplicaSet(Configuration config) {
-        return resolveTaskConnectionString(config)
-                .map(ReplicaSet::new)
-                .orElse(null);
     }
 
     private static Optional<ConnectionString> resolveTaskConnectionString(Configuration config) {

@@ -15,12 +15,13 @@ import org.junit.BeforeClass;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.mongodb.ConnectionString;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.mongodb.connection.ConnectionStrings;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
-import io.debezium.connector.mongodb.connection.ReplicaSet;
 import io.debezium.connector.mongodb.junit.MongoDbDatabaseProvider;
 import io.debezium.testing.testcontainers.MongoDbDeployment;
 import io.debezium.testing.testcontainers.util.DockerUtils;
@@ -33,7 +34,6 @@ public abstract class AbstractMongoIT {
 
     protected Configuration config;
     protected MongoDbTaskContext context;
-    protected ReplicaSet replicaSet;
     protected MongoDbConnection connection;
 
     @BeforeClass
@@ -93,16 +93,14 @@ public abstract class AbstractMongoIT {
         // Record the partition offsets (if there are some) ...
         Map<String, String> partition = null;
         Map<String, ?> offsetForPartition = null;
-        if (!restartFromBeginning && context != null && replicaSet != null && context.source().hasOffset(replicaSet.replicaSetName())) {
-            partition = context.source().partition(replicaSet.replicaSetName());
-            offsetForPartition = context.source().lastOffset(replicaSet.replicaSetName());
+        var rsName = ConnectionStrings.replicaSetName(mongo.getConnectionString());
+        if (!restartFromBeginning && context != null && mongo != null && context.source().hasOffset(rsName)) {
+            partition = context.source().partition(rsName);
+            offsetForPartition = context.source().lastOffset(rsName);
         }
 
         context = new MongoDbTaskContext(config);
         assertThat(context.getConnectionContext().connectionSeed()).isNotEmpty();
-
-        replicaSet = TestHelper.replicaSet(mongo);
-        context.configureLoggingContext(replicaSet.replicaSetName());
 
         // Restore Source position (if there are some) ...
         if (partition != null) {
@@ -110,6 +108,7 @@ public abstract class AbstractMongoIT {
         }
 
         // Get a connection to the primary ...
-        connection = context.getConnectionContext().connect(replicaSet.connectionString(), context.filters(), TestHelper.connectionErrorHandler(3));
+
+        connection = context.getConnectionContext().connect(new ConnectionString(mongo.getConnectionString()), context.filters(), TestHelper.connectionErrorHandler(3));
     }
 }
