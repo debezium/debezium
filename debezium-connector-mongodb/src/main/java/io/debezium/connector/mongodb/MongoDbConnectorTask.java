@@ -5,11 +5,8 @@
  */
 package io.debezium.connector.mongodb;
 
-import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Schema;
@@ -81,7 +78,9 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
         final Schema structSchema = connectorConfig.getSourceInfoStructMaker().schema();
         this.schema = new MongoDbSchema(taskContext.filters(), taskContext.topicNamingStrategy(), structSchema, schemaNameAdjuster);
 
-        final MongoDbOffsetContext previousOffset = getPreviousOffset(connectorConfig);
+        final Offsets<MongoDbPartition, MongoDbOffsetContext> previousOffset = getPreviousOffsets(
+                new MongoDbPartition.Provider(taskContext),
+                new MongoDbOffsetContext.Loader(taskContext));
         final Clock clock = Clock.system();
 
         PreviousContext previousLogContext = taskContext.configureLoggingContext(taskName);
@@ -104,7 +103,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
                     MongoDbConnector.class, connectorConfig, Map.of(),
                     getAvailableSignalChannels(),
                     DocumentReader.defaultReader(),
-                    Offsets.of(Collections.singletonMap(new MongoDbPartition(), previousOffset)));
+                    previousOffset);
 
             // Manually Register Beans
             connectorConfig.getBeanRegistry().add(StandardBeanNames.CONNECTOR_CONFIG, connectorConfig);
@@ -130,8 +129,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
             MongoDbChangeEventSourceMetricsFactory metricsFactory = new MongoDbChangeEventSourceMetricsFactory();
 
             ChangeEventSourceCoordinator<MongoDbPartition, MongoDbOffsetContext> coordinator = new ChangeEventSourceCoordinator<>(
-                    // TODO pass offsets from all the partitions
-                    Offsets.of(Collections.singletonMap(new MongoDbPartition(), previousOffset)),
+                    previousOffset,
                     errorHandler,
                     MongoDbConnector.class,
                     connectorConfig,
@@ -180,21 +178,6 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
     @Override
     protected Iterable<Field> getAllConfigurationFields() {
         return MongoDbConnectorConfig.ALL_FIELDS;
-    }
-
-    private MongoDbOffsetContext getPreviousOffset(MongoDbConnectorConfig connectorConfig) {
-        MongoDbOffsetContext.Loader loader = new MongoDbOffsetContext.Loader(connectorConfig, connectorConfig.getReplicaSet());
-        Collection<Map<String, String>> partitions = loader.getPartitions();
-
-        Map<Map<String, String>, Map<String, Object>> offsets = context.offsetStorageReader().offsets(partitions);
-        if (offsets != null && offsets.values().stream().anyMatch(Objects::nonNull)) {
-            MongoDbOffsetContext offsetContext = loader.loadOffsets(offsets);
-            logger.info("Found previous offsets {}", offsetContext);
-            return offsetContext;
-        }
-        else {
-            return null;
-        }
     }
 
     @Override
