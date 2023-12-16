@@ -63,7 +63,7 @@ public class SourceInfoTest {
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "serverX")
                 .build());
 
-        return new SourceInfo(config);
+        return new SourceInfo(config, REPLICA_SET_NAME);
     }
 
     @SuppressWarnings("unchecked")
@@ -107,8 +107,8 @@ public class SourceInfoTest {
                                          BsonTimestamp timestamp,
                                          String snapshot) {
         if (cursor != null) {
-            assertThat(source.hasOffset(REPLICA_SET_NAME)).isEqualTo(false);
-            source.initEvent(REPLICA_SET_NAME, cursor);
+            assertThat(source.hasOffset()).isEqualTo(false);
+            source.initEvent(cursor);
         }
 
         assertSourceInfoContents(source, cursor != null, resumeTokenData, timestamp, snapshot);
@@ -119,16 +119,16 @@ public class SourceInfoTest {
                                          String resumeTokenData,
                                          BsonTimestamp timestamp,
                                          String snapshot) {
-        assertThat(source.hasOffset(REPLICA_SET_NAME)).isEqualTo(hasOffset);
+        assertThat(source.hasOffset()).isEqualTo(hasOffset);
 
-        Map<String, ?> offset = source.lastOffset(REPLICA_SET_NAME);
+        Map<String, ?> offset = source.lastOffset();
         assertThat(offset.get(SourceInfo.TIMESTAMP)).isEqualTo((timestamp != null) ? timestamp.getTime() : 0);
         assertThat(offset.get(SourceInfo.ORDER)).isEqualTo((timestamp != null) ? timestamp.getInc() : -1);
 
-        String resumeToken = source.lastResumeToken(REPLICA_SET_NAME);
+        String resumeToken = source.lastResumeToken();
         assertThat(resumeToken).isEqualTo(resumeTokenData);
 
-        source.collectionEvent(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "test", "names"), 0L);
+        source.collectionEvent(new CollectionId(REPLICA_SET_NAME, "test", "names"), 0L);
         Struct struct = source.struct();
         assertThat(struct.getInt64(SourceInfo.TIMESTAMP_KEY)).isEqualTo((timestamp != null) ? timestamp.getTime() * 1000L : 0L);
         assertThat(struct.getInt32(SourceInfo.ORDER)).isEqualTo((timestamp != null) ? timestamp.getInc() : -1);
@@ -145,17 +145,16 @@ public class SourceInfoTest {
         assertSourceInfoContents(source, cursor, CHANGE_RESUME_TOKEN_DATA, CHANGE_TIMESTAMP, null);
 
         // Create a new source info and set the offset ...
-        Map<String, ?> offset = source.lastOffset(REPLICA_SET_NAME);
-        Map<String, String> partition = source.partition(REPLICA_SET_NAME);
+        Map<String, ?> offset = source.lastOffset();
         SourceInfo newSource = createSourceInfo();
-        newSource.setOffsetFor(partition, offset);
+        newSource.setOffset(offset);
 
         assertSourceInfoContents(newSource, true, CHANGE_RESUME_TOKEN_DATA, CHANGE_TIMESTAMP, null);
     }
 
     @Test
     public void shouldReturnOffsetForUnusedReplicaName() {
-        assertThat(source.hasOffset(REPLICA_SET_NAME)).isEqualTo(false);
+        assertThat(source.hasOffset()).isEqualTo(false);
         assertSourceInfoContents(source, false, null, new BsonTimestamp(0), null);
     }
 
@@ -173,13 +172,13 @@ public class SourceInfoTest {
 
     @Test
     public void shouldReturnOffsetForUnusedReplicaNameDuringInitialSync() {
-        source.startInitialSync(REPLICA_SET_NAME);
+        source.startInitialSync();
         assertSourceInfoContents(source, false, null, new BsonTimestamp(0), "true");
     }
 
     @Test
     public void shouldReturnRecordedOffsetForUsedReplicaNameDuringInitialSync() {
-        source.startInitialSync(REPLICA_SET_NAME);
+        source.startInitialSync();
 
         var cursor = mockEventChangeStreamCursor();
         assertSourceInfoContents(source, cursor, CHANGE_RESUME_TOKEN_DATA, CHANGE_TIMESTAMP, "true");
@@ -187,46 +186,32 @@ public class SourceInfoTest {
 
     @Test
     public void shouldReturnRecordedOffsetForUsedReplicaNameDuringInitialSyncWithoutEvent() {
-        source.startInitialSync(REPLICA_SET_NAME);
+        source.startInitialSync();
 
         var cursor = mockNoEventChangeStreamCursor();
         assertSourceInfoContents(source, cursor, CURSOR_RESUME_TOKEN_DATA, null, "true");
     }
 
     @Test
-    public void shouldProducePartitionMap() {
-        partition = source.partition(REPLICA_SET_NAME);
-        assertThat(partition.get(SourceInfo.REPLICA_SET_NAME)).isEqualTo(REPLICA_SET_NAME);
-        assertThat(partition.get(SourceInfo.SERVER_ID_KEY)).isEqualTo("serverX");
-        assertThat(partition.size()).isEqualTo(2);
-    }
-
-    @Test
-    public void shouldReturnSamePartitionMapForSameReplicaName() {
-        partition = source.partition(REPLICA_SET_NAME);
-        assertThat(partition).isSameAs(source.partition(REPLICA_SET_NAME));
-    }
-
-    @Test
     public void versionIsPresent() {
         var cursor = mockEventChangeStreamCursor();
-        source.initEvent(REPLICA_SET_NAME, cursor);
+        source.initEvent(cursor);
         assertThat(source.struct().getString(SourceInfo.DEBEZIUM_VERSION_KEY)).isEqualTo(Module.version());
     }
 
     @Test
     public void connectorIsPresent() {
         var cursor = mockEventChangeStreamCursor();
-        source.initEvent(REPLICA_SET_NAME, cursor);
+        source.initEvent(cursor);
         assertThat(source.struct().getString(SourceInfo.DEBEZIUM_CONNECTOR_KEY)).isEqualTo(Module.name());
     }
 
     @Test
     public void wallTimeIsPresent() {
         var cursor = mockEventChangeStreamCursor();
-        source.initEvent(REPLICA_SET_NAME, cursor);
+        source.initEvent(cursor);
         assertThat(source.struct().getInt64(SourceInfo.WALL_TIME)).isNull();
-        source.collectionEvent(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "test", "names"), 10L);
+        source.collectionEvent(new CollectionId(REPLICA_SET_NAME, "test", "names"), 10L);
         assertThat(source.struct().getInt64(SourceInfo.WALL_TIME)).isEqualTo(10L);
     }
 

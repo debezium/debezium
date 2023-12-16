@@ -91,24 +91,23 @@ public abstract class AbstractMongoIT {
      */
     private void initialize(boolean restartFromBeginning) {
         // Record the partition offsets (if there are some) ...
-        Map<String, String> partition = null;
         Map<String, ?> offsetForPartition = null;
         var rsName = ConnectionStrings.replicaSetName(mongo.getConnectionString());
-        if (!restartFromBeginning && context != null && mongo != null && context.source().hasOffset(rsName)) {
-            partition = context.source().partition(rsName);
-            offsetForPartition = context.source().lastOffset(rsName);
+        if (!restartFromBeginning && context != null && mongo != null && context.source().hasOffset()) {
+            offsetForPartition = context.source().lastOffset();
         }
 
         context = new MongoDbTaskContext(config);
         assertThat(context.getConnectionContext().connectionSeed()).isNotEmpty();
 
         // Restore Source position (if there are some) ...
-        if (partition != null) {
-            context.source().setOffsetFor(partition, offsetForPartition);
+        if (offsetForPartition != null) {
+            context.source().setOffset(offsetForPartition);
         }
 
         // Get a connection to the primary ...
 
-        connection = context.getConnectionContext().connect(new ConnectionString(mongo.getConnectionString()), context.filters(), TestHelper.connectionErrorHandler(3));
+        var connectionString = new ConnectionString(TestHelper.connectionString(mongo));
+        connection = context.getConnectionContext().connect(connectionString, context.filters(), TestHelper.connectionErrorHandler(3));
     }
 }

@@ -38,29 +38,28 @@ public class MongoDbOffsetContext extends CommonOffsetContext<SourceInfo> {
 
     private final TransactionContext transactionContext;
     private final IncrementalSnapshotContext<CollectionId> incrementalSnapshotContext;
-    private final String replicaSetName;
 
     public MongoDbOffsetContext(MongoDbTaskContext taskContext, SourceInfo sourceInfo, TransactionContext transactionContext,
                                 IncrementalSnapshotContext<CollectionId> incrementalSnapshotContext) {
         super(sourceInfo);
-        this.replicaSetName = ConnectionStrings.replicaSetName(taskContext.getConnectionString());
         this.transactionContext = transactionContext;
         this.incrementalSnapshotContext = incrementalSnapshotContext;
     }
 
-    void startReplicaSetSnapshot() {
-        sourceInfo.startInitialSync(replicaSetName);
+    void startInitialSync() {
+        sourceInfo.startInitialSync();
     }
 
-    void stopReplicaSetSnapshot() {
-        sourceInfo.stopInitialSync(replicaSetName);
+    void stopInitialSync() {
+        sourceInfo.stopInitialSync();
     }
 
     @Override
     @SuppressWarnings("unchecked")
     public Map<String, ?> getOffset() {
-        Map<String, Object> offsets = (Map<String, Object>) sourceInfo.lastOffset(replicaSetName);
-        return isSnapshotOngoing() ? offsets : incrementalSnapshotContext.store(transactionContext.store(offsets));
+        Map<String, Object> offsets = (Map<String, Object>) sourceInfo.lastOffset();
+
+        return isSnapshotRunning() ? offsets : incrementalSnapshotContext.store(transactionContext.store(offsets));
     }
 
     @Override
@@ -74,7 +73,7 @@ public class MongoDbOffsetContext extends CommonOffsetContext<SourceInfo> {
     }
 
     public boolean isSnapshotOngoing() {
-        return sourceInfo.isInitialSyncOngoing(replicaSetName);
+        return sourceInfo.isSnapshotRunning();
     }
 
     @Override
@@ -103,45 +102,45 @@ public class MongoDbOffsetContext extends CommonOffsetContext<SourceInfo> {
     }
 
     public void readEvent(CollectionId collectionId, Instant timestamp) {
-        sourceInfo.collectionEvent(replicaSetName, collectionId, 0L);
-        sourceInfo.lastOffset(replicaSetName);
+        sourceInfo.collectionEvent(collectionId, 0L);
+        sourceInfo.lastOffset();
     }
 
     public void initEvent(MongoChangeStreamCursor<ChangeStreamDocument<BsonDocument>> cursor) {
-        sourceInfo.initEvent(replicaSetName, cursor);
+        sourceInfo.initEvent(cursor);
     }
 
     public void initFromOpTimeIfNeeded(BsonTimestamp timestamp) {
         if (lastResumeToken() != null) {
             return;
         }
-        LOGGER.info("Initializing offset for replica-set {} from operation time", replicaSetName);
-        sourceInfo.noEvent(replicaSetName, timestamp);
+        LOGGER.info("Initializing offset from operation time");
+        sourceInfo.noEvent(timestamp);
     }
 
     public void noEvent(BufferingChangeStreamCursor.ResumableChangeStreamEvent<BsonDocument> event) {
-        sourceInfo.noEvent(replicaSetName, event);
+        sourceInfo.noEvent(event);
     }
 
     public void changeStreamEvent(ChangeStreamDocument<BsonDocument> changeStreamEvent) {
-        sourceInfo.changeStreamEvent(replicaSetName, changeStreamEvent);
+        sourceInfo.changeStreamEvent(changeStreamEvent);
     }
 
     public String lastResumeToken() {
-        return sourceInfo.lastResumeToken(replicaSetName);
+        return sourceInfo.lastResumeToken();
     }
 
     public BsonDocument lastResumeTokenDoc() {
-        final String data = sourceInfo.lastResumeToken(replicaSetName);
+        final String data = sourceInfo.lastResumeToken();
         return (data == null) ? null : ResumeTokens.fromData(data);
     }
 
     public BsonTimestamp lastTimestamp() {
-        return sourceInfo.lastTimestamp(replicaSetName);
+        return sourceInfo.lastTimestamp();
     }
 
     public boolean hasOffset() {
-        return sourceInfo.hasOffset(replicaSetName);
+        return sourceInfo.hasOffset();
     }
 
     public static class Loader implements OffsetContext.Loader<MongoDbOffsetContext> {
@@ -151,14 +150,14 @@ public class MongoDbOffsetContext extends CommonOffsetContext<SourceInfo> {
         private final String replicaSetName;
 
         public Loader(MongoDbTaskContext taskContext) {
-            this.sourceInfo = new SourceInfo(taskContext.getConnectorConfig());
             this.replicaSetName = ConnectionStrings.replicaSetName(taskContext.getConnectionString());
+            this.sourceInfo = new SourceInfo(taskContext.getConnectorConfig(), replicaSetName);
             this.taskContext = taskContext;
         }
 
         @Override
         public MongoDbOffsetContext load(Map<String, ?> offset) {
-            sourceInfo.setOffsetFor(replicaSetName, offset);
+            sourceInfo.setOffset(offset);
             return new MongoDbOffsetContext(taskContext, sourceInfo, new TransactionContext(), MongoDbIncrementalSnapshotContext.load(offset, false));
         }
     }
