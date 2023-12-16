@@ -18,9 +18,8 @@ import com.mongodb.client.model.changestream.ChangeStreamDocument;
 import com.mongodb.client.model.changestream.FullDocument;
 import com.mongodb.client.model.changestream.FullDocumentBeforeChange;
 
-import io.debezium.connector.mongodb.connection.ConnectionContext;
+import io.debezium.connector.mongodb.connection.ConnectionStrings;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
-import io.debezium.connector.mongodb.connection.ReplicaSet;
 import io.debezium.connector.mongodb.events.BufferingChangeStreamCursor;
 import io.debezium.connector.mongodb.events.BufferingChangeStreamCursor.ResumableChangeStreamEvent;
 import io.debezium.connector.mongodb.events.SplitEventHandler;
@@ -45,8 +44,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
     private final EventDispatcher<MongoDbPartition, CollectionId> dispatcher;
     private final ErrorHandler errorHandler;
     private final Clock clock;
-    private final ConnectionContext connectionContext;
-    private final ReplicaSet replicaSet;
+
     private final MongoDbTaskContext taskContext;
     private final MongoDbConnection.ChangeEventSourceConnectionFactory connections;
     private final MongoDbStreamingChangeEventSourceMetrics streamingMetrics;
@@ -57,11 +55,9 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                                              EventDispatcher<MongoDbPartition, CollectionId> dispatcher,
                                              ErrorHandler errorHandler, Clock clock, MongoDbStreamingChangeEventSourceMetrics streamingMetrics) {
         this.connectorConfig = connectorConfig;
-        this.connectionContext = taskContext.getConnectionContext();
         this.dispatcher = dispatcher;
         this.errorHandler = errorHandler;
         this.clock = clock;
-        this.replicaSet = connectorConfig.getReplicaSet();
         this.taskContext = taskContext;
         this.connections = connections;
         this.streamingMetrics = streamingMetrics;
@@ -154,7 +150,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                                      MongoDbOffsetContext offsetContext)
             throws InterruptedException {
         var collectionId = new CollectionId(
-                replicaSet.replicaSetName(),
+                ConnectionStrings.replicaSetName(taskContext.getConnectionString()),
                 event.getNamespace().getDatabaseName(),
                 event.getNamespace().getCollectionName());
 

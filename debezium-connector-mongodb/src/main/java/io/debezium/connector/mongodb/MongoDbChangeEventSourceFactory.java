@@ -95,6 +95,7 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
                                                                                                                                                 NotificationService<MongoDbPartition, MongoDbOffsetContext> notificationService) {
         final MongoDbIncrementalSnapshotChangeEventSource incrementalSnapshotChangeEventSource = new MongoDbIncrementalSnapshotChangeEventSource(
                 configuration,
+                taskContext,
                 connections,
                 dispatcher,
                 schema,
