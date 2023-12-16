@@ -5,29 +5,68 @@
  */
 package io.debezium.connector.mongodb;
 
+import java.util.Collections;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 
+import io.debezium.connector.mongodb.connection.ConnectionStrings;
 import io.debezium.pipeline.spi.Partition;
+import io.debezium.util.Collect;
 
 public class MongoDbPartition implements Partition {
+    private static final String SERVER_ID_KEY = "server_id";
+    private static final String REPLICA_SET_NAME = "rs";
+
+    private final String serverId;
+    private final String replicaSetName;
+
+    public MongoDbPartition(String serverId, String replicaSetName) {
+        this.serverId = serverId;
+        this.replicaSetName = replicaSetName;
+    }
 
     @Override
     public Map<String, String> getSourcePartition() {
-        throw new UnsupportedOperationException("Currently unsupported by the MongoDB connector");
+        return Collect.hashMapOf(SERVER_ID_KEY, serverId, REPLICA_SET_NAME, replicaSetName);
     }
 
     @Override
     public boolean equals(Object obj) {
-        throw new UnsupportedOperationException("Currently unsupported by the MongoDB connector");
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null || getClass() != obj.getClass()) {
+            return false;
+        }
+        final MongoDbPartition other = (MongoDbPartition) obj;
+        return Objects.equals(serverId, other.serverId) && Objects.equals(replicaSetName, other.replicaSetName);
     }
 
     @Override
     public int hashCode() {
-        throw new UnsupportedOperationException("Currently unsupported by the MongoDB connector");
+        return Objects.hash(serverId, replicaSetName);
     }
 
     @Override
     public String toString() {
-        throw new UnsupportedOperationException("Currently unsupported by the MongoDB connector");
+        return "ReplicaSetPartition [sourcePartition=" + getSourcePartition() + "]";
+    }
+
+    public static class Provider implements Partition.Provider<MongoDbPartition> {
+        private final MongoDbConnectorConfig connectorConfig;
+        private final MongoDbTaskContext taskContext;
+
+        public Provider(MongoDbTaskContext taskContext) {
+            this.connectorConfig = taskContext.getConnectorConfig();
+            this.taskContext = taskContext;
+        }
+
+        @Override
+        public Set<MongoDbPartition> getPartitions() {
+            return Collections.singleton(new MongoDbPartition(
+                    connectorConfig.getLogicalName(),
+                    ConnectionStrings.replicaSetName(taskContext.getConnectionString())));
+        }
     }
 }
