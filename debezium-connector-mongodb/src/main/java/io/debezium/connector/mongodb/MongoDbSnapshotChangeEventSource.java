@@ -37,6 +37,7 @@ import com.mongodb.client.model.changestream.ChangeStreamDocument;
 
 import io.debezium.DebeziumException;
 import io.debezium.connector.SnapshotRecord;
+import io.debezium.connector.mongodb.connection.ConnectionStrings;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.connector.mongodb.recordemitter.MongoDbSnapshotRecordEmitter;
 import io.debezium.connector.mongodb.snapshot.MongoDbIncrementalSnapshotContext;
@@ -176,7 +177,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
             return true;
         }
 
-        if (offsetContext.isSnapshotOngoing()) {
+        if (offsetContext.isSnapshotRunning()) {
             // The latest snapshot was not completed, so restart it
             LOGGER.info("The previous snapshot was incomplete, so restarting the snapshot");
             return true;
@@ -217,7 +218,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
         LOGGER.info("Initializing empty Offset context");
         snapshotCtx.offset = new MongoDbOffsetContext(
                 taskContext,
-                new SourceInfo(connectorConfig),
+                new SourceInfo(connectorConfig, ConnectionStrings.replicaSetName(taskContext.getConnectionString())),
                 new TransactionContext(),
                 new MongoDbIncrementalSnapshotContext<>(false));
     }
@@ -243,7 +244,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
                                   SnapshottingTask snapshottingTask)
             throws InterruptedException {
         snapshotContext.lastCollection = false;
-        snapshotContext.offset.startReplicaSetSnapshot();
+        snapshotContext.offset.startInitialSync();
 
         LOGGER.info("Beginning snapshot at {}", snapshotContext.offset.getOffset());
 
@@ -314,7 +315,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
             executorService.shutdown();
         }
 
-        snapshotContext.offset.stopReplicaSetSnapshot();
+        snapshotContext.offset.stopInitialSync();
     }
 
     @Override
