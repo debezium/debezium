@@ -6,7 +6,6 @@
 package io.debezium.connector.mongodb;
 
 import java.time.Instant;
-import java.util.Map;
 import java.util.Optional;
 
 import org.apache.kafka.connect.data.Struct;
@@ -17,13 +16,11 @@ import org.bson.types.BSONTimestamp;
 import com.mongodb.client.MongoChangeStreamCursor;
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
 
-import io.debezium.DebeziumException;
 import io.debezium.annotation.Immutable;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.common.BaseSourceInfo;
 import io.debezium.connector.mongodb.events.BufferingChangeStreamCursor.ResumableChangeStreamEvent;
-import io.debezium.util.Collect;
 
 /**
  * Information about the source of information, which includes the partitions and offsets within those partitions. The MongoDB
@@ -66,10 +63,8 @@ import io.debezium.util.Collect;
 @NotThreadSafe
 public final class SourceInfo extends BaseSourceInfo {
 
-    private static final String RESUME_TOKEN = "resume_token";
-
     public static final String REPLICA_SET_NAME = "rs";
-
+    public static final String RESUME_TOKEN = "resume_token";
     public static final String TIMESTAMP = "sec";
     public static final String ORDER = "ord";
     public static final String INITIAL_SYNC = "initsync";
@@ -82,16 +77,15 @@ public final class SourceInfo extends BaseSourceInfo {
     // Change Stream fields
     private static final BsonTimestamp INITIAL_TIMESTAMP = new BsonTimestamp();
     private static final Position INITIAL_POSITION = new Position(INITIAL_TIMESTAMP, null, null);
-    private Position rPosition = null;
     public boolean initialSync = false;
-    private String replicaSetName;
+    private final String replicaSetName;
 
     /**
      * Id of collection the current event applies to. May be {@code null} after noop events,
      * after which the recorded offset may be retrieved but not the source struct.
      */
     private CollectionId collectionId;
-    private Position position = new Position(INITIAL_TIMESTAMP, null, null);
+    private Position position = null;
 
     private long wallTime;
 
@@ -160,7 +154,7 @@ public final class SourceInfo extends BaseSourceInfo {
     }
 
     Position position() {
-        return position;
+        return position != null ? position : INITIAL_POSITION;
     }
 
     public String lastResumeToken() {
@@ -172,51 +166,14 @@ public final class SourceInfo extends BaseSourceInfo {
     }
 
     /**
-     * Get the Kafka Connect detail about the source "offset" for the named database, which describes the given position in the
-     * database where we have last read. If the database has not yet been seen, this records the starting position
-     * for that database. However, if there is a position for the database, the offset representation is returned.
-     *
-     * @return a copy of the current offset for the database; never null
-     */
-    public Map<String, ?> lastOffset() {
-        if (position == null) {
-            position = INITIAL_POSITION;
-        }
-
-        if (isSnapshotRunning()) {
-            Map<String, Object> offset = Collect.hashMapOf(
-                    TIMESTAMP, position.getTime(),
-                    ORDER, position.getInc(),
-                    INITIAL_SYNC, true);
-            return addSessionTxnIdToOffset(position, offset);
-        }
-
-        Map<String, Object> offset = Collect.hashMapOf(
-                TIMESTAMP, position.getTime(),
-                ORDER, position.getInc());
-        position.getResumeToken().ifPresent(resumeToken -> offset.put(RESUME_TOKEN, resumeToken));
-
-        return addSessionTxnIdToOffset(position, offset);
-    }
-
-    private Map<String, ?> addSessionTxnIdToOffset(Position position, Map<String, Object> offset) {
-        if (position.getChangeStreamSessionTxnId() != null) {
-            offset.put(LSID, position.getChangeStreamSessionTxnId().lsid);
-            offset.put(TXN_NUMBER, position.getChangeStreamSessionTxnId().txnNumber);
-        }
-        return offset;
-    }
-
-    /**
-     * Get a {@link Struct} representation of the source {@link #partition() partition} and {@link #lastOffset()
-     * offset} information where we have last read. The Struct complies with the {@link #schema} for the MongoDB connector.
+     * Get a {@link Struct} representation of the source partition and offset
+     * information where we have last read. The Struct complies with the {@link #schema} for the MongoDB connector.
      *
      * @param collectionId the event's collection identifier; may not be null
-     * @return the source partition and offset {@link Struct}; never null
      * @see #schema()
      */
     public void collectionEvent(CollectionId collectionId, long wallTime) {
-        onEvent(collectionId, rPosition, wallTime);
+        onEvent(collectionId, position, wallTime);
     }
 
     public void initEvent(MongoChangeStreamCursor<ChangeStreamDocument<BsonDocument>> cursor) {
@@ -234,7 +191,7 @@ public final class SourceInfo extends BaseSourceInfo {
     }
 
     public void noEvent(ResumableChangeStreamEvent<BsonDocument> event) {
-        if (event.resumeToken == null || event.hasDocument()) {
+        if (event.hasDocument()) {
             return;
         }
         noEvent(ResumeTokens.getDataString(event.resumeToken));
@@ -298,39 +255,12 @@ public final class SourceInfo extends BaseSourceInfo {
      * @return {@code true} if an offset has been recorded for the replica set, or {@code false} if the replica set has not
      *         yet been seen
      */
-    public boolean hasOffset() {
-        return rPosition != null;
+    public boolean hasPosition() {
+        return position != null;
     }
 
-    /**
-     * Set the source offset, as read from Kafka Connect, for the given replica set. This method does nothing if the supplied map
-     * is null.
-     *
-     * @param sourceOffset the previously-recorded Kafka Connect source offset; may be null
-     * @return {@code true} if the offset was recorded, or {@code false} if the source offset is null
-     * @throws DebeziumException if any offset parameter values are missing, invalid, or of the wrong type
-     */
-    public boolean setOffset(Map<String, ?> sourceOffset) {
-        if (sourceOffset == null) {
-            return false;
-        }
-        // We have previously recorded at least one offset for this database ...
-        boolean initSync = booleanOffsetValue(sourceOffset, INITIAL_SYNC);
-        if (initSync) {
-            return false;
-        }
-        int time = intOffsetValue(sourceOffset, TIMESTAMP);
-        int order = intOffsetValue(sourceOffset, ORDER);
-        long changeStreamTxnNumber = longOffsetValue(sourceOffset, TXN_NUMBER);
-        String changeStreamLsid = stringOffsetValue(sourceOffset, LSID);
-        SessionTransactionId changeStreamTxnId = null;
-        if (changeStreamLsid != null) {
-            changeStreamTxnId = new SessionTransactionId(changeStreamLsid, changeStreamTxnNumber);
-        }
-        String resumeToken = stringOffsetValue(sourceOffset, RESUME_TOKEN);
-
-        rPosition = new Position(new BsonTimestamp(time, order), changeStreamTxnId, resumeToken);
-        return true;
+    public void setPosition(Position position) {
+        this.position = position;
     }
 
     /**
@@ -348,68 +278,10 @@ public final class SourceInfo extends BaseSourceInfo {
     }
 
     /**
-     * Determine if the initial sync for the given replica set is still ongoing.
-     *
-     * @return {@code true} if the initial sync for this replica is still ongoing or was not completed before restarting, or
-     *         {@code false} if there is currently no initial sync operation for this replica set
-     */
-    public boolean isInitialSyncOngoing() {
-        return initialSync;
-    }
-
-    /**
      * Returns whether any replica sets are still running a snapshot.
      */
     public boolean isSnapshotRunning() {
         return initialSync;
-    }
-
-    private static int intOffsetValue(Map<String, ?> values, String key) {
-        Object obj = values.get(key);
-        if (obj == null) {
-            return 0;
-        }
-        if (obj instanceof Number) {
-            return ((Number) obj).intValue();
-        }
-        try {
-            return Integer.parseInt(obj.toString());
-        }
-        catch (NumberFormatException e) {
-            throw new DebeziumException("Source offset '" + key + "' parameter value " + obj + " could not be converted to an integer");
-        }
-    }
-
-    private static long longOffsetValue(Map<String, ?> values, String key) {
-        Object obj = values.get(key);
-        if (obj == null) {
-            return 0;
-        }
-        if (obj instanceof Number) {
-            return ((Number) obj).longValue();
-        }
-        try {
-            return Long.parseLong(obj.toString());
-        }
-        catch (NumberFormatException e) {
-            throw new DebeziumException("Source offset '" + key + "' parameter value " + obj + " could not be converted to a long");
-        }
-    }
-
-    private static String stringOffsetValue(Map<String, ?> values, String key) {
-        Object obj = values.get(key);
-        if (obj == null) {
-            return null;
-        }
-        return (String) obj;
-    }
-
-    private static boolean booleanOffsetValue(Map<String, ?> values, String key) {
-        Object obj = values.get(key);
-        if (obj != null && obj instanceof Boolean) {
-            return ((Boolean) obj).booleanValue();
-        }
-        return false;
     }
 
     @Override

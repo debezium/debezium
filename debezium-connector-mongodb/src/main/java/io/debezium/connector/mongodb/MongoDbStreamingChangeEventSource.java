@@ -25,12 +25,10 @@ import io.debezium.connector.mongodb.events.BufferingChangeStreamCursor.Resumabl
 import io.debezium.connector.mongodb.events.SplitEventHandler;
 import io.debezium.connector.mongodb.metrics.MongoDbStreamingChangeEventSourceMetrics;
 import io.debezium.connector.mongodb.recordemitter.MongoDbChangeRecordEmitter;
-import io.debezium.connector.mongodb.snapshot.MongoDbIncrementalSnapshotContext;
 import io.debezium.function.BlockingRunnable;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
-import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.util.Clock;
 
 /**
@@ -215,11 +213,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
 
     protected MongoDbOffsetContext emptyOffsets(MongoDbConnectorConfig connectorConfig) {
         LOGGER.info("Initializing empty Offset context");
-        return new MongoDbOffsetContext(
-                taskContext,
-                new SourceInfo(connectorConfig, ConnectionStrings.replicaSetName(taskContext.getConnectionString())),
-                new TransactionContext(),
-                new MongoDbIncrementalSnapshotContext<>(false));
+        return MongoDbOffsetContext.empty(connectorConfig, ConnectionStrings.replicaSetName(taskContext.getConnectionString()));
     }
 
     /**

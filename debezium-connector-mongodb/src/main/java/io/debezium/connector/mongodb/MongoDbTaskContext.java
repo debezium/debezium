@@ -14,7 +14,6 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig.CaptureMode;
 import io.debezium.connector.mongodb.connection.ConnectionContext;
-import io.debezium.connector.mongodb.connection.ConnectionStrings;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.spi.topic.TopicNamingStrategy;
 
@@ -24,7 +23,6 @@ import io.debezium.spi.topic.TopicNamingStrategy;
 public class MongoDbTaskContext extends CdcSourceTaskContext {
 
     private final Filters filters;
-    private final SourceInfo source;
     private final TopicNamingStrategy topicNamingStrategy;
     private final String serverName;
     private final ConnectionContext connectionContext;
@@ -43,7 +41,6 @@ public class MongoDbTaskContext extends CdcSourceTaskContext {
         this.connectionContext = new ConnectionContext(config);
         this.filters = new Filters(config);
         this.connectorConfig = new MongoDbConnectorConfig(config);
-        this.source = new SourceInfo(connectorConfig, ConnectionStrings.replicaSetName(getConnectionString()));
         this.topicNamingStrategy = connectorConfig.getTopicNamingStrategy(MongoDbConnectorConfig.TOPIC_NAMING_STRATEGY);
         this.serverName = config.getString(CommonConnectorConfig.TOPIC_PREFIX);
     }
@@ -54,10 +51,6 @@ public class MongoDbTaskContext extends CdcSourceTaskContext {
 
     public Filters filters() {
         return filters;
-    }
-
-    public SourceInfo source() {
-        return source;
     }
 
     public String serverName() {

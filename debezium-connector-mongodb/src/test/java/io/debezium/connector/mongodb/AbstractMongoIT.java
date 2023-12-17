@@ -7,20 +7,16 @@ package io.debezium.connector.mongodb;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.Map;
-
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.mongodb.ConnectionString;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 
 import io.debezium.config.Configuration;
-import io.debezium.connector.mongodb.connection.ConnectionStrings;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.connector.mongodb.junit.MongoDbDatabaseProvider;
 import io.debezium.testing.testcontainers.MongoDbDeployment;
@@ -69,45 +65,17 @@ public abstract class AbstractMongoIT {
      */
     protected void useConfiguration(Configuration config) {
         this.config = config;
-        initialize(true);
-    }
-
-    /**
-     * A method that will initialize the state after the configuration is changed, reusing the same partition offsets that
-     * were previously used.
-     *
-     * @param config the configuration; may not be null
-     */
-    protected void reuseConfiguration(Configuration config) {
-        this.config = config;
-        initialize(false);
+        initialize();
     }
 
     /**
      * A method that will initialize the state after the configuration is changed.
-     *
-     * @param restartFromBeginning {@code true} if the context should have no prior partition offsets, or {@code false} if the
-     *            partition offsets that exist at this time should be reused
      */
-    private void initialize(boolean restartFromBeginning) {
-        // Record the partition offsets (if there are some) ...
-        Map<String, ?> offsetForPartition = null;
-        var rsName = ConnectionStrings.replicaSetName(mongo.getConnectionString());
-        if (!restartFromBeginning && context != null && mongo != null && context.source().hasOffset()) {
-            offsetForPartition = context.source().lastOffset();
-        }
-
+    private void initialize() {
         context = new MongoDbTaskContext(config);
         assertThat(context.getConnectionContext().connectionSeed()).isNotEmpty();
-
-        // Restore Source position (if there are some) ...
-        if (offsetForPartition != null) {
-            context.source().setOffset(offsetForPartition);
-        }
-
-        // Get a connection to the primary ...
-
-        var connectionString = new ConnectionString(TestHelper.connectionString(mongo));
+        // Get a connection...
+        var connectionString = context.getConnectionContext().connectionString();
         connection = context.getConnectionContext().connect(connectionString, context.filters(), TestHelper.connectionErrorHandler(3));
     }
 }
