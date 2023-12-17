@@ -47,15 +47,14 @@ public class SourceInfoTest {
 
     // FROM: https://www.mongodb.com/docs/manual/changeStreams/#resume-tokens-from-aggregate
     private static final String CURSOR_RESUME_TOKEN_DATA = "8263515EAC000000022B0429296E1404";
-    private static final BsonTimestamp CURSOR_TIMESTAMP = new BsonTimestamp(1666277036, 2);
     private static final BsonDocument CURSOR_RESUME_TOKEN = ResumeTokens.fromData(CURSOR_RESUME_TOKEN_DATA);
 
     private SourceInfo source;
-    private Map<String, String> partition;
+    private MongoDbOffsetContext context;
 
     @Before
     public void beforeEach() {
-        source = createSourceInfo();
+        createOffsetContext();
     }
 
     private SourceInfo createSourceInfo() {
@@ -64,6 +63,15 @@ public class SourceInfoTest {
                 .build());
 
         return new SourceInfo(config, REPLICA_SET_NAME);
+    }
+
+    private void createOffsetContext() {
+        var config = new MongoDbConnectorConfig(Configuration.create()
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "serverX")
+                .build());
+
+        context = MongoDbOffsetContext.empty(config, REPLICA_SET_NAME);
+        source = context.sourceInfo();
     }
 
     @SuppressWarnings("unchecked")
@@ -107,7 +115,7 @@ public class SourceInfoTest {
                                          BsonTimestamp timestamp,
                                          String snapshot) {
         if (cursor != null) {
-            assertThat(source.hasOffset()).isEqualTo(false);
+            assertThat(source.hasPosition()).isEqualTo(false);
             source.initEvent(cursor);
         }
 
@@ -119,9 +127,9 @@ public class SourceInfoTest {
                                          String resumeTokenData,
                                          BsonTimestamp timestamp,
                                          String snapshot) {
-        assertThat(source.hasOffset()).isEqualTo(hasOffset);
+        assertThat(source.hasPosition()).isEqualTo(hasOffset);
 
-        Map<String, ?> offset = source.lastOffset();
+        Map<String, ?> offset = context.getOffset();
         assertThat(offset.get(SourceInfo.TIMESTAMP)).isEqualTo((timestamp != null) ? timestamp.getTime() : 0);
         assertThat(offset.get(SourceInfo.ORDER)).isEqualTo((timestamp != null) ? timestamp.getInc() : -1);
 
@@ -145,16 +153,16 @@ public class SourceInfoTest {
         assertSourceInfoContents(source, cursor, CHANGE_RESUME_TOKEN_DATA, CHANGE_TIMESTAMP, null);
 
         // Create a new source info and set the offset ...
-        Map<String, ?> offset = source.lastOffset();
+        var position = source.position();
         SourceInfo newSource = createSourceInfo();
-        newSource.setOffset(offset);
+        newSource.setPosition(position);
 
         assertSourceInfoContents(newSource, true, CHANGE_RESUME_TOKEN_DATA, CHANGE_TIMESTAMP, null);
     }
 
     @Test
     public void shouldReturnOffsetForUnusedReplicaName() {
-        assertThat(source.hasOffset()).isEqualTo(false);
+        assertThat(source.hasPosition()).isEqualTo(false);
         assertSourceInfoContents(source, false, null, new BsonTimestamp(0), null);
     }
 
@@ -217,7 +225,7 @@ public class SourceInfoTest {
 
     @Test
     public void shouldHaveSchemaForSource() {
-        Schema schema = source.schema();
+        Schema schema = context.getSourceInfoSchema();
         assertThat(schema.name()).isNotEmpty();
         assertThat(schema.version()).isNull();
         assertThat(schema.field(SourceInfo.SERVER_NAME_KEY).schema()).isEqualTo(Schema.STRING_SCHEMA);

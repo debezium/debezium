@@ -40,7 +40,6 @@ import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.mongodb.connection.ConnectionStrings;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.connector.mongodb.recordemitter.MongoDbSnapshotRecordEmitter;
-import io.debezium.connector.mongodb.snapshot.MongoDbIncrementalSnapshotContext;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.EventDispatcher.SnapshotReceiver;
@@ -53,7 +52,6 @@ import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.spi.ChangeRecordEmitter;
 import io.debezium.pipeline.spi.SnapshotResult;
-import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
 import io.debezium.util.Strings;
@@ -216,11 +214,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
 
     private void initSnapshotStartOffsets(MongoDbSnapshotContext snapshotCtx) {
         LOGGER.info("Initializing empty Offset context");
-        snapshotCtx.offset = new MongoDbOffsetContext(
-                taskContext,
-                new SourceInfo(connectorConfig, ConnectionStrings.replicaSetName(taskContext.getConnectionString())),
-                new TransactionContext(),
-                new MongoDbIncrementalSnapshotContext<>(false));
+        snapshotCtx.offset = MongoDbOffsetContext.empty(connectorConfig, ConnectionStrings.replicaSetName(taskContext.getConnectionString()));
     }
 
     private void initSnapshotStartOffsets(MongoDbSnapshotContext snapshotCtx, MongoDbConnection mongo) throws InterruptedException {
