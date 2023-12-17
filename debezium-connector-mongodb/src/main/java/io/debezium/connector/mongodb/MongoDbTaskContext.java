@@ -67,8 +67,8 @@ public class MongoDbTaskContext extends CdcSourceTaskContext {
 
     /**
      * Provides the capture mode used by connector runtime. This value can differ from requested
-     * configured value as the offets stored might be created by a different capture mode.
-     * In this case the configured value is overriden and the mode previously used is restored.
+     * configured value as the offsets stored might be created by a different capture mode.
+     * In this case the configured value is overridden and the mode previously used is restored.
      *
      * @return effectively used capture mode
      */
@@ -77,11 +77,10 @@ public class MongoDbTaskContext extends CdcSourceTaskContext {
     }
 
     public ConnectionString getConnectionString() {
-        return connectorConfig.getTaskConnectionString()
-                .orElse(connectionContext.connectionString());
+        return connectorConfig.getConnectionString();
     }
 
     public MongoDbConnection connect(MongoDbConnection.ErrorHandler errorHandler) {
-        return connectionContext.connect(getConnectionString(), filters, errorHandler);
+        return connectionContext.connect(filters, errorHandler);
     }
 }

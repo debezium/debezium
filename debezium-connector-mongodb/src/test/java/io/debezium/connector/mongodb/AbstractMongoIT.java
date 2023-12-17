@@ -74,8 +74,6 @@ public abstract class AbstractMongoIT {
     private void initialize() {
         context = new MongoDbTaskContext(config);
         assertThat(context.getConnectionContext().connectionSeed()).isNotEmpty();
-        // Get a connection...
-        var connectionString = context.getConnectionContext().connectionString();
-        connection = context.getConnectionContext().connect(connectionString, context.filters(), TestHelper.connectionErrorHandler(3));
+        connection = context.connect(TestHelper.connectionErrorHandler(3));
     }
 }

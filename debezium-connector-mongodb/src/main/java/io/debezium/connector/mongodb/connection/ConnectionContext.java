@@ -141,4 +141,8 @@ public class ConnectionContext {
     public MongoDbConnection connect(ConnectionString connectionString, Filters filters, MongoDbConnection.ErrorHandler errorHandler) {
         return new MongoDbConnection(connectionString, clientFactory, connectorConfig, filters, errorHandler);
     }
+
+    public MongoDbConnection connect(Filters filters, MongoDbConnection.ErrorHandler errorHandler) {
+        return connect(connectionString(), filters, errorHandler);
+    }
 }

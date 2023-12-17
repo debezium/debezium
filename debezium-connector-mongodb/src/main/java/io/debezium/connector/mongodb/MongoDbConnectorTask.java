@@ -53,8 +53,6 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
 
     private static final String CONTEXT_NAME = "mongodb-connector-task";
 
-    private final Logger logger = LoggerFactory.getLogger(getClass());
-
     // These are all effectively constants between start(...) and stop(...)
     private volatile ChangeEventQueue<DataChangeEvent> queue;
     private volatile String taskName;
@@ -79,8 +77,8 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
         this.schema = new MongoDbSchema(taskContext.filters(), taskContext.topicNamingStrategy(), structSchema, schemaNameAdjuster);
 
         final Offsets<MongoDbPartition, MongoDbOffsetContext> previousOffset = getPreviousOffsets(
-                new MongoDbPartition.Provider(taskContext),
-                new MongoDbOffsetContext.Loader(taskContext));
+                new MongoDbPartition.Provider(connectorConfig),
+                new MongoDbOffsetContext.Loader(connectorConfig));
         final Clock clock = Clock.system();
 
         PreviousContext previousLogContext = taskContext.configureLoggingContext(taskName);

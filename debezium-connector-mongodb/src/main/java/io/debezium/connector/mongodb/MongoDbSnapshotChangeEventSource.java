@@ -37,7 +37,6 @@ import com.mongodb.client.model.changestream.ChangeStreamDocument;
 
 import io.debezium.DebeziumException;
 import io.debezium.connector.SnapshotRecord;
-import io.debezium.connector.mongodb.connection.ConnectionStrings;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.connector.mongodb.recordemitter.MongoDbSnapshotRecordEmitter;
 import io.debezium.pipeline.ErrorHandler;
@@ -214,7 +213,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
 
     private void initSnapshotStartOffsets(MongoDbSnapshotContext snapshotCtx) {
         LOGGER.info("Initializing empty Offset context");
-        snapshotCtx.offset = MongoDbOffsetContext.empty(connectorConfig, ConnectionStrings.replicaSetName(taskContext.getConnectionString()));
+        snapshotCtx.offset = MongoDbOffsetContext.empty(connectorConfig);
     }
 
     private void initSnapshotStartOffsets(MongoDbSnapshotContext snapshotCtx, MongoDbConnection mongo) throws InterruptedException {

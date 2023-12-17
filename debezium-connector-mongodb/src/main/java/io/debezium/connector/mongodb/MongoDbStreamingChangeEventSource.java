@@ -213,7 +213,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
 
     protected MongoDbOffsetContext emptyOffsets(MongoDbConnectorConfig connectorConfig) {
         LOGGER.info("Initializing empty Offset context");
-        return MongoDbOffsetContext.empty(connectorConfig, ConnectionStrings.replicaSetName(taskContext.getConnectionString()));
+        return MongoDbOffsetContext.empty(connectorConfig);
     }
 
     /**

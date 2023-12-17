@@ -26,7 +26,6 @@ import com.mongodb.client.model.changestream.ChangeStreamDocument;
 
 import io.debezium.DebeziumException;
 import io.debezium.connector.SnapshotRecord;
-import io.debezium.connector.mongodb.connection.ConnectionStrings;
 import io.debezium.connector.mongodb.events.BufferingChangeStreamCursor;
 import io.debezium.connector.mongodb.snapshot.MongoDbIncrementalSnapshotContext;
 import io.debezium.pipeline.CommonOffsetContext;
@@ -220,26 +219,24 @@ public class MongoDbOffsetContext extends CommonOffsetContext<SourceInfo> {
         return false;
     }
 
-    public static MongoDbOffsetContext empty(MongoDbConnectorConfig connectorConfig, String replicaSetName) {
+    public static MongoDbOffsetContext empty(MongoDbConnectorConfig connectorConfig) {
         return new MongoDbOffsetContext(
-                new SourceInfo(connectorConfig, replicaSetName),
+                new SourceInfo(connectorConfig),
                 new TransactionContext(),
                 new MongoDbIncrementalSnapshotContext<>(false));
     }
 
     public static class Loader implements OffsetContext.Loader<MongoDbOffsetContext> {
 
-        private final MongoDbTaskContext taskContext;
+        private final MongoDbConnectorConfig connectorConfig;
 
-        public Loader(MongoDbTaskContext taskContext) {
-            this.taskContext = taskContext;
+        public Loader(MongoDbConnectorConfig connectorConfig) {
+            this.connectorConfig = connectorConfig;
         }
 
         @Override
         public MongoDbOffsetContext load(Map<String, ?> offset) {
-            var sourceInfo = new SourceInfo(
-                    taskContext.getConnectorConfig(),
-                    ConnectionStrings.replicaSetName(taskContext.getConnectionString()));
+            var sourceInfo = new SourceInfo(connectorConfig);
 
             if (!booleanOffsetValue(offset, INITIAL_SYNC)) {
                 var position = positionFromOffset(offset);
