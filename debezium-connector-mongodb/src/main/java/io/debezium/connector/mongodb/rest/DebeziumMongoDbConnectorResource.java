@@ -72,7 +72,7 @@ public class DebeziumMongoDbConnectorResource
     @Override
     public List<DataCollection> getMatchingCollections(Configuration configuration) {
         return getConnector().getMatchingCollections(configuration).stream()
-                .map(collectionId -> new DataCollection(collectionId.replicaSetName(), collectionId.dbName(), collectionId.name()))
+                .map(collectionId -> new DataCollection(collectionId.dbName(), collectionId.name()))
                 .collect(Collectors.toList());
     }
 }

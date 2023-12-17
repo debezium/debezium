@@ -18,7 +18,6 @@ import com.mongodb.client.model.changestream.ChangeStreamDocument;
 import com.mongodb.client.model.changestream.FullDocument;
 import com.mongodb.client.model.changestream.FullDocumentBeforeChange;
 
-import io.debezium.connector.mongodb.connection.ConnectionStrings;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.connector.mongodb.events.BufferingChangeStreamCursor;
 import io.debezium.connector.mongodb.events.BufferingChangeStreamCursor.ResumableChangeStreamEvent;
@@ -148,7 +147,6 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                                      MongoDbOffsetContext offsetContext)
             throws InterruptedException {
         var collectionId = new CollectionId(
-                ConnectionStrings.replicaSetName(taskContext.getConnectionString()),
                 event.getNamespace().getDatabaseName(),
                 event.getNamespace().getCollectionName());
 

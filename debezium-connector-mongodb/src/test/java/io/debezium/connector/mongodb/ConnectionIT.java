@@ -28,7 +28,6 @@ import com.mongodb.client.model.InsertOneOptions;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
-import io.debezium.connector.mongodb.connection.ConnectionStrings;
 import io.debezium.util.Testing;
 
 public class ConnectionIT extends AbstractMongoIT {
@@ -124,6 +123,6 @@ public class ConnectionIT extends AbstractMongoIT {
 
         // Now that we've put at least one document into our collection, verify we can see the database and collection ...
         assertThat(connection.databaseNames()).containsOnly("dbA", "dbB");
-        assertThat(connection.collections()).containsOnly(new CollectionId(ConnectionStrings.replicaSetName(mongo.getConnectionString()), "dbA", "moviesA"));
+        assertThat(connection.collections()).containsOnly(new CollectionId("dbA", "moviesA"));
     }
 }

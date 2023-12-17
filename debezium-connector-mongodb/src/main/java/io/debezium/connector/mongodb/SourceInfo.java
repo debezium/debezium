@@ -223,7 +223,7 @@ public final class SourceInfo extends BaseSourceInfo {
     private void noEvent(Position position) {
         String namespace = "";
         long wallTime = 0L;
-        onEvent(CollectionId.parse(connectorConfig.getReplicaSetName(), namespace), position, wallTime);
+        onEvent(CollectionId.parse(namespace), position, wallTime);
     }
 
     public void changeStreamEvent(ChangeStreamDocument<BsonDocument> changeStreamEvent) {
@@ -240,7 +240,7 @@ public final class SourceInfo extends BaseSourceInfo {
             }
         }
 
-        onEvent(CollectionId.parse(connectorConfig.getReplicaSetName(), namespace), position, wallTime);
+        onEvent(CollectionId.parse(namespace), position, wallTime);
     }
 
     private void onEvent(CollectionId collectionId, Position position, long wallTime) {

@@ -63,7 +63,7 @@ public final class Filters {
 
         // Create signal collection filter if specified and not included
         Optional<Predicate<CollectionId>> signalCollectionFilter = config.getSignalDataCollection()
-                .map(id -> CollectionId.parse("UNUSED", id))
+                .map(CollectionId::parse)
                 .filter(id -> !collectionFilter.test(id))
                 .map(id -> Predicates.includes(id.namespace(), CollectionId::namespace));
 

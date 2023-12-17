@@ -27,7 +27,7 @@ public class MongoDbSchemaIT {
 
         final MongoDbSchema schema = getSchema(config, taskContext);
         for (int i = 0; i != 100; ++i) {
-            CollectionId id = new CollectionId("rs0", "dbA", "c" + i);
+            CollectionId id = new CollectionId("dbA", "c" + i);
             DataCollectionSchema collectionSchema = schema.schemaFor(id);
             assertThat(collectionSchema).isNotNull();
             assertThat(collectionSchema.id()).isSameAs(id);

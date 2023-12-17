@@ -162,7 +162,7 @@ public final class MongoDbConnection implements AutoCloseable {
 
             for (String dbName : databaseNames) {
                 MongoUtil.forEachCollectionNameInDatabase(client, dbName, collectionName -> {
-                    CollectionId collectionId = new CollectionId(name, dbName, collectionName);
+                    CollectionId collectionId = new CollectionId(dbName, collectionName);
 
                     if (filters.collectionFilter().test(collectionId)) {
                         collections.add(collectionId);

@@ -99,7 +99,7 @@ public class MongoDbConnector extends BaseSourceConnector {
         this.config = config;
         this.connectionContext = new ConnectionContext(config);
 
-        logger.info("Successfully started MongoDB connector, and continuing to discover changes in replica set(s) at {}", connectionContext.maskedConnectionSeed());
+        logger.info("Successfully started MongoDB connector, and continuing to discover at {}", connectionContext.maskedConnectionSeed());
     }
 
     @Override

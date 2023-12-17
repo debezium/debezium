@@ -34,7 +34,6 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
 import org.bson.Document;
-import org.jetbrains.annotations.NotNull;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -118,7 +117,7 @@ public class BlockingSnapshotIT extends AbstractMongoConnectorIT {
 
         waitForStreamingRunning("mongodb", "mongo1", getStreamingNamespace(), "0");
 
-        Long totalSnapshotRecords = getTotalSnapshotRecords(replicaSetFullDataCollectionName(), "mongodb", "mongo1", "0", null);
+        Long totalSnapshotRecords = getTotalSnapshotRecords(fullDataCollectionName(), "mongodb", "mongo1", "0", null);
 
         batchInserts.get(120, TimeUnit.SECONDS);
 
@@ -360,10 +359,4 @@ public class BlockingSnapshotIT extends AbstractMongoConnectorIT {
 
         waitForAvailableRecords(5, TimeUnit.SECONDS);
     }
-
-    @NotNull
-    private String replicaSetFullDataCollectionName() {
-        return "rs0." + fullDataCollectionName();
-    }
-
 }
