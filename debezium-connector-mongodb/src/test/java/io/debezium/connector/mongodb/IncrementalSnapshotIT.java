@@ -451,7 +451,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
 
         Awaitility.await().atMost(60, TimeUnit.SECONDS)
                 .until(() -> interceptor
-                        .containsMessage("No data returned by the query, incremental snapshotting of table '" + "rs0." + fullDataCollectionName() + "' finished"));
+                        .containsMessage("No data returned by the query, incremental snapshotting of table '" + fullDataCollectionName() + "' finished"));
 
         final int expectedRecordCount = ROW_COUNT;
         final AtomicInteger recordCounter = new AtomicInteger();

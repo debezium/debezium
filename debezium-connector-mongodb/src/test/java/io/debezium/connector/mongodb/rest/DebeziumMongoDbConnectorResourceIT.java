@@ -121,9 +121,9 @@ public class DebeziumMongoDbConnectorResourceIT {
                 .body("matchingCollections.size()", is(3))
                 .body("matchingCollections",
                         hasItems(
-                                Map.of("realm", "rs0", "namespace", "inventory", "name", "customers", "identifier", "rs0.inventory.customers"),
-                                Map.of("realm", "rs0", "namespace", "inventory", "name", "orders", "identifier", "rs0.inventory.orders"),
-                                Map.of("realm", "rs0", "namespace", "inventory", "name", "products", "identifier", "rs0.inventory.products")));
+                                Map.of("namespace", "inventory", "name", "customers", "identifier", "inventory.customers"),
+                                Map.of("namespace", "inventory", "name", "orders", "identifier", "inventory.orders"),
+                                Map.of("namespace", "inventory", "name", "products", "identifier", "inventory.products")));
     }
 
     @Test
@@ -141,7 +141,7 @@ public class DebeziumMongoDbConnectorResourceIT {
                 .body("validationResults.size()", is(0))
                 .body("matchingCollections.size()", is(1))
                 .body("matchingCollections",
-                        hasItems(Map.of("realm", "rs0", "namespace", "inventory", "name", "products", "identifier", "rs0.inventory.products")));
+                        hasItems(Map.of("namespace", "inventory", "name", "products", "identifier", "inventory.products")));
     }
 
     @Test
@@ -160,9 +160,9 @@ public class DebeziumMongoDbConnectorResourceIT {
                 .body("matchingCollections.size()", is(3))
                 .body("matchingCollections",
                         hasItems(
-                                Map.of("realm", "rs0", "namespace", "inventory", "name", "customers", "identifier", "rs0.inventory.customers"),
-                                Map.of("realm", "rs0", "namespace", "inventory", "name", "orders", "identifier", "rs0.inventory.orders"),
-                                Map.of("realm", "rs0", "namespace", "inventory", "name", "products", "identifier", "rs0.inventory.products")));
+                                Map.of("namespace", "inventory", "name", "customers", "identifier", "inventory.customers"),
+                                Map.of("namespace", "inventory", "name", "orders", "identifier", "inventory.orders"),
+                                Map.of("namespace", "inventory", "name", "products", "identifier", "inventory.products")));
     }
 
     @Test

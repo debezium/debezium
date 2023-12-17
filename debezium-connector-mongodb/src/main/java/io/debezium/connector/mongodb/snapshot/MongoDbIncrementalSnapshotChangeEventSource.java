@@ -43,7 +43,6 @@ import io.debezium.connector.mongodb.MongoDbOffsetContext;
 import io.debezium.connector.mongodb.MongoDbPartition;
 import io.debezium.connector.mongodb.MongoDbSchema;
 import io.debezium.connector.mongodb.MongoDbTaskContext;
-import io.debezium.connector.mongodb.connection.ConnectionStrings;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.connector.mongodb.recordemitter.MongoDbSnapshotRecordEmitter;
 import io.debezium.pipeline.EventDispatcher;
@@ -116,7 +115,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
         this.progressListener = progressListener;
         this.dataListener = dataChangeEventListener;
         this.signallingCollectionId = connectorConfig.getSignalingDataCollectionId() == null ? null
-                : CollectionId.parse("UNUSED", connectorConfig.getSignalingDataCollectionId());
+                : CollectionId.parse(connectorConfig.getSignalingDataCollectionId());
         this.notificationService = notificationService;
         this.incrementalSnapshotThreadPool = Threads.newFixedThreadPool(MongoDbConnector.class, config.getConnectorName(),
                 "incremental-snapshot", connectorConfig.getSnapshotMaxThreads());
@@ -250,8 +249,6 @@ public class MongoDbIncrementalSnapshotChangeEventSource
     @Override
     @SuppressWarnings("unchecked")
     public void init(MongoDbPartition partition, OffsetContext offsetContext) {
-        // Only ReplicaSet deployments are supported by incremental snapshot
-        // Thus assume replicaSets.size() == 1
         mongo = connections.get(partition);
 
         if (offsetContext == null) {
@@ -398,12 +395,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
 
         context = (IncrementalSnapshotContext<CollectionId>) offsetContext.getIncrementalSnapshotContext();
         final boolean shouldReadChunk = !context.snapshotRunning();
-        final String rsName = ConnectionStrings.replicaSetName(taskContext.getConnectionString());
-        List<String> dataCollectionIds = snapshotConfiguration.getDataCollections()
-                .stream()
-                .map(x -> rsName + "." + x.toString())
-                .collect(Collectors.toList());
-
+        List<String> dataCollectionIds = snapshotConfiguration.getDataCollections();
         final List<DataCollection<CollectionId>> newDataCollectionIds = context.addDataCollectionNamesToSnapshot(correlationId, dataCollectionIds, List.of(), "");
 
         if (shouldReadChunk) {
@@ -449,10 +441,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
             }
             else {
                 LOGGER.info("Removing '{}' collections from incremental snapshot", dataCollectionPatterns);
-                final String rsName = ConnectionStrings.replicaSetName(taskContext.getConnectionString());
-                final List<String> dataCollectionIds = dataCollectionPatterns.stream().map(x -> rsName + "." + x.toString()).collect(Collectors.toList());
-
-                for (String dataCollectionId : dataCollectionIds) {
+                for (String dataCollectionId : dataCollectionPatterns) {
                     final CollectionId collectionId = CollectionId.parse(dataCollectionId);
                     if (currentCollection != null && currentCollection.id().equals(collectionId)) {
                         window.clear();
@@ -473,7 +462,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
 
                 notificationService
                         .incrementalSnapshotNotificationService()
-                        .notifyAborted(context, partition, offsetContext, dataCollectionIds);
+                        .notifyAborted(context, partition, offsetContext, dataCollectionPatterns);
             }
         }
         else {

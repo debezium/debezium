@@ -72,7 +72,7 @@ public class TransactionMetadataIT extends AbstractMongoConnectorIT {
             counter++;
         }
 
-        assertEndTransaction(all.get(7), txId1, 6, Collect.hashMapOf("rs0.dbA.c1", 6));
+        assertEndTransaction(all.get(7), txId1, 6, Collect.hashMapOf("dbA.c1", 6));
 
         stopConnector();
     }
@@ -125,7 +125,7 @@ public class TransactionMetadataIT extends AbstractMongoConnectorIT {
             counter++;
         }
 
-        assertEndTransaction(all.get(7), txId1, 6, Collect.hashMapOf("rs0.dbA.c1", 6));
+        assertEndTransaction(all.get(7), txId1, 6, Collect.hashMapOf("dbA.c1", 6));
 
         stopConnector();
     }

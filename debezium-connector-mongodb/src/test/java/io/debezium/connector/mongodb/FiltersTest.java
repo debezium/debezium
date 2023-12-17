@@ -319,7 +319,7 @@ public class FiltersTest {
     public void excludeFilterShouldRemoveMatchingField() {
         filters = build.excludeFields("db1.collectionA.key1").createFilters();
         validateConfigFields();
-        CollectionId id = CollectionId.parse("rs1.", "db1.collectionA");
+        CollectionId id = CollectionId.parse("db1.collectionA");
         assertEquals(
                 Document.parse(" { \"key2\" : \"value2\" }"),
                 filters.fieldFilterFor(id).apply(Document.parse(" { \"key1\" : \"value1\", \"key2\" : \"value2\" }")));
@@ -329,7 +329,7 @@ public class FiltersTest {
     public void excludeFilterShouldRemoveMatchingFieldWithLeadingWhiteSpaces() {
         filters = build.excludeFields(" *.collectionA.key1").createFilters();
         validateConfigFields();
-        CollectionId id = CollectionId.parse("rs1.", " *.collectionA");
+        CollectionId id = CollectionId.parse(" *.collectionA");
         assertEquals(
                 Document.parse(" { \"key2\" : \"value2\" }"),
                 filters.fieldFilterFor(id).apply(Document.parse(" { \"key1\" : \"value1\", \"key2\" : \"value2\" }")));
@@ -340,7 +340,7 @@ public class FiltersTest {
     public void excludeFilterShouldRemoveMatchingFieldWithLeadingMultipleAsterisks() {
         filters = build.excludeFields(" *.*.key1").createFilters();
         validateConfigFields();
-        CollectionId id = CollectionId.parse("rs1.", " *.collectionA");
+        CollectionId id = CollectionId.parse(" *.collectionA");
         assertEquals(
                 Document.parse(" { \"key2\" : \"value2\" }"),
                 filters.fieldFilterFor(id).apply(Document.parse(" { \"key1\" : \"value1\", \"key2\" : \"value2\" }")));
@@ -350,7 +350,7 @@ public class FiltersTest {
     public void excludeFilterShouldRemoveMatchingFieldWithTrailingWhiteSpaces() {
         filters = build.excludeFields("db.collectionA.key1 ,db.collectionA.key2 ").createFilters();
         validateConfigFields();
-        CollectionId id = CollectionId.parse("rs1.", "db.collectionA");
+        CollectionId id = CollectionId.parse("db.collectionA");
         assertEquals(
                 Document.parse(" { \"key3\" : \"value3\" }"),
                 filters.fieldFilterFor(id).apply(Document.parse(" { \"key1\" : \"value1\", \"key2\" : \"value2\", \"key3\" : \"value3\" }")));
@@ -360,7 +360,7 @@ public class FiltersTest {
     public void renameFilterShouldRenameMatchingField() {
         filters = build.renameFields("db1.collectionA.key1:key2").createFilters();
         validateConfigFields();
-        CollectionId id = CollectionId.parse("rs1.", "db1.collectionA");
+        CollectionId id = CollectionId.parse("db1.collectionA");
         assertEquals(
                 Document.parse(" { \"key2\" : \"value1\" }"),
                 filters.fieldFilterFor(id).apply(Document.parse(" { \"key1\" : \"value1\" }")));
@@ -370,7 +370,7 @@ public class FiltersTest {
     public void renameFilterShouldRenameMatchingFieldWithLeadingWhiteSpaces() {
         filters = build.renameFields(" *.collectionA.key2:key3").createFilters();
         validateConfigFields();
-        CollectionId id = CollectionId.parse("rs1.", " *.collectionA");
+        CollectionId id = CollectionId.parse(" *.collectionA");
         assertEquals(
                 Document.parse(" { \"key1\" : \"valueA\", \"key3\" : \"valueB\" }"),
                 filters.fieldFilterFor(id).apply(Document.parse(" { \"key1\" : \"valueA\", \"key2\" : \"valueB\" }")));
@@ -381,7 +381,7 @@ public class FiltersTest {
     public void renameFilterShouldRenameMatchingFieldWithLeadingMultipleAsterisks() {
         filters = build.renameFields(" *.*.key2:key3").createFilters();
         validateConfigFields();
-        CollectionId id = CollectionId.parse("rs1.", " *.collectionA");
+        CollectionId id = CollectionId.parse(" *.collectionA");
         assertEquals(
                 Document.parse(" { \"key1\" : \"valueA\", \"key3\" : \"valueB\" }"),
                 filters.fieldFilterFor(id).apply(Document.parse(" { \"key1\" : \"valueA\", \"key2\" : \"valueB\" }")));
@@ -391,20 +391,20 @@ public class FiltersTest {
     public void renameFilterShouldRenameMatchingFieldWithTrailingWhiteSpaces() {
         filters = build.renameFields("db2.collectionA.key1:key2 ,db2.collectionA.key3:key4 ").createFilters();
         validateConfigFields();
-        CollectionId id = CollectionId.parse("rs1.", "db2.collectionA");
+        CollectionId id = CollectionId.parse("db2.collectionA");
         assertEquals(
                 Document.parse(" { \"key2\" : \"valueA\", \"key4\" : \"valueB\" }"),
                 filters.fieldFilterFor(id).apply(Document.parse(" { \"key1\" : \"valueA\", \"key3\" : \"valueB\" }")));
     }
 
     protected void assertCollectionIncluded(String fullyQualifiedCollectionName) {
-        CollectionId id = CollectionId.parse("rs1.", fullyQualifiedCollectionName);
+        CollectionId id = CollectionId.parse(fullyQualifiedCollectionName);
         assertThat(id).isNotNull();
         assertThat(filters.collectionFilter().test(id)).isTrue();
     }
 
     protected void assertCollectionExcluded(String fullyQualifiedCollectionName) {
-        CollectionId id = CollectionId.parse("rs1.", fullyQualifiedCollectionName);
+        CollectionId id = CollectionId.parse(fullyQualifiedCollectionName);
         assertThat(id).isNotNull();
         assertThat(filters.collectionFilter().test(id)).isFalse();
     }

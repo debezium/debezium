@@ -138,7 +138,7 @@ public class SourceInfoTest {
         String resumeToken = source.lastResumeToken();
         assertThat(resumeToken).isEqualTo(resumeTokenData);
 
-        source.collectionEvent(new CollectionId(REPLICA_SET_NAME, "test", "names"), 0L);
+        source.collectionEvent(new CollectionId("test", "names"), 0L);
         Struct struct = source.struct();
         assertThat(struct.getInt64(SourceInfo.TIMESTAMP_KEY)).isEqualTo((timestamp != null) ? timestamp.getTime() * 1000L : 0L);
         assertThat(struct.getInt32(SourceInfo.ORDER)).isEqualTo((timestamp != null) ? timestamp.getInc() : -1);
@@ -221,7 +221,7 @@ public class SourceInfoTest {
         var cursor = mockEventChangeStreamCursor();
         source.initEvent(cursor);
         assertThat(source.struct().getInt64(SourceInfo.WALL_TIME)).isNull();
-        source.collectionEvent(new CollectionId(REPLICA_SET_NAME, "test", "names"), 10L);
+        source.collectionEvent(new CollectionId("test", "names"), 10L);
         assertThat(source.struct().getInt64(SourceInfo.WALL_TIME)).isEqualTo(10L);
     }
 
