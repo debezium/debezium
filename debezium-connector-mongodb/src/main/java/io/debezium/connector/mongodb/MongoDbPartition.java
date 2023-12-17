@@ -10,7 +10,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-import io.debezium.connector.mongodb.connection.ConnectionStrings;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.util.Collect;
 
@@ -55,18 +54,15 @@ public class MongoDbPartition implements Partition {
 
     public static class Provider implements Partition.Provider<MongoDbPartition> {
         private final MongoDbConnectorConfig connectorConfig;
-        private final MongoDbTaskContext taskContext;
 
-        public Provider(MongoDbTaskContext taskContext) {
-            this.connectorConfig = taskContext.getConnectorConfig();
-            this.taskContext = taskContext;
+        public Provider(MongoDbConnectorConfig connectorConfig) {
+            this.connectorConfig = connectorConfig;
         }
 
         @Override
         public Set<MongoDbPartition> getPartitions() {
-            return Collections.singleton(new MongoDbPartition(
-                    connectorConfig.getLogicalName(),
-                    ConnectionStrings.replicaSetName(taskContext.getConnectionString())));
+            return Collections.singleton(
+                    new MongoDbPartition(connectorConfig.getLogicalName(), connectorConfig.getReplicaSetName()));
         }
     }
 }

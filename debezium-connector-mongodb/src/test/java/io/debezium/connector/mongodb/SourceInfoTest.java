@@ -59,18 +59,20 @@ public class SourceInfoTest {
 
     private SourceInfo createSourceInfo() {
         var config = new MongoDbConnectorConfig(Configuration.create()
+                .with(MongoDbConnectorConfig.CONNECTION_STRING, "mongodb://localhost:2017/?replicaSet=" + REPLICA_SET_NAME)
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "serverX")
                 .build());
 
-        return new SourceInfo(config, REPLICA_SET_NAME);
+        return new SourceInfo(config);
     }
 
     private void createOffsetContext() {
         var config = new MongoDbConnectorConfig(Configuration.create()
+                .with(MongoDbConnectorConfig.CONNECTION_STRING, "mongodb://localhost:2017/?replicaSet=" + REPLICA_SET_NAME)
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "serverX")
                 .build());
 
-        context = MongoDbOffsetContext.empty(config, REPLICA_SET_NAME);
+        context = MongoDbOffsetContext.empty(config);
         source = context.sourceInfo();
     }
 

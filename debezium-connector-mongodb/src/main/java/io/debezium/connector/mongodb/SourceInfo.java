@@ -78,7 +78,7 @@ public final class SourceInfo extends BaseSourceInfo {
     private static final BsonTimestamp INITIAL_TIMESTAMP = new BsonTimestamp();
     private static final Position INITIAL_POSITION = new Position(INITIAL_TIMESTAMP, null, null);
     public boolean initialSync = false;
-    private final String replicaSetName;
+    private final MongoDbConnectorConfig connectorConfig;
 
     /**
      * Id of collection the current event applies to. May be {@code null} after noop events,
@@ -144,9 +144,9 @@ public final class SourceInfo extends BaseSourceInfo {
         }
     }
 
-    public SourceInfo(MongoDbConnectorConfig connectorConfig, String replicaSetName) {
+    public SourceInfo(MongoDbConnectorConfig connectorConfig) {
         super(connectorConfig);
-        this.replicaSetName = replicaSetName;
+        this.connectorConfig = connectorConfig;
     }
 
     CollectionId collectionId() {
@@ -223,7 +223,7 @@ public final class SourceInfo extends BaseSourceInfo {
     private void noEvent(Position position) {
         String namespace = "";
         long wallTime = 0L;
-        onEvent(CollectionId.parse(replicaSetName, namespace), position, wallTime);
+        onEvent(CollectionId.parse(connectorConfig.getReplicaSetName(), namespace), position, wallTime);
     }
 
     public void changeStreamEvent(ChangeStreamDocument<BsonDocument> changeStreamEvent) {
@@ -240,7 +240,7 @@ public final class SourceInfo extends BaseSourceInfo {
             }
         }
 
-        onEvent(CollectionId.parse(replicaSetName, namespace), position, wallTime);
+        onEvent(CollectionId.parse(connectorConfig.getReplicaSetName(), namespace), position, wallTime);
     }
 
     private void onEvent(CollectionId collectionId, Position position, long wallTime) {
@@ -301,7 +301,7 @@ public final class SourceInfo extends BaseSourceInfo {
     }
 
     String replicaSetName() {
-        return replicaSetName;
+        return connectorConfig.getReplicaSetName();
     }
 
     long wallTime() {
@@ -310,6 +310,6 @@ public final class SourceInfo extends BaseSourceInfo {
 
     @Override
     public String toString() {
-        return "SourceInfo [initialSyncReplicaSets=" + initialSync + ", collectionId=" + collectionId + ", position=" + position + "]";
+        return "SourceInfo [initialSync=" + initialSync + ", collectionId=" + collectionId + ", position=" + position + "]";
     }
 }

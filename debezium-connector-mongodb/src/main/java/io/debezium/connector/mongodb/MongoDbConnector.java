@@ -26,7 +26,6 @@ import io.debezium.connector.common.BaseSourceConnector;
 import io.debezium.connector.mongodb.connection.ConnectionContext;
 import io.debezium.connector.mongodb.connection.ConnectionStrings;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
-import io.debezium.connector.mongodb.connection.ReplicaSet;
 
 /**
  * A Kafka Connect source connector that creates {@link MongoDbConnectorTask tasks} that replicate the context of one or more
@@ -110,18 +109,18 @@ public class MongoDbConnector extends BaseSourceConnector {
             return Collections.emptyList();
         }
 
-        // Partitioning the replica sets amongst the number of tasks ...
-        List<Map<String, String>> taskConfigs = new ArrayList<>(maxTasks);
+        // ensure connection string has replicaSet when possible
         var taskConnectionString = connectionContext.resolveTaskConnectionString();
-
         logger.info("Configuring MongoDB connector task to capture events for connections to: {}", ConnectionStrings.mask(taskConnectionString));
-        taskConfigs.add(config.edit()
-                .with(MongoDbConnectorConfig.TASK_CONNECTION_STRING, taskConnectionString)
+
+        var taskConfig = config.edit()
+                .with(MongoDbConnectorConfig.CONNECTION_STRING, taskConnectionString)
                 .with(MongoDbConnectorConfig.TASK_ID, 0)
                 .build()
-                .asMap());
-        logger.debug("Configuring {} MongoDB connector task(s)", taskConfigs.size());
-        return taskConfigs;
+                .asMap();
+
+        logger.debug("Configuring MongoDB connector task");
+        return List.of(taskConfig);
     }
 
     @Override
@@ -184,7 +183,6 @@ public class MongoDbConnector extends BaseSourceConnector {
 
     private MongoDbConnection getConnection(Configuration config) {
         MongoDbTaskContext context = new MongoDbTaskContext(config);
-        ReplicaSet replicaSet = new ReplicaSet(context.getConnectionContext().connectionString());
         return context.getConnectionContext().connect(context.getConnectionContext().connectionString(), context.filters(), (s, throwable) -> {
             throw new DebeziumException(s, throwable);
         });

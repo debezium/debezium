@@ -501,13 +501,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
     protected static final int DEFAULT_SNAPSHOT_FETCH_SIZE = 0;
 
-    /**
-     * The task connection string
-     */
-    public static final Field TASK_CONNECTION_STRING = Field.createInternal("mongodb.internal.task.connection.string")
-            .withDescription("Internal use only")
-            .withType(Type.LIST);
-
     public static final Field ALLOW_OFFSET_INVALIDATION = Field.createInternal("mongodb.allow.offset.invalidation")
             .withDescription("Allows offset invalidation when required by change of connection mode")
             .withDefault(false)
@@ -895,7 +888,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     private final boolean offsetInvalidationAllowed;
     private final int snapshotMaxThreads;
     private final int cursorMaxAwaitTimeMs;
-    private final Optional<ConnectionString> taskConnectionString;
+    private final ConnectionString connectionString;
     private final CursorPipelineOrder cursorPipelineOrder;
     private final OversizeHandlingMode oversizeHandlingMode;
     private final FiltersMatchMode filtersMatchMode;
@@ -929,7 +922,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         this.snapshotMaxThreads = resolveSnapshotMaxThreads(config);
         this.cursorMaxAwaitTimeMs = config.getInteger(MongoDbConnectorConfig.CURSOR_MAX_AWAIT_TIME_MS, 0);
 
-        this.taskConnectionString = resolveTaskConnectionString(config);
+        this.connectionString = resolveConnectionString(config);
     }
 
     private static int validateHosts(Configuration config, Field field, ValidationOutput problems) {
@@ -1110,8 +1103,12 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         return offsetInvalidationAllowed;
     }
 
-    public Optional<ConnectionString> getTaskConnectionString() {
-        return taskConnectionString;
+    public ConnectionString getConnectionString() {
+        return connectionString;
+    }
+
+    public String getReplicaSetName() {
+        return ConnectionStrings.replicaSetName(connectionString);
     }
 
     public int getCursorMaxAwaitTime() {
@@ -1188,10 +1185,9 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         return config.getInteger(SNAPSHOT_MAX_THREADS);
     }
 
-    private static Optional<ConnectionString> resolveTaskConnectionString(Configuration config) {
-        var connectionString = config.getString(MongoDbConnectorConfig.TASK_CONNECTION_STRING);
-        return Optional.ofNullable(connectionString)
-                .map(ConnectionString::new);
+    private static ConnectionString resolveConnectionString(Configuration config) {
+        var connectionString = config.getString(MongoDbConnectorConfig.CONNECTION_STRING);
+        return connectionString != null ? new ConnectionString(connectionString) : null;
     }
 
     @Override
