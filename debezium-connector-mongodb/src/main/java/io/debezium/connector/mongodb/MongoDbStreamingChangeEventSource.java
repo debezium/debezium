@@ -72,17 +72,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
      * @param offsetContext unused as effective offset is build by {@link #init(MongoDbOffsetContext)}
      */
     @Override
-    public void execute(ChangeEventSourceContext context, MongoDbPartition partition, MongoDbOffsetContext offsetContext)
-            throws InterruptedException {
-        streamChangesForReplicaSet(context, partition);
-    }
-
-    @Override
-    public MongoDbOffsetContext getOffsetContext() {
-        return effectiveOffset;
-    }
-
-    private void streamChangesForReplicaSet(ChangeEventSourceContext context, MongoDbPartition partition) {
+    public void execute(ChangeEventSourceContext context, MongoDbPartition partition, MongoDbOffsetContext offsetContext) {
         try (MongoDbConnection mongo = connections.get(partition)) {
             mongo.execute("Reading change stream", client -> {
                 readChangeStream(client, context, partition);
@@ -92,6 +82,11 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             LOGGER.error("Streaming failed", t);
             errorHandler.setProducerThrowable(t);
         }
+    }
+
+    @Override
+    public MongoDbOffsetContext getOffsetContext() {
+        return effectiveOffset;
     }
 
     private void readChangeStream(MongoClient client, ChangeEventSourceContext context, MongoDbPartition partition) {

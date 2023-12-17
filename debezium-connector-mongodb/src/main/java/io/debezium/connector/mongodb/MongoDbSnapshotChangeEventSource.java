@@ -391,23 +391,6 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
     }
 
     /**
-     * A configuration describing the task to be performed during snapshotting.
-     *
-     * @see SnapshottingTask
-     */
-    public static class MongoDbSnapshottingTask extends SnapshottingTask {
-
-        public MongoDbSnapshottingTask(boolean snapshotData, List<String> dataCollections, Map<String, String> filterQueries, boolean isBlocking) {
-            super(false, snapshotData, dataCollections, filterQueries, isBlocking);
-        }
-
-        @Override
-        public boolean shouldSkipSnapshot() {
-            return !snapshotData();
-        }
-    }
-
-    /**
      * Mutable context that is populated in the course of snapshotting.
      */
     private static class MongoDbSnapshotContext extends SnapshotContext<MongoDbPartition, MongoDbOffsetContext> {
