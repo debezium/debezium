@@ -2332,6 +2332,7 @@ LAG:                          'LAG';
 LEAD:                         'LEAD';
 MAX:                          'MAX';
 MEDIAN:                       'MEDIAN';
+MEMOPTIMIZE:                  'MEMOPTIMIZE';
 MIN:                          'MIN';
 NTILE:                        'NTILE';
 NVL:                          'NVL';

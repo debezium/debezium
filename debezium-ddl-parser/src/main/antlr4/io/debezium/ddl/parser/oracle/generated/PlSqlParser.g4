@@ -2914,7 +2914,7 @@ filename
     ;
 
 alter_table
-    : ALTER TABLE tableview_name
+    : ALTER TABLE tableview_name memoptimize_read_write_clause*
       (
       | alter_table_properties
       | constraint_clauses
@@ -2924,6 +2924,10 @@ alter_table
       | move_table_clause
       )
       ((enable_disable_clause | enable_or_disable (TABLE LOCK | ALL TRIGGERS) )+)?
+    ;
+
+memoptimize_read_write_clause
+    : NO? MEMOPTIMIZE FOR (READ | WRITE)
     ;
 
 alter_table_properties
