@@ -208,11 +208,12 @@ public class ConfigurationTest {
      * which is just applied for that session emitting those statements).
      */
     @Test
-    @FixFor("DBZ-469")
+    @FixFor({ "DBZ-469", "DBZ-7271" })
     public void defaultDdlFilterShouldFilterOutRdsHeartbeatInsert() {
         String defaultDdlFilter = Configuration.create().build().getString(SchemaHistory.DDL_FILTER);
         Predicate<String> ddlFilter = Predicates.includes(defaultDdlFilter, Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
         assertThat(ddlFilter.test("INSERT INTO mysql.rds_heartbeat2(id, value) values (1,1510678117058) ON DUPLICATE KEY UPDATE value = 1510678117058")).isTrue();
+        assertThat(ddlFilter.test("INSERT INTO rds_heartbeat2(id, value) values (1,1510678117058) ON DUPLICATE KEY UPDATE value = 1510678117058")).isTrue();
     }
 
     @Test
