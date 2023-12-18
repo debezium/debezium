@@ -64,6 +64,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
     private volatile PostgresTaskContext taskContext;
     private volatile ChangeEventQueue<DataChangeEvent> queue;
     private volatile PostgresConnection jdbcConnection;
+    private volatile PostgresConnection beanRegistryJdbcConnection;
     private volatile ReplicationConnection replicationConnection = null;
 
     private volatile ErrorHandler errorHandler;
@@ -114,10 +115,11 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
         final PostgresOffsetContext previousOffset = previousOffsets.getTheOnlyOffset();
 
         // Manual Bean Registration
+        beanRegistryJdbcConnection = connectionFactory.newConnection();
         connectorConfig.getBeanRegistry().add(StandardBeanNames.CONFIGURATION, config);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.CONNECTOR_CONFIG, connectorConfig);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.DATABASE_SCHEMA, schema);
-        connectorConfig.getBeanRegistry().add(StandardBeanNames.JDBC_CONNECTION, connectionFactory.newConnection());
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.JDBC_CONNECTION, beanRegistryJdbcConnection);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.VALUE_CONVERTER, valueConverter);
 
         // Service providers
@@ -316,6 +318,15 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
         }
         catch (Exception e) {
             LOGGER.trace("Error while closing replication connection", e);
+        }
+
+        try {
+            if (beanRegistryJdbcConnection != null) {
+                beanRegistryJdbcConnection.close();
+            }
+        }
+        catch (Exception e) {
+            LOGGER.trace("Error while closing JDBC bean registry connection", e);
         }
 
         if (jdbcConnection != null) {
