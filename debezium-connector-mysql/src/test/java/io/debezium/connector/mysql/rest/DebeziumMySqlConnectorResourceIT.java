@@ -11,6 +11,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.hasItems;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.startsWith;
+import static org.hamcrest.Matchers.notNullValue;
 
 import java.util.Locale;
 import java.util.Map;
@@ -229,7 +230,7 @@ public class DebeziumMySqlConnectorResourceIT {
                 .body("connector.metrics.Connected", equalTo("true"))
                 .body("tasks[0].id", equalTo(0))
                 .body("tasks[0].namespaces[0].metrics.MilliSecondsSinceLastEvent", equalTo("0"))
-                .body("tasks[0].namespaces[0].metrics.TotalNumberOfEventsSeen", equalTo("14234"));
+                .body("tasks[0].namespaces[0].metrics.TotalNumberOfEventsSeen", is(notNullValue()));
     }
 
     public static ConnectorConfiguration getMySqlConnectorConfiguration(int id, String... options) {

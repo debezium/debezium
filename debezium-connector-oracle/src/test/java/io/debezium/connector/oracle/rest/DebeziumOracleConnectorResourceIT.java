@@ -180,7 +180,7 @@ public class DebeziumOracleConnectorResourceIT {
     }
 
     @Test
-    public void testMetricsEndpoint() {
+    public void testMetricsEndpoint() throws InterruptedException {
         ConnectorConfiguration config = TestHelper.getOracleConnectorConfiguration(1);
 
         var connectorName = "my-oracle-connector";
@@ -190,6 +190,7 @@ public class DebeziumOracleConnectorResourceIT {
 
         RestExtensionTestInfrastructure.getDebeziumContainer().ensureConnectorState(connectorName, Connector.State.RUNNING);
         RestExtensionTestInfrastructure.waitForConnectorTaskStatus(connectorName, 0, Connector.State.RUNNING);
+        RestExtensionTestInfrastructure.getDebeziumContainer().waitForStreamingRunning("oracle", config.asProperties().getProperty("topic.prefix"));
 
         given()
                 .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
