@@ -48,6 +48,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
     private volatile OracleTaskContext taskContext;
     private volatile ChangeEventQueue<DataChangeEvent> queue;
     private volatile OracleConnection jdbcConnection;
+    private volatile OracleConnection beanRegistryJdbcConnection;
     private volatile ErrorHandler errorHandler;
     private volatile OracleDatabaseSchema schema;
 
@@ -76,10 +77,11 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
                 topicNamingStrategy, tableNameCaseSensitivity);
 
         // Manual Bean Registration
+        beanRegistryJdbcConnection = connectionFactory.newConnection();
         connectorConfig.getBeanRegistry().add(StandardBeanNames.CONFIGURATION, config);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.CONNECTOR_CONFIG, connectorConfig);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.DATABASE_SCHEMA, schema);
-        connectorConfig.getBeanRegistry().add(StandardBeanNames.JDBC_CONNECTION, connectionFactory.newConnection());
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.JDBC_CONNECTION, beanRegistryJdbcConnection);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.VALUE_CONVERTER, valueConverters);
 
         // Service providers
@@ -186,6 +188,15 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         }
         catch (SQLException e) {
             LOGGER.error("Exception while closing JDBC connection", e);
+        }
+
+        try {
+            if (beanRegistryJdbcConnection != null) {
+                beanRegistryJdbcConnection.close();
+            }
+        }
+        catch (SQLException e) {
+            LOGGER.error("Exception while closing JDBC bean registry connection", e);
         }
 
         if (schema != null) {
