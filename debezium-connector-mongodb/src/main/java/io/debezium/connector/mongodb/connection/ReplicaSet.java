@@ -19,6 +19,7 @@ public final class ReplicaSet implements Comparable<ReplicaSet> {
     private final String replicaSetName;
     private final ConnectionString connectionString;
     private final int hc;
+    private final boolean isClusterRs;
 
     public ReplicaSet(String connectionString) {
         this(new ConnectionString(connectionString));
@@ -31,6 +32,7 @@ public final class ReplicaSet implements Comparable<ReplicaSet> {
     private ReplicaSet(String replicaSetName, ConnectionString connectionString) {
         this.connectionString = Objects.requireNonNull(connectionString, "Connection string cannot be null");
         this.replicaSetName = Objects.requireNonNullElse(replicaSetName, CLUSTER_RS_NAME);
+        this.isClusterRs = replicaSetName == null;
         this.hc = Objects.hash(connectionString);
     }
 
@@ -41,6 +43,10 @@ public final class ReplicaSet implements Comparable<ReplicaSet> {
      */
     public String replicaSetName() {
         return replicaSetName;
+    }
+
+    public boolean isClusterRs() {
+        return isClusterRs;
     }
 
     /**

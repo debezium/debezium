@@ -81,7 +81,7 @@ public class ReplicaSetDiscovery {
             }
             else if (ConnectionMode.REPLICA_SET.equals(connectionMode)) {
                 LOGGER.info("ConnectionMode set to '{}, individual shard connections will be used", connectionMode.getValue());
-                readReplicaSetsFromShardedCluster(replicaSetSpecs, client, connectionContext);
+                readReplicaSetsFromShardedCluster(replicaSetSpecs, client);
             }
             else {
                 LOGGER.warn("Incompatible connection mode '{}' specified", connectionMode.getValue());
@@ -113,7 +113,7 @@ public class ReplicaSetDiscovery {
         replicaSetSpecs.add(new ReplicaSet(connectionString));
     }
 
-    private void readReplicaSetsFromShardedCluster(Set<ReplicaSet> replicaSetSpecs, MongoClient client, ConnectionContext connectionContext) {
+    public void readReplicaSetsFromShardedCluster(Set<ReplicaSet> replicaSetSpecs, MongoClient client) {
         try {
             var csParams = context.getConnectorConfig().getShardConnectionParameters();
 
