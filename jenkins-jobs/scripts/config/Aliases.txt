@@ -227,8 +227,8 @@ j2gg0s,Yanjie Wang
 REMY David,David Remy
 tyrantlucifer,Chao Tian
 ryanvanhuuksloot,Ryan van Huuksloot
-vsantona,Vincenzo Santoynastaso
-“vsantonastaso”,Vincenzo Santoynastaso
+vsantona,Vincenzo Santonastaso
+“vsantonastaso”,Vincenzo Santonastaso
 rolevinks,Stein Rolevink
 matan-cohen,Matan Cohen
 BigGillyStyle,Andy Pickler
