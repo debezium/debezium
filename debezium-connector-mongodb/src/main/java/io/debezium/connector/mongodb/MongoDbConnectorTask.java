@@ -7,6 +7,7 @@ package io.debezium.connector.mongodb;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -24,6 +25,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
+import io.debezium.connector.mongodb.connection.ReplicaSet;
 import io.debezium.connector.mongodb.metrics.MongoDbChangeEventSourceMetricsFactory;
 import io.debezium.document.DocumentReader;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
@@ -196,7 +198,46 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
             return offsetContext;
         }
         else {
+            checkShardSpecificOffsetsIfNeeded(connectorConfig, replicaSets);
             return null;
+        }
+    }
+
+    private void checkShardSpecificOffsetsIfNeeded(MongoDbConnectorConfig connectorConfig, ReplicaSets currentReplicaSets) {
+        if (currentReplicaSets.size() != 1 || !currentReplicaSets.getSnapshotReplicaSet().isClusterRs()) {
+            // We are not running in sharded connection mode, so no check is needed
+            return;
+        }
+
+        logger.info("Previous offset not found, checking shard specific offsets from replica_set connection mode.");
+        var discovery = new ReplicaSetDiscovery(taskContext);
+        var replicaSetSpecs = new HashSet<ReplicaSet>();
+
+        try (var client = taskContext.getConnectionContext().connect()) {
+            discovery.readReplicaSetsFromShardedCluster(replicaSetSpecs, client);
+        }
+        catch (Throwable t) {
+            logger.warn("Unable to read shard topology.");
+            return;
+        }
+
+        var replicaSets = new ReplicaSets(replicaSetSpecs);
+        var loader = new MongoDbOffsetContext.Loader(connectorConfig, replicaSets);
+        Collection<Map<String, String>> partitions = loader.getPartitions();
+        Map<Map<String, String>, Map<String, Object>> offsets = context.offsetStorageReader().offsets(partitions);
+
+        if (offsets != null && offsets.values().stream().anyMatch(Objects::nonNull)) {
+            logger.warn("Found at least one shard specific offset from previous run");
+            if (connectorConfig.isOffsetInvalidationAllowed()) {
+                logger.warn("Offset invalidation is allowed, previous shard specific offsets will be ignored and snapshot re-executed");
+                return;
+            }
+
+            throw new DebeziumException("Found at least one shard specific offset from previous run." +
+                    "The default connection mode for sharded has changed to 'sharded' and previous offsets would be invalidated." +
+                    "Either explicitly set '" + MongoDbConnectorConfig.CONNECTION_MODE.name() + "=replica_set' to postpone the migration " +
+                    "or set '" + MongoDbConnectorConfig.ALLOW_OFFSET_INVALIDATION.name() + "=true' to re-execute snapshot and reset offsets. " +
+                    "In next release the 'replica_set' connection mode will be removed.");
         }
     }
 

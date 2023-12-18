@@ -573,6 +573,14 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withDescription("Internal use only")
             .withType(Type.LIST);
 
+    /**
+     * The {@link ReplicaSets#SEPARATOR}-separated list of connection strings
+     */
+    public static final Field ALLOW_OFFSET_INVALIDATION = Field.createInternal("mongodb.allow.offset.invalidation")
+            .withDescription("Allows offset invalidation when required by change of connection mode")
+            .withDefault(false)
+            .withType(Type.BOOLEAN);
+
     // MongoDb fields in Connection Group start from 1 (topic.prefix is 0)
     public static final Field CONNECTION_STRING = Field.create("mongodb.connection.string")
             .withDisplayName("Connection String")
@@ -931,6 +939,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                     TOPIC_PREFIX,
                     CONNECTION_STRING,
                     CONNECTION_MODE,
+                    ALLOW_OFFSET_INVALIDATION,
                     USER,
                     PASSWORD,
                     AUTH_SOURCE,
@@ -973,6 +982,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     private final CaptureScope captureScope;
     private final String captureTarget;
     private final ConnectionMode connectionMode;
+    private final boolean offsetInvalidationAllowed;
     private final int snapshotMaxThreads;
     private final int cursorMaxAwaitTimeMs;
     private final ReplicaSets replicaSets;
@@ -993,6 +1003,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         String connectionModeValue = config.getString(MongoDbConnectorConfig.CONNECTION_MODE);
         this.connectionMode = ConnectionMode.parse(connectionModeValue, MongoDbConnectorConfig.CONNECTION_MODE.defaultValueAsString());
         this.shardConnectionParameters = config.getString(SHARD_CONNECTION_PARAMS);
+        this.offsetInvalidationAllowed = config.getBoolean(ALLOW_OFFSET_INVALIDATION);
 
         String captureScopeValue = config.getString(MongoDbConnectorConfig.CAPTURE_SCOPE);
         this.captureScope = CaptureScope.parse(captureScopeValue, MongoDbConnectorConfig.CAPTURE_SCOPE.defaultValueAsString());
@@ -1190,6 +1201,10 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
     public ConnectionMode getConnectionMode() {
         return connectionMode;
+    }
+
+    public boolean isOffsetInvalidationAllowed() {
+        return offsetInvalidationAllowed;
     }
 
     public String getShardConnectionParameters() {
