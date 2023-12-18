@@ -206,7 +206,7 @@ public class DebeziumMongoDbConnectorResourceIT {
     }
 
     @Test
-    public void testMetricsEndpoint() {
+    public void testMetricsEndpoint() throws InterruptedException {
         ConnectorConfiguration config = getMongoDbConnectorConfiguration(1);
 
         var connectorName = "my-mongodb-connector";
@@ -216,6 +216,8 @@ public class DebeziumMongoDbConnectorResourceIT {
 
         RestExtensionTestInfrastructure.getDebeziumContainer().ensureConnectorState(connectorName, Connector.State.RUNNING);
         RestExtensionTestInfrastructure.waitForConnectorTaskStatus(connectorName, 0, Connector.State.RUNNING);
+        RestExtensionTestInfrastructure.getDebeziumContainer().waitForStreamingRunning("mongodb", config.asProperties().getProperty("topic.prefix"), "streaming",
+                String.valueOf(0));
 
         given()
                 .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())

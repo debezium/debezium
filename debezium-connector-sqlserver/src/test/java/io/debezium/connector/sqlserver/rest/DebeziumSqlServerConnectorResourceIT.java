@@ -201,6 +201,8 @@ public class DebeziumSqlServerConnectorResourceIT {
 
         RestExtensionTestInfrastructure.getDebeziumContainer().ensureConnectorState(connectorName, Connector.State.RUNNING);
         RestExtensionTestInfrastructure.waitForConnectorTaskStatus(connectorName, 0, Connector.State.RUNNING);
+        RestExtensionTestInfrastructure.getDebeziumContainer().waitForStreamingRunning("sql_server", config.asProperties().getProperty("topic.prefix"), "streaming",
+                String.valueOf(0));
 
         given()
                 .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())

@@ -215,6 +215,7 @@ public class DebeziumPostgresConnectorResourceIT {
 
         RestExtensionTestInfrastructure.getDebeziumContainer().ensureConnectorState(connectorName, Connector.State.RUNNING);
         RestExtensionTestInfrastructure.waitForConnectorTaskStatus(connectorName, 0, Connector.State.RUNNING);
+        RestExtensionTestInfrastructure.getDebeziumContainer().waitForStreamingRunning("postgres", config.asProperties().getProperty("topic.prefix"));
 
         given()
                 .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
