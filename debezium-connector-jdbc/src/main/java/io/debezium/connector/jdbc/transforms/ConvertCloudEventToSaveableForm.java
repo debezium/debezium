@@ -59,9 +59,18 @@ public class ConvertCloudEventToSaveableForm implements Transformation<SinkRecor
             .withImportance(ConfigDef.Importance.HIGH)
             .withDescription("Specifies a serialization type a provided CloudEvent was serialized and deserialized with");
 
+    private static final Field CLOUDEVENTS_SCHEMA_NAME = Field.create("schema.cloudevents.name")
+            .withDisplayName("Specifies CloudEvents schema name under which the schema is registered in a Schema Registry")
+            .withType(ConfigDef.Type.STRING)
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDescription("Specifies CloudEvents schema name under which the schema is registered in a Schema Registry");
+
     private Map<String, String> fieldsMapping;
 
     private SerializerType serializerType;
+
+    private String cloudEventsSchemaName;
 
     private final JsonConverter jsonDataConverter = new JsonConverter();
 
@@ -88,6 +97,8 @@ public class ConvertCloudEventToSaveableForm implements Transformation<SinkRecor
             throw new ConfigException(SERIALIZER_TYPE.name(), serializerType, "Serialization/deserialization type of CloudEvents converter is required");
         }
 
+        cloudEventsSchemaName = config.getString(CLOUDEVENTS_SCHEMA_NAME);
+
         Map<String, Object> jsonDataConverterConfig = new HashMap<>();
         jsonDataConverterConfig.put(JsonConverterConfig.SCHEMAS_ENABLE_CONFIG, false);
         jsonDataConverterConfig.put(JsonConverterConfig.TYPE_CONFIG, "value");
@@ -102,7 +113,7 @@ public class ConvertCloudEventToSaveableForm implements Transformation<SinkRecor
         cloudEventsFieldToColumnSchema.put(CloudEventsMaker.FieldName.TIME, Schema.STRING_SCHEMA);
         cloudEventsFieldToColumnSchema.put(CloudEventsMaker.FieldName.DATA, Schema.STRING_SCHEMA);
 
-        cloudEventsValidator.configure(serializerType);
+        cloudEventsValidator.configure(serializerType, cloudEventsSchemaName);
     }
 
     private Map<String, String> parseFieldsMapping(List<String> rawFieldsMapping) {
