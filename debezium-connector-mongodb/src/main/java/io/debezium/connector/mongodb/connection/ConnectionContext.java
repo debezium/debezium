@@ -6,6 +6,8 @@
 package io.debezium.connector.mongodb.connection;
 
 import java.time.Duration;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
@@ -93,23 +95,53 @@ public class ConnectionContext {
         return new ConnectionString(connectionSeed());
     }
 
-    public ConnectionString resolveTaskConnectionString() {
+    public ClusterDescription getClusterDescription() {
         try (var client = connect()) {
             LOGGER.info("Reading description of cluster at {}", maskedConnectionSeed());
-            final ClusterDescription clusterDescription = MongoUtil.clusterDescription(client);
+            return MongoUtil.clusterDescription(client);
+        }
+    }
 
-            if (clusterDescription.getType() == ClusterType.SHARDED) {
-                LOGGER.info("Cluster identified as sharded cluster");
-                return connectionString();
-            }
+    public ClusterType getClusterType() {
+        return getClusterDescription().getType();
+    }
 
-            if (clusterDescription.getType() == ClusterType.REPLICA_SET) {
-                LOGGER.info("Cluster identified as replicaSet");
-                var connectionString = MongoUtil.ensureReplicaSetName(connectionSeed(), clusterDescription);
-                return new ConnectionString(connectionString);
-            }
+    public boolean isShardedCluster() {
+        return ClusterType.SHARDED == getClusterType();
+    }
+
+    public Set<String> shardNames() {
+        if (!isShardedCluster()) {
+            return Set.of();
         }
 
+        var shardNames = new HashSet<String>();
+        try (var client = connect()) {
+            MongoUtil.onCollectionDocuments(client, "config", "shards", doc -> {
+                String shardName = doc.getString("_id");
+                shardNames.add(shardName);
+            });
+        }
+        catch (Throwable t) {
+            LOGGER.warn("Unable to read shard topology.");
+        }
+        return shardNames;
+    }
+
+    public ConnectionString resolveTaskConnectionString() {
+        var clusterDescription = getClusterDescription();
+
+        if (clusterDescription.getType() == ClusterType.SHARDED) {
+            LOGGER.info("Cluster identified as sharded cluster");
+            return connectionString();
+        }
+
+        if (clusterDescription.getType() == ClusterType.REPLICA_SET) {
+            LOGGER.info("Cluster identified as replicaSet");
+            var connectionString = MongoUtil.ensureReplicaSetName(connectionSeed(), clusterDescription);
+            return new ConnectionString(connectionString);
+
+        }
         throw new DebeziumException("Unable to determine cluster type");
     }
 
