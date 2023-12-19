@@ -7,11 +7,11 @@
 package io.debezium.connector.postgresql;
 
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigValue;
@@ -172,10 +172,11 @@ public class PostgresConnector extends RelationalBaseSourceConnector {
     @SuppressWarnings("unchecked")
     @Override
     public List<TableId> getMatchingCollections(Configuration config) {
-        PostgresConnectorConfig postgresConnectorConfig = new PostgresConnectorConfig(config);
-        try (PostgresConnection connection = new PostgresConnection(postgresConnectorConfig.getJdbcConfig(), PostgresConnection.CONNECTION_GENERAL)) {
-            return new ArrayList<>(
-                    connection.readTableNames(postgresConnectorConfig.databaseName(), null, null, new String[]{ "TABLE" }));
+        PostgresConnectorConfig connectorConfig = new PostgresConnectorConfig(config);
+        try (PostgresConnection connection = new PostgresConnection(connectorConfig.getJdbcConfig(), PostgresConnection.CONNECTION_GENERAL)) {
+            return connection.readTableNames(connectorConfig.databaseName(), null, null, new String[]{ "TABLE" }).stream()
+                    .filter(tableId -> connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId))
+                    .collect(Collectors.toList());
         }
         catch (SQLException e) {
             throw new DebeziumException(e);
