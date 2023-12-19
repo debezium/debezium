@@ -415,11 +415,12 @@ public interface SinkRecordFactory {
                 .build();
     }
 
-    default SinkRecord cloudEventRecord(String topicName, SerializerType serializerType) {
-        final SinkRecord basicRecord = updateRecord(topicName);
+    default SinkRecord cloudEventRecord(String topicName, SerializerType serializerType, String cloudEventsSchemaName) {
+        final SinkRecord baseRecord = updateRecord(topicName);
         return SinkRecordBuilder.cloudEvent()
-                .basicRecord(basicRecord)
-                .cloudEventSerializerType(serializerType)
+                .baseRecord(baseRecord)
+                .cloudEventsSerializerType(serializerType)
+                .cloudEventsSchemaName(cloudEventsSchemaName)
                 .build();
     }
 }
