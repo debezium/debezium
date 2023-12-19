@@ -29,6 +29,10 @@ Each pair references the Kafka cluster that is used by the {prodname} Kafka Conn
 |`100`
 |An integer value that specifies the maximum number of milliseconds that the connector waits when polling signals.
 
+|[[{context}-kafka-consumer-offset-commit-enabled]]<<{context}-kafka-consumer-offset-commit-enabled, `+kafka.consumer.offset.commit.enabled+`>>
+|`false`
+|Enable the offset commit for the signal topic in order to guarantee At-Least-Once delivery. If disabled, only signals received when the consumer is up&running are processed. Any signals received when the consumer is down are lost.
+
 |===
 
 [id="debezium-{context}-connector-pass-through-signals-kafka-consumer-configuration-properties"]
