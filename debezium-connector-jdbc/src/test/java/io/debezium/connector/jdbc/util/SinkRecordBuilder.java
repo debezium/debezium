@@ -74,8 +74,9 @@ public class SinkRecordBuilder {
         private Schema sourceSchema;
         private int partition;
         private int offset;
-        private SinkRecord basicRecord;
-        private SerializerType cloudEventSerializerType;
+        private SinkRecord baseRecord;
+        private SerializerType cloudEventsSerializerType;
+        private String cloudEventsSchemaName;
         private Map<String, Object> keyValues = new HashMap<>();
         private Map<String, Object> beforeValues = new HashMap<>();
         private Map<String, Object> afterValues = new HashMap<>();
@@ -145,13 +146,18 @@ public class SinkRecordBuilder {
             return this;
         }
 
-        public SinkRecordTypeBuilder basicRecord(SinkRecord basicRecord) {
-            this.basicRecord = basicRecord;
+        public SinkRecordTypeBuilder baseRecord(SinkRecord baseRecord) {
+            this.baseRecord = baseRecord;
             return this;
         }
 
-        public SinkRecordTypeBuilder cloudEventSerializerType(SerializerType serializerType) {
-            this.cloudEventSerializerType = serializerType;
+        public SinkRecordTypeBuilder cloudEventsSerializerType(SerializerType serializerType) {
+            this.cloudEventsSerializerType = serializerType;
+            return this;
+        }
+
+        public SinkRecordTypeBuilder cloudEventsSchemaName(String cloudEventsSchemaName) {
+            this.cloudEventsSchemaName = cloudEventsSchemaName;
             return this;
         }
 
@@ -246,15 +252,16 @@ public class SinkRecordBuilder {
         }
 
         private SinkRecord buildCloudEventRecord() {
+            final String schemaName = cloudEventsSchemaName != null ? cloudEventsSchemaName : "test.test.CloudEvents.Envelope";
             final SchemaBuilder schemaBuilder = SchemaBuilder.struct()
-                    .name("test.CloudEvents.Envelope")
+                    .name(schemaName)
                     .field(CloudEventsMaker.FieldName.ID, Schema.STRING_SCHEMA)
                     .field(CloudEventsMaker.FieldName.SOURCE, Schema.STRING_SCHEMA)
                     .field(CloudEventsMaker.FieldName.SPECVERSION, Schema.STRING_SCHEMA)
                     .field(CloudEventsMaker.FieldName.TYPE, Schema.STRING_SCHEMA)
                     .field(CloudEventsMaker.FieldName.TIME, Schema.STRING_SCHEMA)
                     .field(CloudEventsMaker.FieldName.DATACONTENTTYPE, Schema.STRING_SCHEMA)
-                    .field(CloudEventsMaker.FieldName.DATA, basicRecord.valueSchema());
+                    .field(CloudEventsMaker.FieldName.DATA, baseRecord.valueSchema());
 
             Schema ceSchema = schemaBuilder.build();
 
@@ -265,10 +272,10 @@ public class SinkRecordBuilder {
             ceValueStruct.put(CloudEventsMaker.FieldName.TYPE, "TestType");
             ceValueStruct.put(CloudEventsMaker.FieldName.TIME, LocalDateTime.now().toString());
             ceValueStruct.put(CloudEventsMaker.FieldName.DATACONTENTTYPE, "application/json");
-            ceValueStruct.put(CloudEventsMaker.FieldName.DATA, basicRecord.value());
+            ceValueStruct.put(CloudEventsMaker.FieldName.DATA, baseRecord.value());
 
             final Object ceValue;
-            if (cloudEventSerializerType == SerializerType.JSON) {
+            if (cloudEventsSerializerType == SerializerType.JSON) {
                 ceValue = convertCloudEventToMap(ceSchema, ceValueStruct);
                 ceSchema = null;
             }
@@ -276,9 +283,9 @@ public class SinkRecordBuilder {
                 ceValue = ceValueStruct;
             }
 
-            return new SinkRecord(basicRecord.topic(), basicRecord.kafkaPartition(), basicRecord.keySchema(), basicRecord.key(),
+            return new SinkRecord(baseRecord.topic(), baseRecord.kafkaPartition(), baseRecord.keySchema(), baseRecord.key(),
                     ceSchema, ceValue,
-                    basicRecord.kafkaOffset(), basicRecord.timestamp(), basicRecord.timestampType(), basicRecord.headers());
+                    baseRecord.kafkaOffset(), baseRecord.timestamp(), baseRecord.timestampType(), baseRecord.headers());
         }
 
         private Envelope createEnvelope() {

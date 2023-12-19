@@ -59,7 +59,7 @@ public abstract class AbstractJdbcSinkSaveConvertedCloudEventTest extends Abstra
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final SinkRecord cloudEventRecord = factory.cloudEventRecord(topicName, SerializerType.withName("json"));
+        final SinkRecord cloudEventRecord = factory.cloudEventRecord(topicName, SerializerType.withName("json"), null);
         final SinkRecord convertedRecord = transform.apply(cloudEventRecord);
         consume(convertedRecord);
 
@@ -96,7 +96,45 @@ public abstract class AbstractJdbcSinkSaveConvertedCloudEventTest extends Abstra
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final SinkRecord cloudEventRecord = factory.cloudEventRecord(topicName, SerializerType.withName("avro"));
+        final SinkRecord cloudEventRecord = factory.cloudEventRecord(topicName, SerializerType.withName("avro"), null);
+        final SinkRecord convertedRecord = transform.apply(cloudEventRecord);
+        consume(convertedRecord);
+
+        final String destinationTableName = destinationTableName(convertedRecord);
+
+        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName);
+        tableAssert.exists().hasNumberOfRows(1).hasNumberOfColumns(3);
+
+        getSink().assertColumnType(tableAssert, "id", ValueType.TEXT);
+        getSink().assertColumnType(tableAssert, "created_by", ValueType.TEXT, "test_ce_source");
+        getSink().assertColumnType(tableAssert, "payload", ValueType.TEXT);
+
+        assertHasPrimaryKeyColumns(destinationTableName, "id");
+
+        transform.close();
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    public void testSaveConvertedCloudEventRecordFromAvroWithCloudEventsSchemaCustomName(SinkRecordFactory factory) {
+        final ConvertCloudEventToSaveableForm transform = new ConvertCloudEventToSaveableForm();
+        final Map<String, String> config = new HashMap<>();
+        config.put("fields.mapping", "id,source:created_by,data:payload");
+        config.put("serializer.type", "avro");
+        config.put("schema.cloudevents.name", "TestCESchemaCustomName");
+        transform.configure(config);
+
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_VALUE.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_FIELDS, "id");
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server1", "schema", tableName);
+
+        final SinkRecord cloudEventRecord = factory.cloudEventRecord(topicName, SerializerType.withName("avro"), "TestCESchemaCustomName");
         final SinkRecord convertedRecord = transform.apply(cloudEventRecord);
         consume(convertedRecord);
 
