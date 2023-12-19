@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import javax.management.MBeanServer;
 import javax.management.MalformedObjectNameException;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
@@ -59,15 +58,10 @@ public class DebeziumSqlServerConnectorResource
     }
 
     @Override
-    public MetricsDescriptor getMetrics(String connectorName, MBeanServer mBeanServer)
+    public MetricsDescriptor getMetrics(String connectorName)
             throws MalformedObjectNameException {
         Map<String, String> connectorConfig = connectClusterState.connectorConfig(connectorName);
-        String serverName = connectorConfig.get("topic.prefix");
-        String tasksMax = connectorConfig.get("tasks.max");
-        String databaseNames = connectorConfig.get("database.names");
-        String[] namespaces = databaseNames.split(",");
-
-        return queryMetrics(connectorName, Module.logicalName(), "streaming", mBeanServer, serverName, tasksMax, namespaces);
+        return queryMetrics(connectorConfig, connectorName, Module.contextName().toLowerCase(), "streaming");
     }
 
     @Override
