@@ -35,11 +35,4 @@ public final class Module {
     public static String contextName() {
         return "Postgres";
     }
-
-    /**
-     * @return logical name of the connector used in mbean object name
-     */
-    public static String logicalName() {
-        return "postgres";
-    }
 }

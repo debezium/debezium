@@ -32,22 +32,23 @@ import io.debezium.rest.model.MetricsDescriptor;
 
 public interface MetricsResource extends MetricsAttributes {
     String CONNECTOR_METRICS_ENDPOINT = "/connectors/{connector-name}/metrics";
+    MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
 
     Connector getConnector();
 
-    MetricsDescriptor getMetrics(String connectorName, MBeanServer mBeanServer)
+    MetricsDescriptor getMetrics(String connectorName)
             throws MalformedObjectNameException, InstanceNotFoundException, IntrospectionException, ReflectionException, AttributeNotFoundException, MBeanException;
 
     default ObjectName getObjectName(String connector, String context, String serverName) throws MalformedObjectNameException {
         return new ObjectName(String.format("debezium.%s:type=connector-metrics,context=%s,server=%s", connector, context, serverName));
     }
 
-    default ObjectName getObjectNameWithTask(String connector, String context, String serverName, String task) throws MalformedObjectNameException {
+    default ObjectName getObjectName(String connector, String context, String serverName, String task) throws MalformedObjectNameException {
         return new ObjectName(
                 String.format("debezium.%s:type=connector-metrics,context=%s,server=%s,task=%s", connector, context, serverName, task));
     }
 
-    default ObjectName getObjectNameWithDatabase(String connector, String context, String serverName, String task, String databaseName)
+    default ObjectName getObjectName(String connector, String context, String serverName, String task, String databaseName)
             throws MalformedObjectNameException {
         return new ObjectName(
                 String.format("debezium.%s:type=connector-metrics,context=%s,server=%s,task=%s,database=%s", connector, context, serverName, task, databaseName));
@@ -69,16 +70,24 @@ public interface MetricsResource extends MetricsAttributes {
         }
     }
 
-    default MetricsDescriptor queryMetrics(String connectorName, String connector, String context, MBeanServer mBeanServer, String serverName, String tasksMax,
-                                           String[] namespaces)
+    default MetricsDescriptor queryMetrics(Map<String, String> connectorConfig, String connectorName, String connector, String context)
             throws MalformedObjectNameException {
+
+        String serverName = connectorConfig.get("topic.prefix");
+        String tasksMax = connectorConfig.get("tasks.max");
+        String databaseNames = connectorConfig.get("database.names");
+        String[] namespaces = null;
+        if (databaseNames != null) {
+            namespaces = databaseNames.split(",");
+        }
+
         List<MetricsDescriptor.Task> tasksPayload = new ArrayList<>();
         MetricsDescriptor.Connector connectorPayload = null;
 
         for (int task = 0; task < Integer.parseInt(tasksMax); task++) {
             ObjectName objectName;
             if (connector.equals("sql_server") || connector.equals("mongodb")) {
-                objectName = getObjectNameWithTask(connector, context, serverName, String.valueOf(task));
+                objectName = getObjectName(connector, context, serverName, String.valueOf(task));
             }
             else {
                 objectName = getObjectName(connector, context, serverName);
@@ -91,7 +100,7 @@ public interface MetricsResource extends MetricsAttributes {
             Map<String, String> connectorAttributes;
             if (namespaces != null) {
                 for (String namespace : namespaces) {
-                    ObjectName objectNameWithNamespace = getObjectNameWithDatabase(connector, context, serverName, String.valueOf(task), namespace);
+                    ObjectName objectNameWithNamespace = getObjectName(connector, context, serverName, String.valueOf(task), namespace);
                     connectorAttributes = getAttributes(getConnectorAttributes(), objectNameWithNamespace, connectorName, mBeanServer);
                     namespacesPayload.add(new MetricsDescriptor.Namespace(namespace, connectorAttributes));
                 }
@@ -125,8 +134,6 @@ public interface MetricsResource extends MetricsAttributes {
         if (getConnector() == null) {
             throw new RuntimeException("Unable to fetch metrics for connector " + connectorName + " as the connector is not available.");
         }
-
-        MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
-        return getMetrics(connectorName, mBeanServer);
+        return getMetrics(connectorName);
     }
 }
