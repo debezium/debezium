@@ -14,6 +14,7 @@ import static io.debezium.connector.mongodb.SourceInfo.TXN_NUMBER;
 
 import java.time.Instant;
 import java.util.Map;
+import java.util.Optional;
 
 import org.apache.kafka.connect.data.Schema;
 import org.bson.BsonDocument;
@@ -165,6 +166,12 @@ public class MongoDbOffsetContext extends CommonOffsetContext<SourceInfo> {
 
     public BsonTimestamp lastTimestamp() {
         return sourceInfo.lastTimestamp();
+    }
+
+    public BsonTimestamp lastTimestampOrTokenTime() {
+        return Optional.of(lastResumeTokenDoc())
+                .map(ResumeTokens::getTimestamp)
+                .orElseGet(this::lastTimestamp);
     }
 
     public boolean hasOffset() {
