@@ -14,6 +14,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigValue;
@@ -162,14 +163,17 @@ public class SqlServerConnector extends RelationalBaseSourceConnector {
     @SuppressWarnings("unchecked")
     @Override
     public List<TableId> getMatchingCollections(Configuration config) {
-        final SqlServerConnectorConfig sqlServerConfig = new SqlServerConnectorConfig(config);
-        final List<String> databaseNames = sqlServerConfig.getDatabaseNames();
+        final SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(config);
+        final List<String> databaseNames = connectorConfig.getDatabaseNames();
 
-        try (SqlServerConnection connection = connect(sqlServerConfig)) {
+        try (SqlServerConnection connection = connect(connectorConfig)) {
             List<TableId> tables = new ArrayList<>();
             databaseNames.forEach(databaseName -> {
                 try {
-                    tables.addAll(connection.readTableNames(databaseName, null, null, new String[]{ "TABLE" }));
+                    tables.addAll(
+                            connection.readTableNames(databaseName, null, null, new String[]{ "TABLE" }).stream()
+                                    .filter(tableId -> connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId))
+                                    .collect(Collectors.toList()));
                 }
                 catch (SQLException e) {
                     throw new DebeziumException(e);
