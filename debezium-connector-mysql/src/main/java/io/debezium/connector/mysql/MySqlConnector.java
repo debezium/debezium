@@ -11,6 +11,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigValue;
@@ -122,17 +123,20 @@ public class MySqlConnector extends RelationalBaseSourceConnector {
     @SuppressWarnings("unchecked")
     @Override
     public List<TableId> getMatchingCollections(Configuration config) {
-        final MySqlConnectorConfig mySqlConnectorConfig = new MySqlConnectorConfig(config);
+        final MySqlConnectorConfig connectorConfig = new MySqlConnectorConfig(config);
         try (AbstractConnectorConnection connection = adapter(config).createConnection(config)) {
             final List<TableId> tables = new ArrayList<>();
 
             final List<String> databaseNames = connection.availableDatabases();
 
             for (String databaseName : databaseNames) {
-                if (!mySqlConnectorConfig.getTableFilters().databaseFilter().test(databaseName)) {
+                if (!connectorConfig.getTableFilters().databaseFilter().test(databaseName)) {
                     continue;
                 }
-                tables.addAll(connection.readTableNames(databaseName, null, null, new String[]{ "TABLE" }));
+                tables.addAll(
+                        connection.readTableNames(databaseName, null, null, new String[]{ "TABLE" }).stream()
+                                .filter(tableId -> connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId))
+                                .collect(Collectors.toList()));
             }
             return tables;
         }
