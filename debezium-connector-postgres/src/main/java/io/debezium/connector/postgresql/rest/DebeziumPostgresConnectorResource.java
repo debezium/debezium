@@ -7,7 +7,6 @@ package io.debezium.connector.postgresql.rest;
 
 import java.util.List;
 import java.util.Map;
-
 import java.util.stream.Collectors;
 
 import javax.management.MalformedObjectNameException;

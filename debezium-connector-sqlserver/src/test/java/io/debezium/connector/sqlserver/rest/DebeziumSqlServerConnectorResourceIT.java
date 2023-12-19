@@ -21,8 +21,6 @@ import org.junit.Assume;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.sqlserver.Module;
 import io.debezium.connector.sqlserver.SqlServerConnector;
@@ -34,9 +32,6 @@ import io.debezium.testing.testcontainers.testhelper.RestExtensionTestInfrastruc
 import io.restassured.http.ContentType;
 
 public class DebeziumSqlServerConnectorResourceIT {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(DebeziumSqlServerConnectorResourceIT.class);
-
     @BeforeClass
     public static void checkCondition() {
         Assume.assumeThat("Skipping DebeziumSqlServerConnectorResourceIT tests when assembly profile is not active!",
