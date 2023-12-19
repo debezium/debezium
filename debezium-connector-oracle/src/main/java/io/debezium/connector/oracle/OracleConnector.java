@@ -6,11 +6,11 @@
 package io.debezium.connector.oracle;
 
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigValue;
@@ -93,17 +93,18 @@ public class OracleConnector extends RelationalBaseSourceConnector {
     @SuppressWarnings("unchecked")
     @Override
     public List<TableId> getMatchingCollections(Configuration config) {
-        final OracleConnectorConfig oracleConfig = new OracleConnectorConfig(config);
-        final String databaseName = oracleConfig.getCatalogName();
+        final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
+        final String databaseName = connectorConfig.getCatalogName();
 
-        try (OracleConnection connection = new OracleConnection(oracleConfig.getJdbcConfig(), false)) {
-            if (!Strings.isNullOrBlank(oracleConfig.getPdbName())) {
-                connection.setSessionToPdb(oracleConfig.getPdbName());
+        try (OracleConnection connection = new OracleConnection(connectorConfig.getJdbcConfig(), false)) {
+            if (!Strings.isNullOrBlank(connectorConfig.getPdbName())) {
+                connection.setSessionToPdb(connectorConfig.getPdbName());
             }
             // @TODO: we need to expose a better method from the connector, particularly getAllTableIds
             // the following's performance is acceptable when using PDBs but not as ideal with non-PDB
-            return new ArrayList<>(
-                    connection.readTableNames(databaseName, null, null, new String[]{ "TABLE" }));
+            return connection.readTableNames(databaseName, null, null, new String[]{ "TABLE" }).stream()
+                    .filter(tableId -> connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId))
+                    .collect(Collectors.toList());
         }
         catch (SQLException e) {
             throw new DebeziumException(e);
