@@ -289,6 +289,12 @@ The value can be `json` or `avro`.
 |none
 |Specifies how schema names should be adjusted for compatibility with the message converter used by the connector. The value can be `none` or `avro`.
 
+|[[cloud-events-converter-schema-cloudevents-name]]xref:cloud-events-converter-schema-cloudevents-name[`schema.cloudevents.name`]
+|null
+|Specifies CloudEvents schema name under which the schema is registered in a Schema Registry. The setting is meaningless when `serializer.type` is `json` in
+which case the value is schemaless. The default value is `null` which means the default algorithm will be used to generate the
+schema name: `${serverName}.${databaseName}.CloudEvents.Envelope`.
+
 |[[cloud-events-converter-extension-attributes-enable]]xref:cloud-events-converter-extension-attributes-enable[`extension.attributes.enable`]
 |`true`
 |Specifies whether the converter includes extension attributes when it generates a cloud event. 
