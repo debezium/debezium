@@ -186,7 +186,7 @@ public class DebeziumOracleConnectorResourceIT {
         var connectorName = "my-oracle-connector";
         RestExtensionTestInfrastructure.getDebeziumContainer().registerConnector(
                 connectorName,
-                config);
+                config.with(OracleConnectorConfig.USER.name(), TestHelper.CONNECTOR_USER));
 
         RestExtensionTestInfrastructure.getDebeziumContainer().ensureConnectorState(connectorName, Connector.State.RUNNING);
         RestExtensionTestInfrastructure.waitForConnectorTaskStatus(connectorName, 0, Connector.State.RUNNING);
