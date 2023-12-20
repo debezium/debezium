@@ -185,6 +185,83 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
+    public void createAndDeleteInDataQueryDirectMode() throws Exception {
+        final int RECORDS_PER_TABLE = 5;
+        final int TABLES = 2;
+        final int ID_START = 10;
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(SqlServerConnectorConfig.DATA_QUERY_MODE, SqlServerConnectorConfig.DataQueryMode.DIRECT)
+                .build();
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+
+        // Wait for snapshot completion
+        consumeRecordsByTopic(1);
+
+        for (int i = 0; i < RECORDS_PER_TABLE; i++) {
+            final int id = ID_START + i;
+            connection.execute(
+                    "INSERT INTO tablea VALUES(" + id + ", 'a')");
+            connection.execute(
+                    "INSERT INTO tableb VALUES(" + id + ", 'b')");
+        }
+
+        final SourceRecords records = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
+        final List<SourceRecord> tableA = records.recordsForTopic("server1.testDB1.dbo.tablea");
+        final List<SourceRecord> tableB = records.recordsForTopic("server1.testDB1.dbo.tableb");
+        assertThat(tableA).hasSize(RECORDS_PER_TABLE);
+        assertThat(tableB).hasSize(RECORDS_PER_TABLE);
+        for (int i = 0; i < RECORDS_PER_TABLE; i++) {
+            final SourceRecord recordA = tableA.get(i);
+            final SourceRecord recordB = tableB.get(i);
+            final List<SchemaAndValueField> expectedRowA = Arrays.asList(
+                    new SchemaAndValueField("id", Schema.INT32_SCHEMA, i + ID_START),
+                    new SchemaAndValueField("cola", Schema.OPTIONAL_STRING_SCHEMA, "a"));
+            final List<SchemaAndValueField> expectedRowB = Arrays.asList(
+                    new SchemaAndValueField("id", Schema.INT32_SCHEMA, i + ID_START),
+                    new SchemaAndValueField("colb", Schema.OPTIONAL_STRING_SCHEMA, "b"));
+
+            final Struct keyA = (Struct) recordA.key();
+            final Struct valueA = (Struct) recordA.value();
+            assertRecord((Struct) valueA.get("after"), expectedRowA);
+            assertNull(valueA.get("before"));
+
+            final Struct keyB = (Struct) recordB.key();
+            final Struct valueB = (Struct) recordB.value();
+            assertRecord((Struct) valueB.get("after"), expectedRowB);
+            assertNull(valueB.get("before"));
+        }
+
+        connection.execute("DELETE FROM tableB");
+        final SourceRecords deleteRecords = consumeRecordsByTopic(2 * RECORDS_PER_TABLE);
+        final List<SourceRecord> deleteTableA = deleteRecords.recordsForTopic("server1.testDB1.dbo.tablea");
+        final List<SourceRecord> deleteTableB = deleteRecords.recordsForTopic("server1.testDB1.dbo.tableb");
+        assertThat(deleteTableA).isNullOrEmpty();
+        assertThat(deleteTableB).hasSize(2 * RECORDS_PER_TABLE);
+
+        for (int i = 0; i < RECORDS_PER_TABLE; i++) {
+            final SourceRecord deleteRecord = deleteTableB.get(i * 2);
+            final SourceRecord tombstoneRecord = deleteTableB.get(i * 2 + 1);
+            final List<SchemaAndValueField> expectedDeleteRow = Arrays.asList(
+                    new SchemaAndValueField("id", Schema.INT32_SCHEMA, i + ID_START),
+                    new SchemaAndValueField("colb", Schema.OPTIONAL_STRING_SCHEMA, "b"));
+
+            final Struct deleteKey = (Struct) deleteRecord.key();
+            final Struct deleteValue = (Struct) deleteRecord.value();
+            assertRecord((Struct) deleteValue.get("before"), expectedDeleteRow);
+            assertNull(deleteValue.get("after"));
+
+            final Struct tombstoneKey = (Struct) tombstoneRecord.key();
+            final Struct tombstoneValue = (Struct) tombstoneRecord.value();
+            assertNull(tombstoneValue);
+        }
+
+        stopConnector();
+    }
+
+    @Test
     @FixFor("DBZ-1642")
     public void readOnlyApplicationIntent() throws Exception {
         final LogInterceptor logInterceptor = new LogInterceptor(SqlServerSnapshotChangeEventSource.class);

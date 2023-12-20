@@ -217,6 +217,67 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         }
     }
 
+    /**
+     * The set of predefined data query mode options.
+     */
+    public enum DataQueryMode implements EnumeratedValue {
+
+        /**
+         * In this mode the CDC data is queried by means of calling {@code cdc.[fn_cdc_get_all_changes_#]} function.
+         */
+        FUNCTION("function"),
+
+        /**
+         * In this mode the CDC data is queried from change tables directly.
+         */
+        DIRECT("direct");
+
+        private final String value;
+
+        DataQueryMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static DataQueryMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (DataQueryMode option : DataQueryMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static DataQueryMode parse(String value, String defaultValue) {
+            DataQueryMode mode = parse(value);
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+            return mode;
+        }
+    }
+
     public static final Field USER = RelationalDatabaseConnectorConfig.USER
             .optional()
             .withNoValidation();
@@ -303,6 +364,17 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     public static final Field SOURCE_INFO_STRUCT_MAKER = CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER
             .withDefault(SqlServerSourceInfoStructMaker.class.getName());
 
+    public static final Field DATA_QUERY_MODE = Field.create("data.query.mode")
+            .withDisplayName("Data query mode")
+            .withEnum(DataQueryMode.class, DataQueryMode.FUNCTION)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("Controls how the connector queries CDC data. "
+                    + "The default is '" + DataQueryMode.FUNCTION.getValue()
+                    + "', which means the data is queried by means of calling cdc.[fn_cdc_get_all_changes_#] function. "
+                    + "The value of '" + DataQueryMode.DIRECT.getValue()
+                    + "' makes the connector to query the change tables directly.");
+
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("SQL Server")
             .type(
@@ -321,7 +393,8 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                     INCREMENTAL_SNAPSHOT_OPTION_RECOMPILE,
                     INCREMENTAL_SNAPSHOT_CHUNK_SIZE,
                     INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES,
-                    QUERY_FETCH_SIZE)
+                    QUERY_FETCH_SIZE,
+                    DATA_QUERY_MODE)
             .events(SOURCE_INFO_STRUCT_MAKER)
             .excluding(
                     SCHEMA_INCLUDE_LIST,
@@ -346,6 +419,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     private final int maxTransactionsPerIteration;
     private final boolean optionRecompile;
     private final int queryFetchSize;
+    private final DataQueryMode dataQueryMode;
 
     public SqlServerConnectorConfig(Configuration config) {
         super(
@@ -386,6 +460,8 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         }
 
         this.optionRecompile = config.getBoolean(INCREMENTAL_SNAPSHOT_OPTION_RECOMPILE);
+
+        this.dataQueryMode = DataQueryMode.parse(config.getString(DATA_QUERY_MODE), DATA_QUERY_MODE.defaultValueAsString());
     }
 
     public List<String> getDatabaseNames() {
@@ -515,6 +591,10 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         }
 
         return Collections.unmodifiableMap(snapshotSelectOverridesByTable);
+    }
+
+    public DataQueryMode getDataQueryMode() {
+        return dataQueryMode;
     }
 
     private static int validateDatabaseNames(Configuration config, Field field, Field.ValidationOutput problems) {
