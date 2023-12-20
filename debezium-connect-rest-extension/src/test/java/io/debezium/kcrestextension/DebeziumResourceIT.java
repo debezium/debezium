@@ -35,6 +35,7 @@ public class DebeziumResourceIT {
             "io.debezium.transforms.ByLogicalTableRouter",
             "io.debezium.transforms.ContentBasedRouter",
             "io.debezium.transforms.ExtractChangedRecordState",
+            "io.debezium.transforms.ExtractSchemaToNewRecord",
             "io.debezium.transforms.ExtractNewRecordState",
             "io.debezium.transforms.Filter",
             "io.debezium.transforms.HeaderToValue",
