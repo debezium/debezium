@@ -604,3 +604,4 @@ CREATE TABLE tab (ID number(9) primary key, data xmltype, data2 xmltype) MEMOPTI
 CREATE TABLE tab (ID number(9) primary key, data xmltype, data2 xmltype) NO MEMOPTIMIZE FOR READ;
 CREATE TABLE tab (ID number(9) primary key, data xmltype, data2 xmltype) MEMOPTIMIZE FOR WRITE;
 CREATE TABLE tab (ID number(9) primary key, data xmltype, data2 xmltype) NO MEMOPTIMIZE FOR WRITE;
+CREATE OR REPLACE NONEDITIONABLE PACKAGE BODY tidy_html_snippet_pkg AS FUNCTION tidy(i_html_snippet IN CLOB) RETURN CLOB; FUNCTION tidy(i_html_snippet IN VARCHAR2) RETURN CLOB; END tidy_html_snippet_pkg;
