@@ -209,6 +209,7 @@ The following example shows the configuration for a connector that uses the Outb
 "transforms.addMetadataHeaders.predicate": "isHeartbeat",
 "transforms.addMetadataHeaders.negate": true,
 "transforms.outbox.type": "io.debezium.transforms.outbox.EventRouter",
+"transforms.outbox.table.expand.json.payload": true,
 "transforms.outbox.table.fields.additional.placement": "type:header",
 "predicates": "isHeartbeat",
 "predicates.isHeartbeat.type": "org.apache.kafka.connect.transforms.predicates.TopicNameMatches",
