@@ -2,6 +2,44 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.5.0.Final
+December 21st 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12416251)
+
+### New features since 2.5.0.CR1
+
+* Support persistent history for snapshot requests for the kafka signal topic. [DBZ-7164](https://issues.redhat.com/browse/DBZ-7164)
+* Change metrics endpoint of Connect REST Extensions to use the MBeanServerv directly instead of HTTP calls to the Jolokia endpoint [DBZ-7177](https://issues.redhat.com/browse/DBZ-7177)
+* Metrics endpoint must handle connectors with multiple tasks (SQL Server) [DBZ-7178](https://issues.redhat.com/browse/DBZ-7178)
+* Add configuration option to CloudEventsConverter to customize schema type name [DBZ-7235](https://issues.redhat.com/browse/DBZ-7235)
+
+
+### Breaking changes since 2.5.0.CR1
+
+* Guard against implicit offset invalidation caused by switch of default connection mode [DBZ-7272](https://issues.redhat.com/browse/DBZ-7272)
+
+
+### Fixes since 2.5.0.CR1
+
+* DDL GRANT statement couldn't be parsed [DBZ-7213](https://issues.redhat.com/browse/DBZ-7213)
+* Debezium Oracle plugin 2.5.0 Beta does not support Oracle 11g [DBZ-7257](https://issues.redhat.com/browse/DBZ-7257)
+* Error during snapshot with multiple snapshot threads will not properly abort snasphostting [DBZ-7264](https://issues.redhat.com/browse/DBZ-7264)
+* MySQL RDS UPDATE queries not ignored [DBZ-7271](https://issues.redhat.com/browse/DBZ-7271)
+* Leaking JDBC connections [DBZ-7275](https://issues.redhat.com/browse/DBZ-7275)
+* IncrementalSnapshotCaseSensitiveIT#insertDeleteWatermarkingStrategy fails [DBZ-7276](https://issues.redhat.com/browse/DBZ-7276)
+* Debezium MySQL could not parse certain grant privileges. [DBZ-7277](https://issues.redhat.com/browse/DBZ-7277)
+* Add PL/SQL Parser for Create Table Memoptimize [DBZ-7279](https://issues.redhat.com/browse/DBZ-7279)
+* Support for Creating EDITIONABLE or NONEDITIONABLE Packages [DBZ-7283](https://issues.redhat.com/browse/DBZ-7283)
+
+
+### Other changes since 2.5.0.CR1
+
+* Move metrics endpoint from UI backend to the Debezium Connect REST extension/s [DBZ-6764](https://issues.redhat.com/browse/DBZ-6764)
+* Add PL/SQL Parser for Alter Table Memoptimize [DBZ-7268](https://issues.redhat.com/browse/DBZ-7268)
+* website-builder image fails with newer bundler [DBZ-7269](https://issues.redhat.com/browse/DBZ-7269)
+* Vitess connector build fails due to invalid GPG key [DBZ-7280](https://issues.redhat.com/browse/DBZ-7280)
+
+
+
 ## 2.5.0.CR1
 December 14th 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12416252)
 
