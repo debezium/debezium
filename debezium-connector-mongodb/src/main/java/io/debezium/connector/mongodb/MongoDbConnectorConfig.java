@@ -949,6 +949,10 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         return multiTaskEnabled;
     }
 
+    public int getMultiTaskGen() {
+        return multiTaskGen;
+    }
+
     @Override
     protected SourceInfoStructMaker<? extends AbstractSourceInfo> getSourceInfoStructMaker(Version version) {
         switch (version) {

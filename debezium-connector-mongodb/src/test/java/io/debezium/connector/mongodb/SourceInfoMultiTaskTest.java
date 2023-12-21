@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mongodb;
 
+import static io.debezium.data.VerifyRecord.assertConnectSchemasAreEqual;
 import static org.fest.assertions.Assertions.assertThat;
 
 import java.util.Map;
@@ -12,6 +13,7 @@ import java.util.Map;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
+import org.bson.BsonDateTime;
 import org.bson.BsonDocument;
 import org.bson.BsonInt64;
 import org.bson.BsonString;
@@ -19,25 +21,25 @@ import org.bson.BsonTimestamp;
 import org.junit.Before;
 import org.junit.Test;
 
-import io.debezium.config.CommonConnectorConfig.Version;
 import io.debezium.config.Configuration;
+import io.debezium.connector.AbstractSourceInfoStructMaker;
 
 /**
  * @author Randall Hauch
  */
-public class LegacyV1SourceInfoTest {
 
+public class SourceInfoMultiTaskTest {
     private static String REPLICA_SET_NAME = "myReplicaSet";
     private SourceInfo source;
     private Map<String, String> partition;
-
     private MongoDbTaskContext context;
 
     @Before
     public void beforeEach() {
         Configuration config = Configuration.create()
                 .with(MongoDbConnectorConfig.LOGICAL_NAME, "serverX")
-                .with(MongoDbConnectorConfig.SOURCE_STRUCT_MAKER_VERSION, Version.V1)
+                .with(MongoDbConnectorConfig.MONGODB_MULTI_TASK_ENABLED, true)
+                .with(MongoDbConnectorConfig.MONGODB_MULTI_TASK_GEN, 1)
                 .build();
         context = new MongoDbTaskContext(config);
         source = new SourceInfo(new MongoDbConnectorConfig(config), context.getMongoTaskId());
@@ -47,14 +49,15 @@ public class LegacyV1SourceInfoTest {
     public void shouldHaveSchemaForSource() {
         Schema schema = source.schema();
         assertThat(schema.name()).isNotEmpty();
-        assertThat(schema.version()).isNotNull();
+        assertThat(schema.version()).isNull();
         assertThat(schema.field(SourceInfo.SERVER_NAME_KEY).schema()).isEqualTo(Schema.STRING_SCHEMA);
         assertThat(schema.field(SourceInfo.REPLICA_SET_NAME).schema()).isEqualTo(Schema.STRING_SCHEMA);
-        assertThat(schema.field(SourceInfo.NAMESPACE).schema()).isEqualTo(Schema.STRING_SCHEMA);
-        assertThat(schema.field(SourceInfo.TIMESTAMP).schema()).isEqualTo(Schema.INT32_SCHEMA);
+        assertThat(schema.field(SourceInfo.DATABASE_NAME_KEY).schema()).isEqualTo(Schema.STRING_SCHEMA);
+        assertThat(schema.field(SourceInfo.COLLECTION).schema()).isEqualTo(Schema.STRING_SCHEMA);
+        assertThat(schema.field(SourceInfo.TIMESTAMP_KEY).schema()).isEqualTo(Schema.INT64_SCHEMA);
         assertThat(schema.field(SourceInfo.ORDER).schema()).isEqualTo(Schema.INT32_SCHEMA);
         assertThat(schema.field(SourceInfo.OPERATION_ID).schema()).isEqualTo(Schema.OPTIONAL_INT64_SCHEMA);
-        assertThat(schema.field(SourceInfo.INITIAL_SYNC).schema()).isEqualTo(SchemaBuilder.bool().optional().defaultValue(false).build());
+        assertThat(schema.field(SourceInfo.SNAPSHOT_KEY).schema()).isEqualTo(AbstractSourceInfoStructMaker.SNAPSHOT_RECORD_SCHEMA);
     }
 
     @Test
@@ -62,22 +65,22 @@ public class LegacyV1SourceInfoTest {
         partition = source.partition(REPLICA_SET_NAME);
         assertThat(partition.get(SourceInfo.REPLICA_SET_NAME)).isEqualTo(REPLICA_SET_NAME);
         assertThat(partition.get(SourceInfo.SERVER_ID_KEY)).isEqualTo("serverX");
-        assertThat(partition.size()).isEqualTo(2);
+        assertThat(partition.get(SourceInfo.TASK_ID_KEY)).isEqualTo("0");
+        assertThat(partition.get(SourceInfo.MULTI_TASK_GEN_KEY)).isEqualTo("1");
+        assertThat(partition.size()).isEqualTo(4);
     }
 
     @Test
     public void shouldReturnSamePartitionMapForSameReplicaName() {
         partition = source.partition(REPLICA_SET_NAME);
-        Map<String, String> p2 = source.partition(REPLICA_SET_NAME);
-        assertThat(partition).isSameAs(p2);
+        assertThat(partition).isSameAs(source.partition(REPLICA_SET_NAME));
     }
 
     @Test
     public void shouldSetAndReturnRecordedOffset() {
-        BsonDocument event = new BsonDocument().append("ts", new BsonTimestamp(100, 2))
+        final BsonDocument event = new BsonDocument().append("ts", new BsonTimestamp(100, 2))
                 .append("h", new BsonInt64(Long.valueOf(1987654321)))
                 .append("ns", new BsonString("dbA.collectA"));
-
         assertThat(source.hasOffset(REPLICA_SET_NAME)).isEqualTo(false);
         source.opLogEvent(REPLICA_SET_NAME, event);
         assertThat(source.hasOffset(REPLICA_SET_NAME)).isEqualTo(true);
@@ -92,7 +95,8 @@ public class LegacyV1SourceInfoTest {
         source = new SourceInfo(new MongoDbConnectorConfig(
                 Configuration.create()
                         .with(MongoDbConnectorConfig.LOGICAL_NAME, "serverX")
-                        .with(MongoDbConnectorConfig.SOURCE_STRUCT_MAKER_VERSION, Version.V1)
+                        .with(MongoDbConnectorConfig.MONGODB_MULTI_TASK_ENABLED, true)
+                        .with(MongoDbConnectorConfig.MONGODB_MULTI_TASK_GEN, 1)
                         .build()),
                 context.getMongoTaskId());
         source.setOffsetFor(partition, offset);
@@ -108,13 +112,14 @@ public class LegacyV1SourceInfoTest {
 
         source.collectionEvent(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "dbA", "collectA"), 0L);
         Struct struct = source.struct();
-        assertThat(struct.getInt32(SourceInfo.TIMESTAMP)).isEqualTo(100);
+        assertThat(struct.getInt64(SourceInfo.TIMESTAMP_KEY)).isEqualTo(100_000);
         assertThat(struct.getInt32(SourceInfo.ORDER)).isEqualTo(2);
         assertThat(struct.getInt64(SourceInfo.OPERATION_ID)).isEqualTo(1987654321L);
-        assertThat(struct.getString(SourceInfo.NAMESPACE)).isEqualTo("dbA.collectA");
+        assertThat(struct.getString(SourceInfo.DATABASE_NAME_KEY)).isEqualTo("dbA");
+        assertThat(struct.getString(SourceInfo.COLLECTION)).isEqualTo("collectA");
         assertThat(struct.getString(SourceInfo.REPLICA_SET_NAME)).isEqualTo(REPLICA_SET_NAME);
         assertThat(struct.getString(SourceInfo.SERVER_NAME_KEY)).isEqualTo("serverX");
-        assertThat(struct.getBoolean(SourceInfo.INITIAL_SYNC)).isNull();
+        assertThat(struct.getString(SourceInfo.SNAPSHOT_KEY)).isNull();
     }
 
     @Test
@@ -132,20 +137,21 @@ public class LegacyV1SourceInfoTest {
 
         source.collectionEvent(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "dbA", "collectA"), 0L);
         Struct struct = source.struct();
-        assertThat(struct.getInt32(SourceInfo.TIMESTAMP)).isEqualTo(0);
+        assertThat(struct.getInt64(SourceInfo.TIMESTAMP_KEY)).isEqualTo(0);
         assertThat(struct.getInt32(SourceInfo.ORDER)).isEqualTo(0);
         assertThat(struct.getInt64(SourceInfo.OPERATION_ID)).isNull();
-        assertThat(struct.getString(SourceInfo.NAMESPACE)).isEqualTo("dbA.collectA");
+        assertThat(struct.getString(SourceInfo.DATABASE_NAME_KEY)).isEqualTo("dbA");
+        assertThat(struct.getString(SourceInfo.COLLECTION)).isEqualTo("collectA");
         assertThat(struct.getString(SourceInfo.REPLICA_SET_NAME)).isEqualTo(REPLICA_SET_NAME);
         assertThat(struct.getString(SourceInfo.SERVER_NAME_KEY)).isEqualTo("serverX");
-        assertThat(struct.getBoolean(SourceInfo.INITIAL_SYNC)).isNull();
+        assertThat(struct.getString(SourceInfo.SNAPSHOT_KEY)).isNull();
 
         assertThat(source.hasOffset(REPLICA_SET_NAME)).isEqualTo(false);
     }
 
     @Test
     public void shouldReturnRecordedOffsetForUsedReplicaName() {
-        BsonDocument event = new BsonDocument().append("ts", new BsonTimestamp(100, 2))
+        final BsonDocument event = new BsonDocument().append("ts", new BsonTimestamp(100, 2))
                 .append("h", new BsonInt64(Long.valueOf(1987654321)))
                 .append("ns", new BsonString("dbA.collectA"));
 
@@ -164,13 +170,14 @@ public class LegacyV1SourceInfoTest {
 
         source.collectionEvent(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "dbA", "collectA"), 0L);
         Struct struct = source.struct();
-        assertThat(struct.getInt32(SourceInfo.TIMESTAMP)).isEqualTo(100);
+        assertThat(struct.getInt64(SourceInfo.TIMESTAMP_KEY)).isEqualTo(100_000);
         assertThat(struct.getInt32(SourceInfo.ORDER)).isEqualTo(2);
         assertThat(struct.getInt64(SourceInfo.OPERATION_ID)).isEqualTo(1987654321L);
-        assertThat(struct.getString(SourceInfo.NAMESPACE)).isEqualTo("dbA.collectA");
+        assertThat(struct.getString(SourceInfo.DATABASE_NAME_KEY)).isEqualTo("dbA");
+        assertThat(struct.getString(SourceInfo.COLLECTION)).isEqualTo("collectA");
         assertThat(struct.getString(SourceInfo.REPLICA_SET_NAME)).isEqualTo(REPLICA_SET_NAME);
         assertThat(struct.getString(SourceInfo.SERVER_NAME_KEY)).isEqualTo("serverX");
-        assertThat(struct.getBoolean(SourceInfo.INITIAL_SYNC)).isNull();
+        assertThat(struct.getString(SourceInfo.SNAPSHOT_KEY)).isNull();
     }
 
     @Test
@@ -189,13 +196,14 @@ public class LegacyV1SourceInfoTest {
 
         source.collectionEvent(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "dbA", "collectA"), 0L);
         Struct struct = source.struct();
-        assertThat(struct.getInt32(SourceInfo.TIMESTAMP)).isEqualTo(0);
+        assertThat(struct.getInt64(SourceInfo.TIMESTAMP_KEY)).isEqualTo(0);
         assertThat(struct.getInt32(SourceInfo.ORDER)).isEqualTo(0);
         assertThat(struct.getInt64(SourceInfo.OPERATION_ID)).isNull();
-        assertThat(struct.getString(SourceInfo.NAMESPACE)).isEqualTo("dbA.collectA");
+        assertThat(struct.getString(SourceInfo.DATABASE_NAME_KEY)).isEqualTo("dbA");
+        assertThat(struct.getString(SourceInfo.COLLECTION)).isEqualTo("collectA");
         assertThat(struct.getString(SourceInfo.REPLICA_SET_NAME)).isEqualTo(REPLICA_SET_NAME);
         assertThat(struct.getString(SourceInfo.SERVER_NAME_KEY)).isEqualTo("serverX");
-        assertThat(struct.getBoolean(SourceInfo.INITIAL_SYNC)).isEqualTo(true);
+        assertThat(struct.getString(SourceInfo.SNAPSHOT_KEY)).isEqualTo("true");
 
         assertThat(source.hasOffset(REPLICA_SET_NAME)).isEqualTo(false);
     }
@@ -223,13 +231,14 @@ public class LegacyV1SourceInfoTest {
 
         source.collectionEvent(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "dbA", "collectA"), 0L);
         Struct struct = source.struct();
-        assertThat(struct.getInt32(SourceInfo.TIMESTAMP)).isEqualTo(100);
+        assertThat(struct.getInt64(SourceInfo.TIMESTAMP_KEY)).isEqualTo(100_000);
         assertThat(struct.getInt32(SourceInfo.ORDER)).isEqualTo(2);
         assertThat(struct.getInt64(SourceInfo.OPERATION_ID)).isEqualTo(1987654321L);
-        assertThat(struct.getString(SourceInfo.NAMESPACE)).isEqualTo("dbA.collectA");
+        assertThat(struct.getString(SourceInfo.DATABASE_NAME_KEY)).isEqualTo("dbA");
+        assertThat(struct.getString(SourceInfo.COLLECTION)).isEqualTo("collectA");
         assertThat(struct.getString(SourceInfo.REPLICA_SET_NAME)).isEqualTo(REPLICA_SET_NAME);
         assertThat(struct.getString(SourceInfo.SERVER_NAME_KEY)).isEqualTo("serverX");
-        assertThat(struct.getBoolean(SourceInfo.INITIAL_SYNC)).isEqualTo(true);
+        assertThat(struct.getString(SourceInfo.SNAPSHOT_KEY)).isEqualTo("true");
     }
 
     @Test
@@ -251,20 +260,49 @@ public class LegacyV1SourceInfoTest {
     }
 
     @Test
+    public void wallTimeIsPresent() {
+        // Non-transactional event.
+        final BsonDocument event = new BsonDocument().append("ts", new BsonTimestamp(100, 2))
+                .append("wall", new BsonDateTime(1987654321123L))
+                .append("h", new BsonInt64(Long.valueOf(1987654321)))
+                .append("ns", new BsonString("dbA.collectA"));
+        source.opLogEvent("rs", event);
+        assertThat(source.struct().getInt64(SourceInfo.WALL_TIME)).isEqualTo(1987654321123L);
+        // Transactional event.
+        final BsonDocument masterEvent = new BsonDocument().append("ts", new BsonTimestamp(100, 2))
+                .append("wall", new BsonDateTime(1987654321123L))
+                .append("h", new BsonInt64(Long.valueOf(1987654321)))
+                .append("ns", new BsonString("dbA.collectA"));
+        final BsonDocument oplogEvent = new BsonDocument().append("ts", new BsonTimestamp(100, 2))
+                .append("h", new BsonInt64(Long.valueOf(1987654321)))
+                .append("ns", new BsonString("dbA.collectA"));
+        source.opLogEvent("rs", oplogEvent, masterEvent, 0);
+        assertThat(source.struct().getInt64(SourceInfo.WALL_TIME)).isEqualTo(1987654321123L);
+    }
+
+    @Test
     public void schemaIsCorrect() {
         final Schema schema = SchemaBuilder.struct()
                 .name("io.debezium.connector.mongo.Source")
-                .version(1)
-                .field("version", Schema.OPTIONAL_STRING_SCHEMA)
-                .field("connector", Schema.OPTIONAL_STRING_SCHEMA)
+                .field("version", Schema.STRING_SCHEMA)
+                .field("connector", Schema.STRING_SCHEMA)
                 .field("name", Schema.STRING_SCHEMA)
+                .field("ts_ms", Schema.INT64_SCHEMA)
+                .field("snapshot", AbstractSourceInfoStructMaker.SNAPSHOT_RECORD_SCHEMA)
+                .field("db", Schema.STRING_SCHEMA)
+                .field("sequence", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("rs", Schema.STRING_SCHEMA)
-                .field("ns", Schema.STRING_SCHEMA)
-                .field("sec", Schema.INT32_SCHEMA)
+                .field("collection", Schema.STRING_SCHEMA)
                 .field("ord", Schema.INT32_SCHEMA)
                 .field("h", Schema.OPTIONAL_INT64_SCHEMA)
-                .field("initsync", SchemaBuilder.bool().optional().defaultValue(false).build())
+                .field("tord", Schema.OPTIONAL_INT64_SCHEMA)
+                .field("stxnid", Schema.OPTIONAL_STRING_SCHEMA)
+                .field("lsid", Schema.OPTIONAL_STRING_SCHEMA)
+                .field("txnNumber", Schema.OPTIONAL_INT64_SCHEMA)
+                .field("wallTime", Schema.OPTIONAL_INT64_SCHEMA)
+                .field("stripeAudit", Schema.OPTIONAL_STRING_SCHEMA)
                 .build();
-        assertThat(source.schema()).isEqualTo(schema);
+
+        assertConnectSchemasAreEqual(null, source.schema(), schema);
     }
 }

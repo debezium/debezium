@@ -32,6 +32,7 @@ import io.debezium.connector.mongodb.CollectionId;
 import io.debezium.connector.mongodb.Configurator;
 import io.debezium.connector.mongodb.Filters;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig;
+import io.debezium.connector.mongodb.MongoDbTaskContext;
 import io.debezium.connector.mongodb.MongoDbTopicSelector;
 import io.debezium.connector.mongodb.SourceInfo;
 import io.debezium.doc.FixFor;
@@ -64,10 +65,10 @@ public class ExtractNewDocumentStateTest {
     @Before
     public void setup() {
         filters = new Configurator().createFilters();
-        source = new SourceInfo(new MongoDbConnectorConfig(
-                Configuration.create()
-                        .with(MongoDbConnectorConfig.LOGICAL_NAME, SERVER_NAME)
-                        .build()));
+        Configuration config = Configuration.create()
+                .with(MongoDbConnectorConfig.LOGICAL_NAME, SERVER_NAME)
+                .build();
+        source = new SourceInfo(new MongoDbConnectorConfig(config), new MongoDbTaskContext(config).getMongoTaskId());
         topicSelector = MongoDbTopicSelector.defaultSelector(SERVER_NAME, "__debezium-heartbeat");
         produced = new ArrayList<>();
 

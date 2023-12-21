@@ -306,7 +306,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
             }
         });
 
-        ctx.offset = new MongoDbOffsetContext(new SourceInfo(connectorConfig), new TransactionContext(),
+        ctx.offset = new MongoDbOffsetContext(new SourceInfo(connectorConfig, taskContext.getMongoTaskId()), new TransactionContext(),
                 new MongoDbIncrementalSnapshotContext<>(false), positions);
     }
 
@@ -459,8 +459,8 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
                         }
 
                         BsonDocument document = cursor.next();
-                        docs++;
 
+                        docs++;
                         snapshotContext.lastRecordInCollection = !cursor.hasNext();
 
                         if (snapshotContext.lastCollection && snapshotContext.lastRecordInCollection) {
@@ -489,7 +489,11 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
                                                                            ReplicaSet replicaSet) {
         final MongoDbOffsetContext offsetContext = snapshotContext.offset;
 
-        final ReplicaSetPartition replicaSetPartition = offsetContext.getReplicaSetPartition(replicaSet);
+        final ReplicaSetPartition replicaSetPartition = offsetContext.getReplicaSetPartition(
+                replicaSet,
+                connectorConfig.getMultiTaskEnabled(),
+                taskContext.getMongoTaskId(),
+                connectorConfig.getMultiTaskGen());
         final ReplicaSetOffsetContext replicaSetOffsetContext = offsetContext.getReplicaSetOffsetContext(replicaSet);
         replicaSetOffsetContext.readEvent(collectionId, getClock().currentTime());
 

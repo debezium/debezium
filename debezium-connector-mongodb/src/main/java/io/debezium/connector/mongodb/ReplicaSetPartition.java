@@ -13,18 +13,36 @@ import io.debezium.util.Collect;
 public class ReplicaSetPartition extends MongoDbPartition {
     private static final String SERVER_ID_KEY = "server_id";
     private static final String REPLICA_SET_NAME = "rs";
-
+    private static final String TASK_ID_KEY = "task_id";
+    private static final String MULTI_TASK_GEN_KEY = "multi_task_gen";
     private final String serverId;
     private final String replicaSetName;
+    private final boolean multiTaskEnabled;
+    private final int taskId;
+    private final int multiTaskGen;
 
-    public ReplicaSetPartition(String serverId, String replicaSetName) {
+    public ReplicaSetPartition(String serverId, String replicaSetName, boolean multiTaskEnabled, int taskId, int multiTaskGen) {
         this.serverId = serverId;
         this.replicaSetName = replicaSetName;
+        this.taskId = taskId;
+        this.multiTaskGen = multiTaskGen;
+        this.multiTaskEnabled = multiTaskEnabled;
     }
 
     @Override
     public Map<String, String> getSourcePartition() {
-        return Collect.hashMapOf(SERVER_ID_KEY, serverId, REPLICA_SET_NAME, replicaSetName);
+        if (this.multiTaskEnabled) {
+            return Collect.hashMapOf(
+                    SERVER_ID_KEY, serverId,
+                    REPLICA_SET_NAME, replicaSetName,
+                    TASK_ID_KEY, String.valueOf(this.taskId),
+                    MULTI_TASK_GEN_KEY, String.valueOf(this.multiTaskGen));
+        }
+        else {
+            return Collect.hashMapOf(
+                    SERVER_ID_KEY, serverId,
+                    REPLICA_SET_NAME, replicaSetName);
+        }
     }
 
     @Override
@@ -36,12 +54,16 @@ public class ReplicaSetPartition extends MongoDbPartition {
             return false;
         }
         final ReplicaSetPartition other = (ReplicaSetPartition) obj;
-        return Objects.equals(serverId, other.serverId) && Objects.equals(replicaSetName, other.replicaSetName);
+        return Objects.equals(serverId, other.serverId) &&
+                Objects.equals(replicaSetName, other.replicaSetName) &&
+                Objects.equals(taskId, other.taskId) &&
+                Objects.equals(multiTaskGen, other.multiTaskGen) &&
+                Objects.equals(multiTaskEnabled, other.multiTaskEnabled);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(serverId, replicaSetName);
+        return Objects.hash(serverId, replicaSetName, taskId, multiTaskGen, multiTaskEnabled);
     }
 
     @Override

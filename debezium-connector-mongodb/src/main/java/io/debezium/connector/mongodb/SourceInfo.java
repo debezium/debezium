@@ -8,6 +8,7 @@ package io.debezium.connector.mongodb;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Set;
@@ -40,10 +41,20 @@ import io.debezium.util.Collect;
  * logical name of the MongoDB server. A JSON-like representation of the source partition for a database named "customers" hosted
  * in a MongoDB replica set named "myMongoServer" is as follows:
  *
+ * default partition key
  * <pre>
  * {
  *     "server_id" : "myMongoServer",
  *     "replicaSetName" : "rs0"
+ * }
+ * </pre>
+ * or if partition key whe multitask is enabled
+ * <pre>
+ * {
+ *     "server_id" : "myMongoServer",
+ *     "replicaSetName" : "rs0",
+ *     "multiTaskGen" : "0",
+ *     "taskId" : "1"
  * }
  * </pre>
  *
@@ -71,11 +82,11 @@ import io.debezium.util.Collect;
 public final class SourceInfo extends BaseSourceInfo {
 
     private static final String RESUME_TOKEN = "resume_token";
-
     public static final int SCHEMA_VERSION = 1;
-
     public static final String SERVER_ID_KEY = "server_id";
     public static final String REPLICA_SET_NAME = "rs";
+    public static final String TASK_ID_KEY = "task_id";
+    public static final String MULTI_TASK_GEN_KEY = "multi_task_gen";
     public static final String NAMESPACE = "ns";
     public static final String TIMESTAMP = "sec";
     public static final String ORDER = "ord";
@@ -86,9 +97,7 @@ public final class SourceInfo extends BaseSourceInfo {
     public static final String COLLECTION = "collection";
     public static final String LSID = "lsid";
     public static final String TXN_NUMBER = "txnNumber";
-
     public static final String WALL_TIME = "wallTime";
-
     public static final String STRIPE_AUDIT = "stripeAudit";
 
     // Change Stream fields
@@ -97,8 +106,8 @@ public final class SourceInfo extends BaseSourceInfo {
     private static final Position INITIAL_POSITION = new Position(INITIAL_TIMESTAMP, null, 0, null, null, null);
 
     private final ConcurrentMap<String, Map<String, String>> sourcePartitionsByReplicaSetName = new ConcurrentHashMap<>();
-    private final ConcurrentMap<String, Position> positionsByReplicaSetName = new ConcurrentHashMap<>();
-    private final Set<String> initialSyncReplicaSets = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private final ConcurrentMap<PositionKey, Position> positionsByReplicaSetName = new ConcurrentHashMap<>();
+    private final Set<PositionKey> initialSyncReplicaSets = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     private String replicaSetName;
 
@@ -108,10 +117,11 @@ public final class SourceInfo extends BaseSourceInfo {
      */
     private CollectionId collectionId;
     private Position position;
-
     private long wallTime;
-
     private String stripeAudit;
+    protected boolean multiTaskEnabled;
+    protected int multiTaskGen;
+    protected int taskId;
 
     @Immutable
     protected static final class Position {
@@ -193,6 +203,50 @@ public final class SourceInfo extends BaseSourceInfo {
     }
 
     /**
+     * Based on replication set name, connector, and task configurations we track offset locations.
+     * Position Key wraps this logic into a single class enabling easy comparisons across object instances.
+     **/
+    @Immutable
+    private static final class PositionKey {
+        final String replicaSetName;
+        final int taskId;
+        final int multiTaskGen;
+        final boolean multiTaskEnabled;
+
+        public PositionKey(String replicaSetName, boolean enabled, int taskId, int multiTaskGen) {
+            this.replicaSetName = replicaSetName;
+            this.taskId = taskId;
+            this.multiTaskGen = enabled ? multiTaskGen : -1;
+            this.multiTaskEnabled = enabled;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            // Self check
+            if (this == o) {
+                return true;
+            }
+
+            // Type and null check
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+
+            // Field comparison
+            final PositionKey key = (PositionKey) o;
+            return Objects.equals(replicaSetName, key.replicaSetName) &&
+                    Objects.equals(taskId, key.taskId) &&
+                    Objects.equals(multiTaskGen, key.multiTaskGen) &&
+                    Objects.equals(multiTaskEnabled, key.multiTaskEnabled);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(this.replicaSetName, this.taskId, this.multiTaskGen, this.multiTaskEnabled);
+        }
+    }
+
+    /**
      * Get the replica set name for the given partition.
      *
      * @param partition the partition map
@@ -203,8 +257,11 @@ public final class SourceInfo extends BaseSourceInfo {
         return partition != null ? (String) partition.get(REPLICA_SET_NAME) : null;
     }
 
-    public SourceInfo(MongoDbConnectorConfig connectorConfig) {
+    public SourceInfo(MongoDbConnectorConfig connectorConfig, int taskId) {
         super(connectorConfig);
+        this.multiTaskEnabled = connectorConfig.getMultiTaskEnabled();
+        this.multiTaskGen = connectorConfig.getMultiTaskGen();
+        this.taskId = taskId;
     }
 
     CollectionId collectionId() {
@@ -233,8 +290,21 @@ public final class SourceInfo extends BaseSourceInfo {
         if (replicaSetName == null) {
             throw new IllegalArgumentException("Replica set name may not be null");
         }
+
         return sourcePartitionsByReplicaSetName.computeIfAbsent(replicaSetName, rsName -> {
-            return Collect.hashMapOf(SERVER_ID_KEY, serverName(), REPLICA_SET_NAME, rsName);
+            // To ensure backwards compatability, only set new key values when multitask enabled.
+            if (this.multiTaskEnabled) {
+                return Collect.hashMapOf(
+                        SERVER_ID_KEY, serverName(),
+                        REPLICA_SET_NAME, rsName,
+                        TASK_ID_KEY, String.valueOf(this.taskId),
+                        MULTI_TASK_GEN_KEY, String.valueOf(this.multiTaskGen));
+            }
+            else {
+                return Collect.hashMapOf(
+                        SERVER_ID_KEY, serverName(),
+                        REPLICA_SET_NAME, rsName);
+            }
         });
     }
 
@@ -245,7 +315,7 @@ public final class SourceInfo extends BaseSourceInfo {
      * @return the timestamp of the last offset, or the beginning of time if there is none
      */
     public BsonTimestamp lastOffsetTimestamp(String replicaSetName) {
-        Position existing = positionsByReplicaSetName.get(replicaSetName);
+        Position existing = positionsByReplicaSetName.get(this.GetPositionKey(replicaSetName));
         return existing != null ? existing.ts : INITIAL_TIMESTAMP;
     }
 
@@ -256,17 +326,17 @@ public final class SourceInfo extends BaseSourceInfo {
      * @return the tx order of the transaction in progress or 0 in case of non-transactional event
      */
     public OptionalLong lastOffsetTxOrder(String replicaSetName) {
-        Position existing = positionsByReplicaSetName.get(replicaSetName);
+        Position existing = positionsByReplicaSetName.get(this.GetPositionKey(replicaSetName));
         return existing != null ? existing.getTxOrder() : OptionalLong.empty();
     }
 
     public String lastResumeToken(String replicaSetName) {
-        Position existing = positionsByReplicaSetName.get(replicaSetName);
+        Position existing = positionsByReplicaSetName.get(this.GetPositionKey(replicaSetName));
         return existing != null ? existing.resumeToken : null;
     }
 
     public Position lastPosition(String replicaSetName) {
-        return positionsByReplicaSetName.get(replicaSetName);
+        return positionsByReplicaSetName.get(this.GetPositionKey(replicaSetName));
     }
 
     /**
@@ -278,11 +348,13 @@ public final class SourceInfo extends BaseSourceInfo {
      * @return a copy of the current offset for the database; never null
      */
     public Map<String, ?> lastOffset(String replicaSetName) {
-        Position existing = positionsByReplicaSetName.get(replicaSetName);
+        PositionKey key = this.GetPositionKey(replicaSetName);
+
+        Position existing = positionsByReplicaSetName.get(key);
         if (existing == null) {
             existing = INITIAL_POSITION;
         }
-        if (isInitialSyncOngoing(replicaSetName)) {
+        if (isInitialSyncOngoing(key)) {
             return addSessionTxnIdToOffset(existing, Collect.hashMapOf(TIMESTAMP, Integer.valueOf(existing.getTime()),
                     ORDER, Integer.valueOf(existing.getInc()),
                     OPERATION_ID, existing.getOperationId(),
@@ -309,6 +381,10 @@ public final class SourceInfo extends BaseSourceInfo {
         return offset;
     }
 
+    private PositionKey GetPositionKey(String replicaSetName) {
+        return new PositionKey(replicaSetName, this.multiTaskEnabled, this.taskId, this.multiTaskGen);
+    }
+
     /**
      * Get a {@link Struct} representation of the source {@link #partition(String) partition} and {@link #lastOffset(String)
      * offset} information where we have last read. The Struct complies with the {@link #schema} for the MongoDB connector.
@@ -319,7 +395,7 @@ public final class SourceInfo extends BaseSourceInfo {
      * @see #schema()
      */
     public void collectionEvent(String replicaSetName, CollectionId collectionId, long wallTime) {
-        onEvent(replicaSetName, collectionId, positionsByReplicaSetName.get(replicaSetName), wallTime, stripeAudit);
+        onEvent(replicaSetName, collectionId, positionsByReplicaSetName.get(this.GetPositionKey(replicaSetName)), wallTime, stripeAudit);
     }
 
     /**
@@ -354,7 +430,7 @@ public final class SourceInfo extends BaseSourceInfo {
                 stripeAudit = oplogEvent.getString(STRIPE_AUDIT).getValue();
             }
         }
-        positionsByReplicaSetName.put(replicaSetName, position);
+        positionsByReplicaSetName.put(this.GetPositionKey(replicaSetName), position);
 
         onEvent(replicaSetName, CollectionId.parse(replicaSetName, namespace), position, wallTime, stripeAudit);
     }
@@ -374,7 +450,7 @@ public final class SourceInfo extends BaseSourceInfo {
             }
             stripeAudit = extractStripeAudit(changeStreamEvent);
         }
-        positionsByReplicaSetName.put(replicaSetName, position);
+        positionsByReplicaSetName.put(this.GetPositionKey(replicaSetName), position);
 
         onEvent(replicaSetName, CollectionId.parse(replicaSetName, namespace), position, wallTime, stripeAudit);
     }
@@ -450,7 +526,7 @@ public final class SourceInfo extends BaseSourceInfo {
      * yet been seen
      */
     public boolean hasOffset(String replicaSetName) {
-        return positionsByReplicaSetName.containsKey(replicaSetName);
+        return positionsByReplicaSetName.containsKey(this.GetPositionKey(replicaSetName));
     }
 
     /**
@@ -486,7 +562,8 @@ public final class SourceInfo extends BaseSourceInfo {
             changeStreamTxnId = new SessionTransactionId(changeStreamLsid, changeStreamTxnNumber);
         }
         String resumeToken = stringOffsetValue(sourceOffset, RESUME_TOKEN);
-        positionsByReplicaSetName.put(replicaSetName,
+        positionsByReplicaSetName.put(
+                this.GetPositionKey(replicaSetName),
                 new Position(time, order, operationId, txOrder, oplogSessionTxnId, changeStreamTxnId, resumeToken));
         return true;
     }
@@ -511,7 +588,7 @@ public final class SourceInfo extends BaseSourceInfo {
      * @param replicaSetName the name of the replica set; never null
      */
     public void startInitialSync(String replicaSetName) {
-        initialSyncReplicaSets.add(replicaSetName);
+        initialSyncReplicaSets.add(this.GetPositionKey(replicaSetName));
     }
 
     /**
@@ -520,7 +597,18 @@ public final class SourceInfo extends BaseSourceInfo {
      * @param replicaSetName the name of the replica set; never null
      */
     public void stopInitialSync(String replicaSetName) {
-        initialSyncReplicaSets.remove(replicaSetName);
+        initialSyncReplicaSets.remove(this.GetPositionKey(replicaSetName));
+    }
+
+    /**
+     * Determine if the initial sync for the given replica set is still ongoing.
+     *
+     * @param positionKey the key of the replica set position; never null
+     * @return {@code true} if the initial sync for this replica is still ongoing or was not completed before restarting, or
+     * {@code false} if there is currently no initial sync operation for this replica set
+     */
+    public boolean isInitialSyncOngoing(PositionKey positionKey) {
+        return initialSyncReplicaSets.contains(positionKey);
     }
 
     /**
@@ -531,7 +619,7 @@ public final class SourceInfo extends BaseSourceInfo {
      * {@code false} if there is currently no initial sync operation for this replica set
      */
     public boolean isInitialSyncOngoing(String replicaSetName) {
-        return initialSyncReplicaSets.contains(replicaSetName);
+        return this.isInitialSyncOngoing(this.GetPositionKey(replicaSetName));
     }
 
     /**
@@ -596,7 +684,7 @@ public final class SourceInfo extends BaseSourceInfo {
 
     @Override
     protected SnapshotRecord snapshot() {
-        return isInitialSyncOngoing(replicaSetName) ? SnapshotRecord.TRUE
+        return isInitialSyncOngoing(this.GetPositionKey(replicaSetName)) ? SnapshotRecord.TRUE
                 : snapshotRecord == SnapshotRecord.INCREMENTAL ? SnapshotRecord.INCREMENTAL : SnapshotRecord.FALSE;
     }
 

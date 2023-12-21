@@ -64,6 +64,7 @@ public class MongoDbMultiTaskConnectorIT extends AbstractMongoConnectorIT {
                 .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
                 .with(MongoDbConnectorConfig.HOSTS, "rs0/1.2.3.4:27017;rs1/2.3.4.5:27017")
                 .with(MongoDbConnectorConfig.MONGODB_MULTI_TASK_ENABLED, true)
+                .with(MongoDbConnectorConfig.MONGODB_MULTI_TASK_GEN, 0)
                 .build();
 
         // we expect the engine will log at least one error, so preface it ...

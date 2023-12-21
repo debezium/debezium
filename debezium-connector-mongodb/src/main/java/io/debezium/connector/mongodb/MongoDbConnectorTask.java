@@ -191,7 +191,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
     }
 
     private MongoDbOffsetContext getPreviousOffset(MongoDbConnectorConfig connectorConfig, ReplicaSets replicaSets) {
-        MongoDbOffsetContext.Loader loader = new MongoDbOffsetContext.Loader(connectorConfig, replicaSets);
+        MongoDbOffsetContext.Loader loader = new MongoDbOffsetContext.Loader(connectorConfig, replicaSets, taskContext.getMongoTaskId());
         Collection<Map<String, String>> partitions = loader.getPartitions();
 
         Map<Map<String, String>, Map<String, Object>> offsets = context.offsetStorageReader().offsets(partitions);

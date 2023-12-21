@@ -124,12 +124,11 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
 
     private void streamChangesForReplicaSet(ChangeEventSourceContext context, MongoDbPartition partition,
                                             ReplicaSet replicaSet, MongoDbOffsetContext offsetContext) {
-
-        streamChangesForReplicaSetWithSharding(context, partition, replicaSet, offsetContext, connectorConfig.getStreamingShardId());
+        streamChangesForReplicaSetWithSharding(context, partition, replicaSet, offsetContext);
     }
 
     private void streamChangesForReplicaSetWithSharding(ChangeEventSourceContext context, MongoDbPartition partition,
-                                                        ReplicaSet replicaSet, MongoDbOffsetContext offsetContext, int shardId) {
+                                                        ReplicaSet replicaSet, MongoDbOffsetContext offsetContext) {
         MongoPrimary primaryClient = null;
         try {
             primaryClient = establishConnectionToPrimary(partition, replicaSet);
@@ -137,10 +136,17 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                 final AtomicReference<MongoPrimary> primaryReference = new AtomicReference<>(primaryClient);
                 primaryClient.execute("read from oplog on '" + replicaSet + "'", primary -> {
                     if (taskContext.getCaptureMode().isChangeStreams()) {
-                        readChangeStream(primary, primaryReference.get(), replicaSet, context, offsetContext, shardId, connectorConfig.getMultiTaskEnabled());
+                        readChangeStream(primary,
+                                primaryReference.get(),
+                                replicaSet,
+                                context,
+                                offsetContext,
+                                connectorConfig.getStreamingShardId(),
+                                connectorConfig.getMultiTaskEnabled(),
+                                connectorConfig.getMultiTaskGen());
                     }
                     else {
-                        readOplog(primary, primaryReference.get(), replicaSet, context, offsetContext, shardId);
+                        readOplog(primary, primaryReference.get(), replicaSet, context, offsetContext, connectorConfig.getStreamingShardId());
                     }
                 });
             }
@@ -316,8 +322,12 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
     }
 
     private void readChangeStream(MongoClient primary, MongoPrimary primaryClient, ReplicaSet replicaSet, ChangeEventSourceContext context,
-                                  MongoDbOffsetContext offsetContext, int shardId, boolean enableMultiTask) {
-        final ReplicaSetPartition rsPartition = offsetContext.getReplicaSetPartition(replicaSet);
+                                  MongoDbOffsetContext offsetContext, int shardId, boolean multiTaskEnabled, int multiTaskGen) {
+        final ReplicaSetPartition rsPartition = offsetContext.getReplicaSetPartition(
+                replicaSet,
+                multiTaskEnabled,
+                taskContext.getMongoTaskId(),
+                multiTaskGen);
         final ReplicaSetOffsetContext rsOffsetContext = offsetContext.getReplicaSetOffsetContext(replicaSet);
 
         final BsonTimestamp oplogStart = rsOffsetContext.lastOffsetTimestamp();
@@ -326,7 +336,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         ReplicaSetOplogContext oplogContext = new ReplicaSetOplogContext(rsPartition, rsOffsetContext, primaryClient, replicaSet);
 
         final ServerAddress primaryAddress = MongoUtil.getPrimaryAddress(primary);
-        LOGGER.info("Reading change stream for '{}' primary {} starting at {}", replicaSet, primaryAddress, oplogStart);
+        LOGGER.info("Reading change stream for '{}' primary {} starting at {} with shardId {}", replicaSet, primaryAddress, oplogStart, shardId);
 
         Bson filters = Filters.in("operationType", getChangeStreamSkippedOperationsFilter());
         if (rsOffsetContext.lastResumeToken() == null) {
@@ -382,7 +392,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
 
                         // Distribution of events to tasks or connectors is enabled
                         // It uses timestamps as the property to distribute events
-                        if (enableMultiTask) {
+                        if (multiTaskEnabled) {
                             if (event.getClusterTime() != null && event.getClusterTime().getValue() % connectorConfig.getMaxTasks() != taskContext.getMongoTaskId()) {
                                 LOGGER.debug("task id doesn't match, skip change stream event {}:{}", taskContext.getMongoTaskId(), event.getClusterTime().getValue());
                                 continue;
@@ -648,7 +658,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                                                      ReplicaSets replicaSets) {
         final Map<ReplicaSet, BsonDocument> positions = new LinkedHashMap<>();
         replicaSets.onEachReplicaSet(replicaSet -> {
-            LOGGER.info("Determine Snapshot Offset for replica-set {}", replicaSet.replicaSetName());
+            LOGGER.info("Determine Streaming Offset for replica-set {}", replicaSet.replicaSetName());
             MongoPrimary primaryClient = establishConnectionToPrimary(partition, replicaSet);
             if (primaryClient != null) {
                 try {
@@ -665,7 +675,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             }
         });
 
-        return new MongoDbOffsetContext(new SourceInfo(connectorConfig), new TransactionContext(),
+        return new MongoDbOffsetContext(new SourceInfo(connectorConfig, taskContext.getMongoTaskId()), new TransactionContext(),
                 new MongoDbIncrementalSnapshotContext<>(false), positions);
     }
 

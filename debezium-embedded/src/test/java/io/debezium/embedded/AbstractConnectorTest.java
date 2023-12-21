@@ -476,6 +476,7 @@ public abstract class AbstractConnectorTest implements Testing {
         int recordsConsumed = 0;
         int nullReturn = 0;
         boolean isLastRecord = false;
+
         while (!isLastRecord) {
             SourceRecord record = consumedLines.poll(pollTimeoutInMs, TimeUnit.MILLISECONDS);
             if (record != null) {
@@ -873,6 +874,13 @@ public abstract class AbstractConnectorTest implements Testing {
      */
     protected void assertNoRecordsToConsume() {
         assertThat(consumedLines.isEmpty()).isTrue();
+    }
+
+    /**
+     * Assert number of remaining records to consume.
+     */
+    protected void assertRemainingRecordsToConsume(int remainingRecords) {
+        assertThat(consumedLines.stream().count()).isEqualTo(remainingRecords);
     }
 
     /**

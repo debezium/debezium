@@ -27,18 +27,21 @@ import io.debezium.connector.AbstractSourceInfoStructMaker;
 /**
  * @author Randall Hauch
  */
+
 public class SourceInfoTest {
 
     private static String REPLICA_SET_NAME = "myReplicaSet";
     private SourceInfo source;
     private Map<String, String> partition;
+    private MongoDbTaskContext context;
 
     @Before
     public void beforeEach() {
-        source = new SourceInfo(new MongoDbConnectorConfig(
-                Configuration.create()
-                        .with(MongoDbConnectorConfig.LOGICAL_NAME, "serverX")
-                        .build()));
+        Configuration config = Configuration.create()
+                .with(MongoDbConnectorConfig.LOGICAL_NAME, "serverX")
+                .build();
+        context = new MongoDbTaskContext(config);
+        source = new SourceInfo(new MongoDbConnectorConfig(config), context.getMongoTaskId());
     }
 
     @Test
@@ -61,6 +64,8 @@ public class SourceInfoTest {
         partition = source.partition(REPLICA_SET_NAME);
         assertThat(partition.get(SourceInfo.REPLICA_SET_NAME)).isEqualTo(REPLICA_SET_NAME);
         assertThat(partition.get(SourceInfo.SERVER_ID_KEY)).isEqualTo("serverX");
+        assertThat(partition.get(SourceInfo.MULTI_TASK_GEN_KEY)).isNull();
+        assertThat(partition.get(SourceInfo.TASK_ID_KEY)).isNull();
         assertThat(partition.size()).isEqualTo(2);
     }
 
@@ -89,7 +94,8 @@ public class SourceInfoTest {
         source = new SourceInfo(new MongoDbConnectorConfig(
                 Configuration.create()
                         .with(MongoDbConnectorConfig.LOGICAL_NAME, "serverX")
-                        .build()));
+                        .build()),
+                context.getMongoTaskId());
         source.setOffsetFor(partition, offset);
 
         offset = source.lastOffset(REPLICA_SET_NAME);

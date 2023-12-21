@@ -117,14 +117,20 @@ public class MongoDbOffsetContext implements OffsetContext {
         throw new UnsupportedOperationException();
     }
 
+    public ReplicaSetPartition getReplicaSetPartition(ReplicaSet replicaSet) {
+        return replicaSetPartitions.computeIfAbsent(replicaSet, rs -> new ReplicaSetPartition(sourceInfo.serverId(), rs.replicaSetName(), false, -1, -1));
+    }
+
     /**
      * Get a {@link ReplicaSetPartition} instance for a given {@link ReplicaSet}.
      *
      * @param replicaSet the replica set; must not be null.
      * @return a replica set partition; never null.
      */
-    public ReplicaSetPartition getReplicaSetPartition(ReplicaSet replicaSet) {
-        return replicaSetPartitions.computeIfAbsent(replicaSet, rs -> new ReplicaSetPartition(sourceInfo.serverId(), rs.replicaSetName()));
+    public ReplicaSetPartition getReplicaSetPartition(ReplicaSet replicaSet, boolean multiTaskEnabled, int taskId, int multiTaskGen) {
+        // here is where we configure the offset key
+        return replicaSetPartitions.computeIfAbsent(replicaSet,
+                rs -> new ReplicaSetPartition(sourceInfo.serverId(), rs.replicaSetName(), multiTaskEnabled, taskId, multiTaskGen));
     }
 
     /**
@@ -142,8 +148,8 @@ public class MongoDbOffsetContext implements OffsetContext {
         private final ReplicaSets replicaSets;
         private final SourceInfo sourceInfo;
 
-        public Loader(MongoDbConnectorConfig connectorConfig, ReplicaSets replicaSets) {
-            this.sourceInfo = new SourceInfo(connectorConfig);
+        public Loader(MongoDbConnectorConfig connectorConfig, ReplicaSets replicaSets, int taskId) {
+            this.sourceInfo = new SourceInfo(connectorConfig, taskId);
             this.replicaSets = replicaSets;
         }
 
