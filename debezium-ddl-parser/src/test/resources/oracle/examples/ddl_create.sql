@@ -604,4 +604,13 @@ CREATE TABLE tab (ID number(9) primary key, data xmltype, data2 xmltype) MEMOPTI
 CREATE TABLE tab (ID number(9) primary key, data xmltype, data2 xmltype) NO MEMOPTIMIZE FOR READ;
 CREATE TABLE tab (ID number(9) primary key, data xmltype, data2 xmltype) MEMOPTIMIZE FOR WRITE;
 CREATE TABLE tab (ID number(9) primary key, data xmltype, data2 xmltype) NO MEMOPTIMIZE FOR WRITE;
+
+CREATE GLOBAL TEMPORARY TABLE t_temp_log(id int, status varchar(10));
+CREATE PRIVATE TEMPORARY TABLE t_temp_log(id int, status varchar(10));
+CREATE SHARDED TABLE t_temp_log(id int, status varchar(10));
+CREATE DUPLICATED TABLE t_temp_log(id int, status varchar(10));
+CREATE IMMUTABLE TABLE t_temp_log(id int, status varchar(10));
+CREATE BLOCKCHAIN TABLE t_temp_log(id int, status varchar(10));
+CREATE IMMUTABLE BLOCKCHAIN TABLE t_temp_log(id int, status varchar(10));
+
 CREATE OR REPLACE NONEDITIONABLE PACKAGE BODY tidy_html_snippet_pkg AS FUNCTION tidy(i_html_snippet IN CLOB) RETURN CLOB; FUNCTION tidy(i_html_snippet IN VARCHAR2) RETURN CLOB; END tidy_html_snippet_pkg;
