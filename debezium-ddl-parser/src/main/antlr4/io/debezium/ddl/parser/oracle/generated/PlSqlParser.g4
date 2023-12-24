@@ -1822,7 +1822,13 @@ create_cluster
     ;
 
 create_table
-    : CREATE (GLOBAL TEMPORARY)? TABLE tableview_name
+    : CREATE (
+        (GLOBAL | PRIVATE) TEMPORARY
+        | SHARDED
+        | DUPLICATED
+        | IMMUTABLE? BLOCKCHAIN
+        | IMMUTABLE
+    )? TABLE tableview_name
         (SHARING '=' (NONE | METADATA | DATA | EXTENDED DATA))?
         (relational_table | object_table | xmltype_table) (USAGE QUEUE)? (AS select_only_statement)? memoptimize_read_write_clause?
     ;
