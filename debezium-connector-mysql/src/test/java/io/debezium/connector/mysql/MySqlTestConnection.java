@@ -49,6 +49,21 @@ public class MySqlTestConnection extends JdbcConnection {
     }
 
     /**
+     * Obtain a connection instance to the named test replica database.
+     * if no replica, obtain same connection with {@link #forTestDatabase(String) forTestDatabase}
+     * @param databaseName the name of the test replica database
+     * @return the MySQLConnection instance; never null
+     */
+    public static MySqlTestConnection forTestReplicaDatabase(String databaseName) {
+        return new MySqlTestConnection(JdbcConfiguration.copy(
+                Configuration.fromSystemProperties("database.replica.").merge(Configuration.fromSystemProperties(DRIVER_CONFIG_PREFIX)
+                        .merge(Configuration.fromSystemProperties(DATABASE_CONFIG_PREFIX))))
+                .withDatabase(databaseName)
+                .with("characterEncoding", "utf8")
+                .build());
+    }
+
+    /**
      * Obtain a connection instance to the named test database.
      * @param databaseName the name of the test database
      * @param urlProperties url properties
