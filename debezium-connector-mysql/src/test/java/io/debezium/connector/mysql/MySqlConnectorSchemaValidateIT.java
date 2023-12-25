@@ -10,6 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.fail;
 
 import java.nio.file.Path;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -69,12 +70,18 @@ public class MySqlConnectorSchemaValidateIT extends AbstractConnectorTest {
         start(MySqlConnector.class, config, (success, message, error) -> exception.set(error));
         waitForSnapshotToBeCompleted("mysql", DATABASE.getServerName());
 
+        String masterPort = System.getProperty("database.port", "3306");
+        String replicaPort = System.getProperty("database.replica.port", "3306");
+        boolean replicaIsMaster = masterPort.equals(replicaPort);
+        if (!replicaIsMaster) {
+            // Give time for the replica to catch up to the master ...
+            Thread.sleep(5000L);
+        }
+
+        alterTableWithSqlBinLogOff("ALTER TABLE dbz7093 ADD newcol VARCHAR(20);", replicaIsMaster);
+
         try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());) {
             try (JdbcConnection connection = db.connect()) {
-                connection.execute("SET SQL_LOG_BIN=OFF;");
-                // debezium couldn't notice table changed because this DDL is not recorded in binlog
-                connection.execute("ALTER TABLE dbz7093 ADD newcol VARCHAR(20);");
-                connection.execute("SET SQL_LOG_BIN=ON;");
                 connection.execute("INSERT INTO dbz7093(id, age, name, newcol) VALUES (201, 1,'name1','newcol1');");
                 connection.execute("UPDATE dbz7093 SET age=2, name='name2', newcol='newcol2' WHERE id=201");
                 connection.execute("DELETE FROM dbz7093 WHERE id=201");
@@ -147,12 +154,18 @@ public class MySqlConnectorSchemaValidateIT extends AbstractConnectorTest {
         start(MySqlConnector.class, config, (success, message, error) -> exception.set(error));
         waitForSnapshotToBeCompleted("mysql", DATABASE.getServerName());
 
+        String masterPort = System.getProperty("database.port", "3306");
+        String replicaPort = System.getProperty("database.replica.port", "3306");
+        boolean replicaIsMaster = masterPort.equals(replicaPort);
+        if (!replicaIsMaster) {
+            // Give time for the replica to catch up to the master ...
+            Thread.sleep(5000L);
+        }
+
+        alterTableWithSqlBinLogOff("ALTER TABLE dbz7093 ADD newcol VARCHAR(20) AFTER age;", replicaIsMaster);
+
         try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());) {
             try (JdbcConnection connection = db.connect()) {
-                connection.execute("SET SQL_LOG_BIN=OFF;");
-                // debezium couldn't notice table changed because this DDL is not recorded in binlog
-                connection.execute("ALTER TABLE dbz7093 ADD newcol VARCHAR(20) AFTER age;");
-                connection.execute("SET SQL_LOG_BIN=ON;");
                 connection.execute("INSERT INTO dbz7093(id, age, name, newcol) VALUES (201, 1,'name1','newcol1');");
                 connection.execute("UPDATE dbz7093 SET age=2, name='name2', newcol='newcol2' WHERE id=201");
                 connection.execute("DELETE FROM dbz7093 WHERE id=201");
@@ -225,12 +238,18 @@ public class MySqlConnectorSchemaValidateIT extends AbstractConnectorTest {
         start(MySqlConnector.class, config, (success, message, error) -> exception.set(error));
         waitForSnapshotToBeCompleted("mysql", DATABASE.getServerName());
 
+        String masterPort = System.getProperty("database.port", "3306");
+        String replicaPort = System.getProperty("database.replica.port", "3306");
+        boolean replicaIsMaster = masterPort.equals(replicaPort);
+        if (!replicaIsMaster) {
+            // Give time for the replica to catch up to the master ...
+            Thread.sleep(5000L);
+        }
+
+        alterTableWithSqlBinLogOff("ALTER TABLE dbz7093 DROP age;", replicaIsMaster);
+
         try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());) {
             try (JdbcConnection connection = db.connect()) {
-                connection.execute("SET SQL_LOG_BIN=OFF;");
-                // debezium couldn't notice table changed because this DDL is not recorded in binlog
-                connection.execute("ALTER TABLE dbz7093 DROP age;");
-                connection.execute("SET SQL_LOG_BIN=ON;");
                 connection.execute("INSERT INTO dbz7093(id, name) VALUES (201, 'name1');");
                 connection.execute("UPDATE dbz7093 SET name='name2' WHERE id=201;");
                 connection.execute("DELETE FROM dbz7093 WHERE id=201;");
@@ -296,12 +315,18 @@ public class MySqlConnectorSchemaValidateIT extends AbstractConnectorTest {
         start(MySqlConnector.class, config, (success, message, error) -> exception.set(error));
         waitForSnapshotToBeCompleted("mysql", DATABASE.getServerName());
 
+        String masterPort = System.getProperty("database.port", "3306");
+        String replicaPort = System.getProperty("database.replica.port", "3306");
+        boolean replicaIsMaster = masterPort.equals(replicaPort);
+        if (!replicaIsMaster) {
+            // Give time for the replica to catch up to the master ...
+            Thread.sleep(5000L);
+        }
+
+        alterTableWithSqlBinLogOff("ALTER TABLE dbz7093 ADD newcol VARCHAR(20);", replicaIsMaster);
+
         try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());) {
             try (JdbcConnection connection = db.connect()) {
-                connection.execute("SET SQL_LOG_BIN=OFF;");
-                // debezium couldn't notice table changed because this DDL is not recorded in binlog
-                connection.execute("ALTER TABLE dbz7093 ADD newcol VARCHAR(20);");
-                connection.execute("SET SQL_LOG_BIN=ON;");
                 connection.execute("INSERT INTO dbz7093(id, age, name, newcol) VALUES (201, 1,'name1','newcol1');");
                 connection.execute("UPDATE dbz7093 SET newcol='newcol2' WHERE id=201;");
                 connection.execute("DELETE FROM dbz7093 WHERE id=201;");
@@ -353,5 +378,27 @@ public class MySqlConnectorSchemaValidateIT extends AbstractConnectorTest {
 
         SourceRecord tombstoneEvent = recordsForTopic.get(3);
         assertTombstone(tombstoneEvent);
+    }
+
+    private void alterTableWithSqlBinLogOff(String ddl, boolean replicaIsMaster) throws SQLException {
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+            try (JdbcConnection connection = db.connect()) {
+                connection.execute("SET SQL_LOG_BIN=OFF;");
+                // debezium couldn't notice table changed because this DDL is not recorded in binlog
+                connection.execute(ddl);
+                connection.execute("SET SQL_LOG_BIN=ON;");
+            }
+        }
+
+        if (!replicaIsMaster) {
+            // if has replica, also apply DDL because master didn't record DDL at binlog
+            try (MySqlTestConnection db = MySqlTestConnection.forTestReplicaDatabase(DATABASE.getDatabaseName())) {
+                try (JdbcConnection connection = db.connect()) {
+                    connection.execute("SET SQL_LOG_BIN=OFF;");
+                    connection.execute(ddl);
+                    connection.execute("SET SQL_LOG_BIN=ON;");
+                }
+            }
+        }
     }
 }
