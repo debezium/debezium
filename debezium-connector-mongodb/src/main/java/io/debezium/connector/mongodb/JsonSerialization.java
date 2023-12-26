@@ -56,7 +56,11 @@ class JsonSerialization {
         if (document == null) {
             return null;
         }
-        // The serialized value is in format {"_": xxx} so we need to remove the starting dummy field name and closing brace
+        // Jackson can't serialize bson out of the box, so we have to use the bson
+        // .toJson() method. But .toJson() doesn't work on simple values like bson
+        // strings and bson numbers, only on bson objects. So we have to first nest
+        // the id in a bson object in the format {"_": xxx}, then serialize it using
+        // .toJson(), then remove the starting dummy field and closing brace.
         final String keyValue = new BasicDBObject("_", document.get(ID_FIELD_NAME)).toJson(SIMPLE_JSON_SETTINGS);
         final int start = 6;
         final int end = keyValue.length() - 1;
