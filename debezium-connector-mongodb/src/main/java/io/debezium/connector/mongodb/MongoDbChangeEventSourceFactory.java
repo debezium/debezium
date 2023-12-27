@@ -107,7 +107,7 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
     }
 
     public MongoDbConnection.ChangeEventSourceConnectionFactory createMongoDbConnectionFactory(MongoDbTaskContext taskContext) {
-        return (MongoDbPartition partition) -> taskContext.connect(connectionErrorHandler(partition));
+        return (MongoDbPartition partition) -> taskContext.getConnection(connectionErrorHandler(partition));
     }
 
     private MongoDbConnection.ErrorHandler connectionErrorHandler(MongoDbPartition partition) {

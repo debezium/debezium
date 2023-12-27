@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.mongodb.connection;
 
-import java.time.Duration;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -20,10 +19,8 @@ import com.mongodb.connection.ClusterType;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
-import io.debezium.connector.mongodb.Filters;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig;
 import io.debezium.connector.mongodb.MongoUtil;
-import io.debezium.function.BlockingConsumer;
 
 /**
  * @author Randall Hauch
@@ -33,7 +30,6 @@ public class ConnectionContext {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ConnectionContext.class);
 
-    private final Configuration config;
     private final MongoDbConnectorConfig connectorConfig;
     private final MongoDbClientFactory clientFactory;
 
@@ -41,7 +37,6 @@ public class ConnectionContext {
      * @param config the configuration
      */
     public ConnectionContext(Configuration config) {
-        this.config = config;
         this.connectorConfig = new MongoDbConnectorConfig(config);
 
         final MongoDbAuthProvider authProvider = config.getInstance(MongoDbConnectorConfig.AUTH_PROVIDER_CLASS, MongoDbAuthProvider.class);
@@ -57,7 +52,8 @@ public class ConnectionContext {
 
         // Set up the client pool so that it ...
         clientFactory = MongoDbClientFactory.create(settings -> {
-            settings.applyToSocketSettings(builder -> builder.connectTimeout(connectTimeoutMs, TimeUnit.MILLISECONDS)
+            settings.applyToSocketSettings(builder -> builder
+                    .connectTimeout(connectTimeoutMs, TimeUnit.MILLISECONDS)
                     .readTimeout(socketTimeoutMs, TimeUnit.MILLISECONDS))
                     .applyToClusterSettings(
                             builder -> builder.serverSelectionTimeout(serverSelectionTimeoutMs, TimeUnit.MILLISECONDS))
@@ -78,26 +74,39 @@ public class ConnectionContext {
         });
     }
 
+    public MongoDbClientFactory getClientFactory() {
+        return clientFactory;
+    }
+
     public MongoDbConnectorConfig getConnectorConfig() {
         return connectorConfig;
     }
 
-    /**
-     * Initial connection string which is either a host specification or connection string
-     *
-     * @return hosts or connection string
-     */
-    public String connectionSeed() {
-        return config.getString(MongoDbConnectorConfig.CONNECTION_STRING);
+    public ConnectionString getConnectionString() {
+        return connectorConfig.getConnectionString();
     }
 
-    public ConnectionString connectionString() {
-        return new ConnectionString(connectionSeed());
+    /**
+     * Same as {@link #getConnectionString()} but masks sensitive information
+     *
+     * @return masked connection string
+     */
+    public String getMaskedConnectionString() {
+        return ConnectionStrings.mask(getConnectionString());
+    }
+
+    /**
+     * Creates native {@link MongoClient} instance
+     *
+     * @return mongo client
+     */
+    public MongoClient getMongoClient() {
+        return clientFactory.client(getConnectionString());
     }
 
     public ClusterDescription getClusterDescription() {
-        try (var client = connect()) {
-            LOGGER.info("Reading description of cluster at {}", maskedConnectionSeed());
+        try (var client = getMongoClient()) {
+            LOGGER.info("Reading description of cluster at {}", getMaskedConnectionString());
             return MongoUtil.clusterDescription(client);
         }
     }
@@ -110,13 +119,13 @@ public class ConnectionContext {
         return ClusterType.SHARDED == getClusterType();
     }
 
-    public Set<String> shardNames() {
+    public Set<String> getShardNames() {
         if (!isShardedCluster()) {
             return Set.of();
         }
 
         var shardNames = new HashSet<String>();
-        try (var client = connect()) {
+        try (var client = getMongoClient()) {
             MongoUtil.onCollectionDocuments(client, "config", "shards", doc -> {
                 String shardName = doc.getString("_id");
                 shardNames.add(shardName);
@@ -133,48 +142,14 @@ public class ConnectionContext {
 
         if (clusterDescription.getType() == ClusterType.SHARDED) {
             LOGGER.info("Cluster identified as sharded cluster");
-            return connectionString();
+            return getConnectionString();
         }
 
         if (clusterDescription.getType() == ClusterType.REPLICA_SET) {
             LOGGER.info("Cluster identified as replicaSet");
-            var connectionString = MongoUtil.ensureReplicaSetName(connectionSeed(), clusterDescription);
-            return new ConnectionString(connectionString);
+            return MongoUtil.ensureReplicaSetName(getConnectionString(), clusterDescription);
 
         }
         throw new DebeziumException("Unable to determine cluster type");
-    }
-
-    /**
-     * Same as {@link #connectionSeed()} but masks sensitive information
-     *
-     * @return masked connection seed
-     */
-    public String maskedConnectionSeed() {
-        return ConnectionStrings.mask(connectionSeed());
-    }
-
-    public Duration pollInterval() {
-        return Duration.ofMillis(config.getLong(MongoDbConnectorConfig.MONGODB_POLL_INTERVAL_MS));
-    }
-
-    public MongoClient connect() {
-        return clientFactory.client(connectionString());
-    }
-
-    /**
-     * Obtain a client scoped to specific replica set.
-     *
-     * @param filters the filter configuration
-     * @param errorHandler the function to be called whenever the node is unable to
-     *            {@link MongoDbConnection#execute(String, BlockingConsumer)}  execute} an operation to completion; may be null
-     * @return the client, or {@code null} if no primary could be found for the replica set
-     */
-    public MongoDbConnection connect(ConnectionString connectionString, Filters filters, MongoDbConnection.ErrorHandler errorHandler) {
-        return new MongoDbConnection(connectionString, clientFactory, connectorConfig, filters, errorHandler);
-    }
-
-    public MongoDbConnection connect(Filters filters, MongoDbConnection.ErrorHandler errorHandler) {
-        return connect(connectionString(), filters, errorHandler);
     }
 }

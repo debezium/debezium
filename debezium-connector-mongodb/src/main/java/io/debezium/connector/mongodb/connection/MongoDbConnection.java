@@ -11,14 +11,13 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Supplier;
 
 import org.bson.BsonTimestamp;
 
-import com.mongodb.ConnectionString;
 import com.mongodb.client.MongoClient;
 
 import io.debezium.DebeziumException;
+import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.CollectionId;
 import io.debezium.connector.mongodb.Filters;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig;
@@ -58,6 +57,10 @@ public final class MongoDbConnection implements AutoCloseable {
         MongoDbConnection get(MongoDbPartition partition);
     }
 
+    public static ErrorHandler DEFAULT_ERROR_HANDLER = (s, throwable) -> {
+        throw new DebeziumException(s, throwable);
+    };
+
     /**
      * A pause between failed MongoDB operations to prevent CPU throttling and DoS of
      * target MongoDB database.
@@ -68,19 +71,29 @@ public final class MongoDbConnection implements AutoCloseable {
     private final ErrorHandler errorHandler;
     private final AtomicBoolean running = new AtomicBoolean(true);
     private final String name;
-    private final Supplier<MongoClient> connectionSupplier;
-    private final MongoDbConnectorConfig config;
+    private final MongoDbConnectorConfig connectorConfig;
 
-    protected MongoDbConnection(ConnectionString connectionString,
-                                MongoDbClientFactory clientFactory,
-                                MongoDbConnectorConfig config,
-                                Filters filters,
-                                ErrorHandler errorHandler) {
-        this.name = ConnectionStrings.replicaSetName(connectionString);
-        this.connectionSupplier = () -> clientFactory.client(connectionString);
-        this.config = config;
-        this.filters = filters;
+    private final ConnectionContext connectionContext;
+
+    private MongoDbConnection(Configuration config, ErrorHandler errorHandler) {
+        this.connectionContext = new ConnectionContext(config);
+        this.connectorConfig = connectionContext.getConnectorConfig();
+        this.name = ConnectionStrings.replicaSetName(connectionContext.getConnectionString());
+        this.filters = new Filters(config);
         this.errorHandler = errorHandler;
+    }
+
+    public static MongoDbConnection create(Configuration configuration) {
+        return new MongoDbConnection(configuration, DEFAULT_ERROR_HANDLER);
+
+    }
+
+    public static MongoDbConnection create(Configuration configuration, ErrorHandler errorHandler) {
+        return new MongoDbConnection(configuration, errorHandler);
+    }
+
+    public MongoClient connect() {
+        return connectionContext.getClientFactory().client(connectorConfig.getConnectionString());
     }
 
     /**
@@ -106,7 +119,7 @@ public final class MongoDbConnection implements AutoCloseable {
     public <T> T execute(String desc, BlockingFunction<MongoClient, T> operation) throws InterruptedException {
         final Metronome errorMetronome = Metronome.sleeper(PAUSE_AFTER_ERROR, Clock.SYSTEM);
         while (true) {
-            try (var client = connectionSupplier.get()) {
+            try (var client = connect()) {
                 return operation.apply(client);
             }
             catch (InterruptedException e) {
@@ -128,8 +141,8 @@ public final class MongoDbConnection implements AutoCloseable {
      * @return the database names; never null but possibly empty
      */
     public Set<String> databaseNames() throws InterruptedException {
-        if (config.getCaptureScope() == MongoDbConnectorConfig.CaptureScope.DATABASE) {
-            return config.getCaptureTarget()
+        if (connectorConfig.getCaptureScope() == MongoDbConnectorConfig.CaptureScope.DATABASE) {
+            return connectorConfig.getCaptureTarget()
                     .filter(dbName -> filters.databaseFilter().test(dbName))
                     .map(Set::of)
                     .orElse(Set.of());

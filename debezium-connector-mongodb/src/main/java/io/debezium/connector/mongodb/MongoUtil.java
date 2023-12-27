@@ -212,10 +212,9 @@ public class MongoUtil {
      * @param clusterDescription cluster description
      * @return connection string with replicaSet parameter
      */
-    public static String ensureReplicaSetName(String connectionString, ClusterDescription clusterDescription) {
+    public static ConnectionString ensureReplicaSetName(ConnectionString connectionString, ClusterDescription clusterDescription) {
         // If we have replicaSet parameter then just return
-        var cs = new ConnectionString(connectionString);
-        if (cs.getRequiredReplicaSetName() != null) {
+        if (connectionString.getRequiredReplicaSetName() != null) {
             return connectionString;
         }
 
@@ -244,7 +243,7 @@ public class MongoUtil {
      */
     public static ChangeStreamIterable<BsonDocument> openChangeStream(MongoClient client, MongoDbTaskContext taskContext) {
         var config = taskContext.getConnectorConfig();
-        final ChangeStreamPipeline pipeline = new ChangeStreamPipelineFactory(config, taskContext.filters().getConfig()).create();
+        final ChangeStreamPipeline pipeline = new ChangeStreamPipelineFactory(config, taskContext.getFilters().getConfig()).create();
 
         // capture scope is database
         if (config.getCaptureScope() == MongoDbConnectorConfig.CaptureScope.DATABASE) {

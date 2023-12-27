@@ -37,6 +37,10 @@ public final class ConnectionStrings {
         return matcher(hosts).map(m -> connectionString(m.group(2), m.group(3)));
     }
 
+    public static ConnectionString appendParameter(ConnectionString connectionString, String name, String value) {
+        return new ConnectionString(appendParameter(connectionString.toString(), name, value));
+    }
+
     /**
      * Appends new parameter to connection string
      *

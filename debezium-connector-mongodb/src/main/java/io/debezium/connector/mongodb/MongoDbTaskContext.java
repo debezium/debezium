@@ -7,13 +7,10 @@ package io.debezium.connector.mongodb;
 
 import java.util.Collections;
 
-import com.mongodb.ConnectionString;
-
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig.CaptureMode;
-import io.debezium.connector.mongodb.connection.ConnectionContext;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.spi.topic.TopicNamingStrategy;
 
@@ -25,8 +22,8 @@ public class MongoDbTaskContext extends CdcSourceTaskContext {
     private final Filters filters;
     private final TopicNamingStrategy topicNamingStrategy;
     private final String serverName;
-    private final ConnectionContext connectionContext;
     private final MongoDbConnectorConfig connectorConfig;
+    private final Configuration config;
 
     /**
      * @param config the configuration
@@ -38,27 +35,23 @@ public class MongoDbTaskContext extends CdcSourceTaskContext {
                 new MongoDbConnectorConfig(config).getCustomMetricTags(),
                 Collections::emptySet);
 
-        this.connectionContext = new ConnectionContext(config);
         this.filters = new Filters(config);
+        this.config = config;
         this.connectorConfig = new MongoDbConnectorConfig(config);
         this.topicNamingStrategy = connectorConfig.getTopicNamingStrategy(MongoDbConnectorConfig.TOPIC_NAMING_STRATEGY);
         this.serverName = config.getString(CommonConnectorConfig.TOPIC_PREFIX);
     }
 
-    public TopicNamingStrategy<CollectionId> topicNamingStrategy() {
+    public TopicNamingStrategy<CollectionId> getTopicNamingStrategy() {
         return topicNamingStrategy;
     }
 
-    public Filters filters() {
+    public Filters getFilters() {
         return filters;
     }
 
-    public String serverName() {
+    public String getServerName() {
         return serverName;
-    }
-
-    public ConnectionContext getConnectionContext() {
-        return connectionContext;
     }
 
     public MongoDbConnectorConfig getConnectorConfig() {
@@ -76,11 +69,7 @@ public class MongoDbTaskContext extends CdcSourceTaskContext {
         return connectorConfig.getCaptureMode();
     }
 
-    public ConnectionString getConnectionString() {
-        return connectorConfig.getConnectionString();
-    }
-
-    public MongoDbConnection connect(MongoDbConnection.ErrorHandler errorHandler) {
-        return connectionContext.connect(filters, errorHandler);
+    public MongoDbConnection getConnection(MongoDbConnection.ErrorHandler errorHandler) {
+        return MongoDbConnection.create(config, errorHandler);
     }
 }
