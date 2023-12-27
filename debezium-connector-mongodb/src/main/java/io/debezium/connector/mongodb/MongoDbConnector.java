@@ -24,7 +24,6 @@ import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.BaseSourceConnector;
 import io.debezium.connector.mongodb.connection.ConnectionContext;
-import io.debezium.connector.mongodb.connection.ConnectionStrings;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
 
 /**
@@ -39,7 +38,6 @@ public class MongoDbConnector extends BaseSourceConnector {
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbConnector.class);
 
     private Configuration config;
-    private ConnectionContext connectionContext;
 
     public MongoDbConnector() {
     }
@@ -63,9 +61,7 @@ public class MongoDbConnector extends BaseSourceConnector {
             throw new DebeziumException("Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
         }
         this.config = config;
-        this.connectionContext = new ConnectionContext(config);
-
-        LOGGER.info("Successfully started MongoDB connector, and continuing to discover at {}", connectionContext.getMaskedConnectionString());
+        LOGGER.info("Successfully started MongoDB connector");
     }
 
     @Override
@@ -74,19 +70,8 @@ public class MongoDbConnector extends BaseSourceConnector {
             LOGGER.error("Configuring a maximum of {} tasks with no connector configuration available", maxTasks);
             return Collections.emptyList();
         }
-
-        // ensure connection string has replicaSet when possible
-        var taskConnectionString = connectionContext.resolveTaskConnectionString();
-        LOGGER.info("Configuring MongoDB connector task to capture events for connections to: {}", ConnectionStrings.mask(taskConnectionString));
-
-        var taskConfig = config.edit()
-                .with(MongoDbConnectorConfig.CONNECTION_STRING, taskConnectionString)
-                .with(MongoDbConnectorConfig.TASK_ID, 0)
-                .build()
-                .asMap();
-
         LOGGER.debug("Configuring MongoDB connector task");
-        return List.of(taskConfig);
+        return List.of(config.asMap());
     }
 
     @Override
@@ -107,28 +92,35 @@ public class MongoDbConnector extends BaseSourceConnector {
     public Config validate(Map<String, String> connectorConfigs) {
         final Configuration config = Configuration.from(connectorConfigs);
 
-        // First, validate all of the individual fields, which is easy since don't make any of the fields invisible ...
-        Map<String, ConfigValue> results = validateAllFields(config);
+        // Validate all fields and get connection string validation result
+        Map<String, ConfigValue> validation = validateAllFields(config);
+        ConfigValue csValidation = validation.get(MongoDbConnectorConfig.CONNECTION_STRING.name());
 
-        // Get the config values for each of the connection-related fields ...
-        ConfigValue connectionStringValue = results.get(MongoDbConnectorConfig.CONNECTION_STRING.name());
-        ConfigValue userValue = results.get(MongoDbConnectorConfig.USER.name());
-        ConfigValue passwordValue = results.get(MongoDbConnectorConfig.PASSWORD.name());
+        // Validate connection when connection string is otherwise valid
+        if (csValidation.errorMessages().isEmpty()) {
+            validateConnection(config, csValidation);
+        }
+        return new Config(new ArrayList<>(validation.values()));
+    }
 
-        // If there are no errors on any of these ...
-        if (userValue.errorMessages().isEmpty()
-                && passwordValue.errorMessages().isEmpty()
-                && connectionStringValue.errorMessages().isEmpty()) {
-            // Try to connect to the database ...
-            ConnectionContext connContext = new ConnectionContext(config);
-            try (MongoClient client = connContext.getMongoClient()) {
+    public void validateConnection(Configuration config, ConfigValue connectionStringValidation) {
+        ConnectionContext connectionContext = new ConnectionContext(config);
+
+        try {
+            // Check base connection by accessing first database name
+            try (MongoClient client = connectionContext.getMongoClient()) {
                 client.listDatabaseNames().first(); // only when we try to fetch results a connection gets established
             }
-            catch (MongoException e) {
-                connectionStringValue.addErrorMessage("Unable to connect: " + e.getMessage());
+
+            // For RS clusters check that replica set name is present
+            // Java driver is smart enough to work without it but the specs says it should be set
+            if (!connectionContext.hasRequiredReplicaSetName()) {
+                connectionStringValidation.addErrorMessage("Replica set not specified in connection string");
             }
         }
-        return new Config(new ArrayList<>(results.values()));
+        catch (MongoException e) {
+            connectionStringValidation.addErrorMessage("Unable to connect: " + e.getMessage());
+        }
     }
 
     @Override

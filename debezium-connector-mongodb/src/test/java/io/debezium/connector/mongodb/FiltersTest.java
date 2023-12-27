@@ -31,7 +31,7 @@ public class FiltersTest {
 
     @Before
     public void beforeEach() {
-        build = new Configurator();
+        build = new Configurator().with(MongoDbConnectorConfig.CONNECTION_STRING, "mongodb://dummy:27017");
         filters = null;
         configFields = Field.setOf(MongoDbConnectorConfig.FIELD_EXCLUDE_LIST, MongoDbConnectorConfig.FIELD_RENAMES);
     }
