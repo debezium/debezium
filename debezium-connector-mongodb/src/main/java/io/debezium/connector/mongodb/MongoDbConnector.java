@@ -28,49 +28,15 @@ import io.debezium.connector.mongodb.connection.ConnectionStrings;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
 
 /**
- * A Kafka Connect source connector that creates {@link MongoDbConnectorTask tasks} that replicate the context of one or more
- * MongoDB replica sets.
- *
- * <h2>Sharded Clusters</h2>
- * This connector is able to fully replicate the content of one <a href="https://docs.mongodb.com/manual/sharding/">sharded
- * MongoDB 3.2 cluster</a>. In this case, simply configure the connector with the host addresses of the configuration replica set.
- * When the connector starts, it will discover and replicate the replica set for each shard.
- *
- * <h2>Replica Set</h2>
- * The connector is able to fully replicate the content of one <a href="https://docs.mongodb.com/manual/replication/">MongoDB
- * 3.2 replica set</a>. (Older MongoDB servers may be work but have not been tested.) In this case, simply configure the connector
- * with the host addresses of the replica set. When the connector starts, it will discover the primary node and use it to
- * replicate the contents of the replica set.
- * <p>
- *
- * <h2>Parallel Replication</h2>
- * The connector will concurrently and independently replicate each of the replica sets. When the connector is asked to
- * {@link #taskConfigs(int) allocate tasks}, it will attempt to allocate a separate task for each replica set. However, if the
- * maximum number of tasks exceeds the number of replica sets, then some tasks may replicate multiple replica sets. Note that
- * each task will use a separate thread to replicate each of its assigned replica sets.
- *
- * <h2>Initial Sync and Reading the Oplog</h2>
- * When a connector begins to replicate a sharded cluster or replica set for the first time, it will perform an <em>initial
- * sync</em> of the collections in the replica set by generating source records for each document in each collection. Only when
- * this initial sync completes successfully will the replication then use the replica set's primary node to read the oplog and
- * produce source records for each oplog event. The replication process records the position of each oplog event as an
- * <em>offset</em>, so that upon restart the replication process can use the last recorded offset to determine where in the
- * oplog it is to begin reading and processing events.
- *
- * <h2>Use of Topics</h2>
- * The connector will write to a separate topic all of the source records that correspond to a single collection. The topic will
- * be named "{@code <logicalName>.<databaseName>.<collectionName>}", where {@code <logicalName>} is set via the
- * "{@link io.debezium.config.CommonConnectorConfig.TOPIC_PREFIX topic.prefix}" configuration property.
- *
+ * A Kafka Connect source connector that creates tasks that read the MongoDB change stream and generate the corresponding
+ * data change events.
  * <h2>Configuration</h2>
  * <p>
- * This connector is configured with the set of properties described in {@link MongoDbConnectorConfig}.
- *
- * @author Randall Hauch
+ * This connector is configured with the set of properties described in {@link io.debezium.connector.mongodb.MongoDbConnectorConfig}.
  */
 public class MongoDbConnector extends BaseSourceConnector {
 
-    private final Logger logger = LoggerFactory.getLogger(getClass());
+    private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbConnector.class);
 
     private Configuration config;
     private ConnectionContext connectionContext;
@@ -93,25 +59,25 @@ public class MongoDbConnector extends BaseSourceConnector {
         // Validate the configuration ...
         final Configuration config = Configuration.from(props);
 
-        if (!config.validateAndRecord(MongoDbConnectorConfig.ALL_FIELDS, logger::error)) {
+        if (!config.validateAndRecord(MongoDbConnectorConfig.ALL_FIELDS, LOGGER::error)) {
             throw new DebeziumException("Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
         }
         this.config = config;
         this.connectionContext = new ConnectionContext(config);
 
-        logger.info("Successfully started MongoDB connector, and continuing to discover at {}", connectionContext.getMaskedConnectionString());
+        LOGGER.info("Successfully started MongoDB connector, and continuing to discover at {}", connectionContext.getMaskedConnectionString());
     }
 
     @Override
     public List<Map<String, String>> taskConfigs(int maxTasks) {
         if (config == null) {
-            logger.error("Configuring a maximum of {} tasks with no connector configuration available", maxTasks);
+            LOGGER.error("Configuring a maximum of {} tasks with no connector configuration available", maxTasks);
             return Collections.emptyList();
         }
 
         // ensure connection string has replicaSet when possible
         var taskConnectionString = connectionContext.resolveTaskConnectionString();
-        logger.info("Configuring MongoDB connector task to capture events for connections to: {}", ConnectionStrings.mask(taskConnectionString));
+        LOGGER.info("Configuring MongoDB connector task to capture events for connections to: {}", ConnectionStrings.mask(taskConnectionString));
 
         var taskConfig = config.edit()
                 .with(MongoDbConnectorConfig.CONNECTION_STRING, taskConnectionString)
@@ -119,17 +85,17 @@ public class MongoDbConnector extends BaseSourceConnector {
                 .build()
                 .asMap();
 
-        logger.debug("Configuring MongoDB connector task");
+        LOGGER.debug("Configuring MongoDB connector task");
         return List.of(taskConfig);
     }
 
     @Override
     public void stop() {
-        logger.info("Stopping MongoDB connector");
+        LOGGER.info("Stopping MongoDB connector");
         this.config = null;
         // Clear interrupt flag so the graceful termination is always attempted.
         Thread.interrupted();
-        logger.info("Stopped MongoDB connector");
+        LOGGER.info("Stopped MongoDB connector");
     }
 
     @Override
