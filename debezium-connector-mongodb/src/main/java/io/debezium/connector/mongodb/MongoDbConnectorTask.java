@@ -78,10 +78,10 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
 
         this.taskName = "task" + config.getInteger(MongoDbConnectorConfig.TASK_ID);
         this.taskContext = new MongoDbTaskContext(config);
-        this.connectionContext = taskContext.getConnectionContext();
+        this.connectionContext = new ConnectionContext(config);
 
         final Schema structSchema = connectorConfig.getSourceInfoStructMaker().schema();
-        this.schema = new MongoDbSchema(taskContext.filters(), taskContext.topicNamingStrategy(), structSchema, schemaNameAdjuster);
+        this.schema = new MongoDbSchema(taskContext.getFilters(), taskContext.getTopicNamingStrategy(), structSchema, schemaNameAdjuster);
 
         final Offsets<MongoDbPartition, MongoDbOffsetContext> previousOffset = getPreviousOffsets(connectorConfig);
         final Clock clock = Clock.system();
@@ -117,10 +117,10 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
 
             final EventDispatcher<MongoDbPartition, CollectionId> dispatcher = new EventDispatcher<>(
                     connectorConfig,
-                    taskContext.topicNamingStrategy(),
+                    taskContext.getTopicNamingStrategy(),
                     schema,
                     queue,
-                    taskContext.filters().collectionFilter()::test,
+                    taskContext.getFilters().collectionFilter()::test,
                     DataChangeEvent::new,
                     metadataProvider,
                     schemaNameAdjuster,
@@ -164,46 +164,44 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
         var offsetLoader = new MongoDbOffsetContext.Loader(connectorConfig);
         var offsets = getPreviousOffsets(partitionProvider, offsetLoader);
 
-        if (offsets.getTheOnlyOffset() != null) {
+        if (offsets.getTheOnlyOffset() != null || !connectionContext.isShardedCluster()) {
             return offsets;
         }
 
-        if (connectionContext.isShardedCluster()) {
-            LOGGER.info("Previous offset not found, checking shard specific offsets from replica_set connection mode.");
-            var shardNames = connectionContext.shardNames();
+        LOGGER.info("Previous offset not found, checking shard specific offsets from replica_set connection mode.");
+        var shardNames = connectionContext.getShardNames();
 
-            var shardOffsets = getPreviousOffsets(
-                    new MongoDbPartition.Provider(connectorConfig, shardNames),
-                    new MongoDbOffsetContext.Loader(connectorConfig))
-                    .getOffsets();
+        var shardOffsets = getPreviousOffsets(
+                new MongoDbPartition.Provider(connectorConfig, shardNames),
+                new MongoDbOffsetContext.Loader(connectorConfig))
+                .getOffsets();
 
-            if (shardOffsets.values().stream().allMatch(Objects::isNull)) {
-                LOGGER.info("No shard specific offsets found");
-                return offsets;
-            }
-
-            LOGGER.warn("Found at least one shard specific offset from previous run");
-            if (!connectorConfig.isOffsetInvalidationAllowed()) {
-                LOGGER.warn("Offset invalidation is  not allowed");
-                throw new DebeziumException("Offsets from previous run are invalid, either manually delete them or " +
-                        "set '" + MongoDbConnectorConfig.ALLOW_OFFSET_INVALIDATION.name() + "=true' " +
-                        "to allow streaming to resume from the oldest shard specific offset");
-            }
-            LOGGER.warn("Offset invalidation is allowed");
-
-            if (shardOffsets.values().stream().anyMatch(Objects::isNull)) {
-                LOGGER.info("At least one shard is missing previously recorded offset, so empty offset will be used");
-                return offsets;
-            }
-
-            LOGGER.warn("The oldest shard specific offset will be used");
-            var oldestOffset = shardOffsets.values()
-                    .stream()
-                    .filter(offset -> offset.lastTimestampOrTokenTime() != null)
-                    .min(comparing(MongoDbOffsetContext::lastTimestampOrTokenTime));
-
-            oldestOffset.ifPresent(offset -> offsets.getOffsets().put(offsets.getTheOnlyPartition(), offset));
+        if (shardOffsets.values().stream().allMatch(Objects::isNull)) {
+            LOGGER.info("No shard specific offsets found");
+            return offsets;
         }
+
+        LOGGER.warn("Found at least one shard specific offset from previous run");
+        if (!connectorConfig.isOffsetInvalidationAllowed()) {
+            LOGGER.warn("Offset invalidation is  not allowed");
+            throw new DebeziumException("Offsets from previous run are invalid, either manually delete them or " +
+                    "set '" + MongoDbConnectorConfig.ALLOW_OFFSET_INVALIDATION.name() + "=true' " +
+                    "to allow streaming to resume from the oldest shard specific offset");
+        }
+        LOGGER.warn("Offset invalidation is allowed");
+
+        if (shardOffsets.values().stream().anyMatch(Objects::isNull)) {
+            LOGGER.info("At least one shard is missing previously recorded offset, so empty offset will be used");
+            return offsets;
+        }
+
+        LOGGER.warn("The oldest shard specific offset will be used");
+        var oldestOffset = shardOffsets.values()
+                .stream()
+                .filter(offset -> offset.lastTimestampOrTokenTime() != null)
+                .min(comparing(MongoDbOffsetContext::lastTimestampOrTokenTime));
+
+        oldestOffset.ifPresent(offset -> offsets.getOffsets().put(offsets.getTheOnlyPartition(), offset));
 
         return offsets;
     }

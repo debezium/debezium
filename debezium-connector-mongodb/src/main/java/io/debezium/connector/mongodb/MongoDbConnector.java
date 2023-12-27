@@ -99,7 +99,7 @@ public class MongoDbConnector extends BaseSourceConnector {
         this.config = config;
         this.connectionContext = new ConnectionContext(config);
 
-        logger.info("Successfully started MongoDB connector, and continuing to discover at {}", connectionContext.maskedConnectionSeed());
+        logger.info("Successfully started MongoDB connector, and continuing to discover at {}", connectionContext.getMaskedConnectionString());
     }
 
     @Override
@@ -155,7 +155,7 @@ public class MongoDbConnector extends BaseSourceConnector {
                 && connectionStringValue.errorMessages().isEmpty()) {
             // Try to connect to the database ...
             ConnectionContext connContext = new ConnectionContext(config);
-            try (MongoClient client = connContext.connect()) {
+            try (MongoClient client = connContext.getMongoClient()) {
                 client.listDatabaseNames().first(); // only when we try to fetch results a connection gets established
             }
             catch (MongoException e) {
@@ -173,18 +173,11 @@ public class MongoDbConnector extends BaseSourceConnector {
     @SuppressWarnings("unchecked")
     @Override
     public List<CollectionId> getMatchingCollections(Configuration config) {
-        try (MongoDbConnection connection = getConnection(config)) {
+        try (MongoDbConnection connection = MongoDbConnection.create(config)) {
             return connection.collections();
         }
         catch (InterruptedException e) {
             throw new DebeziumException(e);
         }
-    }
-
-    private MongoDbConnection getConnection(Configuration config) {
-        MongoDbTaskContext context = new MongoDbTaskContext(config);
-        return context.getConnectionContext().connect(context.getConnectionContext().connectionString(), context.filters(), (s, throwable) -> {
-            throw new DebeziumException(s, throwable);
-        });
     }
 }

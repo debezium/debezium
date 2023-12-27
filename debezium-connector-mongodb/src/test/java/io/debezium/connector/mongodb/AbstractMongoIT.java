@@ -5,8 +5,6 @@
  */
 package io.debezium.connector.mongodb;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -29,7 +27,6 @@ public abstract class AbstractMongoIT {
     protected static MongoDbDeployment mongo;
 
     protected Configuration config;
-    protected MongoDbTaskContext context;
     protected MongoDbConnection connection;
 
     @BeforeClass
@@ -72,8 +69,6 @@ public abstract class AbstractMongoIT {
      * A method that will initialize the state after the configuration is changed.
      */
     private void initialize() {
-        context = new MongoDbTaskContext(config);
-        assertThat(context.getConnectionContext().connectionSeed()).isNotEmpty();
-        connection = context.connect(TestHelper.connectionErrorHandler(3));
+        connection = MongoDbConnection.create(config, TestHelper.connectionErrorHandler(3));
     }
 }

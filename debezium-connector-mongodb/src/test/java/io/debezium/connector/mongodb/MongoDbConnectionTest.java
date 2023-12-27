@@ -17,12 +17,10 @@ import io.debezium.connector.mongodb.connection.ConnectionContext;
  * @author Randall Hauch
  *
  */
-public class MongoDbConnectorWithConnectionStringIT extends AbstractMongoConnectorIT {
+public class MongoDbConnectionTest {
 
     private Configuration getConfig(String connectionString, boolean ssl) {
-        var properties = TestHelper.getConfiguration(mongo).asProperties();
-
-        return Configuration.from(properties).edit()
+        return TestHelper.getConfiguration(connectionString).edit()
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
@@ -33,10 +31,10 @@ public class MongoDbConnectorWithConnectionStringIT extends AbstractMongoConnect
 
     @Test
     public void shouldMaskCredentials() {
-        config = getConfig("mongodb://admin:password@localhost:27017/", false);
+        var config = getConfig("mongodb://admin:password@localhost:27017/", false);
         var connectionContext = new ConnectionContext(config);
 
-        var masked = connectionContext.maskedConnectionSeed();
+        var masked = connectionContext.getMaskedConnectionString();
         assertThat(masked).isEqualTo("mongodb://***:***@localhost:27017/");
     }
 }
