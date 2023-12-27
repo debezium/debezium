@@ -92,8 +92,8 @@ public final class MongoDbConnection implements AutoCloseable {
         return new MongoDbConnection(configuration, errorHandler);
     }
 
-    public MongoClient connect() {
-        return connectionContext.getClientFactory().client(connectorConfig.getConnectionString());
+    public MongoClient getMongoClient() {
+        return connectionContext.getMongoClient();
     }
 
     /**
@@ -119,7 +119,7 @@ public final class MongoDbConnection implements AutoCloseable {
     public <T> T execute(String desc, BlockingFunction<MongoClient, T> operation) throws InterruptedException {
         final Metronome errorMetronome = Metronome.sleeper(PAUSE_AFTER_ERROR, Clock.SYSTEM);
         while (true) {
-            try (var client = connect()) {
+            try (var client = getMongoClient()) {
                 return operation.apply(client);
             }
             catch (InterruptedException e) {

@@ -6,6 +6,7 @@
 package io.debezium.connector.mongodb.connection;
 
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
@@ -17,7 +18,6 @@ import com.mongodb.client.MongoClient;
 import com.mongodb.connection.ClusterDescription;
 import com.mongodb.connection.ClusterType;
 
-import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig;
 import io.debezium.connector.mongodb.MongoUtil;
@@ -137,19 +137,22 @@ public class ConnectionContext {
         return shardNames;
     }
 
-    public ConnectionString resolveTaskConnectionString() {
-        var clusterDescription = getClusterDescription();
+    /**
+     * @return Value specified by {@link ConnectionString#getRequiredReplicaSetName()} or empty optional
+     */
+    public Optional<String> getRequiredReplicaSetName() {
+        return Optional.of(getConnectionString()).map(ConnectionString::getRequiredReplicaSetName);
+    }
 
-        if (clusterDescription.getType() == ClusterType.SHARDED) {
-            LOGGER.info("Cluster identified as sharded cluster");
-            return getConnectionString();
+    /**
+     * Determines if RS name is specified when required
+     *
+     * @return False if RS name is not specified, and we are connected to sharded cluster. True otherwise
+     */
+    public boolean hasRequiredReplicaSetName() {
+        if (getRequiredReplicaSetName().isPresent()) {
+            return true;
         }
-
-        if (clusterDescription.getType() == ClusterType.REPLICA_SET) {
-            LOGGER.info("Cluster identified as replicaSet");
-            return MongoUtil.ensureReplicaSetName(getConnectionString(), clusterDescription);
-
-        }
-        throw new DebeziumException("Unable to determine cluster type");
+        return getClusterDescription().getType() == ClusterType.SHARDED;
     }
 }

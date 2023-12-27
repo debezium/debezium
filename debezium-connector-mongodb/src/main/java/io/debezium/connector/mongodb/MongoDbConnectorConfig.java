@@ -747,6 +747,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
     protected static final Field TASK_ID = Field.create("mongodb.task.id")
             .withDescription("Internal use only")
+            .withDefault(0)
             .withValidation(Field::isInteger)
             .withInvisibleRecommender();
 
