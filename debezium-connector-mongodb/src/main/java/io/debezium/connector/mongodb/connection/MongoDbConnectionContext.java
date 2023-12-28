@@ -26,9 +26,9 @@ import io.debezium.connector.mongodb.MongoUtil;
  * @author Randall Hauch
  *
  */
-public class ConnectionContext {
+public class MongoDbConnectionContext {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(ConnectionContext.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbConnectionContext.class);
 
     private final MongoDbConnectorConfig connectorConfig;
     private final MongoDbClientFactory clientFactory;
@@ -36,7 +36,7 @@ public class ConnectionContext {
     /**
      * @param config the configuration
      */
-    public ConnectionContext(Configuration config) {
+    public MongoDbConnectionContext(Configuration config) {
         this.connectorConfig = new MongoDbConnectorConfig(config);
 
         // Set up the client pool so that it ...

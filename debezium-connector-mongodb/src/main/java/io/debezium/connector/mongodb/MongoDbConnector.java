@@ -23,8 +23,9 @@ import com.mongodb.client.MongoClient;
 import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.BaseSourceConnector;
-import io.debezium.connector.mongodb.connection.ConnectionContext;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
+import io.debezium.connector.mongodb.connection.MongoDbConnectionContext;
+import io.debezium.connector.mongodb.connection.MongoDbConnections;
 
 /**
  * A Kafka Connect source connector that creates tasks that read the MongoDB change stream and generate the corresponding
@@ -104,7 +105,7 @@ public class MongoDbConnector extends BaseSourceConnector {
     }
 
     public void validateConnection(Configuration config, ConfigValue connectionStringValidation) {
-        ConnectionContext connectionContext = new ConnectionContext(config);
+        MongoDbConnectionContext connectionContext = new MongoDbConnectionContext(config);
 
         try {
             // Check base connection by accessing first database name
@@ -131,7 +132,7 @@ public class MongoDbConnector extends BaseSourceConnector {
     @SuppressWarnings("unchecked")
     @Override
     public List<CollectionId> getMatchingCollections(Configuration config) {
-        try (MongoDbConnection connection = MongoDbConnection.create(config)) {
+        try (MongoDbConnection connection = MongoDbConnections.create(config)) {
             return connection.collections();
         }
         catch (InterruptedException e) {

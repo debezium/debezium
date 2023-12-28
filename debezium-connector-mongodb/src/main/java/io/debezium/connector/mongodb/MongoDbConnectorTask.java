@@ -24,7 +24,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
-import io.debezium.connector.mongodb.connection.ConnectionContext;
+import io.debezium.connector.mongodb.connection.MongoDbConnectionContext;
 import io.debezium.connector.mongodb.metrics.MongoDbChangeEventSourceMetricsFactory;
 import io.debezium.document.DocumentReader;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
@@ -62,7 +62,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
     private volatile ChangeEventQueue<DataChangeEvent> queue;
     private volatile String taskName;
     private volatile MongoDbTaskContext taskContext;
-    private volatile ConnectionContext connectionContext;
+    private volatile MongoDbConnectionContext connectionContext;
     private volatile ErrorHandler errorHandler;
     private volatile MongoDbSchema schema;
 
@@ -78,7 +78,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
 
         this.taskName = "task" + config.getInteger(MongoDbConnectorConfig.TASK_ID);
         this.taskContext = new MongoDbTaskContext(config);
-        this.connectionContext = new ConnectionContext(config);
+        this.connectionContext = new MongoDbConnectionContext(config);
 
         final Schema structSchema = connectorConfig.getSourceInfoStructMaker().schema();
         this.schema = new MongoDbSchema(taskContext.getFilters(), taskContext.getTopicNamingStrategy(), structSchema, schemaNameAdjuster);

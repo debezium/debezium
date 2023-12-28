@@ -43,12 +43,10 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
     private final Clock clock;
 
     private final MongoDbTaskContext taskContext;
-    private final MongoDbConnection.ChangeEventSourceConnectionFactory connections;
     private final MongoDbStreamingChangeEventSourceMetrics streamingMetrics;
     private MongoDbOffsetContext effectiveOffset;
 
     public MongoDbStreamingChangeEventSource(MongoDbConnectorConfig connectorConfig, MongoDbTaskContext taskContext,
-                                             MongoDbConnection.ChangeEventSourceConnectionFactory connections,
                                              EventDispatcher<MongoDbPartition, CollectionId> dispatcher,
                                              ErrorHandler errorHandler, Clock clock, MongoDbStreamingChangeEventSourceMetrics streamingMetrics) {
         this.connectorConfig = connectorConfig;
@@ -56,7 +54,6 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         this.errorHandler = errorHandler;
         this.clock = clock;
         this.taskContext = taskContext;
-        this.connections = connections;
         this.streamingMetrics = streamingMetrics;
     }
 
@@ -73,7 +70,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
      */
     @Override
     public void execute(ChangeEventSourceContext context, MongoDbPartition partition, MongoDbOffsetContext offsetContext) {
-        try (MongoDbConnection mongo = connections.get(partition)) {
+        try (MongoDbConnection mongo = taskContext.getConnection(dispatcher, partition)) {
             mongo.execute("Reading change stream", client -> {
                 readChangeStream(client, context, partition);
             });

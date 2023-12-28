@@ -11,13 +11,13 @@ import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
-import io.debezium.connector.mongodb.connection.ConnectionContext;
+import io.debezium.connector.mongodb.connection.MongoDbConnectionContext;
 
 /**
  * @author Randall Hauch
  *
  */
-public class MongoDbConnectionTest {
+public class MongoDbConnectionContextTest {
 
     private Configuration getConfig(String connectionString, boolean ssl) {
         return TestHelper.getConfiguration(connectionString).edit()
@@ -32,7 +32,7 @@ public class MongoDbConnectionTest {
     @Test
     public void shouldMaskCredentials() {
         var config = getConfig("mongodb://admin:password@localhost:27017/", false);
-        var connectionContext = new ConnectionContext(config);
+        var connectionContext = new MongoDbConnectionContext(config);
 
         var masked = connectionContext.getMaskedConnectionString();
         assertThat(masked).isEqualTo("mongodb://***:***@localhost:27017/");

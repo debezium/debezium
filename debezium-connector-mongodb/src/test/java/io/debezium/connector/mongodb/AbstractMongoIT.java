@@ -16,6 +16,7 @@ import com.mongodb.client.MongoClients;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
+import io.debezium.connector.mongodb.connection.MongoDbConnections;
 import io.debezium.connector.mongodb.junit.MongoDbDatabaseProvider;
 import io.debezium.testing.testcontainers.MongoDbDeployment;
 import io.debezium.testing.testcontainers.util.DockerUtils;
@@ -69,6 +70,6 @@ public abstract class AbstractMongoIT {
      * A method that will initialize the state after the configuration is changed.
      */
     private void initialize() {
-        connection = MongoDbConnection.create(config, TestHelper.connectionErrorHandler(3));
+        connection = MongoDbConnections.create(config, TestHelper.connectionErrorHandler(3));
     }
 }

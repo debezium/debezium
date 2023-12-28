@@ -12,6 +12,8 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig.CaptureMode;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
+import io.debezium.connector.mongodb.connection.MongoDbConnections;
+import io.debezium.pipeline.EventDispatcher;
 import io.debezium.spi.topic.TopicNamingStrategy;
 
 /**
@@ -69,7 +71,14 @@ public class MongoDbTaskContext extends CdcSourceTaskContext {
         return connectorConfig.getCaptureMode();
     }
 
-    public MongoDbConnection getConnection(MongoDbConnection.ErrorHandler errorHandler) {
-        return MongoDbConnection.create(config, errorHandler);
+    /**
+     * Obtains instances of {@link MongoDbConnection} which should be used in event sources
+     *
+     * @param dispatcher event dispatcher
+     * @param partition MongoDB partition
+     * @return instance of {@link MongoDbConnection}
+     */
+    public MongoDbConnection getConnection(EventDispatcher<MongoDbPartition, CollectionId> dispatcher, MongoDbPartition partition) {
+        return MongoDbConnections.create(config, dispatcher, partition);
     }
 }
