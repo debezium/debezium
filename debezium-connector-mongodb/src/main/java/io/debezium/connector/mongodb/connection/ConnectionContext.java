@@ -39,43 +39,29 @@ public class ConnectionContext {
     public ConnectionContext(Configuration config) {
         this.connectorConfig = new MongoDbConnectorConfig(config);
 
-        final MongoDbAuthProvider authProvider = config.getInstance(MongoDbConnectorConfig.AUTH_PROVIDER_CLASS, MongoDbAuthProvider.class);
-        final boolean useSSL = config.getBoolean(MongoDbConnectorConfig.SSL_ENABLED);
-        final boolean sslAllowInvalidHostnames = config.getBoolean(MongoDbConnectorConfig.SSL_ALLOW_INVALID_HOSTNAMES);
-
-        final int connectTimeoutMs = config.getInteger(MongoDbConnectorConfig.CONNECT_TIMEOUT_MS);
-        final int heartbeatFrequencyMs = config.getInteger(MongoDbConnectorConfig.HEARTBEAT_FREQUENCY_MS);
-        final int socketTimeoutMs = config.getInteger(MongoDbConnectorConfig.SOCKET_TIMEOUT_MS);
-        final int serverSelectionTimeoutMs = config.getInteger(MongoDbConnectorConfig.SERVER_SELECTION_TIMEOUT_MS);
-
-        authProvider.init(config);
-
         // Set up the client pool so that it ...
+        connectorConfig.getAuthProvider().init(config);
         clientFactory = MongoDbClientFactory.create(settings -> {
             settings.applyToSocketSettings(builder -> builder
-                    .connectTimeout(connectTimeoutMs, TimeUnit.MILLISECONDS)
-                    .readTimeout(socketTimeoutMs, TimeUnit.MILLISECONDS))
+                    .connectTimeout(connectorConfig.getConnectTimeoutMs(), TimeUnit.MILLISECONDS)
+                    .readTimeout(connectorConfig.getSocketTimeoutMs(), TimeUnit.MILLISECONDS))
                     .applyToClusterSettings(
-                            builder -> builder.serverSelectionTimeout(serverSelectionTimeoutMs, TimeUnit.MILLISECONDS))
+                            builder -> builder.serverSelectionTimeout(connectorConfig.getServerSelectionTimeoutMs(), TimeUnit.MILLISECONDS))
                     .applyToServerSettings(
-                            builder -> builder.heartbeatFrequency(heartbeatFrequencyMs, TimeUnit.MILLISECONDS));
+                            builder -> builder.heartbeatFrequency(connectorConfig.getHeartbeatFrequencyMs(), TimeUnit.MILLISECONDS));
 
-            authProvider.addAuthConfig(settings);
+            connectorConfig.getAuthProvider().addAuthConfig(settings);
 
-            if (useSSL) {
+            if (connectorConfig.isSslEnabled()) {
                 settings.applyToSslSettings(
-                        builder -> builder.enabled(true).invalidHostNameAllowed(sslAllowInvalidHostnames));
+                        builder -> builder.enabled(true).invalidHostNameAllowed(connectorConfig.isSslAllowInvalidHostnames()));
             }
 
-            settings.applyToSocketSettings(builder -> builder.connectTimeout(connectTimeoutMs, TimeUnit.MILLISECONDS)
-                    .readTimeout(socketTimeoutMs, TimeUnit.MILLISECONDS))
+            settings.applyToSocketSettings(builder -> builder.connectTimeout(connectorConfig.getConnectTimeoutMs(), TimeUnit.MILLISECONDS)
+                    .readTimeout(connectorConfig.getSocketTimeoutMs(), TimeUnit.MILLISECONDS))
                     .applyToClusterSettings(
-                            builder -> builder.serverSelectionTimeout(serverSelectionTimeoutMs, TimeUnit.MILLISECONDS));
+                            builder -> builder.serverSelectionTimeout(connectorConfig.getServerSelectionTimeoutMs(), TimeUnit.MILLISECONDS));
         });
-    }
-
-    public MongoDbClientFactory getClientFactory() {
-        return clientFactory;
     }
 
     public MongoDbConnectorConfig getConnectorConfig() {

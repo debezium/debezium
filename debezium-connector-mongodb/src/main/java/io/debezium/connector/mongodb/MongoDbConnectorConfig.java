@@ -32,6 +32,7 @@ import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.connector.mongodb.connection.ConnectionStrings;
 import io.debezium.connector.mongodb.connection.DefaultMongoDbAuthProvider;
+import io.debezium.connector.mongodb.connection.MongoDbAuthProvider;
 import io.debezium.data.Envelope;
 import io.debezium.schema.DefaultTopicNamingStrategy;
 import io.debezium.spi.schema.DataCollectionId;
@@ -890,6 +891,13 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     private final int snapshotMaxThreads;
     private final int cursorMaxAwaitTimeMs;
     private final ConnectionString connectionString;
+    private final MongoDbAuthProvider authProvider;
+    private final boolean sslEnabled;
+    private final boolean sslAllowInvalidHostnames;
+    private final int connectTimeoutMs;
+    private final int heartbeatFrequencyMs;
+    private final int socketTimeoutMs;
+    private final int serverSelectionTimeoutMs;
     private final CursorPipelineOrder cursorPipelineOrder;
     private final OversizeHandlingMode oversizeHandlingMode;
     private final FiltersMatchMode filtersMatchMode;
@@ -898,6 +906,17 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     public MongoDbConnectorConfig(Configuration config) {
         super(config, DEFAULT_SNAPSHOT_FETCH_SIZE);
 
+        // Connection configuration
+        this.authProvider = config.getInstance(MongoDbConnectorConfig.AUTH_PROVIDER_CLASS, MongoDbAuthProvider.class);
+        this.sslEnabled = config.getBoolean(MongoDbConnectorConfig.SSL_ENABLED);
+        this.sslAllowInvalidHostnames = config.getBoolean(MongoDbConnectorConfig.SSL_ALLOW_INVALID_HOSTNAMES);
+        this.connectTimeoutMs = config.getInteger(MongoDbConnectorConfig.CONNECT_TIMEOUT_MS);
+        this.heartbeatFrequencyMs = config.getInteger(MongoDbConnectorConfig.HEARTBEAT_FREQUENCY_MS);
+        this.socketTimeoutMs = config.getInteger(MongoDbConnectorConfig.SOCKET_TIMEOUT_MS);
+        this.serverSelectionTimeoutMs = config.getInteger(MongoDbConnectorConfig.SERVER_SELECTION_TIMEOUT_MS);
+        this.connectionString = resolveConnectionString(config);
+
+        // Other configuration
         String snapshotModeValue = config.getString(MongoDbConnectorConfig.SNAPSHOT_MODE);
         this.snapshotMode = SnapshotMode.parse(snapshotModeValue, MongoDbConnectorConfig.SNAPSHOT_MODE.defaultValueAsString());
 
@@ -922,8 +941,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
         this.snapshotMaxThreads = resolveSnapshotMaxThreads(config);
         this.cursorMaxAwaitTimeMs = config.getInteger(MongoDbConnectorConfig.CURSOR_MAX_AWAIT_TIME_MS, 0);
-
-        this.connectionString = resolveConnectionString(config);
     }
 
     private static int validateHosts(Configuration config, Field field, ValidationOutput problems) {
@@ -1108,6 +1125,38 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         return connectionString;
     }
 
+    public int getCursorMaxAwaitTimeMs() {
+        return cursorMaxAwaitTimeMs;
+    }
+
+    public MongoDbAuthProvider getAuthProvider() {
+        return authProvider;
+    }
+
+    public boolean isSslEnabled() {
+        return sslEnabled;
+    }
+
+    public boolean isSslAllowInvalidHostnames() {
+        return sslAllowInvalidHostnames;
+    }
+
+    public int getConnectTimeoutMs() {
+        return connectTimeoutMs;
+    }
+
+    public int getHeartbeatFrequencyMs() {
+        return heartbeatFrequencyMs;
+    }
+
+    public int getSocketTimeoutMs() {
+        return socketTimeoutMs;
+    }
+
+    public int getServerSelectionTimeoutMs() {
+        return serverSelectionTimeoutMs;
+    }
+
     public String getReplicaSetName() {
         return ConnectionStrings.replicaSetName(connectionString);
     }
@@ -1188,7 +1237,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
     private static ConnectionString resolveConnectionString(Configuration config) {
         var connectionString = config.getString(MongoDbConnectorConfig.CONNECTION_STRING);
-        return connectionString != null ? new ConnectionString(connectionString) : null;
+        return new ConnectionString(connectionString);
     }
 
     @Override
