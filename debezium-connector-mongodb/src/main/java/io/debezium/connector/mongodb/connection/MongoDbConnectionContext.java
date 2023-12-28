@@ -14,7 +14,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.mongodb.ConnectionString;
+import com.mongodb.MongoClientSettings;
 import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
 import com.mongodb.connection.ClusterDescription;
 import com.mongodb.connection.ClusterType;
 
@@ -31,37 +33,36 @@ public class MongoDbConnectionContext {
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbConnectionContext.class);
 
     private final MongoDbConnectorConfig connectorConfig;
-    private final MongoDbClientFactory clientFactory;
+    private final MongoClientSettings clientSettings;
 
     /**
      * @param config the configuration
      */
     public MongoDbConnectionContext(Configuration config) {
         this.connectorConfig = new MongoDbConnectorConfig(config);
-
-        // Set up the client pool so that it ...
         connectorConfig.getAuthProvider().init(config);
-        clientFactory = MongoDbClientFactory.create(settings -> {
-            settings.applyToSocketSettings(builder -> builder
-                    .connectTimeout(connectorConfig.getConnectTimeoutMs(), TimeUnit.MILLISECONDS)
-                    .readTimeout(connectorConfig.getSocketTimeoutMs(), TimeUnit.MILLISECONDS))
-                    .applyToClusterSettings(
-                            builder -> builder.serverSelectionTimeout(connectorConfig.getServerSelectionTimeoutMs(), TimeUnit.MILLISECONDS))
-                    .applyToServerSettings(
-                            builder -> builder.heartbeatFrequency(connectorConfig.getHeartbeatFrequencyMs(), TimeUnit.MILLISECONDS));
 
-            connectorConfig.getAuthProvider().addAuthConfig(settings);
+        var settings = MongoClientSettings.builder()
+                .applyToSocketSettings(builder -> builder
+                        .connectTimeout(connectorConfig.getConnectTimeoutMs(), TimeUnit.MILLISECONDS)
+                        .readTimeout(connectorConfig.getSocketTimeoutMs(), TimeUnit.MILLISECONDS))
+                .applyToClusterSettings(
+                        builder -> builder.serverSelectionTimeout(connectorConfig.getServerSelectionTimeoutMs(), TimeUnit.MILLISECONDS))
+                .applyToServerSettings(builder -> builder
+                        .heartbeatFrequency(connectorConfig.getHeartbeatFrequencyMs(), TimeUnit.MILLISECONDS))
+                .applyToSocketSettings(builder -> builder
+                        .connectTimeout(connectorConfig.getConnectTimeoutMs(), TimeUnit.MILLISECONDS)
+                        .readTimeout(connectorConfig.getSocketTimeoutMs(), TimeUnit.MILLISECONDS))
+                .applyToClusterSettings(builder -> builder
+                        .serverSelectionTimeout(connectorConfig.getServerSelectionTimeoutMs(), TimeUnit.MILLISECONDS))
+                .applyToSslSettings(builder -> builder
+                        .enabled(connectorConfig.isSslEnabled())
+                        .invalidHostNameAllowed(connectorConfig.isSslAllowInvalidHostnames()));
 
-            if (connectorConfig.isSslEnabled()) {
-                settings.applyToSslSettings(
-                        builder -> builder.enabled(true).invalidHostNameAllowed(connectorConfig.isSslAllowInvalidHostnames()));
-            }
-
-            settings.applyToSocketSettings(builder -> builder.connectTimeout(connectorConfig.getConnectTimeoutMs(), TimeUnit.MILLISECONDS)
-                    .readTimeout(connectorConfig.getSocketTimeoutMs(), TimeUnit.MILLISECONDS))
-                    .applyToClusterSettings(
-                            builder -> builder.serverSelectionTimeout(connectorConfig.getServerSelectionTimeoutMs(), TimeUnit.MILLISECONDS));
-        });
+        this.clientSettings = connectorConfig.getAuthProvider()
+                .addAuthConfig(settings)
+                .applyConnectionString(connectorConfig.getConnectionString())
+                .build();
     }
 
     public MongoDbConnectorConfig getConnectorConfig() {
@@ -87,7 +88,7 @@ public class MongoDbConnectionContext {
      * @return mongo client
      */
     public MongoClient getMongoClient() {
-        return clientFactory.client(getConnectionString());
+        return MongoClients.create(clientSettings);
     }
 
     public ClusterDescription getClusterDescription() {
