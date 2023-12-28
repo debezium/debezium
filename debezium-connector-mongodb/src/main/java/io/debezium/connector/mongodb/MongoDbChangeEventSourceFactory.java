@@ -5,14 +5,11 @@
  */
 package io.debezium.connector.mongodb;
 
-import static io.debezium.connector.mongodb.connection.MongoDbConnection.AUTHORIZATION_FAILURE_MESSAGE;
-
 import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.DebeziumException;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.connector.mongodb.metrics.MongoDbStreamingChangeEventSourceMetrics;
 import io.debezium.connector.mongodb.snapshot.MongoDbIncrementalSnapshotChangeEventSource;
@@ -43,7 +40,6 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
     private final EventDispatcher<MongoDbPartition, CollectionId> dispatcher;
     private final Clock clock;
     private final MongoDbTaskContext taskContext;
-    private final MongoDbConnection.ChangeEventSourceConnectionFactory connections;
     private final MongoDbSchema schema;
     private final MongoDbStreamingChangeEventSourceMetrics streamingMetrics;
 
@@ -56,7 +52,6 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
         this.dispatcher = dispatcher;
         this.clock = clock;
         this.taskContext = taskContext;
-        this.connections = createMongoDbConnectionFactory(taskContext);
         this.schema = schema;
         this.streamingMetrics = streamingMetrics;
     }
@@ -67,7 +62,6 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
         return new MongoDbSnapshotChangeEventSource(
                 configuration,
                 taskContext,
-                connections,
                 dispatcher,
                 clock,
                 snapshotProgressListener,
@@ -80,7 +74,6 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
         return new MongoDbStreamingChangeEventSource(
                 configuration,
                 taskContext,
-                connections,
                 dispatcher,
                 errorHandler,
                 clock,
@@ -96,7 +89,6 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
         final MongoDbIncrementalSnapshotChangeEventSource incrementalSnapshotChangeEventSource = new MongoDbIncrementalSnapshotChangeEventSource(
                 configuration,
                 taskContext,
-                connections,
                 dispatcher,
                 schema,
                 clock,
@@ -104,20 +96,5 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
                 dataChangeEventListener,
                 notificationService);
         return Optional.of(incrementalSnapshotChangeEventSource);
-    }
-
-    public MongoDbConnection.ChangeEventSourceConnectionFactory createMongoDbConnectionFactory(MongoDbTaskContext taskContext) {
-        return (MongoDbPartition partition) -> taskContext.getConnection(connectionErrorHandler(partition));
-    }
-
-    private MongoDbConnection.ErrorHandler connectionErrorHandler(MongoDbPartition partition) {
-        return (String desc, Throwable error) -> {
-            if (error.getMessage() == null || !error.getMessage().startsWith(AUTHORIZATION_FAILURE_MESSAGE)) {
-                dispatcher.dispatchConnectorEvent(partition, new DisconnectEvent());
-            }
-
-            LOGGER.error("Error while attempting to {}: {}", desc, error.getMessage(), error);
-            throw new DebeziumException("Error while attempting to " + desc, error);
-        };
     }
 }

@@ -67,21 +67,18 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
 
     private final MongoDbConnectorConfig connectorConfig;
     private final MongoDbTaskContext taskContext;
-    private final MongoDbConnection.ChangeEventSourceConnectionFactory connections;
     private final EventDispatcher<MongoDbPartition, CollectionId> dispatcher;
     private final Clock clock;
     private final SnapshotProgressListener<MongoDbPartition> snapshotProgressListener;
     private final ErrorHandler errorHandler;
 
     public MongoDbSnapshotChangeEventSource(MongoDbConnectorConfig connectorConfig, MongoDbTaskContext taskContext,
-                                            MongoDbConnection.ChangeEventSourceConnectionFactory connections,
                                             EventDispatcher<MongoDbPartition, CollectionId> dispatcher, Clock clock,
                                             SnapshotProgressListener<MongoDbPartition> snapshotProgressListener, ErrorHandler errorHandler,
                                             NotificationService<MongoDbPartition, MongoDbOffsetContext> notificationService) {
         super(connectorConfig, snapshotProgressListener, notificationService);
         this.connectorConfig = connectorConfig;
         this.taskContext = taskContext;
-        this.connections = connections;
         this.dispatcher = dispatcher;
         this.clock = clock;
         this.snapshotProgressListener = snapshotProgressListener;
@@ -154,7 +151,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
 
     private void doSnapshot(ChangeEventSourceContext sourceCtx, MongoDbSnapshotContext snapshotCtx, SnapshottingTask snapshottingTask)
             throws InterruptedException {
-        try (MongoDbConnection mongo = connections.get(snapshotCtx.partition)) {
+        try (MongoDbConnection mongo = taskContext.getConnection(dispatcher, snapshotCtx.partition)) {
             initSnapshotStartOffsets(snapshotCtx, mongo);
             SnapshotReceiver<MongoDbPartition> snapshotReceiver = dispatcher.getSnapshotChangeEventReceiver();
             snapshotCtx.offset.preSnapshotStart();
@@ -191,7 +188,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
             return false;
         }
 
-        try (MongoDbConnection mongo = connections.get(partition)) {
+        try (MongoDbConnection mongo = taskContext.getConnection(dispatcher, partition)) {
             return mongo.execute("Checking change stream", client -> {
                 ChangeStreamIterable<BsonDocument> stream = MongoUtil.openChangeStream(client, taskContext);
                 stream.resumeAfter(token);

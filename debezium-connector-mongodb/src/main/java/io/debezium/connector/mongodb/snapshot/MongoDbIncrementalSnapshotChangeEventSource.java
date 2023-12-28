@@ -83,8 +83,6 @@ public class MongoDbIncrementalSnapshotChangeEventSource
     private final SnapshotProgressListener<MongoDbPartition> progressListener;
     private final DataChangeEventListener<MongoDbPartition> dataListener;
     private long totalRowsScanned = 0;
-    private final MongoDbConnection.ChangeEventSourceConnectionFactory connections;
-
     private MongoDbCollectionSchema currentCollection;
 
     protected EventDispatcher<MongoDbPartition, CollectionId> dispatcher;
@@ -99,7 +97,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
     private final ExecutorService incrementalSnapshotThreadPool;
 
     public MongoDbIncrementalSnapshotChangeEventSource(MongoDbConnectorConfig config,
-                                                       MongoDbTaskContext taskContext, MongoDbConnection.ChangeEventSourceConnectionFactory connections,
+                                                       MongoDbTaskContext taskContext,
                                                        EventDispatcher<MongoDbPartition, CollectionId> dispatcher,
                                                        MongoDbSchema collectionSchema,
                                                        Clock clock,
@@ -108,7 +106,6 @@ public class MongoDbIncrementalSnapshotChangeEventSource
                                                        NotificationService<MongoDbPartition, ? extends OffsetContext> notificationService) {
         this.connectorConfig = config;
         this.taskContext = taskContext;
-        this.connections = connections;
         this.dispatcher = dispatcher;
         this.collectionSchema = collectionSchema;
         this.clock = clock;
@@ -249,7 +246,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
     @Override
     @SuppressWarnings("unchecked")
     public void init(MongoDbPartition partition, OffsetContext offsetContext) {
-        mongo = connections.get(partition);
+        mongo = taskContext.getConnection(dispatcher, partition);
 
         if (offsetContext == null) {
             LOGGER.info("Empty incremental snapshot change event source started, no action needed");

@@ -13,6 +13,8 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.bson.BsonTimestamp;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.mongodb.client.MongoClient;
 
@@ -21,7 +23,6 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.CollectionId;
 import io.debezium.connector.mongodb.Filters;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig;
-import io.debezium.connector.mongodb.MongoDbPartition;
 import io.debezium.connector.mongodb.MongoUtil;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.function.BlockingFunction;
@@ -34,6 +35,7 @@ import io.debezium.util.Metronome;
  */
 public final class MongoDbConnection implements AutoCloseable {
 
+    public static final Logger LOGGER = LoggerFactory.getLogger(MongoDbConnection.class);
     public static final String AUTHORIZATION_FAILURE_MESSAGE = "Command failed with error 13";
 
     @FunctionalInterface
@@ -45,21 +47,6 @@ public final class MongoDbConnection implements AutoCloseable {
          */
         void onError(String desc, Throwable error);
     }
-
-    @FunctionalInterface
-    public interface ChangeEventSourceConnectionFactory {
-        /**
-         * Create connection for given replica set and partition
-         *
-         * @param partition      database partition
-         * @return connection based on given parameters
-         */
-        MongoDbConnection get(MongoDbPartition partition);
-    }
-
-    public static ErrorHandler DEFAULT_ERROR_HANDLER = (s, throwable) -> {
-        throw new DebeziumException(s, throwable);
-    };
 
     /**
      * A pause between failed MongoDB operations to prevent CPU throttling and DoS of
@@ -73,23 +60,14 @@ public final class MongoDbConnection implements AutoCloseable {
     private final String name;
     private final MongoDbConnectorConfig connectorConfig;
 
-    private final ConnectionContext connectionContext;
+    private final MongoDbConnectionContext connectionContext;
 
-    private MongoDbConnection(Configuration config, ErrorHandler errorHandler) {
-        this.connectionContext = new ConnectionContext(config);
+    MongoDbConnection(Configuration config, ErrorHandler errorHandler) {
+        this.connectionContext = new MongoDbConnectionContext(config);
         this.connectorConfig = connectionContext.getConnectorConfig();
         this.name = ConnectionStrings.replicaSetName(connectionContext.getConnectionString());
         this.filters = new Filters(config);
         this.errorHandler = errorHandler;
-    }
-
-    public static MongoDbConnection create(Configuration configuration) {
-        return new MongoDbConnection(configuration, DEFAULT_ERROR_HANDLER);
-
-    }
-
-    public static MongoDbConnection create(Configuration configuration, ErrorHandler errorHandler) {
-        return new MongoDbConnection(configuration, errorHandler);
     }
 
     public MongoClient getMongoClient() {

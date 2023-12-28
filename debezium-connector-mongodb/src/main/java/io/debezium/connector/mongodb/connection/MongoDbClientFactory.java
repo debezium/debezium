@@ -19,7 +19,7 @@ import io.debezium.annotation.ThreadSafe;
  * @author Randall Hauch
  */
 @ThreadSafe
-public final class MongoDbClientFactory {
+final class MongoDbClientFactory {
 
     private final MongoClientSettings defaultSettings;
 
