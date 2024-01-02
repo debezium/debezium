@@ -1971,7 +1971,7 @@ composite_hash_partitions
     ;
 
 reference_partitioning
-    : PARTITION BY REFERENCE '(' regular_id ')'
+    : PARTITION BY REFERENCE '(' column_name ')'
              ('(' reference_partition_desc (',' reference_partition_desc)* ')')?
     ;
 
