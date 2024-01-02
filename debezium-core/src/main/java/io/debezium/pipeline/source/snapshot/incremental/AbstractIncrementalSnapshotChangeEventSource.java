@@ -323,6 +323,9 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     }
 
     protected void readChunk(P partition, OffsetContext offsetContext) throws InterruptedException {
+
+        LOGGER.trace("Reading chunk");
+
         if (!context.snapshotRunning()) {
             LOGGER.info("Skipping read chunk because snapshot is not running");
             postIncrementalSnapshotCompleted();
@@ -338,7 +341,10 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             jdbcConnection.commit();
             context.startNewChunk();
             emitWindowOpen();
+            LOGGER.trace("Window open emitted");
             while (context.snapshotRunning()) {
+
+                LOGGER.trace("Checking if current table is invalid");
                 if (isTableInvalid(partition, offsetContext)) {
                     continue;
                 }
@@ -406,6 +412,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                 }
             }
             emitWindowClose(partition, offsetContext);
+            LOGGER.trace("Window close emitted");
         }
         catch (Exception e) {
             throw new DebeziumException(String.format("Database error while executing incremental snapshot for table '%s'", context.currentDataCollectionId()), e);
@@ -502,6 +509,8 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         boolean shouldReadChunk = !context.snapshotRunning();
 
         List<String> expandedDataCollectionIds = expandAndDedupeDataCollectionIds(snapshotConfiguration.getDataCollections());
+        LOGGER.trace("Configured data collections {}", snapshotConfiguration.getDataCollections());
+        LOGGER.trace("Expanded data collections {}", expandedDataCollectionIds);
         if (expandedDataCollectionIds.size() > snapshotConfiguration.getDataCollections().size()) {
             LOGGER.info("Data-collections to snapshot have been expanded from {} to {}", snapshotConfiguration.getDataCollections(), expandedDataCollectionIds);
         }
@@ -513,6 +522,8 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
 
             List<T> monitoredDataCollections = newDataCollectionIds.stream()
                     .map(DataCollection::getId).collect(Collectors.toList());
+            LOGGER.trace("Monitored data collections {}", newDataCollectionIds);
+
             progressListener.snapshotStarted(partition);
 
             notificationService.incrementalSnapshotNotificationService().notifyStarted(context, partition, offsetContext);
@@ -780,6 +791,8 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     }
 
     protected void preReadChunk(IncrementalSnapshotContext<T> context) {
+
+        LOGGER.trace("Pre read chunk");
         try {
             if (!jdbcConnection.isValid()) {
                 jdbcConnection.connect();
