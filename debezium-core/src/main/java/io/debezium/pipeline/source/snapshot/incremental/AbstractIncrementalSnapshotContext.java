@@ -241,6 +241,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
     public List<DataCollection<T>> addDataCollectionNamesToSnapshot(String correlationId, List<String> dataCollectionIds, List<AdditionalCondition> additionalCondition,
                                                                     String surrogateKey) {
 
+        LOGGER.trace("Adding data collections names {} to snapshot", dataCollectionIds);
         final List<DataCollection<T>> newDataCollectionIds = dataCollectionIds.stream()
                 .map(buildDataCollection(additionalCondition, surrogateKey))
                 .collect(Collectors.toList());
