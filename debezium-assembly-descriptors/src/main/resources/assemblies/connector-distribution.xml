@@ -14,13 +14,18 @@
           <unpack>false</unpack>
           <scope>runtime</scope>
           <useProjectArtifact>false</useProjectArtifact>
-          <useTransitiveFiltering>true</useTransitiveFiltering>
+          <useTransitiveFiltering>false</useTransitiveFiltering>
           <excludes>
               <!-- Exclude dependencies of Kafka APIs, since they will be available in the runtime -->
               <exclude>com.fasterxml.jackson.core:jackson-core:*</exclude>
               <exclude>com.fasterxml.jackson.core:jackson-databind:*</exclude>
               <exclude>com.fasterxml.jackson.core:jackson-annotations:*</exclude>
               <exclude>com.fasterxml.jackson.datatype:jackson-datatype-jsr310:*</exclude>
+              <exclude>io.debezium:debezium-api:*</exclude>
+              <exclude>io.debezium:debezium-core:*</exclude>
+              <exclude>io.debezium:debezium-ddl-parser:*</exclude>
+              <exclude>io.debezium:debezium-storage-file:*</exclude>
+              <exclude>io.debezium:debezium-storage-kafka:*</exclude>
 
               <!-- Exclude guava dependencies -->
               <exclude>com.google.guava:listenablefuture:*</exclude>
@@ -28,13 +33,6 @@
               <!-- Exclude dependencies with incorrect scope -->
               <exclude>org.checkerframework:checker-qual:*</exclude>
           </excludes>
-      </dependencySet>
-      <dependencySet>
-          <outputDirectory>${project.artifactId}</outputDirectory>
-          <unpack>false</unpack>
-          <includes>
-              <include>${project.groupId}:${project.artifactId}:*</include>
-          </includes>
       </dependencySet>
   </dependencySets>
   <fileSets>
@@ -58,6 +56,13 @@
           <include>*.json</include>
       </includes>
       <useDefaultExcludes>true</useDefaultExcludes>
+    </fileSet>
+    <fileSet>
+      <directory>${project.basedir}/target</directory>
+      <outputDirectory>${project.artifactId}</outputDirectory>
+      <includes>
+          <include>*-shaded.jar</include>
+      </includes>
     </fileSet>
   </fileSets>
 </assembly>
