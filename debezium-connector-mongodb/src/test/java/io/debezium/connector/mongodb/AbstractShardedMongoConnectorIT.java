@@ -9,7 +9,10 @@ import static io.debezium.connector.mongodb.TestHelper.cleanDatabase;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.Document;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -29,7 +32,9 @@ import com.mongodb.client.model.InsertOneOptions;
 import io.debezium.connector.mongodb.junit.MongoDbDatabaseProvider;
 import io.debezium.connector.mongodb.junit.MongoDbDatabaseVersionResolver;
 import io.debezium.connector.mongodb.junit.MongoDbPlatform;
+import io.debezium.data.Envelope;
 import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.testing.testcontainers.MongoDbDeployment;
 import io.debezium.testing.testcontainers.MongoDbShardedCluster;
 import io.debezium.testing.testcontainers.util.DockerUtils;
 import io.debezium.util.Testing;
@@ -43,6 +48,10 @@ public class AbstractShardedMongoConnectorIT extends AbstractConnectorTest {
     protected static MongoDbShardedCluster mongo;
 
     protected static MongoClient connect() {
+        return connect(mongo);
+    }
+
+    protected static MongoClient connect(MongoDbDeployment mongo) {
         return MongoClients.create(mongo.getConnectionString());
     }
 
@@ -170,5 +179,30 @@ public class AbstractShardedMongoConnectorIT extends AbstractConnectorTest {
             }
         }
         return false;
+    }
+
+    protected void verifyNotFromInitialSync(SourceRecord record) {
+        assertThat(record.sourceOffset().containsKey(SourceInfo.INITIAL_SYNC)).isFalse();
+        Struct value = (Struct) record.value();
+        assertThat(value.getStruct(Envelope.FieldName.SOURCE).getString(SourceInfo.SNAPSHOT_KEY)).isNull();
+    }
+
+    protected void verifyFromInitialSync(SourceRecord record, AtomicBoolean foundLast) {
+        if (record.sourceOffset().containsKey(SourceInfo.INITIAL_SYNC)) {
+            assertThat(record.sourceOffset().containsKey(SourceInfo.INITIAL_SYNC)).isTrue();
+            Struct value = (Struct) record.value();
+            assertThat(value.getStruct(Envelope.FieldName.SOURCE).getString(SourceInfo.SNAPSHOT_KEY)).isEqualTo("true");
+        }
+        else {
+            // Only the last record in the initial sync should be marked as not being part of the initial sync ...
+            assertThat(foundLast.getAndSet(true)).isFalse();
+            Struct value = (Struct) record.value();
+            assertThat(value.getStruct(Envelope.FieldName.SOURCE).getString(SourceInfo.SNAPSHOT_KEY)).isEqualTo("last");
+        }
+    }
+
+    protected void verifyOperation(SourceRecord record, Envelope.Operation expected) {
+        Struct value = (Struct) record.value();
+        assertThat(value.getString(Envelope.FieldName.OPERATION)).isEqualTo(expected.code());
     }
 }

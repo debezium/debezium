@@ -167,6 +167,10 @@ public class MongoDbShardedCluster implements MongoDbDeployment {
                 .collect(joining(","));
     }
 
+    public MongoDbReplicaSet getShard(int i) {
+        return shards.get(i);
+    }
+
     public void enableSharding(String databaseName) {
         // Note: No longer required in 6.0
         // See https://www.mongodb.com/docs/v5.0/reference/method/sh.enableSharding/
