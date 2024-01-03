@@ -152,15 +152,4 @@ public class ShardedMongoDbConnectorIT extends AbstractShardedMongoConnectorIT {
             verifyOperation(record, op);
         });
     }
-
-    protected void verifyNotFromInitialSync(SourceRecord record) {
-        assertThat(record.sourceOffset().containsKey(SourceInfo.INITIAL_SYNC)).isFalse();
-        Struct value = (Struct) record.value();
-        assertThat(value.getStruct(Envelope.FieldName.SOURCE).getString(SourceInfo.SNAPSHOT_KEY)).isNull();
-    }
-
-    protected void verifyOperation(SourceRecord record, Envelope.Operation expected) {
-        Struct value = (Struct) record.value();
-        assertThat(value.getString(Envelope.FieldName.OPERATION)).isEqualTo(expected.code());
-    }
 }

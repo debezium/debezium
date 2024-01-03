@@ -57,6 +57,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.storage.Converter;
 import org.apache.kafka.connect.storage.FileOffsetBackingStore;
 import org.apache.kafka.connect.storage.OffsetStorageReaderImpl;
+import org.apache.kafka.connect.storage.OffsetStorageWriter;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
 import org.junit.After;
@@ -1165,6 +1166,44 @@ public abstract class AbstractConnectorTest implements Testing {
             return offsetReader.offsets(partitions);
         }
         finally {
+            offsetStore.stop();
+        }
+    }
+
+    protected void storeOffsets(Configuration config, Map<Map<String, ?>, Map<String, ?>> offsets) throws InterruptedException {
+        config = config.edit().with(EmbeddedEngineConfig.ENGINE_NAME, "testing-connector")
+                .with(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH)
+                .with(EmbeddedEngineConfig.OFFSET_FLUSH_INTERVAL_MS, 0)
+                .build();
+
+        final String engineName = config.getString(EmbeddedEngineConfig.ENGINE_NAME);
+        Map<String, String> internalConverterConfig = Collections.singletonMap(JsonConverterConfig.SCHEMAS_ENABLE_CONFIG, "false");
+        Converter keyConverter = Instantiator.getInstance(JsonConverter.class.getName());
+        keyConverter.configure(internalConverterConfig, true);
+        Converter valueConverter = Instantiator.getInstance(JsonConverter.class.getName());
+        valueConverter.configure(internalConverterConfig, false);
+
+        // Create the worker config, adding extra fields that are required for validation of a worker config
+        // but that are not used within the embedded engine (since the source records are never serialized) ...
+        Map<String, String> embeddedConfig = config.asMap(EmbeddedEngineConfig.ALL_FIELDS);
+        embeddedConfig.put(WorkerConfig.KEY_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
+        embeddedConfig.put(WorkerConfig.VALUE_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
+        WorkerConfig workerConfig = new EmbeddedConfig(embeddedConfig);
+
+        FileOffsetBackingStore offsetStore = KafkaConnectUtil.fileOffsetBackingStore();
+        offsetStore.configure(workerConfig);
+        offsetStore.start();
+        var latch = new CountDownLatch(1);
+        try {
+            OffsetStorageWriter offsetWriter = new OffsetStorageWriter(offsetStore, engineName, keyConverter, valueConverter);
+            for (var partition : offsets.keySet()) {
+                offsetWriter.offset(partition, offsets.get(partition));
+            }
+            offsetWriter.beginFlush();
+            offsetWriter.doFlush((t, r) -> latch.countDown());
+        }
+        finally {
+            latch.await(10, TimeUnit.SECONDS);
             offsetStore.stop();
         }
     }

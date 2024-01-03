@@ -182,20 +182,22 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
         }
 
         LOGGER.warn("Found at least one shard specific offset from previous run");
+
+        if (shardOffsets.values().stream().anyMatch(Objects::isNull)) {
+            LOGGER.warn("At least one shard is missing previously recorded offset, so empty offset will be used");
+            return offsets;
+        }
+
         if (!connectorConfig.isOffsetInvalidationAllowed()) {
-            LOGGER.warn("Offset invalidation is  not allowed");
+            LOGGER.warn("Offset invalidation is not allowed");
             throw new DebeziumException("Offsets from previous run are invalid, either manually delete them or " +
                     "set '" + MongoDbConnectorConfig.ALLOW_OFFSET_INVALIDATION.name() + "=true' " +
                     "to allow streaming to resume from the oldest shard specific offset");
         }
+
         LOGGER.warn("Offset invalidation is allowed");
-
-        if (shardOffsets.values().stream().anyMatch(Objects::isNull)) {
-            LOGGER.info("At least one shard is missing previously recorded offset, so empty offset will be used");
-            return offsets;
-        }
-
         LOGGER.warn("The oldest shard specific offset will be used");
+
         var oldestOffset = shardOffsets.values()
                 .stream()
                 .filter(offset -> offset.lastTimestampOrTokenTime() != null)
