@@ -55,19 +55,6 @@ public abstract class RecordParser {
     }
 
     /**
-     * Get the value of the data field in the record; may not be null.
-     */
-    public Struct data() {
-        Struct data = new Struct(dataSchema());
-
-        for (Field field : dataSchema.fields()) {
-            data.put(field, record.get(field));
-        }
-
-        return data;
-    }
-
-    /**
      * Get id of a message
      *.
      * @return id of a message
@@ -144,6 +131,19 @@ public abstract class RecordParser {
      */
     public Schema dataSchema() {
         return dataSchema;
+    }
+
+    /**
+     * Get the value of the data field in the record; may not be null.
+     */
+    public Struct data() {
+        Struct data = new Struct(dataSchema());
+
+        for (Field field : dataSchema.fields()) {
+            data.put(field, record.get(field));
+        }
+
+        return data;
     }
 
     /**

@@ -31,5 +31,7 @@ public interface RecordAndMetadata {
 
     SchemaAndValue timestamp();
 
+    String dataSchemaName();
+
     Schema dataSchema(String... dataFields);
 }

@@ -114,7 +114,7 @@ public class CloudEventsConverterIT extends AbstractMongoConnectorIT {
     }
 
     @Test
-    @FixFor({ "DBZ-3642" })
+    @FixFor({ "DBZ-3642", "DBZ-7016" })
     public void shouldConvertToCloudEventsInJsonWithMetadataAndIdAndTypeInHeadersAfterOutboxEventRouter() throws Exception {
         HeaderFrom<SourceRecord> headerFrom = new HeaderFrom.Value<>();
         Map<String, String> headerFromConfig = new LinkedHashMap<>();
@@ -127,7 +127,7 @@ public class CloudEventsConverterIT extends AbstractMongoConnectorIT {
         MongoEventRouter<SourceRecord> outboxEventRouter = new MongoEventRouter<>();
         Map<String, String> outboxEventRouterConfig = new LinkedHashMap<>();
         outboxEventRouterConfig.put("collection.expand.json.payload", "true");
-        // this adds `id` and `type` headers with value from the DB column
+        // this adds `id` and `type` headers with values from the DB columns
         outboxEventRouterConfig.put("collection.fields.additional.placement", "event_type:header:type,id:header:id");
         outboxEventRouter.configure(outboxEventRouterConfig);
 
@@ -141,7 +141,7 @@ public class CloudEventsConverterIT extends AbstractMongoConnectorIT {
                             .append("payload", new Document()
                                     .append("_id", new ObjectId("000000000000000000000000"))
                                     .append("someField1", "some value 1")
-                                    .append("someField2", 7005L)));
+                                    .append("someField2", 7005)));
         }
 
         SourceRecords streamingRecords = consumeRecordsByTopic(1);
@@ -158,6 +158,56 @@ public class CloudEventsConverterIT extends AbstractMongoConnectorIT {
         assertThat(routedEvent.value()).isInstanceOf(Struct.class);
 
         CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithMetadataAndIdAndTypeInHeaders(routedEvent, "mongodb", "mongo1");
+
+        headerFrom.close();
+        outboxEventRouter.close();
+    }
+
+    @Test
+    @FixFor("DBZ-7284")
+    public void shouldConvertToCloudEventsInJsonWithDataAsAvroAndAllMetadataInHeadersAfterOutboxEventRouter() throws Exception {
+        HeaderFrom<SourceRecord> headerFrom = new HeaderFrom.Value<>();
+        Map<String, String> headerFromConfig = new LinkedHashMap<>();
+        headerFromConfig.put("fields", "source,op,transaction");
+        headerFromConfig.put("headers", "source,op,transaction");
+        headerFromConfig.put("operation", "copy");
+        headerFromConfig.put("header.converter.schemas.enable", "true");
+        headerFrom.configure(headerFromConfig);
+
+        MongoEventRouter<SourceRecord> outboxEventRouter = new MongoEventRouter<>();
+        Map<String, String> outboxEventRouterConfig = new LinkedHashMap<>();
+        outboxEventRouterConfig.put("collection.expand.json.payload", "true");
+        // this adds `id`, `type`, and `dataSchemaName` headers with values from the DB columns
+        outboxEventRouterConfig.put("collection.fields.additional.placement", "event_type:header:type,id:header:id,aggregatetype:header:dataSchemaName");
+        outboxEventRouter.configure(outboxEventRouterConfig);
+
+        try (var client = connect()) {
+            client.getDatabase(DB_NAME).getCollection(COLLECTION_NAME)
+                    .insertOne(new Document()
+                            .append("id", "59a42efd-b015-44a9-9dde-cb36d9002425")
+                            .append("aggregateid", "10711fa5")
+                            .append("aggregatetype", "User")
+                            .append("event_type", "UserCreated")
+                            .append("payload", new Document()
+                                    .append("_id", new ObjectId("000000000000000000000000"))
+                                    .append("someField1", "some value 1")
+                                    .append("someField2", 7005)));
+        }
+
+        SourceRecords streamingRecords = consumeRecordsByTopic(1);
+        assertThat(streamingRecords.allRecordsInOrder()).hasSize(1);
+
+        SourceRecord record = streamingRecords.recordsForTopic("mongo1.dbA.c1").get(0);
+        SourceRecord recordWithMetadataHeaders = headerFrom.apply(record);
+        SourceRecord routedEvent = outboxEventRouter.apply(recordWithMetadataHeaders);
+
+        assertThat(routedEvent).isNotNull();
+        assertThat(routedEvent.topic()).isEqualTo("outbox.event.User");
+        assertThat(routedEvent.keySchema().type()).isEqualTo(Schema.Type.STRING);
+        assertThat(routedEvent.key()).isEqualTo("10711fa5");
+        assertThat(routedEvent.value()).isInstanceOf(Struct.class);
+
+        CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithDataAsAvroAndAllMetadataInHeaders(routedEvent, "mongodb", "mongo1");
 
         headerFrom.close();
         outboxEventRouter.close();

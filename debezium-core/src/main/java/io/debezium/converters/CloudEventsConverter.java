@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.header.Header;
@@ -276,8 +277,8 @@ public class CloudEventsConverter implements Converter {
         CloudEventsProvider provider = lookupCloudEventsProvider(source);
 
         RecordAndMetadata recordAndMetadata;
-        boolean useBaseImpl = metadataSource.global() != MetadataSourceValue.HEADER && metadataSource.id() != MetadataSourceValue.HEADER
-                && metadataSource.type() != MetadataSourceValue.HEADER;
+        final boolean useBaseImpl = Stream.of(metadataSource.global(), metadataSource.id(), metadataSource.type(), metadataSource.dataSchemaName())
+                .allMatch(metadataSource -> metadataSource != MetadataSourceValue.HEADER);
         if (useBaseImpl) {
             recordAndMetadata = new RecordAndMetadataBaseImpl(record, schema);
         }
@@ -365,7 +366,7 @@ public class CloudEventsConverter implements Converter {
 
     /**
      * Obtains the schema id from the given Avro record. They are prefixed by one magic byte,
-     * followed by an int for the schem id.
+     * followed by an int for the schema id.
      */
     private String getSchemaIdFromAvroMessage(byte[] serializedData) {
         return String.valueOf(ByteBuffer.wrap(serializedData, 1, 5).getInt());

@@ -403,6 +403,80 @@ public class CloudEventsConverterTest {
         }
     }
 
+    public static void shouldConvertToCloudEventsInJsonWithDataAsAvroAndAllMetadataInHeaders(SourceRecord record, String connectorName, String serverName)
+            throws Exception {
+        Map<String, Object> config = new HashMap<>();
+        config.put("data.serializer.type", "avro");
+        config.put("avro.schema.registry.url", "http://fake-url");
+        config.put("metadata.source", "header");
+        config.put("schema.data.name.source.header.enable", true);
+
+        MockSchemaRegistryClient ceSchemaRegistry = new MockSchemaRegistryClient();
+        Converter avroConverter = new AvroConverter(ceSchemaRegistry);
+        avroConverter.configure(Configuration.from(config).subset("avro", true).asMap(), false);
+
+        CloudEventsConverter cloudEventsConverter = new CloudEventsConverter(avroConverter);
+        cloudEventsConverter.configure(config, false);
+
+        JsonNode valueJson = null;
+        JsonNode dataJson;
+        String msg = null;
+
+        try {
+            // Convert the value and inspect it ...
+            msg = "converting value using CloudEvents JSON converter";
+            byte[] valueBytes = cloudEventsConverter.fromConnectData(record.topic(), convertHeadersFor(record), record.valueSchema(), record.value());
+            msg = "deserializing value using CE deserializer";
+            final SchemaAndValue ceValue = cloudEventsConverter.toConnectData(record.topic(), valueBytes);
+            msg = "deserializing value using JSON deserializer";
+
+            try (JsonDeserializer jsonDeserializer = new JsonDeserializer()) {
+                jsonDeserializer.configure(Collections.emptyMap(), false);
+                valueJson = jsonDeserializer.deserialize(record.topic(), valueBytes);
+            }
+
+            msg = "inspecting all required CloudEvents fields in the value";
+            assertThat(valueJson.get(CloudEventsMaker.FieldName.ID).asText()).isEqualTo("59a42efd-b015-44a9-9dde-cb36d9002425");
+            assertThat(valueJson.get(CloudEventsMaker.FieldName.SOURCE).asText()).isEqualTo("/debezium/" + connectorName + "/" + serverName);
+            assertThat(valueJson.get(CloudEventsMaker.FieldName.SPECVERSION).asText()).isEqualTo("1.0");
+            assertThat(valueJson.get(CloudEventsMaker.FieldName.DATASCHEMA).asText()).startsWith("http://fake-url/schemas/ids/");
+            assertThat(valueJson.get(CloudEventsMaker.FieldName.TYPE).asText()).isEqualTo("UserCreated");
+            assertThat(valueJson.get(CloudEventsMaker.FieldName.DATACONTENTTYPE).asText()).isEqualTo("application/avro");
+            assertThat(valueJson.get(CloudEventsMaker.FieldName.TIME)).isNotNull();
+            assertThat(valueJson.get(CloudEventsMaker.FieldName.DATA)).isNotNull();
+            msg = "inspecting required CloudEvents extension attributes for Debezium";
+            assertThat(valueJson.get("iodebeziumop")).isNotNull();
+            assertThat(valueJson.get("iodebeziumtsms")).isNotNull();
+            msg = "inspecting transaction metadata attributes";
+            assertThat(valueJson.get("iodebeziumtxid")).isNotNull();
+            assertThat(valueJson.get("iodebeziumtxtotalorder")).isNotNull();
+            assertThat(valueJson.get("iodebeziumtxdatacollectionorder")).isNotNull();
+            msg = "inspecting the data field in the value";
+            dataJson = valueJson.get(CloudEventsMaker.FieldName.DATA);
+            assertThat(dataJson).isNotNull();
+            avroConverter.configure(Collections.singletonMap("schema.registry.url", "http://fake-url"), false);
+            SchemaAndValue data = avroConverter.toConnectData(record.topic(), Base64.getDecoder().decode(dataJson.asText()));
+            // checking custom data schema name
+            assertThat(data.schema().name()).isEqualTo("User");
+            assertThat(data.value()).isInstanceOf(Struct.class);
+            Struct dataValue = (Struct) data.value();
+            assertThat((String) (dataValue.get("someField1"))).isEqualTo("some value 1");
+            assertThat(dataValue.getInt32("someField2")).isEqualTo(7005);
+        }
+        catch (Throwable t) {
+            Testing.Print.enable();
+            Testing.print("Problem with message on topic '" + record.topic() + "':");
+            Testing.printError(t);
+            Testing.print("error " + msg);
+            Testing.print("  value: " + SchemaUtil.asString(record.value()));
+            Testing.print("  value deserialized from CloudEvents in JSON: " + prettyJson(valueJson));
+            if (t instanceof AssertionError) {
+                throw t;
+            }
+            fail("error " + msg + ": " + t.getMessage());
+        }
+    }
+
     public static void shouldConvertToCloudEventsInJsonWithIdFromHeaderAndGeneratedType(SourceRecord record, String connectorName, String serverName) throws Exception {
         Map<String, Object> config = new HashMap<>();
         config.put("serializer.type", "json");
