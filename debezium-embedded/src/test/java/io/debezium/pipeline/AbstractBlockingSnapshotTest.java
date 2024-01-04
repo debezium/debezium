@@ -236,7 +236,7 @@ public abstract class AbstractBlockingSnapshotTest extends AbstractSnapshotTest 
                 .collect(Collectors.toList());
     }
 
-    private static void waitForLogMessage(String message, Class<?> logEmitterClass) {
+    protected static void waitForLogMessage(String message, Class<?> logEmitterClass) {
         LogInterceptor interceptor = new LogInterceptor(logEmitterClass);
         Awaitility.await()
                 .alias("Snapshot not completed on time")
@@ -249,13 +249,13 @@ public abstract class AbstractBlockingSnapshotTest extends AbstractSnapshotTest 
         return Executors.newSingleThreadExecutor().submit(operation);
     }
 
-    private void assertStreamingRecordsArePresent(int expectedRecords, SourceRecords recordsByTopic) throws InterruptedException {
+    protected void assertStreamingRecordsArePresent(int expectedRecords, SourceRecords recordsByTopic) {
 
         assertRecordsWithValuesPresent(expectedRecords, IntStream.range(2000, 2999).boxed().collect(Collectors.toList()), topicName(),
                 recordsByTopic);
     }
 
-    private void assertRecordsFromSnapshotAndStreamingArePresent(int expectedRecords, SourceRecords recordsByTopic) throws InterruptedException {
+    protected void assertRecordsFromSnapshotAndStreamingArePresent(int expectedRecords, SourceRecords recordsByTopic) throws InterruptedException {
 
         assertRecordsWithValuesPresent(expectedRecords, IntStream.range(0, expectedRecords - 1).boxed().collect(Collectors.toList()), topicName(),
                 recordsByTopic);
@@ -270,7 +270,7 @@ public abstract class AbstractBlockingSnapshotTest extends AbstractSnapshotTest 
         assertThat(actual).containsAll(expectedValues);
     }
 
-    private void insertRecords(int rowCount, int startingPkId) throws SQLException {
+    protected void insertRecords(int rowCount, int startingPkId) throws SQLException {
 
         try (JdbcConnection connection = databaseConnection()) {
             connection.setAutoCommit(false);
