@@ -57,7 +57,6 @@ public final class MongoDbConnection implements AutoCloseable {
     private final Filters filters;
     private final ErrorHandler errorHandler;
     private final AtomicBoolean running = new AtomicBoolean(true);
-    private final String name;
     private final MongoDbConnectorConfig connectorConfig;
 
     private final MongoDbConnectionContext connectionContext;
@@ -65,7 +64,6 @@ public final class MongoDbConnection implements AutoCloseable {
     MongoDbConnection(Configuration config, ErrorHandler errorHandler) {
         this.connectionContext = new MongoDbConnectionContext(config);
         this.connectorConfig = connectionContext.getConnectorConfig();
-        this.name = ConnectionStrings.replicaSetName(connectionContext.getConnectionString());
         this.filters = new Filters(config);
         this.errorHandler = errorHandler;
     }
@@ -106,7 +104,8 @@ public final class MongoDbConnection implements AutoCloseable {
             catch (Throwable t) {
                 errorHandler.onError(desc, t);
                 if (!isRunning()) {
-                    throw new DebeziumException("Operation failed and MongoDB connection to '" + name + "' termination requested", t);
+                    throw new DebeziumException(
+                            "Operation failed and MongoDB connection to '" + connectionContext.getMaskedConnectionString() + "' termination requested", t);
                 }
                 errorMetronome.pause();
             }

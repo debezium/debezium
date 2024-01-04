@@ -10,6 +10,7 @@ import static java.util.Comparator.comparing;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Schema;
@@ -24,6 +25,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
+import io.debezium.connector.mongodb.connection.ConnectionStrings;
 import io.debezium.connector.mongodb.connection.MongoDbConnectionContext;
 import io.debezium.connector.mongodb.metrics.MongoDbChangeEventSourceMetricsFactory;
 import io.debezium.document.DocumentReader;
@@ -164,11 +166,25 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
         var offsetLoader = new MongoDbOffsetContext.Loader(connectorConfig);
         var offsets = getPreviousOffsets(partitionProvider, offsetLoader);
 
-        if (offsets.getTheOnlyOffset() != null || !connectionContext.isShardedCluster()) {
+        if (offsets.getTheOnlyOffset() != null) {
+            return offsets;
+        }
+        LOGGER.info("Previous valid offset not found, checking compatible offsets from older versions");
+        var name = connectionContext.getRequiredReplicaSetName()
+                .orElse(ConnectionStrings.CLUSTER_RS_NAME);
+
+        var compatibleOffset = getPreviousOffsets(
+                new MongoDbPartition.Provider(connectorConfig, Set.of(name)),
+                new MongoDbOffsetContext.Loader(connectorConfig))
+                .getTheOnlyOffset();
+
+        if (compatibleOffset != null) {
+            LOGGER.warn("Found compatible offset from previous version");
+            offsets.getOffsets().put(offsets.getTheOnlyPartition(), compatibleOffset);
             return offsets;
         }
 
-        LOGGER.info("Previous offset not found, checking shard specific offsets from replica_set connection mode.");
+        LOGGER.info("Compatible offset not found, checking shard specific offsets from replica_set connection mode.");
         var shardNames = connectionContext.getShardNames();
 
         var shardOffsets = getPreviousOffsets(
@@ -181,7 +197,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
             return offsets;
         }
 
-        LOGGER.warn("Found at least one shard specific offset from previous run");
+        LOGGER.warn("Found at least one shard specific offset from previous version");
 
         if (shardOffsets.values().stream().anyMatch(Objects::isNull)) {
             LOGGER.warn("At least one shard is missing previously recorded offset, so empty offset will be used");
@@ -190,7 +206,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
 
         if (!connectorConfig.isOffsetInvalidationAllowed()) {
             LOGGER.warn("Offset invalidation is not allowed");
-            throw new DebeziumException("Offsets from previous run are invalid, either manually delete them or " +
+            throw new DebeziumException("Offsets from previous version are invalid, either manually delete them or " +
                     "set '" + MongoDbConnectorConfig.ALLOW_OFFSET_INVALIDATION.name() + "=true' " +
                     "to allow streaming to resume from the oldest shard specific offset");
         }

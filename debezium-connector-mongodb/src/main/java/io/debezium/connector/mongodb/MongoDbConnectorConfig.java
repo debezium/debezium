@@ -1157,10 +1157,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         return serverSelectionTimeoutMs;
     }
 
-    public String getReplicaSetName() {
-        return ConnectionStrings.replicaSetName(connectionString);
-    }
-
     public int getCursorMaxAwaitTime() {
         return cursorMaxAwaitTimeMs;
     }

@@ -13,6 +13,10 @@ import java.util.stream.Collectors;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.util.Collect;
 
+/**
+ * Represents partition used by MongoDB connector
+ * TODO: replicaSetName is preserved only for offset consolidation
+ */
 public class MongoDbPartition implements Partition {
     private static final String SERVER_ID_KEY = "server_id";
     private static final String REPLICA_SET_NAME = "rs";
@@ -20,14 +24,24 @@ public class MongoDbPartition implements Partition {
     private final String serverId;
     private final String replicaSetName;
 
-    public MongoDbPartition(String serverId, String replicaSetName) {
+    public MongoDbPartition(String serverId) {
+        this.serverId = serverId;
+        this.replicaSetName = null;
+    }
+
+    /**
+     * This should not be used outside of {@link MongoDbConnectorTask#getPreviousOffsets(MongoDbConnectorConfig)}
+     */
+    MongoDbPartition(String serverId, String replicaSetName) {
         this.serverId = serverId;
         this.replicaSetName = replicaSetName;
     }
 
     @Override
     public Map<String, String> getSourcePartition() {
-        return Collect.hashMapOf(SERVER_ID_KEY, serverId, REPLICA_SET_NAME, replicaSetName);
+        return replicaSetName != null
+                ? Collect.hashMapOf(SERVER_ID_KEY, serverId, REPLICA_SET_NAME, replicaSetName)
+                : Collect.hashMapOf(SERVER_ID_KEY, serverId);
     }
 
     @Override
@@ -52,22 +66,33 @@ public class MongoDbPartition implements Partition {
         return "MongoDbPartition [sourcePartition=" + getSourcePartition() + "]";
     }
 
+    /**
+     * Provider of partitions used by MongoDB connector
+     * TODO: replicaSetNames are preserved only for offset consolidation
+     */
     public static class Provider implements Partition.Provider<MongoDbPartition> {
         private final String logicalName;
-        private final Set<String> names;
+        private final Set<String> replicaSetNames;
 
         public Provider(MongoDbConnectorConfig connectorConfig) {
-            this(connectorConfig, Set.of(connectorConfig.getReplicaSetName()));
+            this(connectorConfig, Set.of());
         }
 
-        public Provider(MongoDbConnectorConfig connectorConfig, Set<String> names) {
+        /**
+         * This should not be used outside of {@link MongoDbConnectorTask#getPreviousOffsets(MongoDbConnectorConfig)}
+         */
+        Provider(MongoDbConnectorConfig connectorConfig, Set<String> replicaSetNames) {
             this.logicalName = connectorConfig.getLogicalName();
-            this.names = names;
+            this.replicaSetNames = replicaSetNames;
         }
 
         @Override
         public Set<MongoDbPartition> getPartitions() {
-            return names.stream()
+            if (replicaSetNames.isEmpty()) {
+                return Set.of(new MongoDbPartition(logicalName));
+            }
+
+            return replicaSetNames.stream()
                     .map(name -> new MongoDbPartition(logicalName, name))
                     .collect(Collectors.toSet());
         }
