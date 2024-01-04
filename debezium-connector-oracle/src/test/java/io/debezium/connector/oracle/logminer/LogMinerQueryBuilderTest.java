@@ -117,17 +117,17 @@ public class LogMinerQueryBuilderTest {
         assertQuery(getBuilderForMode(mode));
 
         // Schema Includes/Excludes
-        final String schemas = "DEBEZIUM1,DEBEZIUM2";
+        final String schemas = "DEBEZIUM1,DEBEZIUM2, DEBEZIUM3, DEBEZIUM4";
         assertQuery(getBuilderForMode(mode).with(SCHEMA_INCLUDE_LIST, schemas));
         assertQuery(getBuilderForMode(mode).with(SCHEMA_EXCLUDE_LIST, schemas));
 
         // Table Include/Excludes
-        final String tables = "DEBEZIUM\\.T1,DEBEZIUM\\.T2";
+        final String tables = "DEBEZIUM\\.T1,DEBEZIUM\\.T2, DEBEZIUM\\.T3, DEBEZIUM\\.T4";
         assertQuery(getBuilderForMode(mode).with(TABLE_INCLUDE_LIST, tables));
         assertQuery(getBuilderForMode(mode).with(SCHEMA_EXCLUDE_LIST, tables));
 
         // Username Include/Excludes
-        final String users = "U1,U2";
+        final String users = "U1,U2, U3, U4";
         assertQuery(getBuilderForMode(mode).with(LOG_MINING_USERNAME_INCLUDE_LIST, users));
         assertQuery(getBuilderForMode(mode).with(LOG_MINING_USERNAME_EXCLUDE_LIST, users));
 
@@ -380,7 +380,7 @@ public class LogMinerQueryBuilderTest {
         final List<Object> inclusions = new ArrayList<>();
         if (!regex) {
             inclusions.add("UNKNOWN");
-            inclusions.addAll(Strings.setOf(schemaIncludeList, String::new));
+            inclusions.addAll(Strings.setOfTrimmed(schemaIncludeList, String::trim));
         }
         else {
             inclusions.addAll(Strings.listOfRegex(schemaIncludeList, Pattern.CASE_INSENSITIVE));
@@ -395,7 +395,7 @@ public class LogMinerQueryBuilderTest {
         if (!regex) {
             exclusions.addAll(getExcludedSchemas());
             if (!Strings.isNullOrEmpty(schemaExcludeList)) {
-                exclusions.addAll(Strings.setOf(schemaExcludeList, String::new));
+                exclusions.addAll(Strings.setOfTrimmed(schemaExcludeList, String::new));
             }
         }
         else if (!Strings.isNullOrEmpty(schemaExcludeList)) {
@@ -409,7 +409,7 @@ public class LogMinerQueryBuilderTest {
         final List<Object> values = new ArrayList<>();
         if (!regex) {
             // Explicitly replace all escaped characters due to Regex.
-            values.addAll(Strings.setOf(list, s -> s.split("[,]"), v -> v.replaceAll("\\\\", "")));
+            values.addAll(Strings.setOfTrimmed(list, s -> s.split("[,]"), v -> v.replaceAll("\\\\", "")));
         }
         else {
             values.addAll(Strings.listOfRegex(list, Pattern.CASE_INSENSITIVE));
