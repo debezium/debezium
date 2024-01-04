@@ -95,34 +95,53 @@ public class ConvertingEngineBuilder<R> implements Builder<R> {
         return format1 == format2;
     }
 
+    private class ConvertingChangeConsumer implements ChangeConsumer<SourceRecord> {
+
+        private final ChangeConsumer<R> handler;
+
+        private ConvertingChangeConsumer(ChangeConsumer<R> handler) {
+            this.handler = handler;
+        }
+
+        @Override
+        public void handleBatch(List<SourceRecord> records, RecordCommitter<SourceRecord> committer) throws InterruptedException {
+            handler.handleBatch(records.stream()
+                    .map(x -> toFormat.apply(x))
+                    .collect(Collectors.toList()),
+                    new RecordCommitter<R>() {
+
+                        @Override
+                        public void markProcessed(R record) throws InterruptedException {
+                            committer.markProcessed(fromFormat.apply(record));
+                        }
+
+                        @Override
+                        public void markBatchFinished() throws InterruptedException {
+                            committer.markBatchFinished();
+                        }
+
+                        @Override
+                        public void markProcessed(R record, DebeziumEngine.Offsets sourceOffsets)
+                                throws InterruptedException {
+                            committer.markProcessed(fromFormat.apply(record), sourceOffsets);
+                        }
+
+                        @Override
+                        public DebeziumEngine.Offsets buildOffsets() {
+                            return committer.buildOffsets();
+                        }
+                    });
+        }
+
+        @Override
+        public boolean supportsTombstoneEvents() {
+            return handler.supportsTombstoneEvents();
+        }
+    }
+
     @Override
     public Builder<R> notifying(ChangeConsumer<R> handler) {
-        delegate.notifying(
-                (records, committer) -> handler.handleBatch(records.stream()
-                        .map(x -> toFormat.apply(x))
-                        .collect(Collectors.toList()),
-                        new RecordCommitter<R>() {
-
-                            @Override
-                            public void markProcessed(R record) throws InterruptedException {
-                                committer.markProcessed(fromFormat.apply(record));
-                            }
-
-                            @Override
-                            public void markBatchFinished() throws InterruptedException {
-                                committer.markBatchFinished();
-                            }
-
-                            @Override
-                            public void markProcessed(R record, DebeziumEngine.Offsets sourceOffsets) throws InterruptedException {
-                                committer.markProcessed(fromFormat.apply(record), sourceOffsets);
-                            }
-
-                            @Override
-                            public DebeziumEngine.Offsets buildOffsets() {
-                                return committer.buildOffsets();
-                            }
-                        }));
+        delegate.notifying(new ConvertingChangeConsumer(handler));
         return this;
     }
 
