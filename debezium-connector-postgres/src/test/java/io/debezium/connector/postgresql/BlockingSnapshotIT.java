@@ -6,18 +6,22 @@
 
 package io.debezium.connector.postgresql;
 
+import static io.debezium.pipeline.signal.actions.AbstractSnapshotSignal.SnapshotType.BLOCKING;
+
 import java.sql.SQLException;
 import java.util.List;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
+import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.AbstractBlockingSnapshotTest;
-import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.pipeline.source.AbstractSnapshotChangeEventSource;
 
 public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
 
@@ -46,19 +50,17 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
         stopConnector();
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.dropPublication();
-
     }
 
     protected Configuration.Builder config() {
         return TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
-                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                 .with(PostgresConnectorConfig.SIGNAL_DATA_COLLECTION, "s1.debezium_signal")
                 .with(PostgresConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 10)
                 .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "s1")
                 .with(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source")
-                .with(CommonConnectorConfig.SIGNAL_POLL_INTERVAL_MS, 5)
-                .with(RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS, "s1.a42:pk1,pk2,pk3,pk4");
+                .with(CommonConnectorConfig.SIGNAL_POLL_INTERVAL_MS, 5);
     }
 
     @Override
@@ -66,7 +68,7 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
 
         return TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue())
-                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                 .with(PostgresConnectorConfig.SIGNAL_DATA_COLLECTION, "s1.debezium_signal")
                 .with(CommonConnectorConfig.SIGNAL_POLL_INTERVAL_MS, 5)
                 .with(PostgresConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 10)
@@ -120,4 +122,30 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
         return TestHelper.TEST_SERVER;
     }
 
+    @FixFor("DBZ-7311")
+    @Test
+    public void executeBlockingSnapshotWhenSnapshotModeIsNever() throws Exception {
+        // Testing.Print.enable();
+
+        // Avoid to start the streaming from data inserted before the connector start
+        TestHelper.dropDefaultReplicationSlot();
+        TestHelper.dropPublication();
+
+        populateTable();
+
+        startConnector();
+
+        sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey("", "", BLOCKING, tableDataCollectionId());
+
+        waitForLogMessage("Snapshot completed", AbstractSnapshotChangeEventSource.class);
+
+        int signalingRecords = 1;
+
+        assertRecordsFromSnapshotAndStreamingArePresent(ROW_COUNT, consumeRecordsByTopic(ROW_COUNT + signalingRecords, 10));
+
+        insertRecords(ROW_COUNT, ROW_COUNT * 2);
+
+        assertStreamingRecordsArePresent(ROW_COUNT, consumeRecordsByTopic(ROW_COUNT, 10));
+
+    }
 }

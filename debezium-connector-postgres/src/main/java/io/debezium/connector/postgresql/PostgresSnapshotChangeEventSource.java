@@ -19,6 +19,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.connector.postgresql.PostgresOffsetContext.Loader;
 import io.debezium.connector.postgresql.connection.Lsn;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
+import io.debezium.connector.postgresql.snapshot.AlwaysSnapshotter;
 import io.debezium.connector.postgresql.spi.SlotCreationResult;
 import io.debezium.connector.postgresql.spi.SlotState;
 import io.debezium.connector.postgresql.spi.Snapshotter;
@@ -42,6 +43,7 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     private final PostgresConnection jdbcConnection;
     private final PostgresSchema schema;
     private final Snapshotter snapshotter;
+    private final Snapshotter blockingSnapshotter;
     private final SlotCreationResult slotCreatedInfo;
     private final SlotState startingSlotInfo;
 
@@ -57,18 +59,19 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
         this.snapshotter = snapshotter;
         this.slotCreatedInfo = slotCreatedInfo;
         this.startingSlotInfo = startingSlotInfo;
+        this.blockingSnapshotter = new AlwaysSnapshotter();
     }
 
     @Override
     public SnapshottingTask getSnapshottingTask(PostgresPartition partition, PostgresOffsetContext previousOffset) {
+
         boolean snapshotSchema = true;
-        boolean snapshotData = true;
 
         List<String> dataCollectionsToBeSnapshotted = connectorConfig.getDataCollectionsToBeSnapshotted();
         Map<String, String> snapshotSelectOverridesByTable = connectorConfig.getSnapshotSelectOverridesByTable().entrySet().stream()
                 .collect(Collectors.toMap(e -> e.getKey().identifier(), Map.Entry::getValue));
 
-        snapshotData = snapshotter.shouldSnapshot();
+        boolean snapshotData = snapshotter.shouldSnapshot();
         if (snapshotData) {
             LOGGER.info("According to the connector configuration data will be snapshotted");
         }
@@ -81,9 +84,8 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     }
 
     @Override
-    protected SnapshotContext<PostgresPartition, PostgresOffsetContext> prepare(PostgresPartition partition)
-            throws Exception {
-        return new PostgresSnapshotContext(partition, connectorConfig.databaseName());
+    protected SnapshotContext<PostgresPartition, PostgresOffsetContext> prepare(PostgresPartition partition, boolean isBlocking) {
+        return new PostgresSnapshotContext(partition, connectorConfig.databaseName(), isBlocking);
     }
 
     @Override
@@ -240,6 +242,10 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     @Override
     protected Optional<String> getSnapshotSelect(RelationalSnapshotContext<PostgresPartition, PostgresOffsetContext> snapshotContext,
                                                  TableId tableId, List<String> columns) {
+        if (snapshotContext.isBlocking) {
+            return blockingSnapshotter.buildSnapshotQuery(tableId, columns);
+        }
+
         return snapshotter.buildSnapshotQuery(tableId, columns);
     }
 
@@ -255,8 +261,8 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
      */
     private static class PostgresSnapshotContext extends RelationalSnapshotContext<PostgresPartition, PostgresOffsetContext> {
 
-        PostgresSnapshotContext(PostgresPartition partition, String catalogName) throws SQLException {
-            super(partition, catalogName);
+        PostgresSnapshotContext(PostgresPartition partition, String catalogName, boolean isBlocking) {
+            super(partition, catalogName, isBlocking);
         }
     }
 

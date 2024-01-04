@@ -162,7 +162,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
             if (snapshottingTask.snapshotData()) {
                 LOGGER.info("Snapshot step 7 - Snapshotting data");
-                createDataEvents(context, ctx, connectionPool, snapshotSelectOverridesByTable);
+                createDataEvents(context, ctx, connectionPool, snapshotSelectOverridesByTable, snapshottingTask);
             }
             else {
                 LOGGER.info("Snapshot step 7 - Skipping snapshotting of data");
@@ -403,7 +403,8 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
     private void createDataEvents(ChangeEventSourceContext sourceContext,
                                   RelationalSnapshotContext<P, O> snapshotContext,
-                                  Queue<JdbcConnection> connectionPool, Map<DataCollectionId, String> snapshotSelectOverridesByTable)
+                                  Queue<JdbcConnection> connectionPool, Map<DataCollectionId, String> snapshotSelectOverridesByTable,
+                                  SnapshottingTask snapshottingTask)
             throws Exception {
         tryStartingSnapshot(snapshotContext);
 
@@ -761,14 +762,16 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
             extends SnapshotContext<P, O> {
         public final String catalogName;
         public final Tables tables;
+        public final boolean isBlocking;
 
         public Set<TableId> capturedTables;
         public Set<TableId> capturedSchemaTables;
 
-        public RelationalSnapshotContext(P partition, String catalogName) {
+        public RelationalSnapshotContext(P partition, String catalogName, boolean isBlocking) {
             super(partition);
             this.catalogName = catalogName;
             this.tables = new Tables();
+            this.isBlocking = isBlocking;
         }
     }
 

@@ -68,7 +68,7 @@ public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O e
 
         final SnapshotContext<P, O> ctx;
         try {
-            ctx = prepare(partition);
+            ctx = prepare(partition, snapshottingTask.isBlocking());
         }
         catch (Exception e) {
             LOGGER.error("Failed to initialize snapshot context.", e);
@@ -178,7 +178,7 @@ public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O e
     /**
      * Prepares the taking of a snapshot and returns an initial {@link SnapshotContext}.
      */
-    protected abstract SnapshotContext<P, O> prepare(P partition) throws Exception;
+    protected abstract SnapshotContext<P, O> prepare(P partition, boolean blocking) throws Exception;
 
     /**
      * Completes the snapshot, doing any required clean-up (resource disposal etc.).

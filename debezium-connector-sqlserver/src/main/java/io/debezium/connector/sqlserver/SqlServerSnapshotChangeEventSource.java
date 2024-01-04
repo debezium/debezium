@@ -89,9 +89,9 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
     }
 
     @Override
-    protected SnapshotContext<SqlServerPartition, SqlServerOffsetContext> prepare(SqlServerPartition partition)
+    protected SnapshotContext<SqlServerPartition, SqlServerOffsetContext> prepare(SqlServerPartition partition, boolean isBlocking)
             throws Exception {
-        return new SqlServerSnapshotContext(partition);
+        return new SqlServerSnapshotContext(partition, isBlocking);
     }
 
     @Override
@@ -313,8 +313,8 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
         private int isolationLevelBeforeStart;
         private Savepoint preSchemaSnapshotSavepoint;
 
-        SqlServerSnapshotContext(SqlServerPartition partition) throws SQLException {
-            super(partition, partition.getDatabaseName());
+        SqlServerSnapshotContext(SqlServerPartition partition, boolean isBlocking) {
+            super(partition, partition.getDatabaseName(), isBlocking);
         }
     }
 
