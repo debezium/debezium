@@ -96,13 +96,13 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     }
 
     @Override
-    protected SnapshotContext<OraclePartition, OracleOffsetContext> prepare(OraclePartition partition)
+    protected SnapshotContext<OraclePartition, OracleOffsetContext> prepare(OraclePartition partition, boolean isBlocking)
             throws Exception {
         if (connectorConfig.getPdbName() != null) {
             jdbcConnection.setSessionToPdb(connectorConfig.getPdbName());
         }
 
-        return new OracleSnapshotContext(partition, connectorConfig.getCatalogName());
+        return new OracleSnapshotContext(partition, connectorConfig.getCatalogName(), isBlocking);
     }
 
     @Override
@@ -302,8 +302,8 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
 
         private Savepoint preSchemaSnapshotSavepoint;
 
-        OracleSnapshotContext(OraclePartition partition, String catalogName) throws SQLException {
-            super(partition, catalogName);
+        OracleSnapshotContext(OraclePartition partition, String catalogName, boolean isBlocking) throws SQLException {
+            super(partition, catalogName, isBlocking);
         }
     }
 

@@ -117,8 +117,8 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
     }
 
     @Override
-    protected SnapshotContext<MySqlPartition, MySqlOffsetContext> prepare(MySqlPartition partition) throws Exception {
-        return new MySqlSnapshotContext(partition);
+    protected SnapshotContext<MySqlPartition, MySqlOffsetContext> prepare(MySqlPartition partition, boolean isBlocking) throws Exception {
+        return new MySqlSnapshotContext(partition, isBlocking);
     }
 
     @Override
@@ -598,8 +598,8 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
      */
     private static class MySqlSnapshotContext extends RelationalSnapshotContext<MySqlPartition, MySqlOffsetContext> {
 
-        MySqlSnapshotContext(MySqlPartition partition) throws SQLException {
-            super(partition, "");
+        MySqlSnapshotContext(MySqlPartition partition, boolean isBlocking) {
+            super(partition, "", isBlocking);
         }
     }
 

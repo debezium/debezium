@@ -221,7 +221,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
     }
 
     @Override
-    protected SnapshotContext<MongoDbPartition, MongoDbOffsetContext> prepare(MongoDbPartition partition) {
+    protected SnapshotContext<MongoDbPartition, MongoDbOffsetContext> prepare(MongoDbPartition partition, boolean isBlocking) {
         return new MongoDbSnapshotContext(partition);
     }
 
