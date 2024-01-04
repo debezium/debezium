@@ -25,6 +25,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.infinispan.commons.util.CloseableIterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -1419,24 +1420,34 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                 if (!smallestScn.isNull() && thresholdScn.compareTo(smallestScn) >= 0) {
                     boolean first = true;
                     Iterator<Map.Entry<String, T>> iterator = getTransactionCache().entrySet().iterator();
-                    while (iterator.hasNext()) {
-                        Map.Entry<String, T> entry = iterator.next();
-                        if (entry.getValue().getStartScn().compareTo(thresholdScn) <= 0) {
-                            if (first) {
-                                LOGGER.warn("All transactions with SCN <= {} will be abandoned.", thresholdScn);
-                                first = false;
+                    try {
+                        while (iterator.hasNext()) {
+                            Map.Entry<String, T> entry = iterator.next();
+                            if (entry.getValue().getStartScn().compareTo(thresholdScn) <= 0) {
+                                if (first) {
+                                    LOGGER.warn("All transactions with SCN <= {} will be abandoned.", thresholdScn);
+                                    LOGGER.debug("List of transactions in the cache before transactions being abandoned: [{}]", getTransactionCache().keySet().stream().collect(Collectors.joining(",")));
+                                    first = false;
+                                }
+                                LOGGER.warn("Transaction {} (start SCN {}, change time {}, redo thread {}, {} events) is being abandoned.",
+                                        entry.getKey(), entry.getValue().getStartScn(), entry.getValue().getChangeTime(),
+                                        entry.getValue().getRedoThreadId(), entry.getValue().getNumberOfEvents());
+
+                                cleanupAfterTransactionRemovedFromCache(entry.getValue(), true);
+                                iterator.remove();
+
+                                metrics.addAbandonedTransactionId(entry.getKey());
+                                metrics.setActiveTransactionCount(getTransactionCache().size());
                             }
-                            LOGGER.warn("Transaction {} (start SCN {}, change time {}, redo thread {}, {} events) is being abandoned.",
-                                    entry.getKey(), entry.getValue().getStartScn(), entry.getValue().getChangeTime(),
-                                    entry.getValue().getRedoThreadId(), entry.getValue().getNumberOfEvents());
-
-                            cleanupAfterTransactionRemovedFromCache(entry.getValue(), true);
-                            iterator.remove();
-
-                            metrics.addAbandonedTransactionId(entry.getKey());
-                            metrics.setActiveTransactionCount(getTransactionCache().size());
                         }
                     }
+                    finally {
+                        if (iterator instanceof CloseableIterator) {
+                            ((CloseableIterator<Map.Entry<String, T>>) iterator).close();
+                        }
+                    }
+                    LOGGER.debug("List of transactions in the cache after transactions being abandoned: [{}]",
+                            getTransactionCache().keySet().stream().collect(Collectors.joining(",")));
 
                     // Update the oldest scn metric are transaction abandonment
                     final Optional<T> oldestTransaction = getOldestTransactionInCache();

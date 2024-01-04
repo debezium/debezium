@@ -4077,6 +4077,10 @@ endif::community[]
 |An array of the most recent abandoned transaction identifiers removed from the transaction buffer due to their age.
 See <<oracle-property-log-mining-transaction-retention-ms, `log.mining.transaction.retention.ms`>> for details.
 
+|[[oracle-streaming-metrics-abandoned-transaction-count]]<<oracle-streaming-metrics-abandoned-transaction-count, `+AbandonedTransactionCount+`>>
+|`long`
+|Size of current state of abandoned transaction list (see <<oracle-streaming-metrics-abandoned-transaction-ids, `AbandonedTransactionIds`>>).
+
 |[[oracle-streaming-metrics-rolled-back-transaction-ids]]<<oracle-streaming-metrics-rolled-back-transaction-ids, `+RolledBackTransactionIds+`>>
 |`string[]`
 |An array of the most recent transaction identifiers that have been mined and rolled back in the transaction buffer.
