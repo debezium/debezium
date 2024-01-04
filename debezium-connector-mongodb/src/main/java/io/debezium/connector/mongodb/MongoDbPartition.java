@@ -49,7 +49,7 @@ public class MongoDbPartition implements Partition {
 
     @Override
     public String toString() {
-        return "ReplicaSetPartition [sourcePartition=" + getSourcePartition() + "]";
+        return "MongoDbPartition [sourcePartition=" + getSourcePartition() + "]";
     }
 
     public static class Provider implements Partition.Provider<MongoDbPartition> {
