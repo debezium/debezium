@@ -3184,7 +3184,7 @@ For example, to define a `selector` parameter that specifies the subset of colum
 |[[mysql-property-database-ssl-keystore-password]]<<mysql-property-database-ssl-keystore-password, `+database.ssl.keystore.password+`>>
 |No defaults
 |The password for the key store file.
- This is optional and only needed if xref:{context}-mysql-property-database-ssl-keystore[`database.ssl.keystore`] is configured.
+ This is optional and only needed if xref:mysql-property-database-ssl-keystore[`database.ssl.keystore`] is configured.
 |[[mysql-property-database-ssl-truststore]]<<mysql-property-database-ssl-truststore, `+database.ssl.truststore+`>>
 |No defaults
 |The location of the trust store file for the server certificate verification.
