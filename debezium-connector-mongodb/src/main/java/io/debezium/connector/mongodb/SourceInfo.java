@@ -300,10 +300,6 @@ public final class SourceInfo extends BaseSourceInfo {
         return collectionId != null ? collectionId.dbName() : null;
     }
 
-    String replicaSetName() {
-        return connectorConfig.getReplicaSetName();
-    }
-
     long wallTime() {
         return wallTime;
     }

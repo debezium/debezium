@@ -20,7 +20,6 @@ public class MongoDbSourceInfoStructMaker extends AbstractSourceInfoStructMaker<
         super.init(connector, version, connectorConfig);
         schema = commonSchemaBuilder()
                 .name(connectorConfig.schemaNameAdjuster().adjust("io.debezium.connector.mongo.Source"))
-                .field(SourceInfo.REPLICA_SET_NAME, Schema.STRING_SCHEMA)
                 .field(SourceInfo.COLLECTION, Schema.STRING_SCHEMA)
                 .field(SourceInfo.ORDER, Schema.INT32_SCHEMA)
                 .field(SourceInfo.LSID, Schema.OPTIONAL_STRING_SCHEMA)
@@ -37,7 +36,6 @@ public class MongoDbSourceInfoStructMaker extends AbstractSourceInfoStructMaker<
     @Override
     public Struct struct(SourceInfo sourceInfo) {
         Struct struct = super.commonStruct(sourceInfo)
-                .put(SourceInfo.REPLICA_SET_NAME, sourceInfo.replicaSetName())
                 .put(SourceInfo.COLLECTION, sourceInfo.collectionId().name())
                 .put(SourceInfo.ORDER, sourceInfo.position().getInc());
 

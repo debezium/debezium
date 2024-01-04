@@ -32,8 +32,8 @@ import com.mongodb.client.model.changestream.ChangeStreamDocument;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.connector.mongodb.connection.ConnectionStrings;
 import io.debezium.junit.logging.LogInterceptor;
-import io.debezium.testing.testcontainers.MongoDbReplicaSet;
 import io.debezium.util.Collect;
 
 public class OffsetConsolidationShardedIT extends AbstractShardedMongoConnectorIT {
@@ -49,18 +49,19 @@ public class OffsetConsolidationShardedIT extends AbstractShardedMongoConnectorI
     private MongoDbConnectorConfig connectorConfig;
 
     /**
-     * Contains all events consumed from both shards
+     * Contains all events consumed from router (always at least 4)
      */
-    private final SortedSet<ChangeStreamDocument<BsonDocument>> events = new TreeSet<>(EVENT_COMPARATOR);
-    /**
-     * Guaranteed to contain at least 2 events consumed from shard1
-     */
-    private final List<ChangeStreamDocument<BsonDocument>> events1 = new ArrayList<>();
+    private final SortedSet<ChangeStreamDocument<BsonDocument>> allRouterEvents = new TreeSet<>(EVENT_COMPARATOR);
 
     /**
-     * Guaranteed to contain at least 2 events consumed from shard0
+     * Guaranteed to contain all consumed from shard0 (always at least 2)
      */
-    private final List<ChangeStreamDocument<BsonDocument>> events0 = new ArrayList<>();
+    private final List<ChangeStreamDocument<BsonDocument>> shardEvents0 = new ArrayList<>();
+
+    /**
+     * Guaranteed to contain all consumed from shard1 (always at least 2)
+     */
+    private final List<ChangeStreamDocument<BsonDocument>> shardEvents1 = new ArrayList<>();
 
     @Before
     public void setupDatabase() {
@@ -81,13 +82,13 @@ public class OffsetConsolidationShardedIT extends AbstractShardedMongoConnectorI
 
         // Insert documents until each shard has at least 2
         try (var router = connect(); var shard0 = connect(mongo.getShard(0)); var shard1 = connect(mongo.getShard(1))) {
-            var stream0 = shard0.watch(stages, BsonDocument.class);
-            var stream1 = shard1.watch(stages, BsonDocument.class);
+            var routerStream = router.watch(stages, BsonDocument.class);
+            var shardStream0 = shard0.watch(stages, BsonDocument.class);
+            var shardStream1 = shard1.watch(stages, BsonDocument.class);
             var counter = 0;
 
-            try (var c0 = stream0.cursor(); var c1 = stream1.cursor()) {
-                while (events0.size() < 2 || events1.size() < 2) {
-
+            try (var rc = routerStream.cursor(); var sc0 = shardStream0.cursor(); var sc1 = shardStream1.cursor()) {
+                while (shardEvents0.size() < 2 || shardEvents1.size() < 2) {
                     // insert document through router
                     router
                             .getDatabase(shardedDatabase())
@@ -95,35 +96,43 @@ public class OffsetConsolidationShardedIT extends AbstractShardedMongoConnectorI
                             .insertOne(new Document("_id", counter).append("name", "name_" + counter));
                     counter++;
 
-                    // poll each shard change stream
-                    var e0 = c0.tryNext();
-                    var e1 = c1.tryNext();
+                    // poll each change stream for an event
+                    // > router is guaranteed to receive the event
+                    // > one of the shards will also receive the event
+                    var r = rc.next();
+                    var s0 = sc0.tryNext();
+                    var s1 = sc1.tryNext();
 
-                    // add shard events
-                    if (e0 != null) {
-                        events0.add(e0);
+                    // Cache received events
+                    if (s0 != null) {
+                        shardEvents0.add(s0);
                     }
-                    if (e1 != null) {
-                        events1.add(e1);
+                    if (s1 != null) {
+                        shardEvents1.add(s1);
                     }
+                    allRouterEvents.add(r);
                 }
             }
-            events.addAll(events0);
-            events.addAll(events1);
         }
     }
 
-    private void storeShardOffsets(List<ChangeStreamDocument<BsonDocument>> shard0, List<ChangeStreamDocument<BsonDocument>> shard1) throws InterruptedException {
+    private void storeReplicaSetModeOffsets(List<ChangeStreamDocument<BsonDocument>> shard0, List<ChangeStreamDocument<BsonDocument>> shard1)
+            throws InterruptedException {
         var offsets = new HashMap<Map<String, ?>, Map<String, ?>>();
         Stream.of(
-                prepareShardOffsets(mongo.getShard(0), shard0),
-                prepareShardOffsets(mongo.getShard(1), shard1))
+                prepareReplicaSetOffset(mongo.getShard(0).getName(), shard0),
+                prepareReplicaSetOffset(mongo.getShard(1).getName(), shard1))
                 .forEach(offsets::putAll);
 
         storeOffsets(config, offsets);
     }
 
-    private Map<Map<String, ?>, Map<String, ?>> prepareShardOffsets(MongoDbReplicaSet shard, List<ChangeStreamDocument<BsonDocument>> events) {
+    private void storeShardedModeOffsets(List<ChangeStreamDocument<BsonDocument>> events) throws InterruptedException {
+        var offsets = prepareReplicaSetOffset(ConnectionStrings.CLUSTER_RS_NAME, events);
+        storeOffsets(config, offsets);
+    }
+
+    private Map<Map<String, ?>, Map<String, ?>> prepareReplicaSetOffset(String rsName, List<ChangeStreamDocument<BsonDocument>> events) {
         if (events.isEmpty()) {
             return Map.of();
         }
@@ -132,7 +141,7 @@ public class OffsetConsolidationShardedIT extends AbstractShardedMongoConnectorI
         var offset = MongoDbOffsetContext.empty(connectorConfig);
         offset.changeStreamEvent(lastEvent);
         var sourceOffset = offset.getOffset();
-        var sourcePartition = Collect.hashMapOf("server_id", TOPIC_PREFIX, "rs", shard.getName());
+        var sourcePartition = Collect.hashMapOf("server_id", TOPIC_PREFIX, "rs", rsName);
 
         return Map.of(sourcePartition, sourceOffset);
     }
@@ -147,20 +156,29 @@ public class OffsetConsolidationShardedIT extends AbstractShardedMongoConnectorI
     /**
      * Gets the older out of the two next-to-last events consumed by shard specific change streams.
      *
-     * @return oldest
+     * @return offset event
      */
-    public ChangeStreamDocument<BsonDocument> getOffsetEvent() {
-        var event0 = nextToLastElement(events0);
-        var event1 = nextToLastElement(events1);
+    public ChangeStreamDocument<BsonDocument> getOffsetEvent(List<ChangeStreamDocument<BsonDocument>> shard0, List<ChangeStreamDocument<BsonDocument>> shard1) {
+        var event0 = nextToLastElement(shard0);
+        var event1 = nextToLastElement(shard1);
 
         return EVENT_COMPARATOR.compare(event0, event1) < 0
                 ? event0
                 : event1;
     }
 
+    /**
+     * Gets  next-to-last event consumed by router change streams.
+     *
+     * @return offset event
+     */
+    public ChangeStreamDocument<BsonDocument> getOffsetEvent(List<ChangeStreamDocument<BsonDocument>> events) {
+        return nextToLastElement(events);
+    }
+
     public Set<String> getExpectedIds(ChangeStreamDocument<BsonDocument> offsetEvent) {
         // Keep only those events following the offset event
-        var following = events.stream()
+        var following = allRouterEvents.stream()
                 .dropWhile(e -> EVENT_COMPARATOR.compare(offsetEvent, e) >= 0)
                 .collect(Collectors.toList());
 
@@ -179,22 +197,59 @@ public class OffsetConsolidationShardedIT extends AbstractShardedMongoConnectorI
     @Test
     public void shouldConsolidateOffsetsFromRsMode() throws InterruptedException {
         Assumptions.assumeThat(mongo.size()).isEqualTo(2);
+        final LogInterceptor logInterceptor = new LogInterceptor(MongoDbConnectorTask.class);
 
         // Store offsets
-        storeShardOffsets(events0, events1);
+        storeReplicaSetModeOffsets(shardEvents0, shardEvents1);
         // Start the connector ...
         start(MongoDbConnector.class, config);
         waitForStreamingRunning("mongodb", TOPIC_PREFIX, "streaming", "0");
 
         // Get ids of expected documents
-        var offsetEvent = getOffsetEvent();
+        var offsetEvent = getOffsetEvent(shardEvents0, shardEvents1);
         var expected = getExpectedIds(offsetEvent);
 
         // Assert that all consumed records are expected
-        consumeRecordsByTopic(expected.size()).forEach(record -> {
+        var records = consumeRecordsByTopic(expected.size());
+        assertThat(records.allRecordsInOrder()).hasSameSizeAs(expected);
+        records.forEach(record -> {
+            verifyNotFromInitialSync(record);
             var id = ((Struct) record.key()).getString("id");
             assertThat(id).isIn(expected);
         });
+
+        // Assert messages
+        logInterceptor.containsMessage("checking shard specific offsets");
+
+    }
+
+    @Test
+    public void shouldUseOffsetsFromShardedMode() throws InterruptedException {
+        Assumptions.assumeThat(mongo.size()).isEqualTo(2);
+        final LogInterceptor logInterceptor = new LogInterceptor(MongoDbConnectorTask.class);
+        var events = new ArrayList<>(allRouterEvents);
+
+        // Store offsets
+        storeShardedModeOffsets(events);
+        // Start the connector ...
+        start(MongoDbConnector.class, config);
+        waitForStreamingRunning("mongodb", TOPIC_PREFIX, "streaming", "0");
+
+        // Get ids of expected documents
+        var offsetEvent = getOffsetEvent(events);
+        var expected = getExpectedIds(offsetEvent);
+
+        // Assert that all consumed records are expected
+        var records = consumeRecordsByTopic(expected.size());
+        assertThat(records.allRecordsInOrder()).hasSameSizeAs(expected);
+        records.forEach(record -> {
+            verifyNotFromInitialSync(record);
+            var id = ((Struct) record.key()).getString("id");
+            assertThat(id).isIn(expected);
+        });
+
+        // Asset info message
+        logInterceptor.containsMessage("Found compatible offset from previous version");
     }
 
     @Test
@@ -207,13 +262,13 @@ public class OffsetConsolidationShardedIT extends AbstractShardedMongoConnectorI
                 .build();
 
         // Store offsets
-        storeShardOffsets(events0, events1);
+        storeReplicaSetModeOffsets(shardEvents0, shardEvents1);
         // Start the connector ...
         start(MongoDbConnector.class, config);
 
         // Assert errors
         logInterceptor.containsErrorMessage("Offset invalidation is not allowed");
-        logInterceptor.containsStacktraceElement("Offsets from previous run are invalid, either manually delete");
+        logInterceptor.containsStacktraceElement("Offsets from previous version are invalid, either manually delete");
     }
 
     @Test
@@ -222,13 +277,13 @@ public class OffsetConsolidationShardedIT extends AbstractShardedMongoConnectorI
         final LogInterceptor logInterceptor = new LogInterceptor(MongoDbConnectorTask.class);
 
         // Store only offset for shard0
-        storeShardOffsets(events0, List.of());
+        storeReplicaSetModeOffsets(shardEvents0, List.of());
         // Start the connector ...
         start(MongoDbConnector.class, config);
         waitForStreamingRunning("mongodb", TOPIC_PREFIX, "streaming", "0");
 
         // Get ids of expected documents
-        var expected = getExpectedIds(events);
+        var expected = getExpectedIds(allRouterEvents);
 
         // Assert warning message
         logInterceptor.containsErrorMessage("At least one shard is missing previously recorded offset, so empty offset will be use");

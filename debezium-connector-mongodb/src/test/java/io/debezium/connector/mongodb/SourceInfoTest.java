@@ -144,7 +144,6 @@ public class SourceInfoTest {
         assertThat(struct.getInt32(SourceInfo.ORDER)).isEqualTo((timestamp != null) ? timestamp.getInc() : -1);
         assertThat(struct.getString(SourceInfo.DATABASE_NAME_KEY)).isEqualTo("test");
         assertThat(struct.getString(SourceInfo.COLLECTION)).isEqualTo("names");
-        assertThat(struct.getString(SourceInfo.REPLICA_SET_NAME)).isEqualTo(REPLICA_SET_NAME);
         assertThat(struct.getString(SourceInfo.SERVER_NAME_KEY)).isEqualTo("serverX");
         assertThat(struct.getString(SourceInfo.SNAPSHOT_KEY)).isEqualTo(snapshot);
     }
@@ -231,7 +230,6 @@ public class SourceInfoTest {
         assertThat(schema.name()).isNotEmpty();
         assertThat(schema.version()).isNull();
         assertThat(schema.field(SourceInfo.SERVER_NAME_KEY).schema()).isEqualTo(Schema.STRING_SCHEMA);
-        assertThat(schema.field(SourceInfo.REPLICA_SET_NAME).schema()).isEqualTo(Schema.STRING_SCHEMA);
         assertThat(schema.field(SourceInfo.DATABASE_NAME_KEY).schema()).isEqualTo(Schema.STRING_SCHEMA);
         assertThat(schema.field(SourceInfo.COLLECTION).schema()).isEqualTo(Schema.STRING_SCHEMA);
         assertThat(schema.field(SourceInfo.TIMESTAMP_KEY).schema()).isEqualTo(Schema.INT64_SCHEMA);
@@ -250,7 +248,6 @@ public class SourceInfoTest {
                 .field("snapshot", AbstractSourceInfoStructMaker.SNAPSHOT_RECORD_SCHEMA)
                 .field("db", Schema.STRING_SCHEMA)
                 .field("sequence", Schema.OPTIONAL_STRING_SCHEMA)
-                .field("rs", Schema.STRING_SCHEMA)
                 .field("collection", Schema.STRING_SCHEMA)
                 .field("ord", Schema.INT32_SCHEMA)
                 .field("lsid", Schema.OPTIONAL_STRING_SCHEMA)
