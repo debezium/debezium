@@ -376,6 +376,11 @@ public class LogMinerStreamingChangeEventSourceMetrics
     }
 
     @Override
+    public long getAbandonedTransactionCount() {
+        return abandonedTransactionIds.getAll().size();
+    }
+
+    @Override
     public Set<String> getRolledBackTransactionIds() {
         return rolledBackTransactionIds.getAll();
     }

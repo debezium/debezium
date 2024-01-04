@@ -357,6 +357,8 @@ public interface LogMinerStreamingChangeEventSourceMetricsMXBean
      */
     Set<String> getAbandonedTransactionIds();
 
+    long getAbandonedTransactionCount();
+
     /**
      * @return most recent transaction identifiers that were rolled back
      */
