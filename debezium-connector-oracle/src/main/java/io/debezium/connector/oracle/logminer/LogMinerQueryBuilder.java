@@ -221,8 +221,8 @@ public class LogMinerQueryBuilder {
             return resolveExcludedSchemaPredicate(fieldName);
         }
         else if (LogMiningQueryFilterMode.IN.equals(queryFilterMode)) {
-            final Set<String> includeSchemasList = Strings.setOf(includeList, String::new);
-            final Set<String> excludeSchemasList = Strings.setOf(excludeList, String::new);
+            final Set<String> includeSchemasList = Strings.setOfTrimmed(includeList, String::new);
+            final Set<String> excludeSchemasList = Strings.setOfTrimmed(excludeList, String::new);
 
             final StringBuilder predicate = new StringBuilder();
             predicate.append("(").append(fieldName).append(" IS NULL OR ");
@@ -412,7 +412,7 @@ public class LogMinerQueryBuilder {
     }
 
     private static List<String> getTableIncludeExcludeListAsInValueList(String list) {
-        return Strings.listOf(list, s -> s.split("[,]"), v -> v.replaceAll("\\\\", ""));
+        return Strings.listOfTrimmed(list, s -> s.split("[,]"), v -> v.replaceAll("\\\\", ""));
     }
 
     private static List<String> toUpperCase(Collection<String> values) {
@@ -480,12 +480,7 @@ public class LogMinerQueryBuilder {
             for (Iterator<?> iterator = values.iterator(); iterator.hasNext();) {
                 final Object value = iterator.next();
                 if (value instanceof String) {
-                    if (caseInsensitive) {
-                        list.append("'").append(((String) value).toUpperCase()).append("'");
-                    }
-                    else {
-                        list.append("'").append(value).append("'");
-                    }
+                    list.append("'").append(sanitizeCommaSeparatedStringElement((String) value)).append("'");
                 }
                 else {
                     list.append(value);
@@ -495,6 +490,13 @@ public class LogMinerQueryBuilder {
                 }
             }
             return list.toString();
+        }
+
+        private String sanitizeCommaSeparatedStringElement(String element) {
+            if (caseInsensitive) {
+                return element.trim().toUpperCase();
+            }
+            return element.trim();
         }
     }
 
