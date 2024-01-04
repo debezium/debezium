@@ -18,12 +18,11 @@ import io.debezium.data.Envelope;
 public class RecordAndMetadataBaseImpl implements RecordAndMetadata {
 
     private final Struct record;
+    private final Schema originalDataSchema;
 
-    protected final Schema dataSchema;
-
-    public RecordAndMetadataBaseImpl(Struct record, Schema dataSchema) {
+    public RecordAndMetadataBaseImpl(Struct record, Schema originalDataSchema) {
         this.record = record;
-        this.dataSchema = dataSchema;
+        this.originalDataSchema = originalDataSchema;
     }
 
     @Override
@@ -59,25 +58,29 @@ public class RecordAndMetadataBaseImpl implements RecordAndMetadata {
     @Override
     public SchemaAndValue timestamp() {
         String ts_ms = record.getInt64(Envelope.FieldName.TIMESTAMP).toString();
-        Schema ts_msSchema = dataSchema.field(Envelope.FieldName.TIMESTAMP).schema();
+        Schema ts_msSchema = originalDataSchema.field(Envelope.FieldName.TIMESTAMP).schema();
         return new SchemaAndValue(ts_msSchema, ts_ms);
     }
 
     @Override
-    public Schema dataSchema(String... dataFields) {
+    public String dataSchemaName() {
         String connectorType = source().getString(AbstractSourceInfo.DEBEZIUM_CONNECTOR_KEY);
-        String dataSchemaName = "io.debezium.connector." + connectorType + ".Data";
-        SchemaBuilder builder = SchemaBuilder.struct().name(dataSchemaName);
+        return "io.debezium.connector." + connectorType + ".Data";
+    }
+
+    @Override
+    public Schema dataSchema(String... dataFields) {
+        SchemaBuilder builder = SchemaBuilder.struct().name(dataSchemaName());
 
         if (dataFields.length == 0) {
             // copy fields from original data schema
-            for (Field field : dataSchema.fields()) {
+            for (Field field : originalDataSchema.fields()) {
                 builder.field(field.name(), field.schema());
             }
         }
         else {
             for (String field : dataFields) {
-                builder.field(field, dataSchema.field(field).schema());
+                builder.field(field, originalDataSchema.field(field).schema());
             }
         }
 

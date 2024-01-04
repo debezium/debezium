@@ -59,6 +59,7 @@ public abstract class CloudEventsMaker {
     }
 
     public static final String CLOUDEVENTS_SPECVERSION = "1.0";
+    public static final String DATA_SCHEMA_NAME_PARAM = "dataSchemaName";
     public static final String CLOUDEVENTS_SCHEMA_SUFFIX = "CloudEvents.Envelope";
 
     private final SerializerType dataContentType;
