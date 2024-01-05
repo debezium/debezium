@@ -285,7 +285,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         Set<TableId> capturedSchemaTables = new HashSet<>();
 
         for (TableId tableId : allTableIds) {
-            if (connectorConfig.getTableFilters().eligibleForSchemaDataCollectionFilter().isIncluded(tableId) && !snapshottingTask.isBlocking()) {
+            if (connectorConfig.getTableFilters().eligibleForSchemaDataCollectionFilter().isIncluded(tableId) && !snapshottingTask.isOnDemand()) {
                 LOGGER.info("Adding table {} to the list of capture schema tables", tableId);
                 capturedSchemaTables.add(tableId);
             }
@@ -302,7 +302,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         }
 
         ctx.capturedTables = addSignalingCollectionAndSort(capturedTables);
-        ctx.capturedSchemaTables = snapshottingTask.isBlocking() ? ctx.capturedTables
+        ctx.capturedSchemaTables = snapshottingTask.isOnDemand() ? ctx.capturedTables
                 : capturedSchemaTables
                         .stream()
                         .sorted()
@@ -762,16 +762,16 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
             extends SnapshotContext<P, O> {
         public final String catalogName;
         public final Tables tables;
-        public final boolean isBlocking;
+        public final boolean onDemand;
 
         public Set<TableId> capturedTables;
         public Set<TableId> capturedSchemaTables;
 
-        public RelationalSnapshotContext(P partition, String catalogName, boolean isBlocking) {
+        public RelationalSnapshotContext(P partition, String catalogName, boolean onDemand) {
             super(partition);
             this.catalogName = catalogName;
             this.tables = new Tables();
-            this.isBlocking = isBlocking;
+            this.onDemand = onDemand;
         }
     }
 

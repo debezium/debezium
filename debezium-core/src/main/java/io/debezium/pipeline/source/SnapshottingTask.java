@@ -18,14 +18,14 @@ public class SnapshottingTask {
     private final List<String> dataCollections;
     private final Map<String, String> filterQueries;
 
-    private final boolean blocking;
+    private final boolean onDemand;
 
-    public SnapshottingTask(boolean snapshotSchema, boolean snapshotData, List<String> dataCollections, Map<String, String> filterQueries, boolean blocking) {
+    public SnapshottingTask(boolean snapshotSchema, boolean snapshotData, List<String> dataCollections, Map<String, String> filterQueries, boolean onDemand) {
         this.snapshotSchema = snapshotSchema;
         this.snapshotData = snapshotData;
         this.dataCollections = dataCollections;
         this.filterQueries = filterQueries;
-        this.blocking = blocking;
+        this.onDemand = onDemand;
     }
 
     /**
@@ -68,11 +68,11 @@ public class SnapshottingTask {
     }
 
     /**
-     * Determine if the task is a blocking snapshot or not
+     * Determine if the task is an onDemand snapshot or not
      *
      */
-    public boolean isBlocking() {
-        return blocking;
+    public boolean isOnDemand() {
+        return onDemand;
     }
 
     @Override
