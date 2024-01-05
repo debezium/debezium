@@ -96,19 +96,17 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     }
 
     @Override
-    protected SnapshotContext<OraclePartition, OracleOffsetContext> prepare(OraclePartition partition, boolean isBlocking)
-            throws Exception {
+    protected SnapshotContext<OraclePartition, OracleOffsetContext> prepare(OraclePartition partition, boolean onDemand) {
         if (connectorConfig.getPdbName() != null) {
             jdbcConnection.setSessionToPdb(connectorConfig.getPdbName());
         }
 
-        return new OracleSnapshotContext(partition, connectorConfig.getCatalogName(), isBlocking);
+        return new OracleSnapshotContext(partition, connectorConfig.getCatalogName(), onDemand);
     }
 
     @Override
     protected void connectionPoolConnectionCreated(RelationalSnapshotContext<OraclePartition, OracleOffsetContext> snapshotContext,
-                                                   JdbcConnection connection)
-            throws SQLException {
+                                                   JdbcConnection connection) {
         if (connectorConfig.getPdbName() != null) {
             ((OracleConnection) connection).setSessionToPdb(connectorConfig.getPdbName());
         }
@@ -202,7 +200,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
 
     private Tables.TableFilter getTableFilter(SnapshottingTask snapshottingTask, RelationalSnapshotContext<OraclePartition, OracleOffsetContext> snapshotContext) {
 
-        if (snapshottingTask.isBlocking()) {
+        if (snapshottingTask.isOnDemand()) {
             return Tables.TableFilter.fromPredicate(snapshotContext.capturedTables::contains);
         }
 
@@ -302,8 +300,8 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
 
         private Savepoint preSchemaSnapshotSavepoint;
 
-        OracleSnapshotContext(OraclePartition partition, String catalogName, boolean isBlocking) throws SQLException {
-            super(partition, catalogName, isBlocking);
+        OracleSnapshotContext(OraclePartition partition, String catalogName, boolean onDemand) {
+            super(partition, catalogName, onDemand);
         }
     }
 

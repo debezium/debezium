@@ -84,8 +84,8 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     }
 
     @Override
-    protected SnapshotContext<PostgresPartition, PostgresOffsetContext> prepare(PostgresPartition partition, boolean isBlocking) {
-        return new PostgresSnapshotContext(partition, connectorConfig.databaseName(), isBlocking);
+    protected SnapshotContext<PostgresPartition, PostgresOffsetContext> prepare(PostgresPartition partition, boolean onDemand) {
+        return new PostgresSnapshotContext(partition, connectorConfig.databaseName(), onDemand);
     }
 
     @Override
@@ -202,7 +202,7 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
 
             LOGGER.info("Reading structure of schema '{}' of catalog '{}'", schema, snapshotContext.catalogName);
 
-            Tables.TableFilter tableFilter = snapshottingTask.isBlocking() ? Tables.TableFilter.fromPredicate(snapshotContext.capturedTables::contains)
+            Tables.TableFilter tableFilter = snapshottingTask.isOnDemand() ? Tables.TableFilter.fromPredicate(snapshotContext.capturedTables::contains)
                     : connectorConfig.getTableFilters().dataCollectionFilter();
 
             jdbcConnection.readSchema(
@@ -242,7 +242,7 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     @Override
     protected Optional<String> getSnapshotSelect(RelationalSnapshotContext<PostgresPartition, PostgresOffsetContext> snapshotContext,
                                                  TableId tableId, List<String> columns) {
-        if (snapshotContext.isBlocking) {
+        if (snapshotContext.onDemand) {
             return blockingSnapshotter.buildSnapshotQuery(tableId, columns);
         }
 
@@ -261,8 +261,8 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
      */
     private static class PostgresSnapshotContext extends RelationalSnapshotContext<PostgresPartition, PostgresOffsetContext> {
 
-        PostgresSnapshotContext(PostgresPartition partition, String catalogName, boolean isBlocking) {
-            super(partition, catalogName, isBlocking);
+        PostgresSnapshotContext(PostgresPartition partition, String catalogName, boolean onDemand) {
+            super(partition, catalogName, onDemand);
         }
     }
 

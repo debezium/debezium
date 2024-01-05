@@ -89,9 +89,8 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
     }
 
     @Override
-    protected SnapshotContext<SqlServerPartition, SqlServerOffsetContext> prepare(SqlServerPartition partition, boolean isBlocking)
-            throws Exception {
-        return new SqlServerSnapshotContext(partition, isBlocking);
+    protected SnapshotContext<SqlServerPartition, SqlServerOffsetContext> prepare(SqlServerPartition partition, boolean onDemand) {
+        return new SqlServerSnapshotContext(partition, onDemand);
     }
 
     @Override
@@ -209,7 +208,7 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
 
             LOGGER.info("Reading structure of schema '{}'", snapshotContext.catalogName);
 
-            Tables.TableFilter tableFilter = snapshottingTask.isBlocking() ? Tables.TableFilter.fromPredicate(snapshotContext.capturedTables::contains)
+            Tables.TableFilter tableFilter = snapshottingTask.isOnDemand() ? Tables.TableFilter.fromPredicate(snapshotContext.capturedTables::contains)
                     : connectorConfig.getTableFilters().dataCollectionFilter();
 
             jdbcConnection.readSchema(
@@ -313,8 +312,8 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
         private int isolationLevelBeforeStart;
         private Savepoint preSchemaSnapshotSavepoint;
 
-        SqlServerSnapshotContext(SqlServerPartition partition, boolean isBlocking) {
-            super(partition, partition.getDatabaseName(), isBlocking);
+        SqlServerSnapshotContext(SqlServerPartition partition, boolean onDemand) {
+            super(partition, partition.getDatabaseName(), onDemand);
         }
     }
 
