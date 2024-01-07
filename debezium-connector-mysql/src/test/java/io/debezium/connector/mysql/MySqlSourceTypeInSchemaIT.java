@@ -21,7 +21,7 @@ import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.AbstractAsyncEngineConnectorTest;
 import io.debezium.util.Testing;
 
 /**
@@ -29,7 +29,7 @@ import io.debezium.util.Testing;
  *
  * @author Gunnar Morling
  */
-public class MySqlSourceTypeInSchemaIT extends AbstractConnectorTest {
+public class MySqlSourceTypeInSchemaIT extends AbstractAsyncEngineConnectorTest {
 
     private static final String TYPE_NAME_PARAMETER_KEY = "__debezium.source.column.type";
     private static final String TYPE_LENGTH_PARAMETER_KEY = "__debezium.source.column.length";

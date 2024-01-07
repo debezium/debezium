@@ -24,10 +24,10 @@ import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.AbstractAsyncEngineConnectorTest;
 import io.debezium.util.Testing;
 
-public class MySqlTableAndColumnCommentIT extends AbstractConnectorTest {
+public class MySqlTableAndColumnCommentIT extends AbstractAsyncEngineConnectorTest {
 
     private static final String COLUMN_COMMENT_PARAMETER_KEY = "__debezium.source.column.comment";
 

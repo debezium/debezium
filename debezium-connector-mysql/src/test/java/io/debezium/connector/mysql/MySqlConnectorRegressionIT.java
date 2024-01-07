@@ -37,7 +37,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.AbstractAsyncEngineConnectorTest;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingMode;
@@ -49,7 +49,7 @@ import io.debezium.util.Testing;
  * @author Randall Hauch
  */
 @SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 6, reason = "DDL uses fractional second data types, not supported until MySQL 5.6")
-public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
+public class MySqlConnectorRegressionIT extends AbstractAsyncEngineConnectorTest {
 
     private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-regression.txt").toAbsolutePath();
     private final UniqueDatabase DATABASE = new UniqueDatabase("regression", "regression_test")

@@ -49,7 +49,7 @@ import io.debezium.converters.CloudEventsConverterTest;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.AbstractAsyncEngineConnectorTest;
 import io.debezium.embedded.EmbeddedEngine.CompletionResult;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.jdbc.JdbcConnection;
@@ -69,7 +69,7 @@ import io.debezium.util.Testing;
  * @author Randall Hauch
  */
 @SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 6, reason = "DDL uses fractional second data types, not supported until MySQL 5.6")
-public class MySqlConnectorIT extends AbstractConnectorTest {
+public class MySqlConnectorIT extends AbstractAsyncEngineConnectorTest {
 
     private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-connect.txt").toAbsolutePath();
     private final UniqueDatabase DATABASE = new UniqueDatabase("myServer1", "connector_test")

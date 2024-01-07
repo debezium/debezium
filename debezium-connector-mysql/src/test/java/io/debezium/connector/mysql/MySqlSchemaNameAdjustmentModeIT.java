@@ -19,10 +19,10 @@ import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig.SchemaNameAdjustmentMode;
 import io.debezium.config.Configuration;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.AbstractAsyncEngineConnectorTest;
 import io.debezium.util.Testing;
 
-public class MySqlSchemaNameAdjustmentModeIT extends AbstractConnectorTest {
+public class MySqlSchemaNameAdjustmentModeIT extends AbstractAsyncEngineConnectorTest {
 
     private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-json.txt")
             .toAbsolutePath();

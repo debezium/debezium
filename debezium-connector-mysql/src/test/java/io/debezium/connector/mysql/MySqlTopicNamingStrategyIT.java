@@ -22,7 +22,7 @@ import org.junit.Test;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.AbstractAsyncEngineConnectorTest;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
@@ -31,7 +31,7 @@ import io.debezium.schema.DefaultRegexTopicNamingStrategy;
 import io.debezium.schema.DefaultUnicodeTopicNamingStrategy;
 import io.debezium.util.Testing;
 
-public class MySqlTopicNamingStrategyIT extends AbstractConnectorTest {
+public class MySqlTopicNamingStrategyIT extends AbstractAsyncEngineConnectorTest {
 
     private static final String TABLE_NAME = "dbz4180";
     private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-comment.txt")

@@ -20,7 +20,7 @@ import org.junit.Test;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.converters.TinyIntOneToBooleanConverter;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.EqualityCheck;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.util.Testing;
@@ -30,7 +30,7 @@ import io.debezium.util.Testing;
  *
  * @author Jiri Pechanec
  */
-public class MySqlTinyIntIT extends AbstractConnectorTest {
+public class MySqlTinyIntIT extends AbstractAsyncEngineConnectorTest {
 
     private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-year.txt")
             .toAbsolutePath();

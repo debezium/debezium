@@ -25,14 +25,14 @@ import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.data.Envelope;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.AbstractAsyncEngineConnectorTest;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.SkipTestRule;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.util.Testing;
 
 @SkipWhenDatabaseVersion(check = LESS_THAN, major = 8, minor = 0, patch = 20, reason = "MySQL 8.0.20 started supporting binlog compression")
-public class TransactionPayloadIT extends AbstractConnectorTest {
+public class TransactionPayloadIT extends AbstractAsyncEngineConnectorTest {
 
     private static final UUID PRODUCT_CODE = UUID.randomUUID();
     private static final String PRODUCT_NAME = "robot";

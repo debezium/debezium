@@ -40,7 +40,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.AbstractAsyncEngineConnectorTest;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
@@ -59,7 +59,7 @@ import io.debezium.util.Testing;
  * @author luobo
  */
 @SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 6, reason = "DDL uses fractional second data types, not supported until MySQL 5.6")
-public class MysqlDefaultValueIT extends AbstractConnectorTest {
+public class MysqlDefaultValueIT extends AbstractAsyncEngineConnectorTest {
 
     // 4 meta events (set character_set etc.) and then 14 tables with 3 events each (drop DDL, create DDL, insert)
     private static final int EVENT_COUNT = 4 + 14 * 3;

@@ -16,7 +16,7 @@ import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.antlr.listener.RenameTableParserListener;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.util.Testing;
@@ -24,7 +24,7 @@ import io.debezium.util.Testing;
 /**
  * @author Jiri Pechanec
  */
-public class MySqlSchemaMigrationIT extends AbstractConnectorTest {
+public class MySqlSchemaMigrationIT extends AbstractAsyncEngineConnectorTest {
 
     private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-json.txt")
             .toAbsolutePath();

@@ -25,13 +25,13 @@ import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.AbstractAsyncEngineConnectorTest;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.schema.AbstractTopicNamingStrategy;
 import io.debezium.util.Collect;
 import io.debezium.util.Testing;
 
-public class TransactionMetadataIT extends AbstractConnectorTest {
+public class TransactionMetadataIT extends AbstractAsyncEngineConnectorTest {
 
     private static final String PRODUCT_INSERT_STMT = "INSERT INTO products (name, description, weight) VALUES ('robot', 'Toy robot', 1.304);";
     private static final String CUSTOMER_INSERT_STMT_1 = "INSERT INTO customers (first_name, last_name, email) VALUES ('Nitin', 'Agarwal', 'test1@abc.com' ); ";
