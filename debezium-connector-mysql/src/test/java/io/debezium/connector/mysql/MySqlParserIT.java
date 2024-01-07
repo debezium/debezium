@@ -26,7 +26,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.junit.SkipTestDependingOnSslModeRule;
 import io.debezium.connector.mysql.junit.SkipWhenSslModeIsNot;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.AbstractAsyncEngineConnectorTest;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.testing.testcontainers.util.ContainerImageVersions;
@@ -36,7 +36,7 @@ import io.debezium.util.Testing;
  * Integration test for {@link MySqlConnector} using Testcontainers infrastructure for testing column constraints supported in MySQL 8.0.x.
  */
 @SkipWhenSslModeIsNot(value = MySqlConnectorConfig.SecureConnectionMode.DISABLED, reason = "Only running with ssl disabled mode")
-public class MySqlParserIT extends AbstractConnectorTest {
+public class MySqlParserIT extends AbstractAsyncEngineConnectorTest {
 
     @Rule
     public TestRule skipTestRule = new SkipTestDependingOnSslModeRule();

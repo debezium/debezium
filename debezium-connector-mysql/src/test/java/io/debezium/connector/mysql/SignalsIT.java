@@ -27,7 +27,7 @@ import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.AbstractAsyncEngineConnectorTest;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.kafka.KafkaCluster;
@@ -36,7 +36,7 @@ import io.debezium.pipeline.signal.channels.KafkaSignalChannel;
 import io.debezium.util.Collect;
 import io.debezium.util.Testing;
 
-public class SignalsIT extends AbstractConnectorTest {
+public class SignalsIT extends AbstractAsyncEngineConnectorTest {
     protected static final String SERVER_NAME = "is_test";
     protected static final Path SCHEMA_HISTORY_PATH = Files.createTestingPath("file-schema-history-is.txt")
             .toAbsolutePath();

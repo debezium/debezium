@@ -22,7 +22,7 @@ import org.junit.Test;
 import io.debezium.config.Configuration;
 import io.debezium.data.Envelope.FieldName;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.util.Testing;
 
@@ -30,7 +30,7 @@ import io.debezium.util.Testing;
  * @author Chris Cranford
  */
 @SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 6, patch = 5, reason = "MySQL does not support CURRENT_TIMESTAMP on DATETIME and only a single column can specify default CURRENT_TIMESTAMP, lifted in MySQL 5.6.5")
-public class MySqlEnumColumnIT extends AbstractConnectorTest {
+public class MySqlEnumColumnIT extends AbstractAsyncEngineConnectorTest {
 
     private static final String TYPE_NAME_PARAMETER_KEY = "__debezium.source.column.type";
     private static final String TYPE_LENGTH_PARAMETER_KEY = "__debezium.source.column.length";

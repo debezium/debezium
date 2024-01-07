@@ -21,7 +21,7 @@ import org.junit.Test;
 import io.debezium.config.Configuration;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.EqualityCheck;
 import io.debezium.junit.SkipWhenKafkaVersion;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
@@ -32,7 +32,7 @@ import io.debezium.util.Testing;
  *
  * @author René Kerner
  */
-public class MySqlDecimalIT extends AbstractConnectorTest {
+public class MySqlDecimalIT extends AbstractAsyncEngineConnectorTest {
 
     private static final String TABLE_NAME = "DBZ730";
 

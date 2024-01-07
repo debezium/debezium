@@ -42,7 +42,7 @@ import io.debezium.data.KeyValueStore.Collection;
 import io.debezium.data.SchemaChangeHistory;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.AbstractAsyncEngineConnectorTest;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.SkipTestRule;
@@ -59,7 +59,7 @@ import io.debezium.util.Testing;
  *
  */
 @SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 6, reason = "DDL uses fractional second data types, not supported until MySQL 5.6")
-public class SnapshotSourceIT extends AbstractConnectorTest {
+public class SnapshotSourceIT extends AbstractAsyncEngineConnectorTest {
 
     private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-snapshot.txt").toAbsolutePath();
     protected final UniqueDatabase DATABASE = new UniqueDatabase("logical_server_name", "connector_test_ro")
