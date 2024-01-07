@@ -404,7 +404,7 @@ public abstract class AbstractConnectorTest implements Testing {
         };
 
         // Create the connector ...
-        EmbeddedEngine.Builder builder = new EmbeddedEngine.EngineBuilder();
+        DebeziumEngine.Builder builder = createEngineBuilder();
         builder.using(config.asProperties())
                 .notifying(getConsumer(isStopRecord, recordArrivedListener, ignoreRecordsAfterStop))
                 .using(this.getClass().getClassLoader())
@@ -413,7 +413,7 @@ public abstract class AbstractConnectorTest implements Testing {
         if (changeConsumer != null) {
             builder.notifying(changeConsumer);
         }
-        engine = new TestingEmbeddedEngine((EmbeddedEngine) builder.build());
+        engine = createEngine(builder);
 
         // Submit the connector for asynchronous execution ...
         assertThat(executor).isNull();
@@ -433,6 +433,14 @@ public abstract class AbstractConnectorTest implements Testing {
                 fail("Interrupted while waiting for engine startup");
             }
         }
+    }
+
+    protected DebeziumEngine.Builder createEngineBuilder() {
+        return new EmbeddedEngine.EngineBuilder();
+    }
+
+    protected TestingDebeziumEngine createEngine(DebeziumEngine.Builder builder) {
+        return new TestingEmbeddedEngine((EmbeddedEngine) builder.build());
     }
 
     protected Consumer<SourceRecord> getConsumer(Predicate<SourceRecord> isStopRecord, Consumer<SourceRecord> recordArrivedListener, boolean ignoreRecordsAfterStop) {
