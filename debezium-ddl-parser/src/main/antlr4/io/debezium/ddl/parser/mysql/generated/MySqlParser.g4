@@ -1132,7 +1132,7 @@ querySpecification
 
 querySpecificationNointo
     : SELECT selectSpec* selectElements
-      fromClause? groupByClause? havingClause? windowClause? orderByClause? limitClause?
+      fromClause? groupByClause? havingClause? windowClause? orderByClause? limitClause? unionStatement?
     ;
 
 unionParenthesis
