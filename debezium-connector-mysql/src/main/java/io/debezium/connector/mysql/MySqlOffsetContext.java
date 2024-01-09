@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.mysql;
 
+import static io.debezium.connector.common.OffsetUtils.longOffsetValue;
+
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
@@ -185,22 +187,6 @@ public class MySqlOffsetContext extends CommonOffsetContext<SourceInfo> {
                     (int) longOffsetValue(offset, SourceInfo.BINLOG_ROW_IN_EVENT_OFFSET_KEY));
             offsetContext.setCompletedGtidSet((String) offset.get(GTID_SET_KEY)); // may be null
             return offsetContext;
-        }
-
-        private long longOffsetValue(Map<String, ?> values, String key) {
-            Object obj = values.get(key);
-            if (obj == null) {
-                return 0L;
-            }
-            if (obj instanceof Number) {
-                return ((Number) obj).longValue();
-            }
-            try {
-                return Long.parseLong(obj.toString());
-            }
-            catch (NumberFormatException e) {
-                throw new ConnectException("Source offset '" + key + "' parameter value " + obj + " could not be converted to a long");
-            }
         }
     }
 
