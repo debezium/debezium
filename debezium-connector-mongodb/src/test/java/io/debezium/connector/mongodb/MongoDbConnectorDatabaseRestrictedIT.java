@@ -143,7 +143,7 @@ public class MongoDbConnectorDatabaseRestrictedIT extends AbstractConnectorTest 
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database
         // ---------------------------------------------------------------------------------------------------------------
-        consumeAndVerifyFromInitialSync(topic, INIT_DOCUMENT_COUNT);
+        consumeAndVerifyFromInitialSnapshot(topic, INIT_DOCUMENT_COUNT);
 
         // At this point, the connector has performed the initial sync and awaits changes ...
 
@@ -154,7 +154,7 @@ public class MongoDbConnectorDatabaseRestrictedIT extends AbstractConnectorTest 
         documentCount += NEW_DOCUMENT_COUNT;
 
         // Wait until we can consume the documents we just added ...
-        consumeAndVerifyNotFromInitialSync(topic, NEW_DOCUMENT_COUNT);
+        consumeAndVerifyNotFromInitialSnapshot(topic, NEW_DOCUMENT_COUNT);
     }
 
     @Test
@@ -175,7 +175,7 @@ public class MongoDbConnectorDatabaseRestrictedIT extends AbstractConnectorTest 
         Assertions.assertThat(logInterceptor.containsMessage("The maximum number of 2 retries has been attempted")).isTrue();
     }
 
-    protected void consumeAndVerifyFromInitialSync(String topic, int expectedRecords) throws InterruptedException {
+    protected void consumeAndVerifyFromInitialSnapshot(String topic, int expectedRecords) throws InterruptedException {
         var records = consumeRecordsByTopic(expectedRecords);
         assertThat(records.topics().size()).isEqualTo(1);
         assertThat(records.recordsForTopic(topic).size()).isEqualTo(expectedRecords);
@@ -184,13 +184,13 @@ public class MongoDbConnectorDatabaseRestrictedIT extends AbstractConnectorTest 
         records.forEach(record -> {
             // Check that all records are valid, and can be serialized and deserialized ...
             validate(record);
-            verifyFromInitialSync(record, foundLast);
+            verifyFromInitialSnapshot(record, foundLast);
             verifyOperation(record, Envelope.Operation.READ);
         });
         assertThat(foundLast.get()).isTrue();
     }
 
-    protected void verifyFromInitialSync(SourceRecord record, AtomicBoolean foundLast) {
+    protected void verifyFromInitialSnapshot(SourceRecord record, AtomicBoolean foundLast) {
         if (record.sourceOffset().containsKey(SourceInfo.INITIAL_SYNC)) {
             assertThat(record.sourceOffset().containsKey(SourceInfo.INITIAL_SYNC)).isTrue();
             Struct value = (Struct) record.value();
@@ -204,23 +204,23 @@ public class MongoDbConnectorDatabaseRestrictedIT extends AbstractConnectorTest 
         }
     }
 
-    protected void consumeAndVerifyNotFromInitialSync(String topic, int expectedRecords) throws InterruptedException {
-        consumeAndVerifyNotFromInitialSync(topic, expectedRecords, Envelope.Operation.CREATE);
+    protected void consumeAndVerifyNotFromInitialSnapshot(String topic, int expectedRecords) throws InterruptedException {
+        consumeAndVerifyNotFromInitialSnapshot(topic, expectedRecords, Envelope.Operation.CREATE);
     }
 
-    protected void consumeAndVerifyNotFromInitialSync(String topic, int expectedRecords, Envelope.Operation op) throws InterruptedException {
+    protected void consumeAndVerifyNotFromInitialSnapshot(String topic, int expectedRecords, Envelope.Operation op) throws InterruptedException {
         var records = consumeRecordsByTopic(expectedRecords);
         assertThat(records.recordsForTopic(topic).size()).isEqualTo(expectedRecords);
         assertThat(records.topics().size()).isEqualTo(1);
         records.forEach(record -> {
             // Check that all records are valid, and can be serialized and deserialized ...
             validate(record);
-            verifyNotFromInitialSync(record);
+            verifyNotFromInitialSnapshot(record);
             verifyOperation(record, op);
         });
     }
 
-    protected void verifyNotFromInitialSync(SourceRecord record) {
+    protected void verifyNotFromInitialSnapshot(SourceRecord record) {
         assertThat(record.sourceOffset().containsKey(SourceInfo.INITIAL_SYNC)).isFalse();
         Struct value = (Struct) record.value();
         assertThat(value.getStruct(Envelope.FieldName.SOURCE).getString(SourceInfo.SNAPSHOT_KEY)).isNull();

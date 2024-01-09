@@ -22,7 +22,7 @@ import com.mongodb.connection.ClusterType;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig;
-import io.debezium.connector.mongodb.MongoUtil;
+import io.debezium.connector.mongodb.MongoUtils;
 
 /**
  * @author Randall Hauch
@@ -94,7 +94,7 @@ public class MongoDbConnectionContext {
     public ClusterDescription getClusterDescription() {
         try (var client = getMongoClient()) {
             LOGGER.info("Reading description of cluster at {}", getMaskedConnectionString());
-            return MongoUtil.clusterDescription(client);
+            return MongoUtils.clusterDescription(client);
         }
     }
 
@@ -113,7 +113,7 @@ public class MongoDbConnectionContext {
 
         var shardNames = new HashSet<String>();
         try (var client = getMongoClient()) {
-            MongoUtil.onCollectionDocuments(client, "config", "shards", doc -> {
+            MongoUtils.onCollectionDocuments(client, "config", "shards", doc -> {
                 String shardName = doc.getString("_id");
                 shardNames.add(shardName);
             });

@@ -23,7 +23,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.CollectionId;
 import io.debezium.connector.mongodb.Filters;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig;
-import io.debezium.connector.mongodb.MongoUtil;
+import io.debezium.connector.mongodb.MongoUtils;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.function.BlockingFunction;
 import io.debezium.util.Clock;
@@ -128,7 +128,7 @@ public final class MongoDbConnection implements AutoCloseable {
         return execute("get database names", client -> {
             Set<String> databaseNames = new HashSet<>();
 
-            MongoUtil.forEachDatabaseName(
+            MongoUtils.forEachDatabaseName(
                     client,
                     dbName -> {
                         if (filters.databaseFilter().test(dbName)) {
@@ -151,7 +151,7 @@ public final class MongoDbConnection implements AutoCloseable {
             Set<String> databaseNames = databaseNames();
 
             for (String dbName : databaseNames) {
-                MongoUtil.forEachCollectionNameInDatabase(client, dbName, collectionName -> {
+                MongoUtils.forEachCollectionNameInDatabase(client, dbName, collectionName -> {
                     CollectionId collectionId = new CollectionId(dbName, collectionName);
 
                     if (filters.collectionFilter().test(collectionId)) {
@@ -173,7 +173,7 @@ public final class MongoDbConnection implements AutoCloseable {
     public BsonTimestamp hello() throws InterruptedException {
         return execute("ping on first available database", client -> {
             var dbName = databaseNames().stream().findFirst().orElse("admin");
-            return MongoUtil.hello(client, dbName);
+            return MongoUtils.hello(client, dbName);
         });
     }
 

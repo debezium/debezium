@@ -180,22 +180,22 @@ public class SourceInfoTest {
     }
 
     @Test
-    public void shouldReturnOffsetForUnusedReplicaNameDuringInitialSync() {
-        source.startInitialSync();
+    public void shouldReturnOffsetForUnusedReplicaNameDuringInitialSnapshot() {
+        source.startInitialSnapshot();
         assertSourceInfoContents(source, false, null, new BsonTimestamp(0), "true");
     }
 
     @Test
-    public void shouldReturnRecordedOffsetForUsedReplicaNameDuringInitialSync() {
-        source.startInitialSync();
+    public void shouldReturnRecordedOffsetForUsedReplicaNameDuringInitialSnapshot() {
+        source.startInitialSnapshot();
 
         var cursor = mockEventChangeStreamCursor();
         assertSourceInfoContents(source, cursor, CHANGE_RESUME_TOKEN_DATA, CHANGE_TIMESTAMP, "true");
     }
 
     @Test
-    public void shouldReturnRecordedOffsetForUsedReplicaNameDuringInitialSyncWithoutEvent() {
-        source.startInitialSync();
+    public void shouldReturnRecordedOffsetForUsedReplicaNameDuringInitialSnapshotWithoutEvent() {
+        source.startInitialSnapshot();
 
         var cursor = mockNoEventChangeStreamCursor();
         assertSourceInfoContents(source, cursor, CURSOR_RESUME_TOKEN_DATA, null, "true");
