@@ -1426,9 +1426,11 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                             if (entry.getValue().getStartScn().compareTo(thresholdScn) <= 0) {
                                 if (first) {
                                     LOGGER.warn("All transactions with SCN <= {} will be abandoned.", thresholdScn);
-                                    if(LOGGER.isDebugEnabled()) {
-                                        LOGGER.debug("List of transactions in the cache before transactions being abandoned: [{}]",
-                                                getTransactionCache().keySet().stream().collect(Collectors.joining(",")));
+                                    if (LOGGER.isDebugEnabled()) {
+                                        try (Stream s = getTransactionCache().keySet().stream()) {
+                                            LOGGER.debug("List of transactions in the cache before transactions being abandoned: [{}]",
+                                                    s.collect(Collectors.joining(",")));
+                                        }
                                     }
                                     first = false;
                                 }
@@ -1449,9 +1451,11 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                             ((CloseableIterator<Map.Entry<String, T>>) iterator).close();
                         }
                     }
-                    if(LOGGER.isDebugEnabled()) {
-                        LOGGER.debug("List of transactions in the cache after transactions being abandoned: [{}]",
-                                getTransactionCache().keySet().stream().collect(Collectors.joining(",")));
+                    if (LOGGER.isDebugEnabled()) {
+                        try (Stream s = getTransactionCache().keySet().stream()) {
+                            LOGGER.debug("List of transactions in the cache after transactions being abandoned: [{}]",
+                                    s.collect(Collectors.joining(",")));
+                        }
                     }
 
                     // Update the oldest scn metric are transaction abandonment
