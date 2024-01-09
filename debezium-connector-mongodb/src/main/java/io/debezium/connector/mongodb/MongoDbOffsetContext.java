@@ -5,6 +5,9 @@
  */
 package io.debezium.connector.mongodb;
 
+import static io.debezium.connector.common.OffsetUtils.booleanOffsetValue;
+import static io.debezium.connector.common.OffsetUtils.longOffsetValue;
+import static io.debezium.connector.common.OffsetUtils.stringOffsetValue;
 import static io.debezium.connector.mongodb.SourceInfo.INITIAL_SYNC;
 import static io.debezium.connector.mongodb.SourceInfo.LSID;
 import static io.debezium.connector.mongodb.SourceInfo.ORDER;
@@ -192,38 +195,6 @@ public class MongoDbOffsetContext extends CommonOffsetContext<SourceInfo> {
         catch (NumberFormatException e) {
             throw new DebeziumException("Source offset '" + key + "' parameter value " + obj + " could not be converted to an integer");
         }
-    }
-
-    private static long longOffsetValue(Map<String, ?> values, String key) {
-        Object obj = values.get(key);
-        if (obj == null) {
-            return 0;
-        }
-        if (obj instanceof Number) {
-            return ((Number) obj).longValue();
-        }
-        try {
-            return Long.parseLong(obj.toString());
-        }
-        catch (NumberFormatException e) {
-            throw new DebeziumException("Source offset '" + key + "' parameter value " + obj + " could not be converted to a long");
-        }
-    }
-
-    private static String stringOffsetValue(Map<String, ?> values, String key) {
-        Object obj = values.get(key);
-        if (obj == null) {
-            return null;
-        }
-        return (String) obj;
-    }
-
-    private static boolean booleanOffsetValue(Map<String, ?> values, String key) {
-        Object obj = values.get(key);
-        if (obj instanceof Boolean) {
-            return (Boolean) obj;
-        }
-        return false;
     }
 
     public static MongoDbOffsetContext empty(MongoDbConnectorConfig connectorConfig) {
