@@ -213,7 +213,7 @@ public class OffsetConsolidationShardedIT extends AbstractShardedMongoConnectorI
         var records = consumeRecordsByTopic(expected.size());
         assertThat(records.allRecordsInOrder()).hasSameSizeAs(expected);
         records.forEach(record -> {
-            verifyNotFromInitialSync(record);
+            verifyNotFromInitialSnapshot(record);
             var id = ((Struct) record.key()).getString("id");
             assertThat(id).isIn(expected);
         });
@@ -243,7 +243,7 @@ public class OffsetConsolidationShardedIT extends AbstractShardedMongoConnectorI
         var records = consumeRecordsByTopic(expected.size());
         assertThat(records.allRecordsInOrder()).hasSameSizeAs(expected);
         records.forEach(record -> {
-            verifyNotFromInitialSync(record);
+            verifyNotFromInitialSnapshot(record);
             var id = ((Struct) record.key()).getString("id");
             assertThat(id).isIn(expected);
         });
@@ -293,7 +293,7 @@ public class OffsetConsolidationShardedIT extends AbstractShardedMongoConnectorI
         assertThat(records.allRecordsInOrder()).hasSameSizeAs(expected);
         var foundLast = new AtomicBoolean(false);
         records.forEach(record -> {
-            verifyFromInitialSync(record, foundLast);
+            verifyFromInitialSnapshot(record, foundLast);
             var id = ((Struct) record.key()).getString("id");
             assertThat(id).isIn(expected);
         });

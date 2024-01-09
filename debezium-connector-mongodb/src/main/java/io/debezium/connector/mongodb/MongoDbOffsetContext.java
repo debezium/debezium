@@ -55,12 +55,12 @@ public class MongoDbOffsetContext extends CommonOffsetContext<SourceInfo> {
         this.incrementalSnapshotContext = incrementalSnapshotContext;
     }
 
-    void startInitialSync() {
-        sourceInfo.startInitialSync();
+    void startInitialSnapshot() {
+        sourceInfo.startInitialSnapshot();
     }
 
-    void stopInitialSync() {
-        sourceInfo.stopInitialSync();
+    void stopInitialSnapshot() {
+        sourceInfo.stopInitialSnapshot();
     }
 
     @Override

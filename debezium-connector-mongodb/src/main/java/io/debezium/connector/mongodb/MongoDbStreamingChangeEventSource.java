@@ -174,7 +174,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
     }
 
     protected ChangeStreamIterable<BsonDocument> initChangeStream(MongoClient client, MongoDbOffsetContext offsetContext) {
-        final ChangeStreamIterable<BsonDocument> stream = MongoUtil.openChangeStream(client, taskContext);
+        final ChangeStreamIterable<BsonDocument> stream = MongoUtils.openChangeStream(client, taskContext);
 
         if (taskContext.getCaptureMode().isFullUpdate()) {
             stream.fullDocument(FullDocument.UPDATE_LOOKUP);

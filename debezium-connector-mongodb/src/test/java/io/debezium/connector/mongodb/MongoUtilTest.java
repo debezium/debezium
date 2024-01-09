@@ -40,7 +40,7 @@ public class MongoUtilTest {
         var client = mock(MongoClient.class);
         when(client.getClusterDescription()).thenReturn(expectedClusterDescription);
 
-        var actualDescription = MongoUtil.clusterDescription(client);
+        var actualDescription = MongoUtils.clusterDescription(client);
         assertThat(actualDescription).isEqualTo(expectedClusterDescription);
     }
 
@@ -66,7 +66,7 @@ public class MongoUtilTest {
         when(client.getClusterDescription()).thenReturn(unknwonClusterDescription, expectedClusterDescription);
         when(client.listDatabaseNames()).thenReturn(iterable);
 
-        var actualDescription = MongoUtil.clusterDescription(client);
+        var actualDescription = MongoUtils.clusterDescription(client);
         assertThat(actualDescription).isEqualTo(expectedClusterDescription);
     }
 
@@ -99,7 +99,7 @@ public class MongoUtilTest {
                 ClusterType.REPLICA_SET,
                 serverDescriptions);
 
-        var actualRsName = MongoUtil.replicaSetName(clusterDescription);
+        var actualRsName = MongoUtils.replicaSetName(clusterDescription);
 
         assertThat(actualRsName).hasValue(rsNames.get(1));
     }
@@ -120,7 +120,7 @@ public class MongoUtilTest {
                 ClusterType.REPLICA_SET,
                 serverDescriptions);
 
-        var actualRsName = MongoUtil.replicaSetName(clusterDescription);
+        var actualRsName = MongoUtils.replicaSetName(clusterDescription);
 
         assertThat(actualRsName).isEmpty();
     }

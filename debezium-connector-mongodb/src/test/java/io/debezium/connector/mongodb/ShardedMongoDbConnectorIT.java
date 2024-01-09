@@ -66,7 +66,7 @@ public class ShardedMongoDbConnectorIT extends AbstractShardedMongoConnectorIT {
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database
         // ---------------------------------------------------------------------------------------------------------------
-        consumeAndVerifyFromInitialSync(topic, INIT_DOCUMENT_COUNT);
+        consumeAndVerifyFromInitialSnapshot(topic, INIT_DOCUMENT_COUNT);
 
         // At this point, the connector has performed the initial sync and awaits changes ...
 
@@ -77,7 +77,7 @@ public class ShardedMongoDbConnectorIT extends AbstractShardedMongoConnectorIT {
         documentCount += NEW_DOCUMENT_COUNT;
 
         // Wait until we can consume the documents we just added ...
-        consumeAndVerifyNotFromInitialSync(topic, NEW_DOCUMENT_COUNT);
+        consumeAndVerifyNotFromInitialSnapshot(topic, NEW_DOCUMENT_COUNT);
 
         // ---------------------------------------------------------------------------------------------------------------
         // Stop the connector
@@ -94,7 +94,7 @@ public class ShardedMongoDbConnectorIT extends AbstractShardedMongoConnectorIT {
         // Start the connector and we should only see the documents added since it was stopped
         // ---------------------------------------------------------------------------------------------------------------
         start(MongoDbConnector.class, config);
-        consumeAndVerifyNotFromInitialSync(topic, STOPPED_NEW_DOCUMENT_COUNT);
+        consumeAndVerifyNotFromInitialSnapshot(topic, STOPPED_NEW_DOCUMENT_COUNT);
 
         // ---------------------------------------------------------------------------------------------------------------
         // Update a document
@@ -104,10 +104,10 @@ public class ShardedMongoDbConnectorIT extends AbstractShardedMongoConnectorIT {
             var collection = db.getCollection(shardedCollection());
             collection.updateOne(new Document("_id", 0), Updates.set("name", "Tom"));
         }
-        consumeAndVerifyNotFromInitialSync(topic, 1, Envelope.Operation.UPDATE);
+        consumeAndVerifyNotFromInitialSnapshot(topic, 1, Envelope.Operation.UPDATE);
     }
 
-    protected void consumeAndVerifyFromInitialSync(String topic, int expectedRecords) throws InterruptedException {
+    protected void consumeAndVerifyFromInitialSnapshot(String topic, int expectedRecords) throws InterruptedException {
         var records = consumeRecordsByTopic(expectedRecords);
         assertThat(records.topics().size()).isEqualTo(1);
         assertThat(records.recordsForTopic(topic).size()).isEqualTo(expectedRecords);
@@ -117,13 +117,13 @@ public class ShardedMongoDbConnectorIT extends AbstractShardedMongoConnectorIT {
         records.forEach(record -> {
             // Check that all records are valid, and can be serialized and deserialized ...
             validate(record);
-            verifyFromInitialSync(record, expectedLastCount, lastCount);
+            verifyFromInitialSnapshot(record, expectedLastCount, lastCount);
             verifyOperation(record, Envelope.Operation.READ);
         });
         assertThat(lastCount.get()).isEqualTo(expectedLastCount);
     }
 
-    protected void verifyFromInitialSync(SourceRecord record, int numOfShards, AtomicInteger lastCounter) {
+    protected void verifyFromInitialSnapshot(SourceRecord record, int numOfShards, AtomicInteger lastCounter) {
         if (record.sourceOffset().containsKey(SourceInfo.INITIAL_SYNC)) {
             assertThat(record.sourceOffset().containsKey(SourceInfo.INITIAL_SYNC)).isTrue();
             Struct value = (Struct) record.value();
@@ -137,18 +137,18 @@ public class ShardedMongoDbConnectorIT extends AbstractShardedMongoConnectorIT {
         }
     }
 
-    protected void consumeAndVerifyNotFromInitialSync(String topic, int expectedRecords) throws InterruptedException {
-        consumeAndVerifyNotFromInitialSync(topic, expectedRecords, Envelope.Operation.CREATE);
+    protected void consumeAndVerifyNotFromInitialSnapshot(String topic, int expectedRecords) throws InterruptedException {
+        consumeAndVerifyNotFromInitialSnapshot(topic, expectedRecords, Envelope.Operation.CREATE);
     }
 
-    protected void consumeAndVerifyNotFromInitialSync(String topic, int expectedRecords, Envelope.Operation op) throws InterruptedException {
+    protected void consumeAndVerifyNotFromInitialSnapshot(String topic, int expectedRecords, Envelope.Operation op) throws InterruptedException {
         var records = consumeRecordsByTopic(expectedRecords);
         assertThat(records.recordsForTopic(topic).size()).isEqualTo(expectedRecords);
         assertThat(records.topics().size()).isEqualTo(1);
         records.forEach(record -> {
             // Check that all records are valid, and can be serialized and deserialized ...
             validate(record);
-            verifyNotFromInitialSync(record);
+            verifyNotFromInitialSnapshot(record);
             verifyOperation(record, op);
         });
     }

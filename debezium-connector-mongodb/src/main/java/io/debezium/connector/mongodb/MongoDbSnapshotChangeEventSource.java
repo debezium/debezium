@@ -190,7 +190,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
 
         try (MongoDbConnection mongo = taskContext.getConnection(dispatcher, partition)) {
             return mongo.execute("Checking change stream", client -> {
-                ChangeStreamIterable<BsonDocument> stream = MongoUtil.openChangeStream(client, taskContext);
+                ChangeStreamIterable<BsonDocument> stream = MongoUtils.openChangeStream(client, taskContext);
                 stream.resumeAfter(token);
 
                 try (var ignored = stream.cursor()) {
@@ -216,7 +216,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
     private void initSnapshotStartOffsets(MongoDbSnapshotContext snapshotCtx, MongoDbConnection mongo) throws InterruptedException {
         LOGGER.info("Determine Snapshot start offset");
         mongo.execute("Setting resume token", client -> {
-            ChangeStreamIterable<BsonDocument> stream = MongoUtil.openChangeStream(client, taskContext);
+            ChangeStreamIterable<BsonDocument> stream = MongoUtils.openChangeStream(client, taskContext);
             try (MongoChangeStreamCursor<ChangeStreamDocument<BsonDocument>> cursor = stream.cursor()) {
                 snapshotCtx.offset.initEvent(cursor);
             }
@@ -234,7 +234,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
                                   SnapshottingTask snapshottingTask)
             throws InterruptedException {
         snapshotContext.lastCollection = false;
-        snapshotContext.offset.startInitialSync();
+        snapshotContext.offset.startInitialSnapshot();
 
         LOGGER.info("Beginning snapshot at {}", snapshotContext.offset.getOffset());
 
@@ -305,7 +305,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
             executorService.shutdown();
         }
 
-        snapshotContext.offset.stopInitialSync();
+        snapshotContext.offset.stopInitialSnapshot();
     }
 
     @Override

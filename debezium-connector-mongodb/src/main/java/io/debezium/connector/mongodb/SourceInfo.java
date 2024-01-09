@@ -63,7 +63,6 @@ import io.debezium.connector.mongodb.events.BufferingChangeStreamCursor.Resumabl
 @NotThreadSafe
 public final class SourceInfo extends BaseSourceInfo {
 
-    public static final String REPLICA_SET_NAME = "rs";
     public static final String RESUME_TOKEN = "resume_token";
     public static final String TIMESTAMP = "sec";
     public static final String ORDER = "ord";
@@ -77,7 +76,7 @@ public final class SourceInfo extends BaseSourceInfo {
     // Change Stream fields
     private static final BsonTimestamp INITIAL_TIMESTAMP = new BsonTimestamp();
     private static final Position INITIAL_POSITION = new Position(INITIAL_TIMESTAMP, null, null);
-    public boolean initialSync = false;
+    public boolean initialSnapshot = false;
     private final MongoDbConnectorConfig connectorConfig;
 
     /**
@@ -233,7 +232,7 @@ public final class SourceInfo extends BaseSourceInfo {
         if (changeStreamEvent != null) {
             String resumeToken = ResumeTokens.getDataString(changeStreamEvent.getResumeToken());
             BsonTimestamp ts = changeStreamEvent.getClusterTime();
-            position = Position.changeStreamPosition(ts, resumeToken, MongoUtil.getChangeStreamSessionTransactionId(changeStreamEvent));
+            position = Position.changeStreamPosition(ts, resumeToken, MongoUtils.getChangeStreamSessionTransactionId(changeStreamEvent));
             namespace = changeStreamEvent.getNamespace().getFullName();
             if (changeStreamEvent.getWallTime() != null) {
                 wallTime = changeStreamEvent.getWallTime().getValue();
@@ -266,22 +265,22 @@ public final class SourceInfo extends BaseSourceInfo {
     /**
      * Record that an initial sync has started for the given replica set.
      */
-    public void startInitialSync() {
-        this.initialSync = true;
+    public void startInitialSnapshot() {
+        this.initialSnapshot = true;
     }
 
     /**
      * Record that an initial sync has stopped for the given replica set.
      */
-    public void stopInitialSync() {
-        this.initialSync = false;
+    public void stopInitialSnapshot() {
+        this.initialSnapshot = false;
     }
 
     /**
      * Returns whether any replica sets are still running a snapshot.
      */
     public boolean isSnapshotRunning() {
-        return initialSync;
+        return initialSnapshot;
     }
 
     @Override
@@ -306,6 +305,6 @@ public final class SourceInfo extends BaseSourceInfo {
 
     @Override
     public String toString() {
-        return "SourceInfo [initialSync=" + initialSync + ", collectionId=" + collectionId + ", position=" + position + "]";
+        return "SourceInfo [initialSync=" + initialSnapshot + ", collectionId=" + collectionId + ", position=" + position + "]";
     }
 }
