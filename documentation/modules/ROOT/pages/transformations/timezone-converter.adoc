@@ -34,6 +34,13 @@ Providing a fixed UTC offset is useful when converting timestamp fields to a spe
 The `include.list` and `exclude.list` configuration options are mutually exclusive. You must specify only one of the options.
 ====
 
+The SMT also allows conversion of event metadata fields in the source information block, such as `ts_ms` to the target timezone. In order to convert the metadata fields, you must include the `source` prefix in the `fieldname` of the `include.list` or `exclude.list` configuration option.
+
+[NOTE]
+====
+If the schema for timestamp fields in the source information block, like `ts_ms`, is currently set to `INT64`, which is not a timestamp type, future releases aim to support the conversion of such fields by introducing compatibility for a timestamp schema.
+====
+
 [[timezone-converter-usage]]
 
 [[basic-example-timezone-converter]]
@@ -179,14 +186,14 @@ Specify rules by using one of the following formats:
 The SMT converts all time-based fields in the matched table.
 
 `source:<tablename>:<fieldname>` :: Matches {prodname} change events with source information blocks that have the specified table name.
-The SMT converts only fields in the specified table that have the specified field name.
+The SMT converts only fields in the specified table that have the specified field name. `fieldname` can be prefixed with `before`, `after`, or `source` to include the appropriate field in the event record. If no prefix is specified, both `before` and `after` fields are converted.
 
 `topic:<topicname>` :: Matches events from the specified topic name, converting all time-based fields in the event record.
 
-`topic:<topicname>:<fieldname>` :: Matches events from the specified topic name, and converts values for the specified fields only.
+`topic:<topicname>:<fieldname>` :: Matches events from the specified topic name, and converts values for the specified fields only. `fieldname` can be prefixed with `before`, `after`, or `source` to include the appropriate field in the event record. If no prefix is specified, both `before` and `after` fields are converted.
 
 `<matchname>:<fieldname>` :: Applies a heuristic matching algorithm to match against the table name of the source information block, if present; otherwise, matches against the topic name.
-The SMT converts values for the specified field name only.
+The SMT converts values for the specified field name only. `fieldname` can be prefixed with `before`, `after`, or `source` to include the appropriate field in the event record. If no prefix is specified, both `before` and `after` fields are converted.
 |list
 |medium
 |[[timezone-converter-exclude-list]]<<timezone-converter-exclude-list, `exclude.list`>>
@@ -197,14 +204,14 @@ Specify rules by using one of the following formats:
 The SMT excludes all time-based fields in the matched table from conversion.
 
 `source:<tablename>:<fieldname>` :: Matches {prodname} change events with source information blocks that have the specified table name.
-The SMT excludes from conversion fields in the specified table that match the specified field name.
+The SMT excludes from conversion fields in the specified table that match the specified field name. `fieldname` can be prefixed with `before`, `after`, or `source` to exclude the appropriate field in the event record. If no prefix is specified, both `before` and `after` fields are excluded from conversion.
 
 `topic:<topicname>` :: Matches events from the specified topic name, and excludes from conversion all time-based fields in the topic.
 
-`topic:<topicname>:<fieldname>` :: Matches events from the specified topic name, and excludes from conversion any fields in the topic that have the specified name.
+`topic:<topicname>:<fieldname>` :: Matches events from the specified topic name, and excludes from conversion any fields in the topic that have the specified name. `fieldname` can be prefixed with `before`, `after`, or `source` to exclude the appropriate field in the event record. If no prefix is specified, both `before` and `after` fields are excluded from conversion.
 
 `<matchname>:<fieldname>` :: Applies a heuristic matching algorithm to match against the table name of the source information block, if present; otherwise, matches against the topic name.
-The SMT excludes from conversion only fields that have the specified name.
+The SMT excludes from conversion only fields that have the specified name. `fieldname` can be prefixed with `before`, `after`, or `source` to exclude the appropriate field in the event record. If no prefix is specified, both `before` and `after` fields are excluded from conversion.
 |list
 |medium
 |===
