@@ -739,9 +739,9 @@ The following options are available:
 The connector adds missing columns to the table by comparing the incoming event's record schema to the database table structure.
 
 |[[jdbc-property-table-name-format]]<<jdbc-property-table-name-format, `+table.name.format+`>>
-|`${topic}`
+|`+${topic}+`
 |Specifies a string that determines how the destination table name is formatted, based on the topic name of the event.
-The placeholder, `${topic}`, is replaced by the topic name.
+The placeholder, `+${topic}+`, is replaced by the topic name.
 
 |===
 
@@ -762,7 +762,7 @@ By default, the connector uses the field name as the column name.
  +
 The default behavior is to: +
 
-* Replace the `${topic}` placeholder in the xref:jdbc-property-table-name-format[`table.name.format`] configuration property with the event's topic.
+* Replace the `+${topic}+` placeholder in the xref:jdbc-property-table-name-format[`table.name.format`] configuration property with the event's topic.
 * Sanitize the table name by replacing dots (`.`) with underscores (`_`).
 
 |===
@@ -792,7 +792,7 @@ If you want to apply a different data type mapping, define the table manually to
 
 *How do you specify a prefix or a suffix to the table name without changing the Kafka topic name?*::
 In order to add a prefix or a suffix to the destination table name, adjust the xref:jdbc-property-table-name-format[table.name.format] connector configuration property to apply the prefix or suffix that you want.
-For example, to prefix all table names with `jdbc_`, specify the `table.name.format` configuration property with a value of `jdbc_${topic}`.
+For example, to prefix all table names with `jdbc_`, specify the `table.name.format` configuration property with a value of `+jdbc_${topic}+`.
 If the connector is subscribed to a topic called `orders`, the resulting table is created as `jdbc_orders`.
 
 *Why are some columns automatically quoted, even though identifier quoting is not enabled?*::
