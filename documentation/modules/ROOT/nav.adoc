@@ -57,5 +57,4 @@
 ** xref:operations/monitoring.adoc[Monitoring]
 ** xref:operations/kubernetes.adoc[Running on Kubernetes]
 ** xref:operations/openshift.adoc[Running on Openshift]
-** xref:operations/embedded.adoc[Embedding Debezium]
 ** xref:operations/debezium-ui.adoc[Debezium UI]
