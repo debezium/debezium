@@ -673,9 +673,10 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord>, Embed
                     startedSuccessfully = true;
                 }
                 catch (Exception ex) {
-                    if (totalRetries == maxRetries) {
+                    if (maxRetries > 0 && totalRetries >= maxRetries) {
                         LOGGER.error("Can't start the connector, max retries to connect exceeded; stopping connector...", ex);
                         retryError = ex;
+                        break;
                     }
                     else {
                         LOGGER.error("Can't start the connector, will retry later...", ex);
