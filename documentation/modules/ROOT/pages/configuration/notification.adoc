@@ -82,16 +82,19 @@ The following example shows a typical notification that provides the status of a
 {
     "id": "5563ae14-49f8-4579-9641-c1bbc2d76f99",
     "aggregate_type": "Initial Snapshot",
-    "type": "COMPLETED" <1>,
+    "type": "COMPLETED", // <1>
     "additional_data" : {
         "connector_name": "myConnector"
     },
     "timestamp": "1695817046353"
 }
 ----
-<1> The type field can contain one of the following values:
+
+<1> The `type` field can contain one of the following values:
 
 * `STARTED`
+* `IN_PROGRESS`
+* `TABLE_SCAN_COMPLETED`
 * `COMPLETED`
 * `ABORTED`
 * `SKIPPED`
