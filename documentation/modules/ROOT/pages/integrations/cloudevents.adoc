@@ -294,7 +294,7 @@ The value can be `json` or `avro`.
 |none
 |Specifies CloudEvents schema name under which the schema is registered in a Schema Registry. The setting is ignored when `serializer.type` is `json` in
 which case the value is schemaless. If not set the default algorithm will be used to generate the
-schema name: `${serverName}.${databaseName}.CloudEvents.Envelope`.
+schema name: `pass:[${serverName}.${databaseName}].CloudEvents.Envelope`.
 
 |[[cloud-events-converter-extension-attributes-enable]]xref:cloud-events-converter-extension-attributes-enable[`extension.attributes.enable`]
 |`true`
