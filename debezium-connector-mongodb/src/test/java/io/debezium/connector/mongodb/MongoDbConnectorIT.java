@@ -115,6 +115,19 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     }
 
     @Test
+    public void shouldFailToValidateWithReplicaSetModeParams() {
+        config = TestHelper.getConfiguration(mongo)
+                .edit()
+                .with(MongoDbConnector.DEPRECATED_SHARD_CS_PARAMS_FILED, "readPreference=primary")
+                .with(MongoDbConnector.DEPRECATED_CONNECTION_MODE_FILED, "replica_set")
+                .build();
+        MongoDbConnector connector = new MongoDbConnector();
+        Config result = connector.validate(config.asMap());
+
+        assertConfigurationErrors(result, MongoDbConnectorConfig.CONNECTION_STRING, 2);
+    }
+
+    @Test
     public void shouldThrowExceptionWhenFieldExcludeListDatabasePartIsOnlyProvided() {
         shouldValidateFilterFieldConfiguration(MongoDbConnectorConfig.FIELD_EXCLUDE_LIST, "inventory", 1);
     }

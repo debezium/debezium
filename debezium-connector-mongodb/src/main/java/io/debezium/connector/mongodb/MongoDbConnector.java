@@ -37,6 +37,8 @@ import io.debezium.connector.mongodb.connection.MongoDbConnections;
 public class MongoDbConnector extends BaseSourceConnector {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbConnector.class);
+    public static final String DEPRECATED_SHARD_CS_PARAMS_FILED = "mongodb.connection.string.shard.params";
+    public static final String DEPRECATED_CONNECTION_MODE_FILED = "mongodb.connection.mode";
 
     private Configuration config;
 
@@ -105,6 +107,20 @@ public class MongoDbConnector extends BaseSourceConnector {
     }
 
     public void validateConnection(Configuration config, ConfigValue connectionStringValidation) {
+        // Shard specific parameters shouldn't be set after RS connection mode removal
+        if (config.hasKey(DEPRECATED_SHARD_CS_PARAMS_FILED)) {
+            LOGGER.warn("Field '{}' is deprecated. Use only '{}' to set connection parameters", DEPRECATED_SHARD_CS_PARAMS_FILED,
+                    MongoDbConnectorConfig.CONNECTION_STRING.name());
+            connectionStringValidation.addErrorMessage("Deprecated field '" + DEPRECATED_SHARD_CS_PARAMS_FILED + "' is used");
+        }
+
+        // RS connection mode should not be used
+        var mode = config.getString(DEPRECATED_CONNECTION_MODE_FILED);
+        if (mode != null && mode.equals("replica_set")) {
+            LOGGER.warn("Field '{}' is deprecated. Sharded mode is now used implicitly, please remove it. ", DEPRECATED_CONNECTION_MODE_FILED);
+            connectionStringValidation.addErrorMessage("Deprecated field '" + DEPRECATED_CONNECTION_MODE_FILED + "' is used set to removed 'replica_set' value");
+        }
+
         MongoDbConnectionContext connectionContext = new MongoDbConnectionContext(config);
 
         try {
