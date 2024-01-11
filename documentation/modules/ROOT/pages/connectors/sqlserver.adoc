@@ -2520,7 +2520,8 @@ If you include this property in the configuration, do not also set the `table.in
 |_empty string_
 |An optional comma-separated list of regular expressions that match the fully-qualified names of columns that should be included in the change event message values.
 Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_.
-Note that primary key columns are always included in the event's key, even if not included in the value. +
+Note that primary key columns are always included in the event's key, even if not included in the value.
+For now, table primary key has to be always explicitly included in the list of captured columns.+
 
 To match the name of a column, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
 That is, the specified expression is matched against the entire name string of the column; it does not match substrings that might be present in a column name. +
