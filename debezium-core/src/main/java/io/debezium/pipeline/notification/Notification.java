@@ -68,7 +68,8 @@ public class Notification {
     @Override
     public String toString() {
         return "{" +
-                "aggregateType='" + aggregateType + '\'' +
+                "id='" + id + '\'' +
+                ", aggregateType='" + aggregateType + '\'' +
                 ", type='" + type + '\'' +
                 ", additionalData=" + additionalData +
                 ", timestamp=" + timestamp +
