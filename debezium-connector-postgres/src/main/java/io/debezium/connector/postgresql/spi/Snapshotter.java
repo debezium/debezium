@@ -72,7 +72,7 @@ public interface Snapshotter {
      * @param newSlotInfo if a new slot was created for snapshotting, this contains information from
      *                    the `create_replication_slot` command
      */
-    default String snapshotTransactionIsolationLevelStatement(SlotCreationResult newSlotInfo) {
+    default String snapshotTransactionIsolationLevelStatement(SlotCreationResult newSlotInfo, boolean isOnDemand) {
         // we're using the same isolation level that pg_backup uses
         return "SET TRANSACTION ISOLATION LEVEL SERIALIZABLE, READ ONLY, DEFERRABLE;";
     }

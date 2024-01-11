@@ -81,7 +81,7 @@ public class PostgresChangeEventSourceCoordinator extends ChangeEventSourceCoord
                                      PostgresOffsetContext offsetContext)
             throws SQLException {
         snapshotSource.createSnapshotConnection();
-        snapshotSource.setSnapshotTransactionIsolationLevel();
+        snapshotSource.setSnapshotTransactionIsolationLevel(false);
         snapshotSource.updateOffsetForPreSnapshotCatchUpStreaming(offsetContext);
     }
 
