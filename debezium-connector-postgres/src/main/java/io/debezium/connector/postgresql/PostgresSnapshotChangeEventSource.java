@@ -98,7 +98,7 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
         // level on the transaction used in catch up streaming has already set the isolation level and executed
         // statements, the transaction does not need to get set the level again here.
         if (snapshotter.shouldStreamEventsStartingFromSnapshot() && startingSlotInfo == null) {
-            setSnapshotTransactionIsolationLevel();
+            setSnapshotTransactionIsolationLevel(snapshotContext.onDemand);
         }
         schema.refresh(jdbcConnection, false);
     }
@@ -249,9 +249,9 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
         return snapshotter.buildSnapshotQuery(tableId, columns);
     }
 
-    protected void setSnapshotTransactionIsolationLevel() throws SQLException {
+    protected void setSnapshotTransactionIsolationLevel(boolean isOnDemand) throws SQLException {
         LOGGER.info("Setting isolation level");
-        String transactionStatement = snapshotter.snapshotTransactionIsolationLevelStatement(slotCreatedInfo);
+        String transactionStatement = snapshotter.snapshotTransactionIsolationLevelStatement(slotCreatedInfo, isOnDemand);
         LOGGER.info("Opening transaction with statement {}", transactionStatement);
         jdbcConnection.executeWithoutCommitting(transactionStatement);
     }
