@@ -68,7 +68,7 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
 
         return TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue())
-                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
                 .with(PostgresConnectorConfig.SIGNAL_DATA_COLLECTION, "s1.debezium_signal")
                 .with(CommonConnectorConfig.SIGNAL_POLL_INTERVAL_MS, 5)
                 .with(PostgresConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 10)
@@ -134,6 +134,37 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
         populateTable();
 
         startConnector();
+
+        sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey("", "", BLOCKING, tableDataCollectionId());
+
+        waitForLogMessage("Snapshot completed", AbstractSnapshotChangeEventSource.class);
+
+        int signalingRecords = 1;
+
+        assertRecordsFromSnapshotAndStreamingArePresent(ROW_COUNT, consumeRecordsByTopic(ROW_COUNT + signalingRecords, 10));
+
+        insertRecords(ROW_COUNT, ROW_COUNT * 2);
+
+        assertStreamingRecordsArePresent(ROW_COUNT, consumeRecordsByTopic(ROW_COUNT, 10));
+
+    }
+
+    @FixFor("DBZ-7312")
+    @Test
+    public void executeBlockingSnapshotWhenASnapshotAlreadyExecuted() throws Exception {
+        // Testing.Print.enable();
+
+        // Avoid to start the streaming from data inserted before the connector start
+        TestHelper.dropDefaultReplicationSlot();
+        TestHelper.dropPublication();
+
+        populateTable();
+
+        startConnectorWithSnapshot(x -> mutableConfig(true, true)
+                .with(CommonConnectorConfig.SNAPSHOT_MODE_TABLES, "not exist")
+                .with(PostgresConnectorConfig.SLOT_NAME, "snapshot_mode_initial_crash4")
+
+        );
 
         sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey("", "", BLOCKING, tableDataCollectionId());
 
