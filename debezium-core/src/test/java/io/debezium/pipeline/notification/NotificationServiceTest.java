@@ -83,7 +83,8 @@ public class NotificationServiceTest {
                 .withTimestamp(1684279500L)
                 .build());
 
-        assertThat(logInterceptor.containsMessage("[Notification Service]  {aggregateType='Test', type='Test', additionalData={Key1=Value1}, timestamp=1684279500}"))
+        assertThat(logInterceptor.containsMessage(
+                "[Notification Service]  {id='" + NOTIFICATION_ID + "', aggregateType='Test', type='Test', additionalData={Key1=Value1}, timestamp=1684279500}"))
                 .isTrue();
     }
 
