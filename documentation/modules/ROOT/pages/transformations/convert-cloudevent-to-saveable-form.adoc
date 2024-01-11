@@ -115,4 +115,10 @@ The following table lists the configuration options that you can use with the `C
 |No default value
 |`json` or `avro`
 |high
+|[[cloudevent-to-saveable-form-schema-cloudevents-name]]<<cloudevent-to-saveable-form-schema-cloudevents-name, `schema.cloudevents.name`>>
+|CloudEvents schema name under which the schema is registered in a Schema Registry.
+|string
+|No default value
+|
+|low
 |===
