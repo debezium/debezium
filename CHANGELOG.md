@@ -2,6 +2,32 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.3.6.Final
+January 12nd 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12418914)
+
+### New features since 2.3.5.Final
+
+None
+
+
+### Breaking changes since 2.3.5.Final
+
+None
+
+
+### Fixes since 2.3.5.Final
+
+* Connector frequently misses commit operations [DBZ-6942](https://issues.redhat.com/browse/DBZ-6942)
+* Missing events from Oracle 19c [DBZ-6963](https://issues.redhat.com/browse/DBZ-6963)
+* Log sequence check should treat each redo thread independently [DBZ-7158](https://issues.redhat.com/browse/DBZ-7158)
+
+
+### Other changes since 2.3.5.Final
+
+None
+
+
+
 ## 2.3.5.Final
 December 15th 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12413739)
 
