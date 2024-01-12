@@ -114,14 +114,14 @@ public class SnapshotMeter implements SnapshotMetricsMXBean {
 
     public void monitoredDataCollectionsDetermined(Iterable<? extends DataCollectionId> dataCollectionIds) {
         for (DataCollectionId dataCollectionId : dataCollectionIds) {
-            this.remainingTables.put(dataCollectionId.identifier(), "");
-            capturedTables.add(dataCollectionId.identifier());
+            this.remainingTables.put(dataCollectionId.toDoubleQuotedString(), "");
+            capturedTables.add(dataCollectionId.toDoubleQuotedString());
         }
     }
 
     public void dataCollectionSnapshotCompleted(DataCollectionId dataCollectionId, long numRows) {
-        rowsScanned.put(dataCollectionId.identifier(), numRows);
-        remainingTables.remove(dataCollectionId.identifier());
+        rowsScanned.put(dataCollectionId.toDoubleQuotedString(), numRows);
+        remainingTables.remove(dataCollectionId.toDoubleQuotedString());
     }
 
     public void snapshotStarted() {
@@ -182,7 +182,7 @@ public class SnapshotMeter implements SnapshotMetricsMXBean {
     }
 
     public void rowsScanned(TableId tableId, long numRows) {
-        rowsScanned.put(tableId.toString(), numRows);
+        rowsScanned.put(tableId.toDoubleQuotedString(), numRows);
     }
 
     @Override

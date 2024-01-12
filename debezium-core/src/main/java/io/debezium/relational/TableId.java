@@ -186,6 +186,11 @@ public final class TableId implements DataCollectionId, Comparable<TableId> {
     }
 
     @Override
+    public String toDoubleQuotedString() {
+        return toQuotedString('"');
+    }
+
+    @Override
     public List<String> parts() {
         return Collect.arrayListOf(catalogName, schemaName, tableName);
     }
@@ -231,14 +236,6 @@ public final class TableId implements DataCollectionId, Comparable<TableId> {
     @Override
     public String toString() {
         return identifier();
-    }
-
-    /**
-     * Returns a dot-separated String representation of this identifier, quoting all
-     * name parts with the {@code "} char.
-     */
-    public String toDoubleQuotedString() {
-        return toQuotedString('"');
     }
 
     /**

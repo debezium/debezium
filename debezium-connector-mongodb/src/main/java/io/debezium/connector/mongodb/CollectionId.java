@@ -76,6 +76,11 @@ public final class CollectionId implements DataCollectionId {
     }
 
     @Override
+    public String toDoubleQuotedString() {
+        return toQuotedString('"');
+    }
+
+    @Override
     public List<String> parts() {
         return Collect.arrayListOf(dbName, name);
     }
@@ -105,6 +110,46 @@ public final class CollectionId implements DataCollectionId {
             return this.dbName.equals(that.dbName) && this.name.equals(that.name);
         }
         return false;
+    }
+
+    /**
+     * Returns a dot-separated String representation of this identifier, quoting all
+     * name parts with the given quoting char.
+     */
+    public String toQuotedString(char quotingChar) {
+        StringBuilder quoted = new StringBuilder();
+
+        if (dbName != null && !dbName.isEmpty()) {
+            quoted.append(quote(dbName, quotingChar)).append(".");
+        }
+
+        quoted.append(quote(name, quotingChar));
+
+        return quoted.toString();
+    }
+
+    /**
+     * Quotes the given identifier part, e.g. db or name.
+     */
+    private static String quote(String identifierPart, char quotingChar) {
+        if (identifierPart == null) {
+            return null;
+        }
+
+        if (identifierPart.isEmpty()) {
+            return new StringBuilder().append(quotingChar).append(quotingChar).toString();
+        }
+
+        if (identifierPart.charAt(0) != quotingChar && identifierPart.charAt(identifierPart.length() - 1) != quotingChar) {
+            identifierPart = identifierPart.replace(quotingChar + "", repeat(quotingChar));
+            identifierPart = quotingChar + identifierPart + quotingChar;
+        }
+
+        return identifierPart;
+    }
+
+    private static String repeat(char quotingChar) {
+        return new StringBuilder().append(quotingChar).append(quotingChar).toString();
     }
 
     /**

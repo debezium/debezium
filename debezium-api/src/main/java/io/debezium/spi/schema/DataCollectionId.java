@@ -22,6 +22,13 @@ public interface DataCollectionId {
     String identifier();
 
     /**
+     * Get the fully qualified identifier of the data collection, with each part wrapped in double quotes.
+     *
+     * @return the collection's fully qualified identifier, with each part wrapped in double quotes.
+     */
+    String toDoubleQuotedString();
+
+    /**
      * Get all elements of the data collection.
      */
     List<String> parts();
