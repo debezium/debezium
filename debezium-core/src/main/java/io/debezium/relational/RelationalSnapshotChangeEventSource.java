@@ -457,7 +457,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                 notificationService.initialSnapshotNotificationService().notifyTableInProgress(
                         snapshotContext.partition,
                         snapshotContext.offset,
-                        tableId.table(),
+                        tableId.identifier(),
                         rowCountTables.keySet());
                 Callable<Void> callable = createDataEventsForTableCallable(sourceContext, snapshotContext, snapshotReceiver,
                         snapshotContext.tables.forTable(tableId), firstTable, lastTable, tableOrder++, tableCount, selectStatement, rowCount, connectionPool, offsets);
@@ -589,12 +589,12 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                     rows, table.id(), tableOrder, tableCount, Strings.duration(clock.currentTimeInMillis() - exportStart));
             snapshotProgressListener.dataCollectionSnapshotCompleted(snapshotContext.partition, table.id(), rows);
             notificationService.initialSnapshotNotificationService().notifyCompletedTableSuccessfully(snapshotContext.partition,
-                    snapshotContext.offset, table.id().table(), rows, snapshotContext.capturedTables);
+                    snapshotContext.offset, table.id().identifier(), rows, snapshotContext.capturedTables);
         }
         catch (SQLException e) {
             notificationService.initialSnapshotNotificationService().notifyCompletedTableWithError(snapshotContext.partition,
                     snapshotContext.offset,
-                    table.id().table());
+                    table.id().identifier());
             throw new ConnectException("Snapshotting of table " + table.id() + " failed", e);
         }
     }
