@@ -34,7 +34,7 @@ ifdef::community[]
 If you use Podman, run the following command:
 [source,shell,options="nowrap",subs="+attributes"]
 ----
-$ sudo podman run -it --rm --name mysqlterm --pod dbz mysql:8.2 sh -c 'exec mysql -h 0.0.0.0 -uroot -pdebezium'
+$ podman run -it --rm --name mysqlterm --pod dbz mysql:8.2 sh -c 'exec mysql -h 0.0.0.0 -uroot -pdebezium'
 ----
 ====
 endif::community[]
