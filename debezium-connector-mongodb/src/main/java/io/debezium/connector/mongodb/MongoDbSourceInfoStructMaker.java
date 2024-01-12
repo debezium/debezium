@@ -29,6 +29,7 @@ public class MongoDbSourceInfoStructMaker extends AbstractSourceInfoStructMaker<
                 .field(SourceInfo.TXN_NUMBER, Schema.OPTIONAL_INT64_SCHEMA)
                 .field(SourceInfo.WALL_TIME, Schema.OPTIONAL_INT64_SCHEMA)
                 .field(SourceInfo.STRIPE_AUDIT, Schema.OPTIONAL_STRING_SCHEMA)
+                .field(SourceInfo.TASK_UNIQUE_ID, Schema.OPTIONAL_STRING_SCHEMA)
                 .build();
     }
 
@@ -59,6 +60,11 @@ public class MongoDbSourceInfoStructMaker extends AbstractSourceInfoStructMaker<
 
         if (sourceInfo.stripeAudit() != null) {
             struct.put(SourceInfo.STRIPE_AUDIT, sourceInfo.stripeAudit());
+        }
+
+        if (sourceInfo.multiTaskEnabled) {
+            struct.put(SourceInfo.TASK_UNIQUE_ID, String.format("%d/%d,%d",
+                    sourceInfo.taskId, sourceInfo.maxTasks, sourceInfo.multiTaskGen));
         }
 
         return struct;

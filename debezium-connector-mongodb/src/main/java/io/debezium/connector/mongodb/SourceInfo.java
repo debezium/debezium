@@ -99,6 +99,7 @@ public final class SourceInfo extends BaseSourceInfo {
     public static final String TXN_NUMBER = "txnNumber";
     public static final String WALL_TIME = "wallTime";
     public static final String STRIPE_AUDIT = "stripeAudit";
+    public static final String TASK_UNIQUE_ID = "task_unique_id";
 
     // Change Stream fields
 
@@ -122,6 +123,7 @@ public final class SourceInfo extends BaseSourceInfo {
     protected boolean multiTaskEnabled;
     protected int multiTaskGen;
     protected int taskId;
+    protected int maxTasks;
 
     @Immutable
     protected static final class Position {
@@ -262,6 +264,7 @@ public final class SourceInfo extends BaseSourceInfo {
         this.multiTaskEnabled = connectorConfig.getMultiTaskEnabled();
         this.multiTaskGen = connectorConfig.getMultiTaskGen();
         this.taskId = taskId;
+        this.maxTasks = connectorConfig.getMaxTasks();
     }
 
     CollectionId collectionId() {
