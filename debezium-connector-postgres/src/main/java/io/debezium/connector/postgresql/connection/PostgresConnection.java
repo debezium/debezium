@@ -784,6 +784,13 @@ public class PostgresConnection extends JdbcConnection {
     }
 
     @Override
+    public Optional<Boolean> nullsSortLast() {
+        // "By default, null values sort as if larger than any non-null value"
+        // https://www.postgresql.org/docs/16/queries-order.html
+        return Optional.of(true);
+    }
+
+    @Override
     public void setQueryColumnValue(PreparedStatement statement, Column column, int pos, Object value)
             throws SQLException {
         final PostgresType resolvedType = typeRegistry.get(column.nativeType());

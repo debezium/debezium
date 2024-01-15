@@ -573,6 +573,13 @@ public class OracleConnection extends JdbcConnection {
     }
 
     @Override
+    public Optional<Boolean> nullsSortLast() {
+        // "NULLS LAST is the default for ascending order"
+        // https://docs.oracle.com/en/database/oracle/oracle-database/19/sqlrf/SELECT.html
+        return Optional.of(true);
+    }
+
+    @Override
     public Map<String, Object> reselectColumns(TableId tableId, List<String> columns, List<String> keyColumns, List<Object> keyValues, Struct source)
             throws SQLException {
         final TableId oracleTableId = new TableId(null, tableId.schema(), tableId.table());

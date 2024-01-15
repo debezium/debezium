@@ -10,6 +10,7 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -130,8 +131,8 @@ public class IncrementalSnapshotNotificationService<P extends Partition, O exten
                 Map.of(
                         DATA_COLLECTIONS, dataCollections,
                         CURRENT_COLLECTION_IN_PROGRESS, incrementalSnapshotContext.currentDataCollectionId().getId().identifier(),
-                        MAXIMUM_KEY, incrementalSnapshotContext.maximumKey().orElse(new Object[0])[0].toString(),
-                        LAST_PROCESSED_KEY, incrementalSnapshotContext.chunkEndPosititon()[0].toString()),
+                        MAXIMUM_KEY, Objects.toString(incrementalSnapshotContext.maximumKey().orElse(new Object[0])[0], "<null>"),
+                        LAST_PROCESSED_KEY, Objects.toString(incrementalSnapshotContext.chunkEndPosititon()[0], "<null>")),
                 offsetContext),
                 Offsets.of(partition, offsetContext));
     }

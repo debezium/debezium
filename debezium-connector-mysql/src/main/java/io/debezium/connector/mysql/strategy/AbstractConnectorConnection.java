@@ -12,6 +12,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.function.Predicate;
 
@@ -73,6 +74,16 @@ public abstract class AbstractConnectorConnection extends JdbcConnection {
     @Override
     public String getQualifiedTableName(TableId tableId) {
         return tableId.catalog() + "." + tableId.table();
+    }
+
+    @Override
+    public Optional<Boolean> nullsSortLast() {
+        // "any NULLs are considered to have the lowest value"
+        // https://mariadb.com/kb/en/null-values/#ordering
+        //
+        // "NULL values are presented first if you do ORDER BY ... ASC"
+        // https://dev.mysql.com/doc/refman/8.0/en/working-with-null.html
+        return Optional.of(false);
     }
 
     public String connectionString() {

@@ -1520,6 +1520,15 @@ public class JdbcConnection implements AutoCloseable {
     }
 
     /**
+     * Indicates how NULL values are sorted by default in an ORDER BY clause.  The ANSI standard doesn't really specify.
+     *
+     * @return true if NULL is sorted after non-NULL values; false if NULL is sorted before non-NULL values; empty if we don't know for this connector.
+     */
+    public Optional<Boolean> nullsSortLast() {
+        return Optional.empty();
+    }
+
+    /**
      * Allow per-connector query creation to override for best database performance depending on the table size.
      */
     public Statement readTableStatement(CommonConnectorConfig connectorConfig, OptionalLong tableSize) throws SQLException {
