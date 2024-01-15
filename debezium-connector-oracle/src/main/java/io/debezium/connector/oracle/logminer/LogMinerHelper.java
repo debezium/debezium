@@ -12,6 +12,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -205,21 +206,28 @@ public class LogMinerHelper {
             }
         });
 
+        return deduplicateLogFiles(archivedLogFiles, onlineLogFiles);
+    }
+
+    @VisibleForTesting
+    public static List<LogFile> deduplicateLogFiles(Collection<LogFile> archiveLogs, Collection<LogFile> redoLogs) {
+        final List<LogFile> logFiles = new ArrayList<>();
+
         // DBZ-3563
         // To avoid duplicate log files (ORA-01289 cannot add duplicate logfile)
-        // Remove the archive log which has the same sequence number.
-        for (LogFile redoLog : onlineLogFiles) {
-            archivedLogFiles.removeIf(f -> {
-                if (f.getSequence().equals(redoLog.getSequence())) {
-                    LOGGER.debug("Removing archive log {} with duplicate sequence {} to {}", f.getFileName(), f.getSequence(), redoLog.getFileName());
+        // Remove the archive log which has the same sequence number and redo thread number.
+        for (LogFile redoLog : redoLogs) {
+            archiveLogs.removeIf(f -> {
+                if (f.getSequence().equals(redoLog.getSequence()) && f.getThread() == redoLog.getThread()) {
+                    LOGGER.debug("Removing redo thread {} archive log {} with duplicate sequence {} to {}",
+                            f.getThread(), f.getFileName(), f.getSequence(), redoLog.getFileName());
                     return true;
                 }
                 return false;
             });
         }
-        logFiles.addAll(archivedLogFiles);
-        logFiles.addAll(onlineLogFiles);
-
+        logFiles.addAll(archiveLogs);
+        logFiles.addAll(redoLogs);
         return logFiles;
     }
 
