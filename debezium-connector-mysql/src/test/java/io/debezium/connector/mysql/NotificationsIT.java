@@ -9,6 +9,7 @@ package io.debezium.connector.mysql;
 import java.nio.file.Path;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.junit.After;
 import org.junit.Before;
@@ -43,7 +44,8 @@ public class NotificationsIT extends AbstractNotificationsIT<MySqlConnector> {
     }
 
     protected List<String> collections() {
-        return List.of("a", "b", "c", "a4", "a42", "a_dt", "a_date", "debezium_signal");
+        return List.of("a", "b", "c", "a4",
+                "a42", "a_dt", "a_date", "debezium_signal").stream().map(tbl -> String.format("%s.%s", DATABASE.getDatabaseName(), tbl)).collect(Collectors.toList());
     }
 
     @Override
