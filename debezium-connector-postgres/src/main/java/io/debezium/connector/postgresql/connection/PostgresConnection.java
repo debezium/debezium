@@ -43,11 +43,15 @@ import io.debezium.connector.postgresql.spi.SlotState;
 import io.debezium.data.SpecialValueDecimal;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.pipeline.source.snapshot.incremental.ChunkQueryBuilder;
+import io.debezium.pipeline.source.snapshot.incremental.RowValueConstructorChunkQueryBuilder;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
+import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
 
@@ -781,6 +785,12 @@ public class PostgresConnection extends JdbcConnection {
                 null,
                 null,
                 new String[]{ "TABLE", "PARTITIONED TABLE" });
+    }
+
+    @Override
+    public <T extends DataCollectionId> ChunkQueryBuilder<T> chunkQueryBuilder(RelationalDatabaseConnectorConfig connectorConfig) {
+        // PostgreSQL definitely must use row value constructors in order to yield optimal results. See DBZ-5071.
+        return new RowValueConstructorChunkQueryBuilder<>(connectorConfig, this);
     }
 
     @Override

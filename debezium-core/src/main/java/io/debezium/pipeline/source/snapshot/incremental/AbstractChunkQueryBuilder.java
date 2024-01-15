@@ -55,8 +55,8 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
             // Window boundaries
             addLowerBound(context, table, chunkEndPosition, sql);
             // Table boundaries
-            sql.append(" AND NOT ");
-            addLowerBound(context, table, maximumKey, sql);
+            sql.append(" AND ");
+            addUpperBound(context, table, maximumKey, sql);
             condition = sql.toString();
         }
         final List<Column> queryColumns = getQueryColumns(context, table);
@@ -87,7 +87,7 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
         return projection;
     }
 
-    private void addLowerBound(IncrementalSnapshotContext<T> context, Table table, Object[] boundaryKey, StringBuilder sql) {
+    protected void addLowerBound(IncrementalSnapshotContext<T> context, Table table, Object[] boundaryKey, StringBuilder sql) {
         // To make window boundaries working for more than one column it is necessary to calculate
         // with independently increasing values in each column independently.
         // For one column the condition will be (? will always be the last value seen for the given column)
@@ -178,6 +178,11 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
         if (pkColumns.size() > 1) {
             sql.append(')');
         }
+    }
+
+    protected void addUpperBound(IncrementalSnapshotContext<T> context, Table table, Object[] boundaryKey, StringBuilder sql) {
+        sql.append("NOT ");
+        addLowerBound(context, table, boundaryKey, sql);
     }
 
     @Override
