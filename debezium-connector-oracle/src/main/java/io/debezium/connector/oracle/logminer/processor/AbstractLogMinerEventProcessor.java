@@ -1427,7 +1427,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                                 if (first) {
                                     LOGGER.warn("All transactions with SCN <= {} will be abandoned.", thresholdScn);
                                     if (LOGGER.isDebugEnabled()) {
-                                        try (Stream s = getTransactionCache().keySet().stream()) {
+                                        try (Stream<String> s = getTransactionCache().keySet().stream()) {
                                             LOGGER.debug("List of transactions in the cache before transactions being abandoned: [{}]",
                                                     s.collect(Collectors.joining(",")));
                                         }
@@ -1452,7 +1452,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                         }
                     }
                     if (LOGGER.isDebugEnabled()) {
-                        try (Stream s = getTransactionCache().keySet().stream()) {
+                        try (Stream<String> s = getTransactionCache().keySet().stream()) {
                             LOGGER.debug("List of transactions in the cache after transactions being abandoned: [{}]",
                                     s.collect(Collectors.joining(",")));
                         }
