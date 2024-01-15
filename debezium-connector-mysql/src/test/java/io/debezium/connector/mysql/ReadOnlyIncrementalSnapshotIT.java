@@ -275,28 +275,6 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
         }
     }
 
-    @Test
-    public void insertsWithoutPks() throws Exception {
-        // Testing.Print.enable();
-
-        populate4WithoutPkTable();
-        startConnector();
-
-        sendExecuteSnapshotKafkaSignal(DATABASE.qualifiedTableName("a42"));
-
-        final int expectedRecordCount = ROW_COUNT;
-        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(
-                expectedRecordCount,
-                x -> true,
-                k -> k.getInt32("pk1") * 1_000 + k.getInt32("pk2") * 100 + k.getInt32("pk3") * 10 + k.getInt32("pk4"),
-                record -> ((Struct) record.value()).getStruct("after").getInt32(valueFieldName()),
-                DATABASE.topicForTable("a42"),
-                null);
-        for (int i = 0; i < expectedRecordCount; i++) {
-            assertThat(dbChanges).contains(entry(i + 1, i));
-        }
-    }
-
     @Test(expected = ConnectException.class)
     @SkipWhenGtidModeIs(value = SkipWhenGtidModeIs.GtidMode.ON, reason = "Read only connection requires GTID_MODE to be ON")
     public void shouldFailIfGtidModeIsOff() throws Exception {
@@ -407,12 +385,6 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
     protected void populate4PkTable() throws SQLException {
         try (JdbcConnection connection = databaseConnection()) {
             populate4PkTable(connection, "a4");
-        }
-    }
-
-    protected void populate4WithoutPkTable() throws SQLException {
-        try (JdbcConnection connection = databaseConnection()) {
-            populate4PkTable(connection, "a42");
         }
     }
 }

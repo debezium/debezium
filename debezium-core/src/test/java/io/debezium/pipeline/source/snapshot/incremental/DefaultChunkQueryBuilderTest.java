@@ -6,6 +6,7 @@
 package io.debezium.pipeline.source.snapshot.incremental;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
 import java.util.Optional;
@@ -17,6 +18,7 @@ import org.mockito.junit.MockitoJUnitRunner;
 import io.debezium.config.Configuration;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.doc.FixFor;
+import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnFilterMode;
@@ -53,12 +55,28 @@ public class DefaultChunkQueryBuilderTest {
         };
     }
 
+    protected static class NullHandlingJdbcConnection extends JdbcConnection {
+        private final boolean nullsLast;
+
+        public NullHandlingJdbcConnection(JdbcConfiguration config, ConnectionFactory connectionFactory,
+                                          String openingQuoteCharacter, String closingQuoteCharacter,
+                                          boolean nullsLast) {
+            super(config, connectionFactory, openingQuoteCharacter, closingQuoteCharacter);
+            this.nullsLast = nullsLast;
+        }
+
+        @Override
+        public Optional<Boolean> nullsSortLast() {
+            return Optional.of(nullsLast);
+        }
+    }
+
     @Test
     public void testBuildQueryOnePkColumn() {
         final ChunkQueryBuilder<TableId> chunkQueryBuilder = new DefaultChunkQueryBuilder<>(
                 config(), new JdbcConnection(config().getJdbcConfig(), config -> null, "\"", "\""));
         final IncrementalSnapshotContext<TableId> context = new SignalBasedIncrementalSnapshotContext<>();
-        final Column pk1 = Column.editor().name("pk1").create();
+        final Column pk1 = Column.editor().name("pk1").optional(false).create();
         final Column val1 = Column.editor().name("val1").create();
         final Column val2 = Column.editor().name("val2").create();
         final Table table = Table.editor().tableId(new TableId(null, "s1", "table1"))
@@ -67,8 +85,8 @@ public class DefaultChunkQueryBuilderTest {
                 .addColumn(val2)
                 .setPrimaryKeyNames("pk1").create();
         assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.empty())).isEqualTo("SELECT * FROM \"s1\".\"table1\" ORDER BY \"pk1\" LIMIT 1024");
-        context.nextChunkPosition(new Object[]{ 1, 5 });
-        context.maximumKey(new Object[]{ 10, 50 });
+        context.nextChunkPosition(new Object[]{ 1 });
+        context.maximumKey(new Object[]{ 10 });
         assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.empty())).isEqualTo(
                 "SELECT * FROM \"s1\".\"table1\" WHERE (\"pk1\" > ?) AND NOT (\"pk1\" > ?) ORDER BY \"pk1\" LIMIT 1024");
     }
@@ -78,7 +96,7 @@ public class DefaultChunkQueryBuilderTest {
         final ChunkQueryBuilder<TableId> chunkQueryBuilder = new DefaultChunkQueryBuilder<>(
                 config(), new JdbcConnection(config().getJdbcConfig(), config -> null, "\"", "\""));
         final IncrementalSnapshotContext<TableId> context = new SignalBasedIncrementalSnapshotContext<>();
-        final Column pk1 = Column.editor().name("pk1").create();
+        final Column pk1 = Column.editor().name("pk1").optional(false).create();
         final Column val1 = Column.editor().name("val1").create();
         final Column val2 = Column.editor().name("val2").create();
         final Table table = Table.editor().tableId(new TableId(null, "s1", "table1"))
@@ -88,8 +106,8 @@ public class DefaultChunkQueryBuilderTest {
                 .setPrimaryKeyNames("pk1").create();
         assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.of("\"val1\"=foo")))
                 .isEqualTo("SELECT * FROM \"s1\".\"table1\" WHERE \"val1\"=foo ORDER BY \"pk1\" LIMIT 1024");
-        context.nextChunkPosition(new Object[]{ 1, 5 });
-        context.maximumKey(new Object[]{ 10, 50 });
+        context.nextChunkPosition(new Object[]{ 1 });
+        context.maximumKey(new Object[]{ 10 });
         assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.of("\"val1\"=foo"))).isEqualTo(
                 "SELECT * FROM \"s1\".\"table1\" WHERE (\"pk1\" > ?) AND NOT (\"pk1\" > ?) AND \"val1\"=foo ORDER BY \"pk1\" LIMIT 1024");
     }
@@ -99,8 +117,8 @@ public class DefaultChunkQueryBuilderTest {
         final ChunkQueryBuilder<TableId> chunkQueryBuilder = new DefaultChunkQueryBuilder<>(
                 config(), new JdbcConnection(config().getJdbcConfig(), config -> null, "\"", "\""));
         final IncrementalSnapshotContext<TableId> context = new SignalBasedIncrementalSnapshotContext<>();
-        final Column pk1 = Column.editor().name("pk1").create();
-        final Column pk2 = Column.editor().name("pk2").create();
+        final Column pk1 = Column.editor().name("pk1").optional(false).create();
+        final Column pk2 = Column.editor().name("pk2").optional(false).create();
         final Column val1 = Column.editor().name("val1").create();
         final Column val2 = Column.editor().name("val2").create();
         final Table table = Table.editor().tableId(new TableId(null, "s1", "table1"))
@@ -112,8 +130,8 @@ public class DefaultChunkQueryBuilderTest {
         context.addDataCollectionNamesToSnapshot("12345", List.of(table.id().toString()), List.of(), "pk2");
         assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.of("\"val1\"=foo")))
                 .isEqualTo("SELECT * FROM \"s1\".\"table1\" WHERE \"val1\"=foo ORDER BY \"pk2\" LIMIT 1024");
-        context.nextChunkPosition(new Object[]{ 1, 5 });
-        context.maximumKey(new Object[]{ 10, 50 });
+        context.nextChunkPosition(new Object[]{ 1 });
+        context.maximumKey(new Object[]{ 10 });
         assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.of("\"val1\"=foo"))).isEqualTo(
                 "SELECT * FROM \"s1\".\"table1\" WHERE (\"pk2\" > ?) AND NOT (\"pk2\" > ?) AND \"val1\"=foo ORDER BY \"pk2\" LIMIT 1024");
     }
@@ -123,9 +141,9 @@ public class DefaultChunkQueryBuilderTest {
         final ChunkQueryBuilder<TableId> chunkQueryBuilder = new DefaultChunkQueryBuilder<>(
                 config(), new JdbcConnection(config().getJdbcConfig(), config -> null, "\"", "\""));
         final IncrementalSnapshotContext<TableId> context = new SignalBasedIncrementalSnapshotContext<>();
-        final Column pk1 = Column.editor().name("pk1").create();
-        final Column pk2 = Column.editor().name("pk2").create();
-        final Column pk3 = Column.editor().name("pk3").create();
+        final Column pk1 = Column.editor().name("pk1").optional(false).create();
+        final Column pk2 = Column.editor().name("pk2").optional(false).create();
+        final Column pk3 = Column.editor().name("pk3").optional(false).create();
         final Column val1 = Column.editor().name("val1").create();
         final Column val2 = Column.editor().name("val2").create();
         final Table table = Table.editor().tableId(new TableId(null, "s1", "table1"))
@@ -137,8 +155,8 @@ public class DefaultChunkQueryBuilderTest {
                 .setPrimaryKeyNames("pk1", "pk2", "pk3").create();
         assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.empty())).isEqualTo(
                 "SELECT * FROM \"s1\".\"table1\" ORDER BY \"pk1\", \"pk2\", \"pk3\" LIMIT 1024");
-        context.nextChunkPosition(new Object[]{ 1, 5 });
-        context.maximumKey(new Object[]{ 10, 50 });
+        context.nextChunkPosition(new Object[]{ 1, 5, 3 });
+        context.maximumKey(new Object[]{ 10, 50, 30 });
         assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.empty())).isEqualTo(
                 "SELECT * FROM \"s1\".\"table1\" WHERE ((\"pk1\" > ?) OR (\"pk1\" = ? AND \"pk2\" > ?) OR (\"pk1\" = ? AND \"pk2\" = ? AND \"pk3\" > ?)) AND NOT ((\"pk1\" > ?) OR (\"pk1\" = ? AND \"pk2\" > ?) OR (\"pk1\" = ? AND \"pk2\" = ? AND \"pk3\" > ?)) ORDER BY \"pk1\", \"pk2\", \"pk3\" LIMIT 1024");
     }
@@ -148,9 +166,9 @@ public class DefaultChunkQueryBuilderTest {
         final ChunkQueryBuilder<TableId> chunkQueryBuilder = new DefaultChunkQueryBuilder<>(
                 config(), new JdbcConnection(config().getJdbcConfig(), config -> null, "\"", "\""));
         final IncrementalSnapshotContext<TableId> context = new SignalBasedIncrementalSnapshotContext<>();
-        final Column pk1 = Column.editor().name("pk1").create();
-        final Column pk2 = Column.editor().name("pk2").create();
-        final Column pk3 = Column.editor().name("pk3").create();
+        final Column pk1 = Column.editor().name("pk1").optional(false).create();
+        final Column pk2 = Column.editor().name("pk2").optional(false).create();
+        final Column pk3 = Column.editor().name("pk3").optional(false).create();
         final Column val1 = Column.editor().name("val1").create();
         final Column val2 = Column.editor().name("val2").create();
         final Table table = Table.editor().tableId(new TableId(null, "s1", "table1"))
@@ -162,8 +180,8 @@ public class DefaultChunkQueryBuilderTest {
                 .setPrimaryKeyNames("pk1", "pk2", "pk3").create();
         assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.of("\"val1\"=foo")))
                 .isEqualTo("SELECT * FROM \"s1\".\"table1\" WHERE \"val1\"=foo ORDER BY \"pk1\", \"pk2\", \"pk3\" LIMIT 1024");
-        context.nextChunkPosition(new Object[]{ 1, 5 });
-        context.maximumKey(new Object[]{ 10, 50 });
+        context.nextChunkPosition(new Object[]{ 1, 5, 3 });
+        context.maximumKey(new Object[]{ 10, 50, 30 });
         assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.of("\"val1\"=foo"))).isEqualTo(
                 "SELECT * FROM \"s1\".\"table1\" WHERE ((\"pk1\" > ?) OR (\"pk1\" = ? AND \"pk2\" > ?) OR (\"pk1\" = ? AND \"pk2\" = ? AND \"pk3\" > ?)) AND NOT ((\"pk1\" > ?) OR (\"pk1\" = ? AND \"pk2\" > ?) OR (\"pk1\" = ? AND \"pk2\" = ? AND \"pk3\" > ?)) AND \"val1\"=foo ORDER BY \"pk1\", \"pk2\", \"pk3\" LIMIT 1024");
     }
@@ -173,8 +191,8 @@ public class DefaultChunkQueryBuilderTest {
         final ChunkQueryBuilder<TableId> chunkQueryBuilder = new DefaultChunkQueryBuilder<>(
                 config(), new JdbcConnection(config().getJdbcConfig(), config -> null, "\"", "\""));
         final IncrementalSnapshotContext<TableId> context = new SignalBasedIncrementalSnapshotContext<>();
-        final Column pk1 = Column.editor().name("pk1").create();
-        final Column pk2 = Column.editor().name("pk2").create();
+        final Column pk1 = Column.editor().name("pk1").optional(false).create();
+        final Column pk2 = Column.editor().name("pk2").optional(false).create();
         final Column val1 = Column.editor().name("val1").create();
         final Column val2 = Column.editor().name("val2").create();
         final Table table = Table.editor().tableId(new TableId(null, "s1", "table1"))
@@ -193,8 +211,8 @@ public class DefaultChunkQueryBuilderTest {
         final ChunkQueryBuilder<TableId> chunkQueryBuilder = new DefaultChunkQueryBuilder<>(
                 config(), new JdbcConnection(config().getJdbcConfig(), config -> null, "\"", "\""));
         final IncrementalSnapshotContext<TableId> context = new SignalBasedIncrementalSnapshotContext<>();
-        final Column pk1 = Column.editor().name("pk1").create();
-        final Column pk2 = Column.editor().name("pk2").create();
+        final Column pk1 = Column.editor().name("pk1").optional(false).create();
+        final Column pk2 = Column.editor().name("pk2").optional(false).create();
         final Column val1 = Column.editor().name("val1").create();
         final Column val2 = Column.editor().name("val2").create();
         final Table table = Table.editor().tableId(new TableId(null, "s1", "table1")).addColumn(pk1).addColumn(pk2)
@@ -208,8 +226,8 @@ public class DefaultChunkQueryBuilderTest {
         final ChunkQueryBuilder<TableId> chunkQueryBuilder = new DefaultChunkQueryBuilder<>(
                 config(), new JdbcConnection(config().getJdbcConfig(), config -> null, "\"", "\""));
         final IncrementalSnapshotContext<TableId> context = new SignalBasedIncrementalSnapshotContext<>();
-        final Column pk1 = Column.editor().name("pk1").create();
-        final Column pk2 = Column.editor().name("pk2").create();
+        final Column pk1 = Column.editor().name("pk1").optional(false).create();
+        final Column pk2 = Column.editor().name("pk2").optional(false).create();
         final Column val1 = Column.editor().name("val1").create();
         final Column val2 = Column.editor().name("val2").create();
         final Table table = Table.editor().tableId(new TableId(null, "s1", "table1")).addColumn(pk1).addColumn(pk2)
@@ -223,8 +241,8 @@ public class DefaultChunkQueryBuilderTest {
         final ChunkQueryBuilder<TableId> chunkQueryBuilder = new DefaultChunkQueryBuilder<>(
                 config(), new JdbcConnection(config().getJdbcConfig(), config -> null, "\"", "\""));
         final IncrementalSnapshotContext<TableId> context = new SignalBasedIncrementalSnapshotContext<>();
-        final Column pk1 = Column.editor().name("pk1").create();
-        final Column pk2 = Column.editor().name("pk2").create();
+        final Column pk1 = Column.editor().name("pk1").optional(false).create();
+        final Column pk2 = Column.editor().name("pk2").optional(false).create();
         final Column val1 = Column.editor().name("val1").create();
         final Column val2 = Column.editor().name("val2").create();
         final Table table = Table.editor().tableId(new TableId(null, "s1", "table1")).addColumn(pk1).addColumn(pk2)
@@ -260,9 +278,132 @@ public class DefaultChunkQueryBuilderTest {
         assertThat(actualProjection).isEqualTo(expectedProjection);
     }
 
+    @Test
+    public void testBuildQueryOptionalThrowsUnsupported() {
+        final RelationalDatabaseConnectorConfig config = buildConfig(config().getJdbcConfig().edit()
+                .with(RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS, "s1.table1:pk1").build());
+        final ChunkQueryBuilder<TableId> chunkQueryBuilder = new DefaultChunkQueryBuilder<>(
+                config, new JdbcConnection(config.getJdbcConfig(), c -> null, "\"", "\""));
+        final IncrementalSnapshotContext<TableId> context = new SignalBasedIncrementalSnapshotContext<>();
+        final Column pk1 = Column.editor().name("pk1").optional(true).create();
+        final Column val1 = Column.editor().name("val1").create();
+        final Table table = Table.editor().tableId(new TableId(null, "s1", "table1"))
+                .addColumn(pk1)
+                .addColumn(val1)
+                .create();
+
+        assertThatThrownBy(() -> chunkQueryBuilder.buildChunkQuery(context, table, Optional.empty()))
+                .isInstanceOf(UnsupportedOperationException.class)
+                .hasMessage("The sort order of NULL values in the incremental snapshot key is unknown.");
+    }
+
+    @Test
+    public void testBuildQueryOptionalKeysNullsFirst() {
+        final RelationalDatabaseConnectorConfig config = buildConfig(config().getJdbcConfig().edit()
+                .with(RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS, "s1.table1:pk1,pk2,pk3").build());
+        final ChunkQueryBuilder<TableId> chunkQueryBuilder = new DefaultChunkQueryBuilder<>(
+                config, new NullHandlingJdbcConnection(config.getJdbcConfig(), c -> null, "\"", "\"", false));
+        final IncrementalSnapshotContext<TableId> context = new SignalBasedIncrementalSnapshotContext<>();
+        final Column pk1 = Column.editor().name("pk1").optional(true).create();
+        final Column pk2 = Column.editor().name("pk2").optional(true).create();
+        final Column pk3 = Column.editor().name("pk3").optional(false).create();
+        final Column val1 = Column.editor().name("val1").create();
+        final Table table = Table.editor().tableId(new TableId(null, "s1", "table1"))
+                .addColumn(pk1)
+                .addColumn(pk2)
+                .addColumn(pk3)
+                .addColumn(val1)
+                .create();
+
+        assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.empty())).isEqualTo(
+                "SELECT * FROM \"s1\".\"table1\" ORDER BY \"pk1\", \"pk2\", \"pk3\" LIMIT 1024");
+
+        // Next chunk position and maximum key are both completely NOT NULL
+        context.nextChunkPosition(new Object[]{ 1, 5, 3 });
+        context.maximumKey(new Object[]{ 10, 50, 30 });
+        assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.empty())).isEqualTo(
+                // chunk end
+                "SELECT * FROM \"s1\".\"table1\" WHERE " +
+                        "(((\"pk1\" > ? AND \"pk1\" IS NOT NULL)) " +
+                        "OR (\"pk1\" = ? AND (\"pk2\" > ? AND \"pk2\" IS NOT NULL)) " +
+                        "OR (\"pk1\" = ? AND \"pk2\" = ? AND \"pk3\" > ?)) " +
+                        // last table row
+                        "AND NOT (((\"pk1\" > ? AND \"pk1\" IS NOT NULL)) " +
+                        "OR (\"pk1\" = ? AND (\"pk2\" > ? AND \"pk2\" IS NOT NULL)) " +
+                        "OR (\"pk1\" = ? AND \"pk2\" = ? AND \"pk3\" > ?)) " +
+                        "ORDER BY \"pk1\", \"pk2\", \"pk3\" LIMIT 1024");
+
+        // NULL values present
+        context.nextChunkPosition(new Object[]{ 1, null, 3 });
+        context.maximumKey(new Object[]{ null, 50, 30 });
+        assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.empty())).isEqualTo(
+                // chunk end
+                "SELECT * FROM \"s1\".\"table1\" WHERE " +
+                        "(((\"pk1\" > ? AND \"pk1\" IS NOT NULL)) " +
+                        "OR (\"pk1\" = ? AND \"pk2\" IS NOT NULL) " +
+                        "OR (\"pk1\" = ? AND \"pk2\" IS NULL AND \"pk3\" > ?)) " +
+                        // last table row
+                        "AND NOT ((\"pk1\" IS NOT NULL) " +
+                        "OR (\"pk1\" IS NULL AND (\"pk2\" > ? AND \"pk2\" IS NOT NULL)) " +
+                        "OR (\"pk1\" IS NULL AND \"pk2\" = ? AND \"pk3\" > ?)) " +
+                        "ORDER BY \"pk1\", \"pk2\", \"pk3\" LIMIT 1024");
+    }
+
+    @Test
+    public void testBuildQueryOptionalKeysNullsLast() {
+        final RelationalDatabaseConnectorConfig config = buildConfig(config().getJdbcConfig().edit()
+                .with(RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS, "s1.table1:pk1,pk2,pk3").build());
+        final ChunkQueryBuilder<TableId> chunkQueryBuilder = new DefaultChunkQueryBuilder<>(
+                config, new NullHandlingJdbcConnection(config.getJdbcConfig(), c -> null, "\"", "\"", true));
+        final IncrementalSnapshotContext<TableId> context = new SignalBasedIncrementalSnapshotContext<>();
+        final Column pk1 = Column.editor().name("pk1").optional(true).create();
+        final Column pk2 = Column.editor().name("pk2").optional(true).create();
+        final Column pk3 = Column.editor().name("pk3").optional(false).create();
+        final Column val1 = Column.editor().name("val1").create();
+        final Table table = Table.editor().tableId(new TableId(null, "s1", "table1"))
+                .addColumn(pk1)
+                .addColumn(pk2)
+                .addColumn(pk3)
+                .addColumn(val1)
+                .create();
+
+        assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.empty())).isEqualTo(
+                "SELECT * FROM \"s1\".\"table1\" ORDER BY \"pk1\", \"pk2\", \"pk3\" LIMIT 1024");
+
+        // Next chunk position and maximum key are both completely NOT NULL
+        context.nextChunkPosition(new Object[]{ 1, 5, 3 });
+        context.maximumKey(new Object[]{ 10, 50, 30 });
+        assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.empty())).isEqualTo(
+                // chunk end
+                "SELECT * FROM \"s1\".\"table1\" WHERE " +
+                        "(((\"pk1\" > ? OR \"pk1\" IS NULL)) " +
+                        "OR (\"pk1\" = ? AND (\"pk2\" > ? OR \"pk2\" IS NULL)) " +
+                        "OR (\"pk1\" = ? AND \"pk2\" = ? AND \"pk3\" > ?)) " +
+                        // last table row
+                        "AND NOT (((\"pk1\" > ? OR \"pk1\" IS NULL)) " +
+                        "OR (\"pk1\" = ? AND (\"pk2\" > ? OR \"pk2\" IS NULL)) " +
+                        "OR (\"pk1\" = ? AND \"pk2\" = ? AND \"pk3\" > ?)) " +
+                        "ORDER BY \"pk1\", \"pk2\", \"pk3\" LIMIT 1024");
+
+        // NULL values present
+        context.nextChunkPosition(new Object[]{ 1, null, 3 });
+        context.maximumKey(new Object[]{ null, 50, 30 });
+        assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.empty())).isEqualTo(
+                // chunk end
+                "SELECT * FROM \"s1\".\"table1\" WHERE " +
+                        "(((\"pk1\" > ? OR \"pk1\" IS NULL)) " +
+                        "OR (\"pk1\" = ? AND 1 = 0) " +
+                        "OR (\"pk1\" = ? AND \"pk2\" IS NULL AND \"pk3\" > ?)) " +
+                        // last table row
+                        "AND NOT ((1 = 0) " +
+                        "OR (\"pk1\" IS NULL AND (\"pk2\" > ? OR \"pk2\" IS NULL)) " +
+                        "OR (\"pk1\" IS NULL AND \"pk2\" = ? AND \"pk3\" > ?)) " +
+                        "ORDER BY \"pk1\", \"pk2\", \"pk3\" LIMIT 1024");
+    }
+
     private Table createTwoPrimaryKeysTable() {
-        final Column pk1 = Column.editor().name("pk1").create();
-        final Column pk2 = Column.editor().name("pk2").create();
+        final Column pk1 = Column.editor().name("pk1").optional(false).create();
+        final Column pk2 = Column.editor().name("pk2").optional(false).create();
         final Column val1 = Column.editor().name("val1").create();
         final Column val2 = Column.editor().name("val2").create();
         final Column val3 = Column.editor().name("val3").create();

@@ -633,6 +633,13 @@ public class SqlServerConnection extends JdbcConnection {
     }
 
     @Override
+    public Optional<Boolean> nullsSortLast() {
+        // "Null values are treated as the lowest possible values"
+        // https://learn.microsoft.com/en-us/sql/t-sql/queries/select-order-by-clause-transact-sql?view=sql-server-ver16
+        return Optional.of(false);
+    }
+
+    @Override
     public String quotedTableIdString(TableId tableId) {
         return "[" + tableId.catalog() + "].[" + tableId.schema() + "].[" + tableId.table() + "]";
     }

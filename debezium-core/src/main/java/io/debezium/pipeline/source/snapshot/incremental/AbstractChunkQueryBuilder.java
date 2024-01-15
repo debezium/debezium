@@ -49,15 +49,22 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
         String condition = null;
         // Add condition when this is not the first query
         if (context.isNonInitialChunk()) {
+            final Object[] maximumKey = context.maximumKey().get();
+            final Object[] chunkEndPosition = context.chunkEndPosititon();
             final StringBuilder sql = new StringBuilder();
             // Window boundaries
-            addLowerBound(context, table, sql);
+            addLowerBound(context, table, chunkEndPosition, sql);
             // Table boundaries
             sql.append(" AND NOT ");
-            addLowerBound(context, table, sql);
+            addLowerBound(context, table, maximumKey, sql);
             condition = sql.toString();
         }
-        final String orderBy = getQueryColumns(context, table).stream()
+        final List<Column> queryColumns = getQueryColumns(context, table);
+        if (jdbcConnection.nullsSortLast().isEmpty() && queryColumns.stream().anyMatch(Column::isOptional)) {
+            // You need to override nullsSortLast on JdbcConnection for your connector if you want to be able to chunk based on nullable columns.
+            throw new UnsupportedOperationException("The sort order of NULL values in the incremental snapshot key is unknown.");
+        }
+        final String orderBy = queryColumns.stream()
                 .map(c -> jdbcConnection.quotedColumnIdString(c.name()))
                 .collect(Collectors.joining(", "));
         return jdbcConnection.buildSelectWithRowLimits(table.id(),
@@ -80,7 +87,7 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
         return projection;
     }
 
-    private void addLowerBound(IncrementalSnapshotContext<T> context, Table table, StringBuilder sql) {
+    private void addLowerBound(IncrementalSnapshotContext<T> context, Table table, Object[] boundaryKey, StringBuilder sql) {
         // To make window boundaries working for more than one column it is necessary to calculate
         // with independently increasing values in each column independently.
         // For one column the condition will be (? will always be the last value seen for the given column)
@@ -90,7 +97,24 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
         // For four columns
         // (k1 > ?) OR (k1 = ? AND k2 > ?) OR (k1 = ? AND k2 = ? AND k3 > ?) OR (k1 = ? AND k2 = ? AND k3 = ? AND k4 > ?)
         // etc.
+        //
+        // Special considerations are needed when a column is nullable. First, the ORDER BY clause will return NULL values
+        // in different sort orders depending on the database, so jdbcConnection.nullsSortLast() helps us figure that out.
+        // Next, each individual comparison as shown in the simple non-NULLABLE example above is translated as follows:
+        //
+        // Databases where NULL sorts last (e.g. PostgreSQL):
+        // (k1 > ?) where ? is non-NULL: (k1 > ? OR k1 IS NULL): find bigger values; NULL is considered bigger & not seen yet
+        // (k1 > ?) where ? is NULL: (FALSE): by definition, NULL is the last value and no value can possibly be higher
+        // (k1 = ?) where ? is non-NULL: (k1 = ?): no translation needed for non-NULL values
+        // (k1 = ?) where ? is NULL: (k1 IS NULL): need to use IS NULL instead of equality comparison
+        //
+        // Databases where NULL sorts first (e.g. MySQL):
+        // (k1 > ?) where ? is non-NULL: (k1 > ? AND k1 IS NOT NULL): find bigger values; NULL is smaller & already seen
+        // (k1 > ?) where ? is NULL: (k1 IS NOT NULL): by definition, NULL is the first value and every value is always higher
+        // (k1 = ?) where ? is non-NULL: (k1 = ?): no translation needed for non-NULL values
+        // (k1 = ?) where ? is NULL: (k1 IS NULL): need to use IS NULL instead of equality comparison
         final List<Column> pkColumns = getQueryColumns(context, table);
+        final Optional<Boolean> nullsSortLast = jdbcConnection.nullsSortLast();
         if (pkColumns.size() > 1) {
             sql.append('(');
         }
@@ -99,8 +123,49 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
             sql.append('(');
             for (int j = 0; j < i + 1; j++) {
                 final boolean isLastIterationForJ = (i == j);
-                sql.append(jdbcConnection.quotedColumnIdString(pkColumns.get(j).name()));
-                sql.append(isLastIterationForJ ? " > ?" : " = ?");
+                final String pkColumnName = jdbcConnection.quotedColumnIdString(pkColumns.get(j).name());
+                if (pkColumns.get(j).isRequired()) {
+                    sql.append(pkColumnName);
+                    sql.append(isLastIterationForJ ? " > ?" : " = ?");
+                }
+                else if (boundaryKey[j] != null) {
+                    if (isLastIterationForJ) {
+                        sql.append('(');
+                        sql.append(pkColumnName);
+                        sql.append(" > ?");
+                        if (nullsSortLast.get()) {
+                            sql.append(" OR ");
+                            sql.append(pkColumnName);
+                            sql.append(" IS NULL)");
+                        }
+                        else {
+                            sql.append(" AND ");
+                            sql.append(pkColumnName);
+                            sql.append(" IS NOT NULL)");
+                        }
+                    }
+                    else {
+                        sql.append(pkColumnName);
+                        sql.append(" = ?");
+                    }
+                }
+                else {
+                    if (isLastIterationForJ) {
+                        // Identifies values greater than NULL based on the database sorting behavior
+                        if (nullsSortLast.get()) {
+                            // Basically a FALSE literal: works around lack of FALSE literal in some databases, like Oracle
+                            sql.append("1 = 0"); // nothing is greater than NULL
+                        }
+                        else {
+                            sql.append(pkColumnName);
+                            sql.append(" IS NOT NULL"); // everything is greater than NULL
+                        }
+                    }
+                    else {
+                        sql.append(pkColumnName);
+                        sql.append(" IS NULL");
+                    }
+                }
                 if (!isLastIterationForJ) {
                     sql.append(" AND ");
                 }
@@ -127,13 +192,17 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
             final List<Column> queryColumns = getQueryColumns(context, table);
             for (int i = 0; i < chunkEndPosition.length; i++) {
                 for (int j = 0; j < i + 1; j++) {
-                    jdbcConnection.setQueryColumnValue(statement, queryColumns.get(j), ++pos, chunkEndPosition[j]);
+                    if (chunkEndPosition[j] != null) {
+                        jdbcConnection.setQueryColumnValue(statement, queryColumns.get(j), ++pos, chunkEndPosition[j]);
+                    }
                 }
             }
             // Fill maximum key placeholders
-            for (int i = 0; i < chunkEndPosition.length; i++) {
+            for (int i = 0; i < maximumKey.length; i++) {
                 for (int j = 0; j < i + 1; j++) {
-                    jdbcConnection.setQueryColumnValue(statement, queryColumns.get(j), ++pos, maximumKey[j]);
+                    if (maximumKey[j] != null) {
+                        jdbcConnection.setQueryColumnValue(statement, queryColumns.get(j), ++pos, maximumKey[j]);
+                    }
                 }
             }
         }
@@ -164,4 +233,3 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
         return getKeyMapper().getKeyKolumns(table);
     }
 }
-
