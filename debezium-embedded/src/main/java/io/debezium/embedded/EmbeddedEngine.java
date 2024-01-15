@@ -649,43 +649,43 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord>, Embed
     }
 
     private Throwable handleRetries(final RetriableException e, final List<Map<String, String>> taskConfigs) {
-        Throwable retryError = null;
         int maxRetries = getErrorsMaxRetries();
         LOGGER.info("Retriable exception thrown, connector will be restarted; errors.max.retries={}", maxRetries, e);
+
         if (maxRetries == 0) {
-            retryError = e;
+            return e;
         }
-        else if (maxRetries < EmbeddedEngineConfig.DEFAULT_ERROR_MAX_RETRIES) {
+
+        if (maxRetries < EmbeddedEngineConfig.DEFAULT_ERROR_MAX_RETRIES) {
             LOGGER.warn("Setting {}={} is deprecated. To disable retries on connection errors, set {}=0", EmbeddedEngineConfig.ERRORS_MAX_RETRIES.name(), maxRetries,
                     EmbeddedEngineConfig.ERRORS_MAX_RETRIES.name());
-            retryError = e;
+            return e;
         }
-        else {
-            DelayStrategy delayStrategy = delayStrategy(config);
-            int totalRetries = 0;
-            boolean startedSuccessfully = false;
-            while (!startedSuccessfully) {
-                try {
-                    totalRetries++;
-                    LOGGER.info("Starting connector, attempt {}", totalRetries);
-                    task.stop();
-                    task.start(taskConfigs.get(0));
-                    startedSuccessfully = true;
-                }
-                catch (Exception ex) {
-                    if (maxRetries > 0 && totalRetries >= maxRetries) {
-                        LOGGER.error("Can't start the connector, max retries to connect exceeded; stopping connector...", ex);
-                        retryError = ex;
-                        break;
-                    }
-                    else {
-                        LOGGER.error("Can't start the connector, will retry later...", ex);
-                    }
-                }
-                delayStrategy.sleepWhen(!startedSuccessfully);
+
+        DelayStrategy delayStrategy = delayStrategy(config);
+        int totalRetries = 0;
+        boolean startedSuccessfully = false;
+        while (!startedSuccessfully) {
+            try {
+                totalRetries++;
+                LOGGER.info("Starting connector, attempt {}", totalRetries);
+                task.stop();
+                task.start(taskConfigs.get(0));
+                startedSuccessfully = true;
             }
+            catch (Exception ex) {
+                if (totalRetries >= maxRetries) {
+                    LOGGER.error("Can't start the connector, max retries to connect exceeded; stopping connector...", ex);
+                    return ex;
+                }
+                else {
+                    LOGGER.error("Can't start the connector, will retry later...", ex);
+                }
+            }
+            delayStrategy.sleepWhen(!startedSuccessfully);
         }
-        return retryError;
+
+        return null;
     }
 
     private void pollRecords(List<Map<String, String>> taskConfigs, RecordCommitter committer, HandlerErrors errors) throws Throwable {
