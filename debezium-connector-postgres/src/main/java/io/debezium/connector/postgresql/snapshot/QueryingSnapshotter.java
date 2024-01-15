@@ -27,7 +27,7 @@ public abstract class QueryingSnapshotter implements Snapshotter {
     @Override
     public Optional<String> buildSnapshotQuery(TableId tableId, List<String> snapshotSelectColumns) {
         String query = snapshotSelectColumns.stream()
-                .collect(Collectors.joining(", ", "SELECT ", " FROM " + tableId.toDoubleQuotedString()));
+                .collect(Collectors.joining(", ", "SELECT ", " FROM ONLY " + tableId.toDoubleQuotedString()));
 
         return Optional.of(query);
     }
