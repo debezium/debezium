@@ -3765,7 +3765,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, false);
 
         // Start and stop the connector to ensure that the replication slot is created, and also
-        // to test that some initial heartbeats are created (DBZ-6635).  Note that even though we
+        // to test that some initial heartbeats are created (DBZ-6635). Note that even though we
         // aren't explicitly making any database changes to stream here, PG often will have some
         // WAL activity to consume anyway that the searchWalPosition function will find.
         startConnector(configMapper);
@@ -3777,8 +3777,8 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         // starting completely fresh with the connector restart.
         consumeAvailableRecords(null);
 
-        // Also make sure that the PG replication slot is COMPLETELY CLEARED.  (While manually reproducing DBZ-7316
-        // it was noted that sometimes there is still WAL to consume after the connector is stopped.  So this is just
+        // Also make sure that the PG replication slot is COMPLETELY CLEARED. (While manually reproducing DBZ-7316
+        // it was noted that sometimes there is still WAL to consume after the connector is stopped. So this is just
         // being extra-safe that the next portion of the test really tests with an empty WAL to consume).
         TestHelper.execute(getReplicationSlotChangesQuery());
         try (PostgresConnection connection = TestHelper.create()) {
@@ -3793,8 +3793,8 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
             assertThat(changeCount).isEqualTo(0);
         }
 
-        // Start the connector again.  This time, we're resuming from an existing replication slot,
-        // so the searchWalPosition function will be looking for a place to resume.  We need to
+        // Start the connector again. This time, we're resuming from an existing replication slot,
+        // so the searchWalPosition function will be looking for a place to resume. We need to
         // test that the loop in searchWalPosition is emitting heartbeats (DBZ-7316) when there
         // is no WAL to consume (since we just cleared it out and asserted there was none).
         startConnector(configMapper);
