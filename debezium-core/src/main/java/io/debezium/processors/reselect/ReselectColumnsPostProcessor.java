@@ -53,10 +53,12 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
     private static final String RESELECT_COLUMNS_EXCLUDE_LIST = "reselect.columns.exclude.list";
     private static final String RESELECT_UNAVAILABLE_VALUES = "reselect.unavailable.values";
     private static final String RESELECT_NULL_VALUES = "reselect.null.values";
+    private static final String RESELECT_USE_EVENT_KEY = "reselect.use.event.key";
 
     private Predicate<String> selector;
     private boolean reselectUnavailableValues;
     private boolean reselectNullValues;
+    private boolean reselectUseEventKeyFields;
     private JdbcConnection jdbcConnection;
     private ValueConverterProvider valueConverterProvider;
     private String unavailableValuePlaceholder;
@@ -68,6 +70,7 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
         final Configuration config = Configuration.from(properties);
         this.reselectUnavailableValues = config.getBoolean(RESELECT_UNAVAILABLE_VALUES, true);
         this.reselectNullValues = config.getBoolean(RESELECT_NULL_VALUES, true);
+        this.reselectUseEventKeyFields = config.getBoolean(RESELECT_USE_EVENT_KEY, false);
         this.selector = new ReselectColumnsPredicateBuilder()
                 .includeColumns(config.getString(RESELECT_COLUMNS_INCLUDE_LIST))
                 .excludeColumns(config.getString(RESELECT_COLUMNS_EXCLUDE_LIST))
@@ -127,9 +130,17 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
 
         final List<String> keyColumns = new ArrayList<>();
         final List<Object> keyValues = new ArrayList<>();
-        for (org.apache.kafka.connect.data.Field field : key.schema().fields()) {
-            keyColumns.add(field.name());
-            keyValues.add(key.get(field));
+        if (reselectUseEventKeyFields) {
+            for (org.apache.kafka.connect.data.Field field : key.schema().fields()) {
+                keyColumns.add(field.name());
+                keyValues.add(key.get(field));
+            }
+        }
+        else {
+            for (Column column : table.primaryKeyColumns()) {
+                keyColumns.add(column.name());
+                keyValues.add(key.get(key.schema().field(column.name())));
+            }
         }
 
         Map<String, Object> selections;
