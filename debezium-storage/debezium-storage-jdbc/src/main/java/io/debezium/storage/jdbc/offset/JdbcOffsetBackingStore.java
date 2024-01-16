@@ -7,9 +7,7 @@ package io.debezium.storage.jdbc.offset;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.sql.Connection;
 import java.sql.DatabaseMetaData;
-import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -37,6 +35,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
+import io.debezium.storage.jdbc.JdbcConnection;
 
 /**
  * Implementation of OffsetBackingStore that saves data to database table.
@@ -50,7 +49,7 @@ public class JdbcOffsetBackingStore implements OffsetBackingStore {
     protected ConcurrentHashMap<String, String> data = new ConcurrentHashMap<>();
     protected ExecutorService executor;
     private final AtomicInteger recordInsertSeq = new AtomicInteger(0);
-    private Connection conn;
+    private JdbcConnection jdbcConnection;
 
     public JdbcOffsetBackingStore() {
     }
@@ -65,13 +64,12 @@ public class JdbcOffsetBackingStore implements OffsetBackingStore {
 
     @Override
     public void configure(WorkerConfig config) {
-
         try {
             Configuration configuration = Configuration.from(config.originalsStrings());
             this.config = new JdbcOffsetBackingStoreConfig(configuration);
 
-            conn = DriverManager.getConnection(this.config.getJdbcUrl(), this.config.getUser(), this.config.getPassword());
-            conn.setAutoCommit(false);
+            jdbcConnection = new JdbcConnection(this.config.getJdbcUrl(), this.config.getUser(), this.config.getPassword(),
+                    this.config.getWaitRetryDelay(), this.config.getMaxRetryCount());
         }
         catch (Exception e) {
             throw new IllegalStateException("Failed to connect JDBC offset backing store: " + config.originalsStrings(), e);
@@ -95,20 +93,22 @@ public class JdbcOffsetBackingStore implements OffsetBackingStore {
     }
 
     private void initializeTable() throws SQLException {
-        DatabaseMetaData dbMeta = conn.getMetaData();
-        ResultSet tableExists = dbMeta.getTables(null, null, config.getTableName(), null);
+        jdbcConnection.execute((conn) -> {
+            DatabaseMetaData dbMeta = conn.getMetaData();
+            ResultSet tableExists = dbMeta.getTables(null, null, config.getTableName(), null);
 
-        if (tableExists.next()) {
-            return;
-        }
+            if (tableExists.next()) {
+                return;
+            }
 
-        LOGGER.info("Creating table {} to store offset", config.getTableName());
-        conn.prepareStatement(config.getTableCreate()).execute();
+            LOGGER.info("Creating table {} to store offset", config.getTableName());
+            conn.prepareStatement(config.getTableCreate()).execute();
+        }, false);
     }
 
     protected void save() {
-        try {
-            LOGGER.debug("Saving data to state table...");
+        LOGGER.debug("Saving data to state table...");
+        jdbcConnection.execute((conn) -> {
             try (PreparedStatement sqlDelete = conn.prepareStatement(config.getTableDelete())) {
                 sqlDelete.executeUpdate();
                 for (Map.Entry<String, String> mapEntry : data.entrySet()) {
@@ -127,20 +127,11 @@ public class JdbcOffsetBackingStore implements OffsetBackingStore {
                 }
             }
             conn.commit();
-        }
-        catch (SQLException e) {
-            try {
-                conn.rollback();
-            }
-            catch (SQLException ex) {
-                // Ignore errors on rollback
-            }
-            throw new ConnectException(e);
-        }
+        }, true);
     }
 
     private void load() {
-        try {
+        jdbcConnection.execute((conn) -> {
             ConcurrentHashMap<String, String> tmpData = new ConcurrentHashMap<>();
             Statement stmt = conn.createStatement();
             ResultSet rs = stmt.executeQuery(config.getTableSelect());
@@ -150,10 +141,7 @@ public class JdbcOffsetBackingStore implements OffsetBackingStore {
                 tmpData.put(key, val);
             }
             data = tmpData;
-        }
-        catch (SQLException e) {
-            throw new ConnectException("Failed recover records from database: " + config.getJdbcUrl(), e);
-        }
+        }, false);
     }
 
     private void stopExecutor() {
@@ -177,13 +165,8 @@ public class JdbcOffsetBackingStore implements OffsetBackingStore {
     @Override
     public synchronized void stop() {
         stopExecutor();
-        try {
-            if (conn != null) {
-                conn.close();
-            }
-        }
-        catch (SQLException e) {
-            LOGGER.error("Exception while stopping JdbcOffsetBackingStore", e);
+        if (jdbcConnection != null) {
+            jdbcConnection.close();
         }
         LOGGER.info("Stopped JdbcOffsetBackingStore");
     }
