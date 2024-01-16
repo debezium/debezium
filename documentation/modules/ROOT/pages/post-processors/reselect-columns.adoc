@@ -26,6 +26,20 @@ You can configure the post processor to re-select the following column types:
 
 Configuring a `PostProcessor` is similar to configuring a `CustomConverter` or `Transformation`.
 
+== Keyless tables
+
+The `ReselectColumnsPostProcessor` requires that the table have some unique combination of columns that can be used to generate a re-select query that returns a single row.
+By default, the `PostProcessor` will use the relational table model to construct a where-clause based on the table's primary key columns or the unique index that is defined on the table.
+However, if a table has no primary key or unique index, effectively keyless, then you can use the `message.key.columns` configuration to define a combination of columns that uniquely identifies a single row.
+When using `message.key.columns` for keyless tables, it is important to set the `reselect.use.event.key` configuration property to `true` that the event's key fields are used as the basis for the selection criteria since the relational table model would have no primary key columns.
+
+[NOTE]
+====
+The `ReselectColumnsPostProcessor` tolerates a re-select query that returns more than one row.
+In such circumstances, only the first row will be used and that entry is entirely random and database driven.
+It's recommended that if you use `reselect.use.event.key` set to `true`, your connector configuration and data model guarantees that the columns that participate in the event's key uniquely identify a single database row so that the re-select is always deterministic.
+====
+
 == Configuration example
 
 Configure a `PostProcessor` much in the same way that you would configure a `CustomConverter` or `Transformation`.
@@ -37,12 +51,14 @@ To enable the connector to use the `ReselectColumnsPostProcessor`, add the follo
   "reselector.reselect.columns.include.list": "<schema_name>.<table_name>:<colA>,<schema_name>.<table_name>:<colB>", // <3>
   "reselector.reselect.unavailable.values": "true", // <4>
   "reselector.reselect.null.values": "true" // <5>
+  "reselector.reselect.use.event.key": "false" // <6>
 ----
 <1> Comma-separated list of post-processor prefixes.
 <2> The fully-qualified class type name for the post-processor.
 <3> Comma-separated list of column names specified by using the following format: `<schema>.<table>:<column>`.
 <4> Enables or disables the re-selection of columns that contain the `unavailable.value.placeholder` sentinel value.
 <5> Enables or disables the re-selection of columns that are `null`.
+<6> Enables or disables the re-selection based event key field names.
 
 == Configuration options
 
@@ -77,4 +93,11 @@ Do not set this property if you set the `reselect.columns.include.list` property
 |`true`
 |Specifies whether the post processor reselects a column that matches the `reselect.columns.include.list` filter if the column value is `null`.
 
+|[[reselect-columns-post-processor-property-reselect-use-event-key]]<<reselect-columns-post-processor-property-reselect-use-event-key, `+reselect.use.event.key+`>>
+|`false`
+|Specifies whether the post processor reselects based on the event's key field names or uses the relational table's primary key column names. +
+ +
+By default, the reselect is based on the relational table's primary key columns or unique key index.
+Setting this to `true` can be useful if the table has no primary key and the connector is configured to use `message.key.columns` to create events with a key.
+This will then use the key field names as the primary key in the SQL reselection query.
 |===
