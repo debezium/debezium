@@ -16,8 +16,8 @@ import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.apicurio.registry.operator.api.model.ApicurioRegistry;
-import io.apicurio.registry.operator.api.model.ApicurioRegistryList;
+import io.apicurio.registry.operator.api.v1.model.ApicurioRegistry;
+import io.apicurio.registry.operator.api.v1.model.ApicurioRegistryList;
 import io.debezium.testing.system.tools.OpenShiftUtils;
 import io.debezium.testing.system.tools.WaitConditions;
 import io.fabric8.kubernetes.api.model.Service;

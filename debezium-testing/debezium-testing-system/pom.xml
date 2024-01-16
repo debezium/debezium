@@ -19,8 +19,8 @@
     <version.strimzi>0.28.0</version.strimzi>
     <version.strimzi.kafka>${version.kafka}</version.strimzi.kafka>
     <version.assertj>3.11.1</version.assertj>
-    <version.apicurio>2.2.0.Final</version.apicurio>
-    <version.apicurio.model>2.2.0.Final</version.apicurio.model>
+    <version.apicurio>2.4.1.Final</version.apicurio>
+    <version.apicurio.model>2.3.1.Final</version.apicurio.model>
     <version.fixture5>0.1.0</version.fixture5>
 
     <product.build>false</product.build>
