@@ -35,8 +35,8 @@
         <version.okhttp>4.8.1</version.okhttp>
 
         <!-- Scripting -->
-        <version.groovy>3.0.7</version.groovy>
-        <version.graalvm.js>20.0.0</version.graalvm.js>
+        <version.groovy>4.0.17</version.groovy>
+        <version.graalvm.js>23.0.2</version.graalvm.js>
 
         <!-- Storages -->
 
@@ -277,17 +277,17 @@
 
             <!-- Scripting -->
             <dependency>
-                <groupId>org.codehaus.groovy</groupId>
+                <groupId>org.apache.groovy</groupId>
                 <artifactId>groovy</artifactId>
                 <version>${version.groovy}</version>
             </dependency>
             <dependency>
-                <groupId>org.codehaus.groovy</groupId>
+                <groupId>org.apache.groovy</groupId>
                 <artifactId>groovy-json</artifactId>
                 <version>${version.groovy}</version>
             </dependency>
             <dependency>
-                <groupId>org.codehaus.groovy</groupId>
+                <groupId>org.apache.groovy</groupId>
                 <artifactId>groovy-jsr223</artifactId>
                 <version>${version.groovy}</version>
             </dependency>
