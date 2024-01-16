@@ -381,57 +381,60 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                 if (event != null) {
                     LOGGER.trace("Arrived Change Stream event: {}", event);
 
-                    if (!taskContext.filters().databaseFilter().test(event.getDatabaseName())) {
-                        LOGGER.debug("Skipping the event for database '{}' based on database include/exclude list", event.getDatabaseName());
+                    oplogContext.getOffset().changeStreamEvent(event, txOrder);
+                    if (shouldFilterStripeAudit(oplogContext, event, (e) -> serialization.getDocumentIdChangeStream(e.getDocumentKey()))) {
+                        try {
+                            dispatcher.dispatchHeartbeatEvent(oplogContext.getPartition(), oplogContext.getOffset());
+                        }
+                        catch (InterruptedException e) {
+                            LOGGER.info("Replicator thread is interrupted");
+                            Thread.currentThread().interrupt();
+                            return;
+                        }
+                        continue;
                     }
-                    else {
-                        oplogContext.getOffset().changeStreamEvent(event, txOrder);
-                        if (shouldFilterStripeAudit(oplogContext, event, (e) -> serialization.getDocumentIdChangeStream(e.getDocumentKey()))) {
+
+                    // Distribution of events to tasks or connectors is enabled
+                    // It uses timestamps as the property to distribute events
+                    if (multiTaskEnabled) {
+                        if (event.getClusterTime() != null && event.getClusterTime().getValue() % connectorConfig.getMaxTasks() != taskContext.getMongoTaskId()) {
+                            LOGGER.debug("task id doesn't match, skip change stream event {}:{}", taskContext.getMongoTaskId(), event.getClusterTime().getValue());
                             continue;
                         }
-
-                        // Distribution of events to tasks or connectors is enabled
-                        // It uses timestamps as the property to distribute events
-                        if (multiTaskEnabled) {
-                            if (event.getClusterTime() != null && event.getClusterTime().getValue() % connectorConfig.getMaxTasks() != taskContext.getMongoTaskId()) {
-                                LOGGER.debug("task id doesn't match, skip change stream event {}:{}", taskContext.getMongoTaskId(), event.getClusterTime().getValue());
-                                continue;
-                            }
-                            else {
-                                LOGGER.debug("task id match, process stream event {}:{}", taskContext.getMongoTaskId(), event.getClusterTime().getValue());
-                            }
+                        else {
+                            LOGGER.debug("task id match, process stream event {}:{}", taskContext.getMongoTaskId(), event.getClusterTime().getValue());
                         }
-                        else if (connectorConfig.getStreamingShards() > 0) {
-                            if (event.getClusterTime() != null && event.getClusterTime().getValue() % connectorConfig.getStreamingShards() != shardId) {
-                                LOGGER.debug("shard id doesn't match, skip change stream event {}:{}", shardId, event.getClusterTime().getValue());
-                                continue;
-                            }
-                            else {
-                                LOGGER.debug("shard id match, process stream event {}:{}", shardId, event.getClusterTime().getValue());
-                            }
+                    }
+                    else if (connectorConfig.getStreamingShards() > 0) {
+                        if (event.getClusterTime() != null && event.getClusterTime().getValue() % connectorConfig.getStreamingShards() != shardId) {
+                            LOGGER.debug("shard id doesn't match, skip change stream event {}:{}", shardId, event.getClusterTime().getValue());
+                            continue;
                         }
+                        else {
+                            LOGGER.debug("shard id match, process stream event {}:{}", shardId, event.getClusterTime().getValue());
+                        }
+                    }
 
-                        oplogContext.getOffset().getOffset();
-                        CollectionId collectionId = new CollectionId(
-                                replicaSet.replicaSetName(),
-                                event.getNamespace().getDatabaseName(),
-                                event.getNamespace().getCollectionName());
+                    oplogContext.getOffset().getOffset();
+                    CollectionId collectionId = new CollectionId(
+                            replicaSet.replicaSetName(),
+                            event.getNamespace().getDatabaseName(),
+                            event.getNamespace().getCollectionName());
 
-                        if (taskContext.filters().collectionFilter().test(collectionId)) {
-                            try {
-                                dispatcher.dispatchDataChangeEvent(
-                                        oplogContext.getPartition(),
-                                        collectionId,
-                                        new MongoDbChangeStreamChangeRecordEmitter(
-                                                oplogContext.getPartition(),
-                                                oplogContext.getOffset(),
-                                                clock,
-                                                event));
-                            }
-                            catch (Exception e) {
-                                errorHandler.setProducerThrowable(e);
-                                return;
-                            }
+                    if (taskContext.filters().databaseFilter().test(event.getDatabaseName()) && taskContext.filters().collectionFilter().test(collectionId)) {
+                        try {
+                            dispatcher.dispatchDataChangeEvent(
+                                    oplogContext.getPartition(),
+                                    collectionId,
+                                    new MongoDbChangeStreamChangeRecordEmitter(
+                                            oplogContext.getPartition(),
+                                            oplogContext.getOffset(),
+                                            clock,
+                                            event));
+                        }
+                        catch (Exception e) {
+                            errorHandler.setProducerThrowable(e);
+                            return;
                         }
                     }
 
