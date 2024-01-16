@@ -79,6 +79,21 @@ public class ConnectorConfigBuilder {
         return this;
     }
 
+    public ConnectorConfigBuilder addUnwrapSMT() {
+        String current = config.get("transforms").toString();
+        if (current.isEmpty()) {
+            config.put("transforms", "unwrap");
+        }
+        else {
+            config.put("transforms", current + ",unwrap");
+        }
+        config.put("transforms.unwrap.type", "io.debezium.transforms.ExtractNewRecordState");
+        config.put("transforms.unwrap.drop.tombstones", "false");
+        config.put("transforms.unwrap.delete.handling.mode", "rewrite");
+        config.put("transforms.unwrap.add.fields", "table,lsn");
+        return this;
+    }
+
     public ConnectorConfigBuilder addOperationRouter(String op, String targetTopicName, String sourceTopicPattern) {
         return addContentBasedRouter("value.op == '" + op + "' ? '" + targetTopicName + "' : null", sourceTopicPattern);
     }

@@ -69,5 +69,7 @@ public interface KafkaAssertions<K, V> {
 
     void assertRecordsContain(String topic, String content);
 
+    void assertRecordIsUnwrapped(String topic, int amount);
+
     Consumer<K, V> getConsumer();
 }

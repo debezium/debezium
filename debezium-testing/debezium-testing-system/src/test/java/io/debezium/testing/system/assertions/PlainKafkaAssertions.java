@@ -43,4 +43,16 @@ public class PlainKafkaAssertions implements KafkaAssertions<String, String> {
             assertThat(matchingCount).withFailMessage("Topic '%s' doesn't have message containing <%s>.", topic, content).isGreaterThan(0);
         }
     }
+
+    public void assertRecordIsUnwrapped(String topic, int amount) {
+        try (Consumer<String, String> consumer = getConsumer()) {
+            consumer.subscribe(Collections.singleton(topic));
+            consumer.seekToBeginning(consumer.assignment());
+
+            ConsumerRecords<String, String> records = consumer.poll(Duration.of(15, ChronoUnit.SECONDS));
+            long matchingCount = StreamSupport.stream(records.records(topic).spliterator(), false)
+                    .filter(r -> r.value() != null && !r.value().contains("source") && r.value().contains("__table")).count();
+            assertThat(matchingCount).withFailMessage("Topic '%s' does not contain transformed messages.", topic).isEqualTo(amount);
+        }
+    }
 }

@@ -9,11 +9,11 @@ import static io.debezium.testing.system.tools.ConfigProperties.APICURIO_TLS_ENA
 import static io.debezium.testing.system.tools.kafka.builders.FabricKafkaConnectBuilder.KAFKA_CERT_SECRET;
 import static io.debezium.testing.system.tools.kafka.builders.FabricKafkaConnectBuilder.KAFKA_CLIENT_CERT_SECRET;
 
-import io.apicurio.registry.operator.api.model.ApicurioRegistry;
-import io.apicurio.registry.operator.api.model.ApicurioRegistryBuilder;
-import io.apicurio.registry.operator.api.model.ApicurioRegistrySpecConfigurationKafkaSecurity;
-import io.apicurio.registry.operator.api.model.ApicurioRegistrySpecConfigurationKafkaSecurityBuilder;
-import io.apicurio.registry.operator.api.model.ApicurioRegistrySpecConfigurationKafkaSecurityTlsBuilder;
+import io.apicurio.registry.operator.api.v1.model.ApicurioRegistry;
+import io.apicurio.registry.operator.api.v1.model.ApicurioRegistryBuilder;
+import io.apicurio.registry.operator.api.v1.model.ApicurioRegistrySpecConfigurationKafkaSecurity;
+import io.apicurio.registry.operator.api.v1.model.ApicurioRegistrySpecConfigurationKafkaSecurityBuilder;
+import io.apicurio.registry.operator.api.v1.model.ApicurioRegistrySpecConfigurationKafkaSecurityTlsBuilder;
 import io.debezium.testing.system.tools.ConfigProperties;
 import io.debezium.testing.system.tools.fabric8.FabricBuilderWrapper;
 
