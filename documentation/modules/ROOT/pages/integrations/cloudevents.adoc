@@ -181,8 +181,16 @@ By default, the `metadata.source` property consists of three parts, as seen in t
 ----
 
 The first part specifies the source for retrieving a record's metadata; the permitted values are `value` and `header`. 
-The next parts specify how to obtain the `id` and `type` fields of a CloudEvent and data schema name (a parameter that specifies the name
-under which the schema is registered in a Schema Registry); the permitted values are `generate` and `header`.
+The next parts specify how the converter populates values for the following metadata fields: 
+
+* `id`
+* `type`
+* `dataSchemaName` (the name under which the schema is registered in the Schema Registry)  
+
+The converter can use one of the following methods to populate each field:
+
+`generate`:: The converter generates a value for the field.
+`header`:: The converter obtain values for the field from a message header.
 
 === Obtaining record metadata
 
@@ -227,9 +235,9 @@ NOTE: To use the `HeaderFrom` transformation, it might be necessary to filter to
 The `header` value of the `metadata.source` property is a global setting.
 As a result, even if you omit parts of a property's value, such as the `id` and `type` sources, the converter generates `header` values for the omitted parts.
 
-=== Obtaining `id` and `type` of a CloudEvent and schema name of its `data` field
+=== Obtaining CloudEvent metadata
 
-By default, the CloudEvents converter automatically generates values for `id` and `type` fields of a CloudEvent and the schema name for its `data` field.
+By default, the CloudEvents converter automatically generates values for the `id` and `type` fields of a CloudEvent, and generates the schema name for its `data` field.
 You can customize the way that the converter populates these fields by changing the defaults and specifying the fields' values in the appropriate headers.
 For example:
 
@@ -247,14 +255,14 @@ If you want to provide values only for `id` header, use:
 "value.converter.metadata.source": "value,id:header,type:generate,dataSchemaName:generate"
 ----
 
-To provide metadata, `id`, `type`, and `dataSchemaName` in headers, use the short syntax:
+To configure the converter to obtain `id`, `type`, and `dataSchemaName`  metadata from headers, use the following short syntax:
 
 [source,json,indent=0,subs="+attributes"]
 ----
 "value.converter.metadata.source": "header"
 ----
 
-To retrieve data schema name from the header, you should also set `schema.data.name.source.header.enable` to `true`.
+To enable the converter to retrieve the data schema name from a header field, you must set xref:cloud-events-converter-schema-data-name-source-header-enable[`schema.data.name.source.header.enable`] to `true`.
 
 // Type: reference
 // ModuleID: debezium-cloudevents-converter-configuration-options
@@ -296,13 +304,14 @@ The value can be `json` or `avro`.
 |[[cloud-events-converter-schema-cloudevents-name]]xref:cloud-events-converter-schema-cloudevents-name[`schema.cloudevents.name`]
 |none
 |Specifies CloudEvents schema name under which the schema is registered in a Schema Registry. The setting is ignored when `serializer.type` is `json` in
-which case a record's value is schemaless. If not set, the default algorithm will be used to generate the
+which case a record's value is schemaless. 
+If this property is not specified, the default algorithm is used to generate the
 schema name: `pass:[${serverName}.${databaseName}].CloudEvents.Envelope`.
 
 |[[cloud-events-converter-schema-data-name-source-header-enable]]xref:cloud-events-converter-schema-data-name-source-header-enable[`schema.data.name.source.header.enable`]
 |false
-|Specifies whether schema name of CloudEvents' `data` field can be retrieved from a header. The specific name should be in `metadata.source` property
-(`dataSchemaName` parameter).
+|Specifies whether the converter can retrieve the schema name of the CloudEvents `data` field from a header. 
+The schema name is obtained from the `dataSchemaName` parameter that is specified in the xref:cloud-events-converter-metadata-source[`metadata.source`] property.
 
 |[[cloud-events-converter-extension-attributes-enable]]xref:cloud-events-converter-extension-attributes-enable[`extension.attributes.enable`]
 |`true`
@@ -311,12 +320,14 @@ The value can be `true` or `false`.
 
 |[[cloud-events-converter-metadata-source]]xref:cloud-events-converter-metadata-source[`metadata.source`]
 |`value,id:generate,type:generate,dataSchemaName:generate`
-|A comma-separated list that specifies the sources from which the converter retrieves metadata (source, operation, transaction), values for CloudEvent `id` and `type` fields,
-and `dataSchemaName` (a parameter that specifies the name under which the schema is registered in a Schema Registry).
+|A comma-separated list that specifies the sources from which the converter retrieves metadata values (source, operation, transaction) for CloudEvent `id` and `type` fields,
+and for the `dataSchemaName` parameter, which specifies the name under which the schema is registered in a Schema Registry.
 The first element in the list is a global setting that specifies the source of the metadata.  
 The source of metadata can be `value` or `header`.
-The global setting is followed by a set of pairs the first element of which specifies the name of a CloudEvent field (`id` or `type`) or data schema name parameter (`dataSchemaName`),
-and the second element specifies the source for obtaining the value: `generate` or `header`.
+The global setting is followed by a set of pairs.
+The first element in each pair specifies the name of a CloudEvent field (`id` or `type`), or the name of a data schema (`dataSchemaName`).
+The second element in the pair specifies how the converter populates the value of the field.
+Valid values are `generate` or `header`.
 Separate the values in each pair with a colon, for example:
 
 `value,id:header,type:generate,dataSchemaName:header`
