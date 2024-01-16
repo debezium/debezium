@@ -70,7 +70,7 @@ public class OracleDefaultValueIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-3710")
     public void shouldHandleNumericDefaultTypes() throws Exception {
-        // TODO: remove once https://github.com/Apicurio/apicurio-registry/issues/2980 is fixed
+        // TODO: remove once we upgrade Apicurio version (DBZ-7357)
         if (VerifyRecord.isApucurioAvailable()) {
             skipAvroValidation();
         }
@@ -151,7 +151,7 @@ public class OracleDefaultValueIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-3710")
     public void shouldHandleFloatPointDefaultTypes() throws Exception {
-        // TODO: remove once https://github.com/Apicurio/apicurio-registry/issues/2980 is fixed
+        // TODO: remove once we upgrade Apicurio version (DBZ-7357)
         if (VerifyRecord.isApucurioAvailable()) {
             skipAvroValidation();
         }

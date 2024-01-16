@@ -73,7 +73,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         DATABASE.createAndInitialize();
         initializeConnectorTestFramework();
         Testing.Files.delete(SCHEMA_HISTORY_PATH);
-        // TODO: remove once https://github.com/Apicurio/apicurio-registry/issues/2980 is fixed
+        // TODO: remove once we upgrade Apicurio version (DBZ-7357)
         if (VerifyRecord.isApucurioAvailable()) {
             skipAvroValidation();
         }
@@ -91,7 +91,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
 
     @Override
     protected void validate(SourceRecord record) {
-        // TODO: remove once https://github.com/Apicurio/apicurio-registry/issues/2980 is fixed
+        // TODO: remove once we upgrade Apicurio version (DBZ-7357)
         if (VerifyRecord.isApucurioAvailable()) {
             VerifyRecord.isValid(record, true);
         }

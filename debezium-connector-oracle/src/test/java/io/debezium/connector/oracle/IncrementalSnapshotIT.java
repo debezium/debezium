@@ -193,7 +193,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Oracl
 
     @Test
     public void snapshotPreceededBySchemaChange() throws Exception {
-        // TODO: remove once https://github.com/Apicurio/apicurio-registry/issues/2980 is fixed
+        // TODO: remove once we upgrade Apicurio version (DBZ-7357)
         if (VerifyRecord.isApucurioAvailable()) {
             skipAvroValidation();
         }
