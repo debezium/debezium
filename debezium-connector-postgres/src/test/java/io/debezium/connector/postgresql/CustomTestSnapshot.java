@@ -47,7 +47,7 @@ public class CustomTestSnapshot implements Snapshotter {
         }
         else {
             String query = snapshotSelectColumns.stream()
-                    .collect(Collectors.joining(", ", "SELECT ", " FROM " + tableId.toDoubleQuotedString()));
+                    .collect(Collectors.joining(", ", "SELECT ", " FROM ONLY " + tableId.toDoubleQuotedString()));
 
             return Optional.of(query);
         }
