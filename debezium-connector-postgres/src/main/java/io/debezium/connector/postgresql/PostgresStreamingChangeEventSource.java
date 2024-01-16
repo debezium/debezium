@@ -164,7 +164,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
             this.lastCompletelyProcessedLsn = replicationStream.get().startLsn();
 
             if (walPosition.searchingEnabled()) {
-                searchWalPosition(context, stream, walPosition);
+                searchWalPosition(context, partition, this.effectiveOffset, stream, walPosition);
                 try {
                     if (!isInPreSnapshotCatchUpStreaming(this.effectiveOffset)) {
                         connection.commit();
@@ -333,7 +333,8 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         }
     }
 
-    private void searchWalPosition(ChangeEventSourceContext context, final ReplicationStream stream, final WalPositionLocator walPosition)
+    private void searchWalPosition(ChangeEventSourceContext context, PostgresPartition partition, PostgresOffsetContext offsetContext,
+                                   final ReplicationStream stream, final WalPositionLocator walPosition)
             throws SQLException, InterruptedException {
         AtomicReference<Lsn> resumeLsn = new AtomicReference<>();
         int noMessageIterations = 0;
@@ -350,6 +351,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                 noMessageIterations = 0;
             }
             else {
+                dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
                 noMessageIterations++;
                 if (noMessageIterations >= THROTTLE_NO_MESSAGE_BEFORE_PAUSE) {
                     noMessageIterations = 0;
