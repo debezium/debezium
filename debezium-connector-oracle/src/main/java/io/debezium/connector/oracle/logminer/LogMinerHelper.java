@@ -218,7 +218,7 @@ public class LogMinerHelper {
         // Remove the archive log which has the same sequence number and redo thread number.
         for (LogFile redoLog : redoLogs) {
             archiveLogs.removeIf(f -> {
-                if (f.getSequence().equals(redoLog.getSequence()) && f.getThread() == redoLog.getThread()) {
+                if (f.equals(redoLog)) {
                     LOGGER.debug("Removing redo thread {} archive log {} with duplicate sequence {} to {}",
                             f.getThread(), f.getFileName(), f.getSequence(), redoLog.getFileName());
                     return true;
