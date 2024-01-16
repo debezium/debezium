@@ -71,6 +71,7 @@ import io.debezium.connector.postgresql.PostgresConnectorConfig.IntervalHandling
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SchemaRefreshMode;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
+import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.junit.SkipTestDependingOnDecoderPluginNameRule;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIs;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot;
@@ -3756,12 +3757,66 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test()
-    @FixFor("DBZ-6635")
+    @FixFor({ "DBZ-6635", "DBZ-7316" })
     public void testSendingHeartbeatsWithoutWalUpdates() throws Exception {
-        startConnector(config -> config
+        Function<Configuration.Builder, Configuration.Builder> configMapper = config -> config
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
-                .with(Heartbeat.HEARTBEAT_INTERVAL, "100"));
+                .with(Heartbeat.HEARTBEAT_INTERVAL, "100")
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, false);
 
+        // Start and stop the connector to ensure that the replication slot is created, and also
+        // to test that some initial heartbeats are created (DBZ-6635).  Note that even though we
+        // aren't explicitly making any database changes to stream here, PG often will have some
+        // WAL activity to consume anyway that the searchWalPosition function will find.
+        startConnector(configMapper);
+        waitForStreamingToStart();
+        waitForSeveralHeartbeats();
+        stopConnector();
+
+        // Completely drain any remaining records from the first connector start, so that we are
+        // starting completely fresh with the connector restart.
+        consumeAvailableRecords(null);
+
+        // Also make sure that the PG replication slot is COMPLETELY CLEARED.  (While manually reproducing DBZ-7316
+        // it was noted that sometimes there is still WAL to consume after the connector is stopped.  So this is just
+        // being extra-safe that the next portion of the test really tests with an empty WAL to consume).
+        TestHelper.execute(getReplicationSlotChangesQuery());
+        try (PostgresConnection connection = TestHelper.create()) {
+            // Assert that the previous statement did indeed clear out the pending changes in the replication slot
+            String query = String.format("SELECT count(*) AS change_count FROM (%s) AS changes", getReplicationSlotChangesQuery());
+            long changeCount = connection.queryAndMap(
+                    query,
+                    rs -> {
+                        assertThat(rs.next()).isTrue();
+                        return rs.getLong(1);
+                    });
+            assertThat(changeCount).isEqualTo(0);
+        }
+
+        // Start the connector again.  This time, we're resuming from an existing replication slot,
+        // so the searchWalPosition function will be looking for a place to resume.  We need to
+        // test that the loop in searchWalPosition is emitting heartbeats (DBZ-7316) when there
+        // is no WAL to consume (since we just cleared it out and asserted there was none).
+        startConnector(configMapper);
+        waitForSeveralHeartbeats();
+
+        // Manual cleanup, since DROP_SLOT_ON_STOP is false
+        stopConnector();
+        TestHelper.dropDefaultReplicationSlot();
+        TestHelper.dropPublication();
+    }
+
+    private void assertHeartBeatRecord(SourceRecord heartbeat) {
+        assertEquals("__debezium-heartbeat." + TestHelper.TEST_SERVER, heartbeat.topic());
+
+        Struct key = (Struct) heartbeat.key();
+        assertThat(key.get("serverName")).isEqualTo(TestHelper.TEST_SERVER);
+
+        Struct value = (Struct) heartbeat.value();
+        assertThat(value.getInt64("ts_ms")).isLessThanOrEqualTo(Instant.now().toEpochMilli());
+    }
+
+    private void waitForSeveralHeartbeats() {
         final AtomicInteger heartbeatCount = new AtomicInteger();
         Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> {
             final SourceRecord record = consumeRecord();
@@ -3775,14 +3830,16 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         });
     }
 
-    private void assertHeartBeatRecord(SourceRecord heartbeat) {
-        assertEquals("__debezium-heartbeat." + TestHelper.TEST_SERVER, heartbeat.topic());
-
-        Struct key = (Struct) heartbeat.key();
-        assertThat(key.get("serverName")).isEqualTo(TestHelper.TEST_SERVER);
-
-        Struct value = (Struct) heartbeat.value();
-        assertThat(value.getInt64("ts_ms")).isLessThanOrEqualTo(Instant.now().toEpochMilli());
+    private String getReplicationSlotChangesQuery() {
+        switch (TestHelper.decoderPlugin()) {
+            case DECODERBUFS:
+                return "SELECT pg_logical_slot_get_binary_changes('" + ReplicationConnection.Builder.DEFAULT_SLOT_NAME + "', " +
+                        "NULL, NULL)";
+            case PGOUTPUT:
+                return "SELECT pg_logical_slot_get_binary_changes('" + ReplicationConnection.Builder.DEFAULT_SLOT_NAME + "', " +
+                        "NULL, NULL, 'proto_version', '1', 'publication_names', '" + ReplicationConnection.Builder.DEFAULT_PUBLICATION_NAME + "')";
+        }
+        throw new UnsupportedOperationException("Test must be updated for new logical decoder type.");
     }
 
     private void assertInsert(String statement, List<SchemaAndValueField> expectedSchemaAndValuesByColumn) {
