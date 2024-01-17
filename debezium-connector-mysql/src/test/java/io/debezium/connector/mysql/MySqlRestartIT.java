@@ -18,14 +18,14 @@ import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.AbstractAsyncEngineConnectorTest;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.util.Testing;
 
 /**
  * @author Jiri Pechanec
  */
-public class MySqlRestartIT extends AbstractConnectorTest {
+public class MySqlRestartIT extends AbstractAsyncEngineConnectorTest {
     private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-restart.txt").toAbsolutePath();
     private final UniqueDatabase DATABASE = new UniqueDatabase("restart", "connector_test").withDbHistoryPath(SCHEMA_HISTORY_PATH);
 
@@ -91,6 +91,7 @@ public class MySqlRestartIT extends AbstractConnectorTest {
         assertThat(((Struct) ((SourceRecord) records.recordsForTopic(DATABASE.topicForTable("restart_table")).get(0)).value()).getStruct("after").getInt32("id"))
                 .isEqualTo(2);
 
+        waitForEngineShutdown();
         stopConnector();
 
         start(MySqlConnector.class, config);
