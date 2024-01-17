@@ -4079,7 +4079,7 @@ See <<oracle-property-log-mining-transaction-retention-ms, `log.mining.transacti
 
 |[[oracle-streaming-metrics-abandoned-transaction-count]]<<oracle-streaming-metrics-abandoned-transaction-count, `+AbandonedTransactionCount+`>>
 |`long`
-|Size of current state of abandoned transaction list (see <<oracle-streaming-metrics-abandoned-transaction-ids, `AbandonedTransactionIds`>>).
+|Current number of entries in the xref:oracle-streaming-metrics-abandoned-transaction-ids[abandoned transactions] list.
 
 |[[oracle-streaming-metrics-rolled-back-transaction-ids]]<<oracle-streaming-metrics-rolled-back-transaction-ids, `+RolledBackTransactionIds+`>>
 |`string[]`
