@@ -94,9 +94,9 @@ public class TimezoneConverter<R extends ConnectRecord<R>> implements Transforma
     private List<String> excludeList;
     private static final String SOURCE = "source";
     private static final String TOPIC = "topic";
-    private static final String FIELD_SOURCE_PREFIX = "source";
-    private static final String FIELD_BEFORE_PREFIX = "before";
-    private static final String FIELD_AFTER_PREFIX = "after";
+    private static final String FIELD_SOURCE_PREFIX = "source.";
+    private static final String FIELD_BEFORE_PREFIX = "before.";
+    private static final String FIELD_AFTER_PREFIX = "after.";
     private static final Pattern TIMEZONE_OFFSET_PATTERN = Pattern.compile("^[+-]\\d{2}:\\d{2}(:\\d{2})?$");
     private static final Pattern LIST_PATTERN = Pattern.compile("^\\[(source|topic|[\".\\w\\s_]+):([\".\\w\\s_]+(?::[\".\\w\\s_]+)?(?:,|]$))+$");
     private final Map<String, Set<String>> topicFieldsMap = new HashMap<>();
@@ -191,19 +191,25 @@ public class TimezoneConverter<R extends ConnectRecord<R>> implements Transforma
                 if (!topicFieldsMap.containsKey(matchName)) {
                     topicFieldsMap.put(matchName, new HashSet<>());
                 }
-                topicFieldsMap.get(matchName).add(field);
+                if (field != null) {
+                    topicFieldsMap.get(matchName).add(field);
+                }
             }
             else if (Objects.equals(commonPrefix, SOURCE)) {
                 if (!tableFieldsMap.containsKey(matchName)) {
                     tableFieldsMap.put(matchName, new HashSet<>());
                 }
-                tableFieldsMap.get(matchName).add(field);
+                if (field != null) {
+                    tableFieldsMap.get(matchName).add(field);
+                }
             }
             else {
                 if (!noPrefixFieldsMap.containsKey(matchName)) {
                     noPrefixFieldsMap.put(matchName, new HashSet<>());
                 }
-                noPrefixFieldsMap.get(matchName).add(field);
+                if (field != null) {
+                    noPrefixFieldsMap.get(matchName).add(field);
+                }
             }
         }
     }
@@ -314,16 +320,16 @@ public class TimezoneConverter<R extends ConnectRecord<R>> implements Transforma
         Set<String> afterFields = new HashSet<>();
         Set<String> sourceFields = new HashSet<>();
 
-        if (!fields.isEmpty() && !fields.contains(null)) {
+        if (!fields.isEmpty()) {
             for (String field : fields) {
                 if (field.startsWith(FIELD_SOURCE_PREFIX)) {
-                    sourceFields.add(field.substring(FIELD_SOURCE_PREFIX.length() + 1));
+                    sourceFields.add(field.substring(FIELD_SOURCE_PREFIX.length()));
                 }
                 else if (field.startsWith(FIELD_BEFORE_PREFIX)) {
-                    beforeFields.add(field.substring(FIELD_BEFORE_PREFIX.length() + 1));
+                    beforeFields.add(field.substring(FIELD_BEFORE_PREFIX.length()));
                 }
                 else if (field.startsWith(FIELD_AFTER_PREFIX)) {
-                    afterFields.add(field.substring(FIELD_AFTER_PREFIX.length() + 1));
+                    afterFields.add(field.substring(FIELD_AFTER_PREFIX.length()));
                 }
                 else {
                     beforeFields.add(field);
@@ -499,7 +505,7 @@ public class TimezoneConverter<R extends ConnectRecord<R>> implements Transforma
         Set<String> fields = matchFieldsResult.getFields();
 
         if (matchName != null) {
-            if (!fields.contains(null)) {
+            if (!fields.isEmpty()) {
                 handleStructs(value, Type.INCLUDE, matchName, fields);
             }
             else {
@@ -519,7 +525,7 @@ public class TimezoneConverter<R extends ConnectRecord<R>> implements Transforma
         if (matchName == null) {
             handleStructs(value, Type.ALL, table != null ? table : topic, Collections.emptySet());
         }
-        else if (!fields.contains(null)) {
+        else if (!fields.isEmpty()) {
             handleStructs(value, Type.EXCLUDE, matchName, fields);
         }
     }
