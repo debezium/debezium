@@ -366,6 +366,7 @@ public abstract class AbstractConnectorTest implements Testing {
                 .with(EmbeddedEngineConfig.CONNECTOR_CLASS, connectorClass.getName())
                 .with(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH)
                 .with(EmbeddedEngineConfig.OFFSET_FLUSH_INTERVAL_MS, 0)
+                .with(AsyncEmbeddedEngine.TASK_MANAGEMENT_TIMEOUT_MS, 1_000) // speed up shutdown of the AsyncEmbeddedEngine, for EmbeddedEngine is ignored
                 .build();
         latch = new CountDownLatch(1);
         DebeziumEngine.CompletionCallback wrapperCallback = (success, msg, error) -> {
@@ -1213,6 +1214,13 @@ public abstract class AbstractConnectorTest implements Testing {
             latch.await(10, TimeUnit.SECONDS);
             offsetStore.stop();
         }
+    }
+
+    public void waitForEngineShutdown() {
+        Awaitility.await()
+                .pollInterval(200, TimeUnit.MILLISECONDS)
+                .atMost(waitTimeForRecords() * 10L, TimeUnit.SECONDS)
+                .until(() -> !isEngineRunning.get());
     }
 
     @SuppressWarnings("unchecked")
