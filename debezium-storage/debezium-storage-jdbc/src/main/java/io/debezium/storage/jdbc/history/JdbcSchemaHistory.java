@@ -6,9 +6,8 @@
 package io.debezium.storage.jdbc.history;
 
 import java.io.IOException;
-import java.sql.Connection;
+import java.io.UncheckedIOException;
 import java.sql.DatabaseMetaData;
-import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -36,6 +35,7 @@ import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.relational.history.SchemaHistoryException;
 import io.debezium.relational.history.SchemaHistoryListener;
+import io.debezium.storage.jdbc.RetriableConnection;
 import io.debezium.util.FunctionalReadWriteLock;
 
 /**
@@ -54,8 +54,7 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
     private final DocumentReader reader = DocumentReader.defaultReader();
     private final AtomicBoolean running = new AtomicBoolean();
     private final AtomicInteger recordInsertSeq = new AtomicInteger(0);
-
-    private Connection conn;
+    private RetriableConnection conn;
     private JdbcSchemaHistoryConfig config;
 
     @Override
@@ -67,8 +66,8 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
         super.configure(config, comparator, listener, useCatalogBeforeSchema);
 
         try {
-            conn = DriverManager.getConnection(this.config.getJdbcUrl(), this.config.getUser(), this.config.getPassword());
-            conn.setAutoCommit(false);
+            conn = new RetriableConnection(this.config.getJdbcUrl(), this.config.getUser(), this.config.getPassword(),
+                    this.config.getWaitRetryDelay(), this.config.getMaxRetryCount());
         }
         catch (SQLException e) {
             throw new IllegalStateException("Failed to connect " + this.config.getJdbcUrl(), e);
@@ -80,7 +79,7 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
         super.start();
         lock.write(() -> {
             if (running.compareAndSet(false, true)) {
-                if (conn == null) {
+                if (!conn.isConnectionCreated()) {
                     throw new IllegalStateException("Database connection must be set before it is started");
                 }
                 try {
@@ -106,29 +105,31 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
             }
 
             try {
-                String line = writer.write(record.document());
-                Timestamp currentTs = new Timestamp(System.currentTimeMillis());
-                List<String> substrings = split(line, 65000);
-                int partSeq = 0;
-                for (String dataPart : substrings) {
-                    PreparedStatement sql = conn.prepareStatement(config.getTableInsert());
-                    sql.setString(1, UUID.randomUUID().toString());
-                    sql.setString(2, dataPart);
-                    sql.setInt(3, partSeq);
-                    sql.setTimestamp(4, currentTs);
-                    sql.setInt(5, recordInsertSeq.incrementAndGet());
-                    sql.executeUpdate();
-                    partSeq++;
-                }
-                conn.commit();
+                conn.executeWithRetry(conn -> {
+                    String line = null;
+                    try {
+                        line = writer.write(record.document());
+                    }
+                    catch (IOException e) {
+                        throw new UncheckedIOException(e);
+                    }
+                    Timestamp currentTs = new Timestamp(System.currentTimeMillis());
+                    List<String> substrings = split(line, 65000);
+                    int partSeq = 0;
+                    for (String dataPart : substrings) {
+                        PreparedStatement sql = conn.prepareStatement(config.getTableInsert());
+                        sql.setString(1, UUID.randomUUID().toString());
+                        sql.setString(2, dataPart);
+                        sql.setInt(3, partSeq);
+                        sql.setTimestamp(4, currentTs);
+                        sql.setInt(5, recordInsertSeq.incrementAndGet());
+                        sql.executeUpdate();
+                        partSeq++;
+                    }
+                    conn.commit();
+                }, "store history record", true);
             }
-            catch (IOException | SQLException e) {
-                try {
-                    conn.rollback();
-                }
-                catch (SQLException ex) {
-                    // ignore
-                }
+            catch (UncheckedIOException | SQLException e) {
                 throw new SchemaHistoryException("Failed to store record: " + record, e);
             }
         });
@@ -147,7 +148,9 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
         running.set(false);
         super.stop();
         try {
-            conn.close();
+            if (conn != null) {
+                conn.close();
+            }
         }
         catch (SQLException e) {
             LOG.error("Exception during stop", e);
@@ -159,22 +162,29 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
         lock.write(() -> {
             try {
                 if (exists()) {
-                    Statement stmt = conn.createStatement();
-                    ResultSet rs = stmt.executeQuery(config.getTableSelect());
+                    conn.executeWithRetry(conn -> {
+                        Statement stmt = conn.createStatement();
+                        ResultSet rs = stmt.executeQuery(config.getTableSelect());
 
-                    while (rs.next()) {
-                        String historyData = rs.getString("history_data");
+                        while (rs.next()) {
+                            String historyData = rs.getString("history_data");
 
-                        if (historyData.isEmpty() == false) {
-                            records.accept(new HistoryRecord(reader.read(historyData)));
+                            if (historyData.isEmpty() == false) {
+                                try {
+                                    records.accept(new HistoryRecord(reader.read(historyData)));
+                                }
+                                catch (IOException e) {
+                                    throw new UncheckedIOException(e);
+                                }
+                            }
                         }
-                    }
+                    }, "recover history records", false);
                 }
                 else {
                     LOG.error("Storage does not exist when recovering records");
                 }
             }
-            catch (IOException | SQLException e) {
+            catch (UncheckedIOException | SQLException e) {
                 throw new SchemaHistoryException("Failed to recover records", e);
             }
         });
@@ -182,20 +192,23 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
 
     @Override
     public boolean storageExists() {
-        boolean sExists = false;
         try {
-            DatabaseMetaData dbMeta = conn.getMetaData();
-            String databaseName = config.getDatabaseName();
-            ResultSet tableExists = dbMeta.getTables(databaseName,
-                    null, config.getTableName(), null);
-            if (tableExists.next()) {
-                sExists = true;
-            }
+            return conn.executeWithRetry(conn -> {
+                boolean exists = false;
+                DatabaseMetaData dbMeta = conn.getMetaData();
+
+                String databaseName = config.getDatabaseName();
+                ResultSet tableExists = dbMeta.getTables(databaseName,
+                        null, config.getTableName(), null);
+                if (tableExists.next()) {
+                    exists = true;
+                }
+                return exists;
+            }, "history storage exists", false);
         }
         catch (SQLException e) {
             throw new SchemaHistoryException("Failed to check database history storage", e);
         }
-        return sExists;
     }
 
     @Override
@@ -205,19 +218,20 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
             return false;
         }
 
-        boolean isExists = false;
         try {
-            Statement stmt = conn.createStatement();
-            ResultSet rs = stmt.executeQuery(config.getTableDataExistsSelect());
-            while (rs.next()) {
-                isExists = true;
-            }
+            return conn.executeWithRetry(conn -> {
+                boolean isExists = false;
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt.executeQuery(config.getTableDataExistsSelect());
+                while (rs.next()) {
+                    isExists = true;
+                }
+                return isExists;
+            }, "history records exist check", false);
         }
         catch (SQLException e) {
             throw new SchemaHistoryException("Failed to recover records", e);
         }
-
-        return isExists;
     }
 
     @VisibleForTesting
@@ -233,18 +247,21 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
     @Override
     public void initializeStorage() {
         try {
-            DatabaseMetaData dbMeta = conn.getMetaData();
-            ResultSet tableExists = dbMeta.getTables(null, null, config.getTableName(), null);
+            conn.executeWithRetry(conn -> {
+                DatabaseMetaData dbMeta = conn.getMetaData();
+                ResultSet tableExists = dbMeta.getTables(null, null, config.getTableName(), null);
 
-            if (tableExists.next()) {
-                return;
-            }
-            LOG.info("Creating table {} to store database history", config.getTableName());
-            conn.prepareStatement(config.getTableCreate()).execute();
-            LOG.info("Created table in given database...");
+                if (tableExists.next()) {
+                    return;
+                }
+                LOG.info("Creating table {} to store database history", config.getTableName());
+                conn.prepareStatement(config.getTableCreate()).execute();
+                LOG.info("Created table in given database...");
+            }, "initialize storage", false);
         }
         catch (SQLException e) {
             throw new SchemaHistoryException("Error initializing Database history storage", e);
         }
     }
+
 }
