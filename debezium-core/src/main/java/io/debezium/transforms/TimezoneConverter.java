@@ -92,11 +92,11 @@ public class TimezoneConverter<R extends ConnectRecord<R>> implements Transforma
     private String convertedTimezone;
     private List<String> includeList;
     private List<String> excludeList;
-    private static final String SOURCE = "source";
+    private static final String SOURCE = Envelope.FieldName.SOURCE;
     private static final String TOPIC = "topic";
-    private static final String FIELD_SOURCE_PREFIX = "source.";
-    private static final String FIELD_BEFORE_PREFIX = "before.";
-    private static final String FIELD_AFTER_PREFIX = "after.";
+    private static final String FIELD_SOURCE_PREFIX = Envelope.FieldName.SOURCE + ".";
+    private static final String FIELD_BEFORE_PREFIX = Envelope.FieldName.BEFORE + ".";
+    private static final String FIELD_AFTER_PREFIX = Envelope.FieldName.AFTER + ".";
     private static final Pattern TIMEZONE_OFFSET_PATTERN = Pattern.compile("^[+-]\\d{2}:\\d{2}(:\\d{2})?$");
     private static final Pattern LIST_PATTERN = Pattern.compile("^\\[(source|topic|[\".\\w\\s_]+):([\".\\w\\s_]+(?::[\".\\w\\s_]+)?(?:,|]$))+$");
     private final Map<String, Set<String>> topicFieldsMap = new HashMap<>();
