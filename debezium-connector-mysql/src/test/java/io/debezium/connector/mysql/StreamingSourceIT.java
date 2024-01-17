@@ -53,7 +53,7 @@ import io.debezium.data.KeyValueStore.Collection;
 import io.debezium.data.SchemaChangeHistory;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.AbstractAsyncEngineConnectorTest;
 import io.debezium.heartbeat.DatabaseHeartbeatImpl;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConnection;
@@ -69,7 +69,7 @@ import io.debezium.util.Testing;
  *
  */
 @SkipWhenDatabaseIs(value = Type.MYSQL, versions = @SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 6, reason = "DDL uses fractional second data types, not supported until MySQL 5.6"))
-public class StreamingSourceIT extends AbstractConnectorTest {
+public class StreamingSourceIT extends AbstractAsyncEngineConnectorTest {
 
     private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-binlog.txt").toAbsolutePath();
     private final UniqueDatabase DATABASE = new UniqueDatabase("logical_server_name", "connector_test_ro")
@@ -607,7 +607,7 @@ public class StreamingSourceIT extends AbstractConnectorTest {
         if (mode == null) {
             Awaitility.await().atMost(Duration.ofSeconds(waitTimeForRecords()))
                     .until(() -> logInterceptor.containsMessage("Error during binlog processing."));
-            waitForConnectorShutdown("mysql", DATABASE.getServerName());
+            waitForEngineShutdown();
         }
         else {
             waitForStreamingRunning("mysql", DATABASE.getServerName(), "streaming");
