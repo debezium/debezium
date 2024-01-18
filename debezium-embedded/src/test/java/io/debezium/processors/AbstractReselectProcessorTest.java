@@ -20,7 +20,7 @@ import io.debezium.config.Configuration;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.AbstractAsyncEngineConnectorTest;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.processors.reselect.ReselectColumnsPostProcessor;
@@ -30,7 +30,7 @@ import ch.qos.logback.classic.Level;
 /**
  * @author Chris Cranford
  */
-public abstract class AbstractReselectProcessorTest<T extends SourceConnector> extends AbstractConnectorTest {
+public abstract class AbstractReselectProcessorTest<T extends SourceConnector> extends AbstractAsyncEngineConnectorTest {
 
     protected abstract Class<T> getConnectorClass();
 

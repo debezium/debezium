@@ -22,7 +22,7 @@ import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.AbstractAsyncEngineConnectorTest;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.transforms.outbox.EventRouter;
 
@@ -31,7 +31,7 @@ import io.debezium.transforms.outbox.EventRouter;
  *
  * @author Roman Kudryashov
  */
-public abstract class AbstractCloudEventsConverterTest<T extends SourceConnector> extends AbstractConnectorTest {
+public abstract class AbstractCloudEventsConverterTest<T extends SourceConnector> extends AbstractAsyncEngineConnectorTest {
 
     protected abstract Class<T> getConnectorClass();
 
