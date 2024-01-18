@@ -2,6 +2,51 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.6.0.Alpha1
+January 18th 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12416463)
+
+### New features since 2.5.0.Final
+
+* Provide a public API from the connector implementations to retrieve the list of matching collections or tables based on the different include-/exclude lists [DBZ-7167](https://issues.redhat.com/browse/DBZ-7167)
+* Notifications are Missing the ID field in log channel [DBZ-7249](https://issues.redhat.com/browse/DBZ-7249)
+* Provide config option to customize CloudEvents.data schema name [DBZ-7284](https://issues.redhat.com/browse/DBZ-7284)
+* Clarify comment on serialization of document ids [DBZ-7287](https://issues.redhat.com/browse/DBZ-7287)
+* Unittest for hasCommitAlreadyBeenHandled in CommitScn Class [DBZ-7288](https://issues.redhat.com/browse/DBZ-7288)
+* Oracle Infinispan abandoned trasactions minor enhancements [DBZ-7313](https://issues.redhat.com/browse/DBZ-7313)
+* Add support for NEW_ROW_AND_OLD_VALUES value capture type. [DBZ-7348](https://issues.redhat.com/browse/DBZ-7348)
+
+
+### Breaking changes since 2.5.0.Final
+
+* Remove replica_set connection mode [DBZ-7260](https://issues.redhat.com/browse/DBZ-7260)
+* Re-select columns should use the table's primary instead of the event's key [DBZ-7358](https://issues.redhat.com/browse/DBZ-7358)
+
+
+### Fixes since 2.5.0.Final
+
+* Empty object sent to GCP Pub/Sub after DELETE event [DBZ-7098](https://issues.redhat.com/browse/DBZ-7098)
+* Debezium-ddl-parser crashes on parsing MySQL DDL statement (subquery with UNION) [DBZ-7259](https://issues.redhat.com/browse/DBZ-7259)
+* Oracle DDL parsing error in PARTITION REFERENCE [DBZ-7266](https://issues.redhat.com/browse/DBZ-7266)
+* Enhance Oracle's CREATE TABLE for Multiple Table Specifications [DBZ-7286](https://issues.redhat.com/browse/DBZ-7286)
+* PostgreSQL ad-hoc blocking snapshots fail when snapshot mode is "never" [DBZ-7311](https://issues.redhat.com/browse/DBZ-7311)
+* Ad-hoc blocking snapshot dies with "invalid snapshot identifier" immediately after connector creation [DBZ-7312](https://issues.redhat.com/browse/DBZ-7312)
+* Specifying a table include list with spaces between elements cause LogMiner queries to miss matches [DBZ-7315](https://issues.redhat.com/browse/DBZ-7315)
+* Debezium heartbeat.action.query does not start before writing to WAL: part 2 [DBZ-7316](https://issues.redhat.com/browse/DBZ-7316)
+* errors.max.retries is not used to stop retrying [DBZ-7342](https://issues.redhat.com/browse/DBZ-7342)
+* Oracle connector is ocasionally unable to find SCN [DBZ-7345](https://issues.redhat.com/browse/DBZ-7345)
+* Initial snapshot notifications should use full identifier. [DBZ-7347](https://issues.redhat.com/browse/DBZ-7347)
+* MySqlJdbcSinkDataTypeConverterIT#testBooleanDataTypeMapping fails [DBZ-7355](https://issues.redhat.com/browse/DBZ-7355)
+
+
+### Other changes since 2.5.0.Final
+
+* Add service loader manifests for all Connect plugins [DBZ-7298](https://issues.redhat.com/browse/DBZ-7298)
+* Update Groovy version to 4.x [DBZ-7340](https://issues.redhat.com/browse/DBZ-7340)
+* Upgrade Antora to 3.1.7 [DBZ-7344](https://issues.redhat.com/browse/DBZ-7344)
+* Upgrade Outbox Extension to Quarkus 3.6.5 [DBZ-7352](https://issues.redhat.com/browse/DBZ-7352)
+
+
+
 ## 2.5.0.Final
 December 21st 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12416251)
 
