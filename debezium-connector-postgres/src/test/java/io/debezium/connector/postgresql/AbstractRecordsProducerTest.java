@@ -107,7 +107,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
     protected static final String INSERT_CASH_TYPES_STMT = "INSERT INTO cash_table (csh) VALUES ('$1234.11')";
     protected static final String INSERT_NEGATIVE_CASH_TYPES_STMT = "INSERT INTO cash_table (csh) VALUES ('($1234.11)')";
     protected static final String INSERT_NULL_CASH_TYPES_STMT = "INSERT INTO cash_table (csh) VALUES (NULL)";
-    protected static final String INSERT_DATE_TIME_TYPES_STMT = "INSERT INTO time_table(ts, tsneg, ts_ms, ts_us, tz, date, date_pinf, date_ninf, ti, tip, ttf, ttz, tptz, it, ts_large, ts_large_us, ts_large_ms, tz_large, ts_max, ts_min, tz_max, tz_min, ts_pinf, ts_ninf, tz_pinf, tz_ninf) "
+    protected static final String INSERT_DATE_TIME_TYPES_STMT = "INSERT INTO time_table(ts, tsneg, ts_ms, ts_us, tz, date, date_pinf, date_ninf, ti, tip, ttf, ttz, tptz, it, ts_large, ts_large_us, ts_large_ms, tz_large, ts_max, ts_min, tz_max, tz_min, ts_pinf, ts_ninf, tz_pinf, tz_ninf, tz_zero) "
             +
             "VALUES ('2016-11-04T13:51:30.123456'::TIMESTAMP, '1936-10-25T22:10:12.608'::TIMESTAMP, '2016-11-04T13:51:30.123456'::TIMESTAMP, '2016-11-04T13:51:30.123456'::TIMESTAMP, '2016-11-04T13:51:30.123456+02:00'::TIMESTAMPTZ, "
             +
@@ -123,12 +123,13 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
             "'infinity'::TIMESTAMP," +
             "'-infinity'::TIMESTAMP," +
             "'infinity'::TIMESTAMPTZ," +
-            "'-infinity'::TIMESTAMPTZ"
+            "'-infinity'::TIMESTAMPTZ," +
+            "'21016-11-04T13:51:30.000000+07:00'::TIMESTAMPTZ"
             + ")";
     protected static final String INSERT_BIN_TYPES_STMT = "INSERT INTO bitbin_table (ba, bol, bol2, bs, bs7, bv, bv2, bvl, bvunlimited1, bvunlimited2) " +
             "VALUES (E'\\\\001\\\\002\\\\003'::bytea, '0'::bit(1), '1'::bit(1), '11'::bit(2), '1'::bit(7), '00'::bit(2), '000000110000001000000001'::bit(24)," +
             "'1000000000000000000000000000000000000000000000000000000000000000'::bit(64), '101', '111011010001000110000001000000001')";
-    protected static final String INSERT_BYTEA_BINMODE_STMT = "INSERT INTO bytea_binmode_table (ba) VALUES (E'\\\\001\\\\002\\\\003'::bytea)";
+    protected static final String INSERT_BYTEA_BINMODE_STMT = "INSERT INTO bytea_binmode_table (ba, bytea_array) VALUES (E'\\\\001\\\\002\\\\003'::bytea, array[E'\\\\000\\\\001\\\\002'::bytea, E'\\\\003\\\\004\\\\005'::bytea])";
     protected static final String INSERT_CIRCLE_STMT = "INSERT INTO circle_table (ccircle) VALUES ('((10, 20),10)'::circle)";
     protected static final String INSERT_GEOM_TYPES_STMT = "INSERT INTO geom_table(p) VALUES ('(1,1)'::point)";
     protected static final String INSERT_TEXT_TYPES_STMT = "INSERT INTO text_table(j, jb, x, u) " +
@@ -164,6 +165,15 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
             + "VALUES (1.1, 10.11, 10.1111, 3.30, 22.22, 22.2, 22.2222, "
             + "1, 10, 10, 22, 22, 22, "
             + "null, null, null, null, null, null"
+            + ")";
+
+    protected static final String INSERT_NUMERIC_DECIMAL_TYPES_STMT_WITH_INFINITY = "INSERT INTO numeric_decimal_table (d, dzs, dvs, d_nn, n, nzs, nvs, "
+            + "d_int, dzs_int, dvs_int, n_int, nzs_int, nvs_int, "
+            + "d_nan, dzs_nan, dvs_nan, n_nan, nzs_nan, nvs_nan"
+            + ") "
+            + "VALUES (1.1, 10.11, 10.1111, 3.30, 22.22, 22.2, 22.2222, "
+            + "1, 10, 10, 22, 22, 22, "
+            + "null, null, 'Infinity', null, null, '-Infinity'"
             + ")";
 
     protected static final String INSERT_RANGE_TYPES_STMT = "INSERT INTO range_table (unbounded_exclusive_tsrange, bounded_inclusive_tsrange, unbounded_exclusive_tstzrange, bounded_inclusive_tstzrange, unbounded_exclusive_daterange, bounded_exclusive_daterange, int4_number_range, numerange, int8_number_range) "
@@ -298,6 +308,24 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
         return fields;
     }
 
+    protected List<SchemaAndValueField> schemasAndValuesForStringEncodedNumericTypesWithInfinity() {
+        return Arrays.asList(
+                new SchemaAndValueField("d", Schema.OPTIONAL_STRING_SCHEMA, "1.10"),
+                new SchemaAndValueField("dzs", Schema.OPTIONAL_STRING_SCHEMA, "10"),
+                new SchemaAndValueField("dvs", Schema.OPTIONAL_STRING_SCHEMA, "10.1111"),
+                new SchemaAndValueField("n", Schema.OPTIONAL_STRING_SCHEMA, "22.2200"),
+                new SchemaAndValueField("nzs", Schema.OPTIONAL_STRING_SCHEMA, "22"),
+                new SchemaAndValueField("nvs", Schema.OPTIONAL_STRING_SCHEMA, "22.2222"),
+                new SchemaAndValueField("d_int", Schema.OPTIONAL_STRING_SCHEMA, "1.00"),
+                new SchemaAndValueField("dzs_int", Schema.OPTIONAL_STRING_SCHEMA, "10"),
+                new SchemaAndValueField("dvs_int", Schema.OPTIONAL_STRING_SCHEMA, "10"),
+                new SchemaAndValueField("n_int", Schema.OPTIONAL_STRING_SCHEMA, "22.0000"),
+                new SchemaAndValueField("nzs_int", Schema.OPTIONAL_STRING_SCHEMA, "22"),
+                new SchemaAndValueField("nvs_int", Schema.OPTIONAL_STRING_SCHEMA, "22"),
+                new SchemaAndValueField("dvs_nan", Schema.OPTIONAL_STRING_SCHEMA, "POSITIVE_INFINITY"),
+                new SchemaAndValueField("nvs_nan", Schema.OPTIONAL_STRING_SCHEMA, "NEGATIVE_INFINITY"));
+    }
+
     protected List<SchemaAndValueField> schemasAndValuesForDoubleEncodedNumericTypes() {
         final List<SchemaAndValueField> fields = new ArrayList<SchemaAndValueField>(Arrays.asList(
                 new SchemaAndValueField("d", Schema.OPTIONAL_FLOAT64_SCHEMA, 1.1d),
@@ -409,19 +437,31 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
     }
 
     protected List<SchemaAndValueField> schemaAndValueForByteaBytes() {
-        return Arrays.asList(new SchemaAndValueField("ba", Schema.OPTIONAL_BYTES_SCHEMA, ByteBuffer.wrap(new byte[]{ 1, 2, 3 })));
+        return Arrays.asList(
+                new SchemaAndValueField("ba", Schema.OPTIONAL_BYTES_SCHEMA, ByteBuffer.wrap(new byte[]{ 1, 2, 3 })),
+                new SchemaAndValueField("bytea_array", SchemaBuilder.array(Schema.OPTIONAL_BYTES_SCHEMA).optional().build(),
+                        List.of(ByteBuffer.wrap(new byte[]{ 0, 1, 2 }), ByteBuffer.wrap(new byte[]{ 3, 4, 5 }))));
     }
 
     protected List<SchemaAndValueField> schemaAndValueForByteaHex() {
-        return Arrays.asList(new SchemaAndValueField("ba", Schema.OPTIONAL_STRING_SCHEMA, "010203"));
+        return Arrays.asList(
+                new SchemaAndValueField("ba", Schema.OPTIONAL_STRING_SCHEMA, "010203"),
+                new SchemaAndValueField("bytea_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(),
+                        List.of("000102", "030405")));
     }
 
     protected List<SchemaAndValueField> schemaAndValueForByteaBase64() {
-        return Arrays.asList(new SchemaAndValueField("ba", Schema.OPTIONAL_STRING_SCHEMA, "AQID"));
+        return Arrays.asList(
+                new SchemaAndValueField("ba", Schema.OPTIONAL_STRING_SCHEMA, "AQID"),
+                new SchemaAndValueField("bytea_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(),
+                        List.of("AAEC", "AwQF")));
     }
 
     protected List<SchemaAndValueField> schemaAndValueForByteaBase64UrlSafe() {
-        return Arrays.asList(new SchemaAndValueField("ba", Schema.OPTIONAL_STRING_SCHEMA, "AQID"));
+        return Arrays.asList(
+                new SchemaAndValueField("ba", Schema.OPTIONAL_STRING_SCHEMA, "AQID"),
+                new SchemaAndValueField("bytea_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(),
+                        List.of("AAEC", "AwQF")));
     }
 
     protected List<SchemaAndValueField> schemaAndValueForUnknownColumnBytes() {
@@ -446,6 +486,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
                         .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "VARCHAR")
                         .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, "2")
                         .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "0")
+                        .parameter(TestHelper.COLUMN_NAME_PARAMETER_KEY, "vc")
                         .build(),
                 "\u017E\u0161"),
                 new SchemaAndValueField("vcv",
@@ -453,6 +494,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
                                 .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "VARCHAR")
                                 .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, "2")
                                 .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "0")
+                                .parameter(TestHelper.COLUMN_NAME_PARAMETER_KEY, "vcv")
                                 .build(),
                         "bb"),
                 new SchemaAndValueField("ch", Schema.OPTIONAL_STRING_SCHEMA, "cdef"),
@@ -480,6 +522,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
                         .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "NUMERIC")
                         .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, "3")
                         .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "2")
+                        .parameter(TestHelper.COLUMN_NAME_PARAMETER_KEY, "d")
                         .build(),
                 1.1d),
                 new SchemaAndValueField("dzs",
@@ -487,6 +530,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
                                 .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "NUMERIC")
                                 .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, "4")
                                 .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "0")
+                                .parameter(TestHelper.COLUMN_NAME_PARAMETER_KEY, "dzs")
                                 .build(),
                         10d),
                 new SchemaAndValueField("dvs", Schema.OPTIONAL_FLOAT64_SCHEMA, 10.1111d),
@@ -606,6 +650,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
         long expectedTsLargeMs = OffsetDateTime.of(21016, 11, 4, 13, 51, 30, 124000000, ZoneOffset.UTC).toInstant().toEpochMilli();
 
         String expectedTzLarge = "+21016-11-04T06:51:30.123456Z";
+        String expectedTzLargeZero = "+21016-11-04T06:51:30.000000Z";
 
         // The assertion for minimimum timestamps is problematic as it seems that Java and PostgreSQL handles conversion from large negative date
         // to microseconds in different way
@@ -658,7 +703,8 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
                 new SchemaAndValueField("ts_pinf", MicroTimestamp.builder().optional().build(), PgStatement.DATE_POSITIVE_INFINITY),
                 new SchemaAndValueField("ts_ninf", MicroTimestamp.builder().optional().build(), PgStatement.DATE_NEGATIVE_INFINITY),
                 new SchemaAndValueField("tz_pinf", ZonedTimestamp.builder().optional().build(), "infinity"),
-                new SchemaAndValueField("tz_ninf", ZonedTimestamp.builder().optional().build(), "-infinity"));
+                new SchemaAndValueField("tz_ninf", ZonedTimestamp.builder().optional().build(), "-infinity"),
+                new SchemaAndValueField("tz_zero", ZonedTimestamp.builder().optional().build(), expectedTzLargeZero));
     }
 
     protected List<SchemaAndValueField> schemaAndValuesForTimeArrayTypes() {
@@ -668,8 +714,8 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
         final String expectedTimeTz2 = "12:51:03Z";
         final long expectedTimestamp1 = OffsetDateTime.of(2020, 4, 1, 0, 1, 2, 0, ZoneOffset.UTC).toInstant().toEpochMilli() * 1000;
         final long expectedTimestamp2 = OffsetDateTime.of(2020, 4, 1, 1, 2, 3, 0, ZoneOffset.UTC).toInstant().toEpochMilli() * 1000;
-        final String expectedTimestampTz1 = "2020-04-01T11:51:02Z";
-        final String expectedTimestampTz2 = "2020-04-01T12:51:03Z";
+        final String expectedTimestampTz1 = "2020-04-01T11:51:02.000000Z";
+        final String expectedTimestampTz2 = "2020-04-01T12:51:03.000000Z";
 
         return Arrays.asList(new SchemaAndValueField("timea",
                 SchemaBuilder.array(MicroTime.builder().optional().build()).build(),
@@ -903,7 +949,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
         final Schema ltreeSchema = Ltree.builder().optional().build();
         final Schema ltreeArraySchema = SchemaBuilder.array(ltreeSchema).optional().build();
         return Arrays.asList(new SchemaAndValueField("lt", ltreeSchema, "Top.Collections.Pictures.Astronomy.Galaxies"),
-                new SchemaAndValueField("i", Schema.BYTES_SCHEMA, ByteBuffer.wrap("0-393-04002-X".getBytes())),
+                new SchemaAndValueField("i", Schema.STRING_SCHEMA, "0-393-04002-X"),
                 new SchemaAndValueField("n", Schema.OPTIONAL_STRING_SCHEMA, null),
                 new SchemaAndValueField("lt_array", ltreeArraySchema, Arrays.asList("Ship.Frigate", "Ship.Destroyer")));
     }
@@ -1151,7 +1197,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
 
     protected static class SchemaAndValueField {
         @FunctionalInterface
-        protected static interface Condition {
+        protected interface Condition {
             void assertField(String fieldName, Object expectedValue, Object actualValue);
         }
 
@@ -1344,7 +1390,6 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
 
         protected void await(long timeout, TimeUnit unit) throws InterruptedException {
             final ElapsedTimeStrategy timer = ElapsedTimeStrategy.constant(Clock.SYSTEM, unit.toMillis(timeout));
-            timer.hasElapsed();
             while (!timer.hasElapsed()) {
                 final SourceRecord r = consumeRecord();
                 if (r != null) {
@@ -1364,8 +1409,16 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
         waitForSnapshotToBeCompleted("postgres", "test_server");
     }
 
+    protected void waitForSnapshotWithCustomMetricsToBeCompleted(Map<String, String> props) throws InterruptedException {
+        waitForSnapshotWithCustomMetricsToBeCompleted("postgres", "test_server", props);
+    }
+
     protected void waitForStreamingToStart() throws InterruptedException {
         waitForStreamingRunning("postgres", "test_server");
+    }
+
+    protected void waitForStreamingWithCustomMetricsToStart(Map<String, String> props) throws InterruptedException {
+        waitForStreamingWithCustomMetricsToStart("postgres", "test_server", props);
     }
 
     protected void assertWithTask(Consumer<SourceTask> consumer) {

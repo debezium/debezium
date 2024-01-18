@@ -52,7 +52,7 @@ final class Paths {
         return segment;
     }
 
-    static interface InnerPath {
+    interface InnerPath {
         int copyInto(String[] segments, int start);
     }
 

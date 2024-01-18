@@ -6,8 +6,11 @@
 package io.debezium.testing.system.tools;
 
 import static io.debezium.testing.system.tools.WaitConditions.scaled;
+import static java.util.concurrent.TimeUnit.MINUTES;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.awaitility.Awaitility.await;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -21,10 +24,12 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.testing.system.tools.operatorutil.OpenshiftOperatorEnum;
 import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.EnvVar;
 import io.fabric8.kubernetes.api.model.IntOrString;
 import io.fabric8.kubernetes.api.model.LocalObjectReference;
+import io.fabric8.kubernetes.api.model.ObjectMetaBuilder;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.PodList;
 import io.fabric8.kubernetes.api.model.Secret;
@@ -36,8 +41,13 @@ import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.api.model.networking.v1.NetworkPolicy;
 import io.fabric8.kubernetes.api.model.networking.v1.NetworkPolicyBuilder;
 import io.fabric8.kubernetes.api.model.networking.v1.NetworkPolicyPort;
+import io.fabric8.kubernetes.client.ConfigBuilder;
 import io.fabric8.openshift.api.model.Route;
 import io.fabric8.openshift.api.model.RouteBuilder;
+import io.fabric8.openshift.api.model.operatorhub.v1.OperatorGroup;
+import io.fabric8.openshift.api.model.operatorhub.v1.OperatorGroupBuilder;
+import io.fabric8.openshift.api.model.operatorhub.v1.OperatorGroupSpecBuilder;
+import io.fabric8.openshift.client.DefaultOpenShiftClient;
 import io.fabric8.openshift.client.OpenShiftClient;
 
 /**
@@ -252,8 +262,26 @@ public class OpenShiftUtils {
         }
     }
 
-    public static boolean isRunningFromOcp() {
-        return ConfigProperties.OCP_URL.isEmpty();
+    public void scaleDeploymentToZero(Deployment deployment) {
+        client.apps()
+                .deployments()
+                .inNamespace(deployment.getMetadata().getNamespace())
+                .withName(deployment.getMetadata().getName())
+                .scale(0);
+        waitForDeploymentToScaleDown(deployment);
+    }
+
+    public void waitForDeploymentToScaleDown(Deployment deployment) {
+        String deploymentName = deployment.getMetadata().getName();
+        LOGGER.info("Waiting for deployment [" + deploymentName + "] to scale to 0");
+        Supplier<PodList> podListSupplier = () -> client.pods()
+                .inNamespace(deployment.getMetadata().getNamespace())
+                .withLabels(Map.of("deployment", deploymentName))
+                .list();
+        await().atMost(scaled(1), MINUTES)
+                .pollDelay(5, SECONDS)
+                .pollInterval(3, SECONDS)
+                .until(() -> podListSupplier.get().getItems().isEmpty());
     }
 
     /**
@@ -268,5 +296,41 @@ public class OpenShiftUtils {
         return deployments.stream()
                 .filter(d -> Arrays.stream(prefixes).anyMatch(prefix -> d.getMetadata().getName().startsWith(prefix)))
                 .findFirst();
+    }
+
+    public void createOrReplaceOperatorGroup(String namespace, String name) {
+        OperatorGroup operatorGroup = new OperatorGroupBuilder()
+                .withApiVersion("operators.coreos.com/v1")
+                .withKind("OperatorGroup")
+                .withMetadata(new ObjectMetaBuilder()
+                        .withName(name)
+                        .withNamespace(namespace)
+                        .build())
+                .withSpec(new OperatorGroupSpecBuilder()
+                        .withTargetNamespaces(namespace)
+                        .build())
+                .build();
+        client.operatorHub().operatorGroups().inNamespace(namespace).createOrReplace(operatorGroup);
+    }
+
+    /**
+     * Wait until Deployment of given operator exists in given namespace for DEPLOYMENT_EXISTS_TIMEOUT seconds
+     * @param namespace
+     * @param operator
+     * @throws InterruptedException
+     */
+    public void waitForOperatorDeploymentExists(String namespace, OpenshiftOperatorEnum operator) throws InterruptedException {
+        LOGGER.info("Waiting for operator " + operator.getName() + " to be created");
+        await().atMost(scaled(2), TimeUnit.MINUTES)
+                .pollInterval(Duration.ofSeconds(2))
+                .until(() -> deploymentsWithPrefix(namespace, operator.getDeploymentNamePrefix()).isPresent());
+    }
+
+    public static OpenShiftClient createOcpClient() {
+        ConfigBuilder configBuilder = new ConfigBuilder();
+        configBuilder.withRequestRetryBackoffLimit(ConfigProperties.OCP_REQUEST_RETRY_BACKOFF_LIMIT)
+                .withTrustCerts(true);
+
+        return new DefaultOpenShiftClient(configBuilder.build());
     }
 }

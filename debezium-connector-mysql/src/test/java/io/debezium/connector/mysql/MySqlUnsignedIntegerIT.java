@@ -30,6 +30,8 @@ import io.debezium.util.Testing;
  * @author Omar Al-Safi
  */
 public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
+    private static final String PRECISION_PARAMETER_KEY = "connect.decimal.precision";
+    private static final Schema BIGINT_PRECISE_SCHEMA = Decimal.builder(0).parameter(PRECISION_PARAMETER_KEY, "20").build();
 
     private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-json.txt")
             .toAbsolutePath();
@@ -373,9 +375,9 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
         Integer i = after.getInt32("id");
         assertThat(i).isNotNull();
         // Validate the schema first, we are expecting org.apache.kafka.connect.data.Decimal:Byte since we are dealing with unsignd-bigint
-        // So Unsigned BIGINY would be an int32 type
-        assertThat(after.schema().field("c1").schema()).isEqualTo(Decimal.builder(0).schema());
-        assertThat(after.schema().field("c2").schema()).isEqualTo(Decimal.builder(0).schema());
+        // So Unsigned BIGINT would be an int32 type
+        assertThat(after.schema().field("c1").schema()).isEqualTo(BIGINT_PRECISE_SCHEMA);
+        assertThat(after.schema().field("c2").schema()).isEqualTo(BIGINT_PRECISE_SCHEMA);
 
         // Validate the schema first, we are expecting int-64 since we are dealing with signed-bigint.
         // So Signed BIGINT would be an INT64 type
@@ -449,7 +451,7 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
         assertThat(records).hasSize(3);
         for (int i = 0; i < 3; i++) {
             final Struct after = ((Struct) records.get(i).value()).getStruct(Envelope.FieldName.AFTER);
-            assertThat(after.schema().field("id").schema()).isEqualTo(Decimal.builder(0).schema());
+            assertThat(after.schema().field("id").schema()).isEqualTo(BIGINT_PRECISE_SCHEMA);
             final BigDecimal id = (BigDecimal) after.get("id");
             assertThat(id).isNotNull();
             assertThat(id).isEqualTo(expected[i]);

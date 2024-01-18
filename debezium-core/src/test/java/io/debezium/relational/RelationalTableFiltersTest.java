@@ -38,6 +38,20 @@ public class RelationalTableFiltersTest {
     }
 
     @Test
+    public void shouldIncludeAllCapturedDatabaseDdlInSchemaSnapshot() {
+        filters = build.includeDatabases("db1").createFilters();
+        assertCollectionIncludedInSchemaSnapshot("db1.collectionA");
+        assertCollectionIncludedInSchemaSnapshot("db2.collectionA");
+    }
+
+    @Test
+    public void shouldIncludeOnlyCapturedDatabaseDdlInSchemaSnapshot() {
+        filters = build.includeDatabases("db1").storeOnlyCapturedDatabasesDdl("true").createFilters();
+        assertCollectionIncludedInSchemaSnapshot("db1.collectionA");
+        assertCollectionExcludedFromSchemaSnapshot("db2.collectionA");
+    }
+
+    @Test
     public void shouldIncludeDatabaseCoveredByWildcardInWhitelist() {
         filters = build.includeDatabases("db.*").createFilters();
         assertThat(filters.databaseFilter().test("db1")).isTrue();
@@ -195,6 +209,18 @@ public class RelationalTableFiltersTest {
         TableId id = TableId.parse(fullyQualifiedCollectionName);
         assertThat(id).isNotNull();
         assertThat(filters.dataCollectionFilter().isIncluded(id)).isFalse();
+    }
+
+    protected void assertCollectionExcludedFromSchemaSnapshot(String fullyQualifiedCollectionName) {
+        TableId id = TableId.parse(fullyQualifiedCollectionName);
+        assertThat(id).isNotNull();
+        assertThat(filters.eligibleForSchemaDataCollectionFilter().isIncluded(id)).isFalse();
+    }
+
+    protected void assertCollectionIncludedInSchemaSnapshot(String fullyQualifiedCollectionName) {
+        TableId id = TableId.parse(fullyQualifiedCollectionName);
+        assertThat(id).isNotNull();
+        assertThat(filters.eligibleForSchemaDataCollectionFilter().isIncluded(id)).isTrue();
     }
 
 }

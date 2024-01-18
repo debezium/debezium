@@ -5,7 +5,8 @@
  */
 package io.debezium.connector.postgresql;
 
-import org.assertj.core.api.Assertions;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import org.junit.Test;
 import org.postgresql.util.PSQLException;
 import org.postgresql.util.PSQLState;
@@ -23,42 +24,42 @@ public class PostgresErrorHandlerTest {
             new PostgresConnectorConfig(Configuration.create()
                     .with(CommonConnectorConfig.TOPIC_PREFIX, "postgres")
                     .build()),
-            new ChangeEventQueue.Builder<DataChangeEvent>().build());
+            new ChangeEventQueue.Builder<DataChangeEvent>().build(), null);
 
     @Test
     public void classifiedPSQLExceptionIsRetryable() {
         PSQLException testException = new PSQLException(A_CLASSIFIED_EXCEPTION, PSQLState.CONNECTION_FAILURE);
-        Assertions.assertThat(errorHandler.isRetriable(testException)).isTrue();
+        assertThat(errorHandler.isRetriable(testException)).isTrue();
     }
 
     @Test
     public void nonCommunicationExceptionNotRetryable() {
         Exception testException = new NullPointerException();
-        Assertions.assertThat(errorHandler.isRetriable(testException)).isFalse();
+        assertThat(errorHandler.isRetriable(testException)).isFalse();
     }
 
     @Test
     public void nullThrowableIsNotRetryable() {
-        Assertions.assertThat(errorHandler.isRetriable(null)).isFalse();
+        assertThat(errorHandler.isRetriable(null)).isFalse();
     }
 
     @Test
     public void encapsulatedPSQLExceptionIsRetriable() {
         Exception testException = new IllegalArgumentException(
                 new PSQLException("definitely not a postgres error", PSQLState.CONNECTION_FAILURE));
-        Assertions.assertThat(errorHandler.isRetriable(testException)).isTrue();
+        assertThat(errorHandler.isRetriable(testException)).isTrue();
     }
 
     @Test
     public void classifiedPSQLExceptionWrappedInDebeziumExceptionIsRetryable() {
         PSQLException psqlException = new PSQLException(A_CLASSIFIED_EXCEPTION, PSQLState.CONNECTION_FAILURE);
         DebeziumException testException = new DebeziumException(psqlException);
-        Assertions.assertThat(errorHandler.isRetriable(testException)).isTrue();
+        assertThat(errorHandler.isRetriable(testException)).isTrue();
     }
 
     @Test
     public void randomUnhandledExceptionIsNotRetryable() {
         RuntimeException testException = new RuntimeException();
-        Assertions.assertThat(errorHandler.isRetriable(testException)).isFalse();
+        assertThat(errorHandler.isRetriable(testException)).isFalse();
     }
 }

@@ -5,13 +5,14 @@
  */
 package io.debezium.connector.mysql;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.SQLException;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.assertj.core.api.Assertions;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -72,7 +73,7 @@ public class MySqlTinyIntIT extends AbstractConnectorTest {
 
         assertIntChangeRecord();
 
-        try (final Connection conn = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
+        try (Connection conn = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
             conn.createStatement().execute("INSERT INTO DBZ1773 VALUES (DEFAULT, 100, 5, 50, true)");
         }
         assertIntChangeRecord();
@@ -99,7 +100,7 @@ public class MySqlTinyIntIT extends AbstractConnectorTest {
 
         assertBooleanChangeRecord();
 
-        try (final Connection conn = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
+        try (Connection conn = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
             conn.createStatement().execute("INSERT INTO DBZ1773 VALUES (DEFAULT, 100, 5, 50, true)");
         }
         assertBooleanChangeRecord();
@@ -126,7 +127,7 @@ public class MySqlTinyIntIT extends AbstractConnectorTest {
 
         assertDefaultValueBooleanChangeRecord();
 
-        try (final Connection conn = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
+        try (Connection conn = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
             conn.createStatement().execute("INSERT INTO DBZ2085 VALUES (DEFAULT, true)");
         }
         assertDefaultValueBooleanChangeRecord();
@@ -153,7 +154,7 @@ public class MySqlTinyIntIT extends AbstractConnectorTest {
 
         assertUnsignedBooleanChangeRecord();
 
-        try (final Connection conn = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
+        try (Connection conn = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
             conn.createStatement().execute("INSERT INTO DBZ5236 VALUES (DEFAULT, 1, 1, 0)");
         }
         assertUnsignedBooleanChangeRecord();
@@ -182,7 +183,7 @@ public class MySqlTinyIntIT extends AbstractConnectorTest {
 
         assertUnsignedBooleanChangeRecord();
 
-        try (final Connection conn = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
+        try (Connection conn = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
             conn.createStatement().execute("INSERT INTO DBZ5236 VALUES (DEFAULT, 1, 1, 0)");
         }
         assertUnsignedBooleanChangeRecord();
@@ -202,42 +203,42 @@ public class MySqlTinyIntIT extends AbstractConnectorTest {
 
     private void assertIntChangeRecord() throws InterruptedException {
         final SourceRecord record = consumeRecord();
-        Assertions.assertThat(record).isNotNull();
+        assertThat(record).isNotNull();
         final Struct change = ((Struct) record.value()).getStruct("after");
 
-        Assertions.assertThat(change.getInt16("ti")).isEqualTo((short) 100);
-        Assertions.assertThat(change.getInt16("ti1")).isEqualTo((short) 5);
-        Assertions.assertThat(change.getInt16("ti2")).isEqualTo((short) 50);
-        Assertions.assertThat(change.getInt16("b")).isEqualTo((short) 1);
+        assertThat(change.getInt16("ti")).isEqualTo((short) 100);
+        assertThat(change.getInt16("ti1")).isEqualTo((short) 5);
+        assertThat(change.getInt16("ti2")).isEqualTo((short) 50);
+        assertThat(change.getInt16("b")).isEqualTo((short) 1);
     }
 
     private void assertBooleanChangeRecord() throws InterruptedException {
         final SourceRecord record = consumeRecord();
-        Assertions.assertThat(record).isNotNull();
+        assertThat(record).isNotNull();
         final Struct change = ((Struct) record.value()).getStruct("after");
 
-        Assertions.assertThat(change.getInt16("ti")).isEqualTo((short) 100);
-        Assertions.assertThat(change.getInt16("ti1")).isEqualTo((short) 5);
-        Assertions.assertThat(change.getInt16("ti2")).isEqualTo((short) 50);
-        Assertions.assertThat(change.getBoolean("b")).isEqualTo(true);
+        assertThat(change.getInt16("ti")).isEqualTo((short) 100);
+        assertThat(change.getInt16("ti1")).isEqualTo((short) 5);
+        assertThat(change.getInt16("ti2")).isEqualTo((short) 50);
+        assertThat(change.getBoolean("b")).isEqualTo(true);
     }
 
     private void assertDefaultValueBooleanChangeRecord() throws InterruptedException {
         final SourceRecord record = consumeRecord();
-        Assertions.assertThat(record).isNotNull();
+        assertThat(record).isNotNull();
         final Struct change = ((Struct) record.value()).getStruct("after");
 
-        Assertions.assertThat(change.getBoolean("b")).isEqualTo(true);
-        Assertions.assertThat(change.schema().field("b").schema().defaultValue()).isEqualTo(false);
+        assertThat(change.getBoolean("b")).isEqualTo(true);
+        assertThat(change.schema().field("b").schema().defaultValue()).isEqualTo(false);
     }
 
     private void assertUnsignedBooleanChangeRecord() throws InterruptedException {
         final SourceRecord record = consumeRecord();
-        Assertions.assertThat(record).isNotNull();
+        assertThat(record).isNotNull();
         final Struct change = ((Struct) record.value()).getStruct("after");
 
-        Assertions.assertThat(change.getInt16("ti1")).isEqualTo((short) 1);
-        Assertions.assertThat(change.getBoolean("ti2")).isEqualTo(true);
-        Assertions.assertThat(change.getBoolean("ti3")).isEqualTo(false);
+        assertThat(change.getInt16("ti1")).isEqualTo((short) 1);
+        assertThat(change.getBoolean("ti2")).isEqualTo(true);
+        assertThat(change.getBoolean("ti3")).isEqualTo(false);
     }
 }

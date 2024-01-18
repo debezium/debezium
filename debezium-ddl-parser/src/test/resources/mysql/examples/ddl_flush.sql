@@ -17,5 +17,8 @@ flush TABLE Foo, Bar;
 flush table Foo, Bar for export;
 flush table Foo, Bar with read lock;
 
+-- Azure Database for MySQL Single Server instance. This type of database server is being decommissioned on Sept 16 2024 and is succeeded by their "Flexible Server" offering.
+FLUSH FIREWALL_RULES;
+
 
 

@@ -10,11 +10,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.nio.file.Path;
 import java.sql.SQLException;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.assertj.core.api.Assertions;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -61,8 +59,8 @@ public class MySqlFloatIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-3865")
     public void shouldHandleFloatAsFloatAndDouble() throws SQLException, InterruptedException {
-        String includeTables = Collect.arrayListOf(DATABASE.qualifiedTableName(TABLE_NAME), DATABASE.qualifiedTableName("DBZ3865_2"))
-                .stream().collect(Collectors.joining(","));
+        String includeTables = String.join(",",
+                Collect.arrayListOf(DATABASE.qualifiedTableName(TABLE_NAME), DATABASE.qualifiedTableName("DBZ3865_2")));
         // Use the DB configuration to define the connector's configuration ...
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
@@ -117,19 +115,19 @@ public class MySqlFloatIT extends AbstractConnectorTest {
     }
 
     private void assertFloatChangeRecord(SourceRecord sourceRecord) {
-        Assertions.assertThat(sourceRecord).isNotNull();
+        assertThat(sourceRecord).isNotNull();
         final Struct change = ((Struct) sourceRecord.value()).getStruct("after");
         final float f2 = (float) 5.61;
         final float f3 = (float) 30.12346;
 
-        Assertions.assertThat(change.getFloat32("f1")).isEqualTo((float) 5.6);
-        Assertions.assertThat(change.getFloat64("f2")).isEqualTo(Double.valueOf(((Number) f2).doubleValue()));
-        Assertions.assertThat(change.getFloat64("f3")).isEqualTo(Double.valueOf(((Number) f3).doubleValue()));
-        Assertions.assertThat(change.getFloat32("f4_23")).isEqualTo((float) 64.1);
-        Assertions.assertThat(change.getFloat32("f4_24")).isEqualTo((float) 64.1);
+        assertThat(change.getFloat32("f1")).isEqualTo((float) 5.6);
+        assertThat(change.getFloat64("f2")).isEqualTo(Double.valueOf(((Number) f2).doubleValue()));
+        assertThat(change.getFloat64("f3")).isEqualTo(Double.valueOf(((Number) f3).doubleValue()));
+        assertThat(change.getFloat32("f4_23")).isEqualTo((float) 64.1);
+        assertThat(change.getFloat32("f4_24")).isEqualTo((float) 64.1);
         // Mysql will convert float(25) to double type
-        Assertions.assertThat(change.getFloat64("f4_25")).isEqualTo(64.1);
+        assertThat(change.getFloat64("f4_25")).isEqualTo(64.1);
         // Mysql will treat "float unsigned" as float type
-        Assertions.assertThat(change.getFloat32("weight")).isEqualTo((float) 64.1234);
+        assertThat(change.getFloat32("weight")).isEqualTo((float) 64.1234);
     }
 }

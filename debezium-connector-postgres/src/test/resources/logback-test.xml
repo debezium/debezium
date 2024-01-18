@@ -41,7 +41,7 @@
     </logger>
     <!-- Needed for SignalsIT -->
     <logger
-        name="io.debezium.pipeline.signal.Signal"
+        name="io.debezium.pipeline.signal.channels.SourceSignalChannel"
         level="debug" additivity="false">
         <appender-ref ref="CONSOLE" />
     </logger>

@@ -21,17 +21,31 @@ import io.debezium.connector.base.ChangeEventQueue;
 
 public class ErrorHandler {
 
+    public static final int RETRIES_UNLIMITED = -1;
+    public static final int RETRIES_DISABLED = 0;
+
     private static final Logger LOGGER = LoggerFactory.getLogger(ErrorHandler.class);
 
     private final ChangeEventQueue<?> queue;
     private final AtomicReference<Throwable> producerThrowable;
     private final CommonConnectorConfig connectorConfig;
+    private int maxRetries;
+    private int retries;
 
     public ErrorHandler(Class<? extends SourceConnector> connectorType, CommonConnectorConfig connectorConfig,
-                        ChangeEventQueue<?> queue) {
+                        ChangeEventQueue<?> queue, ErrorHandler replacedErrorHandler) {
         this.connectorConfig = connectorConfig;
         this.queue = queue;
         this.producerThrowable = new AtomicReference<>();
+        if (connectorConfig != null) {
+            this.maxRetries = connectorConfig.getMaxRetriesOnError();
+        }
+        else {
+            this.maxRetries = RETRIES_UNLIMITED;
+        }
+        if (replacedErrorHandler != null) {
+            this.retries = replacedErrorHandler.getRetries();
+        }
     }
 
     public void setProducerThrowable(Throwable producerThrowable) {
@@ -45,7 +59,7 @@ public class ErrorHandler {
         }
 
         if (first) {
-            if (retriable) {
+            if (retriable && hasMoreRetries()) {
                 queue.producerException(
                         new RetriableException("An exception occurred in the change event producer. This connector will be restarted.", producerThrowable));
             }
@@ -97,5 +111,36 @@ public class ErrorHandler {
             throwable = throwable.getCause();
         }
         return false;
+    }
+
+    /**
+     * Whether the maximum number of retries has been reached
+     *
+     * @return true if maxRetries is -1 or retries < maxRetries
+     */
+    protected boolean hasMoreRetries() {
+        boolean doRetry = unlimitedRetries() || retries < maxRetries;
+        if (doRetry) {
+            retries++;
+            LOGGER.warn("Retry {} of {} retries will be attempted", retries,
+                    unlimitedRetries() ? "unlimited" : maxRetries);
+        }
+        else {
+            LOGGER.error("The maximum number of {} retries has been attempted", maxRetries);
+        }
+
+        return doRetry;
+    }
+
+    private boolean unlimitedRetries() {
+        return maxRetries == RETRIES_UNLIMITED;
+    }
+
+    public int getRetries() {
+        return retries;
+    }
+
+    public void resetRetries() {
+        this.retries = 0;
     }
 }

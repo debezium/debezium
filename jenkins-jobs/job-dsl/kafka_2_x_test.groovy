@@ -19,10 +19,6 @@ freeStyleJob('debezium-kafka-2.x-test') {
         git('$REPOSITORY', '$BRANCH')
     }
 
-    triggers {
-        cron('H 04 * * *')
-    }
-
     wrappers {
         timeout {
             noActivity(1200)

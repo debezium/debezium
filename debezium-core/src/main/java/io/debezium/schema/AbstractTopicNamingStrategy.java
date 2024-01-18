@@ -18,9 +18,11 @@ import io.debezium.common.annotation.Incubating;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
+import io.debezium.spi.common.ReplacementFunction;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.BoundedConcurrentHashMap;
+import io.debezium.util.Collect;
 import io.debezium.util.Strings;
 
 /**
@@ -78,6 +80,8 @@ public abstract class AbstractTopicNamingStrategy<I extends DataCollectionId> im
     protected String prefix;
     protected String transaction;
     protected String heartbeatPrefix;
+    protected boolean multiPartitionMode;
+    protected ReplacementFunction replacement;
 
     public AbstractTopicNamingStrategy(Properties props) {
         this.configure(props);
@@ -106,6 +110,10 @@ public abstract class AbstractTopicNamingStrategy<I extends DataCollectionId> im
         transaction = config.getString(TOPIC_TRANSACTION);
         prefix = config.getString(CommonConnectorConfig.TOPIC_PREFIX);
         assert prefix != null;
+        // SqlServer support the multi partition mode
+        multiPartitionMode = props.get(CommonConnectorConfig.MULTI_PARTITION_MODE) == null ? false
+                : Boolean.parseBoolean(props.get(CommonConnectorConfig.MULTI_PARTITION_MODE).toString());
+        replacement = ReplacementFunction.UNDERSCORE_REPLACEMENT;
     }
 
     @Override
@@ -126,7 +134,63 @@ public abstract class AbstractTopicNamingStrategy<I extends DataCollectionId> im
         return String.join(delimiter, prefix, transaction);
     }
 
+    @Override
+    public String sanitizedTopicName(String topicName) {
+        StringBuilder sanitizedNameBuilder = new StringBuilder(topicName.length());
+        boolean changed = false;
+
+        for (int i = 0; i < topicName.length(); i++) {
+            char c = topicName.charAt(i);
+            if (isValidCharacter(c)) {
+                sanitizedNameBuilder.append(c);
+            }
+            else {
+                sanitizedNameBuilder.append(replacement.replace(c));
+                changed = true;
+            }
+        }
+
+        String sanitizedName = sanitizedNameBuilder.toString();
+        if (sanitizedName.length() > MAX_NAME_LENGTH) {
+            sanitizedName = sanitizedName.substring(0, MAX_NAME_LENGTH);
+            changed = true;
+        }
+        else if (sanitizedName.equals(".")) {
+            sanitizedName = replacement.replace('.');
+            changed = true;
+        }
+        else if (sanitizedName.equals("..")) {
+            String replace = replacement.replace('.');
+            sanitizedName = String.format("%s%s", replace, replace);
+            changed = true;
+        }
+
+        if (changed) {
+            LOGGER.warn("Topic '{}' name isn't a valid topic name, replacing it with '{}'.", topicName, sanitizedName);
+
+            return sanitizedName;
+        }
+        else {
+            return topicName;
+        }
+    }
+
+    protected boolean isValidCharacter(char c) {
+        return c == '.' || c == '_' || c == '-' || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9');
+    }
+
     protected String mkString(List<String> data, String delimiter) {
         return data.stream().filter(f -> !Strings.isNullOrBlank(f)).collect(Collectors.joining(delimiter));
+    }
+
+    protected String getSchemaPartsTopicName(DataCollectionId id) {
+        String topicName;
+        if (multiPartitionMode) {
+            topicName = mkString(Collect.arrayListOf(prefix, id.parts()), delimiter);
+        }
+        else {
+            topicName = mkString(Collect.arrayListOf(prefix, id.schemaParts()), delimiter);
+        }
+        return topicName;
     }
 }

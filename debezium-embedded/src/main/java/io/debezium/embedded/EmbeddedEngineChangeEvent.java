@@ -5,20 +5,25 @@
  */
 package io.debezium.embedded;
 
+import java.util.List;
+
 import org.apache.kafka.connect.source.SourceRecord;
 
 import io.debezium.engine.ChangeEvent;
+import io.debezium.engine.Header;
 import io.debezium.engine.RecordChangeEvent;
 
-class EmbeddedEngineChangeEvent<K, V> implements ChangeEvent<K, V>, RecordChangeEvent<V> {
+class EmbeddedEngineChangeEvent<K, V, H> implements ChangeEvent<K, V>, RecordChangeEvent<V> {
 
     private final K key;
     private final V value;
+    private final List<Header<H>> headers;
     private final SourceRecord sourceRecord;
 
-    public EmbeddedEngineChangeEvent(K key, V value, SourceRecord sourceRecord) {
+    EmbeddedEngineChangeEvent(K key, V value, List<Header<H>> headers, SourceRecord sourceRecord) {
         this.key = key;
         this.value = value;
+        this.headers = headers;
         this.sourceRecord = sourceRecord;
     }
 
@@ -32,6 +37,12 @@ class EmbeddedEngineChangeEvent<K, V> implements ChangeEvent<K, V>, RecordChange
         return value;
     }
 
+    @SuppressWarnings("unchecked")
+    @Override
+    public List<Header<H>> headers() {
+        return headers;
+    }
+
     @Override
     public V record() {
         return value;
@@ -40,6 +51,11 @@ class EmbeddedEngineChangeEvent<K, V> implements ChangeEvent<K, V>, RecordChange
     @Override
     public String destination() {
         return sourceRecord.topic();
+    }
+
+    @Override
+    public Integer partition() {
+        return sourceRecord.kafkaPartition();
     }
 
     public SourceRecord sourceRecord() {

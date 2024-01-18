@@ -27,8 +27,8 @@ import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.schema.SchemaFactory;
+import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.spi.schema.DataCollectionId;
-import io.debezium.util.SchemaNameAdjuster;
 
 /**
  * The class has externalized its state in {@link TransactionContext} context class so it can be stored in and recovered from offsets.

@@ -10,7 +10,7 @@
 
     <groupId>io.debezium</groupId>
     <artifactId>debezium-build-parent</artifactId>
-    <version>2.1.0-SNAPSHOT</version>
+    <version>2.6.0-SNAPSHOT</version>
     <name>Debezium Build Aggregator</name>
     <description>Debezium is an open source change data capture platform</description>
     <packaging>pom</packaging>
@@ -73,15 +73,15 @@
         <version.assembly.plugin>3.1.1</version.assembly.plugin>
         <version.war.plugin>2.5</version.war.plugin>
         <version.google.formatter.plugin>0.4</version.google.formatter.plugin>
-        <version.docker.maven.plugin>0.31.0</version.docker.maven.plugin>
+        <version.docker.maven.plugin>0.43.4</version.docker.maven.plugin>
         <version.staging.plugin>1.6.12</version.staging.plugin>
         <version.protoc.maven.plugin>3.8.0</version.protoc.maven.plugin>
         <version.javadoc.plugin>3.4.0</version.javadoc.plugin>
         <version.code.formatter>2.20.0</version.code.formatter>
-        <version.surefire.plugin>3.0.0-M6</version.surefire.plugin>
+        <version.surefire.plugin>3.1.2</version.surefire.plugin>
         <version.checkstyle.plugin>3.1.1</version.checkstyle.plugin>
         <version.release.plugin>2.5.3</version.release.plugin>
-        <version.impsort>1.7.0</version.impsort>
+        <version.impsort>1.8.0</version.impsort>
         <version.failsafe.plugin>${version.surefire.plugin}</version.failsafe.plugin>
         <version.checkstyle>10.1</version.checkstyle>
         <version.revapi.plugin>0.11.5</version.revapi.plugin>
@@ -93,48 +93,68 @@
         <release.endpoint>https://s01.oss.sonatype.org/</release.endpoint>
 
         <!-- Kafka and it's dependencies MUST reflect what the Kafka version uses -->
-        <version.kafka>3.3.1</version.kafka>
-        <version.zookeeper>3.6.3</version.zookeeper>
-        <!-- Kafka uses 2.12.6 but we need to bump due to CVE-2020-36518 before Kafka fixes it -->
+        <version.kafka>3.6.1</version.kafka>
+        <version.zookeeper>3.8.3</version.zookeeper>
         <!-- NOTE: These two versions are maintained separately due to decoupling jackson and databind for downstream -->
-        <version.jackson>2.13.3</version.jackson>
-        <version.jackson.databind>2.13.3</version.jackson.databind>
+        <version.jackson>2.13.5</version.jackson>
+        <version.jackson.databind>2.13.5</version.jackson.databind>
         <version.org.slf4j>1.7.36</version.org.slf4j>
-        <version.netty>4.1.78.Final</version.netty>
+        <version.netty>4.1.100.Final</version.netty>
 
         <!-- Scala version used to build Kafka -->
         <version.kafka.scala>2.13</version.kafka.scala>
 
         <!-- ANTLR -->
         <!-- Align with Antlr runtime version pulled in via Quarkus -->
-        <version.antlr>4.8</version.antlr>
+        <version.antlr>4.10.1</version.antlr>
         <version.antlr4test.plugin>1.18</version.antlr4test.plugin>
 
         <!-- Quarkus -->
+        <!-- Version used for Outbox extension development, changes frequently to align with latest Quarkus -->
+        <quarkus.version.extension>3.6.5</quarkus.version.extension>
+
+        <!-- Version used in Debezium Server, Operator, etc., usually a LTS version -->
         <!-- Must be aligned with Apicurio version below -->
-        <quarkus.version>2.14.0.Final</quarkus.version>
+        <!-- Debezium Server Pravega must use the same Netty version as the one used by Quarkus -->
+        <quarkus.version.runtime>3.2.3.Final</quarkus.version.runtime>
 
         <!-- Apicurio -->
-        <version.apicurio>2.2.5.Final</version.apicurio>
+        <version.apicurio>2.4.3.Final</version.apicurio>
 
         <!-- Database drivers, should align with databases -->
-        <version.postgresql.driver>42.5.0</version.postgresql.driver>
-        <version.mysql.driver>8.0.29</version.mysql.driver>
-        <version.mysql.binlog>0.27.2</version.mysql.binlog>
-        <version.mongo.driver>4.7.1</version.mongo.driver>
-        <version.sqlserver.driver>10.2.1.jre8</version.sqlserver.driver>
+        <version.postgresql.driver>42.6.0</version.postgresql.driver>
+        <version.mysql.driver>8.0.33</version.mysql.driver>
+        <version.mysql.binlog>0.29.0</version.mysql.binlog>
+        <version.mongo.driver>4.11.0</version.mongo.driver>
+        <version.sqlserver.driver>12.4.2.jre8</version.sqlserver.driver>
         <version.oracle.driver>21.6.0.0</version.oracle.driver>
         <version.db2.driver>11.5.0.0</version.db2.driver>
+        <version.informix.changestream.client>1.1.3</version.informix.changestream.client>
+        <version.informix.driver>4.50.10</version.informix.driver>
         <version.cassandra.driver>4.14.0</version.cassandra.driver>
+        <version.mariadb.driver>3.2.0</version.mariadb.driver>
 
         <!-- Databases, should align with database drivers -->
-        <version.mysql.server>5.7</version.mysql.server>
+        <version.mysql.server>8.2</version.mysql.server>
+        <version.mysql.percona.server>8.0</version.mysql.percona.server>
         <version.mongo.server>6.0</version.mongo.server>
         <version.cassandra3>3.11.12</version.cassandra3>
         <version.cassandra4>4.0.2</version.cassandra4>
 
         <!-- Required in protoc plug-in config, too; can't be in BOM therefore -->
-        <version.com.google.protobuf>3.19.6</version.com.google.protobuf>
+        <version.com.google.protobuf>3.25.1</version.com.google.protobuf>
+        <!-- The version is separate so different protoc can be used in product -->
+        <version.com.google.protobuf.protoc>3.25.1</version.com.google.protobuf.protoc>
+
+        <!-- Infinispan version for Oracle and Debezium Server sink -->
+        <version.infinispan>14.0.20.Final</version.infinispan>
+        <version.infinispan.protostream>4.6.2.Final</version.infinispan.protostream>
+
+        <!-- RocketMQ version for RocketMQ storage and Server sink -->
+        <version.rocketmq>4.9.4</version.rocketmq>
+
+        <!-- MySQL server image name -->
+        <mysql.server.image.source>container-registry.oracle.com/mysql/community-server</mysql.server.image.source>
     </properties>
 
     <modules>
@@ -155,13 +175,15 @@
         <module>debezium-connector-oracle</module>
         <module>debezium-microbenchmark</module>
         <module>debezium-microbenchmark-oracle</module>
+        <module>debezium-quarkus-outbox-common</module>
         <module>debezium-quarkus-outbox</module>
+        <module>debezium-quarkus-outbox-reactive</module>
         <module>debezium-scripting</module>
-        <module>debezium-server</module>
         <module>debezium-testing</module>
         <module>debezium-connect-rest-extension</module>
         <module>debezium-schema-generator</module>
         <module>debezium-storage</module>
+        <module>debezium-interceptor</module>
     </modules>
 
     <distributionManagement>

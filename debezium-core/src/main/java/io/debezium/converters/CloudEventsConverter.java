@@ -19,8 +19,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 import org.apache.kafka.common.errors.SerializationException;
+import org.apache.kafka.common.header.Header;
+import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Schema.Type;
@@ -46,13 +49,19 @@ import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.Configuration;
 import io.debezium.config.Instantiator;
 import io.debezium.connector.AbstractSourceInfo;
+import io.debezium.converters.CloudEventsConverterConfig.MetadataSource;
+import io.debezium.converters.CloudEventsConverterConfig.MetadataSourceValue;
+import io.debezium.converters.recordandmetadata.RecordAndMetadata;
+import io.debezium.converters.recordandmetadata.RecordAndMetadataBaseImpl;
+import io.debezium.converters.recordandmetadata.RecordAndMetadataHeaderImpl;
 import io.debezium.converters.spi.CloudEventsMaker;
 import io.debezium.converters.spi.CloudEventsProvider;
+import io.debezium.converters.spi.CloudEventsValidator;
 import io.debezium.converters.spi.RecordParser;
 import io.debezium.converters.spi.SerializerType;
 import io.debezium.data.Envelope;
 import io.debezium.pipeline.txmetadata.TransactionMonitor;
-import io.debezium.util.SchemaNameAdjuster;
+import io.debezium.schema.SchemaNameAdjuster;
 
 /**
  * Implementation of Converter that express schemas and objects with CloudEvents specification. The serialization
@@ -104,11 +113,20 @@ public class CloudEventsConverter implements Converter {
 
     static {
         try {
-            CONVERT_TO_CONNECT_METHOD = JsonConverter.class.getDeclaredMethod("convertToConnect", Schema.class, JsonNode.class);
+            // Use Kafka 3.5+ method signature
+            CONVERT_TO_CONNECT_METHOD = JsonConverter.class.getDeclaredMethod("convertToConnect", Schema.class, JsonNode.class, JsonConverterConfig.class);
             CONVERT_TO_CONNECT_METHOD.setAccessible(true);
+            LOGGER.info("Using up-to-date JsonConverter implementation");
         }
         catch (NoSuchMethodException e) {
-            throw new DataException(e.getCause());
+            try {
+                CONVERT_TO_CONNECT_METHOD = JsonConverter.class.getDeclaredMethod("convertToConnect", Schema.class, JsonNode.class);
+                CONVERT_TO_CONNECT_METHOD.setAccessible(true);
+                LOGGER.info("Using legacy JsonConverter implementation");
+            }
+            catch (NoSuchMethodException ei) {
+                throw new DataException(ei);
+            }
         }
 
         Map<String, CloudEventsProvider> tmp = new HashMap<>();
@@ -124,13 +142,24 @@ public class CloudEventsConverter implements Converter {
     private SerializerType dataSerializerType = withName(CloudEventsConverterConfig.CLOUDEVENTS_DATA_SERIALIZER_TYPE_DEFAULT);
 
     private final JsonConverter jsonCloudEventsConverter = new JsonConverter();
+    private JsonConverterConfig jsonCloudEventsConverterConfig = null;
+
+    private JsonConverter jsonHeaderConverter = new JsonConverter();
+
     private final JsonConverter jsonDataConverter = new JsonConverter();
+
     private boolean enableJsonSchemas;
     private final JsonDeserializer jsonDeserializer = new JsonDeserializer();
 
     private Converter avroConverter;
     private List<String> schemaRegistryUrls;
     private SchemaNameAdjuster schemaNameAdjuster;
+
+    private boolean extensionAttributesEnable;
+    private String cloudEventsSchemaName;
+    private MetadataSource metadataSource;
+
+    private final CloudEventsValidator cloudEventsValidator = new CloudEventsValidator();
 
     public CloudEventsConverter() {
         this(null);
@@ -151,13 +180,23 @@ public class CloudEventsConverter implements Converter {
         ceSerializerType = ceConfig.cloudeventsSerializerType();
         dataSerializerType = ceConfig.cloudeventsDataSerializerTypeConfig();
         schemaNameAdjuster = ceConfig.schemaNameAdjustmentMode().createAdjuster();
+        extensionAttributesEnable = ceConfig.extensionAttributesEnable();
+        cloudEventsSchemaName = ceConfig.schemaCloudEventsName();
+        metadataSource = ceConfig.metadataSource();
+
+        Map<String, Object> jsonHeaderConverterConfig = new HashMap<>();
+        jsonHeaderConverterConfig.put(JsonConverterConfig.SCHEMAS_ENABLE_CONFIG, true);
+        jsonHeaderConverterConfig.put(JsonConverterConfig.TYPE_CONFIG, "header");
+        jsonHeaderConverter.configure(jsonHeaderConverterConfig);
 
         boolean usingAvro = false;
 
         if (ceSerializerType == SerializerType.JSON) {
             Map<String, String> ceJsonConfig = jsonConfig.asMap();
             ceJsonConfig.put(JsonConverterConfig.SCHEMAS_ENABLE_CONFIG, "false");
+            configureConverterType(isKey, ceJsonConfig);
             jsonCloudEventsConverter.configure(ceJsonConfig, isKey);
+            jsonCloudEventsConverterConfig = new JsonConverterConfig(ceJsonConfig);
         }
         else {
             usingAvro = true;
@@ -197,27 +236,60 @@ public class CloudEventsConverter implements Converter {
                 avroConverter.configure(avroConfig.asMap(), false);
             }
         }
+
+        cloudEventsValidator.configure(ceSerializerType, cloudEventsSchemaName);
+    }
+
+    protected Map<String, String> configureConverterType(boolean isKey, Map<String, String> config) {
+        config.put("converter.type", isKey ? "key" : "value");
+        return config;
     }
 
     @Override
     public byte[] fromConnectData(String topic, Schema schema, Object value) {
+        return this.fromConnectData(topic, null, schema, value);
+    }
+
+    @Override
+    public byte[] fromConnectData(String topic, Headers headers, Schema schema, Object value) {
         if (schema == null || value == null) {
             return null;
         }
-        if (!Envelope.isEnvelopeSchema(schema)) {
-            // TODO Handling of non-data messages like schema change or transaction metadata
-            return null;
+
+        if (this.metadataSource.global() == MetadataSourceValue.VALUE) {
+            if (!Envelope.isEnvelopeSchema(schema)) {
+                // TODO Handling of non-data messages like schema change or transaction metadata
+                return null;
+            }
+        }
+        else {
+            if (headers.lastHeader(Envelope.FieldName.SOURCE) == null || headers.lastHeader(Envelope.FieldName.OPERATION) == null) {
+                return null;
+            }
         }
         if (schema.type() != STRUCT) {
             throw new DataException("Mismatching schema");
         }
 
         Struct record = requireStruct(value, "CloudEvents converter");
-        CloudEventsProvider provider = lookupCloudEventsProvider(record);
+        Struct source = getSource(record, headers);
 
-        RecordParser parser = provider.createParser(schema, record);
+        CloudEventsProvider provider = lookupCloudEventsProvider(source);
+
+        RecordAndMetadata recordAndMetadata;
+        final boolean useBaseImpl = Stream.of(metadataSource.global(), metadataSource.id(), metadataSource.type(), metadataSource.dataSchemaName())
+                .allMatch(metadataSource -> metadataSource != MetadataSourceValue.HEADER);
+        if (useBaseImpl) {
+            recordAndMetadata = new RecordAndMetadataBaseImpl(record, schema);
+        }
+        else {
+            recordAndMetadata = new RecordAndMetadataHeaderImpl(record, schema, headers, metadataSource, jsonHeaderConverter);
+        }
+
+        RecordParser parser = provider.createParser(recordAndMetadata);
+
         CloudEventsMaker maker = provider.createMaker(parser, dataSerializerType,
-                (schemaRegistryUrls == null) ? null : String.join(",", schemaRegistryUrls));
+                (schemaRegistryUrls == null) ? null : String.join(",", schemaRegistryUrls), cloudEventsSchemaName);
 
         if (ceSerializerType == SerializerType.JSON) {
             if (dataSerializerType == SerializerType.JSON) {
@@ -261,13 +333,24 @@ public class CloudEventsConverter implements Converter {
     /**
      * Lookup the CloudEventsProvider implementation for the source connector.
      */
-    private static CloudEventsProvider lookupCloudEventsProvider(Struct record) {
-        String connectorType = record.getStruct(Envelope.FieldName.SOURCE).getString(AbstractSourceInfo.DEBEZIUM_CONNECTOR_KEY);
+    private static CloudEventsProvider lookupCloudEventsProvider(Struct source) {
+        String connectorType = source.getString(AbstractSourceInfo.DEBEZIUM_CONNECTOR_KEY);
         CloudEventsProvider provider = providers.get(connectorType);
         if (provider != null) {
             return provider;
         }
         throw new DataException("No usable CloudEvents converters for connector type \"" + connectorType + "\"");
+    }
+
+    private Struct getSource(Struct record, Headers headers) {
+        if (this.metadataSource.global() == MetadataSourceValue.VALUE) {
+            return record.getStruct(Envelope.FieldName.SOURCE);
+        }
+        else {
+            Header header = headers.lastHeader(Envelope.FieldName.SOURCE);
+            SchemaAndValue sav = jsonHeaderConverter.toConnectData(null, header.value());
+            return (Struct) sav.value();
+        }
     }
 
     /**
@@ -283,7 +366,7 @@ public class CloudEventsConverter implements Converter {
 
     /**
      * Obtains the schema id from the given Avro record. They are prefixed by one magic byte,
-     * followed by an int for the schem id.
+     * followed by an int for the schema id.
      */
     private String getSchemaIdFromAvroMessage(byte[] serializedData) {
         return String.valueOf(ByteBuffer.wrap(serializedData, 1, 5).getInt());
@@ -293,50 +376,27 @@ public class CloudEventsConverter implements Converter {
     public SchemaAndValue toConnectData(String topic, byte[] value) {
         switch (ceSerializerType) {
             case JSON:
-                JsonNode jsonValue;
-
                 try {
-                    jsonValue = jsonDeserializer.deserialize(topic, value);
-                    byte[] data = jsonValue.get(CloudEventsMaker.FieldName.DATA).binaryValue();
-                    SchemaAndValue dataField = reconvertData(topic, data, dataSerializerType, enableJsonSchemas);
-                    Schema incompleteSchema = jsonCloudEventsConverter.asConnectSchema(jsonValue);
-                    SchemaBuilder builder = SchemaBuilder.struct();
+                    // JSON Cloud Events converter always disables schema.
+                    // The conversion back thus must be schemaless.
+                    // If data are in schema/payload envelope they are extracted
+                    final SchemaAndValue connectData = jsonCloudEventsConverter.toConnectData(topic, value);
+                    cloudEventsValidator.verifyIsCloudEvent(connectData);
 
-                    for (Field ceField : incompleteSchema.fields()) {
-                        if (ceField.name().equals(CloudEventsMaker.FieldName.DATA)) {
-                            builder.field(ceField.name(), dataField.schema());
-                        }
-                        else {
-                            builder.field(ceField.name(), ceField.schema());
-                        }
-                    }
-                    builder.name(incompleteSchema.name());
-                    builder.version(incompleteSchema.version());
-                    builder.doc(incompleteSchema.doc());
-                    for (Map.Entry<String, String> entry : incompleteSchema.parameters().entrySet()) {
-                        builder.parameter(entry.getKey(), entry.getValue());
-                    }
-                    Schema schema = builder.build();
+                    final JsonNode jsonValue = jsonDeserializer.deserialize(topic, value);
+                    SchemaAndValue dataField = reconvertData(topic, jsonValue.get(CloudEventsMaker.FieldName.DATA), dataSerializerType, enableJsonSchemas);
+                    ((Map<String, Object>) connectData.value()).put("data", dataField.value());
 
-                    Struct incompleteStruct = (Struct) CONVERT_TO_CONNECT_METHOD.invoke(jsonCloudEventsConverter, incompleteSchema, jsonValue);
-                    Struct struct = new Struct(schema);
-
-                    for (Field ceField : incompleteSchema.fields()) {
-                        if (ceField.name().equals(CloudEventsMaker.FieldName.DATA)) {
-                            struct.put(ceField, dataField.value());
-                        }
-                        struct.put(ceField, incompleteStruct.get(ceField));
-                    }
-
-                    return new SchemaAndValue(schema, value);
+                    return connectData;
                 }
-                catch (SerializationException | IOException | IllegalAccessException | InvocationTargetException e) {
+                catch (SerializationException e) {
                     throw new DataException("Converting byte[] to Kafka Connect data failed due to serialization error: ", e);
                 }
             case AVRO:
                 // First reconvert the whole CloudEvents
                 // Then reconvert the "data" field
                 SchemaAndValue ceSchemaAndValue = avroConverter.toConnectData(topic, value);
+                cloudEventsValidator.verifyIsCloudEvent(ceSchemaAndValue);
                 Schema incompleteSchema = ceSchemaAndValue.schema();
                 Struct ceValue = (Struct) ceSchemaAndValue.value();
                 byte[] data = ceValue.getBytes(CloudEventsMaker.FieldName.DATA);
@@ -377,39 +437,43 @@ public class CloudEventsConverter implements Converter {
         return SchemaAndValue.NULL;
     }
 
-    private SchemaAndValue reconvertData(String topic, byte[] serializedData, SerializerType dataType, Boolean enableSchemas) {
-        switch (dataType) {
-            case JSON:
-                JsonNode jsonValue;
+    private SchemaAndValue reconvertData(String topic, JsonNode data, SerializerType dataType, Boolean enableSchemas) {
+        try {
+            final byte[] serializedData = data.isBinary() ? data.binaryValue() : null;
+            switch (dataType) {
+                case JSON:
+                    JsonNode jsonValue = data.isBinary() ? jsonDeserializer.deserialize(topic, serializedData) : data;
 
-                try {
-                    jsonValue = jsonDeserializer.deserialize(topic, serializedData);
-                }
-                catch (SerializationException e) {
-                    throw new DataException("Converting byte[] to Kafka Connect data failed due to serialization error: ", e);
-                }
+                    if (!enableSchemas) {
+                        ObjectNode envelope = JsonNodeFactory.instance.objectNode();
+                        envelope.set(CloudEventsMaker.FieldName.SCHEMA_FIELD_NAME, null);
+                        envelope.set(CloudEventsMaker.FieldName.PAYLOAD_FIELD_NAME, jsonValue);
+                        jsonValue = envelope;
+                    }
 
-                if (!enableSchemas) {
-                    ObjectNode envelope = JsonNodeFactory.instance.objectNode();
-                    envelope.set(CloudEventsMaker.FieldName.SCHEMA_FIELD_NAME, null);
-                    envelope.set(CloudEventsMaker.FieldName.PAYLOAD_FIELD_NAME, jsonValue);
-                    jsonValue = envelope;
-                }
+                    Schema schema = jsonCloudEventsConverter.asConnectSchema(jsonValue.get(CloudEventsMaker.FieldName.SCHEMA_FIELD_NAME));
 
-                Schema schema = jsonCloudEventsConverter.asConnectSchema(jsonValue.get(CloudEventsMaker.FieldName.SCHEMA_FIELD_NAME));
-
-                try {
-                    return new SchemaAndValue(
-                            schema,
-                            CONVERT_TO_CONNECT_METHOD.invoke(jsonCloudEventsConverter, schema, jsonValue.get(CloudEventsMaker.FieldName.PAYLOAD_FIELD_NAME)));
-                }
-                catch (IllegalAccessException | InvocationTargetException e) {
-                    throw new DataException(e.getCause());
-                }
-            case AVRO:
-                return avroConverter.toConnectData(topic, serializedData);
-            default:
-                throw new DataException("No such serializer for \"" + dataSerializerType + "\" format");
+                    try {
+                        // Kafka 3.5+ requires additional argument
+                        return new SchemaAndValue(schema,
+                                (CONVERT_TO_CONNECT_METHOD.getParameterCount() == 2)
+                                        ? CONVERT_TO_CONNECT_METHOD.invoke(jsonCloudEventsConverter, schema,
+                                                jsonValue.get(CloudEventsMaker.FieldName.PAYLOAD_FIELD_NAME))
+                                        : CONVERT_TO_CONNECT_METHOD.invoke(jsonCloudEventsConverter, schema,
+                                                jsonValue.get(CloudEventsMaker.FieldName.PAYLOAD_FIELD_NAME),
+                                                jsonCloudEventsConverterConfig));
+                    }
+                    catch (IllegalAccessException | InvocationTargetException e) {
+                        throw new DataException(e.getCause());
+                    }
+                case AVRO:
+                    return avroConverter.toConnectData(topic, serializedData);
+                default:
+                    throw new DataException("No such serializer for \"" + dataSerializerType + "\" format");
+            }
+        }
+        catch (IOException e) {
+            throw new DataException("Converting byte[] to Kafka Connect data failed due to serialization error: ", e);
         }
     }
 
@@ -420,7 +484,7 @@ public class CloudEventsConverter implements Converter {
 
         // construct schema of CloudEvents envelope
         CESchemaBuilder ceSchemaBuilder = defineSchema()
-                .withName(schemaNameAdjuster.adjust(maker.ceEnvelopeSchemaName()))
+                .withName(schemaNameAdjuster.adjust(maker.ceSchemaName()))
                 .withSchema(CloudEventsMaker.FieldName.ID, Schema.STRING_SCHEMA)
                 .withSchema(CloudEventsMaker.FieldName.SOURCE, Schema.STRING_SCHEMA)
                 .withSchema(CloudEventsMaker.FieldName.SPECVERSION, Schema.STRING_SCHEMA)
@@ -432,35 +496,39 @@ public class CloudEventsConverter implements Converter {
             ceSchemaBuilder.withSchema(CloudEventsMaker.FieldName.DATASCHEMA, Schema.STRING_SCHEMA);
         }
 
-        ceSchemaBuilder.withSchema(adjustExtensionName(Envelope.FieldName.OPERATION), Schema.STRING_SCHEMA);
-
-        ceSchemaFromSchema(sourceSchema, ceSchemaBuilder, CloudEventsConverter::adjustExtensionName, false);
-
-        // transaction attributes
-        ceSchemaFromSchema(TransactionMonitor.TRANSACTION_BLOCK_SCHEMA, ceSchemaBuilder, CloudEventsConverter::txExtensionName, true);
+        if (this.extensionAttributesEnable) {
+            ceSchemaBuilder.withSchema(adjustExtensionName(Envelope.FieldName.OPERATION), Schema.STRING_SCHEMA);
+            ceSchemaFromSchema(sourceSchema, ceSchemaBuilder, CloudEventsConverter::adjustExtensionName, false);
+            // transaction attributes
+            ceSchemaFromSchema(TransactionMonitor.TRANSACTION_BLOCK_SCHEMA, ceSchemaBuilder, CloudEventsConverter::txExtensionName, true);
+        }
 
         ceSchemaBuilder.withSchema(CloudEventsMaker.FieldName.DATA, dataSchemaType);
 
         Schema ceSchema = ceSchemaBuilder.build();
 
+        String ceId = this.metadataSource.id() == MetadataSourceValue.GENERATE ? maker.ceId() : parser.id();
+        String ceType = this.metadataSource.type() == MetadataSourceValue.GENERATE ? maker.ceType() : parser.type();
+
         // construct value of CloudEvents Envelope
         CEValueBuilder ceValueBuilder = withValue(ceSchema)
-                .withValue(CloudEventsMaker.FieldName.ID, maker.ceId())
+                .withValue(CloudEventsMaker.FieldName.ID, ceId)
                 .withValue(CloudEventsMaker.FieldName.SOURCE, maker.ceSource(source.getString("name")))
                 .withValue(CloudEventsMaker.FieldName.SPECVERSION, maker.ceSpecversion())
-                .withValue(CloudEventsMaker.FieldName.TYPE, maker.ceType())
+                .withValue(CloudEventsMaker.FieldName.TYPE, ceType)
                 .withValue(CloudEventsMaker.FieldName.TIME, maker.ceTime())
                 .withValue(CloudEventsMaker.FieldName.DATACONTENTTYPE, maker.ceDatacontenttype());
+
         if (dataSchema != null) {
             ceValueBuilder.withValue(CloudEventsMaker.FieldName.DATASCHEMA, dataSchema);
         }
 
-        ceValueBuilder.withValue(adjustExtensionName(Envelope.FieldName.OPERATION), parser.op());
-
-        ceValueFromStruct(source, sourceSchema, ceValueBuilder, CloudEventsConverter::adjustExtensionName);
-
-        if (transaction != null) {
-            ceValueFromStruct(transaction, TransactionMonitor.TRANSACTION_BLOCK_SCHEMA, ceValueBuilder, CloudEventsConverter::txExtensionName);
+        if (this.extensionAttributesEnable) {
+            ceValueBuilder.withValue(adjustExtensionName(Envelope.FieldName.OPERATION), parser.op());
+            ceValueFromStruct(source, sourceSchema, ceValueBuilder, CloudEventsConverter::adjustExtensionName);
+            if (transaction != null) {
+                ceValueFromStruct(transaction, TransactionMonitor.TRANSACTION_BLOCK_SCHEMA, ceValueBuilder, CloudEventsConverter::txExtensionName);
+            }
         }
 
         ceValueBuilder.withValue(CloudEventsMaker.FieldName.DATA, serializedData);

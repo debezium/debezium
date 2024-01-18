@@ -22,10 +22,10 @@ import io.debezium.data.Uuid;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.data.Xml;
 import io.debezium.heartbeat.HeartbeatImpl;
+import io.debezium.pipeline.notification.Notification;
 import io.debezium.pipeline.txmetadata.TransactionMonitor;
 import io.debezium.relational.history.ConnectTableChangeSerializer;
 import io.debezium.relational.history.HistoryRecord;
-import io.debezium.util.SchemaNameAdjuster;
 
 /**
  * A factory for creating {@link SchemaBuilder} structs.
@@ -79,6 +79,24 @@ public class SchemaFactory {
     private static final String SCHEMA_HISTORY_CHANGE_SCHEMA_NAME = "io.debezium.connector.schema.Change";
     private static final int SCHEMA_HISTORY_CHANGE_SCHEMA_VERSION = 1;
 
+    /*
+     * Source schema block's schemas
+     */
+    private static final String SOURCE_SCHEMA_NAME = "io.debezium.connector.source.Schema";
+    private static final Integer SOURCE_SCHEMA_VERSION = 1;
+    private static final String SOURCE_SCHEMA_TABLE_SCHEMA_NAME = "io.debezium.connector.source.schema.Table";
+    private static final Integer SOURCE_SCHEMA_TABLE_SCHEMA_VERSION = 1;
+    private static final String SOURCE_SCHEMA_COLUMN_SCHEMA_NAME = "io.debezium.connector.source.schema.Column";
+    private static final Integer SOURCE_SCHEMA_COLUMN_SCHEMA_VERSION = 1;
+
+    /*
+     * Notification schemas
+     */
+    private static final String NOTIFICATION_KEY_SCHEMA_NAME = "io.debezium.connector.common.NotificationKey";
+    private static final Integer NOTIFICATION_KEY_SCHEMA_VERSION = 1;
+    private static final String NOTIFICATION_VALUE_SCHEMA_NAME = "io.debezium.connector.common.Notification";
+    private static final Integer NOTIFICATION_VALUE_SCHEMA_VERSION = 1;
+
     private static final SchemaFactory schemaFactoryObject = new SchemaFactory();
 
     public SchemaFactory() {
@@ -86,6 +104,14 @@ public class SchemaFactory {
 
     public static SchemaFactory get() {
         return schemaFactoryObject;
+    }
+
+    public boolean isSchemaChangeSchema(Schema schema) {
+        if (schema != null && schema.name() != null) {
+            return schema.name().endsWith(SCHEMA_HISTORY_CONNECTOR_VALUE_SCHEMA_NAME_SUFFIX) ||
+                    schema.name().endsWith(SCHEMA_HISTORY_CONNECTOR_KEY_SCHEMA_NAME_SUFFIX);
+        }
+        return false;
     }
 
     public Schema heartbeatKeySchema(SchemaNameAdjuster adjuster) {
@@ -174,6 +200,7 @@ public class SchemaFactory {
                 .field(ConnectTableChangeSerializer.PRIMARY_KEY_COLUMN_NAMES_KEY, SchemaBuilder.array(Schema.STRING_SCHEMA).optional().build())
                 .field(ConnectTableChangeSerializer.COLUMNS_KEY, SchemaBuilder.array(schemaHistoryColumnSchema(adjuster)).build())
                 .field(ConnectTableChangeSerializer.COMMENT_KEY, Schema.OPTIONAL_STRING_SCHEMA)
+                .optional()
                 .build();
     }
 
@@ -207,6 +234,55 @@ public class SchemaFactory {
                 .field(HistoryRecord.Fields.SCHEMA_NAME, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(HistoryRecord.Fields.DDL_STATEMENTS, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(HistoryRecord.Fields.TABLE_CHANGES, SchemaBuilder.array(serializer.getChangeSchema()).build())
+                .build();
+    }
+
+    public Schema sourceSchemaBlockSchema(SchemaNameAdjuster adjuster) {
+        return SchemaBuilder.struct()
+                .name(adjuster.adjust(SOURCE_SCHEMA_NAME))
+                .version(SOURCE_SCHEMA_VERSION)
+                .field(ConnectTableChangeSerializer.ID_KEY, Schema.STRING_SCHEMA)
+                .field(ConnectTableChangeSerializer.TABLE_KEY, sourceSchemaBlockTableSchema(adjuster))
+                .build();
+    }
+
+    public Schema sourceSchemaBlockTableSchema(SchemaNameAdjuster adjuster) {
+        return SchemaBuilder.struct()
+                .name(SOURCE_SCHEMA_TABLE_SCHEMA_NAME)
+                .version(SOURCE_SCHEMA_TABLE_SCHEMA_VERSION)
+                .field(ConnectTableChangeSerializer.COLUMNS_KEY, SchemaBuilder.array(sourceSchemaBlockColumnSchema(adjuster)).build())
+                .build();
+    }
+
+    public Schema sourceSchemaBlockColumnSchema(SchemaNameAdjuster adjuster) {
+        return SchemaBuilder.struct()
+                .name(adjuster.adjust(SOURCE_SCHEMA_COLUMN_SCHEMA_NAME))
+                .version(SOURCE_SCHEMA_COLUMN_SCHEMA_VERSION)
+                .field(ConnectTableChangeSerializer.NAME_KEY, Schema.STRING_SCHEMA)
+                .field(ConnectTableChangeSerializer.TYPE_NAME_KEY, Schema.STRING_SCHEMA)
+                .field(ConnectTableChangeSerializer.LENGTH_KEY, Schema.OPTIONAL_INT32_SCHEMA)
+                .field(ConnectTableChangeSerializer.SCALE_KEY, Schema.OPTIONAL_INT32_SCHEMA)
+                .field(ConnectTableChangeSerializer.COMMENT_KEY, Schema.OPTIONAL_STRING_SCHEMA)
+                .build();
+    }
+
+    public Schema notificationKeySchema(SchemaNameAdjuster adjuster) {
+        return SchemaBuilder.struct()
+                .name(adjuster.adjust(NOTIFICATION_KEY_SCHEMA_NAME))
+                .version(NOTIFICATION_KEY_SCHEMA_VERSION)
+                .field(Notification.ID_KEY, Schema.STRING_SCHEMA)
+                .build();
+    }
+
+    public Schema notificationValueSchema(SchemaNameAdjuster adjuster) {
+        return SchemaBuilder.struct()
+                .name(adjuster.adjust(NOTIFICATION_VALUE_SCHEMA_NAME))
+                .version(NOTIFICATION_VALUE_SCHEMA_VERSION)
+                .field(Notification.ID_KEY, SchemaBuilder.STRING_SCHEMA)
+                .field(Notification.TYPE, Schema.STRING_SCHEMA)
+                .field(Notification.AGGREGATE_TYPE, Schema.STRING_SCHEMA)
+                .field(Notification.ADDITIONAL_DATA, SchemaBuilder.map(Schema.STRING_SCHEMA, Schema.STRING_SCHEMA).optional().build())
+                .field(Notification.TIMESTAMP, Schema.INT64_SCHEMA)
                 .build();
     }
 

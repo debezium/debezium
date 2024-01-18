@@ -15,6 +15,7 @@ import io.debezium.testing.system.fixtures.OcpClient;
 import io.debezium.testing.system.fixtures.connectors.MongoConnector;
 import io.debezium.testing.system.fixtures.databases.ocp.OcpMongo;
 import io.debezium.testing.system.fixtures.kafka.OcpKafka;
+import io.debezium.testing.system.fixtures.operator.OcpStrimziOperator;
 import io.debezium.testing.system.tools.kafka.ConnectorConfigBuilder;
 import io.debezium.testing.system.tools.kafka.KafkaConnectController;
 import io.debezium.testing.system.tools.kafka.KafkaController;
@@ -26,7 +27,9 @@ import fixture5.annotations.Fixture;
 @Tag("acceptance")
 @Tag("mongo")
 @Tag("openshift")
+@Tag("mongo-replica")
 @Fixture(OcpClient.class)
+@Fixture(OcpStrimziOperator.class)
 @Fixture(OcpKafka.class)
 @Fixture(OcpMongo.class)
 @Fixture(MongoConnector.class)

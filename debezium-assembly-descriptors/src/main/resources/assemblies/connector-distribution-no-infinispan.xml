@@ -27,7 +27,9 @@
 
               <!-- Exclude Infinispan and dependencies  -->
               <exclude>org.infinispan:infinispan-core:*</exclude>
+              <exclude>org.infinispan:infinispan-core-jakarta:*</exclude>
               <exclude>org.infinispan:infinispan-client-hotrod:*</exclude>
+              <exclude>org.infinispan:infinispan-client-hotrod-jakarta:*</exclude>
 
               <!-- Exclude dependencies with incorrect scope -->
               <exclude>org.checkerframework:checker-qual:*</exclude>

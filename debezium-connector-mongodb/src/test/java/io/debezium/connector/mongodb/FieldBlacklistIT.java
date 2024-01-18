@@ -30,7 +30,6 @@ import io.debezium.util.Testing;
 public class FieldBlacklistIT extends AbstractMongoConnectorIT {
 
     private static final String SERVER_NAME = "serverX";
-    private static final String PATCH = MongoDbFieldName.PATCH;
 
     public static class ExpectedUpdate {
 
@@ -219,6 +218,21 @@ public class FieldBlacklistIT extends AbstractMongoConnectorIT {
                 .append("scores", Arrays.asList(1.2, 3.4, 5.6));
 
         assertInsertRecord("*.c1.address.missing", obj, AFTER, obj.toJson(COMPACT_JSON_SETTINGS));
+    }
+
+    @Test
+    public void shouldExcludeFiledWhenParentIsRemoved() throws InterruptedException {
+        ObjectId objId = new ObjectId();
+        Document obj = new Document()
+                .append("_id", objId)
+                .append("name", "Bob")
+                .append("contact", new Document("email", "thebob@example.com"));
+
+        Document updateObj = new Document("contact", "");
+
+        var full = "{\"_id\": {\"$oid\": \"<OID>\"},\"name\": \"Bob\"}";
+        var expectedUpdate = new ExpectedUpdate(null, full, "{}", null);
+        assertUpdateRecord("*.c1.contact.email", objId, obj, updateObj, false, updateField(), expectedUpdate);
     }
 
     @Test
@@ -1385,7 +1399,7 @@ public class FieldBlacklistIT extends AbstractMongoConnectorIT {
         config = getConfiguration("*.c1.name,*.c1.active");
         context = new MongoDbTaskContext(config);
 
-        TestHelper.cleanDatabase(primary(), "dbA");
+        TestHelper.cleanDatabase(mongo, "dbA");
 
         ObjectId objId = new ObjectId();
         Document obj = new Document("_id", objId);
@@ -1411,9 +1425,6 @@ public class FieldBlacklistIT extends AbstractMongoConnectorIT {
         Struct value = getValue(record);
 
         String json = value.getString(AFTER);
-        if (json == null) {
-            json = value.getString(PATCH);
-        }
 
         assertThat(json).isNull();
     }
@@ -1423,7 +1434,7 @@ public class FieldBlacklistIT extends AbstractMongoConnectorIT {
         config = getConfiguration("*.c1.name,*.c1.active");
         context = new MongoDbTaskContext(config);
 
-        TestHelper.cleanDatabase(primary(), "dbA");
+        TestHelper.cleanDatabase(mongo, "dbA");
 
         ObjectId objId = new ObjectId();
         Document obj = new Document("_id", objId);
@@ -1452,7 +1463,7 @@ public class FieldBlacklistIT extends AbstractMongoConnectorIT {
     }
 
     private Configuration getConfiguration(String excludeList) {
-        return TestHelper.getConfiguration().edit()
+        return TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.FIELD_EXCLUDE_LIST, excludeList)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbA.c1")
                 .with(CommonConnectorConfig.TOPIC_PREFIX, SERVER_NAME)
@@ -1464,9 +1475,9 @@ public class FieldBlacklistIT extends AbstractMongoConnectorIT {
     }
 
     private void storeDocuments(String dbName, String collectionName, Document... documents) {
-        primary().execute("store documents", mongo -> {
+        try (var client = connect()) {
             Testing.debug("Storing in '" + dbName + "." + collectionName + "' document");
-            MongoDatabase db = mongo.getDatabase(dbName);
+            MongoDatabase db = client.getDatabase(dbName);
             MongoCollection<Document> coll = db.getCollection(collectionName);
             coll.drop();
 
@@ -1476,32 +1487,32 @@ public class FieldBlacklistIT extends AbstractMongoConnectorIT {
                 assertThat(document.size()).isGreaterThan(0);
                 coll.insertOne(document, insertOptions);
             }
-        });
+        }
     }
 
     private void updateDocuments(String dbName, String collectionName, ObjectId objId, Document document, boolean doSet) {
-        primary().execute("update", mongo -> {
-            MongoDatabase db = mongo.getDatabase(dbName);
+        try (var client = connect()) {
+            MongoDatabase db = client.getDatabase(dbName);
             MongoCollection<Document> coll = db.getCollection(collectionName);
             Document filter = Document.parse("{\"_id\": {\"$oid\": \"" + objId + "\"}}");
             coll.updateOne(filter, new Document().append(doSet ? "$set" : "$unset", document));
-        });
+        }
     }
 
     private void deleteDocuments(String dbName, String collectionName, ObjectId objId) {
-        primary().execute("delete", mongo -> {
-            MongoDatabase db = mongo.getDatabase(dbName);
+        try (var client = connect()) {
+            MongoDatabase db = client.getDatabase(dbName);
             MongoCollection<Document> coll = db.getCollection(collectionName);
             Document filter = Document.parse("{\"_id\": {\"$oid\": \"" + objId + "\"}}");
             coll.deleteOne(filter);
-        });
+        }
     }
 
     private void assertReadRecord(String blackList, Document snapshotRecord, String field, String expected) throws InterruptedException {
         config = getConfiguration(blackList);
         context = new MongoDbTaskContext(config);
 
-        TestHelper.cleanDatabase(primary(), "dbA");
+        TestHelper.cleanDatabase(mongo, "dbA");
         storeDocuments("dbA", "c1", snapshotRecord);
 
         start(MongoDbConnector.class, config);
@@ -1520,7 +1531,7 @@ public class FieldBlacklistIT extends AbstractMongoConnectorIT {
         config = getConfiguration(blackList);
         context = new MongoDbTaskContext(config);
 
-        TestHelper.cleanDatabase(primary(), "dbA");
+        TestHelper.cleanDatabase(mongo, "dbA");
 
         start(MongoDbConnector.class, config);
         waitForSnapshotToBeCompleted("mongodb", SERVER_NAME);
@@ -1550,7 +1561,7 @@ public class FieldBlacklistIT extends AbstractMongoConnectorIT {
         config = getConfiguration(blackList);
         context = new MongoDbTaskContext(config);
 
-        TestHelper.cleanDatabase(primary(), "dbA");
+        TestHelper.cleanDatabase(mongo, "dbA");
 
         storeDocuments("dbA", "c1", snapshotRecord);
 

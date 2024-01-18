@@ -25,6 +25,7 @@ public class SourceInfo extends BaseSourceInfo {
     public static final String LCR_POSITION_KEY = "lcr_position";
     public static final String SNAPSHOT_KEY = "snapshot";
     public static final String USERNAME_KEY = "user_name";
+    public static final String SCN_INDEX_KEY = "scn_idx";
 
     private Scn scn;
     private CommitScn commitScn;
@@ -36,7 +37,8 @@ public class SourceInfo extends BaseSourceInfo {
     private Set<TableId> tableIds;
     private Integer redoThread;
     private String rsId;
-    private int ssn;
+    private long ssn;
+    private Long scnIndex;
 
     protected SourceInfo(OracleConnectorConfig connectorConfig) {
         super(connectorConfig);
@@ -98,11 +100,11 @@ public class SourceInfo extends BaseSourceInfo {
         this.rsId = rsId;
     }
 
-    public int getSsn() {
+    public long getSsn() {
         return ssn;
     }
 
-    public void setSsn(int ssn) {
+    public void setSsn(long ssn) {
         this.ssn = ssn;
     }
 
@@ -115,7 +117,7 @@ public class SourceInfo extends BaseSourceInfo {
     }
 
     public String tableSchema() {
-        return tableIds.isEmpty() ? null
+        return (tableIds == null || tableIds.isEmpty()) ? null
                 : tableIds.stream()
                         .filter(x -> x != null)
                         .map(TableId::schema)
@@ -124,7 +126,7 @@ public class SourceInfo extends BaseSourceInfo {
     }
 
     public String table() {
-        return tableIds.isEmpty() ? null
+        return (tableIds == null || tableIds.isEmpty()) ? null
                 : tableIds.stream()
                         .filter(x -> x != null)
                         .map(TableId::table)
@@ -147,6 +149,14 @@ public class SourceInfo extends BaseSourceInfo {
         this.redoThread = redoThread;
     }
 
+    public Long getScnIndex() {
+        return scnIndex;
+    }
+
+    public void setScnIndex(Long scnIndex) {
+        this.scnIndex = scnIndex;
+    }
+
     @Override
     protected Instant timestamp() {
         return sourceTime;
@@ -154,6 +164,6 @@ public class SourceInfo extends BaseSourceInfo {
 
     @Override
     protected String database() {
-        return tableIds.iterator().next().catalog();
+        return (tableIds != null) ? tableIds.iterator().next().catalog() : null;
     }
 }

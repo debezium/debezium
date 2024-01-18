@@ -7,6 +7,7 @@ package io.debezium.connector.common;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Map;
 import java.util.function.Supplier;
 
 import org.apache.kafka.connect.source.SourceTask;
@@ -27,6 +28,7 @@ public class CdcSourceTaskContext {
     private final String connectorType;
     private final String connectorName;
     private final String taskId;
+    private final Map<String, String> customMetricTags;
     private final Clock clock;
 
     /**
@@ -34,17 +36,25 @@ public class CdcSourceTaskContext {
      */
     private final Supplier<Collection<? extends DataCollectionId>> collectionsSupplier;
 
-    public CdcSourceTaskContext(String connectorType, String connectorName, String taskId, Supplier<Collection<? extends DataCollectionId>> collectionsSupplier) {
+    public CdcSourceTaskContext(String connectorType,
+                                String connectorName,
+                                String taskId,
+                                Map<String, String> customMetricTags,
+                                Supplier<Collection<? extends DataCollectionId>> collectionsSupplier) {
         this.connectorType = connectorType;
         this.connectorName = connectorName;
         this.taskId = taskId;
+        this.customMetricTags = customMetricTags;
         this.collectionsSupplier = collectionsSupplier != null ? collectionsSupplier : Collections::emptyList;
 
         this.clock = Clock.system();
     }
 
-    public CdcSourceTaskContext(String connectorType, String connectorName, Supplier<Collection<? extends DataCollectionId>> collectionsSupplier) {
-        this(connectorType, connectorName, "0", collectionsSupplier);
+    public CdcSourceTaskContext(String connectorType,
+                                String connectorName,
+                                Map<String, String> customMetricTags,
+                                Supplier<Collection<? extends DataCollectionId>> collectionsSupplier) {
+        this(connectorType, connectorName, "0", customMetricTags, collectionsSupplier);
     }
 
     /**
@@ -99,5 +109,9 @@ public class CdcSourceTaskContext {
 
     public String getTaskId() {
         return taskId;
+    }
+
+    public Map<String, String> getCustomMetricTags() {
+        return customMetricTags;
     }
 }

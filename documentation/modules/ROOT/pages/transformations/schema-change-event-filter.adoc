@@ -1,0 +1,157 @@
+:page-aliases: configuration/schema-change-event-filter.adoc
+// Category: debezium-using
+// Type: assembly
+// ModuleID: filtering-debezium-schema-change-event-records
+// Title: Filtering {prodname} schema change event records
+[id="schema-change-event-filter"]
+= SchemaChangeEventFilter
+ifdef::community[]
+:toc:
+:toc-placement: macro
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+
+toc::[]
+endif::community[]
+Use the `SchemaChangeEventFilter` single message transformation (SMT) to filter schema change events that the connector captures from a table and sends to Kafka.
+After you enable the SMT, the connector synchronizes only the unfiltered DDL events to Kafka, giving you control over which DDL operations are exposed to consuming applications.
+
+// Type: concept
+[[schema-change-event-filter-configuration]]
+== Schema change event filter configuration
+To use the transformation, add the `SchemaChangeEventFilter` to the connector configuration, and specify the types of events that you want to remove.
+The following excerpt from a connector configuration shows how you would add the transformation to the connector and set it to remove `DROP` and `TRUNCATE` events from the DDL messages that the connector captures.
+[[example-configuration-schema-change-event-filter]]
+.Schema change event filter configuration to remove `DROP` and `TRUNCATE` events
+
+[source]
+----
+transforms=filterTableDropAndTruncateEvent
+transforms.filterTableDropAndTruncateEvent.type=io.debezium.transforms.SchemaChangeEventFilter
+transforms.filterTableDropAndTruncateEvent.schema.change.event.exclude.list=DROP,TRUNCATE
+----
+
+For more information about configuring the transformation, see the xref:schema-change-event-filter-configuration-options[schema change event filter configuration options].
+
+// Type: concept
+[[schema-change-event-filter-effect-of-applying-the-schemachangeeventfilter-smt]]
+== Effect of applying the `SchemaChangeEventFilter` SMT
+After you configure the SMT for a connector, whenever the connector captures  schema change events that match the xref:schema-change-event-exclude-list[configured types], it resets the values for those events to `null`.
+The connector does not send events with the resulting `null` values to Kafka.
+
+The following examples shows a xref:schema-change-event-filter-example-before-processing[schema change event record before it is processed] by the SMT, followed by the xref:schema-change-event-filter-example-after-processing[output after the SMT filters the event].
+
+[[schema-change-event-filter-example-before-processing]]
+.Schema change event record before it is processed by the `SchemaChangeEventFilter` transformation
+====
+[source,json,indent=0]
+----
+{
+    "schema":{
+        "type":"struct",
+        "fields":[
+            {
+                "type":"int64",
+                "optional":false,
+                "field":"ts_ms"
+            },
+            {
+                "type":"string",
+                "optional":true,
+                "field":"databaseName"
+            },
+            {
+                "type":"string",
+                "optional":true,
+                "field":"schemaName"
+            },
+            {
+                "type":"string",
+                "optional":true,
+                "field":"ddl"
+            },
+            {
+                "type":"array",
+                "items":{
+                    "type":"struct",
+                    "fields":[
+                        {
+                            "type":"string",
+                            "optional":false,
+                            "field":"type"
+                        },
+                        {
+                            "type":"string",
+                            "optional":false,
+                            "field":"id"
+                        }
+                    ],
+                    "optional":false,
+                    "name":"io.debezium.connector.schema.Change"
+                },
+                "optional":false,
+                "field":"tableChanges"
+            }
+        ],
+        "optional":false,
+        "name":"filter.SchemaChangeValue"
+    },
+    "payload":{
+        "ts_ms":1691035505397,
+        "databaseName":"test",
+        "schemaName":"test_schema",
+        "ddl":"",
+        "tableChanges":[
+            {
+                "type":"DROP",
+                "id":"test.table"
+            }
+        ]
+    }
+}
+----
+
+====
+
+Based on the earlier xref:example-configuration-schema-change-event-filter[configuration example], after the SMT processes the xref:schema-change-event-filter-example-before-processing[original schema change event], it resets the values for the `DROP` event to `null`, as shown in the following example:
+
+[[schema-change-event-filter-example-after-processing]]
+.Schema change event record after processing by the SMT
+====
+
+[source]
+----
+null
+----
+====
+
+// Type: reference
+[[schema-change-event-filter-configuration-options]]
+== Configuration options
+
+The following table lists the configuration options that you can use with the `SchemaChangeEventFilter` SMT.
+
+.SchemaChangeEventFilter SMT configuration options
+[cols="14%a,40%a,10%a, 16%a, 16%a"]
+|===
+|Property
+|Description
+|Type
+|Default
+|Valid values
+
+|[[schema-change-event-exclude-list]]<<schema-change-event-exclude-list, `schema.change.event.exclude.list`>>
+|A comma-separated list of schema change events to filter.
+Specify one or more of the following options:
+
+* `CREATE`
+* `ALTER`
+* `DROP`
+* `TRUNCATE`
+* `DATABASE`
+
+|String
+|No default value
+|Non-empty string
+|===

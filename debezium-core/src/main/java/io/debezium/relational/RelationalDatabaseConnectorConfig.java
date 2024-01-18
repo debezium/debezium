@@ -17,6 +17,8 @@ import java.util.regex.Pattern;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigDefinition;
@@ -37,8 +39,11 @@ import io.debezium.relational.Selectors.TableIdToStringMapper;
 import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.ColumnNameFilterFactory;
 import io.debezium.relational.Tables.TableFilter;
+import io.debezium.schema.FieldNameSelector;
+import io.debezium.schema.FieldNameSelector.FieldNamer;
+import io.debezium.schema.SchemaNameAdjuster;
+import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.spi.topic.TopicNamingStrategy;
-import io.debezium.util.SchemaNameAdjuster;
 import io.debezium.util.Strings;
 
 /**
@@ -48,15 +53,14 @@ import io.debezium.util.Strings;
  */
 public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorConfig {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(RelationalDatabaseConnectorConfig.class);
+
     protected static final String SCHEMA_INCLUDE_LIST_NAME = "schema.include.list";
     protected static final String SCHEMA_EXCLUDE_LIST_NAME = "schema.exclude.list";
     protected static final String DATABASE_INCLUDE_LIST_NAME = "database.include.list";
     protected static final String DATABASE_EXCLUDE_LIST_NAME = "database.exclude.list";
     protected static final String TABLE_EXCLUDE_LIST_NAME = "table.exclude.list";
     protected static final String TABLE_INCLUDE_LIST_NAME = "table.include.list";
-
-    protected static final Pattern SERVER_NAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_.\\-]+$");
-
     public static final String TABLE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"table.include.list\" is already specified";
     public static final String COLUMN_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"column.include.list\" is already specified";
     public static final String SCHEMA_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"schema.include.list\" is already specified";
@@ -64,6 +68,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
     public static final long DEFAULT_SNAPSHOT_LOCK_TIMEOUT_MILLIS = TimeUnit.SECONDS.toMillis(10);
     public static final String DEFAULT_UNAVAILABLE_VALUE_PLACEHOLDER = "__debezium_unavailable_value";
+    public static final Pattern HOSTNAME_PATTERN = Pattern.compile("^[a-zA-Z0-9-_.]+$");
 
     /**
      * The set of predefined DecimalHandlingMode options or aliases.
@@ -145,6 +150,60 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         }
     }
 
+    /**
+     * The set of predefined DecimalHandlingMode options or aliases.
+     */
+    public enum SnapshotTablesRowCountOrder implements EnumeratedValue {
+        ASCENDING("ascending"),
+        DESCENDING("descending"),
+        DISABLED("disabled");
+
+        private final String value;
+
+        SnapshotTablesRowCountOrder(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static SnapshotTablesRowCountOrder parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (SnapshotTablesRowCountOrder option : SnapshotTablesRowCountOrder.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static SnapshotTablesRowCountOrder parse(String value, String defaultValue) {
+            SnapshotTablesRowCountOrder mode = parse(value);
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+            return mode;
+        }
+    }
+
     public static final Field HOSTNAME = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.HOSTNAME)
             .withDisplayName("Hostname")
             .withType(Type.STRING)
@@ -152,6 +211,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.HIGH)
             .required()
+            .withValidation(RelationalDatabaseConnectorConfig::validateHostname)
             .withDescription("Resolvable hostname or IP address of the database server.");
 
     public static final Field PORT = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.PORT)
@@ -464,6 +524,15 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withDescription("Specify the constant that will be provided by Debezium to indicate that " +
                     "the original value is unavailable and not provided by the database.");
 
+    public static final Field SNAPSHOT_TABLES_ORDER_BY_ROW_COUNT = Field.create("snapshot.tables.order.by.row.count")
+            .withDisplayName("Initial snapshot tables order by row count")
+            .withEnum(SnapshotTablesRowCountOrder.class, SnapshotTablesRowCountOrder.DISABLED)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 111))
+            .withDescription("Controls the order in which tables are processed in the initial snapshot. "
+                    + "A `descending` value will order the tables by row count descending. "
+                    + "A `ascending` value will order the tables by row count ascending. "
+                    + "A value of `disabled` (the default) will disable ordering by row count.");
+
     protected static final ConfigDefinition CONFIG_DEFINITION = CommonConnectorConfig.CONFIG_DEFINITION.edit()
             .type(
                     CommonConnectorConfig.TOPIC_PREFIX)
@@ -489,6 +558,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
                     PROPAGATE_COLUMN_SOURCE_TYPE,
                     PROPAGATE_DATATYPE_SOURCE_TYPE,
                     SNAPSHOT_FULL_COLUMN_SCAN_FORCE,
+                    SNAPSHOT_TABLES_ORDER_BY_ROW_COUNT,
                     DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY)
             .create();
 
@@ -500,6 +570,8 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     private final TableIdToStringMapper tableIdMapper;
     private final JdbcConfiguration jdbcConfig;
     private final String heartbeatActionQuery;
+    private final FieldNamer<Column> fieldNamer;
+    private final SnapshotTablesRowCountOrder snapshotOrderByRowCount;
 
     protected RelationalDatabaseConnectorConfig(Configuration config, TableFilter systemTablesFilter,
                                                 TableIdToStringMapper tableIdMapper, int defaultSnapshotFetchSize,
@@ -534,6 +606,8 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         }
 
         this.heartbeatActionQuery = config.getString(DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY_PROPERTY_NAME, "");
+        this.fieldNamer = FieldNameSelector.defaultSelector(fieldNameAdjuster());
+        this.snapshotOrderByRowCount = SnapshotTablesRowCountOrder.parse(config.getString(SNAPSHOT_TABLES_ORDER_BY_ROW_COUNT));
     }
 
     public RelationalTableFilters getTableFilters() {
@@ -551,7 +625,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     }
 
     /**
-     * Returns the temporal precision mode mode Enum for {@code time.precision.mode}
+     * Returns the temporal precision mode Enum for {@code time.precision.mode}
      * configuration. This defaults to {@code adaptive} if nothing is provided.
      */
     public TemporalPrecisionMode getTemporalPrecisionMode() {
@@ -607,11 +681,15 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         return columnsFiltered;
     }
 
-    public Boolean isFullColummnScanRequired() {
+    public Boolean isFullColumnScanRequired() {
         return getConfig().getBoolean(SNAPSHOT_FULL_COLUMN_SCAN_FORCE);
     }
 
-    private static int validateColumnExcludeList(Configuration config, Field field, Field.ValidationOutput problems) {
+    public SnapshotTablesRowCountOrder snapshotOrderByRowCount() {
+        return snapshotOrderByRowCount;
+    }
+
+    private static int validateColumnExcludeList(Configuration config, Field field, ValidationOutput problems) {
         String includeList = config.getString(COLUMN_INCLUDE_LIST);
         String excludeList = config.getString(COLUMN_EXCLUDE_LIST);
 
@@ -661,7 +739,8 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     /**
      * Returns any SELECT overrides, if present.
      */
-    public Map<TableId, String> getSnapshotSelectOverridesByTable() {
+    public Map<DataCollectionId, String> getSnapshotSelectOverridesByTable() {
+
         List<String> tableValues = getConfig().getTrimmedStrings(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, ",");
 
         if (tableValues == null) {
@@ -671,9 +750,18 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         Map<TableId, String> snapshotSelectOverridesByTable = new HashMap<>();
 
         for (String table : tableValues) {
+
+            String statementOverride = getConfig().getString(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + table);
+            if (statementOverride == null) {
+                LOGGER.warn("Detected snapshot.select.statement.overrides for {} but no statement property {} defined",
+                        SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + table, table);
+                continue;
+            }
+
             snapshotSelectOverridesByTable.put(
                     TableId.parse(table),
                     getConfig().getString(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + table));
+
         }
 
         return Collections.unmodifiableMap(snapshotSelectOverridesByTable);
@@ -695,7 +783,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         return super.createHeartbeat(topicNamingStrategy, schemaNameAdjuster, connectionProvider, errorHandler);
     }
 
-    private static int validateSchemaExcludeList(Configuration config, Field field, Field.ValidationOutput problems) {
+    private static int validateSchemaExcludeList(Configuration config, Field field, ValidationOutput problems) {
         String includeList = config.getString(SCHEMA_INCLUDE_LIST);
         String excludeList = config.getString(SCHEMA_EXCLUDE_LIST);
 
@@ -716,7 +804,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         return 0;
     }
 
-    private static int validateMessageKeyColumnsField(Configuration config, Field field, Field.ValidationOutput problems) {
+    private static int validateMessageKeyColumnsField(Configuration config, Field field, ValidationOutput problems) {
         String msgKeyColumns = config.getString(MSG_KEY_COLUMNS);
         int problemCount = 0;
 
@@ -734,5 +822,20 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             }
         }
         return problemCount;
+    }
+
+    private static int validateHostname(Configuration config, Field field, ValidationOutput problems) {
+        String hostName = config.getString(field);
+        if (!Strings.isNullOrBlank(hostName)) {
+            if (!HOSTNAME_PATTERN.asPredicate().test(hostName)) {
+                problems.accept(field, hostName, hostName + " has invalid format (only the underscore, hyphen, dot and alphanumeric characters are allowed)");
+                return 1;
+            }
+        }
+        return 0;
+    }
+
+    public FieldNamer<Column> getFieldNamer() {
+        return fieldNamer;
     }
 }

@@ -24,7 +24,7 @@ import org.slf4j.LoggerFactory;
 
 public interface KafkaAssertions<K, V> {
 
-    static final Logger LOGGER = LoggerFactory.getLogger(KafkaAssertions.class);
+    Logger LOGGER = LoggerFactory.getLogger(KafkaAssertions.class);
 
     static void awaitAssert(long timeout, TimeUnit unit, ThrowingRunnable assertion) {
         await()
@@ -50,7 +50,7 @@ public interface KafkaAssertions<K, V> {
     default void assertRecordsCount(String topic, int count) {
         try (Consumer<K, V> consumer = getConsumer()) {
             consumer.subscribe(Collections.singleton(topic));
-            ConsumerRecords<K, V> records = consumer.poll(Duration.of(10, ChronoUnit.SECONDS));
+            ConsumerRecords<K, V> records = consumer.poll(Duration.of(15, ChronoUnit.SECONDS));
             consumer.seekToBeginning(consumer.assignment());
             assertThat(records.count()).withFailMessage("Expecting topic '%s' to have <%d> messages but it had <%d>.", topic, count, records.count()).isEqualTo(count);
         }
@@ -59,11 +59,11 @@ public interface KafkaAssertions<K, V> {
     default void assertMinimalRecordsCount(String topic, int count) {
         try (Consumer<K, V> consumer = getConsumer()) {
             consumer.subscribe(Collections.singleton(topic));
-            ConsumerRecords<K, V> records = consumer.poll(Duration.of(10, ChronoUnit.SECONDS));
+            ConsumerRecords<K, V> records = consumer.poll(Duration.of(15, ChronoUnit.SECONDS));
             consumer.seekToBeginning(consumer.assignment());
             assertThat(
                     records.count()).withFailMessage("Expecting topic '%s' to have  at least <%d> messages but it had <%d>.", topic, count, records.count())
-                            .isGreaterThanOrEqualTo(count);
+                    .isGreaterThanOrEqualTo(count);
         }
     }
 

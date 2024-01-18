@@ -7,11 +7,24 @@ package io.debezium.pipeline.source.spi;
 
 public interface ChangeEventSource {
 
-    public interface ChangeEventSourceContext {
+    interface ChangeEventSourceContext {
+
+        /**
+         * Whether this source is paused.
+         */
+        boolean isPaused();
 
         /**
          * Whether this source is running or has been requested to stop.
          */
         boolean isRunning();
+
+        void resumeStreaming() throws InterruptedException;
+
+        void waitSnapshotCompletion() throws InterruptedException;
+
+        void streamingPaused();
+
+        void waitStreamingPaused() throws InterruptedException;
     }
 }

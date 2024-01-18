@@ -87,7 +87,7 @@ public abstract class AbstractMySqlFieldReader implements MySqlFieldReader {
             try {
                 String columnData = rs.getString(columnIndex);
                 if (columnData != null) {
-                    return columnData.getBytes(MySqlConnection.getJavaEncodingForMysqlCharSet(column.charsetName()));
+                    return columnData.getBytes(connectorConfig.getConnectorAdapter().getJavaEncodingForCharSet(column.charsetName()));
                 }
             }
             catch (UnsupportedEncodingException e) {

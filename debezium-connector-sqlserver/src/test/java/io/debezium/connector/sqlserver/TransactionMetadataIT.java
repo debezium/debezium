@@ -19,7 +19,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.Before;
@@ -108,9 +107,9 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
         final List<SourceRecord> tableA = records.recordsForTopic("server1.testDB1.dbo.tablea");
         final List<SourceRecord> tableB = records.recordsForTopic("server1.testDB1.dbo.tableb");
         final List<SourceRecord> tx = records.recordsForTopic("server1.transaction");
-        Assertions.assertThat(tableA).hasSize(RECORDS_PER_TABLE);
-        Assertions.assertThat(tableB).hasSize(RECORDS_PER_TABLE + 1);
-        Assertions.assertThat(tx).hasSize(3);
+        assertThat(tableA).hasSize(RECORDS_PER_TABLE);
+        assertThat(tableB).hasSize(RECORDS_PER_TABLE + 1);
+        assertThat(tx).hasSize(3);
 
         final List<SourceRecord> all = records.allRecordsInOrder();
         final String txId = assertBeginTransaction(all.get(0));
@@ -292,9 +291,9 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
         tableB = sourceRecords.recordsForTopic("server1.testDB1.dbo.tableb");
         List<SourceRecord> txMetadata = sourceRecords.recordsForTopic("server1.transaction");
 
-        Assertions.assertThat(tableA).hasSize(RECORDS_PER_TABLE);
-        Assertions.assertThat(tableB).hasSize(RECORDS_PER_TABLE);
-        Assertions.assertThat(txMetadata).hasSize(1 + 2 * RECORDS_PER_TABLE - 1);
+        assertThat(tableA).hasSize(RECORDS_PER_TABLE);
+        assertThat(tableB).hasSize(RECORDS_PER_TABLE);
+        assertThat(txMetadata).hasSize(1 + 2 * RECORDS_PER_TABLE - 1);
         assertEndTransaction(txMetadata.get(0), batchTxId, 2 * RECORDS_PER_TABLE,
                 Collect.hashMapOf("testDB1.dbo.tablea", RECORDS_PER_TABLE, "testDB1.dbo.tableb", RECORDS_PER_TABLE));
 

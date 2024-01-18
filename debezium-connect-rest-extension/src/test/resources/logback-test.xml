@@ -21,4 +21,8 @@
         level="warn" additivity="false">
         <appender-ref ref="CONSOLE" />
     </logger>
+
+<!--    <logger name="org.testcontainers" level="TRACE"/>-->
+<!--    <logger name="com.github.dockerjava" level="TRACE"/>-->
+<!--    <logger name="com.github.dockerjava.zerodep" level="WARN"/>-->
 </configuration>

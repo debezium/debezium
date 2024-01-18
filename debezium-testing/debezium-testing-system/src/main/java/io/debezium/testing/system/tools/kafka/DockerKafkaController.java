@@ -44,6 +44,11 @@ public class DockerKafkaController implements KafkaController {
     }
 
     @Override
+    public String getTlsBootstrapAddress() {
+        return null;
+    }
+
+    @Override
     public boolean undeploy() {
         container.stop();
         return container.isRunning();

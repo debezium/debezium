@@ -172,7 +172,8 @@ One example could be a field `eventType` which conveys a user-defined value that
 [[basic-mongodb-outbox-configuration]]
 == Basic configuration
 
-To configure a {prodname} connector to support the outbox pattern, configure the `outbox.EventRouter` SMT. The following example shows the basic configuration for the SMT in a `.properties` file:
+To configure a {prodname} MongoDB connector to support the outbox pattern, configure the `outbox.MongoEventRouter` SMT.
+To obtain the default behavior of the SMT, add it to the connector configuration without specifying any options, as in the following example:
 
 [source]
 ----

@@ -9,7 +9,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 import org.apache.kafka.common.config.ConfigDef;
@@ -31,9 +30,13 @@ import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
+import io.debezium.connector.mongodb.connection.ConnectionStrings;
+import io.debezium.connector.mongodb.connection.DefaultMongoDbAuthProvider;
+import io.debezium.connector.mongodb.connection.MongoDbAuthProvider;
 import io.debezium.data.Envelope;
 import io.debezium.schema.DefaultTopicNamingStrategy;
 import io.debezium.spi.schema.DataCollectionId;
+import io.debezium.util.Strings;
 
 /**
  * The configuration properties.
@@ -47,15 +50,19 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
     protected static final Pattern PATTERN_SPILT = Pattern.compile(",");
 
-    protected static final Pattern FIELD_EXCLUDE_LIST_PATTERN = Pattern.compile("^[*|\\w|\\-|\\s*]+(?:\\.[\\w|\\-]+\\.[\\w|\\-]+)+(\\.[\\w|\\-]+)*\\s*$");
+    protected static final Pattern FIELD_EXCLUDE_LIST_PATTERN = Pattern
+            .compile("^[*|\\w|\\-|\\s*]+(?:\\.[*|\\w|\\-]+\\.[*|\\w|\\-]+)+(\\.[*|\\w|\\-]+)*\\s*$");
     protected static final String QUALIFIED_FIELD_EXCLUDE_LIST_PATTERN = "<databaseName>.<collectionName>.<fieldName>.<nestedFieldName>";
-    protected static final Pattern FIELD_RENAMES_PATTERN = Pattern.compile("^[*|\\w|\\-|\\s*]+(?:\\.[\\w|\\-]+\\.[\\w|\\-]+)+(\\.[\\w|\\-]+)*:(?:[\\w|\\-]+)+\\s*$");
+    protected static final Pattern FIELD_RENAMES_PATTERN = Pattern
+            .compile("^[*|\\w|\\-|\\s*]+(?:\\.[*|\\w|\\-]+\\.[*|\\w|\\-]+)+(\\.[*|\\w|\\-]+)*:(?:[*|\\w|\\-]+)+\\s*$");
     protected static final String QUALIFIED_FIELD_RENAMES_PATTERN = "<databaseName>.<collectionName>.<fieldName>.<nestedFieldName>:<newNestedFieldName>";
+
+    public static final String ADMIN_DATABASE_NAME = "admin";
 
     /**
      * The set of predefined SnapshotMode options or aliases.
      */
-    public static enum SnapshotMode implements EnumeratedValue {
+    public enum SnapshotMode implements EnumeratedValue {
 
         /**
          * Always perform an initial snapshot when starting.
@@ -70,7 +77,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         private final String value;
         private final boolean includeData;
 
-        private SnapshotMode(String value, boolean includeData) {
+        SnapshotMode(String value, boolean includeData) {
             this.value = value;
             this.includeData = includeData;
         }
@@ -122,7 +129,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     /**
      * The set off different ways how connector can capture changes.
      */
-    public static enum CaptureMode implements EnumeratedValue {
+    public enum CaptureMode implements EnumeratedValue {
 
         /**
          * Change capture based on MongoDB Change Streams support.
@@ -153,7 +160,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         private final boolean fullUpdate;
         private final boolean includePreImage;
 
-        private CaptureMode(String value, boolean changeStreams, boolean fullUpdate, boolean includePreImage) {
+        CaptureMode(String value, boolean changeStreams, boolean fullUpdate, boolean includePreImage) {
             this.value = value;
             this.changeStreams = changeStreams;
             this.fullUpdate = fullUpdate;
@@ -212,8 +219,295 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         }
     }
 
+    /**
+     * The set of predefined CaptureScope options or aliases.
+     */
+    public enum CaptureScope implements EnumeratedValue {
+        /**
+         * Capture changes from entire MongoDB deployment
+         * <p>
+         * The MongoDB user used by debezium needs the following permissions/roles
+         * <ul>
+         *     <li>read role for any database
+         *     <li>read permissions to the config.shards collection (for sharded clusters with connection.mode=replica_set)</li>
+         * </ul>
+         */
+        DEPLOYMENT("deployment"),
+
+        /**
+         * Capture changes from database.
+         * <p>
+         * The MongoDB user used by debezium needs the following permissions/roles
+         * <ul>
+         *     <li>read role for database specified by {@link MongoDbConnectorConfig#CAPTURE_TARGET}</li>
+         *     <li>write permissions to the signalling collection</li>
+         *     <li>read permissions to the config.shards collection (for sharded clusters with connection.mode=replica_set)</li>
+         * </ul>
+         *
+         * Additionally, the signaling collection has to reside under {@link MongoDbConnectorConfig#CAPTURE_TARGET}
+         */
+        DATABASE("database");
+
+        private final String value;
+
+        CaptureScope(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static CaptureScope parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+
+            for (CaptureScope option : CaptureScope.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static CaptureScope parse(String value, String defaultValue) {
+            CaptureScope mode = parse(value);
+
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+
+            return mode;
+        }
+    }
+
+    /**
+     * The set of predefined CursorPipelineOrder options or aliases.
+     */
+    public enum CursorPipelineOrder implements EnumeratedValue {
+        /**
+         * Internal stages first, then user stages
+         */
+        INTERNAL_FIRST("internal_first"),
+
+        /**
+         * User stages first, then internal stages
+         */
+        USER_FIRST("user_first"),
+
+        /**
+         * Only user stages (replacing internal stages)
+         */
+        USER_ONLY("user_only");
+
+        private String value;
+
+        CursorPipelineOrder(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static CursorPipelineOrder parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+
+            for (CursorPipelineOrder option : CursorPipelineOrder.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static CursorPipelineOrder parse(String value, String defaultValue) {
+            CursorPipelineOrder mode = parse(value);
+
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+
+            return mode;
+        }
+    }
+
+    /**
+     * The set of predefined CursorPipelineOrder options or aliases.
+     */
+    public enum FiltersMatchMode implements EnumeratedValue {
+        /**
+         * Match by regex (use fully qualified name for collections)
+         */
+        REGEX("regex"),
+
+        /**
+         * Match by simple comparison (use simple name for collections)
+         */
+        LITERAL("literal");
+
+        private String value;
+
+        FiltersMatchMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static FiltersMatchMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+
+            for (FiltersMatchMode option : FiltersMatchMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static FiltersMatchMode parse(String value, String defaultValue) {
+            FiltersMatchMode mode = parse(value);
+
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+
+            return mode;
+        }
+    }
+
+    /**
+     * The set of predefined OversizeHandlingMode options or aliases.
+     */
+    public enum OversizeHandlingMode implements EnumeratedValue {
+        /**
+         * Fail if oversized event is encoutered
+         */
+        FAIL("fail"),
+
+        /**
+         * Skip oversized events
+         */
+        SKIP("skip"),
+
+        /**
+         * Split oversized events (only supported for MongoDB 6.0.9 and later
+         */
+        SPLIT("split");
+
+        private String value;
+
+        OversizeHandlingMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static OversizeHandlingMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+
+            for (OversizeHandlingMode option : OversizeHandlingMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static OversizeHandlingMode parse(String value, String defaultValue) {
+            OversizeHandlingMode mode = parse(value);
+
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+
+            return mode;
+        }
+    }
+
     protected static final int DEFAULT_SNAPSHOT_FETCH_SIZE = 0;
 
+    public static final Field ALLOW_OFFSET_INVALIDATION = Field.createInternal("mongodb.allow.offset.invalidation")
+            .withDescription("Allows offset invalidation when required by change of connection mode")
+            .withDefault(false)
+            .withType(Type.BOOLEAN);
+
+    // MongoDb fields in Connection Group start from 1 (topic.prefix is 0)
     public static final Field CONNECTION_STRING = Field.create("mongodb.connection.string")
             .withDisplayName("Connection String")
             .withType(Type.STRING)
@@ -223,37 +517,10 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withValidation(MongoDbConnectorConfig::validateConnectionString)
             .withDescription("Database connection string.");
 
-    /**
-     * The comma-separated list of hostname and port pairs (in the form 'host' or 'host:port') of the MongoDB servers in the
-     * replica set.
-     */
-    public static final Field HOSTS = Field.create("mongodb.hosts")
-            .withDisplayName("Hosts")
-            .withType(Type.LIST)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 2))
-            .withWidth(Width.LONG)
-            .withImportance(Importance.HIGH)
-            .withValidation(MongoDbConnectorConfig::validateHosts)
-            .withDescription("The hostname and port pairs (in the form 'host' or 'host:port') "
-                    + "of the MongoDB server(s) in the replica set.");
-
-    public static final Field AUTO_DISCOVER_MEMBERS = Field.create("mongodb.members.auto.discover")
-            .withDisplayName("Auto-discovery")
-            .withType(Type.BOOLEAN)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 3))
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.LOW)
-            .withDefault(true)
-            .withValidation(Field::isBoolean, MongoDbConnectorConfig::validateAutodiscovery)
-            .withDescription("Specifies whether the addresses in 'hosts' are seeds that should be "
-                    + "used to discover all members of the cluster or replica set ('true'), "
-                    + "or whether the address(es) in 'hosts' should be used as is ('false'). "
-                    + "The default is 'true'.");
-
     public static final Field USER = Field.create("mongodb.user")
             .withDisplayName("User")
             .withType(Type.STRING)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 4))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 3))
             .withWidth(Width.SHORT)
             .withImportance(Importance.HIGH)
             .withDescription("Database user for connecting to MongoDB, if necessary.");
@@ -261,7 +528,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     public static final Field PASSWORD = Field.create("mongodb.password")
             .withDisplayName("Password")
             .withType(Type.PASSWORD)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 5))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 4))
             .withWidth(Width.SHORT)
             .withImportance(Importance.HIGH)
             .withDescription("Password to be used when connecting to MongoDB, if necessary.");
@@ -269,7 +536,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     public static final Field MONGODB_POLL_INTERVAL_MS = Field.create("mongodb.poll.interval.ms")
             .withDisplayName("Replica membership poll interval (ms)")
             .withType(Type.LONG)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 6))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 5))
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
             .withDefault(30_000L)
@@ -305,55 +572,19 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withDefault(10_000)
             .withDescription("The connection timeout, given in milliseconds. Defaults to 10 seconds (10,000 ms).");
 
-    public static final Field CONNECT_BACKOFF_INITIAL_DELAY_MS = Field.create("connect.backoff.initial.delay.ms")
-            .withDisplayName("Initial delay before reconnection (ms)")
-            .withType(Type.LONG)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 1))
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.MEDIUM)
-            .withDefault(TimeUnit.SECONDS.toMillis(1))
-            .withValidation(Field::isPositiveInteger)
-            .withDescription(
-                    "The initial delay when trying to reconnect to a primary after a connection cannot be made or when no primary is available, given in milliseconds. Defaults to 1 second (1,000 ms).");
-
-    public static final Field CONNECT_BACKOFF_MAX_DELAY_MS = Field.create("connect.backoff.max.delay.ms")
-            .withDisplayName("Maximum delay before reconnection (ms)")
-            .withType(Type.LONG)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 2))
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.MEDIUM)
-            .withDefault(TimeUnit.SECONDS.toMillis(120))
-            .withValidation(Field::isPositiveInteger)
-            .withDescription(
-                    "The maximum delay when trying to reconnect to a primary after a connection cannot be made or when no primary is available, given in milliseconds. Defaults to 120 second (120,000 ms).");
-
     public static final Field AUTH_SOURCE = Field.create("mongodb.authsource")
             .withDisplayName("Credentials Database")
             .withType(Type.STRING)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 3))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 1))
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
-            .withDefault(ReplicaSetDiscovery.ADMIN_DATABASE_NAME)
+            .withDefault(ADMIN_DATABASE_NAME)
             .withDescription("Database containing user credentials.");
-
-    public static final Field MAX_FAILED_CONNECTIONS = Field.create("connect.max.attempts")
-            .withDisplayName("Connection attempt limit")
-            .withType(Type.INT)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 4))
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.HIGH)
-            .withDefault(16)
-            .withValidation(Field::isPositiveInteger)
-            .withDescription("Maximum number of failed connection attempts to a replica set primary before an exception occurs and task is aborted. "
-                    + "Defaults to 16, which with the defaults for '"
-                    + CONNECT_BACKOFF_INITIAL_DELAY_MS + "' and '"
-                    + CONNECT_BACKOFF_MAX_DELAY_MS + "' results in "
-                    + "just over 20 minutes of attempts before failing.");
 
     public static final Field SERVER_SELECTION_TIMEOUT_MS = Field.create("mongodb.server.selection.timeout.ms")
             .withDisplayName("Server selection timeout MS")
             .withType(Type.INT)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 5))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 2))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDefault(30_000)
@@ -362,7 +593,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     public static final Field SOCKET_TIMEOUT_MS = Field.create("mongodb.socket.timeout.ms")
             .withDisplayName("Socket timeout MS")
             .withType(Type.INT)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 6))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 3))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDefault(0)
@@ -371,11 +602,21 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     public static final Field HEARTBEAT_FREQUENCY_MS = Field.create("mongodb.heartbeat.frequency.ms")
             .withDisplayName("Heartbeat frequency ms")
             .withType(Type.INT)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 7))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 4))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDefault(10_000)
             .withDescription("The frequency that the cluster monitor attempts to reach each server. Defaults to 10 seconds (10,000 ms).");
+
+    public static final Field AUTH_PROVIDER_CLASS = Field.create("mongodb.authentication.class")
+            .withDisplayName("Authentication Provider Custom Class")
+            .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 5))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withDefault(DefaultMongoDbAuthProvider.class.getName())
+            .withDescription(
+                    "This class must implement the 'MongoDbAuthProvider' interface and is called on each app boot to provide the MongoDB credentials from the provided config.");
 
     /**
      * A comma-separated list of regular expressions that match the databases to be monitored.
@@ -387,8 +628,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withGroup(Field.createGroupEntry(Field.Group.FILTERS, 0))
             .withWidth(Width.LONG)
             .withImportance(Importance.HIGH)
-            .withValidation(Field::isListOfRegex)
-            .withDescription("A comma-separated list of regular expressions that match the database names for which changes are to be captured");
+            .withValidation(MongoDbConnectorConfig::validateListOfRegexesOrLiterals)
+            .withDescription("A comma-separated list of regular expressions or literals that match the database names for which changes are to be captured");
 
     /**
      * A comma-separated list of regular expressions that match the databases to be excluded.
@@ -400,8 +641,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withGroup(Field.createGroupEntry(Field.Group.FILTERS, 1))
             .withWidth(Width.LONG)
             .withImportance(Importance.HIGH)
-            .withValidation(Field::isListOfRegex, MongoDbConnectorConfig::validateDatabaseExcludeList)
-            .withDescription("A comma-separated list of regular expressions that match the database names for which changes are to be excluded");
+            .withValidation(MongoDbConnectorConfig::validateListOfRegexesOrLiterals, MongoDbConnectorConfig::validateDatabaseExcludeList)
+            .withDescription("A comma-separated list of regular expressions or literals that match the database names for which changes are to be excluded");
 
     /**
      * A comma-separated list of regular expressions that match the fully-qualified namespaces of collections to be monitored.
@@ -414,8 +655,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withGroup(Field.createGroupEntry(Field.Group.FILTERS, 2))
             .withWidth(Width.LONG)
             .withImportance(Importance.HIGH)
-            .withValidation(Field::isListOfRegex)
-            .withDescription("A comma-separated list of regular expressions that match the collection names for which changes are to be captured");
+            .withValidation(MongoDbConnectorConfig::validateListOfRegexesOrLiterals)
+            .withDescription("A comma-separated list of regular expressions or literals that match the collection names for which changes are to be captured");
 
     /**
      * A comma-separated list of regular expressions that match the fully-qualified namespaces of collections to be excluded from
@@ -424,9 +665,20 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
      */
     public static final Field COLLECTION_EXCLUDE_LIST = Field.create("collection.exclude.list")
             .withGroup(Field.createGroupEntry(Field.Group.FILTERS, 3))
-            .withValidation(Field::isListOfRegex, MongoDbConnectorConfig::validateCollectionExcludeList)
+            .withValidation(MongoDbConnectorConfig::validateListOfRegexesOrLiterals, MongoDbConnectorConfig::validateCollectionExcludeList)
             .withInvisibleRecommender()
-            .withDescription("A comma-separated list of regular expressions that match the collection names for which changes are to be excluded");
+            .withDescription("A comma-separated list of regular expressions or literals that match the collection names for which changes are to be excluded");
+
+    public static final Field FILTERS_MATCH_MODE = Field.create("filters.match.mode")
+            .withDisplayName("Database and collection include/exclude match mode")
+            .withEnum(FiltersMatchMode.class, FiltersMatchMode.REGEX)
+            .withGroup(Field.createGroupEntry(Field.Group.FILTERS, 6))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("The mode used by the aggregation pipeline to match events based on included/excluded database and collection names"
+                    + "Options include: "
+                    + "'regex' (the default) Database and collection includes/excludes are evaluated as regular expressions; "
+                    + "'literal' Database and collection includes/excludes are evaluated as comma-separated list of string literals; ");
 
     /**
      * A comma-separated list of the fully-qualified names of fields that should be excluded from change event message values.
@@ -474,8 +726,29 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                     + "'change_streams' to capture changes via MongoDB Change Streams, update events do not contain full documents; "
                     + "'change_streams_update_full' (the default) to capture changes via MongoDB Change Streams, update events contain full documents");
 
+    public static final Field CAPTURE_SCOPE = Field.create("capture.scope")
+            .withDisplayName("Capture scope")
+            .withEnum(CaptureScope.class, CaptureScope.DEPLOYMENT)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 2))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("The scope of captured changes. "
+                    + "Options include: "
+                    + "'deployment' (the default) to capture changes from the entire MongoDB deployment; "
+                    + "'database' to capture changes from a specific MongoDB database");
+
+    public static final Field CAPTURE_TARGET = Field.create("capture.target")
+            .withDisplayName("Capture target")
+            .withType(Type.STRING)
+            .withValidation(MongoDbConnectorConfig::validateCaptureTarget)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 3))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("Name of captured database for " + CAPTURE_SCOPE.name() + "=" + CaptureScope.DATABASE.value);
+
     protected static final Field TASK_ID = Field.create("mongodb.task.id")
             .withDescription("Internal use only")
+            .withDefault(0)
             .withValidation(Field::isInteger)
             .withInvisibleRecommender();
 
@@ -486,9 +759,9 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDescription("The criteria for running a snapshot upon startup of the connector. "
-                    + "Options include: "
-                    + "'initial' (the default) to specify the connector should always perform an initial sync when required; "
-                    + "'never' to specify the connector should never perform an initial sync ");
+                    + "Select one of the following snapshot options: "
+                    + "'initial' (default):  If the connector does not detect any offsets for the logical server name, it runs a snapshot that captures the current full state of the configured tables. After the snapshot completes, the connector begins to stream changes from the oplog. "
+                    + "'never': The connector does not run a snapshot. Upon first startup, the connector immediately begins reading from the beginning of the oplog.");
 
     public static final Field SNAPSHOT_FILTER_QUERY_BY_COLLECTION = Field.create("snapshot.collection.filter.overrides")
             .withDisplayName("Snapshot mode")
@@ -507,6 +780,54 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withImportance(Importance.LOW)
             .withDescription("The maximum processing time in milliseconds to wait for the oplog cursor to process a single poll request");
 
+    public static final Field CURSOR_PIPELINE = Field.create("cursor.pipeline")
+            .withDisplayName("Pipeline stages applied to the change stream cursor")
+            .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 4))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withValidation(MongoDbConnectorConfig::validateChangeStreamPipeline)
+            .withDescription("Applies processing to change events as part of the the standard MongoDB aggregation stream pipeline. " +
+                    "A pipeline is a MongoDB aggregation pipeline composed of instructions to the database to filter or transform data. " +
+                    "This can be used customize the data that the connector consumes. " +
+                    "Note that this comes after the internal pipelines used to support the connector (e.g. filtering database and collection names).");
+
+    public static final Field CURSOR_PIPELINE_ORDER = Field.create("cursor.pipeline.order")
+            .withDisplayName("Change stream cursor pipeline order")
+            .withEnum(CursorPipelineOrder.class, CursorPipelineOrder.INTERNAL_FIRST)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 5))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("The order used to construct the effective MongoDB aggregation stream pipeline "
+                    + "Options include: "
+                    + "'internal_first' (the default) Internal stages defined by the connector are applied first; "
+                    + "'user_first' Stages defined by the 'cursor.pipeline' property are applied first; "
+                    + "'user_only' Stages defined by the 'cursor.pipeline' property will replace internal stages defined by the connector; ");
+
+    public static final Field CURSOR_OVERSIZE_HANDLING_MODE = Field.create("cursor.oversize.handling.mode")
+            .withDisplayName("Oversize document handling mode")
+            .withEnum(OversizeHandlingMode.class, OversizeHandlingMode.FAIL)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 6))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("The strategy used to handle change events for documents exceeding specified BSON size. "
+                    + "Options include: "
+                    + "'fail' (the default) the connector fails if the total size of change event exceed the maximum BSON size"
+                    + "'skip' any change events for documents exceeding the maximum size will be ignored"
+                    + "'split' change events exceeding the maximum BSON size will be split using the $changeStreamSplitLargeEvent aggregation");
+
+    public static final Field CURSOR_OVERSIZE_SKIP_THRESHOLD = Field.create("cursor.oversize.skip.threshold")
+            .withDisplayName("Oversize document skip threshold")
+            .withType(Type.INT)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 7))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(0)
+            .withValidation(MongoDbConnectorConfig::validateOversizeSkipThreshold)
+            .withDescription("The maximum allowed size of the stored document for which change events are processed. "
+                    + "This includes both, the size before and after database operation, "
+                    + "more specifically this limits the size of fullDocument and fullDocumentBeforeChange filed of MongoDB change events.");
+
     public static final Field TOPIC_NAMING_STRATEGY = Field.create("topic.naming.strategy")
             .withDisplayName("Topic naming strategy class")
             .withType(Type.CLASS)
@@ -516,24 +837,23 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                     "for data change, schema change, transaction, heartbeat event etc.")
             .withDefault(DefaultTopicNamingStrategy.class.getName());
 
+    public static final Field SOURCE_INFO_STRUCT_MAKER = CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER
+            .withDefault(MongoDbSourceInfoStructMaker.class.getName());
+
     private static final ConfigDefinition CONFIG_DEFINITION = CommonConnectorConfig.CONFIG_DEFINITION.edit()
             .name("MongoDB")
             .type(
                     TOPIC_PREFIX,
                     CONNECTION_STRING,
-                    HOSTS,
+                    ALLOW_OFFSET_INVALIDATION,
                     USER,
                     PASSWORD,
                     AUTH_SOURCE,
-                    CONNECT_BACKOFF_INITIAL_DELAY_MS,
-                    CONNECT_BACKOFF_MAX_DELAY_MS,
                     CONNECT_TIMEOUT_MS,
                     HEARTBEAT_FREQUENCY_MS,
                     SOCKET_TIMEOUT_MS,
                     SERVER_SELECTION_TIMEOUT_MS,
                     MONGODB_POLL_INTERVAL_MS,
-                    MAX_FAILED_CONNECTIONS,
-                    AUTO_DISCOVER_MEMBERS,
                     SSL_ENABLED,
                     SSL_ALLOW_INVALID_HOSTNAMES,
                     CURSOR_MAX_AWAIT_TIME_MS)
@@ -544,7 +864,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                     COLLECTION_EXCLUDE_LIST,
                     FIELD_EXCLUDE_LIST,
                     FIELD_RENAMES,
-                    SNAPSHOT_FILTER_QUERY_BY_COLLECTION)
+                    SNAPSHOT_FILTER_QUERY_BY_COLLECTION,
+                    SOURCE_INFO_STRUCT_MAKER)
             .connector(
                     SNAPSHOT_MODE,
                     CAPTURE_MODE,
@@ -564,17 +885,59 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
     private final SnapshotMode snapshotMode;
     private CaptureMode captureMode;
+    private final CaptureScope captureScope;
+    private final String captureTarget;
+    private final boolean offsetInvalidationAllowed;
     private final int snapshotMaxThreads;
     private final int cursorMaxAwaitTimeMs;
+    private final ConnectionString connectionString;
+    private final MongoDbAuthProvider authProvider;
+    private final boolean sslEnabled;
+    private final boolean sslAllowInvalidHostnames;
+    private final int connectTimeoutMs;
+    private final int heartbeatFrequencyMs;
+    private final int socketTimeoutMs;
+    private final int serverSelectionTimeoutMs;
+    private final CursorPipelineOrder cursorPipelineOrder;
+    private final OversizeHandlingMode oversizeHandlingMode;
+    private final FiltersMatchMode filtersMatchMode;
+    private final int oversizeSkipThreshold;
 
     public MongoDbConnectorConfig(Configuration config) {
         super(config, DEFAULT_SNAPSHOT_FETCH_SIZE);
 
+        // Connection configuration
+        this.authProvider = config.getInstance(MongoDbConnectorConfig.AUTH_PROVIDER_CLASS, MongoDbAuthProvider.class);
+        this.sslEnabled = config.getBoolean(MongoDbConnectorConfig.SSL_ENABLED);
+        this.sslAllowInvalidHostnames = config.getBoolean(MongoDbConnectorConfig.SSL_ALLOW_INVALID_HOSTNAMES);
+        this.connectTimeoutMs = config.getInteger(MongoDbConnectorConfig.CONNECT_TIMEOUT_MS);
+        this.heartbeatFrequencyMs = config.getInteger(MongoDbConnectorConfig.HEARTBEAT_FREQUENCY_MS);
+        this.socketTimeoutMs = config.getInteger(MongoDbConnectorConfig.SOCKET_TIMEOUT_MS);
+        this.serverSelectionTimeoutMs = config.getInteger(MongoDbConnectorConfig.SERVER_SELECTION_TIMEOUT_MS);
+        this.connectionString = resolveConnectionString(config);
+
+        // Other configuration
         String snapshotModeValue = config.getString(MongoDbConnectorConfig.SNAPSHOT_MODE);
         this.snapshotMode = SnapshotMode.parse(snapshotModeValue, MongoDbConnectorConfig.SNAPSHOT_MODE.defaultValueAsString());
 
         String captureModeValue = config.getString(MongoDbConnectorConfig.CAPTURE_MODE);
         this.captureMode = CaptureMode.parse(captureModeValue, MongoDbConnectorConfig.CAPTURE_MODE.defaultValueAsString());
+
+        this.offsetInvalidationAllowed = config.getBoolean(ALLOW_OFFSET_INVALIDATION);
+
+        String captureScopeValue = config.getString(MongoDbConnectorConfig.CAPTURE_SCOPE);
+        this.captureScope = CaptureScope.parse(captureScopeValue, MongoDbConnectorConfig.CAPTURE_SCOPE.defaultValueAsString());
+        this.captureTarget = config.getString(MongoDbConnectorConfig.CAPTURE_TARGET);
+
+        String cursorPipelineOrderValue = config.getString(MongoDbConnectorConfig.CURSOR_PIPELINE_ORDER);
+        this.cursorPipelineOrder = CursorPipelineOrder.parse(cursorPipelineOrderValue, MongoDbConnectorConfig.CURSOR_PIPELINE_ORDER.defaultValueAsString());
+
+        String oversizeHandlingModeValue = config.getString(MongoDbConnectorConfig.CURSOR_OVERSIZE_HANDLING_MODE);
+        this.oversizeHandlingMode = OversizeHandlingMode.parse(oversizeHandlingModeValue, MongoDbConnectorConfig.CURSOR_OVERSIZE_HANDLING_MODE.defaultValueAsString());
+        this.oversizeSkipThreshold = config.getInteger(CURSOR_OVERSIZE_SKIP_THRESHOLD);
+
+        String filterMatchModeValue = config.getString(MongoDbConnectorConfig.FILTERS_MATCH_MODE);
+        this.filtersMatchMode = FiltersMatchMode.parse(filterMatchModeValue, MongoDbConnectorConfig.FILTERS_MATCH_MODE.defaultValueAsString());
 
         this.snapshotMaxThreads = resolveSnapshotMaxThreads(config);
         this.cursorMaxAwaitTimeMs = config.getInteger(MongoDbConnectorConfig.CURSOR_MAX_AWAIT_TIME_MS, 0);
@@ -584,38 +947,63 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         String hosts = config.getString(field);
         String connectionString = config.getString(CONNECTION_STRING);
 
-        if (hosts == null && connectionString == null) {
-            problems.accept(field, hosts, "Host specification or connection string is required");
+        if (hosts == null) {
+            return 0;
+        }
+
+        LOGGER.warn("Config property '{}' will be removed in the future, use '{}' instead", field.name(), CONNECTION_STRING.name());
+
+        if (connectionString != null) {
+            LOGGER.warn("Config property '{}' is ignored, property '{}' takes precedence", field.name(), CONNECTION_STRING.name());
+            return 0;
+        }
+
+        if (ConnectionStrings.parseFromHosts(hosts).isEmpty()) {
+            problems.accept(field, null, "Invalid host specification");
             return 1;
         }
 
-        int count = 0;
-        if (hosts != null && ReplicaSets.parse(hosts).all().isEmpty()) {
-            problems.accept(field, hosts, "Invalid host specification");
-            ++count;
-        }
-        return count;
+        return 0;
     }
 
-    private static int validateConnectionString(Configuration config, Field field, ValidationOutput problems) {
+    private static int validateChangeStreamPipeline(Configuration config, Field field, ValidationOutput problems) {
         String value = config.getString(field);
 
         try {
-            if (value != null) {
-                ConnectionString cs = new ConnectionString(value);
-            }
+            new ChangeStreamPipeline(value);
         }
         catch (Exception e) {
-            problems.accept(field, value, "Connection string is invalid");
+            problems.accept(field, value, "Change stream pipeline JSON is invalid: " + e.getMessage());
             return 1;
         }
         return 0;
     }
 
-    private static int validateAutodiscovery(Configuration config, Field field, ValidationOutput problems) {
-        boolean value = config.getBoolean(field);
-        if (!value && config.hasKey(CONNECTION_STRING)) {
-            problems.accept(field, value, "Connection string requires autodiscovery");
+    private static int validateOversizeSkipThreshold(Configuration config, Field field, ValidationOutput problems) {
+        String mode = config.getString(CURSOR_OVERSIZE_HANDLING_MODE);
+        int value = config.getInteger(CURSOR_OVERSIZE_SKIP_THRESHOLD);
+
+        if (OversizeHandlingMode.SKIP.getValue().equals(mode) && value <= 0) {
+            problems.accept(field, value, "Invalid threshold value for skipped document size");
+            return 1;
+        }
+
+        return 0;
+    }
+
+    private static int validateConnectionString(Configuration config, Field field, ValidationOutput problems) {
+        String connectionStringValue = config.getString(field);
+
+        if (connectionStringValue == null) {
+            problems.accept(field, null, "Missing connection string");
+            return 1;
+        }
+
+        try {
+            ConnectionString cs = new ConnectionString(connectionStringValue);
+        }
+        catch (Exception e) {
+            problems.accept(field, connectionStringValue, "Invalid connection string");
             return 1;
         }
         return 0;
@@ -651,6 +1039,24 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         return problemCount;
     }
 
+    private static int validateListOfRegexesOrLiterals(Configuration configuration, Field field, ValidationOutput problems) {
+        var matchMode = configuration.getString(FILTERS_MATCH_MODE);
+
+        if (matchMode != null && matchMode.equals(FiltersMatchMode.REGEX.getValue())) {
+            return Field.isListOfRegex(configuration, field, problems);
+        }
+
+        var value = configuration.getString(field);
+        var list = Strings.listOf(value, v -> v.split(","), String::trim);
+
+        if (list.stream().anyMatch(String::isEmpty)) {
+            problems.accept(field, value, field.name() + " contains empty values");
+            return 1;
+        }
+
+        return 0;
+    }
+
     private static int validateCollectionExcludeList(Configuration config, Field field, ValidationOutput problems) {
         String includeList = config.getString(COLLECTION_INCLUDE_LIST);
         String excludeList = config.getString(COLLECTION_EXCLUDE_LIST);
@@ -671,6 +1077,22 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         return 0;
     }
 
+    private static int validateCaptureTarget(Configuration config, Field field, ValidationOutput problems) {
+        var value = config.getString(field);
+        var scope = config.getString(MongoDbConnectorConfig.CAPTURE_SCOPE);
+
+        if (value != null && CaptureScope.DEPLOYMENT.value.equals(scope)) {
+            LOGGER.warn("Config property '{}' will be ignored due to {}={}", field.name(), CAPTURE_SCOPE.name(), scope);
+        }
+
+        if (value == null) {
+            problems.accept(field, null, field.name() + "property is missing");
+            return 1;
+        }
+
+        return 0;
+    }
+
     public SnapshotMode getSnapshotMode() {
         return snapshotMode;
     }
@@ -687,8 +1109,72 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         return captureMode;
     }
 
+    public CaptureScope getCaptureScope() {
+        return captureScope;
+    }
+
+    public Optional<String> getCaptureTarget() {
+        return Optional.ofNullable(captureTarget);
+    }
+
+    public boolean isOffsetInvalidationAllowed() {
+        return offsetInvalidationAllowed;
+    }
+
+    public ConnectionString getConnectionString() {
+        return connectionString;
+    }
+
+    public int getCursorMaxAwaitTimeMs() {
+        return cursorMaxAwaitTimeMs;
+    }
+
+    public MongoDbAuthProvider getAuthProvider() {
+        return authProvider;
+    }
+
+    public boolean isSslEnabled() {
+        return sslEnabled;
+    }
+
+    public boolean isSslAllowInvalidHostnames() {
+        return sslAllowInvalidHostnames;
+    }
+
+    public int getConnectTimeoutMs() {
+        return connectTimeoutMs;
+    }
+
+    public int getHeartbeatFrequencyMs() {
+        return heartbeatFrequencyMs;
+    }
+
+    public int getSocketTimeoutMs() {
+        return socketTimeoutMs;
+    }
+
+    public int getServerSelectionTimeoutMs() {
+        return serverSelectionTimeoutMs;
+    }
+
     public int getCursorMaxAwaitTime() {
         return cursorMaxAwaitTimeMs;
+    }
+
+    public CursorPipelineOrder getCursorPipelineOrder() {
+        return cursorPipelineOrder;
+    }
+
+    public OversizeHandlingMode getOversizeHandlingMode() {
+        return oversizeHandlingMode;
+    }
+
+    public int getOversizeSkipThreshold() {
+        return oversizeSkipThreshold;
+    }
+
+    public FiltersMatchMode getFiltersMatchMode() {
+        return filtersMatchMode;
     }
 
     @Override
@@ -698,7 +1184,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
     @Override
     protected SourceInfoStructMaker<? extends AbstractSourceInfo> getSourceInfoStructMaker(Version version) {
-        return new MongoDbSourceInfoStructMaker(Module.name(), Module.version(), this);
+        return getSourceInfoStructMaker(SOURCE_INFO_STRUCT_MAKER, Module.name(), Module.version(), this);
     }
 
     public Optional<String> getSnapshotFilterQueryForCollection(CollectionId collectionId) {
@@ -743,6 +1229,11 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
     private static int resolveSnapshotMaxThreads(Configuration config) {
         return config.getInteger(SNAPSHOT_MAX_THREADS);
+    }
+
+    private static ConnectionString resolveConnectionString(Configuration config) {
+        var connectionString = config.getString(MongoDbConnectorConfig.CONNECTION_STRING);
+        return new ConnectionString(connectionString);
     }
 
     @Override

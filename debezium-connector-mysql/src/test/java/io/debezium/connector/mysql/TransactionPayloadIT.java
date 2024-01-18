@@ -9,11 +9,14 @@ import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.TimeoutException;
 
+import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
@@ -21,6 +24,7 @@ import org.junit.Rule;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.data.Envelope;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.SkipTestRule;
@@ -30,7 +34,14 @@ import io.debezium.util.Testing;
 @SkipWhenDatabaseVersion(check = LESS_THAN, major = 8, minor = 0, patch = 20, reason = "MySQL 8.0.20 started supporting binlog compression")
 public class TransactionPayloadIT extends AbstractConnectorTest {
 
-    private static final String PRODUCT_INSERT_STMT_1 = "INSERT INTO products (name, description, weight) VALUES ('robot', 'Toy robot', 1.304);";
+    private static final UUID PRODUCT_CODE = UUID.randomUUID();
+    private static final String PRODUCT_NAME = "robot";
+    private static final float PRODUCT_WEIGHT = 1.304f;
+
+    private static final String PRODUCT_INSERT_STMT_1 = "INSERT INTO products (name, description, weight, code) VALUES ('" + PRODUCT_NAME + "', 'Toy robot', " +
+            PRODUCT_WEIGHT + ", uuid_to_bin('" + PRODUCT_CODE + "'));";
+    private static final String PRODUCT_INSERT_STMT_1_NO_UUID = "INSERT INTO products (name, description, weight) VALUES ('" + PRODUCT_NAME + "', 'Toy robot', " +
+            PRODUCT_WEIGHT + ");";
     private static final String CUSTOMER_INSERT_STMT_1 = "INSERT INTO customers (first_name, last_name, email) VALUES ('Nitin', 'Agarwal', 'test1@abc.com' ); ";
     private static final String CUSTOMER_INSERT_STMT_2 = "INSERT INTO customers (first_name, last_name, email) VALUES ('Rajesh', 'Agarwal', 'test2@abc.com' ); ";
     private static final String ORDER_INSERT_STMT_1 = "INSERT INTO orders (order_date, purchaser, quantity, product_id) VALUES ('2016-01-16', 1001, 1, 1); ";
@@ -58,9 +69,16 @@ public class TransactionPayloadIT extends AbstractConnectorTest {
     }
 
     @After
-    public void afterEach() {
+    public void afterEach() throws SQLException {
         try {
             stopConnector();
+
+            // MariaDB's binlog compression is set globally, so we need to toggle this off after the test.
+            try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+                try (JdbcConnection connection = db.connect()) {
+                    db.databaseAsserts().setBinlogCompressionOff(connection);
+                }
+            }
         }
         finally {
             Testing.Files.delete(SCHEMA_HISTORY_PATH);
@@ -85,10 +103,15 @@ public class TransactionPayloadIT extends AbstractConnectorTest {
         assertThat(records).isNotNull();
         records.forEach(this::validate);
 
-        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+        boolean isMariaDB = MySqlTestConnection.isMariaDb();
+
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
             try (JdbcConnection connection = db.connect()) {
-                connection.execute("set binlog_transaction_compression=ON;");
-                connection.execute(CUSTOMER_INSERT_STMT_1, CUSTOMER_INSERT_STMT_2, PRODUCT_INSERT_STMT_1,
+                // We exclude the code column because the uuid_to_bin function isn't something that is
+                // in MariaDB as UUID is a basic database type now.
+                String sql = isMariaDB ? PRODUCT_INSERT_STMT_1_NO_UUID : PRODUCT_INSERT_STMT_1;
+                db.databaseAsserts().setBinlogCompressionOn(connection);
+                connection.execute(CUSTOMER_INSERT_STMT_1, CUSTOMER_INSERT_STMT_2, sql,
                         ORDER_INSERT_STMT_1, CUSTOMER_UPDATE_STMT_1, ORDER_UPDATE_STMT_1, ORDER_DELETE_STMT_1,
                         CUSTOMER_DELETE_STMT_1);
             }
@@ -100,6 +123,20 @@ public class TransactionPayloadIT extends AbstractConnectorTest {
 
         assertThat(customerDmls).hasSize(5);
         assertThat(productDmls).hasSize(1);
+        Struct product = ((Struct) productDmls.get(0).value()).getStruct(Envelope.FieldName.AFTER);
+        assertThat(product.get("id")).isInstanceOf(Integer.class);
+        assertThat(product.get("name")).isEqualTo(PRODUCT_NAME);
+        assertThat(product.get("weight")).isEqualTo(PRODUCT_WEIGHT);
+        if (!isMariaDB) {
+            assertThat(((ByteBuffer) product.get("code")).array()).isEqualTo(uuidToByteArray(PRODUCT_CODE));
+        }
         assertThat(orderDmls).hasSize(4);
+    }
+
+    private byte[] uuidToByteArray(UUID uuid) {
+        ByteBuffer buffer = ByteBuffer.wrap(new byte[16]);
+        buffer.putLong(uuid.getMostSignificantBits());
+        buffer.putLong(uuid.getLeastSignificantBits());
+        return buffer.array();
     }
 }

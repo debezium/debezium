@@ -21,14 +21,20 @@ public class SqlServerSchemaChangeEventEmitter implements SchemaChangeEventEmitt
     private final SqlServerOffsetContext offsetContext;
     private final SqlServerChangeTable changeTable;
     private final Table tableSchema;
+    private final SqlServerDatabaseSchema schema;
     private final SchemaChangeEventType eventType;
 
-    public SqlServerSchemaChangeEventEmitter(SqlServerPartition partition, SqlServerOffsetContext offsetContext, SqlServerChangeTable changeTable, Table tableSchema,
+    public SqlServerSchemaChangeEventEmitter(SqlServerPartition partition,
+                                             SqlServerOffsetContext offsetContext,
+                                             SqlServerChangeTable changeTable,
+                                             Table tableSchema,
+                                             SqlServerDatabaseSchema schema,
                                              SchemaChangeEventType eventType) {
         this.partition = partition;
         this.offsetContext = offsetContext;
         this.changeTable = changeTable;
         this.tableSchema = tableSchema;
+        this.schema = schema;
         this.eventType = eventType;
     }
 
@@ -44,6 +50,8 @@ public class SqlServerSchemaChangeEventEmitter implements SchemaChangeEventEmitt
                 tableSchema,
                 false);
 
-        receiver.schemaChangeEvent(event);
+        if (!schema.skipSchemaChangeEvent(event)) {
+            receiver.schemaChangeEvent(event);
+        }
     }
 }

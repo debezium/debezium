@@ -7,6 +7,7 @@ package io.debezium.connector.postgresql.connection.pgoutput;
 
 import java.math.BigDecimal;
 
+import io.debezium.connector.postgresql.PostgresValueConverter;
 import io.debezium.connector.postgresql.connection.AbstractColumnValue;
 import io.debezium.data.SpecialValueDecimal;
 import io.debezium.util.Strings;
@@ -64,12 +65,7 @@ class PgOutputColumnValue extends AbstractColumnValue<String> {
 
     @Override
     public SpecialValueDecimal asDecimal() {
-        if ("NaN".equals(value)) {
-            return SpecialValueDecimal.NOT_A_NUMBER;
-        }
-        else {
-            return new SpecialValueDecimal(new BigDecimal(value));
-        }
+        return PostgresValueConverter.toSpecialValue(value).orElseGet(() -> new SpecialValueDecimal(new BigDecimal(value)));
     }
 
     @Override

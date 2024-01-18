@@ -22,7 +22,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -44,7 +44,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
+import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -80,6 +82,7 @@ public class JdbcConnection implements AutoCloseable {
 
     private static final int WAIT_FOR_CLOSE_SECONDS = 10;
     private static final char STATEMENT_DELIMITER = ';';
+    private static final String ESCAPE_CHAR = "\\";
     private static final int STATEMENT_CACHE_CAPACITY = 10_000;
     private final static Logger LOGGER = LoggerFactory.getLogger(JdbcConnection.class);
     private static final int CONNECTION_VALID_CHECK_TIMEOUT_IN_SEC = 3;
@@ -101,7 +104,7 @@ public class JdbcConnection implements AutoCloseable {
      */
     @FunctionalInterface
     @ThreadSafe
-    public static interface ConnectionFactory {
+    public interface ConnectionFactory {
         /**
          * Establish a connection to the database denoted by the given configuration.
          *
@@ -136,7 +139,7 @@ public class JdbcConnection implements AutoCloseable {
      * Defines multiple JDBC operations.
      */
     @FunctionalInterface
-    public static interface Operations {
+    public interface Operations {
         /**
          * Apply a series of operations against the given JDBC statement.
          *
@@ -150,7 +153,7 @@ public class JdbcConnection implements AutoCloseable {
      * Extracts a data of resultset..
      */
     @FunctionalInterface
-    public static interface ResultSetExtractor<T> {
+    public interface ResultSetExtractor<T> {
         T apply(ResultSet rs) throws SQLException;
     }
 
@@ -258,9 +261,9 @@ public class JdbcConnection implements AutoCloseable {
         return filtered;
     }
 
-    public Optional<Timestamp> getCurrentTimestamp() throws SQLException {
+    public Optional<Instant> getCurrentTimestamp() throws SQLException {
         return queryAndMap("SELECT CURRENT_TIMESTAMP",
-                rs -> rs.next() ? Optional.of(rs.getTimestamp(1)) : Optional.empty());
+                rs -> rs.next() ? Optional.of(rs.getTimestamp(1).toInstant()) : Optional.empty());
     }
 
     private static Field[] combineVariables(Field[] overriddenVariables,
@@ -276,7 +279,7 @@ public class JdbcConnection implements AutoCloseable {
                 fields.put(variable.name(), variable);
             }
         }
-        return fields.values().toArray(new Field[fields.size()]);
+        return fields.values().toArray(new Field[0]);
     }
 
     private static String findAndReplace(String url, Properties props, Field... variables) {
@@ -434,36 +437,36 @@ public class JdbcConnection implements AutoCloseable {
         return this;
     }
 
-    public static interface ResultSetConsumer {
+    public interface ResultSetConsumer {
         void accept(ResultSet rs) throws SQLException;
     }
 
-    public static interface ResultSetMapper<T> {
+    public interface ResultSetMapper<T> {
         T apply(ResultSet rs) throws SQLException;
     }
 
-    public static interface BlockingResultSetConsumer {
+    public interface BlockingResultSetConsumer {
         void accept(ResultSet rs) throws SQLException, InterruptedException;
     }
 
-    public static interface ParameterResultSetConsumer {
+    public interface ParameterResultSetConsumer {
         void accept(List<?> parameters, ResultSet rs) throws SQLException;
     }
 
-    public static interface MultiResultSetConsumer {
+    public interface MultiResultSetConsumer {
         void accept(ResultSet[] rs) throws SQLException;
     }
 
-    public static interface BlockingMultiResultSetConsumer {
+    public interface BlockingMultiResultSetConsumer {
         void accept(ResultSet[] rs) throws SQLException, InterruptedException;
     }
 
-    public static interface StatementPreparer {
+    public interface StatementPreparer {
         void accept(PreparedStatement statement) throws SQLException;
     }
 
     @FunctionalInterface
-    public static interface CallPreparer {
+    public interface CallPreparer {
         void accept(CallableStatement statement) throws SQLException;
     }
 
@@ -1153,7 +1156,7 @@ public class JdbcConnection implements AutoCloseable {
         Map<TableId, List<Attribute>> attributesByTable = new HashMap<>();
 
         int totalTables = 0;
-        try (final ResultSet rs = metadata.getTables(databaseCatalog, schemaNamePattern, null, supportedTableTypes())) {
+        try (ResultSet rs = metadata.getTables(databaseCatalog, schemaNamePattern, null, supportedTableTypes())) {
             while (rs.next()) {
                 final String catalogName = resolveCatalogName(rs.getString(1));
                 final String schemaName = rs.getString(2);
@@ -1174,6 +1177,7 @@ public class JdbcConnection implements AutoCloseable {
                 }
             }
         }
+        LOGGER.debug("{} table(s) will be scanned", tableIds.size());
 
         Map<TableId, List<Column>> columnsByTable = new HashMap<>();
 
@@ -1223,11 +1227,18 @@ public class JdbcConnection implements AutoCloseable {
         return catalogName;
     }
 
+    protected String escapeEscapeSequence(String str) {
+        return str.replace(ESCAPE_CHAR, ESCAPE_CHAR.concat(ESCAPE_CHAR));
+    }
+
     protected Map<TableId, List<Column>> getColumnsDetails(String databaseCatalog, String schemaNamePattern,
                                                            String tableName, TableFilter tableFilter, ColumnNameFilter columnFilter, DatabaseMetaData metadata,
                                                            final Set<TableId> viewIds)
             throws SQLException {
         Map<TableId, List<Column>> columnsByTable = new HashMap<>();
+        if (tableName != null && tableName.contains(ESCAPE_CHAR)) {
+            tableName = escapeEscapeSequence(tableName);
+        }
         try (ResultSet columnMetadata = metadata.getColumns(databaseCatalog, schemaNamePattern, tableName, null)) {
             while (columnMetadata.next()) {
                 String catalogName = resolveCatalogName(columnMetadata.getString(1));
@@ -1529,6 +1540,13 @@ public class JdbcConnection implements AutoCloseable {
     }
 
     /**
+     * Sets value on {@link PreparedStatement} and set explicit SQL type for it if necessary
+     */
+    public void setQueryColumnValue(PreparedStatement statement, Column column, int pos, Object value) throws SQLException {
+        statement.setObject(pos, value);
+    }
+
+    /**
      * Converts a {@link ResultSet} row to an array of Objects
      */
     public Object[] rowToArray(Table table, ResultSet rs, ColumnUtils.ColumnArray columnArray) throws SQLException {
@@ -1571,4 +1589,37 @@ public class JdbcConnection implements AutoCloseable {
             throw new DebeziumException("Error loading keystore", e);
         }
     }
+
+    public TableId createTableId(String databaseName, String schemaName, String tableName) {
+        return new TableId(databaseName, schemaName, tableName);
+    }
+
+    public String getQualifiedTableName(TableId tableId) {
+        return tableId.schema() + "." + tableId.table();
+    }
+
+    public String buildReselectColumnQuery(TableId tableId, List<String> columns, List<String> keyColumns, Struct source) {
+        return String.format("SELECT %s FROM %s WHERE %s",
+                columns.stream().map(this::quotedColumnIdString).collect(Collectors.joining(",")),
+                quotedTableIdString(tableId),
+                keyColumns.stream().map(key -> key + "=?").collect(Collectors.joining(" AND ")));
+    }
+
+    public Map<String, Object> reselectColumns(String query, TableId tableId, List<String> columns, List<Object> bindValues) throws SQLException {
+        final Map<String, Object> results = new HashMap<>();
+        prepareQuery(query, bindValues, (params, rs) -> {
+            if (!rs.next()) {
+                LOGGER.warn("No data found for re-selection on table {}.", tableId);
+                return;
+            }
+            for (String columnName : columns) {
+                results.put(columnName, rs.getObject(columnName));
+            }
+            if (rs.next()) {
+                LOGGER.warn("Re-selection detected multiple rows for the same key in table {}, using first.", tableId);
+            }
+        });
+        return results;
+    }
+
 }

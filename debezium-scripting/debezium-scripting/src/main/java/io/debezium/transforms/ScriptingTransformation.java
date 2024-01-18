@@ -44,14 +44,14 @@ public abstract class ScriptingTransformation<R extends ConnectRecord<R>> implem
     private static final String JAVAX_SCRIPT_ENGINE_PREFIX = "jsr223.";
     private static final String GRAAL_JS_ENGINE = "graal.js";
 
-    public static enum NullHandling implements EnumeratedValue {
+    public enum NullHandling implements EnumeratedValue {
         DROP("drop"),
         KEEP("keep"),
         EVALUATE("evaluate");
 
         private final String value;
 
-        private NullHandling(String value) {
+        NullHandling(String value) {
             this.value = value;
         }
 

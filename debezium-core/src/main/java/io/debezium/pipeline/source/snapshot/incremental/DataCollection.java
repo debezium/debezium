@@ -8,6 +8,8 @@ package io.debezium.pipeline.source.snapshot.incremental;
 import java.util.Objects;
 import java.util.Optional;
 
+import io.debezium.util.Strings;
+
 /**
  * A class describing DataCollection for incremental snapshot
  *
@@ -16,29 +18,37 @@ import java.util.Optional;
  */
 public class DataCollection<T> {
 
-    private T id;
+    private final T id;
 
-    private Optional<String> additionalCondition;
+    private final String additionalCondition;
 
-    public DataCollection(T id, Optional<String> additionalCondition) {
+    private final String surrogateKey;
+
+    public DataCollection(T id) {
+        this(id, "", "");
+    }
+
+    public DataCollection(T id, String additionalCondition, String surrogateKey) {
+        Objects.requireNonNull(additionalCondition);
+        Objects.requireNonNull(surrogateKey);
+
         this.id = id;
-        this.additionalCondition = additionalCondition == null ? Optional.empty() : additionalCondition;
+        this.additionalCondition = additionalCondition;
+        this.surrogateKey = surrogateKey;
     }
 
     public T getId() {
         return id;
     }
 
-    public void setId(T id) {
-        this.id = id;
-    }
-
     public Optional<String> getAdditionalCondition() {
-        return additionalCondition;
+        // Encapsulate additional condition into parenthesis to make sure its own logical operators
+        // do not interfere with the built query
+        return Strings.isNullOrEmpty(additionalCondition) ? Optional.empty() : Optional.of("(" + additionalCondition + ")");
     }
 
-    public void setAdditionalCondition(Optional<String> additionalCondition) {
-        this.additionalCondition = additionalCondition;
+    public Optional<String> getSurrogateKey() {
+        return Strings.isNullOrEmpty(surrogateKey) ? Optional.empty() : Optional.of(surrogateKey);
     }
 
     @Override
@@ -63,6 +73,7 @@ public class DataCollection<T> {
         return "DataCollection{" +
                 "id=" + id +
                 ", additionalCondition=" + additionalCondition +
+                ", surrogateKey=" + surrogateKey +
                 '}';
     }
 }

@@ -45,7 +45,7 @@ public abstract class BaseChangeRecordEmitter<T> extends RelationalChangeRecordE
     protected BaseChangeRecordEmitter(OracleConnectorConfig connectorConfig, Partition partition, OffsetContext offset,
                                       OracleDatabaseSchema schema, Table table, Clock clock, Object[] oldColumnValues,
                                       Object[] newColumnValues) {
-        super(partition, offset, clock);
+        super(partition, offset, clock, connectorConfig);
         this.connectorConfig = connectorConfig;
         this.schema = schema;
         this.oldColumnValues = oldColumnValues;

@@ -6,12 +6,16 @@
 package io.debezium.connector.oracle;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
+import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.Map;
 
 import org.junit.Test;
 
+import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
 import io.debezium.doc.FixFor;
 
 /**
@@ -198,6 +202,30 @@ public class CommitScnTest {
         assertThat(commitScn.compareTo(Scn.valueOf(12345L))).isEqualTo(0); // thread 1 is equal to value
         assertThat(commitScn.compareTo(Scn.valueOf(23456L))).isEqualTo(-1); // thread 1 is less than value
         assertThat(commitScn.compareTo(Scn.valueOf(456789L))).isEqualTo(-1); // both less than 456789
+    }
+
+    @Test
+    public void shouldCommitAlreadyBeenHandled() throws Exception {
+        CommitScn commitScn = CommitScn.valueOf("12345:1:123456789-234567890");
+        LogMinerEventRow row = mock(LogMinerEventRow.class);
+        when(row.getThread()).thenReturn(1);
+
+        // Test with Scn equals to one
+        when(row.getScn()).thenReturn(new Scn(BigInteger.ONE));
+        assertThat(commitScn.hasCommitAlreadyBeenHandled(row)).isEqualTo(true);
+
+        // Test with Scn equals to zero and contains transactionId
+        when(row.getScn()).thenReturn(new Scn(BigInteger.ZERO));
+        when(row.getTransactionId()).thenReturn("123456789");
+        assertThat(commitScn.hasCommitAlreadyBeenHandled(row)).isEqualTo(true);
+    }
+
+    @Test
+    public void shouldNotCommitAlreadyBeenHandled() throws Exception {
+        LogMinerEventRow row = mock(LogMinerEventRow.class);
+
+        CommitScn commitScn = CommitScn.valueOf("12345:1:123456789-234567890");
+        assertThat(commitScn.hasCommitAlreadyBeenHandled(row)).isEqualTo(false);
     }
 
     private static String encodedCommitScn(CommitScn value) {

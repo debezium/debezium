@@ -39,7 +39,7 @@ public class OcpMongoController
 
     @Override
     public String getPublicDatabaseUrl() {
-        return "mongodb://" + getPublicDatabaseHostname() + ":" + getPublicDatabasePort();
+        return "mongodb://" + getPublicDatabaseHostname() + ":" + getPublicDatabasePort() + "/?replicaSet=rs0";
     }
 
     public void initialize() throws InterruptedException {
@@ -56,7 +56,6 @@ public class OcpMongoController
             LOGGER.info("Waiting until database is initialized");
             latch.await(scaled(1), TimeUnit.MINUTES);
         }
-
     }
 
     public MongoDatabaseClient getDatabaseClient(String username, String password) {

@@ -20,6 +20,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
@@ -31,6 +32,7 @@ import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
+import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIs;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.logminer.processor.TransactionCommitConsumer;
 import io.debezium.connector.oracle.util.TestHelper;
@@ -1073,6 +1075,7 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
 
     @Test
     @FixFor({ "DBZ-2948", "DBZ-5773" })
+    @SkipWhenAdapterNameIs(value = SkipWhenAdapterNameIs.AdapterName.OLR, reason = "OpenLogReplicator does not differentiate between LOB operations")
     public void shouldNotStreamAnyChangesWhenLobEraseIsDetected() throws Exception {
         String ddl = "CREATE TABLE CLOB_TEST ("
                 + "ID numeric(9,0), "
@@ -1115,10 +1118,69 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
                 "dbms_lob.erase(loc_c, amount, 1); end;");
 
         // Wait until the log has recorded the message.
-        // Wait until the log has recorded the message.
         Awaitility.await().atMost(Duration.ofMinutes(1))
                 .until(() -> logminerLogInterceptor.containsWarnMessage("LOB_ERASE for table")
                         || xstreamLogInterceptor.containsWarnMessage("LOB_ERASE for table"));
+        assertNoRecordsToConsume();
+    }
+
+    @Test
+    @FixFor({ "DBZ-2948", "DBZ-5773" })
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.OLR, reason = "OpenLogReplicator does not differentiate between LOB operations")
+    public void shouldStreamChangesWhenLobEraseIsDetected() throws Exception {
+        String ddl = "CREATE TABLE CLOB_TEST ("
+                + "ID numeric(9,0), "
+                + "VAL_CLOB clob, "
+                + "primary key(id))";
+
+        connection.execute(ddl);
+        TestHelper.streamTable(connection, "debezium.clob_test");
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CLOB_TEST")
+                .with(OracleConnectorConfig.LOB_ENABLED, true)
+                .build();
+
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+        // Insert record
+        Clob clob1 = createClob(part(JSON_DATA, 0, 24000));
+        connection.prepareQuery("INSERT INTO debezium.clob_test values (1, ?)", p -> p.setClob(1, clob1), null);
+        connection.commit();
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(topicName("CLOB_TEST"))).hasSize(1);
+
+        SourceRecord record = records.recordsForTopic(topicName("CLOB_TEST")).get(0);
+        VerifyRecord.isValidInsert(record, "ID", 1);
+
+        Struct after = after(record);
+        assertThat(after.get("ID")).isEqualTo(1);
+        assertThat(after.get("VAL_CLOB")).isEqualTo(getClobString(clob1));
+
+        // Execute LOB_ERASE
+        connection.execute("DECLARE loc_c CLOB; amount integer; BEGIN "
+                + "SELECT \"VAL_CLOB\" INTO loc_c FROM CLOB_TEST WHERE ID = 1 for update; "
+                + "amount := 10;"
+                + "dbms_lob.erase(loc_c, amount, 1); end;");
+
+        // Wait until the log has recorded the message.
+        records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(topicName("CLOB_TEST"))).hasSize(1);
+
+        record = records.recordsForTopic(topicName("CLOB_TEST")).get(0);
+        VerifyRecord.isValidUpdate(record, "ID", 1);
+
+        Struct before = before(record);
+        assertThat(before.get("ID")).isEqualTo(1);
+        assertThat(before.get("VAL_CLOB")).isEqualTo(getUnavailableValuePlaceholder(config));
+
+        after = after(record);
+        assertThat(after.get("ID")).isEqualTo(1);
+        assertThat(after.get("VAL_CLOB")).isEqualTo(getUnavailableValuePlaceholder(config));
+
         assertNoRecordsToConsume();
     }
 
@@ -1503,12 +1565,12 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
             SourceRecord record = table.get(0);
             Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
             assertThat(after.get("ID")).isEqualTo(1);
-            assertThat(after.get("DATA")).isNull();
+            assertThat(after.get("DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
 
             record = table.get(1);
             after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
             assertThat(after.get("ID")).isEqualTo(2);
-            assertThat(after.get("DATA")).isNull();
+            assertThat(after.get("DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
 
             // Small data and large data
             connection.executeWithoutCommitting("INSERT INTO dbz3645 (id,data) values (3,'Test3')");
@@ -2300,6 +2362,76 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
         finally {
             TestHelper.dropTable(connection, "dbz5581");
         }
+    }
+
+    @Test
+    @FixFor("DBZ-7006")
+    public void shouldStreamClobDataDataThatContainsSingleQuotesAtSpecificBoundaries() throws Exception {
+        TestHelper.dropTable(connection, "dbz7006");
+        try {
+            // Test data
+            final String insertData = replaceCharAt(createRandomStringWithAlphaNumeric(2000), 999, '\'');
+            final String updateData = replaceCharAt(createRandomStringWithAlphaNumeric(2000), 999, '\'');
+
+            connection.execute("CREATE TABLE dbz7006 (id numeric(9,0) primary key, data clob)");
+            TestHelper.streamTable(connection, "dbz7006");
+
+            final Clob snapshotClob = createClob(insertData);
+            connection.prepareQuery("INSERT INTO dbz7006 values (1,?)", ps -> ps.setClob(1, snapshotClob), null);
+            connection.commit();
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ7006")
+                    .with(OracleConnectorConfig.LOB_ENABLED, "true")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // Insert - streaming
+            final Clob insertClob = createClob(insertData);
+            connection.prepareQuery("INSERT INTO dbz7006 values (2,?)", ps -> ps.setClob(1, insertClob), null);
+            connection.commit();
+
+            // Update - streaming
+            final Clob updateClob = createClob(updateData);
+            connection.prepareQuery("UPDATE dbz7006 set data = ? WHERE id = 2", ps -> ps.setClob(1, updateClob), null);
+            connection.commit();
+
+            final SourceRecords records = consumeRecordsByTopic(3);
+            final List<SourceRecord> tableRecords = records.recordsForTopic(topicName("DBZ7006"));
+
+            // Snapshot
+            SourceRecord snapshot = tableRecords.get(0);
+            VerifyRecord.isValidRead(snapshot, "ID", (byte) 1);
+            assertThat(getAfterField(snapshot, "DATA")).isEqualTo(insertData);
+
+            // Streaming
+            SourceRecord insert = tableRecords.get(1);
+            VerifyRecord.isValidInsert(insert, "ID", (byte) 2);
+            assertThat(getAfterField(insert, "DATA")).isEqualTo(insertData);
+
+            SourceRecord update = tableRecords.get(2);
+            VerifyRecord.isValidUpdate(update, "ID", (byte) 2);
+            assertThat(getAfterField(update, "DATA")).isEqualTo(updateData);
+
+            stopConnector();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz7006");
+        }
+    }
+
+    private String createRandomStringWithAlphaNumeric(int length) {
+        return RandomStringUtils.randomAlphabetic(length);
+    }
+
+    private String replaceCharAt(String data, int index, char ch) {
+        StringBuilder sb = new StringBuilder(data);
+        sb.setCharAt(index, ch);
+        return sb.toString();
     }
 
     private Clob createClob(String data) throws SQLException {

@@ -33,9 +33,12 @@ ifeval::['{page-version}' == 'master']
 * {link-sqlserver-plugin-snapshot}[SQL Server Connector plugin archive]
 * {link-oracle-plugin-snapshot}[Oracle Connector plugin archive]
 * {link-db2-plugin-snapshot}[Db2 Connector plugin archive]
-* {link-cassandra-3-plugin-snapshot}[Cassandra 3.x plugin archive] (incubating)
-* {link-cassandra-4-plugin-snapshot}[Cassandra 4.x plugin archive] (incubating)
+* {link-cassandra-3-plugin-snapshot}[Cassandra 3.x plugin archive]
+* {link-cassandra-4-plugin-snapshot}[Cassandra 4.x plugin archive]
 * {link-vitess-plugin-snapshot}[Vitess plugin archive] (incubating)
+* {link-spanner-plugin-snapshot}[Spanner plugin archive] (incubating)
+* {link-jdbc-plugin-snapshot}[JDBC sink plugin archive] (incubating)
+* {link-informix-plugin-snapshot}[Informix plugin archive] (incubating)
 
 NOTE: All above links are to nightly snapshots of the {prodname} main branch.  If you are looking for non-snapshot versions, please select the appropriate version in the top right.
 endif::[]
@@ -46,10 +49,15 @@ ifeval::['{page-version}' != 'master']
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-sqlserver/{debezium-version}/debezium-connector-sqlserver-{debezium-version}-plugin.tar.gz[SQL Server Connector plugin archive]
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-oracle/{debezium-version}/debezium-connector-oracle-{debezium-version}-plugin.tar.gz[Oracle Connector plugin archive]
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-db2/{debezium-version}/debezium-connector-db2-{debezium-version}-plugin.tar.gz[Db2 Connector plugin archive]
-* https://repo1.maven.org/maven2/io/debezium/debezium-connector-cassandra/{debezium-version}/debezium-connector-cassandra-3-{debezium-version}-plugin.tar.gz[Cassandra 3.x plugin archive] (incubating)
-* https://repo1.maven.org/maven2/io/debezium/debezium-connector-cassandra/{debezium-version}/debezium-connector-cassandra-4-{debezium-version}-plugin.tar.gz[Cassandra 4.x plugin archive] (incubating)
+* https://repo1.maven.org/maven2/io/debezium/debezium-connector-cassandra/{debezium-version}/debezium-connector-cassandra-3-{debezium-version}-plugin.tar.gz[Cassandra 3.x plugin archive]
+* https://repo1.maven.org/maven2/io/debezium/debezium-connector-cassandra/{debezium-version}/debezium-connector-cassandra-4-{debezium-version}-plugin.tar.gz[Cassandra 4.x plugin archive]
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-vitess/{debezium-version}/debezium-connector-vitess-{debezium-version}-plugin.tar.gz[Vitess plugin archive] (incubating)
+* https://repo1.maven.org/maven2/io/debezium/debezium-connector-spanner/{debezium-version}/debezium-connector-spanner-{debezium-version}-plugin.tar.gz[Spanner plugin archive] (incubating)
+* https://repo1.maven.org/maven2/io/debezium/debezium-connector-jdbc/${debezium-version}/debezium-connector-jdbc-{debezium-version}-plugin.tar.gz[JDBC sink plugin archive] (incubating)
+* https://repo1.maven.org/maven2/io/debezium/debezium-connector-informix/${debezium-version}/debezium-connector-informix-{debezium-version}-plugin.tar.gz[Informix plugin archive] (incubating)
 endif::[]
+
+NOTE: If you are interested in Debezium Server, please check the installation instructions xref:operations/debezium-server.adoc#_installation[here].
 
 If immutable containers are your thing, then check out https://quay.io/organization/debezium[{prodname}'s container images] (https://hub.docker.com/r/debezium/[alternative source] on DockerHub) for Apache Kafka, Kafka Connect and Apache Zookeeper, with the different {prodname} connectors already pre-installed and ready to go. Our xref:tutorial.adoc[tutorial] even walks you through using these images, and this is a great way to learn what {prodname} is all about.
 Of course you also can run {prodname} on Kubernetes and xref:operations/openshift.adoc[OpenShift].
@@ -62,14 +70,13 @@ Alternatively, you can add further directories to the plugin path by specifying 
 (e.g. `-e KAFKA_CONNECT_PLUGINS_DIR=/kafka/connect/,/path/to/further/plugins`).
 When using the container image for Kafka Connect provided by Confluent, you can specify the `CONNECT_PLUGIN_PATH` environment variable to achieve the same.
 
-Note that Java 8 or later is required to run the {prodname} connectors.
-Java 11 or later is required for running {prodname} UI.
+Note that Java 11 or later is required to run the {prodname} connectors or {prodname} UI.
 
 ifeval::['{page-version}' != 'main']
 === Consuming Snapshot Releases
 
 {prodname} executes nightly builds and deployments into the Sonatype snapshot repository.
-If you want to try latest and fresh or verify a bug fix you are interested in, then use plugins from https://oss.sonatype.org/content/repositories/snapshots/io/debezium/[oss.sonatype.org] or view the xref:master@install.adoc[master branch] version of this document for direct links to each connector's plugin artifact.
+If you want to try latest and fresh or verify a bug fix you are interested in, then use plugins from https://oss.sonatype.org/content/repositories/snapshots/io/debezium/[oss.sonatype.org] or view the xref:master@install.adoc[nightly] version of this document for direct links to each connector's plugin artifact.
 The installation procedure is the same as for regular releases.
 endif::[]
 
@@ -83,7 +90,10 @@ xref:connectors/sqlserver.adoc#sqlserver-deploying-a-connector[SQL Server Connec
 xref:connectors/oracle.adoc#oracle-deploying-a-connector[Oracle Connector],
 xref:connectors/db2.adoc#db2-deploying-a-connector[Db2 Connector],
 xref:connectors/cassandra.adoc#cassandra-deploying-a-connector[Cassandra Connector],
-or xref:connectors/vitess.adoc#vitess-deploying-a-connector[Vitess Connector],
+xref:connectors/vitess.adoc#vitess-deploying-a-connector[Vitess Connector],
+xref:connectors/spanner.adoc#spanner-deploying-a-connector[Spanner Connector],
+xref:connectors/jdbc.adoc#jdbc-deployment[JDBC sink Connector],
+xref:connectors/informix.adoc#informix-deploying-a-connector[Informix Connector],
 and use the link:{link-kafka-docs}/#connect_rest[Kafka Connect REST API] to add that
 connector configuration to your Kafka Connect cluster. When the connector starts, it will connect to the source and produce events
 for each inserted, updated, and deleted row or document.
@@ -119,4 +129,4 @@ endif::community[]
 
 Although {prodname} is intended to be used as turnkey services, all of JARs and other artifacts are available in https://search.maven.org/#search%7Cga%7C1%7Cg%3A%22io.debezium%22[Maven Central].
 
-We do provide a small library so applications can xref:operations/embedded.adoc[embed any Kafka Connect connector] and consume data change events read directly from the source system. This provides a light weight system (since Zookeeper, Kafka, and Kafka Connect services are not needed), but as a consequence it is not as fault tolerant or reliable since the application must manage and maintain all state normally kept inside Kafka's distributed and replicated logs. It's perfect for use in tests, and with careful consideration it may be useful in some applications.
+We do provide a small library so applications can xref:development/engine.adoc[embed any Kafka Connect connector] and consume data change events read directly from the source system. This provides a light weight system (since Zookeeper, Kafka, and Kafka Connect services are not needed), but as a consequence it is not as fault tolerant or reliable since the application must manage and maintain all state normally kept inside Kafka's distributed and replicated logs. It's perfect for use in tests, and with careful consideration it may be useful in some applications.

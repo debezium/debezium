@@ -6,6 +6,8 @@
 package io.debezium.storage.redis;
 
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,6 +32,12 @@ public class RedisCommonConfig {
 
     private static final Field PROP_PASSWORD = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "password")
             .withDescription("The password that will be used to access Redis");
+
+    private static final int DEFAULT_DB_INDEX = 0;
+    private static final Field PROP_DB_INDEX = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "db.index")
+            .withDescription("The database index (0..15) that will be used to access Redis")
+            .withAllowedValues(IntStream.rangeClosed(0, 15).boxed().collect(Collectors.toSet()))
+            .withDefault(DEFAULT_DB_INDEX);
 
     private static final boolean DEFAULT_SSL_ENABLED = false;
     private static final Field PROP_SSL_ENABLED = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "ssl.enabled")
@@ -56,6 +64,11 @@ public class RedisCommonConfig {
             .withDescription("Maximum retry delay (in ms)")
             .withDefault(DEFAULT_RETRY_MAX_DELAY);
 
+    private static final Integer DEFAULT_MAX_RETRIES = 10;
+    private static final Field PROP_MAX_RETRIES = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "retry.max.attempts")
+            .withDescription("Maximum number of retry attempts before giving up.")
+            .withDefault(DEFAULT_MAX_RETRIES);
+
     private static final boolean DEFAULT_WAIT_ENABLED = false;
     private static final Field PROP_WAIT_ENABLED = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "wait.enabled")
             .withDescription(
@@ -78,12 +91,14 @@ public class RedisCommonConfig {
             .withDefault(DEFAULT_WAIT_RETRY_DELAY);
 
     private String address;
+    private int dbIndex;
     private String user;
     private String password;
     private boolean sslEnabled;
 
     private Integer initialRetryDelay;
     private Integer maxRetryDelay;
+    private Integer maxRetryCount;
 
     private Integer connectionTimeout;
     private Integer socketTimeout;
@@ -95,7 +110,8 @@ public class RedisCommonConfig {
 
     public RedisCommonConfig(Configuration config, String prefix) {
         config = config.subset(prefix, true);
-        LOGGER.info("Configuration for '{}' with prefix '{}': {}", getClass().getSimpleName(), prefix, config.asMap());
+
+        LOGGER.info("Configuration for '{}' with prefix '{}': {}", getClass().getSimpleName(), prefix, config.withMaskedPasswords());
         if (!config.validateAndRecord(getAllConfigurationFields(), error -> LOGGER.error("Validation error for property with prefix '{}': {}", prefix, error))) {
             throw new DebeziumException(
                     String.format("Error configuring an instance of '%s' with prefix '%s'; check the logs for errors", getClass().getSimpleName(), prefix));
@@ -104,18 +120,20 @@ public class RedisCommonConfig {
     }
 
     protected List<Field> getAllConfigurationFields() {
-        return Collect.arrayListOf(PROP_ADDRESS, PROP_USER, PROP_PASSWORD, PROP_SSL_ENABLED, PROP_CONNECTION_TIMEOUT, PROP_SOCKET_TIMEOUT, PROP_RETRY_INITIAL_DELAY,
-                PROP_RETRY_MAX_DELAY, PROP_WAIT_ENABLED, PROP_WAIT_TIMEOUT, PROP_WAIT_RETRY_ENABLED, PROP_WAIT_RETRY_DELAY);
+        return Collect.arrayListOf(PROP_ADDRESS, PROP_DB_INDEX, PROP_USER, PROP_PASSWORD, PROP_SSL_ENABLED, PROP_CONNECTION_TIMEOUT, PROP_SOCKET_TIMEOUT,
+                PROP_RETRY_INITIAL_DELAY, PROP_RETRY_MAX_DELAY, PROP_WAIT_ENABLED, PROP_WAIT_TIMEOUT, PROP_WAIT_RETRY_ENABLED, PROP_WAIT_RETRY_DELAY);
     }
 
     protected void init(Configuration config) {
         address = config.getString(PROP_ADDRESS);
+        dbIndex = config.getInteger(PROP_DB_INDEX);
         user = config.getString(PROP_USER);
         password = config.getString(PROP_PASSWORD);
         sslEnabled = config.getBoolean(PROP_SSL_ENABLED);
 
         initialRetryDelay = config.getInteger(PROP_RETRY_INITIAL_DELAY);
         maxRetryDelay = config.getInteger(PROP_RETRY_MAX_DELAY);
+        maxRetryCount = config.getInteger(PROP_MAX_RETRIES);
 
         connectionTimeout = config.getInteger(PROP_CONNECTION_TIMEOUT);
         socketTimeout = config.getInteger(PROP_SOCKET_TIMEOUT);
@@ -138,6 +156,10 @@ public class RedisCommonConfig {
         return address;
     }
 
+    public int getDbIndex() {
+        return dbIndex;
+    }
+
     public String getUser() {
         return user;
     }
@@ -152,6 +174,10 @@ public class RedisCommonConfig {
 
     public Integer getMaxRetryDelay() {
         return maxRetryDelay;
+    }
+
+    public Integer getMaxRetryCount() {
+        return maxRetryCount;
     }
 
     public Integer getConnectionTimeout() {

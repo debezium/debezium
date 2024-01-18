@@ -4,18 +4,18 @@ Any future change event data that the connector captures comes in through the st
 
 However, in some situations the data that the connector obtained during the initial snapshot might become stale, lost, or incomplete.
 To provide a mechanism for recapturing {data-collection} data, {prodname} includes an option to perform ad hoc snapshots.
-The following changes in a database might be cause for performing an ad hoc snapshot:
+You might want to perform an ad hoc snapshot after any of the following changes occur in your {prodname} environment:
 
 * The connector configuration is modified to capture a different set of {data-collection}s.
 * Kafka topics are deleted and must be rebuilt.
 * Data corruption occurs due to a configuration error or some other problem.
 
 You can re-run a snapshot for a {data-collection} for which you previously captured a snapshot by initiating a so-called _ad-hoc snapshot_.
-Ad hoc snapshots require the use of xref:{link-signalling}#sending-signals-to-a-debezium-connector[signaling {data-collection}s].
+Ad hoc snapshots require the use of {link-prefix}:{link-signalling}#sending-signals-to-a-debezium-connector[signaling {data-collection}s].
 You initiate an ad hoc snapshot by sending a signal request to the {prodname} signaling {data-collection}.
 
 When you initiate an ad hoc snapshot of an existing {data-collection}, the connector appends content to the topic that already exists for the {data-collection}.
-If a previously existing topic was removed, {prodname} can create a topic automatically if xref:{link-topic-auto-creation}#customizing-debezium-automatically-created-topics[automatic topic creation] is enabled.
+If a previously existing topic was removed, {prodname} can create a topic automatically if {link-prefix}:{link-topic-auto-creation}#customizing-debezium-automatically-created-topics[automatic topic creation] is enabled.
 
 Ad hoc snapshot signals specify the {data-collection}s to include in the snapshot.
 The snapshot can capture the entire contents of the database, or capture only a subset of the {data-collection}s in the database.
@@ -24,18 +24,18 @@ Also, the snapshot can capture a subset of the contents of the {data-collection}
 endif::[]
 
 You specify the {data-collection}s to capture by sending an `execute-snapshot` message to the signaling {data-collection}.
-Set the type of the `execute-snapshot` signal to `incremental`, and provide the names of the {data-collection}s to include in the snapshot, as described in the following table:
+Set the type of the `execute-snapshot` signal to `incremental` or `blocking`, and provide the names of the {data-collection}s to include in the snapshot, as described in the following table:
+
 
 .Example of an ad hoc `execute-snapshot` signal record
-[cols="2,2,6",options="header"]
+[cols="2,2,6a",options="header"]
 |===
 |Field | Default | Value
 
 |`type`
 |`incremental`
 | Specifies the type of snapshot that you want to run. +
-Setting the type is optional.
-Currently, you can request only `incremental` snapshots.
+Currently, you can request `incremental` or `blocking` snapshots.
 
 
 |`data-collections`
@@ -44,41 +44,53 @@ Currently, you can request only `incremental` snapshots.
 The format of the names is the same as for the `signal.data.collection` configuration option.
 
 ifeval::['{context}' != 'mongodb']
-|`additional-condition`
-|Optional.Empty
+|`[.line-through]#additional-condition#`
+|_N/A_
 | An optional string, which specifies a condition based on the column(s) of the {data-collection}(s), to capture a
-subset of the contents of the {data-collection}(s).
+subset of the contents of the {data-collection}(s). +
+
+[NOTE]
+====
+This property is deprecated.
+To specify criteria for defining the subset of data that you want the snapshot to capture, use the `additional-conditions` parameter.
+====
+
+|`additional-conditions`
+|_N/A_
+|An optional array that specifies a set of additional conditions that the connector evaluates to determine the subset of records to include in a snapshot. +
+Each additional condition is an object that specifies the criteria for filtering the data that an ad hoc snapshot captures.
+You can set the following parameters for each additional condition:
+
+`data-collection`:: The fully-qualified name of the {data-collection} that the filter applies to.
+You can apply different filters to each {data-collection}.
+`filter`:: Specifies column values that must be present in a database record for the snapshot to include it, for example,  `"color='blue'"`. +
+ +
+The values that you assign to the `filter` parameter are the same types of values that you might specify in the `WHERE` clause of `SELECT` statements when you set the `snapshot.select.statement.overrides` property for a blocking snapshot.
+In earlier {prodname} releases, an explicit `filter` parameter was not defined for snapshot signals; instead, filter criteria were implied by the values that were specified for the now deprecated  `additional-condition` parameter.
+endif::[]
+
+ifeval::['{context}' != 'mongodb']
+|`surrogate-key`
+|_N/A_
+| An optional string that specifies the column name that the connector uses as the primary key of a {data-collection} during the snapshot process.
 endif::[]
 
 |===
 
-.Triggering an ad hoc snapshot
+.Triggering an ad hoc incremental snapshot
 
-You initiate an ad hoc snapshot by adding an entry with the `execute-snapshot` signal type to the signaling {data-collection}.
+You initiate an ad hoc incremental snapshot by adding an entry with the `execute-snapshot` signal type to the signaling {data-collection}.
 After the connector processes the message, it begins the snapshot operation.
 The snapshot process reads the first and last primary key values and uses those values as the start and end point for each {data-collection}.
 Based on the number of entries in the {data-collection}, and the configured chunk size, {prodname} divides the {data-collection} into chunks, and proceeds to snapshot each chunk, in succession, one at a time.
 
-Currently, the `execute-snapshot` action type triggers xref:{link-signalling}#debezium-signaling-incremental-snapshots[incremental snapshots] only.
-For more information, see xref:#{context}-incremental-snapshots[Incremental snapshots].
-////
-.Prerequisites
+For more information, see xref:debezium-{context}-incremental-snapshots[Incremental snapshots].
 
-* xref:{link-signalling}#debezium-signaling-enabling-signaling[Signaling is enabled].
+.Triggering an ad hoc blocking snapshot
 
-.Procedure
+You initiate an ad hoc blocking snapshot by adding an entry with the `execute-snapshot` signal type to the signaling {data-collection}.
+After the connector processes the message, it begins the snapshot operation.
+The connector temporarily stops streaming, and then initiates a snapshot of the specified {data-collection}, following the same process that it uses during an initial snapshot.
+After the snapshot completes, the connector resumes streaming.
 
-* Trigger a snapshot by submitting a SQL query to add a signal to the signaling {data-collection} that uses the following format:
-+
-[source,sql,subs="+attributes,+quotes"]
-----
-INSERT INTO _<signalingCollection>_ VALUES('_<signalName>_','_<signalType>_', '{"data-collections": ["_<dataCollection>_","_<dataCollectionN>_"]}')
-----
-+
-For example:
-+
-[source,sql]
-----
-INSERT INTO myschema.debezium_signal VALUES('ad-hoc-1', 'execute-snapshot', '{"data-collections": ["schema1.table1", "schema2.table2"]}')
-----
-////
+For more information, see xref:{context}-blocking-snapshots[Blocking snapshots].

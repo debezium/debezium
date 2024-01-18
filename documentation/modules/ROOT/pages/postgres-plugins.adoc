@@ -43,7 +43,7 @@ https://www.postgresql.org/docs/14/logicaldecoding-output-plugin.html[PostgreSQL
 * https://github.com/debezium/postgres-decoderbufs/blob/main/README.md[decoderbufs] or
 * https://github.com/postgres/postgres/blob/master/src/backend/replication/pgoutput/pgoutput.c[pgoutput]
 
-to encode the changes in either https://github.com/google/protobuf[Protobuf] format or https://www.postgresql.org/docs/14/protocol-logicalrep-message-formats.htmllLogical replication] format.
+to encode the changes in either https://github.com/google/protobuf[Protobuf] format or https://www.postgresql.org/docs/current/protocol-logicalrep-message-formats.html[Logical replication] format.
 
 [TIP]
 ====

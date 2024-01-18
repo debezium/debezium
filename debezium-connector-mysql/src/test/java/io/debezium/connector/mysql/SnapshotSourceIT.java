@@ -49,6 +49,7 @@ import io.debezium.junit.SkipTestRule;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.relational.RelationalDatabaseConnectorConfig.SnapshotTablesRowCountOrder;
 import io.debezium.relational.history.MemorySchemaHistory;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.util.Testing;
@@ -61,12 +62,13 @@ import io.debezium.util.Testing;
 public class SnapshotSourceIT extends AbstractConnectorTest {
 
     private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-snapshot.txt").toAbsolutePath();
-    private final UniqueDatabase DATABASE = new UniqueDatabase("logical_server_name", "connector_test_ro")
+    protected final UniqueDatabase DATABASE = new UniqueDatabase("logical_server_name", "connector_test_ro")
             .withDbHistoryPath(SCHEMA_HISTORY_PATH);
-    private final UniqueDatabase OTHER_DATABASE = new UniqueDatabase("logical_server_name", "connector_test", DATABASE);
-    private final UniqueDatabase BINARY_FIELD_DATABASE = new UniqueDatabase("logical_server_name", "connector_read_binary_field_test");
+    protected final UniqueDatabase OTHER_DATABASE = new UniqueDatabase("logical_server_name", "connector_test", DATABASE);
+    protected final UniqueDatabase BINARY_FIELD_DATABASE = new UniqueDatabase("logical_server_name", "connector_read_binary_field_test");
+    protected final UniqueDatabase CONFLICT_NAMES_DATABASE = new UniqueDatabase("logical_server_name", "mysql_dbz_6533");
 
-    private Configuration config;
+    protected Configuration config;
 
     @Rule
     public SkipTestRule skipRule = new SkipTestRule();
@@ -77,6 +79,7 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
         DATABASE.createAndInitialize();
         OTHER_DATABASE.createAndInitialize();
         BINARY_FIELD_DATABASE.createAndInitialize();
+        CONFLICT_NAMES_DATABASE.createAndInitialize();
     }
 
     @After
@@ -199,18 +202,18 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
         if (storeOnlyCapturedTables) {
             assertThat(schemaChanges.ddlRecordsForDatabaseOrEmpty("").size()
                     + schemaChanges.ddlRecordsForDatabaseOrEmpty(DATABASE.getDatabaseName()).size())
-                            .isEqualTo(schemaEventsCount);
+                    .isEqualTo(schemaEventsCount);
             assertThat(schemaChanges.ddlRecordsForDatabaseOrEmpty("").size()
                     + schemaChanges.ddlRecordsForDatabaseOrEmpty(OTHER_DATABASE.getDatabaseName()).size())
-                            .isEqualTo(1);
+                    .isEqualTo(1);
         }
         else {
             assertThat(schemaChanges.ddlRecordsForDatabaseOrEmpty("").size()
                     + schemaChanges.ddlRecordsForDatabaseOrEmpty(DATABASE.getDatabaseName()).size())
-                            .isEqualTo(schemaEventsCount);
+                    .isEqualTo(schemaEventsCount);
             assertThat(schemaChanges.ddlRecordsForDatabaseOrEmpty("").size()
                     + schemaChanges.ddlRecordsForDatabaseOrEmpty(OTHER_DATABASE.getDatabaseName()).size())
-                            .isEqualTo(useGlobalLock ? 1 : 5);
+                    .isEqualTo(useGlobalLock ? 1 : 5);
         }
 
         if (!useGlobalLock) {
@@ -381,10 +384,10 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
         assertThat(orders.numberOfReads()).isEqualTo(5);
 
         try (
-                final MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());
-                final JdbcConnection connection = db.connect();
-                final Connection jdbc = connection.connection();
-                final Statement statement = jdbc.createStatement()) {
+                MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());
+                JdbcConnection connection = db.connect();
+                Connection jdbc = connection.connection();
+                Statement statement = jdbc.createStatement()) {
             statement.executeUpdate("INSERT INTO customers VALUES (default,'John','Lazy','john.lazy@acme.com')");
         }
 
@@ -514,7 +517,8 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
             timerecords.add(((Struct) val.value()).getStruct("after"));
         });
         Struct after = timerecords.get(0);
-        assertThat(after.get("c1")).isEqualTo(toMicroSeconds("PT517H51M04.78S"));
+        String expected = MySqlTestConnection.isMariaDb() ? "PT517H51M04.77S" : "PT517H51M04.78S";
+        assertThat(after.get("c1")).isEqualTo(toMicroSeconds(expected));
         assertThat(after.get("c2")).isEqualTo(toMicroSeconds("-PT13H14M50S"));
         assertThat(after.get("c3")).isEqualTo(toMicroSeconds("-PT733H0M0.001S"));
         assertThat(after.get("c4")).isEqualTo(toMicroSeconds("-PT1H59M59.001S"));
@@ -522,7 +526,7 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
     }
 
     private String productsTableName() throws SQLException {
-        try (final MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
             return db.isTableIdCaseSensitive() ? "products" : "Products";
         }
     }
@@ -604,7 +608,8 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
             timerecords.add(((Struct) val.value()).getStruct("after"));
         });
         Struct after = timerecords.get(0);
-        assertThat(after.get("c1")).isEqualTo(toMicroSeconds("PT517H51M04.78S"));
+        String expected = MySqlTestConnection.isMariaDb() ? "PT517H51M04.77S" : "PT517H51M04.78S";
+        assertThat(after.get("c1")).isEqualTo(toMicroSeconds(expected));
         assertThat(after.get("c2")).isEqualTo(toMicroSeconds("-PT13H14M50S"));
         assertThat(after.get("c3")).isEqualTo(toMicroSeconds("-PT733H0M0.001S"));
         assertThat(after.get("c4")).isEqualTo(toMicroSeconds("-PT1H59M59.001S"));
@@ -617,7 +622,12 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
 
         // Start the connector ...
         AtomicReference<Throwable> exception = new AtomicReference<>();
-        start(MySqlConnector.class, config, (success, message, error) -> exception.set(error));
+        start(MySqlConnector.class, config, (success, message, error) -> {
+            exception.set(error);
+        });
+
+        // a poll is required in order to get the connector to initiate the snapshot
+        waitForConnectorShutdown("mysql", DATABASE.getServerName());
 
         throw (RuntimeException) exception.get();
     }
@@ -644,10 +654,10 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
         start(MySqlConnector.class, config);
 
         try (
-                final MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());
-                final JdbcConnection connection = db.connect();
-                final Connection jdbc = connection.connection();
-                final Statement statement = jdbc.createStatement()) {
+                MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());
+                JdbcConnection connection = db.connect();
+                Connection jdbc = connection.connection();
+                Statement statement = jdbc.createStatement()) {
             statement.executeUpdate("INSERT INTO customers VALUES (default,'John','Lazy','john.lazy@acme.com')");
         }
         recordCount = 1;
@@ -681,10 +691,49 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void shouldSnapshotTablesInOrderSpecifiedInTablesIncludeList() throws Exception {
+    @FixFor("DBZ-6533")
+    public void shouldSnapshotTablesInOrderSpecifiedInTableIncludeListWithConflictingNames() throws Exception {
+        config = simpleConfig()
+                .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, CONFLICT_NAMES_DATABASE.getDatabaseName())
+                .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST,
+                        CONFLICT_NAMES_DATABASE.qualifiedTableName("tablename") + ","
+                                + CONFLICT_NAMES_DATABASE.qualifiedTableName("another") + ","
+                                + CONFLICT_NAMES_DATABASE.qualifiedTableName("tablename_suffix"))
+                .build();
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+        waitForSnapshotToBeCompleted("mysql", DATABASE.getServerName());
+
+        // Poll for records ...
+        // Testing.Print.enable();
+        LinkedHashSet<String> tablesInOrder = new LinkedHashSet<>();
+        LinkedHashSet<String> tablesInOrderExpected = getTableNamesInSpecifiedOrder("tablename", "another", "tablename_suffix");
+        SourceRecords sourceRecords = consumeRecordsByTopic(3);
+        sourceRecords.allRecordsInOrder().forEach(record -> {
+            VerifyRecord.isValid(record);
+            VerifyRecord.hasNoSourceQuery(record);
+            if (record.value() != null) {
+                tablesInOrder.add(getTableNameFromSourceRecord.apply(record));
+            }
+        });
+        assertArrayEquals(tablesInOrderExpected.toArray(), tablesInOrder.toArray());
+    }
+
+    @Test
+    public void shouldSnapshotTablesInRowCountOrderAsc() throws Exception {
+        try (
+                MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());
+                JdbcConnection connection = db.connect();
+                Connection jdbc = connection.connection();
+                Statement statement = jdbc.createStatement()) {
+            statement.execute("ANALYZE TABLE Products");
+            statement.execute("ANALYZE TABLE dbz_342_timetest");
+        }
+
         config = simpleConfig()
                 .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST,
-                        "connector_test_ro_(.*).orders,connector_test_ro_(.*).Products,connector_test_ro_(.*).products_on_hand,connector_test_ro_(.*).dbz_342_timetest")
+                        "connector_test_ro_(.*).Products,connector_test_ro_(.*).dbz_342_timetest")
+                .with(MySqlConnectorConfig.SNAPSHOT_TABLES_ORDER_BY_ROW_COUNT, SnapshotTablesRowCountOrder.ASCENDING)
                 .build();
 
         // Start the connector ...
@@ -694,8 +743,8 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
         // Poll for records ...
         // Testing.Print.enable();
         LinkedHashSet<String> tablesInOrder = new LinkedHashSet<>();
-        LinkedHashSet<String> tablesInOrderExpected = getTableNamesInSpecifiedOrder("orders", "Products", "products_on_hand", "dbz_342_timetest");
-        SourceRecords sourceRecords = consumeRecordsByTopic(9 + 9 + 5 + 1);
+        LinkedHashSet<String> tablesInOrderExpected = getTableNamesInSpecifiedOrder("dbz_342_timetest", "Products");
+        SourceRecords sourceRecords = consumeRecordsByTopic(1 + 9);
         sourceRecords.allRecordsInOrder().forEach(record -> {
             VerifyRecord.isValid(record);
             VerifyRecord.hasNoSourceQuery(record);
@@ -703,7 +752,43 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
                 tablesInOrder.add(getTableNameFromSourceRecord.apply(record));
             }
         });
-        assertArrayEquals(tablesInOrder.toArray(), tablesInOrderExpected.toArray());
+        assertArrayEquals(tablesInOrderExpected.toArray(), tablesInOrder.toArray());
+    }
+
+    @Test
+    public void shouldSnapshotTablesInRowCountOrderDesc() throws Exception {
+        try (
+                MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());
+                JdbcConnection connection = db.connect();
+                Connection jdbc = connection.connection();
+                Statement statement = jdbc.createStatement()) {
+            statement.execute("ANALYZE TABLE Products");
+            statement.execute("ANALYZE TABLE dbz_342_timetest");
+        }
+
+        config = simpleConfig()
+                .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST,
+                        "connector_test_ro_(.*).dbz_342_timetest,connector_test_ro_(.*).Products")
+                .with(MySqlConnectorConfig.SNAPSHOT_TABLES_ORDER_BY_ROW_COUNT, SnapshotTablesRowCountOrder.DESCENDING)
+                .build();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+        waitForSnapshotToBeCompleted("mysql", DATABASE.getServerName());
+
+        // Poll for records ...
+        // Testing.Print.enable();
+        LinkedHashSet<String> tablesInOrder = new LinkedHashSet<>();
+        LinkedHashSet<String> tablesInOrderExpected = getTableNamesInSpecifiedOrder("Products", "dbz_342_timetest");
+        SourceRecords sourceRecords = consumeRecordsByTopic(9 + 1);
+        sourceRecords.allRecordsInOrder().forEach(record -> {
+            VerifyRecord.isValid(record);
+            VerifyRecord.hasNoSourceQuery(record);
+            if (record.value() != null) {
+                tablesInOrder.add(getTableNameFromSourceRecord.apply(record));
+            }
+        });
+        assertArrayEquals(tablesInOrderExpected.toArray(), tablesInOrder.toArray());
     }
 
     @Test
@@ -718,7 +803,7 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
         // Testing.Print.enable();
         LinkedHashSet<String> tablesInOrder = new LinkedHashSet<>();
         LinkedHashSet<String> tablesInOrderExpected = getTableNamesInSpecifiedOrder("Products", "customers", "dbz_342_timetest", "orders", "products_on_hand");
-        SourceRecords sourceRecords = consumeRecordsByTopic(9 + 9 + 5 + 1);
+        SourceRecords sourceRecords = consumeRecordsByTopic(9 + 9 + 5 + 4 + 1);
         sourceRecords.allRecordsInOrder().forEach(record -> {
             VerifyRecord.isValid(record);
             VerifyRecord.hasNoSourceQuery(record);

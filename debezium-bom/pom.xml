@@ -3,8 +3,8 @@
     <parent>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-build-parent</artifactId>
-        <version>2.1.0-SNAPSHOT</version>
-	<relativePath>../pom.xml</relativePath>
+        <version>2.6.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>debezium-bom</artifactId>
@@ -21,42 +21,51 @@
         <version.jetty>9.4.12.v20180830</version.jetty>
 
         <!-- Vitess dependencies -->
-        <version.vitess.grpc>12.0.0</version.vitess.grpc>
-        <version.grpc>1.33.0</version.grpc>
+        <version.vitess.grpc>17.0.0</version.vitess.grpc>
         <version.joda>2.10.1</version.joda>
         <version.google.protos>1.17.0</version.google.protos>
 
-        <!-- Oracle dependencies -->
-        <version.infinispan>12.1.6.Final</version.infinispan>
-        <version.infinispan.protostream>4.4.1.Final</version.infinispan.protostream>
+        <!-- Spanner and Vitess dependencies -->
+        <version.grpc>1.56.1</version.grpc>
 
         <!-- Tracing -->
-        <version.opentracing.strimzi>0.33.0</version.opentracing.strimzi>
+        <version.opentelemetry>1.23.0</version.opentelemetry>
 
         <!-- HTTP client -->
         <version.okhttp>4.8.1</version.okhttp>
 
         <!-- Scripting -->
-        <version.groovy>3.0.7</version.groovy>
-        <version.graalvm.js>20.0.0</version.graalvm.js>
+        <version.groovy>4.0.17</version.groovy>
+        <version.graalvm.js>23.0.2</version.graalvm.js>
 
         <!-- Storages -->
+
+        <!-- Redis -->
         <version.jedis>4.1.1</version.jedis>
+
+        <!-- S3 -->
+        <version.s3>2.17.241</version.s3>
+
+        <!-- Blob Storage -->
+        <version.azure.blob>12.21.0</version.azure.blob>
 
         <!-- Testing -->
         <version.junit>4.13.1</version.junit>
+        <version.junit5>5.9.1</version.junit5>
+        <version.junit.platform.launcher>1.9.3</version.junit.platform.launcher>
         <version.fest>1.4</version.fest>
         <version.assertj>3.11.1</version.assertj>
         <version.jmh>1.21</version.jmh>
         <version.mockito>3.0.0</version.mockito>
         <version.awaitility>4.0.1</version.awaitility>
-        <version.testcontainers>1.17.5</version.testcontainers>
+        <version.testcontainers>1.19.1</version.testcontainers>
         <version.jsonpath>2.7.0</version.jsonpath>
         <version.jsonassert>1.5.0</version.jsonassert>
         <version.org.reflections>0.9.12</version.org.reflections>
         <version.cassandra.unit>3.5.0.1</version.cassandra.unit>
         <version.rest-assured>4.3.3</version.rest-assured>
-        <version.logback>1.2.10</version.logback>
+        <version.logback>1.2.13</version.logback>
+        <version.rest-assured>5.3.2</version.rest-assured>
     </properties>
 
     <dependencyManagement>
@@ -177,8 +186,8 @@
 
             <!-- MySQL JDBC Driver, Binlog reader, Geometry support -->
             <dependency>
-                <groupId>mysql</groupId>
-                <artifactId>mysql-connector-java</artifactId>
+                <groupId>com.mysql</groupId>
+                <artifactId>mysql-connector-j</artifactId>
                 <version>${version.mysql.driver}</version>
             </dependency>
             <dependency>
@@ -190,6 +199,13 @@
                 <groupId>mil.nga</groupId>
                 <artifactId>wkb</artifactId>
                 <version>1.0.2</version>
+            </dependency>
+
+            <!-- MariaDB JDBC driver -->
+            <dependency>
+                <groupId>org.mariadb.jdbc</groupId>
+                <artifactId>mariadb-java-client</artifactId>
+                <version>${version.mariadb.driver}</version>
             </dependency>
 
             <!-- MongoDB Java driver -->
@@ -206,10 +222,20 @@
                 <version>${version.sqlserver.driver}</version>
             </dependency>
 
-            <!-- Oracle JDBC driver, Oracle XStream -->
+            <!-- Oracle JDBC driver, XML support, Oracle XStream -->
             <dependency>
                 <groupId>com.oracle.database.jdbc</groupId>
                 <artifactId>ojdbc8</artifactId>
+                <version>${version.oracle.driver}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.oracle.database.xml</groupId>
+                <artifactId>xdb</artifactId>
+                <version>${version.oracle.driver}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.oracle.database.xml</groupId>
+                <artifactId>xmlparserv2</artifactId>
                 <version>${version.oracle.driver}</version>
             </dependency>
             <dependency>
@@ -223,6 +249,18 @@
                 <groupId>com.ibm.db2</groupId>
                 <artifactId>jcc</artifactId>
                 <version>${version.db2.driver}</version>
+            </dependency>
+
+            <!-- Informix JDBC driver -->
+            <dependency>
+                <groupId>com.ibm.informix</groupId>
+                <artifactId>jdbc</artifactId>
+                <version>${version.informix.driver}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.ibm.informix</groupId>
+                <artifactId>ifx-changestream-client</artifactId>
+                <version>${version.informix.changestream.client}</version>
             </dependency>
 
             <!-- Logging -->
@@ -239,17 +277,17 @@
 
             <!-- Scripting -->
             <dependency>
-                <groupId>org.codehaus.groovy</groupId>
+                <groupId>org.apache.groovy</groupId>
                 <artifactId>groovy</artifactId>
                 <version>${version.groovy}</version>
             </dependency>
             <dependency>
-                <groupId>org.codehaus.groovy</groupId>
+                <groupId>org.apache.groovy</groupId>
                 <artifactId>groovy-json</artifactId>
                 <version>${version.groovy}</version>
             </dependency>
             <dependency>
-                <groupId>org.codehaus.groovy</groupId>
+                <groupId>org.apache.groovy</groupId>
                 <artifactId>groovy-jsr223</artifactId>
                 <version>${version.groovy}</version>
             </dependency>
@@ -264,16 +302,11 @@
                 <version>${version.graalvm.js}</version>
             </dependency>
 
-            <!-- OpenTracing Integration, Strimzi version is not aligned with Quarkus -->
+            <!-- OpenTelemetry Integration -->
             <dependency>
-                <groupId>io.opentracing</groupId>
-                <artifactId>opentracing-api</artifactId>
-                <version>${version.opentracing.strimzi}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.opentracing</groupId>
-                <artifactId>opentracing-util</artifactId>
-                <version>${version.opentracing.strimzi}</version>
+                <groupId>io.opentelemetry</groupId>
+                <artifactId>opentelemetry-api</artifactId>
+                <version>${version.opentelemetry}</version>
             </dependency>
 
             <!-- Kafka runtime libs -->
@@ -412,12 +445,12 @@
             <!-- Oracle dependencies -->
             <dependency>
                 <groupId>org.infinispan</groupId>
-                <artifactId>infinispan-core</artifactId>
+                <artifactId>infinispan-core-jakarta</artifactId>
                 <version>${version.infinispan}</version>
             </dependency>
             <dependency>
                 <groupId>org.infinispan</groupId>
-                <artifactId>infinispan-client-hotrod</artifactId>
+                <artifactId>infinispan-client-hotrod-jakarta</artifactId>
                 <version>${version.infinispan}</version>
             </dependency>
             <dependency>
@@ -428,10 +461,36 @@
             </dependency>
 
             <!--Storages -->
+            <!-- Redis Storage -->
             <dependency>
                 <groupId>redis.clients</groupId>
                 <artifactId>jedis</artifactId>
                 <version>${version.jedis}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.rocketmq</groupId>
+                <artifactId>rocketmq-client</artifactId>
+                <version>${version.rocketmq}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.rocketmq</groupId>
+                <artifactId>rocketmq-tools</artifactId>
+                <version>${version.rocketmq}</version>
+            </dependency>
+
+            <!-- S3 Storage -->
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>s3</artifactId>
+                <version>${version.s3}</version>
+            </dependency>
+
+            <!-- Azure Blob Storage -->
+            <dependency>
+                <groupId>com.azure</groupId>
+                <artifactId>azure-storage-blob</artifactId>
+                <version>${version.azure.blob}</version>
             </dependency>
 
             <!-- Testing utilities -->
@@ -453,6 +512,16 @@
                 <groupId>junit</groupId>
                 <artifactId>junit</artifactId>
                 <version>${version.junit}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.junit.jupiter</groupId>
+                <artifactId>junit-jupiter</artifactId>
+                <version>${version.junit5}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.junit.platform</groupId>
+                <artifactId>junit-platform-launcher</artifactId>
+                <version>${version.junit.platform.launcher}</version>
             </dependency>
             <dependency>
                 <groupId>io.rest-assured</groupId>
@@ -538,12 +607,37 @@
             </dependency>
             <dependency>
                 <groupId>io.debezium</groupId>
+                <artifactId>debezium-storage-jdbc</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
                 <artifactId>debezium-storage-kafka</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.debezium</groupId>
+                <artifactId>debezium-storage-azure-blob</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-storage-s3</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
                 <artifactId>debezium-storage-file</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-storage-redis</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-storage-tests</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -609,12 +703,27 @@
             </dependency>
             <dependency>
                 <groupId>io.debezium</groupId>
+                <artifactId>debezium-connector-spanner</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
                 <artifactId>debezium-connector-vitess</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.debezium</groupId>
-                <artifactId>debezium-connector-cassandra</artifactId>
+                <artifactId>debezium-connector-informix</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-connector-cassandra-3</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-connector-cassandra-4</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -635,11 +744,6 @@
             <dependency>
                 <groupId>io.debezium</groupId>
                 <artifactId>debezium-quarkus-outbox-deployment</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.debezium</groupId>
-                <artifactId>debezium-storage-redis</artifactId>
                 <version>${project.version}</version>
             </dependency>
 

@@ -7,27 +7,34 @@ package io.debezium.connector.sqlserver;
 
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.bean.StandardBeanNames;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.sqlserver.metrics.SqlServerMetricsFactory;
+import io.debezium.document.DocumentReader;
+import io.debezium.jdbc.DefaultMainConnectionProvidingConnectionFactory;
+import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
-import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.notification.NotificationService;
+import io.debezium.pipeline.signal.SignalProcessor;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.TableId;
+import io.debezium.schema.SchemaFactory;
+import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Clock;
-import io.debezium.util.SchemaNameAdjuster;
 
 /**
  * The main task executing streaming from SQL Server.
@@ -45,7 +52,7 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
     private volatile ChangeEventQueue<DataChangeEvent> queue;
     private volatile SqlServerConnection dataConnection;
     private volatile SqlServerConnection metadataConnection;
-    private volatile ErrorHandler errorHandler;
+    private volatile SqlServerErrorHandler errorHandler;
     private volatile SqlServerDatabaseSchema schema;
 
     @Override
@@ -64,16 +71,16 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
                 .build();
 
         final SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(config);
-        final TopicNamingStrategy topicNamingStrategy = connectorConfig.getTopicNamingStrategy(
-                CommonConnectorConfig.TOPIC_NAMING_STRATEGY, true);
-        final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjustmentMode().createAdjuster();
+        final TopicNamingStrategy<TableId> topicNamingStrategy = connectorConfig.getTopicNamingStrategy(CommonConnectorConfig.TOPIC_NAMING_STRATEGY, true);
+        final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
         final SqlServerValueConverters valueConverters = new SqlServerValueConverters(connectorConfig.getDecimalMode(),
                 connectorConfig.getTemporalPrecisionMode(), connectorConfig.binaryHandlingMode());
 
-        dataConnection = new SqlServerConnection(connectorConfig.getJdbcConfig(), valueConverters,
-                connectorConfig.getSkippedOperations(), connectorConfig.useSingleDatabase(),
-                connectorConfig.getOptionRecompile());
-        metadataConnection = new SqlServerConnection(connectorConfig.getJdbcConfig(), valueConverters,
+        MainConnectionProvidingConnectionFactory<SqlServerConnection> connectionFactory = new DefaultMainConnectionProvidingConnectionFactory<>(
+                () -> new SqlServerConnection(connectorConfig,
+                        valueConverters, connectorConfig.getSkippedOperations(), connectorConfig.useSingleDatabase(), connectorConfig.getOptionRecompile()));
+        dataConnection = connectionFactory.mainConnection();
+        metadataConnection = new SqlServerConnection(connectorConfig, valueConverters,
                 connectorConfig.getSkippedOperations(), connectorConfig.useSingleDatabase());
 
         this.schema = new SqlServerDatabaseSchema(connectorConfig, metadataConnection.getDefaultValueConverter(), valueConverters, topicNamingStrategy,
@@ -81,10 +88,20 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
         this.schema.initializeStorage();
 
         Offsets<SqlServerPartition, SqlServerOffsetContext> offsets = getPreviousOffsets(
-                new SqlServerPartition.Provider(connectorConfig, config),
+                new SqlServerPartition.Provider(connectorConfig),
                 new SqlServerOffsetContext.Loader(connectorConfig));
 
         schema.recover(offsets);
+
+        // Manual Bean Registration
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.CONFIGURATION, config);
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.CONNECTOR_CONFIG, connectorConfig);
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.DATABASE_SCHEMA, schema);
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.JDBC_CONNECTION, metadataConnection);
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.VALUE_CONVERTER, valueConverters);
+
+        // Service providers
+        registerServiceProviders(connectorConfig.getServiceRegistry());
 
         taskContext = new SqlServerTaskContext(connectorConfig, schema);
 
@@ -97,9 +114,15 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
                 .loggingContextSupplier(() -> taskContext.configureLoggingContext(CONTEXT_NAME))
                 .build();
 
-        errorHandler = new SqlServerErrorHandler(connectorConfig, queue);
+        errorHandler = new SqlServerErrorHandler(connectorConfig, queue, errorHandler);
 
         final SqlServerEventMetadataProvider metadataProvider = new SqlServerEventMetadataProvider();
+
+        SignalProcessor<SqlServerPartition, SqlServerOffsetContext> signalProcessor = new SignalProcessor<>(
+                SqlServerConnector.class, connectorConfig, Map.of(),
+                getAvailableSignalChannels(),
+                DocumentReader.defaultReader(),
+                offsets);
 
         final EventDispatcher<SqlServerPartition, TableId> dispatcher = new EventDispatcher<>(
                 connectorConfig,
@@ -109,18 +132,25 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
                 connectorConfig.getTableFilters().dataCollectionFilter(),
                 DataChangeEvent::new,
                 metadataProvider,
-                schemaNameAdjuster);
+                schemaNameAdjuster,
+                signalProcessor);
+
+        NotificationService<SqlServerPartition, SqlServerOffsetContext> notificationService = new NotificationService<>(getNotificationChannels(),
+                connectorConfig, SchemaFactory.get(), dispatcher::enqueueNotification);
 
         ChangeEventSourceCoordinator<SqlServerPartition, SqlServerOffsetContext> coordinator = new SqlServerChangeEventSourceCoordinator(
                 offsets,
                 errorHandler,
                 SqlServerConnector.class,
                 connectorConfig,
-                new SqlServerChangeEventSourceFactory(connectorConfig, dataConnection, metadataConnection, errorHandler, dispatcher, clock, schema),
+                new SqlServerChangeEventSourceFactory(connectorConfig, connectionFactory, metadataConnection, errorHandler, dispatcher, clock, schema,
+                        notificationService),
                 new SqlServerMetricsFactory(offsets.getPartitions()),
                 dispatcher,
                 schema,
-                clock);
+                clock,
+                signalProcessor,
+                notificationService);
 
         coordinator.start(taskContext, this.queue, metadataProvider);
 
@@ -134,6 +164,11 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
         final List<SourceRecord> sourceRecords = records.stream()
                 .map(DataChangeEvent::getRecord)
                 .collect(Collectors.toList());
+
+        // Reset the retries if all partitions have streamed without exceptions at least once after a restart
+        if (coordinator.getErrorHandler().getRetries() > 0 && ((SqlServerChangeEventSourceCoordinator) coordinator).firstStreamingIterationCompletedSuccessfully()) {
+            coordinator.getErrorHandler().resetRetries();
+        }
 
         return sourceRecords;
     }

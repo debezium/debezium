@@ -14,100 +14,135 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ 18 ]
-    name: SQL Server - Java ${{ matrix.feature }}
+        feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true' }, { release: ea, args: '' } ]
+      fail-fast: false
+    name: SQL Server - Java ${{ matrix.feature.release }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Setup OpenJDK
         uses: oracle-actions/setup-java@v1
         with:
           website: jdk.java.net
-          release: ${{ matrix.feature }}
+          release: ${{ matrix.feature.release }}
       - name: Maven Build
-        run: ./mvnw clean install -B -pl debezium-bom,debezium-connector-sqlserver -am -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        run: ./mvnw clean install -B -pl debezium-bom,debezium-connector-sqlserver -am -Passembly ${{ matrix.feature.args }} -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
   mysql:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ 18 ]
-    name: MySQL - Java ${{ matrix.feature }}
+        feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true' }, { release: ea, args: '' } ]
+      fail-fast: false
+    name: MySQL - Java ${{ matrix.feature.release }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Setup OpenJDK
         uses: oracle-actions/setup-java@v1
         with:
           website: jdk.java.net
-          release: ${{ matrix.feature }}
+          release: ${{ matrix.feature.release }}
       - name: Maven Build
-        run: ./mvnw clean install -B -pl debezium-bom,debezium-connector-mysql -am -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        run: ./mvnw clean install -B -pl debezium-bom,debezium-connector-mysql -am -Passembly ${{ matrix.feature.args }} -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
   postgres-pgoutput:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ 18 ]
-    name: PostgreSQL Pgoutput - Java ${{ matrix.feature }}
+        feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true' }, { release: ea, args: '' } ]
+      fail-fast: false
+    name: PostgreSQL Pgoutput - Java ${{ matrix.feature.release }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Setup OpenJDK
         uses: oracle-actions/setup-java@v1
         with:
           website: jdk.java.net
-          release: ${{ matrix.feature }}
+          release: ${{ matrix.feature.release }}
       - name: Maven Build
-        run: ./mvnw clean install -B -pl debezium-bom,debezium-connector-postgres -am -Passembly,pgoutput-decoder,postgres-10 -Ddebezium.test.records.waittime=5 -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dversion.postgres.server=10-devel -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        run: ./mvnw clean install -B -pl debezium-bom,debezium-connector-postgres -am -Passembly,pgoutput-decoder,postgres-16 ${{ matrix.feature.args }} -Ddebezium.test.records.waittime=5 -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
   mongodb-40:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ 18 ]
-    name: MongoDB 4.0 - Java ${{ matrix.feature }}
+        feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true' }, { release: ea, args: '' } ]
+      fail-fast: false
+    name: MongoDB 7.0 - Java ${{ matrix.feature.release }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Setup OpenJDK
         uses: oracle-actions/setup-java@v1
         with:
           website: jdk.java.net
-          release: ${{ matrix.feature }}
+          release: ${{ matrix.feature.release }}
       - name: Maven Build
-        run: ./mvnw clean install -B -pl debezium-bom,debezium-connector-mongodb -am -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dversion.mongo.server=4.0 -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        run: ./mvnw clean install -B -pl debezium-bom,debezium-connector-mongodb -am -Passembly ${{ matrix.feature.args }} -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dversion.mongo.server=7.0 -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
   oracle:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ 18 ]
-    name: Oracle - Java ${{ matrix.feature }}
+        feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true' }, { release: ea, args: '' } ]
+      fail-fast: false
+    name: Oracle - Java ${{ matrix.feature.release }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Setup OpenJDK
         uses: oracle-actions/setup-java@v1
         with:
           website: jdk.java.net
-          release: ${{ matrix.feature }}
+          release: ${{ matrix.feature.release }}
       - name: Maven Build
         run: ./mvnw clean install -B -pl debezium-bom,debezium-connector-oracle -am -DskipITs=true -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+  cassandra:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true' }, { release: ea, args: '' } ]
+      fail-fast: false
+    name: Cassandra - Java ${{ matrix.feature.release }}
+    steps:
+      - name: Checkout Core
+        uses: actions/checkout@v4
+        with:
+          path: core
+      - name: Checkout Cassandra
+        uses: actions/checkout@v4
+        with:
+          repository: debezium/debezium-connector-cassandra
+          path: cassandra
+      - name: Setup OpenJDK
+        uses: oracle-actions/setup-java@v1
+        with:
+          website: jdk.java.net
+          release: ${{ matrix.feature.release }}
+      - name: Build Debezium Core
+        run: ./core/mvnw clean install -f core/pom.xml -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+      - name: Install dse dependency artifacts (for Debezium Connector Cassandra)
+        working-directory: cassandra
+        run: sh ./install-artifacts.sh
+      - name: Build Debezium Connectors Cassandra
+        run: ./core/mvnw clean install -f cassandra/pom.xml -Passembly ${{ matrix.feature.args }} -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
   db2:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ 18 ]
-    name: Db2 - Java ${{ matrix.feature }}
+        feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true' }, { release: ea, args: '' } ]
+      fail-fast: false
+    name: Db2 - Java ${{ matrix.feature.release }}
     steps:
       - name: Checkout Core
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           path: core
       - name: Checkout Db2
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           repository: debezium/debezium-connector-db2
           path: db2
@@ -115,24 +150,51 @@ jobs:
         uses: oracle-actions/setup-java@v1
         with:
           website: jdk.java.net
-          release: ${{ matrix.feature }}
+          release: ${{ matrix.feature.release }}
       - name: Build Debezium Core
         run: ./core/mvnw clean install -f core/pom.xml -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
       - name: Build Debezium Connector Db2
-        run: ./core/mvnw clean install -f db2/pom.xml -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        run: ./core/mvnw clean install -f db2/pom.xml -Passembly ${{ matrix.feature.args }} -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+  spanner:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true' }, { release: ea, args: '' } ]
+      fail-fast: false
+    name: Spanner - Java ${{ matrix.feature.release }}
+    steps:
+      - name: Checkout Core
+        uses: actions/checkout@v4
+        with:
+          path: core
+      - name: Checkout Spanner
+        uses: actions/checkout@v4
+        with:
+          repository: debezium/debezium-connector-spanner
+          path: spanner
+      - name: Setup OpenJDK
+        uses: oracle-actions/setup-java@v1
+        with:
+          website: jdk.java.net
+          release: ${{ matrix.feature.release }}
+      - name: Build Debezium Core
+        run: ./core/mvnw clean install -f core/pom.xml -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+      - name: Build Debezium Connector Spanner
+        run: ./core/mvnw clean install -f spanner/pom.xml -Passembly ${{ matrix.feature.args }} -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
   vitess:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ 18 ]
-    name: Vitess - Java ${{ matrix.feature }}
+        feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true' }, { release: ea, args: '' } ]
+      fail-fast: false
+    name: Vitess - Java ${{ matrix.feature.release }}
     steps:
       - name: Checkout Core
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           path: core
       - name: Checkout Vitess
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           repository: debezium/debezium-connector-vitess
           path: vitess
@@ -140,76 +202,88 @@ jobs:
         uses: oracle-actions/setup-java@v1
         with:
           website: jdk.java.net
-          release: ${{ matrix.feature }}
+          release: ${{ matrix.feature.release }}
       - name: Build Debezium Core
         run: ./core/mvnw clean install -f core/pom.xml -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
       - name: Build Debezium Connector Vitess
-        run: ./core/mvnw clean install -f vitess/pom.xml -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        run: ./core/mvnw clean install -f vitess/pom.xml -Passembly ${{ matrix.feature.args }} -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
   quarkus-outbox:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ 18 ]
-    name: Quarkus Outbox Extension - Java ${{ matrix.feature }}
+        feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true' }, { release: ea, args: '' } ]
+      fail-fast: false
+    name: Quarkus Outbox Extension - Java ${{ matrix.feature.release }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Setup OpenJDK
         uses: oracle-actions/setup-java@v1
         with:
           website: jdk.java.net
-          release: ${{ matrix.feature }}
+          release: ${{ matrix.feature.release }}
       - name: Maven Build
-        run: ./mvnw clean install -B -pl debezium-bom,:debezium-quarkus-outbox -U -am -amd -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        run: ./mvnw clean install -B -pl debezium-bom,:debezium-quarkus-outbox -U -am -amd -Passembly ${{ matrix.feature.args }} -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
   rest-extension:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ 18 ]
-    name: Rest Extension - Java ${{ matrix.feature }}
+        feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true' }, { release: ea, args: '' } ]
+      fail-fast: false
+    name: Rest Extension - Java ${{ matrix.feature.release }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Setup OpenJDK
         uses: oracle-actions/setup-java@v1
         with:
           website: jdk.java.net
-          release: ${{ matrix.feature }}
+          release: ${{ matrix.feature.release }}
       - name: Maven Build
-        run: ./mvnw clean install -B -pl debezium-bom,debezium-connect-rest-extension -am -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        run: ./mvnw clean install -B -pl debezium-bom,debezium-connect-rest-extension -am -Passembly ${{ matrix.feature.args }} -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
   testing:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ 18 ]
-    name: Testing - Java ${{ matrix.feature }}
+        feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true' }, { release: ea, args: '' } ]
+      fail-fast: false
+    name: Testing - Java ${{ matrix.feature.release }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Setup OpenJDK
         uses: oracle-actions/setup-java@v1
         with:
           website: jdk.java.net
-          release: ${{ matrix.feature }}
+          release: ${{ matrix.feature.release }}
       - name: Maven Build
-        run: ./mvnw clean install -B -pl debezium-bom,debezium-testing -am -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        run: ./mvnw clean install -B -pl debezium-bom,debezium-testing -am -Passembly ${{ matrix.feature.args }} -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
   server:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ 18 ]
-    name: Server - Java ${{ matrix.feature }}
+        feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true' }, { release: ea, args: '' } ]
+      fail-fast: false
+    name: Server - Java ${{ matrix.feature.release }}
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout Core
+        uses: actions/checkout@v4
         with:
-          submodules: recursive
+          path: core
+      - name: Checkout Server
+        uses: actions/checkout@v4
+        with:
+          repository: debezium/debezium-server
+          path: server
       - name: Setup OpenJDK
         uses: oracle-actions/setup-java@v1
         with:
           website: jdk.java.net
-          release: ${{ matrix.feature }}
-      - name: Maven Build
-        run: ./mvnw clean install -B -pl debezium-bom,debezium-server/debezium-server-bom,debezium-testing/debezium-testing-testcontainers,debezium-server -Pserver-ci -am -amd -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+          release: ${{ matrix.feature.release }}
+      - name: Build Debezium Core
+        run: ./core/mvnw clean install -f core/pom.xml -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+      - name: Build Debezium Server
+        run: ./core/mvnw clean install -fae -f server/pom.xml -Passembly ${{ matrix.feature.args }} -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120 -DskipNonCore

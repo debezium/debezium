@@ -373,13 +373,13 @@ public class IoUtil {
     public static File createDirectory(Path path, boolean removeExistingContent) throws IOException {
         File dir = path.toAbsolutePath().toFile();
         if (dir.exists() && dir.canRead() && dir.canWrite()) {
-            if (dir.isDirectory()) {
-                if (removeExistingContent) {
-                    delete(path);
-                }
+            if (!dir.isDirectory()) {
+                throw new IllegalStateException("Expecting '" + path + "' to be a directory but found a file");
+            }
+            if (!removeExistingContent) {
                 return dir;
             }
-            throw new IllegalStateException("Expecting '" + path + "' to be a directory but found a file");
+            delete(path);
         }
         dir.mkdirs();
         return dir;

@@ -28,7 +28,22 @@ The following SMTs are provided by {prodname}:
 |The MongoDB-specific counter-part to the xref:transformations/outbox-event-router.adoc[Outbox Event Router] SMT.
 
 |xref:transformations/filtering.adoc[Message Filtering]
-|Applies a filter to the change events emitted by the connectors, based on their content. This lets you propagate only those records that are relevant to you. 
+|Applies a filter to the change events emitted by the connectors, based on their content. This lets you propagate only those records that are relevant to you.
+
+|xref:transformations/header-to-value.adoc[HeaderToValue]
+|Moves or copies headers into the record value.
+
+|xref:transformations/partition-routing.adoc[Partition Routing]
+|Re-routes records to specific partitions based on configured payload fields.
+
+|xref:transformations/timezone-converter.adoc[Timezone Converter]
+|Converts {prodname} and Kafka Connect timestamp fields in event records to a specified timezone.
+
+|xref:transformations/timescaledb.adoc[TimescaleDB Integration]
+|Routes and enriches messages that the {prodname} PostgreSQL connector captures from a TimescaleDB.
+
+|xref:transformations/convert-cloudevent-to-saveable-form.adoc[Convert CloudEvents to Saveable Form]
+|Converts values of records deserialized by {prodname} CloudEvents converter to a structure suitable for {prodname} JDBC sink connector.
 
 |===
 

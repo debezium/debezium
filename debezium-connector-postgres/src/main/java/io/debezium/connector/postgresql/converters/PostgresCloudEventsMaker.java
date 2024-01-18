@@ -17,14 +17,15 @@ import io.debezium.converters.spi.SerializerType;
  */
 public class PostgresCloudEventsMaker extends CloudEventsMaker {
 
-    public PostgresCloudEventsMaker(RecordParser parser, SerializerType contentType, String dataSchemaUriBase) {
-        super(parser, contentType, dataSchemaUriBase);
+    public PostgresCloudEventsMaker(RecordParser parser, SerializerType contentType, String dataSchemaUriBase, String cloudEventsSchemaName) {
+        super(parser, contentType, dataSchemaUriBase, cloudEventsSchemaName);
     }
 
     @Override
     public String ceId() {
         return "name:" + recordParser.getMetadata(AbstractSourceInfo.SERVER_NAME_KEY)
                 + ";lsn:" + recordParser.getMetadata(PostgresRecordParser.LSN_KEY).toString()
-                + ";txId:" + recordParser.getMetadata(PostgresRecordParser.TXID_KEY).toString();
+                + ";txId:" + recordParser.getMetadata(PostgresRecordParser.TXID_KEY).toString()
+                + ";sequence:" + recordParser.getMetadata(PostgresRecordParser.SEQUENCE_KEY).toString();
     }
 }

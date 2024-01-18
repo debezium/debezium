@@ -38,7 +38,7 @@ public class SchemaChangeEvent {
     private final Struct source;
     private final boolean isFromSnapshot;
     private final Instant timestamp;
-    private TableChanges tableChanges = new TableChanges();
+    private final TableChanges tableChanges = new TableChanges();
 
     private SchemaChangeEvent(Map<String, ?> partition, Map<String, ?> offset, Struct source, String database, String schema, String ddl, Table table,
                               SchemaChangeEventType type, boolean isFromSnapshot, TableId previousTableId) {
@@ -74,7 +74,7 @@ public class SchemaChangeEvent {
                 }
                 break;
             case DROP:
-                tables.forEach(tableChanges::drop);
+                tables.stream().map(Table::id).forEach(tableChanges::drop);
                 break;
             case DATABASE:
                 break;
@@ -126,6 +126,24 @@ public class SchemaChangeEvent {
     }
 
     @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        SchemaChangeEvent that = (SchemaChangeEvent) o;
+        return Objects.equals(database, that.database) && Objects.equals(schema, that.schema) && Objects.equals(ddl,
+                that.ddl) && type == that.type;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(database, schema, ddl, type);
+    }
+
+    @Override
     public String toString() {
         return "SchemaChangeEvent [database=" + database + ", schema=" + schema + ", ddl=" + ddl + ", tables=" + tables
                 + ", type=" + type + ", ts_ms=" + timestamp.toEpochMilli() + "]";
@@ -136,7 +154,7 @@ public class SchemaChangeEvent {
      * CREATE, ALTER, DROP, TRUNCATE - corresponds to table operations
      * DATABASE - an event common to the database, like CREATE/DROP DATABASE or SET...
      */
-    public static enum SchemaChangeEventType {
+    public enum SchemaChangeEventType {
         CREATE,
         ALTER,
         DROP,
@@ -326,6 +344,30 @@ public class SchemaChangeEvent {
                                            String schemaName, String ddl, Table table) {
         return of(
                 SchemaChangeEventType.DROP,
+                partition,
+                offsetContext,
+                databaseName,
+                schemaName,
+                ddl,
+                table,
+                false);
+    }
+
+    /**
+     * Create a schema change event for a {@code TRUNCATE TABLE} event.
+     *
+     * @param partition the partition
+     * @param offsetContext the offset context
+     * @param databaseName the database name
+     * @param schemaName the schema name
+     * @param ddl the schema change DDL statement
+     * @param table the affected relational table
+     * @return the schema change event
+     */
+    public static SchemaChangeEvent ofTruncate(Partition partition, OffsetContext offsetContext, String databaseName,
+                                               String schemaName, String ddl, Table table) {
+        return of(
+                SchemaChangeEventType.TRUNCATE,
                 partition,
                 offsetContext,
                 databaseName,

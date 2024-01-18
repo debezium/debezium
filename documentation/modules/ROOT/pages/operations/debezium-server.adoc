@@ -11,26 +11,24 @@ toc::[]
 
 [NOTE]
 ====
-This feature is currently in incubating state, i.e. exact semantics, configuration options etc. may change in future revisions, based on the feedback we receive.
-
 Please let us know if you encounter any problems while using this feature.
 Also please reach out if you have requirements for specific sinks to be supported by {prodname} Server or even would be interested in contributing the required implementation.
 ====
 
-{prodname} provides a ready-to-use application that streams change events from a source database to messaging infrastructure like Amazon Kinesis, Google Cloud Pub/Sub, Apache Pulsar or Redis (Stream).
+{prodname} provides a ready-to-use application that streams change events from a source database to messaging infrastructure like Amazon Kinesis, Google Cloud Pub/Sub, Apache Pulsar, Redis (Stream), or NATS JetStream.
 For streaming change events to Apache Kafka, it is recommended to deploy the {prodname} connectors via Kafka Connect.
 
 == Installation
 
 To install the server download and unpack the server distribution archive:
 
-ifeval::['{page-version}' == 'main']
+ifeval::['{page-version}' == 'master']
 * {link-server-snapshot}[{prodname} Server distribution]
 
 NOTE: The above links refers to the nightly snapshot build of the {prodname} main branch.
 If you are looking for a non-snapshot version, please select the appropriate version of this documentation in the menu to the right.
 endif::[]
-ifeval::['{page-version}' != 'main']
+ifeval::['{page-version}' != 'master']
 * https://repo1.maven.org/maven2/io/debezium/debezium-server-dist/{debezium-version}/debezium-server-dist-{debezium-version}.tar.gz[{prodname} Server distribution]
 endif::[]
 
@@ -89,31 +87,42 @@ debezium.source.topic.prefix=tutorial
 debezium.source.schema.include.list=inventory
 ----
 
+In this configuration file example:
+
+* The sink is setup for AWS Kinesis in region `eu-central-1`
+* The source connector is setup for PostgreSQL using the default {prodname} https://github.com/debezium/postgres-decoderbufs[decoderbufs] plugin.
+If using PostgreSQL's built-in `pgoutput` plugin, set `debezium.source.plugin.name=pgoutput`
+* The source connector is set to capture events from a schema named `inventory`.
+If you want to capture all changes in the database, remove this line.
+Otherwise, update this line to correspond to your preferred schema or tables.
+* The source offset will be stored in a file named `offsets.dat` in the `data` directory.
+Note that you might need to create this directory to prevent an error on startup.
+
 When the server is started it generates a seqeunce of log messages like this:
 
 ----
-__  ____  __  _____   ___  __ ____  ______ 
- --/ __ \/ / / / _ | / _ \/ //_/ / / / __/ 
- -/ /_/ / /_/ / __ |/ , _/ ,< / /_/ /\ \   
---\___\_\____/_/ |_/_/|_/_/|_|\____/___/   
+__  ____  __  _____   ___  __ ____  ______
+ --/ __ \/ / / / _ | / _ \/ //_/ / / / __/
+ -/ /_/ / /_/ / __ |/ , _/ ,< / /_/ /\ \
+--\___\_\____/_/ |_/_/|_/_/|_|\____/___/
 2020-05-15 11:33:12,189 INFO  [io.deb.ser.kin.KinesisChangeConsumer] (main) Using 'io.debezium.server.kinesis.KinesisChangeConsumer$$Lambda$119/0x0000000840130c40@f58853c' stream name mapper
 2020-05-15 11:33:12,628 INFO  [io.deb.ser.kin.KinesisChangeConsumer] (main) Using default KinesisClient 'software.amazon.awssdk.services.kinesis.DefaultKinesisClient@d1f74b8'
 2020-05-15 11:33:12,628 INFO  [io.deb.ser.DebeziumServer] (main) Consumer 'io.debezium.server.kinesis.KinesisChangeConsumer' instantiated
-2020-05-15 11:33:12,754 INFO  [org.apa.kaf.con.jso.JsonConverterConfig] (main) JsonConverterConfig values: 
+2020-05-15 11:33:12,754 INFO  [org.apa.kaf.con.jso.JsonConverterConfig] (main) JsonConverterConfig values:
 	converter.type = key
 	decimal.format = BASE64
 	schemas.cache.size = 1000
 	schemas.enable = true
 
-2020-05-15 11:33:12,757 INFO  [org.apa.kaf.con.jso.JsonConverterConfig] (main) JsonConverterConfig values: 
+2020-05-15 11:33:12,757 INFO  [org.apa.kaf.con.jso.JsonConverterConfig] (main) JsonConverterConfig values:
 	converter.type = value
 	decimal.format = BASE64
 	schemas.cache.size = 1000
 	schemas.enable = false
 
-2020-05-15 11:33:12,763 INFO  [io.deb.emb.EmbeddedEngine$EmbeddedConfig] (main) EmbeddedConfig values: 
-	access.control.allow.methods = 
-	access.control.allow.origin = 
+2020-05-15 11:33:12,763 INFO  [io.deb.emb.EmbeddedEngine$EmbeddedConfig] (main) EmbeddedConfig values:
+	access.control.allow.methods =
+	access.control.allow.origin =
 	admin.listeners = null
 	bootstrap.servers = [localhost:9092]
 	client.dns.lookup = default
@@ -133,7 +142,7 @@ __  ____  __  _____   ___  __ ____  ______
 	offset.storage.file.filename = data/offsets.dat
 	offset.storage.partitions = null
 	offset.storage.replication.factor = null
-	offset.storage.topic = 
+	offset.storage.topic =
 	plugin.path = null
 	rest.advertised.host.name = null
 	rest.advertised.listener = null
@@ -149,13 +158,13 @@ __  ____  __  _____   ___  __ ____  ______
 
 2020-05-15 11:33:12,763 INFO  [org.apa.kaf.con.run.WorkerConfig] (main) Worker configuration property 'internal.key.converter' is deprecated and may be removed in an upcoming release. The specified value 'org.apache.kafka.connect.json.JsonConverter' matches the default, so this property can be safely removed from the worker configuration.
 2020-05-15 11:33:12,763 INFO  [org.apa.kaf.con.run.WorkerConfig] (main) Worker configuration property 'internal.value.converter' is deprecated and may be removed in an upcoming release. The specified value 'org.apache.kafka.connect.json.JsonConverter' matches the default, so this property can be safely removed from the worker configuration.
-2020-05-15 11:33:12,765 INFO  [org.apa.kaf.con.jso.JsonConverterConfig] (main) JsonConverterConfig values: 
+2020-05-15 11:33:12,765 INFO  [org.apa.kaf.con.jso.JsonConverterConfig] (main) JsonConverterConfig values:
 	converter.type = key
 	decimal.format = BASE64
 	schemas.cache.size = 1000
 	schemas.enable = true
 
-2020-05-15 11:33:12,765 INFO  [org.apa.kaf.con.jso.JsonConverterConfig] (main) JsonConverterConfig values: 
+2020-05-15 11:33:12,765 INFO  [org.apa.kaf.con.jso.JsonConverterConfig] (main) JsonConverterConfig values:
 	converter.type = value
 	decimal.format = BASE64
 	schemas.cache.size = 1000
@@ -176,7 +185,7 @@ __  ____  __  _____   ___  __ ____  ______
 2020-05-15 11:33:12,839 INFO  [io.deb.con.com.BaseSourceTask] (pool-3-thread-1)    database.port = 5432
 2020-05-15 11:33:12,839 INFO  [io.deb.con.com.BaseSourceTask] (pool-3-thread-1)    schema.include.list = inventory
 2020-05-15 11:33:12,908 INFO  [io.quarkus] (main) debezium-server 1.2.0-SNAPSHOT (powered by Quarkus 1.4.1.Final) started in 1.198s. Listening on: http://0.0.0.0:8080
-2020-05-15 11:33:12,911 INFO  [io.quarkus] (main) Profile prod activated. 
+2020-05-15 11:33:12,911 INFO  [io.quarkus] (main) Profile prod activated.
 2020-05-15 11:33:12,911 INFO  [io.quarkus] (main) Installed features: [cdi, smallrye-health]
 ----
 
@@ -254,6 +263,7 @@ There are also other options available
 * `io.debezium.storage.file.history.FileSchemaHistory` for non-Kafka deployments
 * `io.debezium.relational.history.MemorySchemaHistory` volatile store for test environments
 * `io.debezium.storage.redis.history.RedisSchemaHistory` for Redis deploments
+* `io.debezium.storage.redis.history.RocketMqSchemaHistory` for RocketMQ deploments
 
 |[[debezium-source-database-history-file-filename]]<<debezium-source-database-history-file-filename, `debezium.source.schema.history.internal.file.filename`>>
 |
@@ -287,6 +297,10 @@ There are also other options available
 |
 |The maximum delay in case of a connection retry to Redis if using `RedisSchemaHistory`. Default: 10000 (ms)
 
+|[[debezium-source-database-history-redis-retry-max-attempts]]<<debezium-source-database-history-redis-retry-max-attempts, `debezium.source.schema.history.internal.redis.retry.max.attempts`>>
+|
+|The maximum number of attempts to connect to Redis. Default: 10
+
 |[[debezium-source-database-history-redis-connection-timeout-ms]]<<debezium-source-database-history-redis-connection-timeout-ms, `debezium.source.schema.history.internal.redis.connection.timeout.ms`>>
 |
 |Connection timeout of Redis client if using `RedisSchemaHistory`. Default: 2000 (ms)
@@ -312,6 +326,43 @@ For more information see Redis https://redis.io/commands/wait/[WAIT] command.
 |`1000`
 |If using Redis to store schema history, defines the delay of retry on wait for replica failure.
 
+
+|[[schema-history-internal-rocketmq-topic]]<<schema-history-internal-rocketmq-topic, `debezium.source.schema.history.internal.rocketmq.topic`>>
+|
+|The name of the rocketmq topic for the database schema history.
+
+|[[schema-history-internal-rocketmq-namesrvAddr]]<<schema-history-internal-rocketmq-namesrvAddr, `debezium.source.schema.history.internal.rocketmq.name.srv.addr`>>
+|`localhost:9876`
+|RocketMQ service discovery NameServer address configuration.
+
+|[[schema-history-internal-rocketmq-acl-enabled]]<<schema-history-internal-rocketmq-acl-enabled, `debezium.source.schema.history.internal.rocketmq.acl.enabled`>>
+|`false`
+|RocketMQ access control enable configuration, default is 'false'.
+
+|[[schema-history-internal-rocketmq-access-key]]<<schema-history-internal-rocketmq-access-key, `debezium.source.schema.history.internal.rocketmq.access.key`>>
+|
+|RocketMQ access key. If `debezium.source.schema.history.internal.rocketmq.acl.enabled` is true, the value cannot be
+empty.
+
+|[[schema-history-internal-rocketmq-secret-key]]<<schema-history-internal-rocketmq-secret-key, `debezium.source.schema.history.internal.rocketmq.secret.key`>>
+|
+|RocketMQ secret key. If `debezium.source.schema.history.internal.rocketmq.acl.enabled` is true, the value cannot be
+empty.
+
+|[[schema-history-internal-rocketmq-recovery-attempts]]<<schema-history-internal-rocketmq-recovery-attempts,`debezium.source.schema.history.internal.rocketmq.recovery.attempts`>>
+| `60`
+|The maximum number of attempts to recover database schema history.
+
+|[[schema-history-internal-rocketmq-recovery-poll-interval-ms]]<<schema-history-internal-rocketmq-recovery-poll-interval-ms,`debezium.source.schema.history.internal.rocketmq.recovery.poll.interval.ms`>>
+| `1000`
+|The number of milliseconds to wait while polling for persisted
+data during recovery.
+
+|[[schema-history-internal-rocketmq-store-record-timeout-ms]]<<schema-history-internal-rocketmq-store-record-timeout-ms,`debezium.source.schema.history.internal.rocketmq.store.record.timeout.ms`>>
+| `60000`
+|Timeout for sending messages to RocketMQ.
+
+
 |===
 
 [id="debezium-format-configuration-options"]
@@ -328,7 +379,7 @@ By default the output is in JSON format but an arbitrary implementation of Kafka
 
 |[[debezium-format-key]]<<debezium-format-key, `debezium.format.key`>>
 |`json`
-|The name of the output format for key, one of `json`/`avro`/`protobuf`.
+|The name of the output format for key, one of `json`/`jsonbytearray`/`avro`/`protobuf`.
 
 |[[debezium-format-key-props]]<<debezium-format-key-props, `debezium.format.key.*`>>
 |
@@ -336,11 +387,19 @@ By default the output is in JSON format but an arbitrary implementation of Kafka
 
 |[[debezium-format-value]]<<debezium-format-value, `debezium.format.value`>>
 |`json`
-|The name of the output format for value, one of `json`/`avro`/`protobuf`/`cloudevents`.
+|The name of the output format for value, one of `json`/`jsonbytearray`/`avro`/`protobuf`/`cloudevents`.
 
 |[[debezium-format-value-props]]<<debezium-format-value-props, `debezium.format.value.*`>>
 |
 |Configuration properties passed to the value converter.
+
+|[[debezium-format-header]]<<debezium-format-header, `debezium.format.header`>>
+|`json`
+|The name of the output format for value, one of `json`/`jsonbytearray`.
+
+|[[debezium-format-header-props]]<<debezium-format-header-props, `debezium.format.header.*`>>
+|
+|Configuration properties passed to the header converter.
 
 |===
 
@@ -417,8 +476,8 @@ The configuration will need to contain the list of predicates, implementation cl
 [id="debezium-additional-configuration-options"]
 === Additional configuration
 
-Debezium Server runs on top Quarkus framework.
-All configuration options exposed by Quarkus are available in Debezium Server too.
+{prodname} Server runs on top of the Quarkus framework.
+All configuration options exposed by Quarkus are available in {prodname} Server too.
 The most frequent used are:
 
 [cols="35%a,10%a,55%a",options="header"]
@@ -430,7 +489,7 @@ The most frequent used are:
 [id="debezium-quarkus-http-port"]
 |`quarkus.http.port`
 |8080
-|The port on which Debezim exposes Microprofile Health endpoint and other exposed status information.
+|The port on which {prodname} exposes Microprofile Health endpoint and other exposed status information. Health can be accessed on `\http://host:8080/q/health`.
 
 [id="debezium-quarkus-log-level"]
 |`quarkus.log.level`
@@ -448,11 +507,11 @@ JSON logging can be disabled by setting `quarkus.log.console.json=false` in the 
 
 ==== Enabling message filtering
 
-Debezium server provide filter STM capability, see xref:transformations/filtering.adoc[Message Filtering] for more details.
-However, for security reasons it's not enabled by default and has to be explicitly enabled when Debezium server is started.
+{prodname} Server provides filter STM capability, see xref:transformations/filtering.adoc[Message Filtering] for more details.
+However, for security reasons it's not enabled by default and has to be explicitly enabled when {prodname} Server is started.
 To enable it, set environment variable `ENABLE_DEBEZIUM_SCRIPTING` to `true`.
 This will add `debezium-scripting` jar file and https://jcp.org/en/jsr/detail?id=223[JSR 223] implementations (currently Groovy and graalvm.js) jar files into the server class path.
-These jar files are contained in `opt_lib` directory of the Debezium server distribution.
+These jar files are contained in `opt_lib` directory of the {prodname} Server distribution.
 
 === Sink configuration
 
@@ -485,8 +544,9 @@ Kinesis exposes a set of REST APIs and provides a (not-only) Java SDK that is us
 |(Optional) An endpoint url at which the Kinesis target streams are provided.
 
 |[[kinesis-credentials-profile]]<<kinesis-credentials-profile, `debezium.sink.kinesis.credentials.profile`>>
-|`default`
-|A credentials profile name used to communicate with Amazon API.
+|
+|(Optional) A credentials profile name used to communicate with Amazon API through the default credential profiles file.
+If not present will be used the default credentials provider chain. It will look for credentials on the following order: environment variables, java system properties, web identity token credentials, default credential profiles file, Amazon ECS container credentials and instance profile credentials.
 
 |[[kinesis-null-key]]<<kinesis-null-key, `debezium.sink.kinesis.null.key`>>
 |`default`
@@ -562,7 +622,7 @@ This is not supported by Pub/Sub so a surrogate key must be used.
 
 |[[flowControl-enabled]]<<flowControl-enabled, `debezium.sink.pubsub.flowControl.enabled`>>
 |`false`
-|When enabled, configures your publisher client with flow control to limit the rate of publish requests. 
+|When enabled, configures your publisher client with flow control to limit the rate of publish requests.
 
 |[[flowControl-max-outstanding-messages]]<<flowControl-max-outstanding-messages, `debezium.sink.pubsub.flowControl.max.outstanding.messages`>>
 |`Long.MAX_VALUE`
@@ -586,7 +646,7 @@ This is not supported by Pub/Sub so a surrogate key must be used.
 
 |[[retry-max-delay-ms]]<<retry-max-delay-ms, `debezium.sink.pubsub.retry.max.delay.ms`>>
 |`Long.MAX_VALUE`
-|The maximum amount of time to wait before retrying. 
+|The maximum amount of time to wait before retrying.
 i.e. after this value is reached, the wait time will not increase further by the multiplier.
 
 |[[retry-initial-rpc-timeout-ms]]<<retry-initial-rpc-timeout-ms, `debezium.sink.pubsub.retry.initial.rpc.timeout.ms`>>
@@ -601,11 +661,15 @@ i.e. after this value is reached, the wait time will not increase further by the
 |`10000`
 |The max timeout for individual publish requests to Cloud Pub/Sub.
 
+|[[wait-message-delivery-timeout-ms]]<<wait-message-delivery-timeout-ms, `debezium.sink.pubsub.wait.message.delivery.timeout.ms`>>
+|`30000`
+|The max wait time for retrieve of publish requests results to Cloud Pub/Sub.
+
 |[[address]]<<address, `debezium.sink.pubsub.address`>>
 |
 |The address of the pubsub emulator.
 Only to be used in a dev or test environment with the https://cloud.google.com/pubsub/docs/emulator[pubsub emulator].
-Unless this value is set, debezium-server will connect to a cloud pubsub instance running in a gcp project, which is the desired behavior in a production environment. 
+Unless this value is set, debezium-server will connect to a cloud pubsub instance running in a gcp project, which is the desired behavior in a production environment.
 
 |===
 
@@ -665,6 +729,10 @@ This feature can be disabled.
 |Tables without primary key sends messages with `null` key.
 This is not supported by Pub/Sub Lite so a surrogate key must be used.
 
+|[[pubsublite-wait-message-delivery-timeout-ms]]<<pubsublite-wait-message-delivery-timeout-ms, `debezium.sink.pubsublite.wait.message.delivery.timeout.ms`>>
+|`30000`
+|The max wait time for retrieve of publish requests results to Cloud Pub/Sub.
+
 |===
 
 ===== Injection points
@@ -691,7 +759,8 @@ When the alternative implementations are not available then the default ones are
 ==== HTTP Client
 
 The HTTP Client will stream changes to any HTTP Server for additional processing with the original design goal to have
-Debezium act as a https://knative.dev/docs/eventing/sources/[Knative Event Source].
+{prodname} act as a https://knative.dev/docs/eventing/sources/[Knative Event Source].  The HTTP Client sink supports
+optional https://en.wikipedia.org/wiki/JSON_Web_Token[JSON Web Token (JWT) authentication].
 
 [cols="35%a,10%a,55%a",options="header"]
 |===
@@ -719,6 +788,39 @@ Debezium act as a https://knative.dev/docs/eventing/sources/[Knative Event Sourc
 |1000
 |The number of milliseconds to wait before another attempt to send record is made after failure (default of 1s).
 
+|[[httpclient-headers-prefix]]<<httpclient-headers-prefix, `debezium.sink.http.headers.prefix` >>
+|X-DEBEZIUM-
+|Headers will be prefixed with this value (defaults to X-DEBEZIUM-).
+
+|[[httpclient-headers-encode-base64]]<<httpclient-headers-encode-base64, `debezium.sink.http.headers.encode.base64` >>
+|true
+|Header values will be base64 encoded (defaults to true).
+
+|[[httpclient-authentication-type]]<<httpclient-authentication-type, `debezium.sink.http.authentication.type` >>
+|
+|Specifies the authentication type to use.  If missing, no authentication is used.  Currently, only JSON Web Token (JWT) authentication (indicated by the value `jwt`) is supported.
+
+|[[httpclient-authentication-jwt-username]]<<httpclient-authentication-jwt-username, `debezium.sink.http.authentication.jwt.username` >>
+|
+|Specifies the username for JWT authentication.
+
+|[[httpclient-authentication-jwt-password]]<<httpclient-authentication-jwt-password, `debezium.sink.http.authentication.jwt.password` >>
+|
+|Specifies the password for JWT authentication.
+
+|[[httpclient-authentication-jwt-url]]<<httpclient-authentication-jwt-url, `debezium.sink.http.authentication.jwt.url` >>
+|
+|Specifies the base URL (e.g., `http://myserver:8000/`) for JWT authentication.  The paths `auth/authenticate` and `auth/refreshToken` are appended for the JWT initial and authentication REST requests.
+
+|[[httpclient-authentication-jwt-token-expiration]]<<httpclient-authentication-jwt-token-expiration, `debezium.sink.http.authentication.jwt.token_expiration` >>
+|
+|Requested duration (in minutes) before the authentication token expires.
+
+|[[httpclient-authentication-jwt-refresh-token-expiration]]<<httpclient-authentication-jwt-refresh-token-expiration, `debezium.sink.http.authentication.jwt.refresh_token_expiration` >>
+|
+|Requested duration (in minutes) before the refresh token expires.
+
+
 |===
 
 ==== Apache Pulsar
@@ -736,6 +838,12 @@ Pulsar exposes a REST APIs and a native endpoint provides a (not-only) Java clie
 |
 |Must be set to `pulsar`.
 
+|[[pulsar-timeout]]<<pulsar-timeout, `debezium.sink.pulsar.timeout`>>
+|`0`
+|Configures timeout in milliseconds for sending a batch of messages to Pulsar and waiting for the producer to flush and persist all of them.
+By default it is set to `0` which means no timeout.
+Make sure that https://pulsar.apache.org/api/client/2.10.1/org/apache/pulsar/client/api/ProducerBuilder.html#maxPendingMessages(int)[`maxPendingMessages`] and https://pulsar.apache.org/api/client/2.10.1/org/apache/pulsar/client/api/ProducerBuilder.html#blockIfQueueFull(boolean)[`blockIfQueueFull`] are configured properly on the producer.
+
 |[[pulsar-client]]<<pulsar-client, `debezium.sink.pulsar.client.*`>>
 |
 |The Pulsar module supports pass-through configuration.
@@ -746,12 +854,20 @@ At least `serviceUrl` must be provided.
 |
 |The Pulsar module supports pass-through configuration.
 The message producer https://pulsar.apache.org/docs/en/client-libraries-java/#client-configuration[configuration properties] are passed to the producer with the prefix removed.
-The `topic` is set by Debezium.
+The `topic` is set by {prodname}.
 
 |[[pulsar-null-key]]<<pulsar-null-key, `debezium.sink.pulsar.null.key`>>
 |`default`
 |Tables without primary key sends messages with `null` key.
 This is not supported by Pulsar so a surrogate key must be used.
+
+|[[pulsar-tenant]]<<pulsar-tenant, `debezium.sink.pulsar.tenant`>>
+|`public`
+|The target tenant used to deliver the message.
+
+|[[pulsar-namespace]]<<pulsar-namespace, `debezium.sink.pulsar.namespace`>>
+|`default`
+|The target namespace used to deliver the message.
 
 |===
 
@@ -797,17 +913,34 @@ https://docs.microsoft.com/azure/event-hubs/event-hubs-about[Azure Event Hubs] i
 
 |[[partition-id]]<<partition-id, `debezium.sink.eventhubs.partitionid`>>
 |
-|(Optional) The identifier of the Event Hub partition that the events will be sent to. Use this if you want all the change events received by Debezium to be sent to a specific partition in Event Hubs. Do not use if you have specified `debezium.sink.eventhubs.partitionkey`
+|(Optional) The identifier of the Event Hub partition that the events will be sent to. Use this if you want all the change events received by {prodname} to be sent to a specific partition in Event Hubs. Do not use if you have specified `debezium.sink.eventhubs.partitionkey`
 
 |[[partition-key]]<<partition-key, `debezium.sink.eventhubs.partitionkey`>>
 |
-|(Optional) The partition key will be used to hash the events. Use this if you want all the change events received by Debezium to be sent to a specific partition in Event Hubs. Do not use if you have specified `debezium.sink.eventhubs.partitionid`
+|(Optional) The partition key will be used to hash the events. Use this if you want all the change events received by {prodname} to be sent to a specific partition in Event Hubs. Do not use if you have specified `debezium.sink.eventhubs.partitionid`
 
 |[[max-batch-size]]<<max-batch-size, `debezium.sink.eventhubs.maxbatchsize`>>
 |
 |Sets the maximum size for the batch of events, in bytes.
 
 |===
+
+===== Using partitions in EventHubs
+
+By default, when neither of the optional <<partition-id, `debezium.sink.eventhubs.partitionid`>> or <<partition-key, `debezium.sink.eventhubs.partitionkey`>> properties are defined, the EventHubs sink will send events round-robin to all available partitions.
+
+You can enforce all messages to be sent to a single, fixed, partition by setting the <<partition-id, `debezium.sink.eventhubs.partitionid`>> property. Alternatively, you can use the <<partition-key, `debezium.sink.eventhubs.partitionkey`>> property to specify a fixed partition key that EventHubs will use to route all events to a specific partition.
+
+If you have more specific routing requirements you can use the xref:transformations/partition-routing.adoc[Partition Routing] transformer. Ensure that the number of partitions specified in the transformer's `partition.topic.num` setting is equal or less to the number of partitions available in your EventHubs namespace, so that events cannot be routed to non-existing partition IDs. As an example, to route all events to 5 partitions based on their source schema name, you can set the following in your application.properties:
+
+[source]
+----
+# Uses a hash of `source.db` to calculate which partition to send the event to. Ensures all events from the same source schema are sent to the same partition.
+debezium.transforms=PartitionRouter
+debezium.transforms.PartitionRouter.type=io.debezium.transforms.partitions.PartitionRouting
+debezium.transforms.PartitionRouter.partition.payload.fields=source.db
+debezium.transforms.PartitionRouter.partition.topic.num=5
+----
 
 ===== Injection points
 
@@ -845,6 +978,10 @@ The Stream is a data type which models a _log data structure_ in a more abstract
 |
 |An address, formatted as `host:port`, at which the Redis target streams are provided.
 
+|[[redis-db-index]]<<redis-db-index, `debezium.sink.redis.db.index`>>
+|`0`
+|A number in the range 0..15 used for selecting the database to work with. Default is database 0. This feature is only available for standalone Redis connections; Redis clusters use only database 0.
+
 |[[redis-user]]<<redis-user, `debezium.sink.redis.user`>>
 |
 |(Optional) A user name used to communicate with Redis.
@@ -854,8 +991,8 @@ The Stream is a data type which models a _log data structure_ in a more abstract
 |(Optional) A password (of respective user) used to communicate with Redis. A password must be set if a user is set.
 
 |[[redis-ssl-enabled]]<<redis-ssl-enabled, `debezium.sink.redis.ssl.enabled`>>
-|
-|(Optional) Use SSL to communicate with Redis. Default 'false'
+|`false`
+|(Optional) A Boolean value that specifies whether connections to Redis require SSL. 
 
 |[[redis-null-key]]<<redis-null-key, `debezium.sink.redis.null.key`>>
 |`default`
@@ -907,13 +1044,19 @@ For more information see Redis https://redis.io/commands/wait/[WAIT] command.
 
 |[[redis-message-format]]<<redis-message-format, `debezium.sink.redis.message.format`>>
 |`compact`
-|The format of the message sent to the Redis stream. Possible values are `extended`(newer format) and `compact`(the until now, old format). 
+|The format of the message sent to the Redis stream. Possible values are `extended`(newer format) and `compact`(the until now, old format).
 Read more about the message format xref:#p-redis-message-format[below].
 
 |[[redis-memory-threshold-percentage]]<<redis-memory-threshold-percentage, `debezium.sink.redis.memory.threshold.percentage`>>
 |`85`
-|The sink will stop consuming records if the used memory percentage (out of Redis configured maxmemory) is higher than this threshold.
-If Redis configured maxmemory is `0` (unlimited) then this threshold is disabled (same as if configuring it with `0`)
+|The sink will stop consuming records if the `used_memory` percentage (out of Redis configured `maxmemory`) is higher or equal to this threshold.
+If the configured value is `0` then this threshold is disabled.
+
+|[[redis-memory-limit-mb]]<<redis-memory-limit-mb, `debezium.sink.redis.memory.limit.mb`>>
+|`0`
+|If Redis `maxmemory` is not available or `0`, the `xref:#redis-memory-threshold-percentage[debezium.sink.redis.memory.threshold.percentage]`
+will apply to this value (if this value is positive).
+By default it is `0` (disabled).
 
 |===
 
@@ -962,7 +1105,7 @@ By default the same name is used.
 
 ==== NATS Streaming
 
-https://docs.nats.io/nats-streaming-concepts/intro[NATS Streaming] is a data streaming system powered by NATS, and written in the Go programming language. 
+https://docs.nats.io/nats-streaming-concepts/intro[NATS Streaming] is a data streaming system powered by NATS, and written in the Go programming language.
 
 [cols="35%a,10%a,55%a",options="header"]
 |===
@@ -1068,7 +1211,7 @@ By default the same name is used.
 
 ==== Apache Kafka
 
-https://kafka.apache.org/[Apache Kafka] is a popular open-source platform for distributed event streaming. Debezium server supports publishing captured change events to a configured Kafka message broker.
+https://kafka.apache.org/[Apache Kafka] is a popular open-source platform for distributed event streaming. {prodname} Server supports publishing captured change events to a configured Kafka message broker.
 
 [cols="35%a,10%a,55%a",options="header"]
 |===
@@ -1084,13 +1227,29 @@ https://kafka.apache.org/[Apache Kafka] is a popular open-source platform for di
 |
 |The Kafka sink adapter supports pass-through configuration.
 This means that all Kafka producer https://kafka.apache.org/documentation/#producerconfigs[configuration properties] are passed to the producer with the prefix removed.
-At least `bootstrap.servers`, `key.serializer` and `value.serializer` properties must be provided. The `topic` is set by Debezium.
+At least `bootstrap.servers`, `key.serializer` and `value.serializer` properties must be provided. The `topic` is set by {prodname}.
 
+|===
+
+===== Injection points
+
+The Kafka sink behaviour can be modified by a custom logic providing alternative implementations for specific functionalities.
+When the alternative implementations are not available then the default ones are used.
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Interface
+|CDI classifier
+|Description
+
+|[[kafka-producer-ext-stream-name-mapper]]<<kafka-producer-ext-stream-name-mapper, `io.debezium.server.StreamNameMapper`>>
+|
+|Custom implementation maps the original destination (topic) name into another Kafka topic. By default, the same name is used.
 |===
 
 ==== Pravega
 
-https://pravega.io/[Pravega] is a cloud-native storage system for event streams and data streams. This sink offers two modes: non-transactional and transactional. The non-transactional mode individually writes each event in a Debezium batch to Pravega. The transactional mode writes the Debezium batch to a Pravega transaction that commits when the batch is completed.
+https://pravega.io/[Pravega] is a cloud-native storage system for event streams and data streams. This sink offers two modes: non-transactional and transactional. The non-transactional mode individually writes each event in a {prodname} batch to Pravega. The transactional mode writes the {prodname} batch to a Pravega transaction that commits when the batch is completed.
 
 The Pravega sink expects destination scope and streams to already be created.
 
@@ -1114,7 +1273,7 @@ The Pravega sink expects destination scope and streams to already be created.
 
 |[[pravega-transaction]]<<pravega-transaction, `debezium.sink.pravega.transaction`>>
 |`false`
-|Set to `true` to have the sink use Pravega transactions for each Debezium batch.
+|Set to `true` to have the sink use Pravega transactions for each {prodname} batch.
 
 |===
 
@@ -1136,6 +1295,252 @@ By default the same name is used.
 
 |===
 
+==== Infinispan
+
+https://infinispan.org/[Infinispan] is open-source in-memory data grid that offers rich set of caches types as well as cache stores.
+Due to very fast data access, Infinispan can be used, besides others, as a data source for various data processing and analytical tools.
+
+The Infinispan sink expects that the destination cache is already defined and created within the Infinispan cluster.
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[infinispan-type]]<<infinispan-type, `debezium.sink.type`>>
+|
+|Must be set to `infinispan`.
+
+|[[infisnipan-server-host]]<<infisnipan-server-host, `debezium.sink.infinispan.server.host`>>
+|
+|The host name of one of the servers of the Infinispan cluster (can be also a comma-separated list of servers).
+
+|[[infisnipan-server-port]]<<infisnipan-server-port, `debezium.sink.infinispan.server.port`>>
+| 11222
+|The port of the Infinispan server.
+
+|[[infisnipan-cache]]<<infisnipan-cache, `debezium.sink.infinispan.cache`>>
+|
+|The name of the (exiting) cache where the records will be stored.
+
+|[[infisnipan-user]]<<infisnipan-user, `debezium.sink.infinispan.user`>>
+|
+|(Optional) The user name used for connecting to Infinispan cluster.
+
+|[[infisnipan-password]]<<infisnipan-password, `debezium.sink.infinispan.password`>>
+|
+|(Optional) The password used for connecting to Infinispan cluster.
+
+|===
+
+===== Injection points
+
+The Infinispan sink behaviour can be modified by a custom logic providing alternative implementations for specific functionalities.
+When the alternative implementations are not available then the default ones are used.
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Interface
+|CDI classifier
+|Description
+
+|[[infinispan-ext-hotrod-cache]]<<infinispan-ext-hotrod-cache, `org.infinispan.client.hotrod.RemoteCache`>>
+|`@CustomConsumerBuilder`
+|Custom instance of https://docs.jboss.org/infinispan/14.0/apidocs/org/infinispan/client/hotrod/RemoteCache.html[Hot Rod cache] which will be used for connecting and sending events to the Infinspan cluster.
+|===
+
+==== Apache RocketMQ
+
+https://rocketmq.apache.org/[Apache RocketMQ] is a distributed messaging and streaming platform with low latency, high
+performance and reliability, trillion-level capacity and flexible scalability. {prodname} server supports publishing
+captured change events to a configured RocketMQ.
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[rocketmq-type]]<<rocketmq-type, `debezium.sink.type`>>
+|
+|Must be set to `rocketmq`.
+
+|[[rocketmq-namesrv-addr]]<<rocketmq-namesrv-addr, `debezium.sink.rocketmq.producer.name.srv.addr`>>
+|
+|Name server address of Apache RocketMQ .
+
+|[[rocketmq-producer-group]]<<rocketmq-producer-group, `debezium.sink.rocketmq.producer.group`>>
+|
+|Producer group of Apache RocketMQ.
+
+|[[rocketmq-max-message-size]]<<rocketmq-max-message-size, `debezium.sink.rocketmq.producer.max.message.size`>>
+| 4M, Suggest less than 4 MB.
+|(Optional) Maximum number of bytes of sent message body.
+
+|[[rocketmq-send-timeout]]<<rocketmq-send-timeout, `debezium.sink.rocketmq.producer.send.msg.timeout`>>
+| 3000ms
+|(Optional) The send message timeout duration is the waiting time for local synchronous invocation of clients. Set a
+proper value based on the actual application to avoid long thread blocking time.
+
+|[[rocketmq-acl-enabled]]<<rocketmq-acl-enabled, `debezium.sink.rocketmq.producer.acl.enabled`>>
+| false
+|(Optional) The configuration is used to enable access authorization.
+
+|[[rocketmq-access-key]]<<rocketmq-access-key, `debezium.sink.rocketmq.producer.access.key`>>
+|
+|(Optional) The access key used for connecting to Apache RocketMQ cluster .
+
+|[[rocketmq-secret-key]]<<rocketmq-secret-key, `debezium.sink.rocketmq.producer.secret.key`>>
+|
+|(Optional) The access secret used for connecting to Apache RocketMQ cluster .
+
+|===
+
+===== Injection points
+
+The RocketMQ sink behaviour can be modified by a custom logic providing alternative implementations for specific
+functionalities.
+When the alternative implementations are not available then the default ones are used.
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Interface
+|CDI classifier
+|Description
+
+|[[rocketmq-producer]]<<rocketmq-producer, `org.apache.rocketmq.client.producer.DefaultMQProducer`>>
+|`@CustomConsumerBuilder`
+|Custom configured instance of a RocketMQ used to publish messages to target topic.
+
+|[[rocketmq-ext-stream-name-mapper]]<<rocketmq-ext-stream-name-mapper, `io.debezium.server.StreamNameMapper`>>
+|
+|Custom implementation maps the planned destination (stream) name into a RocketMQ topic name.
+By default the same name is used.
+|===
+
+==== RabbitMQ Stream
+
+https://www.rabbitmq.com/[RabbitMQ] is an open source message broker, supporting multiple messaging protocols and can be deployed in distributed and federated configurations to meet high-scale, high-availability requirements.
+RabbitMQ supports messages queues and streams.
+Debezium Server supports publishing captured change events to a configured RabbitMQ Stream.
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[rabbitmq-type]]<<rabbitmq-type, `debezium.sink.type`>>
+|
+|Must be set to `rabbitmq`.
+
+|[[rabbitmq-host]]<<rabbitmq-host, `debezium.sink.rabbitmq.connection.host`>>
+| localhost
+|Host of RabbitMQ server.
+
+|[[rabbitmq-port]]<<rabbitmq-port, `debezium.sink.rabbitmq.connection.port`>>
+| 5672
+|Port of RabbitMQ server.
+
+|[[rabbitmq-connection]]<<rabbitmq-connection, `debezium.sink.rabbitmq.connection.*`>>
+|
+|The RabbitMQ module supports pass-through configuration.
+The connection https://github.com/rabbitmq/rabbitmq-java-client/blob/main/src/main/java/com/rabbitmq/client/ConnectionFactoryConfigurator.java[configuration properties] are passed to the RabbitMQ client with the prefix removed.
+
+|[[rabbitmq-ack-timeout]]<<rabbitmq-ack-timeout, `debezium.sink.rabbitmq.ackTimeout`>>
+| 30000
+| Defines the maximum time in milliseconds to wait a confirm from the broker after publishing a message.
+
+|[[rabbitmq-exchange]]<<rabbitmq-exchange, `debezium.sink.rabbitmq.exchange`>>
+| _topic name_
+|(Optional) Exchange name to use when publishing messages.
+
+|[[rabbitmq-routing-key]]<<rabbitmq-routing-key, `debezium.sink.rabbitmq.routingKey`>>
+| _empty string_
+|(Optional) Static routing key to use when publishing messages.
+
+|[[rabbitmq-auto-create-routing-key]]<<rabbitmq-auto-create-routing-key, `debezium.sink.rabbitmq.autoCreateRoutingKey`>>
+| false
+|(Optional) If `true` the non-existing routing key is automatically created.
+
+|[[rabbitmq-routing-key-durable]]<<rabbitmq-routing-key-durable, `debezium.sink.rabbitmq.routingKeyDurable`>>
+| true
+|(Optional) If `true` the target queue content will survive a RabbitMQ server restart.
+
+|[[rabbitmq-routing-key-from-topic-name]]<<rabbitmq-routing-key-from-topic-name, `debezium.sink.rabbitmq.routingKeyFromTopicName`>>
+| false
+|(Optional) If `true` the routing key is used from topic name instead of a static value.
+
+|[[rabbitmq-delivery-mode]]<<rabbitmq-delivery-mode, `debezium.sink.rabbitmq.deliveryMode`>>
+| 2
+|(Optional) The way how the message is delivered to and stored on a RabbitMQ server
+
+* 1 - Non-persistent
+* 2 - Persistent
+
+|[[rabbitmq-null-value]]<<rabbitmq-null-value, `debezium.sink.rabbitmq.null.value`>>
+|`default`
+|RabbitMQ does not support the notion of null payloads, as is the case with tombstone events.
+So this string will be used as value for records without a payload.
+
+|===
+
+
+===== Injection points
+
+RabbitMQ sink behavior can be modified by custom logic providing alternative implementations for specific functionalities.
+When the alternative implementations are not available then the default ones are used.
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Interface
+|CDI classifier
+|Description
+
+|[[rabbitmq-ext-stream-name-mapper]]<<rabbitmq-ext-stream-name-mapper, `io.debezium.server.StreamNameMapper`>>
+|
+|Custom implementation maps the planned destination (stream) name into a RabbitMQ exchange name and (if enabled) into the routing key name.
+By default the same name is used.
+|===
+==== RabbitMQ Native Stream
+
+Since https://www.rabbitmq.com/[RabbitMQ 3.9], https://www.rabbitmq.com/streams.html[Streams] were introduced to RabbitMQ, utilizing a new blazingly-fast protocol that can be used alongside AMQP 0.9.1.
+Streams are great for large fan-outs, replay & time travel, and large logs, all with very high throughput (million messages per second).
+
+Debezium Server is enhanced to support publishing captured change events to native RabbitMQ Streams leveraging https://rabbitmq.github.io/rabbitmq-stream-java-client/stable/htmlsingle/[RabbitMQ Stream Java Client].
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[rabbitmqstream-type]]<<rabbitmqstream-type, `debezium.sink.type`>>
+|
+|Must be set to `rabbitmqstream`.
+
+|[[rabbitmqstream-host]]<<rabbitmqstream-host, `debezium.sink.rabbitmqstream.connection.host`>>
+| localhost
+|Host of RabbitMQ server.
+
+|[[rabbitmqstream-port]]<<rabbitmqstream-port, `debezium.sink.rabbitmqstream.connection.port`>>
+| 5552
+|Port of RabbitMQ Stream Protocol.
+
+|[[rabbitmqstream-connection]]<<rabbitmqstream-connection, `debezium.sink.rabbitmqstream.connection.*`>>
+|
+|The RabbitMQ module supports pass-through configuration.
+The connection https://github.com/rabbitmq/rabbitmqstream-java-client/blob/main/src/main/java/com/rabbitmq/client/ConnectionFactoryConfigurator.java[configuration properties] are passed to the RabbitMQ client with the prefix removed.
+
+|[[rabbitmqstream-ack-timeout]]<<rabbitmqstream-ack-timeout, `debezium.sink.rabbitmqstream.ackTimeout`>>
+| 30000
+| Defines the maximum time in milliseconds to wait a confirm from the broker after publishing a message.
+|[[rabbitmqstream-null-value]]<<rabbitmqstream-null-value, `debezium.sink.rabbitmqstream.null.value`>>
+|`default`
+|RabbitMQ does not support the notion of null payloads, as is the case with tombstone events.
+So this string will be used as value for records without a payload.
+
+|===
 == Extensions
 
 {prodname} Server uses the https://quarkus.io/[Quarkus framework] and relies on dependency injection to enable developer to extend its behaviour.
@@ -1153,7 +1558,7 @@ The name of the bean is used as the `debezium.sink.type` option.
 The sink needs to read the configuration using Microprofile Config API.
 The execution path must pass the messages into the target system and regularly commit the passed/processed messages.
 
-See the https://github.com/debezium/debezium/blob/main/debezium-server/debezium-server-kinesis/src/main/java/io/debezium/server/kinesis/KinesisChangeConsumer.java[Kinesis sink] implementation for further details.
+See the https://github.com/debezium/debezium-server/blob/main/debezium-server-kinesis/src/main/java/io/debezium/server/kinesis/KinesisChangeConsumer.java[Kinesis sink] implementation for further details.
 
 
 === Customization of an existing sink
@@ -1162,3 +1567,53 @@ Some of the sinks exposes dependency injections points that enable users to prov
 Typical examples are fine tuning of the target client setup, the destination naming etc.
 
 See an example of a custom https://github.com/debezium/debezium-examples/tree/main/debezium-server-name-mapper[topic naming policy] implementation for further details.
+
+== Cassandra connector
+
+=== Running {prodname} Server with Cassandra connector
+
+Running with java 11+ requires setting the following java options at startup trough the JDK_JAVA_OPTIONS environment variable or equivalent:
+
+```
+JDK_JAVA_OPTIONS="--add-exports java.base/jdk.internal.misc=ALL-UNNAMED --add-exports java.base/jdk.internal.ref=ALL-UNNAMED --add-exports java.base/sun.nio.ch=ALL-UNNAMED --add-exports java.management.rmi/com.sun.jmx.remote.internal.rmi=ALL-UNNAMED --add-exports java.rmi/sun.rmi.registry=ALL-UNNAMED --add-exports java.rmi/sun.rmi.server=ALL-UNNAMED --add-exports java.sql/java.sql=ALL-UNNAMED  --add-opens java.base/java.lang.module=ALL-UNNAMED --add-opens java.base/jdk.internal.loader=ALL-UNNAMED --add-opens java.base/jdk.internal.ref=ALL-UNNAMED --add-opens java.base/jdk.internal.reflect=ALL-UNNAMED --add-opens java.base/jdk.internal.math=ALL-UNNAMED --add-opens java.base/jdk.internal.module=ALL-UNNAMED --add-opens java.base/jdk.internal.util.jar=ALL-UNNAMED --add-opens jdk.management/com.sun.management.internal=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-opens java.base/sun.nio.ch=ALL-UNNAMED"
+```
+
+=== Sample of basic `application.properties` for running Cassandra connector with Redis sink
+
+```
+# Sink
+debezium.sink.type=redis
+debezium.sink.redis.address=localhost:6379
+
+# Connector
+debezium.source.connector.class=io.debezium.connector.cassandra.Cassandra4Connector
+## node.id must be unique per each connector running on each Cassandra node
+debezium.source.cassandra.node.id=sample_node_01
+debezium.source.cassandra.hosts=127.0.0.1
+debezium.source.cassandra.port=9042
+debezium.source.cassandra.config=/opt/cassandra/conf/cassandra.yaml
+debezium.source.commit.log.relocation.dir=cassandra/relocdir
+debezium.source.offset.storage=io.debezium.server.redis.RedisOffsetBackingStore
+debezium.source.topic.prefix=sample_prefix
+## internal Cassandra http port
+debezium.source.http.port=8040
+```
+
+=== Transformation for Operation Code
+
+By default, Cassandra connector has it's own Operation Codes which are not entirely compatible with {prodname} Operation Codes.
+If needed, a specific transform can be defined in {prodname} Server's `application.properties` to enable the conversion:
+
+```
+debezium.transforms=EnvelopeTransformation
+debezium.transforms.EnvelopeTransformation.type=io.debezium.connector.cassandra.transforms.EnvelopeTransformation
+```
+
+This will convert Operation Codes as follows:
+
+```
+INSERT "i"          -> CREATE "c"
+UPDATE "u"          -> UPDATE "u"
+DELETE "d"          -> DELETE "d"
+RANGE_TOMBSTONE "r" -> TRUNCATE "t"
+```

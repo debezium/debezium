@@ -1,0 +1,41 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: mongo-mongos
+  labels:
+    app: mongo
+    deployment: mongo-mongos
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongo
+      deployment: mongo-mongos
+  template:
+    metadata:
+      name: mongo-mongos
+      labels:
+        app: mongo
+        deployment: mongo-mongos
+        role: mongos
+    spec:
+      containers:
+        - resources: {}
+          name: mongo
+          ports:
+            - containerPort: 27017
+              protocol: TCP
+          imagePullPolicy: Always
+          terminationMessagePolicy: File
+          terminationMessagePath: /dev/termination-log
+          image: ${docker.image.mongo.sharded}
+          command:
+          - 'mongos'
+          - '--configdb'
+          - 'cfgrs/mongo-config.${ocp.project.mongo}.svc.cluster.local:27019'
+          - '--bind_ip_all'
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      dnsPolicy: ClusterFirst
+  strategy:
+    type: Recreate

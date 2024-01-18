@@ -5,12 +5,10 @@
  */
 package io.debezium.engine.format;
 
-import io.debezium.common.annotation.Incubating;
 import io.debezium.engine.DebeziumEngine;
 
 /**
  * The logical description of the output format used by the given instance of {@link DebeziumEngine}.
  */
-@Incubating
 public interface SerializationFormat<T> {
 }

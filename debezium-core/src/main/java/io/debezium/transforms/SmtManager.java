@@ -5,17 +5,22 @@
  */
 package io.debezium.transforms;
 
+import static io.debezium.data.Envelope.Operation.MESSAGE;
+import static io.debezium.data.Envelope.Operation.TRUNCATE;
+
 import java.util.Map;
 
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.connector.ConnectRecord;
+import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.data.Envelope;
+import io.debezium.schema.SchemaFactory;
 
 /**
  * A class used by all Debezium supplied SMTs to centralize common logic.
@@ -32,11 +37,26 @@ public class SmtManager<R extends ConnectRecord<R>> {
     public SmtManager(Configuration config) {
     }
 
+    public static boolean isGenericOrTruncateMessage(SourceRecord originalRecord) {
+        return TRUNCATE.equals(Envelope.operationFor(originalRecord)) ||
+                MESSAGE.equals(Envelope.operationFor(originalRecord));
+    }
+
     public boolean isValidEnvelope(final R record) {
         if (record.valueSchema() == null ||
                 record.valueSchema().name() == null ||
                 !Envelope.isEnvelopeSchema(record.valueSchema())) {
             LOGGER.debug("Expected Envelope for transformation, passing it unchanged");
+            return false;
+        }
+        return true;
+    }
+
+    public boolean isValidSchemaChange(final R record) {
+        if (record.valueSchema() == null ||
+                record.valueSchema().name() == null ||
+                !SchemaFactory.get().isSchemaChangeSchema(record.valueSchema())) {
+            LOGGER.debug("Expected schema change schema for transformation, passing it unchanged");
             return false;
         }
         return true;
@@ -66,7 +86,7 @@ public class SmtManager<R extends ConnectRecord<R>> {
         for (Map.Entry<String, ConfigValue> entry : validations.entrySet()) {
             if (!entry.getValue().errorMessages().isEmpty()) {
                 final ConfigValue value = entry.getValue();
-                throw new ConfigException(value.name(), value.value(), value.errorMessages().get(0));
+                throw new ConfigException(value.name(), configuration.getString(value.name()), value.errorMessages().get(0));
             }
         }
     }

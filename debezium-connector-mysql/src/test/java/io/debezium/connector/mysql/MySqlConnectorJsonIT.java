@@ -19,9 +19,14 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.mysql.junit.SkipTestDependingOnDatabaseRule;
+import io.debezium.connector.mysql.junit.SkipWhenDatabaseIs;
+import io.debezium.connector.mysql.junit.SkipWhenDatabaseIs.Type;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
@@ -31,7 +36,8 @@ import io.debezium.util.Testing;
 /**
  * @author Randall Hauch
  */
-@SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 7, reason = "JSON data type was not added until MySQL 5.7")
+@SkipWhenDatabaseIs(value = Type.MYSQL, versions = @SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 7, reason = "JSON data type was not added until MySQL 5.7"))
+@SkipWhenDatabaseIs(value = Type.MARIADB, reason = "MariaDB does not support JSON natively, its treated as long text as an alias")
 public class MySqlConnectorJsonIT extends AbstractConnectorTest {
 
     private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-json.txt").toAbsolutePath();
@@ -39,6 +45,9 @@ public class MySqlConnectorJsonIT extends AbstractConnectorTest {
             .withDbHistoryPath(SCHEMA_HISTORY_PATH);
 
     private Configuration config;
+
+    @Rule
+    public TestRule skipRule = new SkipTestDependingOnDatabaseRule();
 
     @Before
     public void beforeEach() {

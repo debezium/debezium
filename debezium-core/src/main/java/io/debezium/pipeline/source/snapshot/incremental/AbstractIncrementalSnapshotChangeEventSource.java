@@ -5,6 +5,12 @@
  */
 package io.debezium.pipeline.source.snapshot.incremental;
 
+import static io.debezium.pipeline.notification.IncrementalSnapshotNotificationService.TableScanCompletionStatus.EMPTY;
+import static io.debezium.pipeline.notification.IncrementalSnapshotNotificationService.TableScanCompletionStatus.NO_PRIMARY_KEY;
+import static io.debezium.pipeline.notification.IncrementalSnapshotNotificationService.TableScanCompletionStatus.SQL_EXCEPTION;
+import static io.debezium.pipeline.notification.IncrementalSnapshotNotificationService.TableScanCompletionStatus.SUCCEEDED;
+import static io.debezium.pipeline.notification.IncrementalSnapshotNotificationService.TableScanCompletionStatus.UNKNOWN_SCHEMA;
+
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -30,6 +36,9 @@ import io.debezium.annotation.NotThreadSafe;
 import io.debezium.data.ValueWrapper;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.notification.NotificationService;
+import io.debezium.pipeline.signal.SignalPayload;
+import io.debezium.pipeline.signal.actions.snapshotting.SnapshotConfiguration;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.spi.ChangeRecordEmitter;
@@ -62,7 +71,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractIncrementalSnapshotChangeEventSource.class);
 
-    private final RelationalDatabaseConnectorConfig connectorConfig;
+    protected final RelationalDatabaseConnectorConfig connectorConfig;
     private final Clock clock;
     private final RelationalDatabaseSchema databaseSchema;
     private final SnapshotProgressListener<P> progressListener;
@@ -76,6 +85,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     protected JdbcConnection jdbcConnection;
     protected ColumnNameFilter columnFilter;
     protected final Map<Struct, Object[]> window = new LinkedHashMap<>();
+    protected final NotificationService<P, ? extends OffsetContext> notificationService;
 
     public AbstractIncrementalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig config,
                                                         JdbcConnection jdbcConnection,
@@ -83,7 +93,8 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                                                         DatabaseSchema<?> databaseSchema,
                                                         Clock clock,
                                                         SnapshotProgressListener<P> progressListener,
-                                                        DataChangeEventListener<P> dataChangeEventListener) {
+                                                        DataChangeEventListener<P> dataChangeEventListener,
+                                                        NotificationService<P, ? extends OffsetContext> notificationService) {
         this.connectorConfig = config;
         this.jdbcConnection = jdbcConnection;
         this.columnFilter = config.getColumnFilter();
@@ -92,25 +103,28 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         this.clock = clock;
         this.progressListener = progressListener;
         this.dataListener = dataChangeEventListener;
+        this.notificationService = notificationService;
     }
 
     @Override
     @SuppressWarnings("unchecked")
     public void closeWindow(P partition, String id, OffsetContext offsetContext) throws InterruptedException {
         context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
+        LOGGER.trace("Closing Window {}", context.toString());
         if (!context.closeWindow(id)) {
             return;
         }
         sendWindowEvents(partition, offsetContext);
-        readChunk(partition);
+        readChunk(partition, offsetContext);
     }
 
     @Override
-    public void pauseSnapshot(P partition, OffsetContext offsetContext) throws InterruptedException {
+    public void pauseSnapshot(P partition, OffsetContext offsetContext) {
         context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
         if (context.snapshotRunning() && !context.isSnapshotPaused()) {
             context.pauseSnapshot();
             progressListener.snapshotPaused(partition);
+            notificationService.incrementalSnapshotNotificationService().notifyPaused(context, partition, offsetContext);
         }
     }
 
@@ -120,19 +134,21 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         if (context.snapshotRunning() && context.isSnapshotPaused()) {
             context.resumeSnapshot();
             progressListener.snapshotResumed(partition);
-            readChunk(partition);
+            notificationService.incrementalSnapshotNotificationService().notifyResumed(context, partition, offsetContext);
+            readChunk(partition, offsetContext);
         }
     }
 
     @Override
-    public void processSchemaChange(P partition, DataCollectionId dataCollectionId) throws InterruptedException {
+    public void processSchemaChange(P partition, OffsetContext offsetContext, DataCollectionId dataCollectionId) throws InterruptedException {
+        context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
         if (dataCollectionId != null && (context.currentDataCollectionId() != null) &&
                 dataCollectionId.equals(context.currentDataCollectionId().getId())) {
-            rereadChunk(partition);
+            rereadChunk(partition, offsetContext);
         }
     }
 
-    public void rereadChunk(P partition) throws InterruptedException {
+    public void rereadChunk(P partition, OffsetContext offsetContext) throws InterruptedException {
         if (context == null) {
             return;
         }
@@ -141,7 +157,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         }
         window.clear();
         context.revertChunk();
-        readChunk(partition);
+        readChunk(partition, offsetContext);
     }
 
     protected String getSignalTableName(String dataCollectionId) {
@@ -175,7 +191,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
      */
     protected ChangeRecordEmitter<P> getChangeRecordEmitter(P partition, T dataCollectionId,
                                                             OffsetContext offsetContext, Object[] row) {
-        return new SnapshotChangeRecordEmitter<>(partition, offsetContext, row, clock);
+        return new SnapshotChangeRecordEmitter<>(partition, offsetContext, row, clock, connectorConfig);
     }
 
     protected void deduplicateWindow(DataCollectionId dataCollectionId, Object key) {
@@ -197,10 +213,10 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     /**
      * Update high watermark for the incremental snapshot chunk
      */
-    protected abstract void emitWindowClose(P partition) throws SQLException, InterruptedException;
+    protected abstract void emitWindowClose(P partition, OffsetContext offsetContext) throws Exception;
 
     protected String buildChunkQuery(Table table, Optional<String> additionalCondition) {
-        return buildChunkQuery(table, connectorConfig.getIncrementalSnashotChunkSize(), additionalCondition);
+        return buildChunkQuery(table, connectorConfig.getIncrementalSnapshotChunkSize(), additionalCondition);
     }
 
     protected String buildChunkQuery(Table table, int limit, Optional<String> additionalCondition) {
@@ -215,7 +231,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             addLowerBound(table, sql);
             condition = sql.toString();
         }
-        final String orderBy = getKeyMapper().getKeyKolumns(table).stream()
+        final String orderBy = getQueryColumns(table).stream()
                 .map(c -> jdbcConnection.quotedColumnIdString(c.name()))
                 .collect(Collectors.joining(", "));
         return jdbcConnection.buildSelectWithRowLimits(table.id(),
@@ -248,7 +264,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         // For four columns
         // (k1 > ?) OR (k1 = ? AND k2 > ?) OR (k1 = ? AND k2 = ? AND k3 > ?) OR (k1 = ? AND k2 = ? AND k3 = ? AND k4 > ?)
         // etc.
-        final List<Column> pkColumns = getKeyMapper().getKeyKolumns(table);
+        final List<Column> pkColumns = getQueryColumns(table);
         if (pkColumns.size() > 1) {
             sql.append('(');
         }
@@ -274,7 +290,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     }
 
     protected String buildMaxPrimaryKeyQuery(Table table, Optional<String> additionalCondition) {
-        final String orderBy = getKeyMapper().getKeyKolumns(table).stream()
+        final String orderBy = getQueryColumns(table).stream()
                 .map(c -> jdbcConnection.quotedColumnIdString(c.name()))
                 .collect(Collectors.joining(" DESC, ")) + " DESC";
         return jdbcConnection.buildSelectWithRowLimits(table.id(), 1, buildProjection(table), Optional.empty(),
@@ -298,7 +314,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         LOGGER.info("Incremental snapshot in progress, need to read new chunk on start");
         try {
             progressListener.snapshotStarted(partition);
-            readChunk(partition);
+            readChunk(partition, offsetContext);
         }
         catch (InterruptedException e) {
             throw new DebeziumException("Reading of an initial chunk after connector restart has been interrupted");
@@ -306,7 +322,10 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         LOGGER.info("Incremental snapshot in progress, loading of initial chunk completed");
     }
 
-    protected void readChunk(P partition) throws InterruptedException {
+    protected void readChunk(P partition, OffsetContext offsetContext) throws InterruptedException {
+
+        LOGGER.trace("Reading chunk");
+
         if (!context.snapshotRunning()) {
             LOGGER.info("Skipping read chunk because snapshot is not running");
             postIncrementalSnapshotCompleted();
@@ -322,8 +341,11 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             jdbcConnection.commit();
             context.startNewChunk();
             emitWindowOpen();
+            LOGGER.trace("Window open emitted");
             while (context.snapshotRunning()) {
-                if (isTableInvalid(partition)) {
+
+                LOGGER.trace("Checking if current table is invalid");
+                if (isTableInvalid(partition, offsetContext)) {
                     continue;
                 }
                 if (connectorConfig.isIncrementalSnapshotSchemaChangesEnabled() && !schemaHistoryIsUpToDate()) {
@@ -332,7 +354,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                     break;
                 }
                 final TableId currentTableId = (TableId) context.currentDataCollectionId().getId();
-                if (!context.maximumKey().isPresent()) {
+                if (context.maximumKey().isEmpty()) {
                     currentTable = refreshTableSchema(currentTable);
                     Object[] maximumKey;
                     try {
@@ -348,14 +370,17 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                     }
                     catch (SQLException e) {
                         LOGGER.error("Failed to read maximum key for table {}", currentTableId, e);
-                        nextDataCollection(partition);
+                        notificationService.incrementalSnapshotNotificationService().notifyTableScanCompleted(context, partition, offsetContext, totalRowsScanned,
+                                SQL_EXCEPTION);
+                        nextDataCollection(partition, offsetContext);
                         continue;
                     }
-                    if (!context.maximumKey().isPresent()) {
+                    if (context.maximumKey().isEmpty()) {
                         LOGGER.info(
                                 "No maximum key returned by the query, incremental snapshotting of table '{}' finished as it is empty",
                                 currentTableId);
-                        nextDataCollection(partition);
+                        notificationService.incrementalSnapshotNotificationService().notifyTableScanCompleted(context, partition, offsetContext, totalRowsScanned, EMPTY);
+                        nextDataCollection(partition, offsetContext);
                         continue;
                     }
                     if (LOGGER.isInfoEnabled()) {
@@ -364,13 +389,20 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                     }
                 }
                 if (createDataEventsForTable(partition)) {
+
                     if (window.isEmpty()) {
                         LOGGER.info("No data returned by the query, incremental snapshotting of table '{}' finished",
                                 currentTableId);
+
+                        notificationService.incrementalSnapshotNotificationService().notifyTableScanCompleted(context, partition, offsetContext, totalRowsScanned,
+                                SUCCEEDED);
+
                         tableScanCompleted(partition);
-                        nextDataCollection(partition);
+                        nextDataCollection(partition, offsetContext);
                     }
                     else {
+
+                        notificationService.incrementalSnapshotNotificationService().notifyInProgress(context, partition, offsetContext);
                         break;
                     }
                 }
@@ -379,9 +411,10 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                     break;
                 }
             }
-            emitWindowClose(partition);
+            emitWindowClose(partition, offsetContext);
+            LOGGER.trace("Window close emitted");
         }
-        catch (SQLException e) {
+        catch (Exception e) {
             throw new DebeziumException(String.format("Database error while executing incremental snapshot for table '%s'", context.currentDataCollectionId()), e);
         }
         finally {
@@ -392,17 +425,19 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         }
     }
 
-    private boolean isTableInvalid(P partition) {
+    private boolean isTableInvalid(P partition, OffsetContext offsetContext) {
         final TableId currentTableId = (TableId) context.currentDataCollectionId().getId();
         currentTable = databaseSchema.tableFor(currentTableId);
         if (currentTable == null) {
             LOGGER.warn("Schema not found for table '{}', known tables {}", currentTableId, databaseSchema.tableIds());
-            nextDataCollection(partition);
+            notificationService.incrementalSnapshotNotificationService().notifyTableScanCompleted(context, partition, offsetContext, totalRowsScanned, UNKNOWN_SCHEMA);
+            nextDataCollection(partition, offsetContext);
             return true;
         }
-        if (getKeyMapper().getKeyKolumns(currentTable).isEmpty()) {
+        if (getQueryColumns(currentTable).isEmpty()) {
             LOGGER.warn("Incremental snapshot for table '{}' skipped cause the table has no primary keys", currentTableId);
-            nextDataCollection(partition);
+            notificationService.incrementalSnapshotNotificationService().notifyTableScanCompleted(context, partition, offsetContext, totalRowsScanned, NO_PRIMARY_KEY);
+            nextDataCollection(partition, offsetContext);
             return true;
         }
         return false;
@@ -452,38 +487,58 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         }
     }
 
-    private void nextDataCollection(P partition) {
+    private void nextDataCollection(P partition, OffsetContext offsetContext) {
         context.nextDataCollection();
         if (!context.snapshotRunning()) {
             progressListener.snapshotCompleted(partition);
+            notificationService.incrementalSnapshotNotificationService().notifyCompleted(context, partition, offsetContext);
+            context.unsetCorrelationId();
         }
     }
 
     @Override
     @SuppressWarnings("unchecked")
-    public void addDataCollectionNamesToSnapshot(P partition, List<String> dataCollectionIds, Optional<String> additionalCondition, OffsetContext offsetContext)
+    public void addDataCollectionNamesToSnapshot(SignalPayload<P> signalPayload, SnapshotConfiguration snapshotConfiguration)
             throws InterruptedException {
+
+        final OffsetContext offsetContext = signalPayload.offsetContext;
+        final P partition = signalPayload.partition;
+        final String correlationId = signalPayload.id;
+
         context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
         boolean shouldReadChunk = !context.snapshotRunning();
 
-        List<String> expandedDataCollectionIds = expandDataCollectionIds(dataCollectionIds);
-        if (expandedDataCollectionIds.size() > dataCollectionIds.size()) {
-            LOGGER.info("Data-collections to snapshot have been expanded from {} to {}", dataCollectionIds, expandedDataCollectionIds);
+        List<String> expandedDataCollectionIds = expandAndDedupeDataCollectionIds(snapshotConfiguration.getDataCollections());
+        LOGGER.trace("Configured data collections {}", snapshotConfiguration.getDataCollections());
+        LOGGER.trace("Expanded data collections {}", expandedDataCollectionIds);
+        if (expandedDataCollectionIds.size() > snapshotConfiguration.getDataCollections().size()) {
+            LOGGER.info("Data-collections to snapshot have been expanded from {} to {}", snapshotConfiguration.getDataCollections(), expandedDataCollectionIds);
         }
 
-        final List<DataCollection<T>> newDataCollectionIds = context.addDataCollectionNamesToSnapshot(expandedDataCollectionIds, additionalCondition);
+        final List<DataCollection<T>> newDataCollectionIds = context.addDataCollectionNamesToSnapshot(correlationId, expandedDataCollectionIds,
+                snapshotConfiguration.getAdditionalConditions(),
+                snapshotConfiguration.getSurrogateKey());
         if (shouldReadChunk) {
+
+            List<T> monitoredDataCollections = newDataCollectionIds.stream()
+                    .map(DataCollection::getId).collect(Collectors.toList());
+            LOGGER.trace("Monitored data collections {}", newDataCollectionIds);
+
             progressListener.snapshotStarted(partition);
-            progressListener.monitoredDataCollectionsDetermined(partition, newDataCollectionIds.stream()
-                    .map(x -> x.getId()).collect(Collectors.toList()));
-            readChunk(partition);
+
+            notificationService.incrementalSnapshotNotificationService().notifyStarted(context, partition, offsetContext);
+
+            progressListener.monitoredDataCollectionsDetermined(partition, monitoredDataCollections);
+            readChunk(partition, offsetContext);
         }
     }
 
     @Override
     @SuppressWarnings("unchecked")
-    public void stopSnapshot(P partition, List<String> dataCollectionIds, OffsetContext offsetContext) {
+    public void stopSnapshot(P partition, OffsetContext offsetContext, Map<String, Object> additionalData, List<String> dataCollectionIds) {
+
         context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
+        LOGGER.trace("Stopping incremental snapshot with context {}", context);
         if (context.snapshotRunning()) {
             if (dataCollectionIds == null || dataCollectionIds.isEmpty()) {
                 LOGGER.info("Stopping incremental snapshot.");
@@ -497,13 +552,15 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                     closeWindow(partition, context.currentChunkId(), offsetContext);
 
                     progressListener.snapshotAborted(partition);
+
+                    notificationService.incrementalSnapshotNotificationService().notifyAborted(context, partition, offsetContext);
                 }
                 catch (InterruptedException e) {
                     LOGGER.warn("Failed to stop snapshot successfully.", e);
                 }
             }
             else {
-                final List<String> expandedDataCollectionIds = expandDataCollectionIds(dataCollectionIds);
+                final List<String> expandedDataCollectionIds = expandAndDedupeDataCollectionIds(dataCollectionIds);
                 LOGGER.info("Removing '{}' collections from incremental snapshot", expandedDataCollectionIds);
                 // Iterate and remove any collections that are not current.
                 // If current is marked for removal, delay that until after others have been removed.
@@ -534,9 +591,11 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                     }
                     else {
                         LOGGER.info("Advancing to next available collection in the incremental snapshot.");
-                        nextDataCollection(partition);
+                        nextDataCollection(partition, offsetContext);
                     }
                 }
+
+                notificationService.incrementalSnapshotNotificationService().notifyAborted(context, partition, offsetContext, expandedDataCollectionIds);
             }
         }
         else {
@@ -545,7 +604,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     }
 
     protected void addKeyColumnsToCondition(Table table, StringBuilder sql, String predicate) {
-        for (Iterator<Column> i = getKeyMapper().getKeyKolumns(table).iterator(); i.hasNext();) {
+        for (Iterator<Column> i = getQueryColumns(table).iterator(); i.hasNext();) {
             final Column key = i.next();
             sql.append(jdbcConnection.quotedColumnIdString(key.name())).append(predicate);
             if (i.hasNext()) {
@@ -558,7 +617,8 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
      * Expands the string-based list of data collection ids if supplied using regex to a list of
      * all matching explicit data collection ids.
      */
-    private List<String> expandDataCollectionIds(List<String> dataCollectionIds) {
+    private List<String> expandAndDedupeDataCollectionIds(List<String> dataCollectionIds) {
+
         return dataCollectionIds
                 .stream()
                 .flatMap(x -> {
@@ -569,8 +629,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                             .filter(t -> Pattern.compile(x).matcher(t).matches())
                             .collect(Collectors.toList());
                     return ids.isEmpty() ? Stream.of(x) : ids.stream();
-                })
-                .collect(Collectors.toList());
+                }).distinct().collect(Collectors.toList());
     }
 
     /**
@@ -692,15 +751,16 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             final Object[] chunkEndPosition = context.chunkEndPosititon();
             // Fill boundaries placeholders
             int pos = 0;
+            final List<Column> queryColumns = getQueryColumns(currentTable);
             for (int i = 0; i < chunkEndPosition.length; i++) {
                 for (int j = 0; j < i + 1; j++) {
-                    statement.setObject(++pos, chunkEndPosition[j]);
+                    jdbcConnection.setQueryColumnValue(statement, queryColumns.get(j), ++pos, chunkEndPosition[j]);
                 }
             }
             // Fill maximum key placeholders
             for (int i = 0; i < chunkEndPosition.length; i++) {
                 for (int j = 0; j < i + 1; j++) {
-                    statement.setObject(++pos, maximumKey[j]);
+                    jdbcConnection.setQueryColumnValue(statement, queryColumns.get(j), ++pos, maximumKey[j]);
                 }
             }
         }
@@ -716,7 +776,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         if (row == null) {
             return null;
         }
-        final List<Column> keyColumns = getKeyMapper().getKeyKolumns(currentTable);
+        final List<Column> keyColumns = getQueryColumns(currentTable);
         final Object[] key = new Object[keyColumns.size()];
         for (int i = 0; i < keyColumns.size(); i++) {
             final Object fieldValue = row[keyColumns.get(i).position() - 1];
@@ -731,6 +791,8 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     }
 
     protected void preReadChunk(IncrementalSnapshotContext<T> context) {
+
+        LOGGER.trace("Pre read chunk");
         try {
             if (!jdbcConnection.isValid()) {
                 jdbcConnection.connect();
@@ -759,5 +821,15 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
 
     private KeyMapper getKeyMapper() {
         return connectorConfig.getKeyMapper() == null ? table -> table.primaryKeyColumns() : connectorConfig.getKeyMapper();
+    }
+
+    private List<Column> getQueryColumns(Table table) {
+        if (context != null && context.currentDataCollectionId() != null) {
+            Optional<String> surrogateKey = context.currentDataCollectionId().getSurrogateKey();
+            if (surrogateKey.isPresent()) {
+                return Collections.singletonList(table.columnWithName(surrogateKey.get()));
+            }
+        }
+        return getKeyMapper().getKeyKolumns(table);
     }
 }

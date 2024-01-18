@@ -8,13 +8,16 @@ package io.debezium.connector.postgresql.connection;
 
 import java.nio.charset.Charset;
 import java.sql.DatabaseMetaData;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Types;
 import java.time.Duration;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
 
@@ -162,7 +165,8 @@ public class PostgresConnection extends JdbcConnection {
      * @return the replica identity information; never null
      * @throws SQLException if there is a problem obtaining the replica identity information for the given table
      */
-    public ServerInfo.ReplicaIdentity readReplicaIdentityInfo(TableId tableId) throws SQLException {
+    @VisibleForTesting
+    public ReplicaIdentityInfo readReplicaIdentityInfo(TableId tableId) throws SQLException {
         String statement = "SELECT relreplident FROM pg_catalog.pg_class c " +
                 "LEFT JOIN pg_catalog.pg_namespace n ON c.relnamespace=n.oid " +
                 "WHERE n.nspname=? and c.relname=?";
@@ -179,7 +183,65 @@ public class PostgresConnection extends JdbcConnection {
                 LOGGER.warn("Cannot determine REPLICA IDENTITY information for table '{}'", tableId);
             }
         });
-        return ServerInfo.ReplicaIdentity.parseFromDB(replIdentity.toString());
+        return new ReplicaIdentityInfo(ReplicaIdentityInfo.ReplicaIdentity.parseFromDB(replIdentity.toString()));
+    }
+
+    /**
+     * This query retrieves information about the INDEX as long as replica identity is configure USING INDEX
+     *
+     * @param tableId the identifier of the table
+     * @return Index name linked to replica identity; never null
+     * @throws SQLException if there is a problem obtaining the replica identity and index information for the given table
+     */
+    @VisibleForTesting
+    public String readIndexOfReplicaIdentity(TableId tableId) throws SQLException {
+        String statement = "with rel_index as (" +
+                "select split_part(indexrelid::regclass::text, '.', 1) as index_schema, split_part(indexrelid::regclass::text, '.', 2) as index_name " +
+                "from pg_catalog.pg_index " +
+                "where indisreplident " +
+                ") " +
+                "SELECT i.index_name " +
+                "FROM pg_catalog.pg_class c " +
+                "    LEFT JOIN pg_catalog.pg_namespace n ON c.relnamespace=n.oid " +
+                "    LEFT join rel_index i on n.nspname = i.index_schema " +
+                "WHERE n.nspname=? and c.relname=?";
+        String schema = tableId.schema() != null && tableId.schema().length() > 0 ? tableId.schema() : "public";
+        StringBuilder indexName = new StringBuilder();
+        prepareQuery(statement, stmt -> {
+            stmt.setString(1, schema);
+            stmt.setString(2, tableId.table());
+        }, rs -> {
+            if (rs.next()) {
+                indexName.append(rs.getString(1));
+            }
+            else {
+                LOGGER.warn("Cannot determine index linked to REPLICA IDENTITY for table '{}'", tableId);
+            }
+        });
+        return indexName.toString();
+    }
+
+    /**
+     * Update REPLICA IDENTITY status of a table.
+     * This in turn determines how much information is available for UPDATE and DELETE operations for logical replication.
+     *
+     * @param tableId the identifier of the table
+     * @param replicaIdentityValue Replica Identity value
+     */
+    public void setReplicaIdentityForTable(TableId tableId, ReplicaIdentityInfo replicaIdentityValue) {
+        try {
+            LOGGER.debug("Updating Replica Identity '{}'", tableId.table());
+            execute(String.format("ALTER TABLE %s REPLICA IDENTITY %s;", tableId, replicaIdentityValue));
+        }
+        catch (SQLException e) {
+
+            if (e.getSQLState().equals("42501")) {
+                LOGGER.error("Replica identity could not be updated because of lack of privileges", e);
+            }
+            else {
+                LOGGER.error("Unexpected error while attempting to alter Replica Identity", e);
+            }
+        }
     }
 
     /**
@@ -292,17 +354,43 @@ public class PostgresConnection extends JdbcConnection {
 
         try {
             confirmedFlushedLsn = tryParseLsn(slotName, pluginName, database, rs, "confirmed_flush_lsn");
+            if (confirmedFlushedLsn == null) {
+                LOGGER.info("Failed to obtain valid replication slot, confirmed flush lsn is null");
+                if (!hasIdleTransactions()) {
+                    confirmedFlushedLsn = tryFallbackToRestartLsn(slotName, pluginName, database, rs);
+                }
+            }
         }
         catch (SQLException e) {
-            LOGGER.info("unable to find confirmed_flushed_lsn, falling back to restart_lsn");
-            try {
-                confirmedFlushedLsn = tryParseLsn(slotName, pluginName, database, rs, "restart_lsn");
-            }
-            catch (SQLException e2) {
-                throw new ConnectException("Neither confirmed_flush_lsn nor restart_lsn could be found");
-            }
+            confirmedFlushedLsn = tryFallbackToRestartLsn(slotName, pluginName, database, rs);
         }
 
+        return confirmedFlushedLsn;
+    }
+
+    private boolean hasIdleTransactions() throws SQLException {
+        return queryAndMap(
+                "select * from pg_stat_activity where state like 'idle in transaction' AND application_name != '" + CONNECTION_GENERAL + "' AND pid <> pg_backend_pid()",
+                rs -> {
+                    if (rs.next()) {
+                        LOGGER.debug("Found at least one idle transaction with pid " + rs.getInt("pid") + " for application" + rs.getString("application_name"));
+                        return true;
+                    }
+                    else {
+                        return false;
+                    }
+                });
+    }
+
+    private Lsn tryFallbackToRestartLsn(String slotName, String pluginName, String database, ResultSet rs) {
+        Lsn confirmedFlushedLsn;
+        LOGGER.info("Unable to find confirmed_flushed_lsn, falling back to restart_lsn");
+        try {
+            confirmedFlushedLsn = tryParseLsn(slotName, pluginName, database, rs, "restart_lsn");
+        }
+        catch (SQLException e) {
+            throw new DebeziumException("Neither confirmed_flush_lsn nor restart_lsn could be found", e);
+        }
         return confirmedFlushedLsn;
     }
 
@@ -312,7 +400,7 @@ public class PostgresConnection extends JdbcConnection {
             restartLsn = tryParseLsn(slotName, pluginName, database, rs, "restart_lsn");
         }
         catch (SQLException e) {
-            throw new ConnectException("restart_lsn could be found");
+            throw new DebeziumException("restart_lsn could be found");
         }
 
         return restartLsn;
@@ -329,13 +417,13 @@ public class PostgresConnection extends JdbcConnection {
             lsn = Lsn.valueOf(lsnStr);
         }
         catch (Exception e) {
-            throw new ConnectException("Value " + column + " in the pg_replication_slots table for slot = '"
+            throw new DebeziumException("Value " + column + " in the pg_replication_slots table for slot = '"
                     + slotName + "', plugin = '"
                     + pluginName + "', database = '"
                     + database + "' is not valid. This is an abnormal situation and the database status should be checked.");
         }
         if (!lsn.isValid()) {
-            throw new ConnectException("Invalid LSN returned from database");
+            throw new DebeziumException("Invalid LSN returned from database");
         }
         return lsn;
     }
@@ -423,7 +511,7 @@ public class PostgresConnection extends JdbcConnection {
      */
     public Long currentTransactionId() throws SQLException {
         AtomicLong txId = new AtomicLong(0);
-        query("select * from txid_current()", rs -> {
+        query("select (case pg_is_in_recovery() when 't' then 0 else txid_current() end) AS pg_current_txid", rs -> {
             if (rs.next()) {
                 txId.compareAndSet(0, rs.getLong(1));
             }
@@ -441,12 +529,13 @@ public class PostgresConnection extends JdbcConnection {
     public long currentXLogLocation() throws SQLException {
         AtomicLong result = new AtomicLong(0);
         int majorVersion = connection().getMetaData().getDatabaseMajorVersion();
-        query(majorVersion >= 10 ? "select * from pg_current_wal_lsn()" : "select * from pg_current_xlog_location()", rs -> {
-            if (!rs.next()) {
-                throw new IllegalStateException("there should always be a valid xlog position");
-            }
-            result.compareAndSet(0, LogSequenceNumber.valueOf(rs.getString(1)).asLong());
-        });
+        query(majorVersion >= 10 ? "select (case pg_is_in_recovery() when 't' then pg_last_wal_receive_lsn() else pg_current_wal_lsn() end) AS pg_current_wal_lsn"
+                : "select * from pg_current_xlog_location()", rs -> {
+                    if (!rs.next()) {
+                        throw new IllegalStateException("there should always be a valid xlog position");
+                    }
+                    result.compareAndSet(0, LogSequenceNumber.valueOf(rs.getString(1)).asLong());
+                });
         return result.get();
     }
 
@@ -510,7 +599,7 @@ public class PostgresConnection extends JdbcConnection {
     @Override
     public String quotedColumnIdString(String columnName) {
         if (columnName.contains("\"")) {
-            columnName = columnName.replaceAll("\"", "\"\"");
+            columnName = columnName.replace("\"", "\"\"");
         }
 
         return super.quotedColumnIdString(columnName);
@@ -677,6 +766,40 @@ public class PostgresConnection extends JdbcConnection {
                     && !EXPRESSION_DEFAULT_PATTERN.matcher(columnName).matches();
         }
         return false;
+    }
+
+    /**
+     * Retrieves all {@code TableId}s in a given database catalog, including partitioned tables.
+     *
+     * @param catalogName the catalog/database name
+     * @return set of all table ids for existing table objects
+     * @throws SQLException if a database exception occurred
+     */
+    public Set<TableId> getAllTableIds(String catalogName) throws SQLException {
+        return readTableNames(
+                catalogName,
+                null,
+                null,
+                new String[]{ "TABLE", "PARTITIONED TABLE" });
+    }
+
+    @Override
+    public void setQueryColumnValue(PreparedStatement statement, Column column, int pos, Object value)
+            throws SQLException {
+        final PostgresType resolvedType = typeRegistry.get(column.nativeType());
+
+        if (resolvedType != null && resolvedType.isEnumType()) {
+            // ENUMs require explicit casting so the comparison operators can correctly work
+            statement.setObject(pos, value, Types.OTHER);
+        }
+        else {
+            super.setQueryColumnValue(statement, column, pos, value);
+        }
+    }
+
+    @Override
+    public TableId createTableId(String databaseName, String schemaName, String tableName) {
+        return new TableId(null, schemaName, tableName);
     }
 
     @FunctionalInterface

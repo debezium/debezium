@@ -43,7 +43,7 @@ public class Transformations implements Closeable {
     public Transformations(Configuration config) {
         this.config = config;
         this.predicates = new Predicates(config);
-        final String transformationList = config.getString(EmbeddedEngine.TRANSFORMS);
+        final String transformationList = config.getString(EmbeddedEngineConfig.TRANSFORMS);
         if (transformationList == null) {
             return;
         }
@@ -55,7 +55,7 @@ public class Transformations implements Closeable {
     }
 
     private static String transformationConfigNamespace(final String name) {
-        return EmbeddedEngine.TRANSFORMS.name() + "." + name;
+        return EmbeddedEngineConfig.TRANSFORMS.name() + "." + name;
     }
 
     @VisibleForTesting

@@ -17,4 +17,10 @@ public interface MongoDbStreamingChangeEventSourceMetricsMBean extends Streaming
     long getNumberOfDisconnects();
 
     long getNumberOfPrimaryElections();
+
+    long getLastSourceEventPollTime();
+
+    long getLastEmptyPollTime();
+
+    long getNumberOfEmptyPolls();
 }

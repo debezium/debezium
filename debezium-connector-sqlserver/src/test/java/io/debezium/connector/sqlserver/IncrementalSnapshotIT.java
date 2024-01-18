@@ -17,17 +17,22 @@ import io.debezium.config.Configuration.Builder;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.junit.ConditionalFail;
+import io.debezium.junit.Flaky;
 import io.debezium.junit.SkipTestRule;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotWithSchemaChangesSupportTest;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.util.Testing;
 
 public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchemaChangesSupportTest<SqlServerConnector> {
+    private static final int POLLING_INTERVAL = 1;
 
     private SqlServerConnection connection;
 
     @Rule
     public SkipTestRule skipRule = new SkipTestRule();
+    @Rule
+    public ConditionalFail conditionalFail = new ConditionalFail();
 
     @Before
     public void before() throws SQLException {
@@ -38,6 +43,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
                 "CREATE TABLE b (pk int primary key, aa int)",
                 "CREATE TABLE debezium_signal (id varchar(64), type varchar(32), data varchar(2048))");
         TestHelper.enableTableCdc(connection, "debezium_signal");
+        TestHelper.adjustCdcPollingInterval(connection, POLLING_INTERVAL);
 
         initializeConnectorTestFramework();
         Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
@@ -170,5 +176,36 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
                 .with(SqlServerConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 250)
                 .with(SqlServerConnectorConfig.INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES, true)
                 .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, storeOnlyCapturedDdl);
+    }
+
+    @Override
+    protected void waitForCdcTransactionPropagation(int expectedTransactions) throws Exception {
+        TestHelper.waitForCdcTransactionPropagation(connection, TestHelper.TEST_DATABASE_1, expectedTransactions);
+    }
+
+    @Override
+    protected String connector() {
+        return "sql_server";
+    }
+
+    @Override
+    protected String server() {
+        return TestHelper.TEST_SERVER_NAME;
+    }
+
+    @Override
+    protected String task() {
+        return "0";
+    }
+
+    @Override
+    protected String database() {
+        return TestHelper.TEST_DATABASE_1;
+    }
+
+    @Override
+    @Flaky("DBZ-5393")
+    public void stopCurrentIncrementalSnapshotWithAllCollectionsAndTakeNewNewIncrementalSnapshotAfterRestart() throws Exception {
+        super.stopCurrentIncrementalSnapshotWithAllCollectionsAndTakeNewNewIncrementalSnapshotAfterRestart();
     }
 }

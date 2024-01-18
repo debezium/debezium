@@ -12,9 +12,11 @@ import java.util.concurrent.TimeUnit;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
+import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.util.TestHelper;
+import io.debezium.data.VerifyRecord;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.SkipTestRule;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotTest;
@@ -44,6 +46,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Oracl
         TestHelper.dropTable(connection, "debezium_signal");
         connection.execute("CREATE TABLE debezium_signal (id varchar2(64), type varchar2(32), data varchar2(2048))");
         connection.execute("GRANT INSERT on debezium_signal to " + TestHelper.getConnectorUserName());
+        connection.execute("GRANT DELETE on debezium_signal to " + TestHelper.getConnectorUserName());
         TestHelper.streamTable(connection, "debezium_signal");
 
         setConsumeTimeout(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS);
@@ -171,6 +174,30 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Oracl
     @Override
     protected String alterTableAddColumnStatement(String tableName) {
         return "ALTER TABLE " + tableName + " ADD col3 INTEGER DEFAULT 0";
+    }
+
+    @Override
+    protected int defaultIncrementalSnapshotChunkSize() {
+        return 250;
+    }
+
+    @Override
+    protected String connector() {
+        return "oracle";
+    }
+
+    @Override
+    protected String server() {
+        return TestHelper.SERVER_NAME;
+    }
+
+    @Test
+    public void snapshotPreceededBySchemaChange() throws Exception {
+        // TODO: remove once we upgrade Apicurio version (DBZ-7357)
+        if (VerifyRecord.isApucurioAvailable()) {
+            skipAvroValidation();
+        }
+        super.snapshotPreceededBySchemaChange();
     }
 
     private void createTables() throws Exception {

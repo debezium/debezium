@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.mysql;
 
+import static io.debezium.connector.common.OffsetUtils.longOffsetValue;
+
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
@@ -16,7 +18,6 @@ import org.apache.kafka.connect.errors.ConnectException;
 import io.debezium.connector.SnapshotRecord;
 import io.debezium.pipeline.CommonOffsetContext;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
-import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotContext;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.TableId;
@@ -62,7 +63,7 @@ public class MySqlOffsetContext extends CommonOffsetContext<SourceInfo> {
 
     public MySqlOffsetContext(MySqlConnectorConfig connectorConfig, boolean snapshot, boolean snapshotCompleted, SourceInfo sourceInfo) {
         this(snapshot, snapshotCompleted, new TransactionContext(),
-                connectorConfig.isReadOnlyConnection() ? new MySqlReadOnlyIncrementalSnapshotContext<>() : new SignalBasedIncrementalSnapshotContext<>(),
+                connectorConfig.getConnectorAdapter().getIncrementalSnapshotContext(),
                 sourceInfo);
     }
 
@@ -176,13 +177,8 @@ public class MySqlOffsetContext extends CommonOffsetContext<SourceInfo> {
                 throw new ConnectException("Source offset '" + SourceInfo.BINLOG_FILENAME_OFFSET_KEY + "' parameter is missing");
             }
             long binlogPosition = longOffsetValue(offset, SourceInfo.BINLOG_POSITION_OFFSET_KEY);
-            IncrementalSnapshotContext<TableId> incrementalSnapshotContext;
-            if (connectorConfig.isReadOnlyConnection()) {
-                incrementalSnapshotContext = MySqlReadOnlyIncrementalSnapshotContext.load(offset);
-            }
-            else {
-                incrementalSnapshotContext = SignalBasedIncrementalSnapshotContext.load(offset);
-            }
+            IncrementalSnapshotContext<TableId> incrementalSnapshotContext = connectorConfig.getConnectorAdapter()
+                    .loadIncrementalSnapshotContextFromOffset(offset);
             final MySqlOffsetContext offsetContext = new MySqlOffsetContext(snapshot, snapshotCompleted,
                     TransactionContext.load(offset), incrementalSnapshotContext,
                     new SourceInfo(connectorConfig));
@@ -191,22 +187,6 @@ public class MySqlOffsetContext extends CommonOffsetContext<SourceInfo> {
                     (int) longOffsetValue(offset, SourceInfo.BINLOG_ROW_IN_EVENT_OFFSET_KEY));
             offsetContext.setCompletedGtidSet((String) offset.get(GTID_SET_KEY)); // may be null
             return offsetContext;
-        }
-
-        private long longOffsetValue(Map<String, ?> values, String key) {
-            Object obj = values.get(key);
-            if (obj == null) {
-                return 0L;
-            }
-            if (obj instanceof Number) {
-                return ((Number) obj).longValue();
-            }
-            try {
-                return Long.parseLong(obj.toString());
-            }
-            catch (NumberFormatException e) {
-                throw new ConnectException("Source offset '" + key + "' parameter value " + obj + " could not be converted to a long");
-            }
         }
     }
 
@@ -267,7 +247,7 @@ public class MySqlOffsetContext extends CommonOffsetContext<SourceInfo> {
     public void setCompletedGtidSet(String gtidSet) {
         if (gtidSet != null && !gtidSet.trim().isEmpty()) {
             // Remove all the newline chars that exist in the GTID set string ...
-            String trimmedGtidSet = gtidSet.replaceAll("\n", "").replaceAll("\r", "");
+            String trimmedGtidSet = gtidSet.replace("\n", "").replace("\r", "");
             this.currentGtidSet = trimmedGtidSet;
             this.restartGtidSet = trimmedGtidSet;
         }
@@ -292,7 +272,7 @@ public class MySqlOffsetContext extends CommonOffsetContext<SourceInfo> {
         sourceInfo.startGtid(gtid);
         if (gtidSet != null && !gtidSet.trim().isEmpty()) {
             // Remove all the newline chars that exist in the GTID set string ...
-            String trimmedGtidSet = gtidSet.replaceAll("\n", "").replaceAll("\r", "");
+            String trimmedGtidSet = gtidSet.replace("\n", "").replace("\r", "");
             // Set the GTID set that we'll use if restarting BEFORE successful completion of the events in this GTID ...
             this.restartGtidSet = this.currentGtidSet != null ? this.currentGtidSet : trimmedGtidSet;
             // Record the GTID set that includes the current transaction ...

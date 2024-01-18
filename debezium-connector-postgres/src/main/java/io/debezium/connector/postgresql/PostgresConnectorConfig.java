@@ -10,6 +10,7 @@ import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
@@ -277,6 +278,22 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         DISABLED("disable"),
 
         /**
+         * Establish an unencrypted connection first.
+         * Establish a secure connection next if an unencrypted connection cannot be established
+         *
+         * see the {@code sslmode} Postgres JDBC driver option
+         */
+        ALLOW("allow"),
+
+        /**
+        * Establish a secure connection first.
+        * Establish an unencrypted connection next if a secure connection cannot be established
+        *
+        * see the {@code sslmode} Postgres JDBC driver option
+        */
+        PREFER("prefer"),
+
+        /**
          * Establish a secure connection if the server supports secure connections.
          * The connection attempt fails if a secure connection cannot be established
          *
@@ -506,6 +523,17 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     "Whether or not to drop the logical replication slot when the connector finishes orderly. " +
                             "By default the replication is kept so that on restart progress can resume from the last recorded location");
 
+    public static final Field SLOT_SEEK_TO_KNOWN_OFFSET = Field.createInternal("slot.seek.to.known.offset.on.start")
+            .withDisplayName("Seek to last known offset on the replication slot")
+            .withType(Type.BOOLEAN)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION, 3))
+            .withDefault(false)
+            .withImportance(Importance.LOW)
+            .withInvisibleRecommender()
+            .withDescription(
+                    "Whether or not to seek to the last known offset on the replication slot." +
+                            "Enabling this option results in startup failure if the slot is re-created instead of data loss.");
+
     public static final Field PUBLICATION_NAME = Field.create("publication.name")
             .withDisplayName("Publication")
             .withType(Type.STRING)
@@ -596,6 +624,26 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                             "the current filter configuration (see table/database include/exclude list properties). If the publication already" +
                             " exists, it will be used. i.e CREATE PUBLICATION <publication_name> FOR TABLE <tbl1, tbl2, etc>");
 
+    public static final Field REPLICA_IDENTITY_AUTOSET_VALUES = Field.create("replica.identity.autoset.values")
+            .withDisplayName("Replica Identity Auto Set Values")
+            .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION, 10))
+            .withWidth(Width.LONG)
+            .withImportance(Importance.MEDIUM)
+            .withValidation(PostgresConnectorConfig::validateReplicaAutoSetField)
+            .withDescription(
+                    "Applies only when streaming changes using pgoutput." +
+                            "Determines the value for Replica Identity at table level. This option will overwrite the existing value in database" +
+                            "A comma-separated list of regular expressions that match fully-qualified tables and Replica Identity value to be used in the table. " +
+                            "Each expression must match the pattern '<fully-qualified table name>:<replica identity>', " +
+                            "where the table names could be defined as (SCHEMA_NAME.TABLE_NAME), " +
+                            "and the replica identity values are: " +
+                            "DEFAULT - Records the old values of the columns of the primary key, if any. This is the default for non-system tables." +
+                            "INDEX index_name - Records the old values of the columns covered by the named index, that must be unique, not partial, not deferrable, " +
+                            "and include only columns marked NOT NULL. If this index is dropped, the behavior is the same as NOTHING." +
+                            "FULL - Records the old values of all columns in the row." +
+                            "NOTHING - Records no information about the old row. This is the default for system tables.");
+
     public static final Field STREAM_PARAMS = Field.create("slot.stream.params")
             .withDisplayName("Optional parameters to pass to the logical decoder when the stream is started.")
             .withType(Type.STRING)
@@ -638,11 +686,13 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     public static final Field SSL_MODE = Field.create(DATABASE_CONFIG_PREFIX + "sslmode")
             .withDisplayName("SSL mode")
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_SSL, 0))
-            .withEnum(SecureConnectionMode.class, SecureConnectionMode.DISABLED)
+            .withEnum(SecureConnectionMode.class, SecureConnectionMode.PREFER)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
             .withDescription("Whether to use an encrypted connection to Postgres. Options include: "
                     + "'disable' (the default) to use an unencrypted connection; "
+                    + "'allow' to try and use an unencrypted connection first and, failing that, a secure (encrypted) connection; "
+                    + "'prefer' (the default) to try and use a secure (encrypted) connection first and, failing that, an unencrypted connection; "
                     + "'require' to use a secure (encrypted) connection, and fail if one cannot be established; "
                     + "'verify-ca' like 'required' but additionally verify the server TLS certificate against the configured Certificate Authority "
                     + "(CA) certificates, or fail if no valid matching CA certificates are found; or "
@@ -696,13 +746,13 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
             .withDescription("The criteria for running a snapshot upon startup of the connector. "
-                    + "Options include: "
-                    + "'always' to specify that the connector run a snapshot each time it starts up; "
-                    + "'initial' (the default) to specify the connector can run a snapshot only when no offsets are available for the logical server name; "
-                    + "'initial_only' same as 'initial' except the connector should stop after completing the snapshot and before it would normally start emitting changes;"
-                    + "'never' to specify the connector should never run a snapshot and that upon first startup the connector should read from the last position (LSN) recorded by the server; and"
-                    + "'exported' deprecated, use 'initial' instead; "
-                    + "'custom' to specify a custom class with 'snapshot.custom_class' which will be loaded and used to determine the snapshot, see docs for more details.");
+                    + "Select one of the following snapshot options: "
+                    + "'always': The connector runs a snapshot every time that it starts. After the snapshot completes, the connector begins to stream changes from the transaction log.; "
+                    + "'initial' (default): If the connector does not detect any offsets for the logical server name, it runs a snapshot that captures the current full state of the configured tables. After the snapshot completes, the connector begins to stream changes from the transaction log. "
+                    + "'initial_only': The connector performs a snapshot as it does for the 'initial' option, but after the connector completes the snapshot, it stops, and does not stream changes from the transaction log.; "
+                    + "'never': The connector does not run a snapshot. Upon first startup, the connector immediately begins reading from the beginning of the transaction log. "
+                    + "'exported': This option is deprecated; use 'initial' instead.; "
+                    + "'custom': The connector loads a custom class  to specify how the connector performs snapshots. For more information, see Custom snapshotter SPI in the PostgreSQL connector documentation.");
 
     public static final Field SNAPSHOT_MODE_CLASS = Field.create("snapshot.custom.class")
             .withDisplayName("Snapshot Mode Custom Class")
@@ -711,7 +761,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
             .withValidation((config, field, output) -> {
-                if (config.getString(SNAPSHOT_MODE).toLowerCase().equals("custom") && config.getString(field).isEmpty()) {
+                if (config.getString(SNAPSHOT_MODE).equalsIgnoreCase("custom") && config.getString(field, "").isEmpty()) {
                     output.accept(field, "", "snapshot.custom_class cannot be empty when snapshot.mode 'custom' is defined");
                     return 1;
                 }
@@ -842,11 +892,27 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withDefault(2)
             .withDescription("Number of fractional digits when money type is converted to 'precise' decimal number.");
 
+    public static final Field SHOULD_FLUSH_LSN_IN_SOURCE_DB = Field.create("flush.lsn.source")
+            .withDisplayName("Boolean to determine if Debezium should flush LSN in the source database")
+            .withType(Type.BOOLEAN)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 99))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription(
+                    "Boolean to determine if Debezium should flush LSN in the source postgres database. If set to false, user will have to flush the LSN manually outside Debezium.")
+            .withDefault(Boolean.TRUE)
+            .withValidation(Field::isBoolean, PostgresConnectorConfig::validateFlushLsnSource);
+
+    public static final Field SOURCE_INFO_STRUCT_MAKER = CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER
+            .withDefault(PostgresSourceInfoStructMaker.class.getName());
+
     private final LogicalDecodingMessageFilter logicalDecodingMessageFilter;
     private final HStoreHandlingMode hStoreHandlingMode;
     private final IntervalHandlingMode intervalHandlingMode;
     private final SnapshotMode snapshotMode;
     private final SchemaRefreshMode schemaRefreshMode;
+    private final boolean flushLsnOnSource;
+    private final ReplicaIdentityMapper replicaIdentityMapper;
 
     public PostgresConnectorConfig(Configuration config) {
         super(
@@ -864,6 +930,9 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         this.intervalHandlingMode = IntervalHandlingMode.parse(config.getString(PostgresConnectorConfig.INTERVAL_HANDLING_MODE));
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE));
         this.schemaRefreshMode = SchemaRefreshMode.parse(config.getString(SCHEMA_REFRESH_MODE));
+        this.flushLsnOnSource = config.getBoolean(SHOULD_FLUSH_LSN_IN_SOURCE_DB);
+        final var replicaIdentityMapping = config.getString(REPLICA_IDENTITY_AUTOSET_VALUES);
+        this.replicaIdentityMapper = (replicaIdentityMapping != null) ? new ReplicaIdentityMapper(replicaIdentityMapping) : null;
     }
 
     protected String hostname() {
@@ -892,6 +961,10 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         }
         // Return default value
         return getConfig().getBoolean(DROP_SLOT_ON_STOP);
+    }
+
+    public boolean slotSeekToKnownOffsetOnStart() {
+        return getConfig().getBoolean(SLOT_SEEK_TO_KNOWN_OFFSET);
     }
 
     public String publicationName() {
@@ -950,6 +1023,10 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return Duration.ofMillis(getConfig().getLong(PostgresConnectorConfig.XMIN_FETCH_INTERVAL));
     }
 
+    public boolean isFlushLsnOnSource() {
+        return flushLsnOnSource;
+    }
+
     @Override
     public byte[] getUnavailableValuePlaceholder() {
         String placeholder = getConfig().getString(UNAVAILABLE_VALUE_PLACEHOLDER);
@@ -959,13 +1036,17 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return placeholder.getBytes();
     }
 
+    public Optional<ReplicaIdentityMapper> replicaIdentityMapper() {
+        return Optional.ofNullable(this.replicaIdentityMapper);
+    }
+
     protected int moneyFractionDigits() {
         return getConfig().getInteger(MONEY_FRACTION_DIGITS);
     }
 
     @Override
     protected SourceInfoStructMaker<? extends AbstractSourceInfo> getSourceInfoStructMaker(Version version) {
-        return new PostgresSourceInfoStructMaker(Module.name(), Module.version(), this);
+        return getSourceInfoStructMaker(SOURCE_INFO_STRUCT_MAKER, Module.name(), Module.version(), this);
     }
 
     private static final ConfigDefinition CONFIG_DEFINITION = RelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
@@ -981,6 +1062,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     SLOT_NAME,
                     PUBLICATION_NAME,
                     PUBLICATION_AUTOCREATE_MODE,
+                    REPLICA_IDENTITY_AUTOSET_VALUES,
                     DROP_SLOT_ON_STOP,
                     STREAM_PARAMS,
                     ON_CONNECT_STATEMENTS,
@@ -996,8 +1078,11 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     TCP_KEEPALIVE,
                     XMIN_FETCH_INTERVAL,
                     // Use this connector's implementation rather than common connector's flavor
-                    SKIPPED_OPERATIONS)
-            .events(INCLUDE_UNKNOWN_DATATYPES)
+                    SKIPPED_OPERATIONS,
+                    SHOULD_FLUSH_LSN_IN_SOURCE_DB)
+            .events(
+                    INCLUDE_UNKNOWN_DATATYPES,
+                    SOURCE_INFO_STRUCT_MAKER)
             .connector(
                     SNAPSHOT_MODE,
                     SNAPSHOT_MODE_CLASS,
@@ -1047,6 +1132,34 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return 0;
     }
 
+    private static int validateFlushLsnSource(Configuration config, Field field, Field.ValidationOutput problems) {
+        if (config.getString(PostgresConnectorConfig.SHOULD_FLUSH_LSN_IN_SOURCE_DB, "true").equalsIgnoreCase("false")) {
+            LOGGER.warn("Property '" + PostgresConnectorConfig.SHOULD_FLUSH_LSN_IN_SOURCE_DB.name()
+                    + "' is set to 'false', the LSN will not be flushed to the database source and WAL logs will not be cleared. User is expected to handle this outside Debezium.");
+        }
+        return 0;
+    }
+
+    protected static int validateReplicaAutoSetField(Configuration config, Field field, Field.ValidationOutput problems) {
+        String replica_autoset_values = config.getString(PostgresConnectorConfig.REPLICA_IDENTITY_AUTOSET_VALUES);
+        int problemCount = 0;
+
+        if (replica_autoset_values != null) {
+            if (replica_autoset_values.isEmpty()) {
+                problems.accept(PostgresConnectorConfig.REPLICA_IDENTITY_AUTOSET_VALUES, "", "Must not be empty");
+            }
+
+            for (String substring : ReplicaIdentityMapper.PATTERN_SPLIT.split(replica_autoset_values)) {
+                if (!ReplicaIdentityMapper.REPLICA_AUTO_SET_PATTERN.asPredicate().test(substring)) {
+                    problems.accept(PostgresConnectorConfig.REPLICA_IDENTITY_AUTOSET_VALUES, substring,
+                            substring + " has an invalid format (expecting '" + ReplicaIdentityMapper.REPLICA_AUTO_SET_PATTERN.pattern() + "')");
+                    problemCount++;
+                }
+            }
+        }
+        return problemCount;
+    }
+
     @Override
     public String getContextName() {
         return Module.contextName();
@@ -1061,13 +1174,13 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         protected static final List<String> SYSTEM_SCHEMAS = Arrays.asList("pg_catalog", "information_schema");
         // these are tables that may be placed in the user's schema but are system tables. This typically includes modules
         // that install system tables such as the GEO module
-        protected static final List<String> SYSTEM_TABLES = Arrays.asList("spatial_ref_sys");
+        protected static final List<String> SYSTEM_TABLES = List.of("spatial_ref_sys");
         protected static final String TEMP_TABLE_SCHEMA_PREFIX = "pg_temp";
 
         @Override
         public boolean isIncluded(TableId t) {
-            return !SYSTEM_SCHEMAS.contains(t.schema().toLowerCase()) &&
-                    !SYSTEM_TABLES.contains(t.table().toLowerCase()) &&
+            return t.schema() != null && !SYSTEM_SCHEMAS.contains(t.schema().toLowerCase()) &&
+                    t.table() != null && !SYSTEM_TABLES.contains(t.table().toLowerCase()) &&
                     !t.schema().startsWith(TEMP_TABLE_SCHEMA_PREFIX);
         }
     }

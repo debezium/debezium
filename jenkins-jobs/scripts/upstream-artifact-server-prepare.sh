@@ -52,9 +52,9 @@ cp "$MAVEN_REPO"/io/apicurio/apicurio-registry-distro-connect-converter/*/apicur
 
 # Copy groovy scripts
 mkdir groovy
-cp "$MAVEN_REPO"/org/codehaus/groovy/groovy/*/groovy-*.jar groovy/
-cp "$MAVEN_REPO"/org/codehaus/groovy/groovy-json/*/groovy-json-*.jar groovy/
-cp "$MAVEN_REPO"/org/codehaus/groovy/groovy-jsr223/*/groovy-jsr223-*.jar groovy/
+cp "$MAVEN_REPO"/org/apache/groovy/groovy/*/groovy-*.jar groovy/
+cp "$MAVEN_REPO"/org/apache/groovy/groovy-json/*/groovy-json-*.jar groovy/
+cp "$MAVEN_REPO"/org/apache/groovy/groovy-jsr223/*/groovy-jsr223-*.jar groovy/
 
 prefix=""
 if [ "${ORACLE}" = "false" ] ; then

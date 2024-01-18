@@ -18,7 +18,6 @@ import fixture5.annotations.FixtureContext;
 public class OcpSqlServer extends OcpDatabaseFixture<SqlDatabaseController> {
 
     public static final String DB_DEPLOYMENT_PATH = "/database-resources/sqlserver/deployment.yaml";
-    public static final String DB_SERVICE_PATH_LB = "/database-resources/sqlserver/service-lb.yaml";
     public static final String DB_SERVICE_PATH = "/database-resources/sqlserver/service.yaml";
 
     public OcpSqlServer(ExtensionContext.Store store) {
@@ -32,8 +31,7 @@ public class OcpSqlServer extends OcpDatabaseFixture<SqlDatabaseController> {
                 .withOcpClient(ocp)
                 .withProject(ConfigProperties.OCP_PROJECT_SQLSERVER)
                 .withDeployment(DB_DEPLOYMENT_PATH)
-                .withLocalServices(DB_SERVICE_PATH)
-                .withPublicServices(DB_SERVICE_PATH_LB)
+                .withServices(DB_SERVICE_PATH)
                 .build();
         return deployer.deploy();
     }

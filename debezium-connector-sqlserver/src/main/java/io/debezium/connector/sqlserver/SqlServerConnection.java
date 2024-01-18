@@ -12,6 +12,8 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -30,7 +32,7 @@ import org.slf4j.LoggerFactory;
 
 import com.microsoft.sqlserver.jdbc.SQLServerDriver;
 
-import io.debezium.config.CommonConnectorConfig;
+import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.data.Envelope;
@@ -100,8 +102,9 @@ public class SqlServerConnection extends JdbcConnection {
     private static final String OPENING_QUOTING_CHARACTER = "[";
     private static final String CLOSING_QUOTING_CHARACTER = "]";
 
-    private static final String URL_PATTERN = "jdbc:sqlserver://${" + JdbcConfiguration.HOSTNAME + "}:${" + JdbcConfiguration.PORT + "}";
+    private static final String URL_PATTERN = "jdbc:sqlserver://${" + JdbcConfiguration.HOSTNAME + "}";
 
+    private final SqlServerConnectorConfig config;
     private final boolean useSingleDatabase;
     private final String getAllChangesForTable;
     private final int queryFetchSize;
@@ -122,13 +125,13 @@ public class SqlServerConnection extends JdbcConnection {
      * @param valueConverters     {@link SqlServerValueConverters} instance
      * @param skippedOperations   a set of {@link Envelope.Operation} to skip in streaming
      */
-    public SqlServerConnection(JdbcConfiguration config, SqlServerValueConverters valueConverters,
+    public SqlServerConnection(SqlServerConnectorConfig config, SqlServerValueConverters valueConverters,
                                Set<Envelope.Operation> skippedOperations,
                                boolean useSingleDatabase) {
-        super(config, createConnectionFactory(useSingleDatabase), OPENING_QUOTING_CHARACTER, CLOSING_QUOTING_CHARACTER);
+        super(config.getJdbcConfig(), createConnectionFactory(config.getJdbcConfig(), useSingleDatabase), OPENING_QUOTING_CHARACTER, CLOSING_QUOTING_CHARACTER);
 
         defaultValueConverter = new SqlServerDefaultValueConverter(this::connection, valueConverters);
-        this.queryFetchSize = config().getInteger(CommonConnectorConfig.QUERY_FETCH_SIZE);
+        this.queryFetchSize = config.getQueryFetchSize();
 
         if (hasSkippedOperations(skippedOperations)) {
             Set<String> skippedOps = new HashSet<>();
@@ -161,6 +164,7 @@ public class SqlServerConnection extends JdbcConnection {
 
         getAllChangesForTable = get_all_changes_for_table.replaceFirst(STATEMENTS_PLACEHOLDER,
                 Matcher.quoteReplacement(", " + LSN_TIMESTAMP_SELECT_STATEMENT));
+        this.config = config;
         this.useSingleDatabase = useSingleDatabase;
 
         this.optionRecompile = false;
@@ -174,7 +178,7 @@ public class SqlServerConnection extends JdbcConnection {
      * @param skippedOperations   a set of {@link Envelope.Operation} to skip in streaming
      * @param optionRecompile     Includes query option RECOMPILE on incremental snapshots
      */
-    public SqlServerConnection(JdbcConfiguration config, SqlServerValueConverters valueConverters,
+    public SqlServerConnection(SqlServerConnectorConfig config, SqlServerValueConverters valueConverters,
                                Set<Envelope.Operation> skippedOperations, boolean useSingleDatabase,
                                boolean optionRecompile) {
         this(config, valueConverters, skippedOperations, useSingleDatabase);
@@ -196,15 +200,25 @@ public class SqlServerConnection extends JdbcConnection {
         return false;
     }
 
-    private static ConnectionFactory createConnectionFactory(boolean useSingleDatabase) {
-        return JdbcConnection.patternBasedFactory(createUrlPattern(useSingleDatabase),
+    private static ConnectionFactory createConnectionFactory(SqlServerJdbcConfiguration config, boolean useSingleDatabase) {
+        return JdbcConnection.patternBasedFactory(createUrlPattern(config, useSingleDatabase),
                 SQLServerDriver.class.getName(),
                 SqlServerConnection.class.getClassLoader(),
                 JdbcConfiguration.PORT.withDefault(SqlServerConnectorConfig.PORT.defaultValueAsString()));
     }
 
-    private static String createUrlPattern(boolean useSingleDatabase) {
+    @VisibleForTesting
+    protected static String createUrlPattern(SqlServerJdbcConfiguration config, boolean useSingleDatabase) {
         String pattern = URL_PATTERN;
+        if (config.getInstance() != null) {
+            pattern += "\\" + config.getInstance();
+            if (config.getPortAsString() != null) {
+                pattern += ":${" + JdbcConfiguration.PORT + "}";
+            }
+        }
+        else {
+            pattern += ":${" + JdbcConfiguration.PORT + "}";
+        }
         if (useSingleDatabase) {
             pattern += ";databaseName=${" + JdbcConfiguration.DATABASE + "}";
         }
@@ -218,7 +232,7 @@ public class SqlServerConnection extends JdbcConnection {
      * @return a {@code String} where the variables in {@code urlPattern} are replaced with values from the configuration
      */
     public String connectionString() {
-        return connectionString(createUrlPattern(useSingleDatabase));
+        return connectionString(createUrlPattern(config.getJdbcConfig(), useSingleDatabase));
     }
 
     @Override
@@ -249,13 +263,14 @@ public class SqlServerConnection extends JdbcConnection {
      *         that isn't further than {@code maxOffset} from the beginning.
      */
     public Lsn getNthTransactionLsnFromBeginning(String databaseName, int maxOffset) throws SQLException {
-        return prepareQueryAndMap(replaceDatabaseNamePlaceholder(GET_NTH_TRANSACTION_LSN_FROM_BEGINNING, databaseName), statement -> {
-            statement.setInt(1, maxOffset);
-        }, singleResultMapper(rs -> {
-            final Lsn ret = Lsn.valueOf(rs.getBytes(1));
-            LOGGER.trace("Nth lsn from beginning is {}", ret);
-            return ret;
-        }, "Nth LSN query must return exactly one value"));
+        return prepareQueryAndMap(
+                replaceDatabaseNamePlaceholder(GET_NTH_TRANSACTION_LSN_FROM_BEGINNING, databaseName),
+                statement -> statement.setInt(1, maxOffset),
+                singleResultMapper(rs -> {
+                    final Lsn ret = Lsn.valueOf(rs.getBytes(1));
+                    LOGGER.trace("Nth lsn from beginning is {}", ret);
+                    return ret;
+                }, "Nth LSN query must return exactly one value"));
     }
 
     /**
@@ -606,8 +621,13 @@ public class SqlServerConnection extends JdbcConnection {
 
     public boolean isAgentRunning(String databaseName) throws SQLException {
         final String query = replaceDatabaseNamePlaceholder(config().getString(AGENT_STATUS_QUERY), databaseName);
-        final boolean isRunning = queryAndMap(query,
+        return queryAndMap(query,
                 singleResultMapper(rs -> rs.getBoolean(1), "SQL Server Agent running status query must return exactly one value"));
-        return isRunning;
+    }
+
+    @Override
+    public Optional<Instant> getCurrentTimestamp() throws SQLException {
+        return queryAndMap("SELECT SYSDATETIMEOFFSET()",
+                rs -> rs.next() ? Optional.of(rs.getObject(1, OffsetDateTime.class).toInstant()) : Optional.empty());
     }
 }

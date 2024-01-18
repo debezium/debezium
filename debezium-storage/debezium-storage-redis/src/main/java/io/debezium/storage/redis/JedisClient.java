@@ -125,4 +125,9 @@ public class JedisClient implements RedisClient {
         return tryErrors(() -> jedis.info(section));
     }
 
+    @Override
+    public String clientList() {
+        return tryErrors(() -> jedis.clientList());
+    }
+
 }

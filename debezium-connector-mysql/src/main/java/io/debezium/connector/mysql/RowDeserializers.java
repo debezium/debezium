@@ -285,7 +285,7 @@ public class RowDeserializers {
     /**
      * Converts a MySQL {@code DATE} value to a {@link LocalDate}.
      * <p>
-     * This method treats all <a href="http://dev.mysql.com/doc/refman/5.7/en/date-and-time-types.html">zero values</a>
+     * This method treats all <a href="http://dev.mysql.com/doc/refman/8.2/en/date-and-time-types.html">zero values</a>
      * for {@code DATE} columns as NULL, since they cannot be accurately represented as valid {@link LocalDate} objects.
      *
      * @param inputStream the binary stream containing the raw binlog event data for the value
@@ -381,7 +381,7 @@ public class RowDeserializers {
     /**
      * Converts a MySQL {@code DATETIME} value <em>without fractional seconds</em> to a {@link LocalDateTime}.
      * <p>
-     * This method treats all <a href="http://dev.mysql.com/doc/refman/5.7/en/date-and-time-types.html">zero values</a>
+     * This method treats all <a href="http://dev.mysql.com/doc/refman/8.2/en/date-and-time-types.html">zero values</a>
      * for {@code DATETIME} columns as NULL, since they cannot be accurately represented as valid {@link LocalDateTime} objects.
      *
      * @param inputStream the binary stream containing the raw binlog event data for the value
@@ -414,7 +414,7 @@ public class RowDeserializers {
     /**
      * Converts a MySQL {@code DATETIME} value <em>with fractional seconds</em> to a {@link LocalDateTime}.
      * <p>
-     * This method treats all <a href="http://dev.mysql.com/doc/refman/5.7/en/date-and-time-types.html">zero values</a>
+     * This method treats all <a href="http://dev.mysql.com/doc/refman/8.2/en/date-and-time-types.html">zero values</a>
      * for {@code DATETIME} columns as NULL, since they cannot be accurately represented as valid {@link LocalDateTime} objects.
      *
      * @param meta the {@code meta} value containing the fractional second precision, or {@code fsp}

@@ -6,7 +6,7 @@
     <parent>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-quarkus-outbox-parent</artifactId>
-        <version>2.1.0-SNAPSHOT</version>
+        <version>2.6.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
@@ -25,8 +25,14 @@
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-smallrye-opentracing-deployment</artifactId>
+            <artifactId>quarkus-opentelemetry</artifactId>
             <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-quarkus-outbox-deployment-common</artifactId>
+            <version>${project.version}</version>
         </dependency>
 
         <!-- Debezium Quarkus Outbox Runtime artifact dependency -->
@@ -46,7 +52,7 @@
                         <path>
                             <groupId>io.quarkus</groupId>
                             <artifactId>quarkus-extension-processor</artifactId>
-                            <version>${quarkus.version}</version>
+                            <version>${quarkus.version.extension}</version>
                         </path>
                     </annotationProcessorPaths>
                 </configuration>

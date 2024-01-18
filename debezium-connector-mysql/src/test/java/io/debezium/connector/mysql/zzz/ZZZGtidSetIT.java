@@ -16,11 +16,12 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnector;
@@ -28,6 +29,10 @@ import io.debezium.connector.mysql.MySqlConnectorConfig;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
 import io.debezium.connector.mysql.MySqlTestConnection;
 import io.debezium.connector.mysql.UniqueDatabase;
+import io.debezium.connector.mysql.junit.SkipTestDependingOnDatabaseRule;
+import io.debezium.connector.mysql.junit.SkipTestDependingOnGtidModeRule;
+import io.debezium.connector.mysql.junit.SkipWhenDatabaseIs;
+import io.debezium.connector.mysql.junit.SkipWhenGtidModeIs;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.jdbc.JdbcConnection;
@@ -40,6 +45,8 @@ import io.debezium.util.Testing;
  * @author Jiri Pechanec
  */
 @SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 6, reason = "DDL uses fractional second data types, not supported until MySQL 5.6")
+@SkipWhenDatabaseIs(value = SkipWhenDatabaseIs.Type.MARIADB, reason = "MariaDB does not support purged GTID sets")
+@SkipWhenGtidModeIs(value = SkipWhenGtidModeIs.GtidMode.OFF)
 public class ZZZGtidSetIT extends AbstractConnectorTest {
 
     private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-connect.txt").toAbsolutePath();
@@ -49,6 +56,11 @@ public class ZZZGtidSetIT extends AbstractConnectorTest {
             .withDbHistoryPath(SCHEMA_HISTORY_PATH);
 
     private Configuration config;
+
+    @Rule
+    public TestRule skipTest = new SkipTestDependingOnGtidModeRule();
+    @Rule
+    public TestRule skipTest2 = new SkipTestDependingOnDatabaseRule();
 
     @Before
     public void beforeEach() {
@@ -75,7 +87,7 @@ public class ZZZGtidSetIT extends AbstractConnectorTest {
                     "SHOW GLOBAL VARIABLES LIKE 'GTID_MODE'",
                     rs -> {
                         if (rs.next()) {
-                            return !"OFF".equalsIgnoreCase(rs.getString(2));
+                            return "ON".equalsIgnoreCase(rs.getString(2));
                         }
                         throw new IllegalStateException("Cannot obtain GTID status");
                     });
@@ -86,11 +98,6 @@ public class ZZZGtidSetIT extends AbstractConnectorTest {
     @FixFor("DBZ-1184")
     public void shouldProcessPurgedGtidSet() throws SQLException, InterruptedException {
         Testing.Files.delete(SCHEMA_HISTORY_PATH);
-
-        if (!isGtidModeEnabled()) {
-            logger.warn("GTID is not enabled, skipping shouldProcessPurgedGtidSet");
-            return;
-        }
 
         purgeDatabaseLogs();
         final UniqueDatabase database = new UniqueDatabase("myServer1", "connector_test")
@@ -127,7 +134,7 @@ public class ZZZGtidSetIT extends AbstractConnectorTest {
             final Pattern p = Pattern.compile(".*:(.*)-.*");
             final Matcher m = p.matcher(gtids);
             m.matches();
-            Assertions.assertThat(m.group(1)).isNotEqualTo("1");
+            assertThat(m.group(1)).isNotEqualTo("1");
         });
 
         stopConnector();
@@ -175,11 +182,6 @@ public class ZZZGtidSetIT extends AbstractConnectorTest {
     @FixFor("DBZ-1244")
     public void shouldProcessPurgedLogsWhenDownAndSnapshotNeeded() throws SQLException, InterruptedException {
         Testing.Files.delete(SCHEMA_HISTORY_PATH);
-
-        if (!isGtidModeEnabled()) {
-            logger.warn("GTID is not enabled, skipping shouldProcessPurgedLogsWhenDownAndSnapshotNeeded");
-            return;
-        }
 
         purgeDatabaseLogs();
         final UniqueDatabase database = new UniqueDatabase("myServer1", "connector_test")

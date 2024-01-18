@@ -15,8 +15,8 @@ import io.debezium.converters.spi.SerializerType;
  */
 public class OracleCloudEventsMaker extends CloudEventsMaker {
 
-    public OracleCloudEventsMaker(RecordParser parser, SerializerType contentType, String dataSchemaUriBase) {
-        super(parser, contentType, dataSchemaUriBase);
+    public OracleCloudEventsMaker(RecordParser parser, SerializerType contentType, String dataSchemaUriBase, String cloudEventsSchemaName) {
+        super(parser, contentType, dataSchemaUriBase, cloudEventsSchemaName);
     }
 
     @Override

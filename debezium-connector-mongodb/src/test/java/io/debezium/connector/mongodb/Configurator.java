@@ -38,12 +38,13 @@ public class Configurator {
         return with(CommonConnectorConfig.TOPIC_PREFIX, serverName);
     }
 
-    public Configurator hosts(String hosts) {
-        return with(MongoDbConnectorConfig.HOSTS, hosts);
-    }
-
     public Configurator maxBatchSize(int maxBatchSize) {
         return with(MongoDbConnectorConfig.MAX_BATCH_SIZE, maxBatchSize);
+    }
+
+    public Configurator useLiteralFilters() {
+        Testing.debug("Using \"" + MongoDbConnectorConfig.FILTERS_MATCH_MODE.name() + "\" config property");
+        return with(MongoDbConnectorConfig.FILTERS_MATCH_MODE, MongoDbConnectorConfig.FiltersMatchMode.LITERAL.getValue());
     }
 
     public Configurator includeDatabases(String regexList) {
@@ -81,6 +82,10 @@ public class Configurator {
 
     public Filters createFilters() {
         return new Filters(configBuilder.build());
+    }
+
+    public Configuration config() {
+        return configBuilder.build();
     }
 
 }

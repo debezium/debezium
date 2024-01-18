@@ -7,8 +7,10 @@ package io.debezium.junit.logging;
 
 import static org.slf4j.Logger.ROOT_LOGGER_NAME;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.stream.Collectors;
 
 import org.slf4j.LoggerFactory;
 
@@ -41,7 +43,7 @@ public class LogInterceptor extends AppenderBase<ILoggingEvent> {
 
     /**
      * Provides a log interceptor based on the logger that emits the message.
-     * 
+     *
      * @param loggerName logger that emits the log message
      */
     public LogInterceptor(String loggerName) {
@@ -57,7 +59,7 @@ public class LogInterceptor extends AppenderBase<ILoggingEvent> {
 
     /**
      * Provides a log interceptor based on the logger that emits the message.
-     * 
+     *
      * @param clazz class that emits the log message
      */
     public LogInterceptor(Class<?> clazz) {
@@ -69,8 +71,16 @@ public class LogInterceptor extends AppenderBase<ILoggingEvent> {
         this.events.add(loggingEvent);
     }
 
-    public void setLoggerLevel(Class<?> loggerClass, String level) {
-        // TODO LogManager.getLogger(loggerClass).setLevel(Level.toLevel(level));
+    public void setLoggerLevel(Class<?> loggerClass, Level level) {
+        Logger logger = (Logger) org.slf4j.LoggerFactory.getLogger(loggerClass.getName());
+        logger.setLevel(level);
+    }
+
+    public List<String> getLogEntriesThatContainsMessage(String text) {
+        return events.stream()
+                .filter(e -> e.getFormattedMessage().toString().contains(text))
+                .map(e -> e.getFormattedMessage().toString())
+                .collect(Collectors.toList());
     }
 
     public long countOccurrences(String text) {
@@ -84,6 +94,16 @@ public class LogInterceptor extends AppenderBase<ILoggingEvent> {
             }
         }
         return false;
+    }
+
+    public List<ILoggingEvent> getLoggingEvents(String text) {
+        List<ILoggingEvent> matchEvents = new ArrayList<>();
+        for (ILoggingEvent event : events) {
+            if (event.getFormattedMessage().toString().contains(text)) {
+                matchEvents.add(event);
+            }
+        }
+        return matchEvents;
     }
 
     public boolean containsWarnMessage(String text) {

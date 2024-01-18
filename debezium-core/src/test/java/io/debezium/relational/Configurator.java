@@ -43,6 +43,11 @@ public class Configurator {
         return with(RelationalDatabaseConnectorConfig.TABLE_EXCLUDE_LIST, regexList);
     }
 
+    public Configurator storeOnlyCapturedDatabasesDdl(String flag) {
+        Testing.debug("Using \"" + HistorizedRelationalDatabaseConnectorConfig.STORE_ONLY_CAPTURED_DATABASES_DDL.name() + "\" config property");
+        return with(HistorizedRelationalDatabaseConnectorConfig.STORE_ONLY_CAPTURED_DATABASES_DDL, flag);
+    }
+
     public Configurator signalingCollection(String signalingCollection) {
         return with(RelationalDatabaseConnectorConfig.SIGNAL_DATA_COLLECTION, signalingCollection);
     }

@@ -13,7 +13,6 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.assertj.core.api.Assertions;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -126,12 +125,12 @@ public class SignalsIT extends AbstractConnectorTest {
         final SourceRecord pre = records.get(0);
         final SourceRecord post = records.get(7);
 
-        Assertions.assertThat(((Struct) pre.key()).schema().fields()).hasSize(1);
+        assertThat(((Struct) pre.key()).schema().fields()).hasSize(1);
 
         final Struct postKey = (Struct) post.key();
-        Assertions.assertThat(postKey.schema().fields()).hasSize(2);
-        Assertions.assertThat(postKey.schema().field("ID")).isNotNull();
-        Assertions.assertThat(postKey.schema().field("NAME")).isNotNull();
+        assertThat(postKey.schema().fields()).hasSize(2);
+        assertThat(postKey.schema().field("ID")).isNotNull();
+        assertThat(postKey.schema().field("NAME")).isNotNull();
 
         stopConnector();
 
@@ -146,8 +145,8 @@ public class SignalsIT extends AbstractConnectorTest {
 
         final SourceRecord post2 = records.get(0);
         final Struct postKey2 = (Struct) post2.key();
-        Assertions.assertThat(postKey2.schema().fields()).hasSize(2);
-        Assertions.assertThat(postKey2.schema().field("ID")).isNotNull();
-        Assertions.assertThat(postKey2.schema().field("NAME")).isNotNull();
+        assertThat(postKey2.schema().fields()).hasSize(2);
+        assertThat(postKey2.schema().field("ID")).isNotNull();
+        assertThat(postKey2.schema().field("NAME")).isNotNull();
     }
 }

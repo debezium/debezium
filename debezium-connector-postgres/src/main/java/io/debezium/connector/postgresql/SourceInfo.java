@@ -14,9 +14,9 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.debezium.annotation.NotThreadSafe;
-import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.common.BaseSourceInfo;
 import io.debezium.connector.postgresql.connection.Lsn;
+import io.debezium.connector.postgresql.connection.ReplicationMessage.Operation;
 import io.debezium.relational.TableId;
 
 /**
@@ -80,6 +80,7 @@ public final class SourceInfo extends BaseSourceInfo {
     public static final String TXID_KEY = "txId";
     public static final String XMIN_KEY = "xmin";
     public static final String LSN_KEY = "lsn";
+    public static final String MSG_TYPE_KEY = "messageType";
     public static final String LAST_SNAPSHOT_RECORD_KEY = "last_snapshot_record";
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -90,6 +91,7 @@ public final class SourceInfo extends BaseSourceInfo {
     private Lsn lastCommitLsn;
     private Long txId;
     private Long xmin;
+    private Operation messageType;
     private Instant timestamp;
     private String schemaName;
     private String tableName;
@@ -109,15 +111,19 @@ public final class SourceInfo extends BaseSourceInfo {
      * @param txId the ID of the transaction that generated the transaction; may be null if this information is not available
      * @param xmin the xmin of the slot, may be null
      * @param tableId the table that should be included in the source info; may be null
+     * @param messageType the type of the message corresponding to the lsn; may be null
      * @return this instance
      */
-    protected SourceInfo update(Lsn lsn, Instant commitTime, Long txId, Long xmin, TableId tableId) {
+    protected SourceInfo update(Lsn lsn, Instant commitTime, Long txId, Long xmin, TableId tableId, Operation messageType) {
         this.lsn = lsn;
         if (commitTime != null) {
             this.timestamp = commitTime;
         }
         this.txId = txId;
         this.xmin = xmin;
+        if (messageType != null) {
+            this.messageType = messageType;
+        }
         if (tableId != null && tableId.schema() != null) {
             this.schemaName = tableId.schema();
         }
@@ -163,6 +169,10 @@ public final class SourceInfo extends BaseSourceInfo {
         return this.xmin;
     }
 
+    public Operation messageType() {
+        return this.messageType;
+    }
+
     @Override
     public String sequence() {
         List<String> sequence = new ArrayList<String>(2);
@@ -205,11 +215,6 @@ public final class SourceInfo extends BaseSourceInfo {
     }
 
     @Override
-    public SnapshotRecord snapshot() {
-        return super.snapshot();
-    }
-
-    @Override
     public String toString() {
         final StringBuilder sb = new StringBuilder("source_info[");
         sb.append("server='").append(serverName()).append('\'');
@@ -223,13 +228,16 @@ public final class SourceInfo extends BaseSourceInfo {
         if (xmin != null) {
             sb.append(", xmin=").append(xmin);
         }
+        if (messageType != null) {
+            sb.append(", messageType=").append(messageType);
+        }
         if (lastCommitLsn != null) {
             sb.append(", lastCommitLsn=").append(lastCommitLsn);
         }
         if (timestamp != null) {
             sb.append(", timestamp=").append(timestamp);
         }
-        sb.append(", snapshot=").append(snapshot());
+        sb.append(", snapshot=").append(snapshotRecord);
         if (schemaName != null) {
             sb.append(", schema=").append(schemaName);
         }

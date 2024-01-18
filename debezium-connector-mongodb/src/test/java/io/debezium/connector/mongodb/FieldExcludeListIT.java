@@ -34,7 +34,6 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
     private static final String DATABASE_NAME = "dbA";
     private static final String COLLECTION_NAME = "c1";
     private static final String SERVER_NAME = "serverX";
-    private static final String PATCH = MongoDbFieldName.PATCH;
 
     @Test
     public void shouldNotExcludeFieldsForEventOfOtherCollection() throws InterruptedException {
@@ -1373,7 +1372,7 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
         config = getConfiguration("*.c1.name,*.c1.active");
         context = new MongoDbTaskContext(config);
 
-        TestHelper.cleanDatabase(primary(), DATABASE_NAME);
+        TestHelper.cleanDatabase(mongo, DATABASE_NAME);
 
         ObjectId objId = new ObjectId();
         Document obj = new Document("_id", objId);
@@ -1399,9 +1398,6 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
         Struct value = getValue(record);
 
         String json = value.getString(AFTER);
-        if (json == null) {
-            json = value.getString(PATCH);
-        }
 
         assertThat(json).isNull();
     }
@@ -1411,7 +1407,7 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
         config = getConfiguration("*.c1.name,*.c1.active");
         context = new MongoDbTaskContext(config);
 
-        TestHelper.cleanDatabase(primary(), DATABASE_NAME);
+        TestHelper.cleanDatabase(mongo, DATABASE_NAME);
 
         ObjectId objId = new ObjectId();
         Document obj = new Document("_id", objId);
@@ -1563,14 +1559,14 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
                 + "}";
         // @formatter:on
 
-        config = TestHelper.getConfiguration().edit()
+        config = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.FIELD_EXCLUDE_LIST, "*.c1.name,*.c1.active,*.c2.name,*.c2.active")
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbA.c1,dbA.c2")
                 .with(CommonConnectorConfig.TOPIC_PREFIX, SERVER_NAME)
                 .build();
         context = new MongoDbTaskContext(config);
 
-        TestHelper.cleanDatabase(primary(), DATABASE_NAME);
+        TestHelper.cleanDatabase(mongo, DATABASE_NAME);
         storeDocuments(DATABASE_NAME, COLLECTION_NAME, obj);
         storeDocuments(DATABASE_NAME, "c2", obj);
 
@@ -1594,7 +1590,7 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
     }
 
     private Configuration getConfiguration(String fieldExcludeList, String database, String collection) {
-        return TestHelper.getConfiguration().edit()
+        return TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.FIELD_EXCLUDE_LIST, fieldExcludeList)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, database + "." + collection)
                 .with(CommonConnectorConfig.TOPIC_PREFIX, SERVER_NAME)
@@ -1607,9 +1603,9 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
     }
 
     private void storeDocuments(String dbName, String collectionName, Document... documents) {
-        primary().execute("store documents", mongo -> {
+        try (var client = connect()) {
             Testing.debug("Storing in '" + dbName + "." + collectionName + "' document");
-            MongoDatabase db = mongo.getDatabase(dbName);
+            MongoDatabase db = client.getDatabase(dbName);
             MongoCollection<Document> coll = db.getCollection(collectionName);
             coll.drop();
 
@@ -1619,25 +1615,25 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
                 assertThat(document.size()).isGreaterThan(0);
                 coll.insertOne(document, insertOptions);
             }
-        });
+        }
     }
 
     private void updateDocuments(String dbName, String collectionName, ObjectId objId, Document document, boolean doSet) {
-        primary().execute("update", mongo -> {
-            MongoDatabase db = mongo.getDatabase(dbName);
+        try (var client = connect()) {
+            MongoDatabase db = client.getDatabase(dbName);
             MongoCollection<Document> coll = db.getCollection(collectionName);
             Document filter = Document.parse("{\"_id\": {\"$oid\": \"" + objId + "\"}}");
             coll.updateOne(filter, new Document().append(doSet ? "$set" : "$unset", document));
-        });
+        }
     }
 
     private void deleteDocuments(String dbName, String collectionName, ObjectId objId) {
-        primary().execute("delete", mongo -> {
-            MongoDatabase db = mongo.getDatabase(dbName);
+        try (var client = connect()) {
+            MongoDatabase db = client.getDatabase(dbName);
             MongoCollection<Document> coll = db.getCollection(collectionName);
             Document filter = Document.parse("{\"_id\": {\"$oid\": \"" + objId + "\"}}");
             coll.deleteOne(filter);
-        });
+        }
     }
 
     private void assertReadRecord(String blackList, Document snapshotRecord, String field, String expected) throws InterruptedException {
@@ -1650,7 +1646,7 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
         config = getConfiguration(blackList, dbName, collectionName);
         context = new MongoDbTaskContext(config);
 
-        TestHelper.cleanDatabase(primary(), dbName);
+        TestHelper.cleanDatabase(mongo, dbName);
         storeDocuments(dbName, collectionName, snapshotRecord);
 
         start(MongoDbConnector.class, config);
@@ -1675,7 +1671,7 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
         config = getConfiguration(blackList, dbName, collectionName);
         context = new MongoDbTaskContext(config);
 
-        TestHelper.cleanDatabase(primary(), dbName);
+        TestHelper.cleanDatabase(mongo, dbName);
 
         start(MongoDbConnector.class, config);
         waitForSnapshotToBeCompleted("mongodb", SERVER_NAME);
@@ -1712,7 +1708,7 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
         config = getConfiguration(blackList, dbName, collectionName);
         context = new MongoDbTaskContext(config);
 
-        TestHelper.cleanDatabase(primary(), dbName);
+        TestHelper.cleanDatabase(mongo, dbName);
 
         storeDocuments(dbName, collectionName, snapshotRecord);
 

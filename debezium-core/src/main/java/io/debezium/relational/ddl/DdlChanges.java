@@ -115,7 +115,7 @@ public class DdlChanges implements DdlParserListener {
         return events.toString();
     }
 
-    public static interface DatabaseEventConsumer {
+    public interface DatabaseEventConsumer {
         void consume(String databaseName, List<Event> events);
     }
 

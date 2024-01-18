@@ -32,7 +32,7 @@ public interface DdlParserListener {
     /**
      * The type of concrete {@link Event}s.
      */
-    public static enum EventType {
+    enum EventType {
         CREATE_TABLE,
         ALTER_TABLE,
         DROP_TABLE,
@@ -50,7 +50,7 @@ public interface DdlParserListener {
      * The base class for all concrete events.
      */
     @Immutable
-    public static abstract class Event {
+    abstract class Event {
         private final String statement;
         private final EventType type;
 
@@ -80,7 +80,7 @@ public interface DdlParserListener {
      * The base class for all table-related events.
      */
     @Immutable
-    public static abstract class TableEvent extends Event {
+    abstract class TableEvent extends Event {
         private final TableId tableId;
         private final boolean isView;
 
@@ -116,7 +116,7 @@ public interface DdlParserListener {
      * An event describing the creation (or replacement) of a table.
      */
     @Immutable
-    public static class TableCreatedEvent extends TableEvent {
+    class TableCreatedEvent extends TableEvent {
         public TableCreatedEvent(TableId tableId, String ddlStatement, boolean isView) {
             super(EventType.CREATE_TABLE, tableId, ddlStatement, isView);
         }
@@ -126,7 +126,7 @@ public interface DdlParserListener {
      * An event describing the altering of a table.
      */
     @Immutable
-    public static class TableAlteredEvent extends TableEvent {
+    class TableAlteredEvent extends TableEvent {
         private final TableId previousTableId;
 
         public TableAlteredEvent(TableId tableId, TableId previousTableId, String ddlStatement, boolean isView) {
@@ -155,7 +155,7 @@ public interface DdlParserListener {
      * An event describing the dropping of a table.
      */
     @Immutable
-    public static class TableDroppedEvent extends TableEvent {
+    class TableDroppedEvent extends TableEvent {
         public TableDroppedEvent(TableId tableId, String ddlStatement, boolean isView) {
             super(EventType.DROP_TABLE, tableId, ddlStatement, isView);
         }
@@ -165,7 +165,7 @@ public interface DdlParserListener {
      * An event describing the truncating of a table.
      */
     @Immutable
-    public static class TableTruncatedEvent extends TableEvent {
+    class TableTruncatedEvent extends TableEvent {
         public TableTruncatedEvent(TableId tableId, String ddlStatement, boolean isView) {
             super(EventType.TRUNCATE_TABLE, tableId, ddlStatement, isView);
         }
@@ -175,7 +175,7 @@ public interface DdlParserListener {
      * The abstract base class for all index-related events.
      */
     @Immutable
-    public static abstract class TableIndexEvent extends Event {
+    abstract class TableIndexEvent extends Event {
         private final TableId tableId;
         private final String indexName;
 
@@ -214,7 +214,7 @@ public interface DdlParserListener {
      * An event describing the creation of an index on a table.
      */
     @Immutable
-    public static class TableIndexCreatedEvent extends TableIndexEvent {
+    class TableIndexCreatedEvent extends TableIndexEvent {
         public TableIndexCreatedEvent(String indexName, TableId tableId, String ddlStatement) {
             super(EventType.CREATE_INDEX, indexName, tableId, ddlStatement);
         }
@@ -224,7 +224,7 @@ public interface DdlParserListener {
      * An event describing the dropping of an index on a table.
      */
     @Immutable
-    public static class TableIndexDroppedEvent extends TableIndexEvent {
+    class TableIndexDroppedEvent extends TableIndexEvent {
         public TableIndexDroppedEvent(String indexName, TableId tableId, String ddlStatement) {
             super(EventType.DROP_INDEX, indexName, tableId, ddlStatement);
         }
@@ -234,7 +234,7 @@ public interface DdlParserListener {
      * The base class for all table-related events.
      */
     @Immutable
-    public static abstract class DatabaseEvent extends Event {
+    abstract class DatabaseEvent extends Event {
         private final String databaseName;
 
         public DatabaseEvent(EventType type, String databaseName, String ddlStatement) {
@@ -260,7 +260,7 @@ public interface DdlParserListener {
      * An event describing the creation of a database.
      */
     @Immutable
-    public static class DatabaseCreatedEvent extends DatabaseEvent {
+    class DatabaseCreatedEvent extends DatabaseEvent {
         public DatabaseCreatedEvent(String databaseName, String ddlStatement) {
             super(EventType.CREATE_DATABASE, databaseName, ddlStatement);
         }
@@ -270,7 +270,7 @@ public interface DdlParserListener {
      * An event describing the altering of a database.
      */
     @Immutable
-    public static class DatabaseAlteredEvent extends DatabaseEvent {
+    class DatabaseAlteredEvent extends DatabaseEvent {
         private final String previousDatabaseName;
 
         public DatabaseAlteredEvent(String databaseName, String previousDatabaseName, String ddlStatement) {
@@ -299,7 +299,7 @@ public interface DdlParserListener {
      * An event describing the dropping of a database.
      */
     @Immutable
-    public static class DatabaseDroppedEvent extends DatabaseEvent {
+    class DatabaseDroppedEvent extends DatabaseEvent {
         public DatabaseDroppedEvent(String databaseName, String ddlStatement) {
             super(EventType.DROP_DATABASE, databaseName, ddlStatement);
         }
@@ -309,7 +309,7 @@ public interface DdlParserListener {
      * An event describing the switching of a database.
      */
     @Immutable
-    public static class DatabaseSwitchedEvent extends DatabaseEvent {
+    class DatabaseSwitchedEvent extends DatabaseEvent {
         public DatabaseSwitchedEvent(String databaseName, String ddlStatement) {
             super(EventType.USE_DATABASE, databaseName, ddlStatement);
         }
@@ -319,7 +319,7 @@ public interface DdlParserListener {
      * An event describing the setting of a variable.
      */
     @Immutable
-    public static class SetVariableEvent extends Event {
+    class SetVariableEvent extends Event {
 
         private final String variableName;
         private final String value;

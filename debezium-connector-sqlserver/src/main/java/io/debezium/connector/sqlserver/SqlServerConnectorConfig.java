@@ -18,6 +18,7 @@ import org.apache.kafka.common.config.ConfigDef.Width;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
@@ -32,6 +33,8 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.HistoryRecordComparator;
+import io.debezium.spi.schema.DataCollectionId;
+import io.debezium.util.Strings;
 
 /**
  * The list of configuration options for SQL Server connector
@@ -39,7 +42,6 @@ import io.debezium.relational.history.HistoryRecordComparator;
  * @author Jiri Pechanec
  */
 public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnectorConfig {
-
     private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerConnectorConfig.class);
 
     public static final String MAX_TRANSACTIONS_PER_ITERATION_CONFIG_NAME = "max.iteration.transactions";
@@ -47,11 +49,12 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     protected static final int DEFAULT_MAX_TRANSACTIONS_PER_ITERATION = 0;
     private static final String READ_ONLY_INTENT = "ReadOnly";
     private static final String APPLICATION_INTENT_KEY = "database.applicationIntent";
+    private static final int DEFAULT_QUERY_FETCH_SIZE = 10_000;
 
     /**
      * The set of predefined SnapshotMode options or aliases.
      */
-    public static enum SnapshotMode implements EnumeratedValue {
+    public enum SnapshotMode implements EnumeratedValue {
 
         /**
          * Perform a snapshot of data and schema upon initial startup of a connector.
@@ -71,7 +74,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         private final String value;
         private final boolean includeData;
 
-        private SnapshotMode(String value, boolean includeData) {
+        SnapshotMode(String value, boolean includeData) {
             this.value = value;
             this.includeData = includeData;
         }
@@ -131,7 +134,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     /**
      * The set of predefined snapshot isolation mode options.
      */
-    public static enum SnapshotIsolationMode implements EnumeratedValue {
+    public enum SnapshotIsolationMode implements EnumeratedValue {
 
         /**
          * This mode will block all reads and writes for the entire duration of the snapshot.
@@ -170,7 +173,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
 
         private final String value;
 
-        private SnapshotIsolationMode(String value) {
+        SnapshotIsolationMode(String value) {
             this.value = value;
         }
 
@@ -261,10 +264,10 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDescription("The criteria for running a snapshot upon startup of the connector. "
-                    + "Options include: "
-                    + "'initial' (the default) to specify the connector should run a snapshot only when no offsets are available for the logical server name; "
-                    + "'schema_only' to specify the connector should run a snapshot of the schema when no offsets are available for the logical server name. ");
-
+                    + "Select one of the following snapshot options: "
+                    + "'initial' (default): If the connector does not detect any offsets for the logical server name, it runs a snapshot that captures the current full state of the configured tables. After the snapshot completes, the connector begins to stream changes from the transaction log.; "
+                    + "'initial_only': The connector performs a snapshot as it does for the 'initial' option, but after the connector completes the snapshot, it stops, and does not stream changes from the transaction log.; "
+                    + "'schema_only': If the connector does not detect any offsets for the logical server name, it runs a snapshot that captures only the schema (table structures), but not any table data. After the snapshot completes, the connector begins to stream changes from the transaction log.");
     public static final Field SNAPSHOT_ISOLATION_MODE = Field.create("snapshot.isolation.mode")
             .withDisplayName("Snapshot isolation mode")
             .withEnum(SnapshotIsolationMode.class, SnapshotIsolationMode.REPEATABLE_READ)
@@ -292,6 +295,13 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             .withValidation(Field::isBoolean)
             .withDescription("Add OPTION(RECOMPILE) on each SELECT statement during the incremental snapshot process. "
                     + "This prevents parameter sniffing but can cause CPU pressure on the source database.");
+    public static final Field QUERY_FETCH_SIZE = CommonConnectorConfig.QUERY_FETCH_SIZE
+            .withDescription(
+                    "The maximum number of records that should be loaded into memory while streaming. A value of '0' uses the default JDBC fetch size. The default value is '10000'.")
+            .withDefault(DEFAULT_QUERY_FETCH_SIZE);
+
+    public static final Field SOURCE_INFO_STRUCT_MAKER = CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER
+            .withDefault(SqlServerSourceInfoStructMaker.class.getName());
 
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("SQL Server")
@@ -310,10 +320,13 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                     SCHEMA_NAME_ADJUSTMENT_MODE,
                     INCREMENTAL_SNAPSHOT_OPTION_RECOMPILE,
                     INCREMENTAL_SNAPSHOT_CHUNK_SIZE,
-                    INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES)
+                    INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES,
+                    QUERY_FETCH_SIZE)
+            .events(SOURCE_INFO_STRUCT_MAKER)
             .excluding(
                     SCHEMA_INCLUDE_LIST,
-                    SCHEMA_EXCLUDE_LIST)
+                    SCHEMA_EXCLUDE_LIST,
+                    CommonConnectorConfig.QUERY_FETCH_SIZE)
             .create();
 
     /**
@@ -332,6 +345,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     private final boolean readOnlyDatabaseConnection;
     private final int maxTransactionsPerIteration;
     private final boolean optionRecompile;
+    private final int queryFetchSize;
 
     public SqlServerConnectorConfig(Configuration config) {
         super(
@@ -354,6 +368,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
 
         this.instanceName = config.getString(INSTANCE);
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE), SNAPSHOT_MODE.defaultValueAsString());
+        this.queryFetchSize = config.getInteger(QUERY_FETCH_SIZE);
 
         this.readOnlyDatabaseConnection = READ_ONLY_INTENT.equals(config.getString(APPLICATION_INTENT_KEY));
         if (readOnlyDatabaseConnection) {
@@ -386,14 +401,20 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     }
 
     @Override
-    public JdbcConfiguration getJdbcConfig() {
+    public SqlServerJdbcConfiguration getJdbcConfig() {
         JdbcConfiguration config = super.getJdbcConfig();
         if (useSingleDatabase()) {
-            config = JdbcConfiguration.adapt(config.edit()
-                    .with(JdbcConfiguration.DATABASE, databaseNames.get(0))
-                    .build());
+            config = JdbcConfiguration.copy(config)
+                    .withDatabase(databaseNames.get(0))
+                    .build();
         }
-        return config;
+        SqlServerJdbcConfiguration sqlServerconfig = SqlServerJdbcConfiguration.adapt(config);
+        if (getInstanceName() != null) {
+            sqlServerconfig = SqlServerJdbcConfiguration.copy(config)
+                    .withInstance(getInstanceName())
+                    .build();
+        }
+        return sqlServerconfig;
     }
 
     public SnapshotIsolationMode getSnapshotIsolationMode() {
@@ -417,6 +438,11 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     }
 
     @Override
+    public int getQueryFetchSize() {
+        return queryFetchSize;
+    }
+
+    @Override
     public boolean supportsOperationFiltering() {
         return true;
     }
@@ -428,7 +454,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
 
     @Override
     protected SourceInfoStructMaker<? extends AbstractSourceInfo> getSourceInfoStructMaker(Version version) {
-        return new SqlServerSourceInfoStructMaker(Module.name(), Module.version(), this);
+        return getSourceInfoStructMaker(SqlServerConnectorConfig.SOURCE_INFO_STRUCT_MAKER, Module.name(), Module.version(), this);
     }
 
     private static class SystemTablesPredicate implements TableFilter {
@@ -463,7 +489,8 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     }
 
     @Override
-    public Map<TableId, String> getSnapshotSelectOverridesByTable() {
+    public Map<DataCollectionId, String> getSnapshotSelectOverridesByTable() {
+
         List<String> tableValues = getConfig().getTrimmedStrings(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, ",");
 
         if (tableValues == null) {
@@ -473,9 +500,18 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         Map<TableId, String> snapshotSelectOverridesByTable = new HashMap<>();
 
         for (String table : tableValues) {
+
+            String statementOverride = getConfig().getString(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + table);
+            if (statementOverride == null) {
+                LOGGER.warn("Detected snapshot.select.statement.overrides for {} but no statement property {} defined",
+                        SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + table, table);
+                continue;
+            }
+
             snapshotSelectOverridesByTable.put(
                     TableId.parse(table, new SqlServerTableIdPredicates()),
                     getConfig().getString(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + table));
+
         }
 
         return Collections.unmodifiableMap(snapshotSelectOverridesByTable);
@@ -484,7 +520,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     private static int validateDatabaseNames(Configuration config, Field field, Field.ValidationOutput problems) {
         String databaseNames = config.getString(field);
         int count = 0;
-        if (databaseNames == null || databaseNames.split(",").length == 0) {
+        if (Strings.isNullOrBlank(databaseNames)) {
             problems.accept(field, databaseNames, "Cannot be empty");
             ++count;
         }

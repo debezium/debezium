@@ -6,8 +6,10 @@
 package io.debezium.connector.mongodb;
 
 import static io.debezium.connector.mongodb.JsonSerialization.COMPACT_JSON_SETTINGS;
+import static io.debezium.junit.EqualityCheck.GREATER_THAN_OR_EQUAL;
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
+import static java.time.temporal.ChronoUnit.MILLIS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.fail;
 
@@ -19,6 +21,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -29,7 +32,6 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.BsonDocument;
 import org.bson.Document;
@@ -51,7 +53,7 @@ import com.mongodb.client.model.InsertOneOptions;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
-import io.debezium.connector.mongodb.ConnectionContext.MongoPrimary;
+import io.debezium.connector.mongodb.MongoDbConnectorConfig.FiltersMatchMode;
 import io.debezium.converters.CloudEventsConverterTest;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
@@ -77,7 +79,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     @Test
     public void shouldNotStartWithInvalidConfiguration() {
         config = Configuration.create()
-                .with(MongoDbConnectorConfig.AUTO_DISCOVER_MEMBERS, "true")
+                .with(MongoDbConnectorConfig.SSL_ENABLED, "true")
                 .build();
 
         // we expect the engine will log at least one error, so preface it ...
@@ -95,11 +97,10 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         MongoDbConnector connector = new MongoDbConnector();
         Config result = connector.validate(config.asMap());
 
-        assertConfigurationErrors(result, MongoDbConnectorConfig.HOSTS, 1);
+        assertConfigurationErrors(result, MongoDbConnectorConfig.CONNECTION_STRING, 1);
         assertConfigurationErrors(result, CommonConnectorConfig.TOPIC_PREFIX, 1);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.USER);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.PASSWORD);
-        assertNoConfigurationErrors(result, MongoDbConnectorConfig.AUTO_DISCOVER_MEMBERS);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.DATABASE_INCLUDE_LIST);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.DATABASE_EXCLUDE_LIST);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST);
@@ -108,12 +109,22 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.MAX_QUEUE_SIZE);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.MAX_BATCH_SIZE);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.POLL_INTERVAL_MS);
-        assertNoConfigurationErrors(result, MongoDbConnectorConfig.CONNECT_BACKOFF_INITIAL_DELAY_MS);
-        assertNoConfigurationErrors(result, MongoDbConnectorConfig.CONNECT_BACKOFF_MAX_DELAY_MS);
-        assertNoConfigurationErrors(result, MongoDbConnectorConfig.MAX_FAILED_CONNECTIONS);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.SSL_ENABLED);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.SSL_ALLOW_INVALID_HOSTNAMES);
         assertNoConfigurationErrors(result, CommonConnectorConfig.TOMBSTONES_ON_DELETE);
+    }
+
+    @Test
+    public void shouldFailToValidateWithReplicaSetModeParams() {
+        config = TestHelper.getConfiguration(mongo)
+                .edit()
+                .with(MongoDbConnector.DEPRECATED_SHARD_CS_PARAMS_FILED, "readPreference=primary")
+                .with(MongoDbConnector.DEPRECATED_CONNECTION_MODE_FILED, "replica_set")
+                .build();
+        MongoDbConnector connector = new MongoDbConnector();
+        Config result = connector.validate(config.asMap());
+
+        assertConfigurationErrors(result, MongoDbConnectorConfig.CONNECTION_STRING, 2);
     }
 
     @Test
@@ -192,7 +203,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     }
 
     public void shouldValidateFilterFieldConfiguration(Field field, String value, int errorCount) {
-        config = TestHelper.getConfiguration().edit()
+        config = TestHelper.getConfiguration(mongo).edit()
                 .with(field, value)
                 .build();
         MongoDbConnector connector = new MongoDbConnector();
@@ -208,7 +219,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
 
     @Test
     public void shouldValidateAcceptableConfiguration() {
-        config = TestHelper.getConfiguration();
+        config = TestHelper.getConfiguration(mongo);
 
         // Add data to the databases so that the databases will be listed ...
         context = new MongoDbTaskContext(config);
@@ -218,11 +229,10 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         MongoDbConnector connector = new MongoDbConnector();
         Config result = connector.validate(config.asMap());
 
-        assertNoConfigurationErrors(result, MongoDbConnectorConfig.HOSTS);
+        assertNoConfigurationErrors(result, MongoDbConnectorConfig.CONNECTION_STRING);
         assertNoConfigurationErrors(result, CommonConnectorConfig.TOPIC_PREFIX);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.USER);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.PASSWORD);
-        assertNoConfigurationErrors(result, MongoDbConnectorConfig.AUTO_DISCOVER_MEMBERS);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.DATABASE_INCLUDE_LIST);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.DATABASE_EXCLUDE_LIST);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST);
@@ -231,20 +241,74 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.MAX_QUEUE_SIZE);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.MAX_BATCH_SIZE);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.POLL_INTERVAL_MS);
-        assertNoConfigurationErrors(result, MongoDbConnectorConfig.CONNECT_BACKOFF_INITIAL_DELAY_MS);
-        assertNoConfigurationErrors(result, MongoDbConnectorConfig.CONNECT_BACKOFF_MAX_DELAY_MS);
-        assertNoConfigurationErrors(result, MongoDbConnectorConfig.MAX_FAILED_CONNECTIONS);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.SSL_ENABLED);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.SSL_ALLOW_INVALID_HOSTNAMES);
         assertNoConfigurationErrors(result, CommonConnectorConfig.TOMBSTONES_ON_DELETE);
-
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.CAPTURE_MODE);
+    }
+
+    @Test
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 6, reason = "wallTime support in Change Stream is officially released in Mongo 6.0.")
+    public void shouldProvideWallTime() throws InterruptedException {
+        config = TestHelper.getConfiguration(mongo).edit()
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
+                .build();
+
+        context = new MongoDbTaskContext(config);
+        TestHelper.cleanDatabase(mongo, "dbit");
+        start(MongoDbConnector.class, config);
+        waitForStreamingRunning("mongodb", "mongo");
+
+        // Insert record
+        final Instant timestamp = Instant.now();
+        ObjectId objId = new ObjectId();
+        Document obj = new Document("_id", objId);
+        insertDocuments("dbit", "c1", obj);
+
+        final SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.allRecordsInOrder().size()).isEqualTo(1);
+        assertNoRecordsToConsume();
+        final SourceRecord record = records.allRecordsInOrder().get(0);
+        final Struct value = (Struct) record.value();
+
+        final long wallTime = value.getStruct(Envelope.FieldName.SOURCE).getInt64(SourceInfo.WALL_TIME);
+        Instant instant = Instant.ofEpochMilli(wallTime);
+        assertThat(instant.truncatedTo(MILLIS).getNano()).isNotZero();
+        assertThat(wallTime).isGreaterThanOrEqualTo(timestamp.toEpochMilli());
+    }
+
+    @Test
+    @SkipWhenDatabaseVersion(check = GREATER_THAN_OR_EQUAL, major = 6, reason = "wallTime support in Change Stream is officially released in Mongo 6.0.")
+    public void shouldNotProvideWallTimeForOlderVersions() throws InterruptedException {
+        config = TestHelper.getConfiguration(mongo).edit()
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
+                .build();
+
+        context = new MongoDbTaskContext(config);
+        TestHelper.cleanDatabase(mongo, "dbit");
+        start(MongoDbConnector.class, config);
+        waitForStreamingRunning("mongodb", "mongo");
+
+        // Insert record
+        ObjectId objId = new ObjectId();
+        Document obj = new Document("_id", objId);
+        insertDocuments("dbit", "c1", obj);
+
+        final SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.allRecordsInOrder().size()).isEqualTo(1);
+        assertNoRecordsToConsume();
+        final SourceRecord record = records.allRecordsInOrder().get(0);
+        final Struct value = (Struct) record.value();
+        // For pre-6.0 version, wallTime should not be presented
+        assertThat(value.getStruct(Envelope.FieldName.SOURCE).getInt64(SourceInfo.WALL_TIME)).isNull();
     }
 
     @Test
     @SkipWhenDatabaseVersion(check = LESS_THAN, major = 6, reason = "Pre-image support in Change Stream is officially released in Mongo 6.0.")
     public void shouldConsumePreImage() throws InterruptedException {
-        config = TestHelper.getConfiguration().edit()
+        config = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.CAPTURE_MODE, MongoDbConnectorConfig.CaptureMode.CHANGE_STREAMS_UPDATE_FULL_WITH_PRE_IMAGE)
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
@@ -255,7 +319,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         context = new MongoDbTaskContext(config);
 
         // Cleanup database
-        TestHelper.cleanDatabase(primary(), "dbit");
+        TestHelper.cleanDatabase(mongo, "dbit");
 
         // Before starting the connector, add data to the databases ...
         storeDocuments("dbit", "simpletons", "simple_objects.json");
@@ -276,24 +340,24 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         records.forEach(record -> {
             // Check that all records are valid, and can be serialized and deserialized ...
             validate(record);
-            verifyFromInitialSync(record, foundLast);
+            verifyFromInitialSnapshot(record, foundLast);
             verifyReadOperation(record);
         });
         assertThat(foundLast.get()).isTrue();
 
         AtomicReference<String> id = new AtomicReference<>();
         String collName = "preimage";
-        primary().execute("create collection with pre-image recording enabled", mongo -> {
-            MongoDatabase db1 = mongo.getDatabase("dbit");
+        try (var client = connect()) {
+            MongoDatabase db1 = client.getDatabase("dbit");
             CreateCollectionOptions options = new CreateCollectionOptions();
             options.changeStreamPreAndPostImagesOptions(new ChangeStreamPreAndPostImagesOptions(true));
             db1.createCollection(collName, options);
-        });
+        }
 
         Testing.Debug.enable();
 
-        primary().execute("create", mongo -> {
-            MongoDatabase db1 = mongo.getDatabase("dbit");
+        try (var client = connect()) {
+            MongoDatabase db1 = client.getDatabase("dbit");
             MongoCollection<Document> coll = db1.getCollection(collName);
 
             // Insert the document with a generated ID ...
@@ -306,10 +370,10 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
             Testing.debug("Document: " + doc);
             id.set(doc.getObjectId("_id").toString());
             Testing.debug("Document ID: " + id.get());
-        });
+        }
 
-        primary().execute("update", mongo -> {
-            MongoDatabase db1 = mongo.getDatabase("dbit");
+        try (var client = connect()) {
+            MongoDatabase db1 = client.getDatabase("dbit");
             MongoCollection<Document> coll = db1.getCollection(collName);
 
             // Find the document ...
@@ -321,10 +385,10 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
 
             doc = coll.find().first();
             Testing.debug("Document: " + doc);
-        });
+        }
 
-        primary().execute("replace", mongo -> {
-            MongoDatabase db1 = mongo.getDatabase("dbit");
+        try (var client = connect()) {
+            MongoDatabase db1 = client.getDatabase("dbit");
             MongoCollection<Document> coll = db1.getCollection(collName);
 
             // Find the document ...
@@ -336,7 +400,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
 
             doc = coll.find().first();
             Testing.debug("Document: " + doc);
-        });
+        }
 
         // Wait until we can consume the 1 insert and 1 update and 1 replace...
         SourceRecords insertAndUpdateAndReplace = consumeRecordsByTopic(3);
@@ -345,7 +409,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         insertAndUpdateAndReplace.forEach(record -> {
             // Check that all records are valid, and can be serialized and deserialized ...
             validate(record);
-            verifyNotFromInitialSync(record);
+            verifyNotFromInitialSnapshot(record);
         });
         SourceRecord insertRecord = insertAndUpdateAndReplace.allRecordsInOrder().get(0);
         verifyCreateOperation(insertRecord);
@@ -371,12 +435,12 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         // ---------------------------------------------------------------------------------------------------------------
         // Delete a document
         // ---------------------------------------------------------------------------------------------------------------
-        primary().execute("delete", mongo -> {
-            MongoDatabase db1 = mongo.getDatabase("dbit");
+        try (var client = connect()) {
+            MongoDatabase db1 = client.getDatabase("dbit");
             MongoCollection<Document> coll = db1.getCollection(collName);
             Document filter = Document.parse("{\"a\": 1}");
             coll.deleteOne(filter);
-        });
+        }
 
         // Wait until we can consume the 1 delete ...
         SourceRecords delete = consumeRecordsByTopic(2);
@@ -385,7 +449,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
 
         SourceRecord deleteRecord = delete.allRecordsInOrder().get(0);
         validate(deleteRecord);
-        verifyNotFromInitialSync(deleteRecord);
+        verifyNotFromInitialSnapshot(deleteRecord);
         verifyDeleteOperation(deleteRecord);
 
         Struct deleteValue = (Struct) deleteRecord.value();
@@ -402,9 +466,78 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     }
 
     @Test
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 6, reason = "Pre-image support in Change Stream is officially released in Mongo 6.0.")
+    public void shouldConsumeLargeEvents() throws InterruptedException {
+        final var collName = "large";
+        final var dbName = "dbit";
+
+        config = TestHelper.getConfiguration(mongo).edit()
+                .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.NEVER)
+                .with(MongoDbConnectorConfig.CAPTURE_MODE, MongoDbConnectorConfig.CaptureMode.CHANGE_STREAMS_UPDATE_FULL_WITH_PRE_IMAGE)
+                .with(MongoDbConnectorConfig.CURSOR_OVERSIZE_HANDLING_MODE, MongoDbConnectorConfig.OversizeHandlingMode.SPLIT)
+                .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, dbName + "." + collName)
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
+                .build();
+
+        // Set up the replication context for connections ...
+        context = new MongoDbTaskContext(config);
+
+        // Cleanup database
+        TestHelper.cleanDatabase(mongo, "dbit");
+
+        // Enable pre images
+        try (var client = connect()) {
+            MongoDatabase db1 = client.getDatabase(dbName);
+            CreateCollectionOptions options = new CreateCollectionOptions();
+            options.changeStreamPreAndPostImagesOptions(new ChangeStreamPreAndPostImagesOptions(true));
+            db1.createCollection(collName, options);
+        }
+
+        // Before starting the connector, add data to the databases ...
+        var docId = 0;
+        var beforeValue = String.join("", Collections.nCopies(16 * 1024 * 1024 - 1024, "a"));
+        var expectedBeforeDocument = new Document("_id", 0).append("value", beforeValue);
+        insertDocuments("dbit", collName, expectedBeforeDocument);
+
+        // Start the connector ...
+        start(MongoDbConnector.class, config);
+        waitForStreamingRunning("mongodb", "mongo");
+
+        // Update document
+        var afterValue = String.join("", Collections.nCopies(16 * 1024 * 1024 - 1024, "b"));
+        var expectedAfterDocument = new Document("_id", 0).append("value", afterValue);
+        try (var client = connect()) {
+            MongoDatabase db1 = client.getDatabase(dbName);
+            MongoCollection<Document> coll = db1.getCollection(collName);
+
+            // Insert the document with a generated ID ...
+            var updateDocument = new Document("$set", new Document("value", afterValue));
+            updateDocument(dbName, collName, new Document("_id", docId), updateDocument);
+        }
+
+        // Wait until we can consume the 1 insert and 1 update and 1 replace...
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.allRecordsInOrder().size()).isEqualTo(1);
+        SourceRecord updateRecord = records.allRecordsInOrder().get(0);
+
+        validate(updateRecord);
+        verifyUpdateOperation(updateRecord);
+        verifyNotFromInitialSnapshot(updateRecord);
+
+        Struct updateValue = (Struct) updateRecord.value();
+        var actualBeforeDocument = Document.parse(updateValue.getString("before"));
+        var actualAfterDocument = Document.parse(updateValue.getString("after"));
+
+        assertThat(actualBeforeDocument).isEqualTo(expectedBeforeDocument);
+        assertThat(actualAfterDocument).isEqualTo(expectedAfterDocument);
+
+    }
+
+    @Test
     public void shouldConsumeAllEventsFromDatabase() throws InterruptedException, IOException {
         // Use the DB configuration to define the connector's configuration ...
-        config = TestHelper.getConfiguration().edit()
+        config = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
@@ -415,7 +548,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         context = new MongoDbTaskContext(config);
 
         // Cleanup database
-        TestHelper.cleanDatabase(primary(), "dbit");
+        TestHelper.cleanDatabase(mongo, "dbit");
 
         // Before starting the connector, add data to the databases ...
         storeDocuments("dbit", "simpletons", "simple_objects.json");
@@ -436,7 +569,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         records.forEach(record -> {
             // Check that all records are valid, and can be serialized and deserialized ...
             validate(record);
-            verifyFromInitialSync(record, foundLast);
+            verifyFromInitialSnapshot(record, foundLast);
             verifyReadOperation(record);
         });
         assertThat(foundLast.get()).isTrue();
@@ -455,7 +588,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         records2.forEach(record -> {
             // Check that all records are valid, and can be serialized and deserialized ...
             validate(record);
-            verifyNotFromInitialSync(record);
+            verifyNotFromInitialSnapshot(record);
             verifyCreateOperation(record);
         });
 
@@ -481,7 +614,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         records3.forEach(record -> {
             // Check that all records are valid, and can be serialized and deserialized ...
             validate(record);
-            verifyNotFromInitialSync(record);
+            verifyNotFromInitialSnapshot(record);
             verifyCreateOperation(record);
         });
 
@@ -497,7 +630,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         records4.forEach(record -> {
             // Check that all records are valid, and can be serialized and deserialized ...
             validate(record);
-            verifyNotFromInitialSync(record);
+            verifyNotFromInitialSnapshot(record);
             verifyCreateOperation(record);
         });
 
@@ -506,8 +639,8 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         // ---------------------------------------------------------------------------------------------------------------
         // Testing.Debug.enable();
         AtomicReference<String> id = new AtomicReference<>();
-        primary().execute("create", mongo -> {
-            MongoDatabase db1 = mongo.getDatabase("dbit");
+        try (var client = connect()) {
+            MongoDatabase db1 = client.getDatabase("dbit");
             MongoCollection<Document> coll = db1.getCollection("arbitrary");
             coll.drop();
 
@@ -521,10 +654,10 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
             Testing.debug("Document: " + doc);
             id.set(doc.getObjectId("_id").toString());
             Testing.debug("Document ID: " + id.get());
-        });
+        }
 
-        primary().execute("update", mongo -> {
-            MongoDatabase db1 = mongo.getDatabase("dbit");
+        try (var client = connect()) {
+            MongoDatabase db1 = client.getDatabase("dbit");
             MongoCollection<Document> coll = db1.getCollection("arbitrary");
 
             // Find the document ...
@@ -536,7 +669,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
 
             doc = coll.find().first();
             Testing.debug("Document: " + doc);
-        });
+        }
 
         // Wait until we can consume the 1 insert and 1 update ...
         SourceRecords insertAndUpdate = consumeRecordsByTopic(2);
@@ -545,7 +678,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         records4.forEach(record -> {
             // Check that all records are valid, and can be serialized and deserialized ...
             validate(record);
-            verifyNotFromInitialSync(record);
+            verifyNotFromInitialSnapshot(record);
             verifyCreateOperation(record);
         });
         SourceRecord insertRecord = insertAndUpdate.allRecordsInOrder().get(0);
@@ -562,12 +695,12 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         // ---------------------------------------------------------------------------------------------------------------
         // Delete a document
         // -------------------------------------------------------------------------------------------------------------
-        primary().execute("delete", mongo -> {
-            MongoDatabase db1 = mongo.getDatabase("dbit");
+        try (var client = connect()) {
+            MongoDatabase db1 = client.getDatabase("dbit");
             MongoCollection<Document> coll = db1.getCollection("arbitrary");
             Document filter = Document.parse("{\"a\": 1}");
             coll.deleteOne(filter);
-        });
+        }
 
         // Wait until we can consume the 1 delete ...
         SourceRecords delete = consumeRecordsByTopic(2);
@@ -576,7 +709,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
 
         SourceRecord deleteRecord = delete.allRecordsInOrder().get(0);
         validate(deleteRecord);
-        verifyNotFromInitialSync(deleteRecord);
+        verifyNotFromInitialSnapshot(deleteRecord);
         verifyDeleteOperation(deleteRecord);
 
         SourceRecord tombStoneRecord = delete.allRecordsInOrder().get(1);
@@ -590,10 +723,65 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     }
 
     @Test
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 4, minor = 4, reason = "$bsonSize aggregation operator support is officially released in Mongo 4.4.")
+    public void shouldSkipOversizedEvents() throws InterruptedException, IOException {
+        // Use the DB configuration to define the connector's configuration ...
+        config = TestHelper.getConfiguration(mongo).edit()
+                .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
+                .with(MongoDbConnectorConfig.CAPTURE_MODE, MongoDbConnectorConfig.CaptureMode.CHANGE_STREAMS_UPDATE_FULL_WITH_PRE_IMAGE)
+                .with(MongoDbConnectorConfig.CURSOR_OVERSIZE_HANDLING_MODE, MongoDbConnectorConfig.OversizeHandlingMode.SKIP)
+                .with(MongoDbConnectorConfig.CURSOR_OVERSIZE_SKIP_THRESHOLD, 40) // maximum 25 bytes
+                .build();
+
+        // Set up the replication context for connections ...
+        context = new MongoDbTaskContext(config);
+
+        // Cleanup database
+        TestHelper.cleanDatabase(mongo, "dbit");
+
+        // Start the connector ...
+        start(MongoDbConnector.class, config);
+        waitForStreamingRunning("mongodb", "mongo");
+
+        // start first document (total size is 32 bytes)
+        var doc = new Document(Map.of("_id", 1, "val", new byte[8]));
+        insertDocuments("dbit", "wrong", doc);
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.topics().size()).isEqualTo(1);
+        assertThat(records.recordsForTopic("mongo.dbit.wrong")).hasSize(1);
+
+        // this update is OK (total size is 40 bytes)
+        var updateDoc = new Document("$set", new Document("val", new byte[16]));
+        updateDocument("dbit", "wrong", new Document("_id", 1), updateDoc);
+
+        records = consumeRecordsByTopic(1);
+        assertThat(records.topics().size()).isEqualTo(1);
+        assertThat(records.recordsForTopic("mongo.dbit.wrong")).hasSize(1);
+
+        // this update is not ok (total size is 56 bytes)
+        updateDoc = new Document("$set", new Document("val", new byte[32]));
+        updateDocument("dbit", "wrong", new Document("_id", 1), updateDoc);
+        var record = consumeRecord();
+        assertThat(record).isNull();
+
+        // store another document
+        doc = new Document(Map.of("_id", 1, "var", new byte[8]));
+        insertDocuments("dbit", "right", doc);
+
+        records = consumeRecordsByTopic(1);
+        assertThat(records.topics().size()).isEqualTo(1);
+        assertThat(records.recordsForTopic("mongo.dbit.right")).hasSize(1);
+
+    }
+
+    @Test
     @FixFor("DBZ-1831")
     public void shouldConsumeAllEventsFromDatabaseWithSkippedOperations() throws InterruptedException, IOException {
         // Use the DB configuration to define the connector's configuration ...
-        config = TestHelper.getConfiguration().edit()
+        config = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
@@ -604,7 +792,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         context = new MongoDbTaskContext(config);
 
         // Cleanup database
-        TestHelper.cleanDatabase(primary(), "dbit");
+        TestHelper.cleanDatabase(mongo, "dbit");
 
         // Start the connector ...
         start(MongoDbConnector.class, config);
@@ -615,8 +803,8 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         // ---------------------------------------------------------------------------------------------------------------
         // Testing.Debug.enable();
         AtomicReference<String> id = new AtomicReference<>();
-        primary().execute("create", mongo -> {
-            MongoDatabase db1 = mongo.getDatabase("dbit");
+        try (var client = connect()) {
+            MongoDatabase db1 = client.getDatabase("dbit");
             MongoCollection<Document> coll = db1.getCollection("arbitrary");
             coll.drop();
 
@@ -630,13 +818,13 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
             Testing.debug("Document: " + doc);
             id.set(doc.getObjectId("_id").toString());
             Testing.debug("Document ID: " + id.get());
-        });
+        }
 
         SourceRecords insert = consumeRecordsByTopic(1);
         assertThat(insert.recordsForTopic("mongo.dbit.arbitrary")).hasSize(1);
 
-        primary().execute("update", mongo -> {
-            MongoDatabase db1 = mongo.getDatabase("dbit");
+        try (var client = connect()) {
+            MongoDatabase db1 = client.getDatabase("dbit");
             MongoCollection<Document> coll = db1.getCollection("arbitrary");
 
             // Find the document ...
@@ -648,10 +836,10 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
 
             doc = coll.find().first();
             Testing.debug("Document: " + doc);
-        });
+        }
 
-        primary().execute("delete", mongo -> {
-            MongoDatabase db1 = mongo.getDatabase("dbit");
+        try (var client = connect()) {
+            MongoDatabase db1 = client.getDatabase("dbit");
             MongoCollection<Document> coll = db1.getCollection("arbitrary");
 
             // Find the document ...
@@ -664,7 +852,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
 
             doc = coll.find().first();
             Testing.debug("Document: " + doc);
-        });
+        }
 
         // Next should be the delete but not the skipped update
         SourceRecords delete = consumeRecordsByTopic(1);
@@ -681,7 +869,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         final String authDbName = "authdb";
 
         // Use the DB configuration to define the connector's configuration ...
-        config = TestHelper.getConfiguration().edit()
+        config = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
@@ -691,9 +879,9 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         context = new MongoDbTaskContext(config);
 
         // Cleanup database
-        TestHelper.cleanDatabase(primary(), "dbit");
+        TestHelper.cleanDatabase(mongo, "dbit");
 
-        primary().execute("Create auth database", client -> {
+        try (var client = connect()) {
             final MongoDatabase db = client.getDatabase(authDbName);
             try {
                 db.runCommand(BsonDocument.parse("{dropUser: \"dbz\"}"));
@@ -703,14 +891,14 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
             }
             db.runCommand(BsonDocument.parse(
                     "{createUser: \"dbz\", pwd: \"pass\", roles: [{role: \"readAnyDatabase\", db: \"admin\"}]}"));
-        });
+        }
 
         // Before starting the connector, add data to the databases ...
         storeDocuments("dbit", "simpletons", "simple_objects.json");
         storeDocuments("dbit", "restaurants", "restaurants1.json");
 
         // Use the DB configuration to define the connector's configuration ...
-        config = TestHelper.getConfiguration().edit()
+        config = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.USER, "dbz")
                 .with(MongoDbConnectorConfig.PASSWORD, "pass")
                 .with(MongoDbConnectorConfig.AUTH_SOURCE, authDbName)
@@ -737,7 +925,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         records.forEach(record -> {
             // Check that all records are valid, and can be serialized and deserialized ...
             validate(record);
-            verifyFromInitialSync(record, foundLast);
+            verifyFromInitialSnapshot(record, foundLast);
             verifyReadOperation(record);
         });
         assertThat(foundLast.get()).isTrue();
@@ -756,7 +944,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         records2.forEach(record -> {
             // Check that all records are valid, and can be serialized and deserialized ...
             validate(record);
-            verifyNotFromInitialSync(record);
+            verifyNotFromInitialSnapshot(record);
             verifyCreateOperation(record);
         });
 
@@ -768,12 +956,23 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
 
     @Test
     @FixFor("DBZ-4575")
-    public void shouldConsumeEventsOnlyFromIncludedDatabases() throws InterruptedException, IOException {
+    public void shouldConsumeEventsOnlyFromIncludedDatabasesWithRegexFilter() throws IOException, InterruptedException {
+        shouldConsumeEventsOnlyFromIncludedDatabases(FiltersMatchMode.REGEX);
+    }
+
+    @Test
+    @FixFor("DBZ-4575")
+    public void shouldConsumeEventsOnlyFromIncludedDatabasesWithLiteralFilter() throws IOException, InterruptedException {
+        shouldConsumeEventsOnlyFromIncludedDatabases(FiltersMatchMode.LITERAL);
+    }
+
+    public void shouldConsumeEventsOnlyFromIncludedDatabases(FiltersMatchMode filtersMatchMode) throws InterruptedException, IOException {
 
         // Use the DB configuration to define the connector's configuration ...
-        config = TestHelper.getConfiguration().edit()
+        config = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MongoDbConnectorConfig.DATABASE_INCLUDE_LIST, "inc")
+                .with(MongoDbConnectorConfig.FILTERS_MATCH_MODE, filtersMatchMode)
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
                 .build();
 
@@ -781,8 +980,8 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         context = new MongoDbTaskContext(config);
 
         // Cleanup database
-        TestHelper.cleanDatabase(primary(), "inc");
-        TestHelper.cleanDatabase(primary(), "exc");
+        TestHelper.cleanDatabase(mongo, "inc");
+        TestHelper.cleanDatabase(mongo, "exc");
 
         // Before starting the connector, add data to the databases ...
         storeDocuments("inc", "simpletons", "simple_objects.json");
@@ -803,7 +1002,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         records.forEach(record -> {
             // Check that all records are valid, and can be serialized and deserialized ...
             validate(record);
-            verifyFromInitialSync(record, foundLast);
+            verifyFromInitialSnapshot(record, foundLast);
             verifyReadOperation(record);
         });
         assertThat(foundLast.get()).isTrue();
@@ -824,7 +1023,95 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         records2.forEach(record -> {
             // Check that all records are valid, and can be serialized and deserialized ...
             validate(record);
-            verifyNotFromInitialSync(record);
+            verifyNotFromInitialSnapshot(record);
+            verifyCreateOperation(record);
+        });
+        // ---------------------------------------------------------------------------------------------------------------
+        // Stop the connector
+        // ---------------------------------------------------------------------------------------------------------------
+        stopConnector();
+    }
+
+    @Test
+    public void shouldConsumeEventsOnlyFromNonExcludedCollectionsWithRegexFilter() throws IOException, InterruptedException {
+        shouldConsumeEventsOnlyFromNonExcludedCollections(FiltersMatchMode.REGEX);
+    }
+
+    @Test
+    public void shouldConsumeEventsOnlyFromNonExcludedCollectionsWithLiteralFilter() throws IOException, InterruptedException {
+        shouldConsumeEventsOnlyFromNonExcludedCollections(FiltersMatchMode.LITERAL);
+    }
+
+    public void shouldConsumeEventsOnlyFromNonExcludedCollections(FiltersMatchMode matchMode) throws InterruptedException, IOException {
+
+        var dbIncludeList = (matchMode == FiltersMatchMode.REGEX) ? "db.*" : "dbA,dbB";
+        var collExcludeList = (matchMode == FiltersMatchMode.REGEX) ? ".*simpletons" : "dbA.simpletons,dbB.simpletons";
+
+        // Use the DB configuration to define the connector's configuration ...
+        config = TestHelper.getConfiguration(mongo).edit()
+                .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
+                .with(MongoDbConnectorConfig.DATABASE_INCLUDE_LIST, dbIncludeList)
+                .with(MongoDbConnectorConfig.COLLECTION_EXCLUDE_LIST, collExcludeList)
+                .with(MongoDbConnectorConfig.FILTERS_MATCH_MODE, matchMode)
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
+                .build();
+
+        // Set up the replication context for connections ...
+        context = new MongoDbTaskContext(config);
+
+        // Cleanup database
+        TestHelper.cleanDatabase(mongo, "dbA");
+        TestHelper.cleanDatabase(mongo, "dbB");
+        TestHelper.cleanDatabase(mongo, "cDB");
+
+        // Before starting the connector, add data to the databases ...
+        storeDocuments("dbA", "restaurants", "restaurants1.json");
+        storeDocuments("dbB", "restaurants", "restaurants1.json");
+        storeDocuments("cDB", "restaurants", "restaurants1.json");
+        storeDocuments("dbA", "simpletons", "simple_objects.json");
+        storeDocuments("dbB", "simpletons", "simple_objects.json");
+
+        // Start the connector ...
+        start(MongoDbConnector.class, config);
+
+        // ---------------------------------------------------------------------------------------------------------------
+        // Consume all of the events due to startup and initialization of the database
+        // ---------------------------------------------------------------------------------------------------------------
+        SourceRecords records = consumeRecordsByTopic(5 * 6);
+        records.topics().forEach(System.out::println);
+        assertThat(records.topics().size()).isEqualTo(2);
+        assertThat(records.recordsForTopic("mongo.dbA.restaurants").size()).isEqualTo(6);
+        assertThat(records.recordsForTopic("mongo.dbB.restaurants").size()).isEqualTo(6);
+        assertThat(records.recordsForTopic("mongo.dbA.simpletons")).isNull();
+        assertThat(records.recordsForTopic("mongo.dbB.simpletons")).isNull();
+        assertThat(records.recordsForTopic("mongo.cDB.restaurants")).isNull();
+
+        AtomicBoolean foundLast = new AtomicBoolean(false);
+        records.forEach(record -> {
+            // Check that all records are valid, and can be serialized and deserialized ...
+            validate(record);
+            verifyFromInitialSnapshot(record, foundLast);
+            verifyReadOperation(record);
+        });
+        assertThat(foundLast.get()).isTrue();
+
+        // At this point, the connector has performed the initial sync and awaits changes ...
+
+        // ---------------------------------------------------------------------------------------------------------------
+        // Store more documents while the connector is still running
+        // ---------------------------------------------------------------------------------------------------------------
+        storeDocuments("dbA", "restaurants", "restaurants2.json");
+        storeDocuments("cDB", "restaurants", "restaurants2.json");
+
+        // Wait until we can consume the 4 documents we just added ...
+        SourceRecords records2 = consumeRecordsByTopic(4);
+        assertThat(records2.recordsForTopic("mongo.dbA.restaurants").size()).isEqualTo(4);
+        assertThat(records2.recordsForTopic("mongo.cDB.restaurants")).isNull();
+        assertThat(records2.topics().size()).isEqualTo(1);
+        records2.forEach(record -> {
+            // Check that all records are valid, and can be serialized and deserialized ...
+            validate(record);
+            verifyNotFromInitialSnapshot(record);
             verifyCreateOperation(record);
         });
         // ---------------------------------------------------------------------------------------------------------------
@@ -838,7 +1125,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     public void shouldSupportDbRef() throws InterruptedException, IOException {
 
         // Use the DB configuration to define the connector's configuration ...
-        config = TestHelper.getConfiguration().edit()
+        config = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
@@ -848,7 +1135,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         context = new MongoDbTaskContext(config);
 
         // Cleanup database
-        TestHelper.cleanDatabase(primary(), "dbit");
+        TestHelper.cleanDatabase(mongo, "dbit");
 
         // Before starting the connector, add data to the databases ...
         storeDocuments("dbit", "spec", "spec_objects.json");
@@ -869,7 +1156,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         records.forEach(record -> {
             // Check that all records are valid, and can be serialized and deserialized ...
             validate(record);
-            verifyFromInitialSync(record, foundLast);
+            verifyFromInitialSnapshot(record, foundLast);
             verifyReadOperation(record);
         });
         assertThat(foundLast.get()).isTrue();
@@ -879,10 +1166,10 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         // ---------------------------------------------------------------------------------------------------------------
         // Store another document while the connector is still running
         // ---------------------------------------------------------------------------------------------------------------
-        primary().execute("insert", client -> {
+        try (var client = connect()) {
             client.getDatabase("dbit").getCollection("spec")
                     .insertOne(Document.parse("{ '_id' : 2, 'data' : { '$ref' : 'a2', '$id' : 4, '$db' : 'b2' } }"));
-        });
+        }
 
         SourceRecords records2 = consumeRecordsByTopic(1);
         assertThat(records2.recordsForTopic("mongo.dbit.spec").size()).isEqualTo(1);
@@ -890,7 +1177,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         records2.forEach(record -> {
             // Check that all records are valid, and can be serialized and deserialized ...
             validate(record);
-            verifyNotFromInitialSync(record);
+            verifyNotFromInitialSnapshot(record);
             verifyCreateOperation(record);
         });
 
@@ -907,7 +1194,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         final LogInterceptor logInterceptor = new LogInterceptor(MongoDbSchema.class);
 
         // Use the DB configuration to define the connector's configuration ...
-        config = TestHelper.getConfiguration().edit()
+        config = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.dbz865.*")
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
@@ -917,17 +1204,17 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         context = new MongoDbTaskContext(config);
 
         // Cleanup database
-        TestHelper.cleanDatabase(primary(), "dbit");
+        TestHelper.cleanDatabase(mongo, "dbit");
 
-        primary().execute("create", mongo -> {
-            MongoDatabase db1 = mongo.getDatabase("dbit");
+        try (var client = connect()) {
+            MongoDatabase db1 = client.getDatabase("dbit");
             MongoCollection<Document> coll = db1.getCollection("dbz865_my@collection");
             coll.drop();
 
             Document doc = Document.parse("{\"a\": 1, \"b\": 2}");
             InsertOneOptions insertOptions = new InsertOneOptions().bypassDocumentValidation(true);
             coll.insertOne(doc, insertOptions);
-        });
+        }
 
         // Start the connector ...
         start(MongoDbConnector.class, config);
@@ -943,7 +1230,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         records.forEach(record -> {
             // Check that all records are valid, and can be serialized and deserialized ...
             validate(record);
-            verifyFromInitialSync(record, foundLast);
+            verifyFromInitialSnapshot(record, foundLast);
             verifyReadOperation(record);
         });
         assertThat(foundLast.get()).isTrue();
@@ -961,7 +1248,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         final LogInterceptor logInterceptor = new LogInterceptor(MongoDbSchema.class);
 
         // Use the DB configuration to define the connector's configuration...
-        config = TestHelper.getConfiguration().edit()
+        config = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.dbz865.my_products")
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
@@ -971,17 +1258,17 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         context = new MongoDbTaskContext(config);
 
         // Cleanup database
-        TestHelper.cleanDatabase(primary(), "dbit");
+        TestHelper.cleanDatabase(mongo, "dbit");
 
-        primary().execute("create", mongo -> {
-            MongoDatabase db1 = mongo.getDatabase("dbit");
+        try (var client = connect()) {
+            MongoDatabase db1 = client.getDatabase("dbit");
             MongoCollection<Document> coll = db1.getCollection("dbz865_my@collection");
             coll.drop();
 
             Document doc = Document.parse("{\"a\": 1, \"b\": 2}");
             InsertOneOptions insertOptions = new InsertOneOptions().bypassDocumentValidation(true);
             coll.insertOne(doc, insertOptions);
-        });
+        }
 
         // Start the connector...
         start(MongoDbConnector.class, config);
@@ -992,7 +1279,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         stopConnector(value -> assertThat(logInterceptor.containsWarnMessage(DatabaseSchema.NO_CAPTURED_DATA_COLLECTIONS_WARNING)).isTrue());
     }
 
-    protected void verifyFromInitialSync(SourceRecord record, AtomicBoolean foundLast) {
+    protected void verifyFromInitialSnapshot(SourceRecord record, AtomicBoolean foundLast) {
         if (record.sourceOffset().containsKey(SourceInfo.INITIAL_SYNC)) {
             assertThat(record.sourceOffset().containsKey(SourceInfo.INITIAL_SYNC)).isTrue();
             Struct value = (Struct) record.value();
@@ -1010,7 +1297,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     @FixFor("DBZ-1215")
     public void shouldConsumeTransaction() throws InterruptedException, IOException {
         // Use the DB configuration to define the connector's configuration ...
-        config = TestHelper.getConfiguration().edit()
+        config = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
@@ -1019,13 +1306,13 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         // Set up the replication context for connections ...
         context = new MongoDbTaskContext(config);
 
-        if (!TestHelper.transactionsSupported(primary(), "dbit")) {
+        if (!TestHelper.transactionsSupported()) {
             logger.info("Test not executed, transactions not supported in the server");
             return;
         }
 
         // Cleanup database
-        TestHelper.cleanDatabase(primary(), "dbit");
+        TestHelper.cleanDatabase(mongo, "dbit");
 
         // Before starting the connector, add data to the databases ...
         storeDocuments("dbit", "simpletons", "simple_objects.json");
@@ -1046,7 +1333,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         records.forEach(record -> {
             // Check that all records are valid, and can be serialized and deserialized ...
             validate(record);
-            verifyFromInitialSync(record, foundLast);
+            verifyFromInitialSnapshot(record, foundLast);
             verifyReadOperation(record);
         });
         assertThat(foundLast.get()).isTrue();
@@ -1066,7 +1353,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         records2.forEach(record -> {
             // Check that all records are valid, and can be serialized and deserialized ...
             validate(record);
-            verifyNotFromInitialSync(record);
+            verifyNotFromInitialSnapshot(record);
             verifyCreateOperation(record);
         });
 
@@ -1093,7 +1380,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         records3.forEach(record -> {
             // Check that all records are valid, and can be serialized and deserialized ...
             validate(record);
-            verifyNotFromInitialSync(record);
+            verifyNotFromInitialSnapshot(record);
             verifyCreateOperation(record);
         });
     }
@@ -1102,7 +1389,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     @FixFor("DBZ-1215")
     public void shouldResumeTransactionInMiddle() throws InterruptedException, IOException {
         // Use the DB configuration to define the connector's configuration ...
-        config = TestHelper.getConfiguration().edit()
+        config = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
@@ -1111,13 +1398,13 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         // Set up the replication context for connections ...
         context = new MongoDbTaskContext(config);
 
-        if (!TestHelper.transactionsSupported(primary(), "dbit")) {
+        if (!TestHelper.transactionsSupported()) {
             logger.info("Test not executed, transactions not supported in the server");
             return;
         }
 
         // Cleanup database
-        TestHelper.cleanDatabase(primary(), "dbit");
+        TestHelper.cleanDatabase(mongo, "dbit");
 
         // Before starting the connector, add data to the databases ...
         storeDocuments("dbit", "simpletons", "simple_objects.json");
@@ -1142,7 +1429,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         records.forEach(record -> {
             // Check that all records are valid, and can be serialized and deserialized ...
             validate(record);
-            verifyFromInitialSync(record, foundLast);
+            verifyFromInitialSnapshot(record, foundLast);
             verifyReadOperation(record);
         });
         assertThat(foundLast.get()).isTrue();
@@ -1163,7 +1450,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         records2.forEach(record -> {
             // Check that all records are valid, and can be serialized and deserialized ...
             validate(record);
-            verifyNotFromInitialSync(record);
+            verifyNotFromInitialSnapshot(record);
             verifyCreateOperation(record);
         });
 
@@ -1192,7 +1479,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         records3.forEach(record -> {
             // Check that all records are valid, and can be serialized and deserialized ...
             validate(record);
-            verifyNotFromInitialSync(record);
+            verifyNotFromInitialSnapshot(record);
             verifyCreateOperation(record);
         });
     }
@@ -1201,7 +1488,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     @FixFor("DBZ-2116")
     public void shouldSnapshotDocumentContainingFieldNamedOp() throws Exception {
         // Use the DB configuration to define the connector's configuration ...
-        config = TestHelper.getConfiguration().edit()
+        config = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
@@ -1211,7 +1498,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         context = new MongoDbTaskContext(config);
 
         // Cleanup database
-        TestHelper.cleanDatabase(primary(), "dbit");
+        TestHelper.cleanDatabase(mongo, "dbit");
 
         // Before starting the connector, add data to the databases ...
         storeDocuments("dbit", "fieldnamedop", "fieldnamedop.json");
@@ -1229,7 +1516,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         records.forEach(record -> {
             // Check that all records are valid, and can be serialized and deserialized ...
             validate(record);
-            verifyFromInitialSync(record, foundLast);
+            verifyFromInitialSnapshot(record, foundLast);
             verifyReadOperation(record);
         });
         assertThat(foundLast.get()).isTrue();
@@ -1251,7 +1538,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     @FixFor("DBZ-2496")
     public void shouldFilterItemsInCollectionWhileTakingSnapshot() throws Exception {
         // Use the DB configuration to define the connector's configuration ...
-        config = TestHelper.getConfiguration().edit()
+        config = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
@@ -1266,7 +1553,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         context = new MongoDbTaskContext(config);
 
         // Cleanup database
-        TestHelper.cleanDatabase(primary(), "dbit");
+        TestHelper.cleanDatabase(mongo, "dbit");
 
         // Before starting the connector, add data to the databases ...
 
@@ -1291,17 +1578,16 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         assertNoRecordsToConsume();
 
         stopConnector();
-
     }
 
     @Test
     @FixFor("DBZ-2456")
     public void shouldSelectivelySnapshot() throws InterruptedException {
-        config = TestHelper.getConfiguration().edit()
+        config = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.INITIAL)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
-                .with(CommonConnectorConfig.SNAPSHOT_MODE_TABLES, "[A-z].*dbit.restaurants1")
+                .with(CommonConnectorConfig.SNAPSHOT_MODE_TABLES, "dbit.restaurants1")
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
                 .build();
 
@@ -1309,7 +1595,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         context = new MongoDbTaskContext(config);
 
         // Cleanup database
-        TestHelper.cleanDatabase(primary(), "dbit");
+        TestHelper.cleanDatabase(mongo, "dbit");
 
         // Before starting the connector, add data to the databases ...
         storeDocuments("dbit", "restaurants1", "restaurants1.json");
@@ -1341,7 +1627,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         stopConnector();
     }
 
-    protected void verifyNotFromInitialSync(SourceRecord record) {
+    protected void verifyNotFromInitialSnapshot(SourceRecord record) {
         assertThat(record.sourceOffset().containsKey(SourceInfo.INITIAL_SYNC)).isFalse();
         Struct value = (Struct) record.value();
         assertThat(value.getStruct(Envelope.FieldName.SOURCE).getString(SourceInfo.SNAPSHOT_KEY)).isNull();
@@ -1368,19 +1654,14 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         assertThat(value.getString(Envelope.FieldName.OPERATION)).isEqualTo(expected.code());
     }
 
-    protected MongoPrimary primary() {
-        ReplicaSet replicaSet = ReplicaSet.parse(context.getConnectionContext().hosts());
-        return context.getConnectionContext().primaryFor(replicaSet, context.filters(), TestHelper.connectionErrorHandler(3));
-    }
-
     protected void storeDocuments(String dbName, String collectionName, String pathOnClasspath) {
-        primary().execute("storing documents", mongo -> {
+        try (var client = connect()) {
             Testing.debug("Storing in '" + dbName + "." + collectionName + "' documents loaded from from '" + pathOnClasspath + "'");
-            MongoDatabase db1 = mongo.getDatabase(dbName);
+            MongoDatabase db1 = client.getDatabase(dbName);
             MongoCollection<Document> coll = db1.getCollection(collectionName);
             coll.drop();
             storeDocuments(coll, pathOnClasspath);
-        });
+        }
     }
 
     protected void storeDocuments(MongoCollection<Document> collection, String pathOnClasspath) {
@@ -1393,15 +1674,15 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     }
 
     protected void storeDocumentsInTx(String dbName, String collectionName, String pathOnClasspath) {
-        primary().execute("storing documents", mongo -> {
+        try (var client = connect()) {
             Testing.debug("Storing in '" + dbName + "." + collectionName + "' documents loaded from from '" + pathOnClasspath + "'");
-            MongoDatabase db1 = mongo.getDatabase(dbName);
+            MongoDatabase db1 = client.getDatabase(dbName);
             MongoCollection<Document> coll = db1.getCollection(collectionName);
             coll.drop();
             db1.createCollection(collectionName);
-            final ClientSession session = mongo.startSession();
+            final ClientSession session = client.startSession();
 
-            MongoDatabase admin = mongo.getDatabase("admin");
+            MongoDatabase admin = client.getDatabase("admin");
             if (admin != null) {
                 int timeout = Integer.parseInt(System.getProperty("mongo.transaction.lock.request.timeout.ms", "1000"));
                 Testing.debug("Setting MongoDB transaction lock request timeout as '" + timeout + "ms'");
@@ -1411,7 +1692,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
             session.startTransaction();
             storeDocuments(session, coll, pathOnClasspath);
             session.commitTransaction();
-        });
+        }
     }
 
     protected void storeDocuments(ClientSession session, MongoCollection<Document> collection, String pathOnClasspath) {
@@ -1444,33 +1725,11 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         return results;
     }
 
-    @Test(expected = ConnectException.class)
-    public void shouldUseSSL() throws InterruptedException, IOException {
-        // Use the DB configuration to define the connector's configuration ...
-        config = TestHelper.getConfiguration().edit()
-                .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
-                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
-                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
-                .with(MongoDbConnectorConfig.MAX_FAILED_CONNECTIONS, 0)
-                .with(MongoDbConnectorConfig.SSL_ENABLED, true)
-                .with(MongoDbConnectorConfig.SERVER_SELECTION_TIMEOUT_MS, 2000)
-                .build();
-
-        // Set up the replication context for connections ...
-        context = new MongoDbTaskContext(config);
-
-        final MongoPrimary primary = primary();
-        primary.executeBlocking("Try SSL connection", mongo -> {
-            primary.stop();
-            mongo.getDatabase("dbit").listCollectionNames().first();
-        });
-    }
-
     @Test
     @FixFor("DBZ-1198")
     public void shouldEmitHeartbeatMessages() throws InterruptedException, IOException {
         // Use the DB configuration to define the connector's configuration ...
-        config = TestHelper.getConfiguration().edit()
+        config = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.mhb")
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
@@ -1481,10 +1740,10 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         context = new MongoDbTaskContext(config);
 
         // Cleanup database
-        TestHelper.cleanDatabase(primary(), "dbit");
+        TestHelper.cleanDatabase(mongo, "dbit");
 
-        primary().execute("create", mongo -> {
-            MongoDatabase db1 = mongo.getDatabase("dbit");
+        try (var client = connect()) {
+            MongoDatabase db1 = client.getDatabase("dbit");
             MongoCollection<Document> coll1 = db1.getCollection("mhb");
             coll1.drop();
             Document doc = Document.parse("{\"a\": 1, \"b\": 2}");
@@ -1493,7 +1752,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
 
             MongoCollection<Document> coll2 = db1.getCollection("nmhb");
             coll2.drop();
-        });
+        }
 
         // Start the connector ...
         start(MongoDbConnector.class, config);
@@ -1501,14 +1760,14 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         assertThat(records.allRecordsInOrder()).hasSize(1);
         assertThat(records.recordsForTopic("mongo.dbit.mhb")).hasSize(1);
         Thread.sleep(1000);
-        primary().execute("insert-monitored", mongo -> {
-            MongoDatabase db1 = mongo.getDatabase("dbit");
+        try (var client = connect()) {
+            MongoDatabase db1 = client.getDatabase("dbit");
             MongoCollection<Document> coll = db1.getCollection("mhb");
 
             Document doc = Document.parse("{\"a\": 2, \"b\": 2}");
             InsertOneOptions insertOptions = new InsertOneOptions().bypassDocumentValidation(true);
             coll.insertOne(doc, insertOptions);
-        });
+        }
 
         // Monitored collection event followed by heartbeat
         records = consumeRecordsByTopic(2);
@@ -1518,17 +1777,18 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         final Integer monitoredOrd = (Integer) monitoredOffset.get(SourceInfo.ORDER);
         assertThat(records.recordsForTopic("__debezium-heartbeat.mongo")).hasSize(1);
         final Map<String, ?> hbAfterMonitoredOffset = records.recordsForTopic("__debezium-heartbeat.mongo").get(0).sourceOffset();
-        assertThat(monitoredTs).isEqualTo((Integer) hbAfterMonitoredOffset.get(SourceInfo.TIMESTAMP));
-        assertThat(monitoredOrd).isEqualTo((Integer) hbAfterMonitoredOffset.get(SourceInfo.ORDER));
 
-        primary().execute("insert-nonmonitored", mongo -> {
-            MongoDatabase db1 = mongo.getDatabase("dbit");
+        // Change events are sent on empty cursor `getMore` batches. The first empty batch happens prior to the first monitored event
+        assertThat(monitoredTs).isGreaterThanOrEqualTo((Integer) hbAfterMonitoredOffset.get(SourceInfo.TIMESTAMP));
+
+        try (var client = connect()) {
+            MongoDatabase db1 = client.getDatabase("dbit");
             MongoCollection<Document> coll = db1.getCollection("nmhb");
 
             Document doc = Document.parse("{\"a\": 3, \"b\": 2}");
             InsertOneOptions insertOptions = new InsertOneOptions().bypassDocumentValidation(true);
             coll.insertOne(doc, insertOptions);
-        });
+        }
 
         // Heartbeat created by non-monitored collection event
         final int heartbeatRecordCount = 1;
@@ -1548,7 +1808,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     @Test
     @FixFor("DBZ-1292")
     public void shouldOutputRecordsInCloudEventsFormat() throws Exception {
-        config = TestHelper.getConfiguration().edit()
+        config = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
@@ -1556,7 +1816,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
 
         context = new MongoDbTaskContext(config);
 
-        TestHelper.cleanDatabase(primary(), "dbit");
+        TestHelper.cleanDatabase(mongo, "dbit");
         storeDocuments("dbit", "restaurants", "restaurants1.json");
         start(MongoDbConnector.class, config);
 
@@ -1584,14 +1844,14 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
 
     @Test
     public void shouldGenerateRecordForInsertEvent() throws Exception {
-        config = TestHelper.getConfiguration().edit()
+        config = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
                 .build();
 
         context = new MongoDbTaskContext(config);
 
-        TestHelper.cleanDatabase(primary(), "dbit");
+        TestHelper.cleanDatabase(mongo, "dbit");
 
         start(MongoDbConnector.class, config);
         waitForStreamingRunning("mongodb", "mongo");
@@ -1627,14 +1887,14 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
 
     @Test
     public void shouldGenerateRecordForUpdateEvent() throws Exception {
-        config = TestHelper.getConfiguration().edit()
+        config = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
                 .build();
 
         context = new MongoDbTaskContext(config);
 
-        TestHelper.cleanDatabase(primary(), "dbit");
+        TestHelper.cleanDatabase(mongo, "dbit");
 
         start(MongoDbConnector.class, config);
         waitForStreamingRunning("mongodb", "mongo");
@@ -1686,14 +1946,14 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
 
     @Test
     public void shouldGeneratorRecordForDeleteEvent() throws Exception {
-        config = TestHelper.getConfiguration().edit()
+        config = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
                 .build();
 
         context = new MongoDbTaskContext(config);
 
-        TestHelper.cleanDatabase(primary(), "dbit");
+        TestHelper.cleanDatabase(mongo, "dbit");
 
         start(MongoDbConnector.class, config);
         waitForStreamingRunning("mongodb", "mongo");
@@ -1725,7 +1985,6 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
 
         assertThat(value.schema()).isSameAs(deleteRecord.valueSchema());
         assertThat(value.getString(Envelope.FieldName.AFTER)).isNull();
-        assertThat(value.getString(MongoDbFieldName.PATCH)).isNull();
         assertThat(value.getString(Envelope.FieldName.OPERATION)).isEqualTo(Operation.DELETE.code());
         assertThat(value.getInt64(Envelope.FieldName.TIMESTAMP)).isGreaterThanOrEqualTo(timestamp.toEpochMilli());
 
@@ -1744,7 +2003,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     @Test
     @FixFor("DBZ-582")
     public void shouldGenerateRecordForDeleteEventWithoutTombstone() throws Exception {
-        config = TestHelper.getConfiguration().edit()
+        config = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
                 .with(MongoDbConnectorConfig.TOMBSTONES_ON_DELETE, false)
@@ -1752,7 +2011,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
 
         context = new MongoDbTaskContext(config);
 
-        TestHelper.cleanDatabase(primary(), "dbit");
+        TestHelper.cleanDatabase(mongo, "dbit");
 
         start(MongoDbConnector.class, config);
         waitForStreamingRunning("mongodb", "mongo");
@@ -1784,7 +2043,6 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
 
         assertThat(value.schema()).isSameAs(record.valueSchema());
         assertThat(value.getString(Envelope.FieldName.AFTER)).isNull();
-        assertThat(value.getString(MongoDbFieldName.PATCH)).isNull();
         assertThat(value.getString(Envelope.FieldName.OPERATION)).isEqualTo(Operation.DELETE.code());
         assertThat(value.getInt64(Envelope.FieldName.TIMESTAMP)).isGreaterThanOrEqualTo(timestamp.toEpochMilli());
 
@@ -1795,14 +2053,14 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
 
     @Test
     public void shouldGenerateRecordsWithCorrectlySerializedId() throws Exception {
-        config = TestHelper.getConfiguration().edit()
+        config = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
                 .build();
 
         context = new MongoDbTaskContext(config);
 
-        TestHelper.cleanDatabase(primary(), "dbit");
+        TestHelper.cleanDatabase(mongo, "dbit");
 
         start(MongoDbConnector.class, config);
         waitForStreamingRunning("mongodb", "mongo");
@@ -1833,7 +2091,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
                 .append("name", "Sally");
         insertDocuments("dbit", "c1", obj3);
 
-        final boolean decimal128Supported = TestHelper.decimal128Supported(primary(), "mongo");
+        final boolean decimal128Supported = TestHelper.decimal128Supported();
         if (decimal128Supported) {
             // Decimal128
             Document obj4 = new Document()
@@ -1858,6 +2116,36 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         }
     }
 
+    @Test
+    public void shouldSkipNonPipelineRecords() throws Exception {
+        config = TestHelper.getConfiguration(mongo).edit()
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
+                .with(MongoDbConnectorConfig.CURSOR_PIPELINE, "[{$match:{'fullDocument.name':'Dennis'}}]")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
+                .build();
+
+        context = new MongoDbTaskContext(config);
+
+        TestHelper.cleanDatabase(mongo, "dbit");
+
+        start(MongoDbConnector.class, config);
+        waitForStreamingRunning("mongodb", "mongo");
+
+        var coll = "c1";
+        insertDocuments("dbit", coll,
+                new Document().append("_id", 1).append("name", "Albert"),
+                new Document().append("_id", 2).append("name", "Bobby"),
+                new Document().append("_id", 3).append("name", "Clyde"),
+                new Document().append("_id", 4).append("name", "Dennis"));
+
+        var records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic("mongo.dbit" + "." + coll))
+                .hasSize(1)
+                .element(0)
+                .satisfies(record -> assertThat(Document.parse(((Struct) record.value()).getString(Envelope.FieldName.AFTER)))
+                        .isEqualTo(Document.parse("{_id:4,name:'Dennis'}")));
+    }
+
     private static void assertSourceRecordKeyFieldIsEqualTo(SourceRecord record, String fieldName, String expected) {
         final Struct struct = (Struct) record.key();
         assertThat(struct.get(fieldName)).isEqualTo(expected);
@@ -1865,14 +2153,14 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
 
     @Test
     public void shouldSupportDbRef2() throws Exception {
-        config = TestHelper.getConfiguration().edit()
+        config = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
                 .build();
 
         context = new MongoDbTaskContext(config);
 
-        TestHelper.cleanDatabase(primary(), "dbit");
+        TestHelper.cleanDatabase(mongo, "dbit");
 
         start(MongoDbConnector.class, config);
         waitForStreamingRunning("mongodb", "mongo");
@@ -1917,7 +2205,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
 
     @Test
     public void shouldReplicateContent() throws Exception {
-        config = TestHelper.getConfiguration().edit()
+        config = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbA.contacts")
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
                 .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.INITIAL)
@@ -1925,11 +2213,11 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
 
         context = new MongoDbTaskContext(config);
 
-        TestHelper.cleanDatabase(primary(), "dbA");
+        TestHelper.cleanDatabase(mongo, "dbA");
 
-        primary().execute("shouldCreateContactsDatabase", mongo -> {
+        try (var client = connect()) {
             // Create database and collection
-            MongoDatabase db = mongo.getDatabase("dbA");
+            MongoDatabase db = client.getDatabase("dbA");
             MongoCollection<Document> contacts = db.getCollection("contacts");
             InsertOneOptions options = new InsertOneOptions().bypassDocumentValidation(true);
             contacts.insertOne(new Document().append("name", "Jon Snow"), options);
@@ -1942,15 +2230,15 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
                 assertThat(cursor.tryNext().getString("name")).isEqualTo("Jon Snow");
                 assertThat(cursor.tryNext()).isNull();
             }
-        });
+        }
 
         // Start the connector
         start(MongoDbConnector.class, config);
         waitForStreamingRunning("mongodb", "mongo");
 
         final List<String> expectedNames = List.of("Jon Snow", "Sally Hamm");
-        primary().execute("shouldAddMoreRecordsToContacts", mongo -> {
-            MongoDatabase db = mongo.getDatabase("dbA");
+        try (var client = connect()) {
+            MongoDatabase db = client.getDatabase("dbA");
             MongoCollection<Document> contacts = db.getCollection("contacts");
             InsertOneOptions options = new InsertOneOptions().bypassDocumentValidation(true);
             contacts.insertOne(new Document().append("name", "Sally Hamm"), options);
@@ -1968,7 +2256,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
             }
 
             assertThat(foundNames).containsOnlyElementsOf(expectedNames);
-        });
+        }
 
         // Consume records
         List<SourceRecord> records = consumeRecordsByTopic(2).allRecordsInOrder();
@@ -2000,8 +2288,8 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
 
         // Remove Jon Snow
         AtomicReference<ObjectId> jonSnowId = new AtomicReference<>();
-        primary().execute("removeJohnSnow", mongo -> {
-            MongoDatabase db = mongo.getDatabase("dbA");
+        try (var client = connect()) {
+            MongoDatabase db = client.getDatabase("dbA");
             MongoCollection<Document> contacts = db.getCollection("contacts");
 
             Bson filter = com.mongodb.client.model.Filters.eq("name", "Jon Snow");
@@ -2016,7 +2304,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
             }
 
             contacts.deleteOne(filter);
-        });
+        }
 
         // Consume records, delete and tombstone
         records = consumeRecordsByTopic(2).allRecordsInOrder();
@@ -2070,7 +2358,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     @Test
     public void shouldNotReplicateSnapshot() throws Exception {
         // todo: this configuration causes NPE at MongoDbStreamingChangeEventSource.java:143
-        config = TestHelper.getConfiguration().edit()
+        config = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbA.contacts")
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
                 .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.NEVER)
@@ -2078,28 +2366,28 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
 
         context = new MongoDbTaskContext(config);
 
-        TestHelper.cleanDatabase(primary(), "dbA");
+        TestHelper.cleanDatabase(mongo, "dbA");
 
-        primary().execute("shouldCreateContactsDatabase", mongo -> {
+        try (var client = connect()) {
             // Create database and collection
-            MongoDatabase db = mongo.getDatabase("dbA");
+            MongoDatabase db = client.getDatabase("dbA");
             MongoCollection<Document> contacts = db.getCollection("contacts");
             InsertOneOptions options = new InsertOneOptions().bypassDocumentValidation(true);
             contacts.insertOne(new Document().append("name", "Jon Snow"), options);
             assertThat(db.getCollection("contacts").countDocuments()).isEqualTo(1);
-        });
+        }
 
         // Start the connector
         start(MongoDbConnector.class, config);
         waitForStreamingRunning("mongodb", "mongo");
 
-        primary().execute("shouldAddMoreRecordsToContacts", mongo -> {
-            MongoDatabase db = mongo.getDatabase("dbA");
+        try (var client = connect()) {
+            MongoDatabase db = client.getDatabase("dbA");
             MongoCollection<Document> contacts = db.getCollection("contacts");
             InsertOneOptions options = new InsertOneOptions().bypassDocumentValidation(true);
             contacts.insertOne(new Document().append("name", "Ygritte"), options);
             assertThat(db.getCollection("contacts").countDocuments()).isEqualTo(2);
-        });
+        }
 
         // Consume records
         List<SourceRecord> records = consumeRecordsByTopic(1).allRecordsInOrder();
@@ -2123,14 +2411,14 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     @Test
     @FixFor("DBZ-1880")
     public void shouldGenerateRecordForUpdateEventUsingLegacyV1SourceInfo() throws Exception {
-        config = TestHelper.getConfiguration().edit()
+        config = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
                 .build();
 
         context = new MongoDbTaskContext(config);
 
-        TestHelper.cleanDatabase(primary(), "dbit");
+        TestHelper.cleanDatabase(mongo, "dbit");
 
         start(MongoDbConnector.class, config);
         waitForStreamingRunning("mongodb", "mongo");
@@ -2181,12 +2469,12 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     }
 
     private void deleteDocument(String dbName, String collectionName, ObjectId objectId) {
-        primary().execute("delete", mongo -> {
-            MongoDatabase db = mongo.getDatabase(dbName);
+        try (var client = connect()) {
+            MongoDatabase db = client.getDatabase(dbName);
             MongoCollection<Document> coll = db.getCollection(collectionName);
             Document filter = Document.parse("{\"_id\": {\"$oid\": \"" + objectId + "\"}}");
             coll.deleteOne(filter);
-        });
+        }
     }
 
     private ObjectId toObjectId(String oid) {

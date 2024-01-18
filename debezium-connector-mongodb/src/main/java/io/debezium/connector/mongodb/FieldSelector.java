@@ -36,7 +36,7 @@ public final class FieldSelector {
      * This filter is designed to exclude or rename fields in a document.
      */
     @ThreadSafe
-    public static interface FieldFilter {
+    public interface FieldFilter {
 
         /**
          * Applies this filter to the given document to exclude or rename fields.
@@ -550,20 +550,13 @@ public final class FieldSelector {
 
         /**
          * Verifies whether a parameter representing path is the same or belongs under this path.
-         * 
+         *
          * @param other - the string representing the other path
          * @return - true if this path is the same or parent of the path passed
          */
         public boolean matchesPath(String other) {
             final String[] otherParts = excludeNumericItems(FieldSelectorBuilder.parseIntoParts(other, other, length -> length < 1, DOT));
-            if (fieldNodes.length <= other.length()) {
-                for (int i = 0; i < fieldNodes.length; i++) {
-                    if (!fieldNodes[i].equals(otherParts[i])) {
-                        return false;
-                    }
-                }
-            }
-            return true;
+            return startsWith(otherParts, fieldNodes);
         }
 
         @Override

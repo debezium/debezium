@@ -3,7 +3,7 @@
     <parent>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-parent</artifactId>
-        <version>2.1.0-SNAPSHOT</version>
+        <version>2.6.0-SNAPSHOT</version>
         <relativePath>../debezium-parent/pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -20,8 +20,8 @@
         <sqlserver.user>sa</sqlserver.user>
         <sqlserver.password>Password!</sqlserver.password>
         <sqlserver.dbname>testDB</sqlserver.dbname>
-        <docker.dbs>mcr.microsoft.com/mssql/server:2019-latest</docker.dbs>
-        <docker.filter>${docker.dbs}</docker.filter>
+        <docker.db>mcr.microsoft.com/mssql/server:2019-latest</docker.db>
+        <docker.filter>${docker.db}</docker.filter>
         <docker.skip>false</docker.skip>
         <docker.showLogs>true</docker.showLogs>
         <!-- Apicurion container properties -->
@@ -100,6 +100,37 @@
             <artifactId>kafka-connect-avro-converter</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>io.apicurio</groupId>
+            <artifactId>apicurio-registry-utils-converter</artifactId>
+            <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <artifactId>slf4j-jboss-logmanager</artifactId>
+                    <groupId>org.jboss.slf4j</groupId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-testing-testcontainers</artifactId>
+            <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.junit.platform</groupId>
+                    <artifactId>junit-platform-launcher</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.junit.jupiter</groupId>
+                    <artifactId>junit-jupiter</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>io.rest-assured</groupId>
+            <artifactId>rest-assured</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -114,7 +145,7 @@
                     <images>
                         <image>
                             <!-- A Docker image using the SQL Server -->
-                            <name>${docker.filter}</name>
+                            <name>${docker.db}</name>
                             <run>
                                 <namingStrategy>none</namingStrategy>
                                 <env>
@@ -226,6 +257,7 @@
                         <database.trustServerCertificate>true</database.trustServerCertificate>
                         <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
                     </systemPropertyVariables>
+                    <runOrder>${runOrder}</runOrder>
                 </configuration>
             </plugin>
             <plugin>
@@ -239,6 +271,9 @@
                             <goal>generate-api-spec</goal>
                         </goals>
                         <phase>prepare-package</phase>
+                        <configuration>
+                            <outputDirectory>${project.build.outputDirectory}/META-INF/resources/</outputDirectory>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
@@ -305,6 +340,16 @@
                             </execution>
                         </executions>
                     </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <version>${version.failsafe.plugin}</version>
+                        <configuration>
+                            <systemPropertyVariables>
+                                <isAssemblyProfileActive>true</isAssemblyProfileActive>
+                            </systemPropertyVariables>
+                        </configuration>
+                    </plugin>
                 </plugins>
             </build>
         </profile>
@@ -359,7 +404,7 @@
                 </plugins>
             </build>
             <properties>
-                <docker.filter>${docker.dbs},apicurio/apicurio-registry-mem:${version.apicurio}</docker.filter>
+                <docker.filter>${docker.db},apicurio/apicurio-registry-mem:${version.apicurio}</docker.filter>
             </properties>
         </profile>
     </profiles>

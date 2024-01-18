@@ -12,6 +12,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -84,8 +85,7 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
     @SingleThreadAccess("producer thread")
     private boolean buffering;
 
-    @SingleThreadAccess("producer thread")
-    private T bufferedEvent;
+    private final AtomicReference<T> bufferedEvent = new AtomicReference<>();
 
     private volatile RuntimeException producerException;
 
@@ -170,9 +170,7 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
         }
 
         if (buffering) {
-            final T newEvent = record;
-            record = bufferedEvent;
-            bufferedEvent = newEvent;
+            record = bufferedEvent.getAndSet(record);
             if (record == null) {
                 // Can happen only for the first coming event
                 return;
@@ -189,10 +187,10 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
      * @throws InterruptedException
      */
     public void flushBuffer(Function<T, T> recordModifier) throws InterruptedException {
-        assert buffering : "Unsuported for queues with disabled buffering";
-        if (bufferedEvent != null) {
-            doEnqueue(recordModifier.apply(bufferedEvent));
-            bufferedEvent = null;
+        assert buffering : "Unsupported for queues with disabled buffering";
+        T record = bufferedEvent.getAndSet(null);
+        if (record != null) {
+            doEnqueue(recordModifier.apply(record));
         }
     }
 
@@ -200,8 +198,15 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
      * Disable buffering for the queue
      */
     public void disableBuffering() {
-        assert bufferedEvent == null : "Buffer must be flushed";
+        assert bufferedEvent.get() == null : "Buffer must be flushed";
         buffering = false;
+    }
+
+    /**
+     * Enable buffering for the queue
+     */
+    public void enableBuffering() {
+        buffering = true;
     }
 
     protected void doEnqueue(T record) throws InterruptedException {
@@ -255,6 +260,7 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
             try {
                 this.lock.lock();
                 List<T> records = new ArrayList<>(Math.min(maxBatchSize, queue.size()));
+                throwProducerExceptionIfPresent();
                 while (drainRecords(records, maxBatchSize - records.size()) < maxBatchSize
                         && (maxQueueSizeInBytes == 0 || currentQueueSizeInBytes < maxQueueSizeInBytes)
                         && !timeout.expired()) {
@@ -296,8 +302,8 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
         }
         if (maxQueueSizeInBytes > 0) {
             for (int i = 0; i < recordsToDrain; i++) {
-                long objectSize = sizeInBytesQueue.poll();
-                currentQueueSizeInBytes -= objectSize;
+                Long objectSize = sizeInBytesQueue.poll();
+                currentQueueSizeInBytes -= (objectSize == null ? 0L : objectSize);
             }
         }
         records.addAll(Arrays.asList(drainedRecords));
@@ -332,5 +338,9 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
     @Override
     public long currentQueueSizeInBytes() {
         return currentQueueSizeInBytes;
+    }
+
+    public boolean isBuffered() {
+        return buffering;
     }
 }

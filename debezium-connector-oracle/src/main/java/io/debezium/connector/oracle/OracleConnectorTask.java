@@ -7,6 +7,7 @@ package io.debezium.connector.oracle;
 
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.source.SourceRecord;
@@ -14,22 +15,29 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.bean.StandardBeanNames;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.oracle.StreamingAdapter.TableNameCaseSensitivity;
+import io.debezium.document.DocumentReader;
+import io.debezium.jdbc.DefaultMainConnectionProvidingConnectionFactory;
 import io.debezium.jdbc.JdbcConfiguration;
+import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.notification.NotificationService;
+import io.debezium.pipeline.signal.SignalProcessor;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.TableId;
+import io.debezium.schema.SchemaFactory;
+import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Clock;
-import io.debezium.util.SchemaNameAdjuster;
 import io.debezium.util.Strings;
 
 public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleOffsetContext> {
@@ -40,6 +48,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
     private volatile OracleTaskContext taskContext;
     private volatile ChangeEventQueue<DataChangeEvent> queue;
     private volatile OracleConnection jdbcConnection;
+    private volatile OracleConnection beanRegistryJdbcConnection;
     private volatile ErrorHandler errorHandler;
     private volatile OracleDatabaseSchema schema;
 
@@ -51,19 +60,32 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
     @Override
     public ChangeEventSourceCoordinator<OraclePartition, OracleOffsetContext> start(Configuration config) {
         OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
-        TopicNamingStrategy topicNamingStrategy = connectorConfig.getTopicNamingStrategy(CommonConnectorConfig.TOPIC_NAMING_STRATEGY);
-        SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjustmentMode().createAdjuster();
+        TopicNamingStrategy<TableId> topicNamingStrategy = connectorConfig.getTopicNamingStrategy(CommonConnectorConfig.TOPIC_NAMING_STRATEGY);
+        SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
 
         JdbcConfiguration jdbcConfig = connectorConfig.getJdbcConfig();
-        jdbcConnection = new OracleConnection(jdbcConfig);
+        MainConnectionProvidingConnectionFactory<OracleConnection> connectionFactory = new DefaultMainConnectionProvidingConnectionFactory<>(
+                () -> new OracleConnection(jdbcConfig));
+        jdbcConnection = connectionFactory.mainConnection();
 
-        validateRedoLogConfiguration();
+        validateRedoLogConfiguration(connectorConfig);
 
-        OracleValueConverters valueConverters = new OracleValueConverters(connectorConfig, jdbcConnection);
+        OracleValueConverters valueConverters = connectorConfig.getAdapter().getValueConverter(connectorConfig, jdbcConnection);
         OracleDefaultValueConverter defaultValueConverter = new OracleDefaultValueConverter(valueConverters, jdbcConnection);
         TableNameCaseSensitivity tableNameCaseSensitivity = connectorConfig.getAdapter().getTableNameCaseSensitivity(jdbcConnection);
         this.schema = new OracleDatabaseSchema(connectorConfig, valueConverters, defaultValueConverter, schemaNameAdjuster,
                 topicNamingStrategy, tableNameCaseSensitivity);
+
+        // Manual Bean Registration
+        beanRegistryJdbcConnection = connectionFactory.newConnection();
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.CONFIGURATION, config);
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.CONNECTOR_CONFIG, connectorConfig);
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.DATABASE_SCHEMA, schema);
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.JDBC_CONNECTION, beanRegistryJdbcConnection);
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.VALUE_CONVERTER, valueConverters);
+
+        // Service providers
+        registerServiceProviders(connectorConfig.getServiceRegistry());
 
         Offsets<OraclePartition, OracleOffsetContext> previousOffsets = getPreviousOffsets(new OraclePartition.Provider(connectorConfig),
                 connectorConfig.getAdapter().getOffsetContextLoader());
@@ -86,9 +108,15 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
                 .loggingContextSupplier(() -> taskContext.configureLoggingContext(CONTEXT_NAME))
                 .build();
 
-        errorHandler = new OracleErrorHandler(connectorConfig, queue);
+        errorHandler = new OracleErrorHandler(connectorConfig, queue, errorHandler);
 
         final OracleEventMetadataProvider metadataProvider = new OracleEventMetadataProvider();
+
+        SignalProcessor<OraclePartition, OracleOffsetContext> signalProcessor = new SignalProcessor<>(
+                OracleConnector.class, connectorConfig, Map.of(),
+                getAvailableSignalChannels(),
+                DocumentReader.defaultReader(),
+                previousOffsets);
 
         EventDispatcher<OraclePartition, TableId> dispatcher = new EventDispatcher<>(
                 connectorConfig,
@@ -106,20 +134,26 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
                             final String sqlErrorId = exception.getMessage();
                             throw new DebeziumException("Could not execute heartbeat action query (Error: " + sqlErrorId + ")", exception);
                         }),
-                schemaNameAdjuster);
+                schemaNameAdjuster,
+                signalProcessor);
 
-        final OracleStreamingChangeEventSourceMetrics streamingMetrics = new OracleStreamingChangeEventSourceMetrics(taskContext, queue, metadataProvider,
-                connectorConfig);
+        final AbstractOracleStreamingChangeEventSourceMetrics streamingMetrics = connectorConfig.getAdapter()
+                .getStreamingMetrics(taskContext, queue, metadataProvider, connectorConfig);
+
+        NotificationService<OraclePartition, OracleOffsetContext> notificationService = new NotificationService<>(getNotificationChannels(),
+                connectorConfig, SchemaFactory.get(), dispatcher::enqueueNotification);
 
         ChangeEventSourceCoordinator<OraclePartition, OracleOffsetContext> coordinator = new ChangeEventSourceCoordinator<>(
                 previousOffsets,
                 errorHandler,
                 OracleConnector.class,
                 connectorConfig,
-                new OracleChangeEventSourceFactory(connectorConfig, jdbcConnection, errorHandler, dispatcher, clock, schema, jdbcConfig, taskContext, streamingMetrics),
+                new OracleChangeEventSourceFactory(connectorConfig, connectionFactory, errorHandler, dispatcher, clock, schema, jdbcConfig, taskContext,
+                        streamingMetrics),
                 new OracleChangeEventSourceMetricsFactory(streamingMetrics),
                 dispatcher,
-                schema);
+                schema, signalProcessor,
+                notificationService);
 
         coordinator.start(taskContext, this.queue, metadataProvider);
 
@@ -156,6 +190,15 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
             LOGGER.error("Exception while closing JDBC connection", e);
         }
 
+        try {
+            if (beanRegistryJdbcConnection != null) {
+                beanRegistryJdbcConnection.close();
+            }
+        }
+        catch (SQLException e) {
+            LOGGER.error("Exception while closing JDBC bean registry connection", e);
+        }
+
         if (schema != null) {
             schema.close();
         }
@@ -166,14 +209,25 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         return OracleConnectorConfig.ALL_FIELDS;
     }
 
-    private void validateRedoLogConfiguration() {
+    private void validateRedoLogConfiguration(OracleConnectorConfig config) {
         // Check whether the archive log is enabled.
         final boolean archivelogMode = jdbcConnection.isArchiveLogMode();
         if (!archivelogMode) {
-            throw new DebeziumException("The Oracle server is not configured to use a archive log LOG_MODE, which is "
-                    + "required for this connector to work properly. Change the Oracle configuration to use a "
-                    + "LOG_MODE=ARCHIVELOG and restart the connector.");
+            if (redoLogRequired(config)) {
+                throw new DebeziumException("The Oracle server is not configured to use a archive log LOG_MODE, which is "
+                        + "required for this connector to work properly. Change the Oracle configuration to use a "
+                        + "LOG_MODE=ARCHIVELOG and restart the connector.");
+            }
+            else {
+                LOGGER.warn("Failed the archive log check but continuing as redo log isn't strictly required");
+            }
         }
+    }
+
+    private static boolean redoLogRequired(OracleConnectorConfig config) {
+        // Check whether our connector configuration relies on the redo log and should fail fast if it isn't configured
+        return config.getSnapshotMode().shouldStream() ||
+                config.getLogMiningTransactionSnapshotBoundaryMode() == OracleConnectorConfig.TransactionSnapshotBoundaryMode.ALL;
     }
 
     private void validateAndLoadSchemaHistory(OracleConnectorConfig config, OraclePartition partition, OracleOffsetContext offset, OracleDatabaseSchema schema) {

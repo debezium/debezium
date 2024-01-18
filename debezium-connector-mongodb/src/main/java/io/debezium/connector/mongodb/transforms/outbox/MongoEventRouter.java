@@ -27,8 +27,8 @@ import io.debezium.common.annotation.Incubating;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState;
 import io.debezium.connector.mongodb.transforms.MongoDataConverter;
-import io.debezium.data.Envelope;
 import io.debezium.time.Timestamp;
+import io.debezium.transforms.ConnectRecordUtil;
 import io.debezium.transforms.outbox.EventRouterConfigDefinition;
 import io.debezium.transforms.outbox.EventRouterDelegate;
 
@@ -54,7 +54,7 @@ public class MongoEventRouter<R extends ConnectRecord<R>> implements Transformat
     private String fieldPayload;
     private boolean expandPayload;
 
-    private final ExtractField<R> afterExtractor = new ExtractField.Value<>();
+    private ExtractField<R> afterExtractor;
     private final EventRouterDelegate<R> eventRouterDelegate = new EventRouterDelegate<>();
 
     @Override
@@ -87,10 +87,7 @@ public class MongoEventRouter<R extends ConnectRecord<R>> implements Transformat
         expandPayload = config.getBoolean(MongoEventRouterConfigDefinition.EXPAND_JSON_PAYLOAD);
         fieldPayload = config.getString(MongoEventRouterConfigDefinition.FIELD_PAYLOAD);
 
-        final Map<String, String> afterExtractorConfig = new HashMap<>();
-        afterExtractorConfig.put("field", Envelope.FieldName.AFTER);
-
-        afterExtractor.configure(afterExtractorConfig);
+        afterExtractor = ConnectRecordUtil.extractAfterDelegate();
 
         // Convert configuration fields from MongoDB Outbox Event Router to SQL Outbox Event Router's
         Map<String, ?> convertedConfigMap = convertConfigMap(configMap);
@@ -103,7 +100,7 @@ public class MongoEventRouter<R extends ConnectRecord<R>> implements Transformat
      *
      * @param originalRecord an original Record from MongoDB Connector
      * @return a new Record of which <i>after</i> field is replaced with new one
-     * @throws Exception if <i>after</i> field of original Record is not an expected form
+     * @throws IllegalStateException if <i>after</i> field of original Record is not an expected form
      */
     private R expandAfterField(R originalRecord) throws IllegalStateException {
         final R afterRecord = afterExtractor.apply(originalRecord);

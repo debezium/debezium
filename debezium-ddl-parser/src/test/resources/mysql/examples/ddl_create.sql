@@ -12,6 +12,8 @@ GET STACKED DIAGNOSTICS CONDITION 1 errno = MYSQL_ERRNO, msg = MESSAGE_TEXT;
 GET CURRENT DIAGNOSTICS errcount = NUMBER;
 -- Create User
 CREATE USER 'test_crm_debezium'@'%' IDENTIFIED WITH 'mysql_native_password' AS '*6BB4837EB74329105EE4568DDA7DC67ED2CA2AD9' PASSWORD EXPIRE NEVER COMMENT '-';
+CREATE USER 'jim'@'localhost' ATTRIBUTE '{"fname": "James", "lname": "Scott", "phone": "123-456-7890"}';
+CREATE USER 'jim' @'localhost' ATTRIBUTE '{"fname": "James", "lname": "Scott", "phone": "123-456-7890"}';
 -- Create Table
 create table new_t  (like t1);
 create table log_table(row varchar(512));
@@ -30,6 +32,7 @@ create table table_with_character_set_eq (id int, data varchar(50)) character se
 create table table_with_character_set (id int, data varchar(50)) character set default;
 create table table_with_visible_index (id int, data varchar(50), UNIQUE INDEX `data_UNIQUE` (`data` ASC) VISIBLE);
 create table table_with_index (id int, data varchar(50), UNIQUE INDEX `data_UNIQUE` (`data` ASC));
+create table table_with_keyword_as_column_name (geometry int, national int);
 create table transactional_table(name varchar(255), class_id int, id int) transactional=1;
 create table transactional(name varchar(255), class_id int, id int);
 create table add_test(col1 varchar(255), col2 int, col3 int);
@@ -72,6 +75,14 @@ CREATE TABLE table_items_with_subpartitions (id INT, purchased DATE)
             SUBPARTITION s5
         )
     );
+
+CREATE TABLE `TABLE1` (
+`COL1` INT(10) UNSIGNED NOT NULL,
+`COL2` VARCHAR(32) NOT NULL,
+`COL3` ENUM (`VAR1`,`VAR2`, `VAR3`) NOT NULL,
+PRIMARY KEY (`COL1`, `COL2`, `COL3`),
+CLUSTERING KEY `CLKEY1` (`COL3`, `COL2`))
+ENGINE=TOKUDB DEFAULT CHARSET=CP1251;
 
 CREATE TABLE positions_rollover (
     id bigint(20) NOT NULL AUTO_INCREMENT,
@@ -171,6 +182,41 @@ GROUP_ID int(11) not null,
 DATE_ADD datetime DEFAULT NULL,
 primary key (USER_ID, GROUP_ID)
 );
+
+CREATE TABLE `EmailTemplates` (
+  `EmailID` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `AccountID` BIGINT(12) unsigned NOT NULL DEFAULT 0,
+  `WebsiteTemplateTitle` VARCHAR(100) NOT NULL,
+  `Subject` VARCHAR(128) NOT NULL,
+  `MailBody` TEXT NOT NULL,
+  `MailHtmlBody` TEXT DEFAULT NULL,
+  PRIMARY KEY (`EmailID`),
+  KEY `ixAccount` (`AccountID`) USING BTREE
+) ENGINE=INNODB AUTO_INCREMENT=5396 DEFAULT CHARSET=LATIN1 ROW_FORMAT=DYNAMIC WITH SYSTEM VERSIONING;
+
+CREATE TABLE T1 (
+ID INT NOT NULL,
+NAME VARCHAR(255),
+UNIQUE KEY(ID)
+) PARTITION BY KEY() PARTITIONS 2;
+CREATE TABLE T1 (C NATIONAL CHAR);
+CREATE TABLE T1 (C GEOMETRY SRID 0);
+CREATE TABLE T1 (C POINT SRID 0);
+CREATE TABLE T1 (C LINESTRING SRID 0);
+CREATE TABLE T1 (C POLYGON SRID 0);
+CREATE TABLE T1 (C MULTIPOINT SRID 0);
+CREATE TABLE T1 (C MULTILINESTRING SRID 0);
+CREATE TABLE T1 (C MULTIPOLYGON SRID 0);
+CREATE TABLE T1 (C GEOMETRYCOLLECTION SRID 0);
+CREATE TABLE T1 (ID BIGINT, S VARCHAR(100), I INT, CONSTRAINT ABC CHECK (ID < 5) ENFORCED);
+CREATE TABLE T1 (ID BIGINT REFERENCES TT (TT_ID) ON DELETE SET DEFAULT);
+CREATE TABLE T1 (ID BIGINT REFERENCES TT (TT_ID) ON UPDATE SET DEFAULT);
+
+CREATE TABLE `AAA` ( `UID` UUID NOT NULL)
+ENGINE=InnoDB DEFAULT CHARSET=UTF8MB4 COLLATE=UTF8MB4_GENERAL_CI;
+CREATE TABLE `test_table\\`(id INT(11) NOT NULL, PRIMARY KEY (`id`)) ENGINE = INNODB;
+CREATE TABLE `\\test_table`(id INT(11) NOT NULL, PRIMARY KEY (`id`)) ENGINE = INNODB;
+CREATE TABLE `\\test\\_table\\`(id INT(11) NOT NULL, PRIMARY KEY (`id`)) ENGINE = INNODB;
 #end
 #begin
 -- Rename table
@@ -226,6 +272,8 @@ create index ix_add_test_col1 on add_test(col1) comment 'test index' using btree
 #begin
 create index myindex on t1(col1) comment 'test index' comment 'some test' using btree;
 create or replace index myindex on t1(col1) comment 'test index' comment 'some test' using btree;
+CREATE INDEX `idx_custom_field_30c4f4a7c529ccf0825b2fac732bebfd843ed764` ON `deals` ((cast(json_unquote(json_extract(`custom_fields`,_utf8mb4'$."30c4f4a7c529ccf0825b2fac732bebfd843ed764".value')) as double)));
+CREATE INDEX `idx_custom_field_d3bb7ad91ba729aaa20df0af037cb7ed8ce3ffc8` ON `deals` ((cast(json_unquote(json_extract(`custom_fields`,_utf8mb4'$."d3bb7ad91ba729aaa20df0af037cb7ed8ce3ffc8".value')) as float)));
 #end
 #begin
 -- Create logfile group
@@ -303,7 +351,7 @@ create or replace trigger trg_my1 before delete on test.t1 for each row begin in
 create or replace view my_view1 as select 1 union select 2 limit 0,5;
 create algorithm = merge view my_view2(col1, col2) as select * from t2 with check option;
 create or replace definer = 'ivan'@'%' view my_view3 as select count(*) from t3;
-create or replace definer = current_user sql security invoker view my_view4(c1, 1c, _, c1_2) 
+create or replace definer = current_user sql security invoker view my_view4(c1, 1c, _, c1_2)
 	as select * from  (t1 as tt1, t2 as tt2) inner join t1 on t1.col1 = tt1.col1;
 create view v_some_table as (with a as (select * from some_table) select * from a);
 
@@ -331,7 +379,7 @@ RETURN
 #end
 #begin
 -- Use UTC_TIMESTAMP without parenthesis
-CREATE FUNCTION IF NOT EXISTS myfunc(IN a INT) RETURNS INT
+CREATE FUNCTION IF NOT EXISTS myfunc(a INT) RETURNS INT
 BEGIN
     DECLARE result INT;
     SET result = UTC_TIMESTAMP;
@@ -402,7 +450,8 @@ END -- //-- delimiter ;
 -- Create procedure
 -- delimiter //
 CREATE PROCEDURE doiterate(p1 INT)
-label2:BEGIN
+-- label which can be parsed as a beginning of IPv6 address
+aaa:BEGIN
   label1:LOOP
     SET p1 = p1 + 1;
     IF p1 < 10 THEN ITERATE label1; END IF;
@@ -537,6 +586,34 @@ END IF;
 END
 #end
 #begin
+CREATE PROCEDURE test_union()
+BEGIN
+(SELECT id FROM test_auto_inc)
+UNION ALL
+SELECT id FROM test_auto_inc;
+END
+#end
+#begin
+CREATE PROCEDURE test_union()
+BEGIN
+(SELECT id FROM test_auto_inc)
+UNION ALL
+SELECT id FROM test_auto_inc
+UNION ALL
+SELECT id FROM test_auto_inc ORDER BY id;
+END
+#end
+#begin
+CREATE PROCEDURE test_union()
+BEGIN
+(SELECT id FROM test_auto_inc)
+UNION ALL
+(SELECT id FROM test_auto_inc)
+UNION ALL
+SELECT id FROM test_auto_inc ORDER BY id;
+END
+#end
+#begin
 -- Create Role
 create role 'RL_COMPLIANCE_NSA';
 create role if not exists 'RL_COMPLIANCE_NSA';
@@ -612,4 +689,62 @@ CREATE SEQUENCE `seq_8b4d1cdf-377e-4021-aef3-f7c9846903fc` INCREMENT BY 1 START 
 -- From MariaDB 10.1.2, pre-query variables are supported
 -- src: https://mariadb.com/kb/en/set-statement/
 SET STATEMENT max_statement_time=60 FOR CREATE TABLE some_table (val int);
+#end
+
+#begin
+-- Table Value Constructors
+-- https://dev.mysql.com/doc/refman/8.0/en/values.html
+CREATE OR REPLACE VIEW view_name AS
+WITH my_values(val1, val2) AS (
+    VALUES (1, 'One'),
+           (2, 'Two')
+)
+SELECT v.val1, v.val2 FROM my_values v;
+#end
+
+#begin
+CREATE DEFINER=`gpuser`@`%` PROCEDURE `test_parse_array` (IN val INT)
+BEGIN
+DECLARE array VARCHAR(50);
+
+SELECT 1;
+
+END
+#end
+
+#begin
+CREATE DEFINER=`peuser`@`%` PROCEDURE `test_utf`()
+BEGIN
+    SET @Ν_greece := 1, @N_latin := 'test';
+SELECT
+    @Ν_greece
+     ,@N_latin;
+END
+#end
+
+#begin
+CREATE PROCEDURE TEST_UPDATE()
+BEGIN
+    UPDATE TEST_AUTO_INC AI
+        JOIN TEST_JOIN_LIMIT JL ON JL.ID = AI.ID
+    SET AI.COL_1 = NULL
+    LIMIT 500;
+END
+#end
+
+#begin
+CREATE DEFINER=`PEUSER`@`%` PROCEDURE `SANDBOX`.`TEST_UNION`( )
+BEGIN
+SELECT ID ,SUM(COL_1) AS SUM_COL_1
+FROM (
+    (SELECT ID ,COL_1 FROM TEST_AUTO_INC
+    UNION ALL
+    SELECT ID ,COL_1 FROM TEST_AUTO_INC TAI)
+    UNION ALL
+    (SELECT ID ,COL_1 FROM TEST_AUTO_INC TAI)
+)SS
+GROUP BY 1
+ORDER BY 1
+;
+END
 #end

@@ -12,6 +12,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.time.Duration;
 import java.util.Collections;
+import java.util.List;
 
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -157,7 +158,7 @@ public class OracleConnectorConfigTest {
                 Configuration.create()
                         .with(CommonConnectorConfig.TOPIC_PREFIX, "myserver")
                         .build());
-        assertEquals(connectorConfig.getQueryFetchSize(), 0);
+        assertEquals(connectorConfig.getQueryFetchSize(), 10_000);
     }
 
     @Test
@@ -166,9 +167,9 @@ public class OracleConnectorConfigTest {
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(
                 Configuration.create()
                         .with(CommonConnectorConfig.TOPIC_PREFIX, "myserver")
-                        .with(OracleConnectorConfig.QUERY_FETCH_SIZE, 10_000)
+                        .with(OracleConnectorConfig.QUERY_FETCH_SIZE, 15_000)
                         .build());
-        assertEquals(connectorConfig.getQueryFetchSize(), 10_000);
+        assertEquals(connectorConfig.getQueryFetchSize(), 15_000);
     }
 
     @Test
@@ -201,6 +202,32 @@ public class OracleConnectorConfigTest {
 
         config = Configuration.create().with(transactionRetentionField, -1).build();
         assertThat(config.validateAndRecord(Collections.singletonList(transactionRetentionField), LOGGER::error)).isFalse();
+    }
+
+    @Test
+    @FixFor("DBZ-6355")
+    public void testTransactionRetentionMs() throws Exception {
+        final Field transactionRetentionField = OracleConnectorConfig.LOG_MINING_TRANSACTION_RETENTION_MS;
+
+        Configuration config = Configuration.create()
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "myserver")
+                .with(transactionRetentionField, 10800000L)
+                .build();
+
+        assertThat(config.validateAndRecord(Collections.singletonList(transactionRetentionField), LOGGER::error)).isTrue();
+
+        OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
+        assertThat(connectorConfig.getLogMiningTransactionRetention()).isEqualTo(Duration.ofHours(3));
+
+        config = Configuration.create().with(transactionRetentionField, 0).build();
+        assertThat(config.validateAndRecord(Collections.singletonList(transactionRetentionField), LOGGER::error)).isTrue();
+
+        config = Configuration.create().with(transactionRetentionField, -1).build();
+        assertThat(config.validateAndRecord(Collections.singletonList(transactionRetentionField), LOGGER::error)).isFalse();
+
+        config = Configuration.create().with(transactionRetentionField, 900000L).build();
+        connectorConfig = new OracleConnectorConfig(config);
+        assertThat(connectorConfig.getLogMiningTransactionRetention()).isEqualTo(Duration.ofMinutes(15));
     }
 
     @Test
@@ -290,5 +317,26 @@ public class OracleConnectorConfigTest {
         // Test rac.nodes using combination of with/without port and no database.port
         config = Configuration.create().with(racNodes, "1.2.3.4,1.2.3.5:1522").build();
         assertThat(config.validateAndRecord(Collections.singletonList(racNodes), LOGGER::error)).isFalse();
+    }
+
+    @Test
+    @FixFor("DBZ-2543")
+    public void testOpenLogReplicatorConfigFailureWhenNotProvidingRequiredOptions() throws Exception {
+        List<Field> fields = List.of(OracleConnectorConfig.OLR_SOURCE, OracleConnectorConfig.OLR_HOST, OracleConnectorConfig.OLR_PORT);
+        Configuration config = Configuration.create().with(OracleConnectorConfig.CONNECTOR_ADAPTER, "olr").build();
+        assertThat(config.validateAndRecord(fields, LOGGER::error)).isFalse();
+    }
+
+    @Test
+    @FixFor("DBZ-2543")
+    public void testOpenLogReplicatorConfig() throws Exception {
+        List<Field> fields = List.of(OracleConnectorConfig.OLR_SOURCE, OracleConnectorConfig.OLR_HOST, OracleConnectorConfig.OLR_PORT);
+        Configuration config = Configuration.create()
+                .with(OracleConnectorConfig.CONNECTOR_ADAPTER, "olr")
+                .with(OracleConnectorConfig.OLR_SOURCE, "oracle")
+                .with(OracleConnectorConfig.OLR_HOST, "localhost")
+                .with(OracleConnectorConfig.OLR_PORT, "9000")
+                .build();
+        assertThat(config.validateAndRecord(fields, LOGGER::error)).isTrue();
     }
 }

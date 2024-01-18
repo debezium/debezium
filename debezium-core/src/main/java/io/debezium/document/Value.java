@@ -23,7 +23,7 @@ import io.debezium.annotation.Immutable;
 @Immutable
 public interface Value extends Comparable<Value> {
 
-    static enum Type {
+    enum Type {
         NULL,
         STRING,
         BOOLEAN,
@@ -407,7 +407,7 @@ public interface Value extends Comparable<Value> {
     }
 
     @FunctionalInterface
-    static interface NullHandler {
+    interface NullHandler {
         void call();
     }
 

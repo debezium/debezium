@@ -25,8 +25,8 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchemaBuilder;
 import io.debezium.relational.Tables;
 import io.debezium.schema.SchemaChangeEvent;
+import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.spi.topic.TopicNamingStrategy;
-import io.debezium.util.SchemaNameAdjuster;
 
 import oracle.jdbc.OracleTypes;
 
@@ -56,7 +56,7 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
                         schemaNameAdjuster,
                         connectorConfig.customConverterRegistry(),
                         connectorConfig.getSourceInfoStructMaker().schema(),
-                        connectorConfig.getSanitizeFieldNames(),
+                        connectorConfig.getFieldNamer(),
                         false),
                 TableNameCaseSensitivity.INSENSITIVE.equals(tableNameCaseSensitivity),
                 connectorConfig.getKeyMapper());
@@ -101,7 +101,7 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
             default:
         }
 
-        if (!schemaHistory.storeOnlyCapturedTables() ||
+        if (!storeOnlyCapturedTables() ||
                 schemaChange.getTables().stream().map(Table::id).anyMatch(getTableFilter()::isIncluded)) {
             LOGGER.debug("Recorded DDL statements for database '{}': {}", schemaChange.getDatabase(), schemaChange.getDdl());
             record(schemaChange, schemaChange.getTableChanges());
@@ -155,7 +155,7 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
      * Returns whether the specified value is the unavailable value placeholder for an LOB column.
      */
     public boolean isColumnUnavailableValuePlaceholder(Column column, Object value) {
-        if (isClobColumn(column)) {
+        if (isClobColumn(column) || isXmlColumn(column)) {
             return valueConverters.getUnavailableValuePlaceholderString().equals(value);
         }
         else if (isBlobColumn(column)) {
@@ -169,6 +169,13 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
      */
     public static boolean isLobColumn(Column column) {
         return isClobColumn(column) || isBlobColumn(column);
+    }
+
+    /**
+     * Return whether the provided relational column model is a XML data type.
+     */
+    public static boolean isXmlColumn(Column column) {
+        return column.jdbcType() == OracleTypes.SQLXML;
     }
 
     /**
@@ -192,6 +199,7 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
                 case OracleTypes.CLOB:
                 case OracleTypes.NCLOB:
                 case OracleTypes.BLOB:
+                case OracleTypes.SQLXML:
                     lobColumns.add(column);
                     break;
             }

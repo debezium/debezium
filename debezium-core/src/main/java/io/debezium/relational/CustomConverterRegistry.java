@@ -114,6 +114,11 @@ public class CustomConverterRegistry {
                 public Object defaultValue() {
                     return defaultValue;
                 }
+
+                @Override
+                public String charsetName() {
+                    return column.charsetName();
+                }
             }, (fieldSchema, converter) -> definition.set(new ConverterDefinition<>(fieldSchema, converter)));
 
             if (definition.get() != null) {

@@ -30,13 +30,21 @@ import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import io.debezium.config.CommonConnectorConfig;
+import io.debezium.config.CommonConnectorConfig.FieldNameAdjustmentMode;
 import io.debezium.config.Configuration;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.data.Envelope;
+import io.debezium.schema.FieldNameSelector;
 import io.debezium.time.MicroTimestamp;
 import io.debezium.time.NanoTimestamp;
 import io.debezium.time.Timestamp;
+import io.debezium.transforms.ConnectRecordUtil;
 import io.debezium.transforms.SmtManager;
+import io.debezium.transforms.outbox.EventRouterConfigDefinition.AdditionalField;
+import io.debezium.transforms.outbox.EventRouterConfigDefinition.AdditionalFieldPlacement;
+import io.debezium.transforms.outbox.EventRouterConfigDefinition.InvalidOperationBehavior;
+import io.debezium.transforms.outbox.EventRouterConfigDefinition.JsonPayloadNullFieldBehavior;
 import io.debezium.transforms.tracing.ActivateTracingSpan;
 import io.debezium.util.BoundedConcurrentHashMap;
 
@@ -48,7 +56,7 @@ import io.debezium.util.BoundedConcurrentHashMap;
 public class EventRouterDelegate<R extends ConnectRecord<R>> {
 
     @FunctionalInterface
-    public static interface RecordConverter<R> {
+    public interface RecordConverter<R> {
         R convert(R record);
     }
 
@@ -56,9 +64,9 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
 
     private static final String ENVELOPE_PAYLOAD = "payload";
 
-    private final ExtractField<R> afterExtractor = new ExtractField.Value<>();
+    private ExtractField<R> afterExtractor;
     private final RegexRouter<R> regexRouter = new RegexRouter<>();
-    private EventRouterConfigDefinition.InvalidOperationBehavior invalidOperationBehavior;
+    private InvalidOperationBehavior invalidOperationBehavior;
     private final ActivateTracingSpan<R> tracingSmt = new ActivateTracingSpan<>();
 
     private final Map<String, EventRouterConfigurationProvider> configurationProviders = new HashMap<>();
@@ -67,14 +75,14 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
     private String fieldSchemaVersion;
     private boolean routeTombstoneOnEmptyPayload;
 
-    private List<EventRouterConfigDefinition.AdditionalField> additionalFields;
+    private List<AdditionalField> additionalFields;
+    private boolean additionalFieldsErrorOnMissing;
 
     private final Map<Integer, Schema> versionedValueSchema = new HashMap<>();
     private BoundedConcurrentHashMap<Schema, Schema> payloadSchemaCache;
 
     private boolean onlyHeadersInOutputMessage = false;
 
-    private EventRouterConfigDefinition.JsonPayloadNullFieldBehavior jsonPayloadNullFieldBehavior;
     private boolean expandJsonPayload;
     private JsonSchemaData jsonSchemaData;
 
@@ -112,7 +120,7 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
 
         r = recordConverter.convert(r);
 
-        if (ActivateTracingSpan.isOpenTracingAvailable()) {
+        if (ActivateTracingSpan.isOpenTelemetryAvailable()) {
             tracingSmt.apply(r);
         }
 
@@ -180,6 +188,9 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
         AtomicReference<Integer> partition = new AtomicReference<>();
 
         additionalFields.forEach((additionalField -> {
+            if (!additionalFieldsErrorOnMissing && eventStruct.schema().field(additionalField.getField()) == null) {
+                return;
+            }
             switch (additionalField.getPlacement()) {
                 case ENVELOPE:
                     structValue.put(
@@ -312,13 +323,13 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
     }
 
     public void close() {
-        if (ActivateTracingSpan.isOpenTracingAvailable()) {
+        if (ActivateTracingSpan.isOpenTelemetryAvailable()) {
             tracingSmt.close();
         }
     }
 
     public void configure(Map<String, ?> configMap) {
-        if (ActivateTracingSpan.isOpenTracingAvailable()) {
+        if (ActivateTracingSpan.isOpenTelemetryAvailable()) {
             tracingSmt.configure(configMap);
             if (!configMap.containsKey(ActivateTracingSpan.TRACING_CONTEXT_FIELD_REQUIRED.name())) {
                 tracingSmt.setRequireContextField(true);
@@ -330,15 +341,18 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
         io.debezium.config.Field.Set allFields = io.debezium.config.Field.setOf(EventRouterConfigDefinition.CONFIG_FIELDS);
         smtManager.validate(config, allFields);
 
-        invalidOperationBehavior = EventRouterConfigDefinition.InvalidOperationBehavior.parse(
+        invalidOperationBehavior = InvalidOperationBehavior.parse(
                 config.getString(EventRouterConfigDefinition.OPERATION_INVALID_BEHAVIOR));
 
-        jsonPayloadNullFieldBehavior = EventRouterConfigDefinition.JsonPayloadNullFieldBehavior.parse(
+        JsonPayloadNullFieldBehavior jsonPayloadNullFieldBehavior = JsonPayloadNullFieldBehavior.parse(
                 config.getString(EventRouterConfigDefinition.TABLE_JSON_PAYLOAD_NULL_BEHAVIOR));
         expandJsonPayload = config.getBoolean(EventRouterConfigDefinition.EXPAND_JSON_PAYLOAD);
         if (expandJsonPayload) {
             objectMapper = new ObjectMapper();
-            jsonSchemaData = new JsonSchemaData(jsonPayloadNullFieldBehavior);
+            FieldNameAdjustmentMode fieldNameAdjustmentMode = FieldNameAdjustmentMode.parse(
+                    config.getString(CommonConnectorConfig.FIELD_NAME_ADJUSTMENT_MODE));
+            jsonSchemaData = new JsonSchemaData(jsonPayloadNullFieldBehavior,
+                    FieldNameSelector.defaultNonRelationalSelector(fieldNameAdjustmentMode.createAdjuster()));
         }
 
         // Configure the default configuration provider
@@ -359,15 +373,14 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
 
         regexRouter.configure(regexRouterConfig);
 
-        final Map<String, String> afterExtractorConfig = new HashMap<>();
-        afterExtractorConfig.put("field", Envelope.FieldName.AFTER);
-
-        afterExtractor.configure(afterExtractorConfig);
+        afterExtractor = ConnectRecordUtil.extractAfterDelegate();
 
         additionalFields = parseAdditionalFieldsConfig(config);
-        onlyHeadersInOutputMessage = !additionalFields.stream().anyMatch(field -> field.getPlacement() == EventRouterConfigDefinition.AdditionalFieldPlacement.ENVELOPE);
+        additionalFieldsErrorOnMissing = config.getBoolean(EventRouterConfigDefinition.FIELDS_ADDITIONAL_ERROR_ON_MISSING);
 
-        payloadSchemaCache = new BoundedConcurrentHashMap(10000, 10, BoundedConcurrentHashMap.Eviction.LRU);
+        onlyHeadersInOutputMessage = additionalFields.stream().noneMatch(field -> field.getPlacement() == AdditionalFieldPlacement.ENVELOPE);
+
+        payloadSchemaCache = new BoundedConcurrentHashMap<>(10000, 10, BoundedConcurrentHashMap.Eviction.LRU);
     }
 
     private Schema getValueSchema(Schema payloadSchema, Schema debeziumEventSchema, String routedTopic) {
@@ -399,7 +412,7 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
 
         // Add additional fields while keeping the schema inherited from Debezium based on the table column type
         additionalFields.forEach((additionalField -> {
-            if (additionalField.getPlacement() == EventRouterConfigDefinition.AdditionalFieldPlacement.ENVELOPE) {
+            if (additionalField.getPlacement() == AdditionalFieldPlacement.ENVELOPE) {
                 schemaBuilder.field(
                         additionalField.getAlias(),
                         debeziumEventSchema.field(additionalField.getField()).schema());

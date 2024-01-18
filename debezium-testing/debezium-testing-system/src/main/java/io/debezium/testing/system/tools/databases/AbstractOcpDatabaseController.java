@@ -5,22 +5,24 @@
  */
 package io.debezium.testing.system.tools.databases;
 
-import static io.debezium.testing.system.tools.OpenShiftUtils.isRunningFromOcp;
-import static io.debezium.testing.system.tools.WaitConditions.scaled;
-import static java.util.concurrent.TimeUnit.MINUTES;
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.awaitility.Awaitility.await;
-
+import java.io.OutputStream;
+import java.io.PipedInputStream;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.testing.system.tools.OpenShiftUtils;
-import io.fabric8.kubernetes.api.model.LoadBalancerIngress;
+import io.debezium.testing.system.tools.WaitConditions;
+import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
+import io.fabric8.kubernetes.client.dsl.ExecWatch;
+import io.fabric8.kubernetes.client.dsl.PodResource;
+import io.fabric8.kubernetes.client.dsl.TtyExecErrorChannelable;
 import io.fabric8.openshift.client.OpenShiftClient;
 
 /**
@@ -48,14 +50,6 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
         this.ocpUtils = new OpenShiftUtils(ocp);
     }
 
-    private Service getLoadBalancedService() {
-        return ocp
-                .services()
-                .inNamespace(project)
-                .withName(deployment.getMetadata().getName() + "-lb")
-                .get();
-    }
-
     private Service getService() {
         return ocp
                 .services()
@@ -64,23 +58,10 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
                 .get();
     }
 
-    private void awaitIngress() {
-        LOGGER.info("Waiting for LoadBalancerIngress to be available");
-        await()
-                .atMost(scaled(2), MINUTES)
-                .pollInterval(3, SECONDS)
-                .until(() -> getLoadBalancedService().getStatus().getLoadBalancer().getIngress().size() > 0);
-    }
-
     @Override
     public void reload() throws InterruptedException {
         LOGGER.info("Removing all pods of '" + name + "' deployment in namespace '" + project + "'");
-        ocp.apps().deployments().inNamespace(project).withName(name).scale(0);
-        await()
-                .atMost(scaled(30), SECONDS)
-                .pollDelay(5, SECONDS)
-                .pollInterval(3, SECONDS)
-                .until(() -> ocp.pods().inNamespace(project).list().getItems().isEmpty());
+        ocpUtils.scaleDeploymentToZero(deployment);
         LOGGER.info("Restoring all pods of '" + name + "' deployment in namespace '" + project + "'");
         ocp.apps().deployments().inNamespace(project).withName(name).scale(1);
     }
@@ -92,34 +73,62 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
 
     @Override
     public int getDatabasePort() {
-        return getService().getSpec().getPorts().stream()
-                .filter(p -> p.getName().equals("db"))
-                .findAny()
-                .get().getPort();
+        return getOriginalDatabasePort();
     }
 
     @Override
     public String getPublicDatabaseHostname() {
-        if (isRunningFromOcp()) {
-            LOGGER.info("Running from OCP, using internal database hostname");
-            return getDatabaseHostname();
-        }
-        awaitIngress();
-
-        LoadBalancerIngress ingres = getLoadBalancedService().getStatus().getLoadBalancer().getIngress().get(0);
-        String address = (ingres.getHostname() != null) ? ingres.getHostname() : ingres.getIp();
-
-        return Objects.requireNonNull(address, "Unable to retrieve hostname or ip for service ingres");
+        return getDatabaseHostname();
     }
 
     @Override
     public int getPublicDatabasePort() {
-        if (isRunningFromOcp()) {
-            LOGGER.info("Running from OCP, using internal database port");
-            return getDatabasePort();
+        return getDatabasePort();
+    }
+
+    @Override
+    public void initialize() throws InterruptedException {
+        LOGGER.info("Removed port forward");
+    }
+
+    protected void executeInitCommand(Deployment deployment, String... commands) throws InterruptedException {
+        CountDownLatch latch = new CountDownLatch(1);
+        String containerName = deployment.getMetadata().getLabels().get("app");
+        try (var ignored = prepareExec(deployment)
+                .usingListener(new DatabaseInitListener(containerName, latch))
+                .exec(commands)) {
+            LOGGER.info("Waiting until database is initialized");
+            latch.await(WaitConditions.scaled(1), TimeUnit.MINUTES);
         }
-        awaitIngress();
-        return getLoadBalancedService().getSpec().getPorts().stream()
+    }
+
+    protected void executeCommand(Deployment deployment, String... commands) throws InterruptedException {
+        CountDownLatch latch = new CountDownLatch(1);
+        try (var ignored = prepareExec(deployment)
+                .usingListener(new DatabaseExecListener(deployment.getMetadata().getName(), latch))
+                .exec(commands)) {
+            LOGGER.info("Waiting on " + deployment.getMetadata().getName() + " for commands " + Arrays.toString(commands));
+            latch.await(WaitConditions.scaled(1), TimeUnit.MINUTES);
+        }
+    }
+
+    private TtyExecErrorChannelable<String, OutputStream, PipedInputStream, ExecWatch> prepareExec(Deployment deployment) {
+        var pods = ocpUtils.podsForDeployment(deployment);
+        if (pods.size() > 1) {
+            throw new IllegalArgumentException("Executing command on deployment scaled to more than 1");
+        }
+        Pod pod = pods.get(0);
+        return getPodResource(pod)
+                .inContainer(pod.getMetadata().getLabels().get("app"))
+                .writingError(System.err); // CHECKSTYLE IGNORE RegexpSinglelineJava FOR NEXT 1 LINES
+    }
+
+    private PodResource<Pod> getPodResource(Pod pod) {
+        return ocp.pods().inNamespace(project).withName(pod.getMetadata().getName());
+    }
+
+    private int getOriginalDatabasePort() {
+        return getService().getSpec().getPorts().stream()
                 .filter(p -> p.getName().equals("db"))
                 .findAny()
                 .get().getPort();

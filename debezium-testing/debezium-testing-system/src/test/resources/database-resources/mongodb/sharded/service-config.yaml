@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo-config
+spec:
+  selector:
+    app: mongo
+    deployment: mongo-config
+  ports:
+    - name: db
+      port: 27019
+      targetPort: 27019

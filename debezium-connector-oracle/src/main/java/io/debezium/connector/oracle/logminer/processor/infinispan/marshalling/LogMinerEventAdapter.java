@@ -89,7 +89,7 @@ public class LogMinerEventAdapter {
      */
     @ProtoField(number = 3, required = true)
     public String getTableId(LogMinerEvent event) {
-        return event.getTableId().identifier();
+        return event.getTableId().toDoubleQuotedString();
     }
 
     /**

@@ -27,7 +27,8 @@ public class MySqlTestConnection extends JdbcConnection {
         MYSQL_5_5,
         MYSQL_5_6,
         MYSQL_5_7,
-        MYSQL_8;
+        MYSQL_8,
+        MARIADB_11;
     }
 
     private DatabaseDifferences databaseAsserts;
@@ -105,6 +106,29 @@ public class MySqlTestConnection extends JdbcConnection {
         return comment.startsWith("Percona");
     }
 
+    /**
+     * Check whether the database is MariaDB or MySQL.
+     *
+     * @return true if the database is MariaDB; otherwise false
+     */
+    public static boolean isMariaDb() {
+        try (MySqlTestConnection connection = forTestDatabase("mysql")) {
+            return connection.isVersionCommentMariaDb();
+        }
+        catch (SQLException e) {
+            throw new RuntimeException("Failed to resolve if database is MariaDB", e);
+        }
+    }
+
+    /**
+     * Checks whether the database version string indicates MariaDB.
+     *
+     * @return true if the database is MariaDB; otherwise false
+     */
+    public boolean isVersionCommentMariaDb() {
+        return getMySqlVersionComment().toLowerCase().contains("mariadb");
+    }
+
     private static JdbcConfiguration addDefaultSettings(JdbcConfiguration configuration) {
         return JdbcConfiguration.adapt(configuration.edit()
                 .withDefault(JdbcConfiguration.HOSTNAME, "localhost")
@@ -115,7 +139,7 @@ public class MySqlTestConnection extends JdbcConnection {
 
     }
 
-    protected static ConnectionFactory FACTORY = JdbcConnection.patternBasedFactory("jdbc:mysql://${hostname}:${port}/${dbname}");
+    protected static ConnectionFactory FACTORY = JdbcConnection.patternBasedFactory("${protocol}://${hostname}:${port}/${dbname}");
 
     /**
      * Create a new instance with the given configuration and connection factory.
@@ -129,6 +153,18 @@ public class MySqlTestConnection extends JdbcConnection {
     public MySqlVersion getMySqlVersion() {
         if (mySqlVersion == null) {
             final String versionString = getMySqlVersionString();
+
+            if (isVersionCommentMariaDb()) {
+                if (versionString.startsWith("11.")) {
+                    mySqlVersion = MySqlVersion.MARIADB_11;
+                }
+                else {
+                    throw new IllegalStateException("Couldn't resolve MariaDB Server version");
+                }
+                return mySqlVersion;
+            }
+
+            // Fallback to MySQL
             if (versionString.startsWith("8.")) {
                 mySqlVersion = MySqlVersion.MYSQL_8;
             }
@@ -193,7 +229,40 @@ public class MySqlTestConnection extends JdbcConnection {
 
     public DatabaseDifferences databaseAsserts() {
         if (databaseAsserts == null) {
-            if (getMySqlVersion() == MySqlVersion.MYSQL_8) {
+            if (getMySqlVersion() == MySqlVersion.MARIADB_11) {
+                databaseAsserts = new DatabaseDifferences() {
+                    @Override
+                    public boolean isCurrentDateTimeDefaultGenerated() {
+                        return false;
+                    }
+
+                    @Override
+                    public String currentDateTimeDefaultOptional(String isoString) {
+                        return null;
+                    }
+
+                    @Override
+                    public void setBinlogRowQueryEventsOff(JdbcConnection connection) throws SQLException {
+                        connection.execute("SET binlog_annotate_row_events=OFF");
+                    }
+
+                    @Override
+                    public void setBinlogRowQueryEventsOn(JdbcConnection connection) throws SQLException {
+                        connection.execute("SET binlog_annotate_row_events=ON");
+                    }
+
+                    @Override
+                    public void setBinlogCompressionOff(JdbcConnection connection) throws SQLException {
+                        connection.execute("set global log_bin_compress=OFF;");
+                    }
+
+                    @Override
+                    public void setBinlogCompressionOn(JdbcConnection connection) throws SQLException {
+                        connection.execute("set global log_bin_compress=ON;");
+                    }
+                };
+            }
+            else if (getMySqlVersion() == MySqlVersion.MYSQL_8) {
                 databaseAsserts = new DatabaseDifferences() {
                     @Override
                     public boolean isCurrentDateTimeDefaultGenerated() {

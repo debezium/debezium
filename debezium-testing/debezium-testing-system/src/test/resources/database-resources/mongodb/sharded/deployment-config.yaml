@@ -1,0 +1,51 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: mongo-config
+  labels:
+    app: mongo
+    deployment: mongo-config
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongo
+      deployment: mongo-config
+  template:
+    metadata:
+      name: mongo-config
+      labels:
+        app: mongo
+        deployment: mongo-config
+        role: config
+    spec:
+      volumes:
+      - name: mongo-volume-config
+        emptyDir: {}
+      containers:
+      - resources: {}
+        name: mongo
+        ports:
+        - containerPort: 27019
+          protocol: TCP
+        imagePullPolicy: Always
+        volumeMounts:
+        - name: mongo-volume-config
+          mountPath: /data/db
+          timeoutSeconds: 1
+        terminationMessagePolicy: File
+        terminationMessagePath: /dev/termination-log
+        image: ${docker.image.mongo.sharded}
+        command:
+        - '/usr/bin/mongod'
+        - '--configsvr'
+        - '--replSet'
+        - 'cfgrs'
+        - '--dbpath'
+        - '/data/db'
+        - '--bind_ip_all'
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      dnsPolicy: ClusterFirst
+  strategy:
+    type: Recreate

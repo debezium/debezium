@@ -23,7 +23,7 @@ public interface StreamingChangeEventSource<P extends Partition, O extends Offse
      *
      * @throws InterruptedException
      */
-    default void init() throws InterruptedException {
+    default void init(O offsetContext) throws InterruptedException {
     }
 
     /**
@@ -68,5 +68,9 @@ public interface StreamingChangeEventSource<P extends Partition, O extends Offse
      * discarded.
      */
     default void commitOffset(Map<String, ?> partition, Map<String, ?> offset) {
+    }
+
+    default O getOffsetContext() {
+        return null;
     }
 }

@@ -17,8 +17,8 @@ import io.debezium.converters.spi.SerializerType;
  */
 public class MySqlCloudEventsMaker extends CloudEventsMaker {
 
-    public MySqlCloudEventsMaker(RecordParser parser, SerializerType contentType, String dataSchemaUriBase) {
-        super(parser, contentType, dataSchemaUriBase);
+    public MySqlCloudEventsMaker(RecordParser parser, SerializerType contentType, String dataSchemaUriBase, String cloudEventsSchemaName) {
+        super(parser, contentType, dataSchemaUriBase, cloudEventsSchemaName);
     }
 
     @Override

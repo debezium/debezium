@@ -5,10 +5,16 @@
  */
 package io.debezium.connector.mongodb;
 
+import static java.util.stream.Collectors.toMap;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
+
+import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -17,28 +23,33 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
 import org.bson.Document;
+import org.bson.types.ObjectId;
 import org.junit.After;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoDatabase;
+
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
-import io.debezium.connector.mongodb.ConnectionContext.MongoPrimary;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig.SnapshotMode;
+import io.debezium.connector.mongodb.snapshot.MongoDbIncrementalSnapshotChangeEventSource;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.junit.logging.LogInterceptor;
-import io.debezium.pipeline.signal.StopSnapshot;
+import io.debezium.pipeline.signal.actions.snapshotting.StopSnapshot;
 
 /**
  * Test to verify incremental snapshotting for MongoDB.
@@ -64,12 +75,12 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
         // Set up the replication context for connections ...
         context = new MongoDbTaskContext(config().build());
 
-        TestHelper.cleanDatabase(primary(), DATABASE_NAME);
+        TestHelper.cleanDatabase(mongo, DATABASE_NAME);
     }
 
     @After
     public void after() {
-        TestHelper.cleanDatabase(primary(), DATABASE_NAME);
+        TestHelper.cleanDatabase(mongo, DATABASE_NAME);
     }
 
     protected Class<MongoDbConnector> connectorClass() {
@@ -77,11 +88,12 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
     }
 
     protected Configuration.Builder config() {
-        return TestHelper.getConfiguration()
+        return TestHelper.getConfiguration(mongo)
                 .edit()
                 .with(MongoDbConnectorConfig.DATABASE_INCLUDE_LIST, DATABASE_NAME)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, fullDataCollectionName() + ",dbA.c1,dbA.c2")
                 .with(MongoDbConnectorConfig.SIGNAL_DATA_COLLECTION, SIGNAL_COLLECTION_NAME)
+                .with(MongoDbConnectorConfig.SIGNAL_POLL_INTERVAL_MS, 5)
                 .with(MongoDbConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 10)
                 .with(MongoDbConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER);
     }
@@ -110,7 +122,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
         return fullDataCollectionNames().stream().map(x -> "mongo1." + x).collect(Collectors.toList());
     }
 
-    protected void populateDataCollection(MongoPrimary connection, String dataCollectionName) {
+    protected void populateDataCollection(String dataCollectionName) {
         final Document[] documents = new Document[ROW_COUNT];
         for (int i = 0; i < ROW_COUNT; i++) {
             final Document doc = new Document();
@@ -120,22 +132,14 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
         insertDocumentsInTx(DATABASE_NAME, dataCollectionName, documents);
     }
 
-    protected void populateDataCollection(MongoPrimary connection) {
-        populateDataCollection(connection, dataCollectionName());
-    }
-
-    protected void populateDataCollections(MongoPrimary connection) {
-        for (String dataCollectionName : dataCollectionNames()) {
-            populateDataCollection(connection, dataCollectionName);
-        }
-    }
-
     protected void populateDataCollection() {
-        populateDataCollection(primary());
+        populateDataCollection(dataCollectionName());
     }
 
     protected void populateDataCollections() {
-        populateDataCollections(primary());
+        for (String dataCollectionName : dataCollectionNames()) {
+            populateDataCollection(dataCollectionName);
+        }
     }
 
     protected void insertAdditionalData() {
@@ -171,10 +175,6 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
 
             updateDocumentsInTx(DATABASE_NAME, COLLECTION_NAME, filter, update);
         }
-    }
-
-    protected void startConnector(DebeziumEngine.CompletionCallback callback) {
-        startConnector(Function.identity(), callback);
     }
 
     protected void startConnector(Function<Configuration.Builder, Configuration.Builder> custConfig) {
@@ -265,21 +265,21 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
                 k -> Integer.parseInt(k.getString(pkFieldName())), valueConverter, topicName, recordConsumer);
     }
 
-    protected <V> Map<Integer, V> consumeMixedWithIncrementalSnapshot(int recordCount,
-                                                                      Predicate<Map.Entry<Integer, V>> dataCompleted,
-                                                                      Function<Struct, Integer> idCalculator,
-                                                                      Function<SourceRecord, V> valueConverter,
-                                                                      String topicName,
-                                                                      Consumer<List<SourceRecord>> recordConsumer)
+    protected <V, K> Map<K, V> consumeMixedWithIncrementalSnapshot(int recordCount,
+                                                                   Predicate<Map.Entry<K, V>> dataCompleted,
+                                                                   Function<Struct, K> idCalculator,
+                                                                   Function<SourceRecord, V> valueConverter,
+                                                                   String topicName,
+                                                                   Consumer<List<SourceRecord>> recordConsumer)
             throws InterruptedException {
-        final Map<Integer, V> dbChanges = new HashMap<>();
+        final Map<K, V> dbChanges = new HashMap<>();
         int noRecords = 0;
         for (;;) {
             final SourceRecords records = consumeRecordsByTopic(1);
             final List<SourceRecord> dataRecords = records.recordsForTopic(topicName);
             if (records.allRecordsInOrder().isEmpty()) {
                 noRecords++;
-                Assertions.assertThat(noRecords).describedAs(String.format("Too many no data record results, %d < %d", dbChanges.size(), recordCount))
+                assertThat(noRecords).describedAs(String.format("Too many no data record results, %d < %d", dbChanges.size(), recordCount))
                         .isLessThanOrEqualTo(MAXIMUM_NO_RECORDS_CONSUMES);
                 continue;
             }
@@ -288,7 +288,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
                 continue;
             }
             dataRecords.forEach(record -> {
-                final int id = idCalculator.apply((Struct) record.key());
+                final K id = idCalculator.apply((Struct) record.key());
                 final V value = valueConverter.apply(record);
                 dbChanges.put(id, value);
             });
@@ -302,7 +302,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
             }
         }
 
-        Assertions.assertThat(dbChanges).hasSize(recordCount);
+        assertThat(dbChanges).hasSize(recordCount);
         return dbChanges;
     }
 
@@ -330,20 +330,90 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
         return "id";
     }
 
-    @Test
-    public void snapshotOnly() throws Exception {
-        // Testing.Print.enable();
+    private <K> void snapshotOnly(K initialId, Function<K, K> idGenerator) throws Exception {
+        final Map<K, Document> documents = new LinkedHashMap<>();
 
-        populateDataCollection();
+        K key = initialId;
+        for (int i = 0; i < ROW_COUNT; i++) {
+            final Document doc = new Document();
+            doc.append(DOCUMENT_ID, key).append(valueFieldName(), i);
+            documents.put(key, doc);
+            key = idGenerator.apply(key);
+        }
+        insertDocumentsInTx(DATABASE_NAME, COLLECTION_NAME, documents.values().toArray(Document[]::new));
+
         startConnector();
-
         sendAdHocSnapshotSignal();
 
-        final int expectedRecordCount = ROW_COUNT;
-        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
-        for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i));
-        }
+        final var dbChanges = consumeMixedWithIncrementalSnapshot(
+                ROW_COUNT,
+                x -> true,
+                k -> k.getString(pkFieldName()),
+                this::extractFieldValue,
+                topicName(), null);
+
+        var serialization = new JsonSerialization();
+
+        var expected = documents.values()
+                .stream()
+                .map(d -> d.toBsonDocument())
+                .collect(toMap(
+                        d -> serialization.getDocumentId(d),
+                        d -> d.getInt32(valueFieldName()).getValue()));
+
+        assertThat(dbChanges).containsAllEntriesOf(expected);
+    }
+
+    @Test
+    public void shouldStreamWithDatabaseIncludeList() throws InterruptedException {
+        startConnector(
+                config -> config
+                        .with(MongoDbConnectorConfig.DATABASE_INCLUDE_LIST, DATABASE_NAME)
+                        .without(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST.name()),
+                loggingCompletion());
+        assertConnectorIsRunning();
+        assertNoRecordsToConsume();
+        insertDocuments(DATABASE_NAME, COLLECTION_NAME, new Document("foo", "bar"));
+        SourceRecords records = consumeRecordsByTopic(1);
+        records.topics().forEach(System.out::println);
+
+        assertThat(records.topics()).contains(topicName());
+        assertThat(records.recordsForTopic(topicName())).hasSize(1);
+    }
+
+    @Test
+    public void snapshotOnlyInt32() throws Exception {
+        snapshotOnly(0, k -> k + 1);
+    }
+
+    @Test
+    public void snapshotOnlyWithInt64() throws Exception {
+        long firstKey = Integer.MAX_VALUE + 1L;
+        snapshotOnly(firstKey, k -> k + 1);
+    }
+
+    @Test
+    public void snapshotOnlyDouble() throws Exception {
+        snapshotOnly(0.0, k -> k + 1);
+    }
+
+    @Test
+    public void snapshotOnlyDecimal128() throws Exception {
+        Assume.assumeTrue("Decimal 128 not supported", TestHelper.decimal128Supported());
+        BigDecimal firstKey = BigDecimal.valueOf(Long.MAX_VALUE).add(BigDecimal.ONE);
+        snapshotOnly(firstKey, k -> k.add(BigDecimal.ONE));
+    }
+
+    @Test
+    public void snapshotOnlyObjectId() throws Exception {
+        ObjectId firstKey = new ObjectId();
+        snapshotOnly(firstKey, k -> new ObjectId());
+    }
+
+    @Test
+    public void snapshotOnlyString() throws Exception {
+        Supplier<String> keySupplier = () -> java.util.UUID.randomUUID().toString();
+        snapshotOnly(keySupplier.get(), k -> keySupplier.get());
     }
 
     @Test
@@ -358,13 +428,15 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
         final int expectedRecordCount = ROW_COUNT;
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i));
+            assertThat(dbChanges).contains(entry(i + 1, i));
         }
     }
 
     @Test
     public void snapshotOnlyWithRestart() throws Exception {
         // Testing.Print.enable();
+
+        LogInterceptor interceptor = new LogInterceptor(MongoDbIncrementalSnapshotChangeEventSource.class);
 
         populateDataCollection();
         final Configuration config = config().build();
@@ -376,6 +448,10 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
         assertNoRecordsToConsume();
 
         sendAdHocSnapshotSignal();
+
+        Awaitility.await().atMost(60, TimeUnit.SECONDS)
+                .until(() -> interceptor
+                        .containsMessage("No data returned by the query, incremental snapshotting of table '" + fullDataCollectionName() + "' finished"));
 
         final int expectedRecordCount = ROW_COUNT;
         final AtomicInteger recordCounter = new AtomicInteger();
@@ -392,7 +468,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
                     }
                 });
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i));
+            assertThat(dbChanges).contains(entry(i + 1, i));
         }
     }
 
@@ -410,7 +486,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
         final int expectedRecordCount = ROW_COUNT * 2;
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i));
+            assertThat(dbChanges).contains(entry(i + 1, i));
         }
     }
 
@@ -429,7 +505,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount,
                 x -> x.getValue() >= 2000, null);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i + 2000));
+            assertThat(dbChanges).contains(entry(i + 1, i + 2000));
         }
     }
 
@@ -465,7 +541,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
                     }
                 });
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i + 2000));
+            assertThat(dbChanges).contains(entry(i + 1, i + 2000));
         }
     }
 
@@ -484,7 +560,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount,
                 x -> x.getValue() >= 2000, null);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i + 2000));
+            assertThat(dbChanges).contains(entry(i + 1, i + 2000));
         }
     }
 
@@ -508,7 +584,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
 
         // Consume any residual left-over events after stopping incremental snapshots such as open/close
         // and wait for the stop message in the connector logs
-        Assertions.assertThat(consumeAnyRemainingIncrementalSnapshotEventsAndCheckForStopMessage(
+        assertThat(consumeAnyRemainingIncrementalSnapshotEventsAndCheckForStopMessage(
                 interceptor, "Stopping incremental snapshot")).isTrue();
 
         // stop the connector
@@ -517,7 +593,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
         // restart the connector
         // should start with no available records, should not have any incremental snapshot state
         startConnector();
-        Assertions.assertThat(interceptor.containsMessage("No incremental snapshot in progress")).isTrue();
+        assertThat(interceptor.containsMessage("No incremental snapshot in progress")).isTrue();
 
         sendAdHocSnapshotSignal();
 
@@ -526,7 +602,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
         final int expectedRecordCount = ROW_COUNT * 2;
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i));
+            assertThat(dbChanges).contains(entry(i + 1, i));
         }
     }
 
@@ -550,7 +626,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
 
         // Consume any residual left-over events after stopping incremental snapshots such as open/close
         // and wait for the stop message in the connector logs
-        Assertions.assertThat(consumeAnyRemainingIncrementalSnapshotEventsAndCheckForStopMessage(
+        assertThat(consumeAnyRemainingIncrementalSnapshotEventsAndCheckForStopMessage(
                 interceptor, "Removing '[" + fullDataCollectionName() + "]' collections from incremental snapshot")).isTrue();
 
         // stop the connector
@@ -559,7 +635,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
         // restart the connector
         // should start with no available records, should not have any incremental snapshot state
         startConnector();
-        Assertions.assertThat(interceptor.containsMessage("No incremental snapshot in progress")).isTrue();
+        assertThat(interceptor.containsMessage("No incremental snapshot in progress")).isTrue();
 
         sendAdHocSnapshotSignal();
 
@@ -568,7 +644,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
         final int expectedRecordCount = ROW_COUNT * 2;
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i));
+            assertThat(dbChanges).contains(entry(i + 1, i));
         }
     }
 
@@ -584,7 +660,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
         startConnector(x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 250));
 
         final List<String> collectionIds = fullDataCollectionNames();
-        Assertions.assertThat(collectionIds).hasSize(2);
+        assertThat(collectionIds).hasSize(2);
 
         final String collectionIdToRemove = collectionIds.get(1);
 
@@ -601,7 +677,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
         final int expectedRecordCount = ROW_COUNT * 2;
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount, topicName());
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i));
+            assertThat(dbChanges).contains(entry(i + 1, i));
         }
     }
 
@@ -617,10 +693,10 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
         startConnector(x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 250));
 
         final List<String> collectionIds = fullDataCollectionNames();
-        Assertions.assertThat(collectionIds).hasSize(2);
+        assertThat(collectionIds).hasSize(2);
 
         final List<String> topicNames = topicNames();
-        Assertions.assertThat(topicNames).hasSize(2);
+        assertThat(topicNames).hasSize(2);
 
         final String collectionIdToRemove = collectionIds.get(0);
 
@@ -637,7 +713,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
         final int expectedRecordCount = ROW_COUNT * 2;
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount, topicNames.get(1));
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i));
+            assertThat(dbChanges).contains(entry(i + 1, i));
         }
     }
 
@@ -671,7 +747,67 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
         final int expectedRecordCount = ROW_COUNT;
         Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount - beforeResume);
         for (int i = beforeResume + 1; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i));
+            assertThat(dbChanges).contains(entry(i + 1, i));
+        }
+    }
+
+    @Test
+    public void insertInsertWatermarkingStrategy() throws Exception {
+        // Testing.Print.enable();
+
+        populateDataCollection();
+
+        startConnector();
+
+        waitForConnectorToStart();
+
+        insertAdditionalData();
+
+        sendAdHocSnapshotSignal();
+
+        final int expectedRecordCount = ROW_COUNT * 2;
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
+        for (int i = 0; i < expectedRecordCount; i++) {
+            assertThat(dbChanges).contains(entry(i + 1, i));
+        }
+
+        assertCloseEventCount(closeEventCount -> assertThat(closeEventCount).isNotZero());
+
+    }
+
+    @Test
+    public void insertDeleteWatermarkingStrategy() throws Exception {
+        // Testing.Print.enable();
+
+        populateDataCollection();
+        startConnector(x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_WATERMARKING_STRATEGY, "insert_delete")
+                .with(CommonConnectorConfig.TOMBSTONES_ON_DELETE, false)); // Remove tombstone to avoid failure of VerifyRecord.isValid
+
+        sendAdHocSnapshotSignal();
+
+        insertAdditionalData();
+
+        final int expectedRecordCount = ROW_COUNT * 2;
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
+
+        for (int i = 0; i < expectedRecordCount; i++) {
+            assertThat(dbChanges).contains(entry(i + 1, i));
+        }
+
+        assertCloseEventCount(closeEventCount -> assertThat(closeEventCount).isZero());
+    }
+
+    private void assertCloseEventCount(Consumer<Long> consumer) {
+
+        try (var client = TestHelper.connect(mongo)) {
+
+            MongoDatabase db = client.getDatabase(DATABASE_NAME);
+
+            MongoCollection<Document> collection = db.getCollection("signals");
+            Document filter = new Document();
+            filter.put("type", "snapshot-window-close");
+
+            consumer.accept(collection.countDocuments(filter));
         }
     }
 

@@ -12,10 +12,13 @@ import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -28,7 +31,6 @@ import java.util.stream.Stream;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
-import org.assertj.core.api.Assertions;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -51,10 +53,11 @@ import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.ddl.DdlParserListener.Event;
 import io.debezium.relational.ddl.SimpleDdlParserListener;
 import io.debezium.schema.DefaultTopicNamingStrategy;
+import io.debezium.schema.FieldNameSelector;
+import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.Collect;
 import io.debezium.util.IoUtil;
-import io.debezium.util.SchemaNameAdjuster;
 import io.debezium.util.Testing;
 
 /**
@@ -82,9 +85,151 @@ public class MySqlAntlrDdlParserTest {
         tableSchemaBuilder = new TableSchemaBuilder(
                 converters,
                 new MySqlDefaultValueConverter(converters),
-                SchemaNameAdjuster.NO_OP, new CustomConverterRegistry(null), SchemaBuilder.struct().build(), false, false);
+                SchemaNameAdjuster.NO_OP, new CustomConverterRegistry(null), SchemaBuilder.struct().build(),
+                FieldNameSelector.defaultSelector(SchemaNameAdjuster.NO_OP), false);
         properties = new Properties();
         properties.put("topic.prefix", "test");
+    }
+
+    @Test
+    @FixFor("DBZ-7251")
+    public void shouldApplyCorrectColumnInfoWhenAlterColumnType() {
+        String ddl = "CREATE TABLE `test` (\n" +
+                " `id` bigint NOT NULL AUTO_INCREMENT,\n" +
+                "  `publish_time` bigint(20) null,\n" +
+                "  `publish_time2` bigint(20) null,\n" +
+                "  `publish_time3` decimal(20, 2) null,\n" +
+                "  `publish_time4` datetime(6) NULL DEFAULT '1970-01-01 00:00:00',\n" +
+                "  PRIMARY KEY (`id`)\n" +
+                ");";
+        parser.parse(ddl, tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+        assertThat(tables.size()).isEqualTo(1);
+
+        ddl = "alter table test modify publish_time datetime NULL DEFAULT '1970-01-01 00:00:00';";
+        parser.parse(ddl, tables);
+        Table table = tables.forTable(null, null, "test");
+        assertThat(table.columnWithName("publish_time").typeName()).isEqualTo("DATETIME");
+        assertThat(table.columnWithName("publish_time").length()).isEqualTo(-1);
+
+        ddl = "alter table test change publish_time2 publish_time2 datetime NULL DEFAULT '1970-01-01 00:00:00';";
+        parser.parse(ddl, tables);
+        table = tables.forTable(null, null, "test");
+        assertThat(table.columnWithName("publish_time2").typeName()).isEqualTo("DATETIME");
+        assertThat(table.columnWithName("publish_time2").length()).isEqualTo(-1);
+        assertThat(table.columnWithName("publish_time2").defaultValueExpression().isPresent()).isEqualTo(true);
+        assertThat(table.columnWithName("publish_time2").defaultValueExpression().get()).isEqualTo("1970-01-01 00:00:00");
+
+        ddl = "alter table test change publish_time3 publish_time3 datetime NULL DEFAULT '1970-01-01 00:00:00';";
+        parser.parse(ddl, tables);
+        table = tables.forTable(null, null, "test");
+        assertThat(table.columnWithName("publish_time3").typeName()).isEqualTo("DATETIME");
+        assertThat(table.columnWithName("publish_time3").length()).isEqualTo(-1);
+        assertThat(table.columnWithName("publish_time3").scale().isPresent()).isEqualTo(false);
+
+        ddl = "alter table test change publish_time4 publish_time4 decimal(20,2) null;";
+        parser.parse(ddl, tables);
+        table = tables.forTable(null, null, "test");
+        assertThat(table.columnWithName("publish_time4").typeName()).isEqualTo("DECIMAL");
+        assertThat(table.columnWithName("publish_time4").length()).isEqualTo(20);
+        assertThat(table.columnWithName("publish_time4").scale().isPresent()).isEqualTo(true);
+        assertThat(table.columnWithName("publish_time4").scale().get()).isEqualTo(2);
+    }
+
+    @Test
+    @FixFor("DBZ-6003")
+    public void shouldProcessCreateUniqueBeforePrimaryKeyDefinitions() {
+        String ddl = "CREATE TABLE `dbz_6003_1` (\n"
+                + "`id` INT ( 11 ) NOT NULL,\n"
+                + "`name` VARCHAR ( 255 ),\n"
+                + "UNIQUE KEY `test` ( `name` ),\n"
+                + "PRIMARY KEY ( `id` )\n"
+                + ") ENGINE = INNODB;";
+        parser.parse(ddl, tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+        assertThat(tables.size()).isEqualTo(1);
+        Table table = tables.forTable(null, null, "dbz_6003_1");
+        assertThat(table.primaryKeyColumnNames().size()).isEqualTo(1);
+        assertThat(table.primaryKeyColumnNames().get(0)).isEqualTo("id");
+        assertThat(table.columnWithName("name").isOptional()).isTrue();
+
+        // add PRIMARY KEY and UNIQUE KEY
+        ddl = "create table dbz_6003_2 (id int not null, name varchar(255));"
+                + "alter table dbz_6003_2 add unique key dbz_6003_2_uk(name);"
+                + "alter table dbz_6003_2 add primary key(id);";
+        parser.parse(ddl, tables);
+        table = tables.forTable(null, null, "dbz_6003_2");
+        assertThat(table.primaryKeyColumnNames().get(0)).isEqualTo("id");
+        assertThat(table.columnWithName("name").isOptional()).isTrue();
+
+        // add UNIQUE KEY and PRIMARY KEY
+        ddl = "create table dbz_6003_3 (id int not null, name varchar(255));"
+                + "alter table dbz_6003_3 add (primary key id(id), unique key dbz_6003_3_uk(name));";
+        parser.parse(ddl, tables);
+        table = tables.forTable(null, null, "dbz_6003_3");
+        assertThat(table.primaryKeyColumnNames().get(0)).isEqualTo("id");
+        assertThat(table.columnWithName("name").isOptional()).isTrue();
+
+        // add UNIQUE KEY, drop PRIMARY KEY
+        ddl = "create table dbz_6003_4 (id int not null, name varchar(255), primary key(id));"
+                + "alter table dbz_6003_4 add unique key dbz_6003_4_uk(name);"
+                + "alter table dbz_6003_4 drop primary key;";
+        parser.parse(ddl, tables);
+        table = tables.forTable(null, null, "dbz_6003_4");
+        assertThat(table.primaryKeyColumnNames().size()).isEqualTo(0);
+        assertThat(table.columnWithName("name").isOptional()).isTrue();
+
+        // drop PRIMARY KEY, add UNIQUE KEY
+        ddl = "create table dbz_6003_5 (id int not null, name varchar(255) not null, primary key(id));"
+                + "alter table dbz_6003_5 drop primary key;"
+                + "alter table dbz_6003_5 add unique key dbz_6003_5_uk(name);";
+        parser.parse(ddl, tables);
+        table = tables.forTable(null, null, "dbz_6003_5");
+        assertThat(table.primaryKeyColumnNames().size()).isEqualTo(1);
+        assertThat(table.primaryKeyColumnNames().get(0)).isEqualTo("name");
+        assertThat(table.columnWithName("name").isOptional()).isFalse();
+
+        // drop UNIQUE KEY, add PRIMARY KEY
+        ddl = "create table dbz_6003_6 (id int not null, name varchar(255), unique key dbz_6003_6_uk(name));"
+                + "alter table dbz_6003_6 drop index dbz_6003_6_uk;"
+                + "alter table dbz_6003_6 add primary key(id);";
+        parser.parse(ddl, tables);
+        table = tables.forTable(null, null, "dbz_6003_6");
+        assertThat(table.primaryKeyColumnNames().get(0)).isEqualTo("id");
+        assertThat(table.columnWithName("name").isOptional()).isTrue();
+
+        // add PRIMARY KEY, drop UNIQUE KEY
+        ddl = "create table dbz_6003_7 (id int not null, name varchar(255), unique key dbz_6003_7_uk(name));"
+                + "alter table dbz_6003_7 add primary key(id);"
+                + "alter table dbz_6003_7 drop index dbz_6003_7_uk;";
+        parser.parse(ddl, tables);
+        table = tables.forTable(null, null, "dbz_6003_7");
+        assertThat(table.primaryKeyColumnNames().get(0)).isEqualTo("id");
+        assertThat(table.columnWithName("name").isOptional()).isTrue();
+
+        // drop both PRIMARY and UNIQUE keys
+        ddl = "create table dbz_6003_8 (id int not null, name varchar(255), unique key dbz_6003_8_uk(name), primary key(id));"
+                + "alter table dbz_6003_8 drop primary key;"
+                + "alter table dbz_6003_8 drop index dbz_6003_8_uk;";
+        parser.parse(ddl, tables);
+        table = tables.forTable(null, null, "dbz_6003_8");
+        assertThat(table.primaryKeyColumnNames().size()).isEqualTo(0);
+        assertThat(table.columnWithName("name").isOptional()).isTrue();
+
+        // create unique index
+        ddl = "create table dbz_6003_9 (id int not null, name varchar(255));"
+                + "create unique index dbz_6003_9_uk on dbz_6003_9(name);";
+        parser.parse(ddl, tables);
+        table = tables.forTable(null, null, "dbz_6003_9");
+        assertThat(table.primaryKeyColumnNames().size()).isEqualTo(0);
+        assertThat(table.columnWithName("name").isOptional()).isTrue();
+
+        ddl = "create table dbz_6003_10 (id int not null, name varchar(255) not null);"
+                + "create unique index dbz_6003_10_uk on dbz_6003_10(name);";
+        parser.parse(ddl, tables);
+        table = tables.forTable(null, null, "dbz_6003_10");
+        assertThat(table.primaryKeyColumnNames().size()).isEqualTo(1);
+        assertThat(table.columnWithName("name").isOptional()).isFalse();
     }
 
     @Test
@@ -154,7 +299,7 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
-    @FixFor("DBZ-4497")
+    @FixFor({ "DBZ-4497", "DBZ-6185" })
     public void shouldProcessMultipleSignedUnsignedForTable() {
         String ddl = "create table if not exists tbl_signed_unsigned(\n"
                 + "`id` bigint(20) ZEROFILL signed UNSIGNED signed ZEROFILL unsigned ZEROFILL NOT NULL AUTO_INCREMENT COMMENT 'ID',\n"
@@ -162,6 +307,8 @@ public class MySqlAntlrDdlParserTest {
                 + "c2 decimal(10, 2) SIGNED UNSIGNED ZEROFILL,\n"
                 + "c3 float SIGNED ZEROFILL,\n"
                 + "c4 double precision(18, 4) UNSIGNED SIGNED ZEROFILL,\n"
+                + "c5 smallint zerofill null,\n"
+                + "c6 tinyint unsigned zerofill null,\n"
                 + "PRIMARY KEY (`id`)\n"
                 + ")";
         parser.parse(ddl, tables);
@@ -178,12 +325,15 @@ public class MySqlAntlrDdlParserTest {
         assertThat(c2.length()).isEqualTo(10);
         assertThat(c2.scale().get()).isEqualTo(2);
 
-        assertThat(table.columnWithName("c3").typeName()).isEqualTo("FLOAT SIGNED ZEROFILL");
+        assertThat(table.columnWithName("c3").typeName()).isEqualTo("FLOAT UNSIGNED ZEROFILL");
 
         Column c4 = table.columnWithName("c4");
         assertThat(c4.typeName()).isEqualTo("DOUBLE PRECISION UNSIGNED ZEROFILL");
         assertThat(c4.length()).isEqualTo(18);
         assertThat(c4.scale().get()).isEqualTo(4);
+
+        assertThat(table.columnWithName("c5").typeName()).isEqualTo("SMALLINT UNSIGNED ZEROFILL");
+        assertThat(table.columnWithName("c6").typeName()).isEqualTo("TINYINT UNSIGNED ZEROFILL");
     }
 
     @Test
@@ -628,15 +778,15 @@ public class MySqlAntlrDdlParserTest {
         assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
         assertThat(tables.size()).isEqualTo(9);
 
-        Assertions.assertThat(tables.forTable(null, null, "mytable1")).isNotNull();
-        Assertions.assertThat(tables.forTable(null, null, "mytable2")).isNotNull();
-        Assertions.assertThat(tables.forTable("db", null, "mytable3")).isNotNull();
-        Assertions.assertThat(tables.forTable("db", null, "mytable4")).isNotNull();
-        Assertions.assertThat(tables.forTable("db", null, "mytable5")).isNotNull();
-        Assertions.assertThat(tables.forTable("db", null, "myta`ble6")).isNotNull();
-        Assertions.assertThat(tables.forTable("db", null, "mytable7`")).isNotNull();
-        Assertions.assertThat(tables.forTable("`db", null, "mytable8")).isNotNull();
-        Assertions.assertThat(tables.forTable("`db", null, "myta\"\"ble9")).isNotNull();
+        assertThat(tables.forTable(null, null, "mytable1")).isNotNull();
+        assertThat(tables.forTable(null, null, "mytable2")).isNotNull();
+        assertThat(tables.forTable("db", null, "mytable3")).isNotNull();
+        assertThat(tables.forTable("db", null, "mytable4")).isNotNull();
+        assertThat(tables.forTable("db", null, "mytable5")).isNotNull();
+        assertThat(tables.forTable("db", null, "myta`ble6")).isNotNull();
+        assertThat(tables.forTable("db", null, "mytable7`")).isNotNull();
+        assertThat(tables.forTable("`db", null, "mytable8")).isNotNull();
+        assertThat(tables.forTable("`db", null, "myta\"\"ble9")).isNotNull();
     }
 
     @Test
@@ -665,17 +815,17 @@ public class MySqlAntlrDdlParserTest {
         assertThat(tables.size()).isEqualTo(1);
 
         Table table = tables.forTable(null, null, "mytable");
-        Assertions.assertThat(table.primaryKeyColumnNames()).isEqualTo(Collections.singletonList("id"));
+        assertThat(table.primaryKeyColumnNames()).isEqualTo(Collections.singletonList("id"));
 
         parser.parse("ALTER TABLE mytable DROP COLUMN id", tables);
         table = tables.forTable(null, null, "mytable");
-        Assertions.assertThat(table.primaryKeyColumnNames()).isEmpty();
-        Assertions.assertThat(table.primaryKeyColumns()).isEmpty();
+        assertThat(table.primaryKeyColumnNames()).isEmpty();
+        assertThat(table.primaryKeyColumns()).isEmpty();
 
         parser.parse("ALTER TABLE mytable ADD PRIMARY KEY(id2)", tables);
         table = tables.forTable(null, null, "mytable");
-        Assertions.assertThat(table.primaryKeyColumnNames()).isEqualTo(Collections.singletonList("id2"));
-        Assertions.assertThat(table.primaryKeyColumns()).hasSize(1);
+        assertThat(table.primaryKeyColumnNames()).isEqualTo(Collections.singletonList("id2"));
+        assertThat(table.primaryKeyColumns()).hasSize(1);
     }
 
     @Test
@@ -1654,7 +1804,7 @@ public class MySqlAntlrDdlParserTest {
                 .stream()
                 .map(TableId::table)
                 .collect(Collectors.toSet()))
-                        .containsOnly("t1", "t2", "t3", "t4");
+                .containsOnly("t1", "t2", "t3", "t4");
     }
 
     @Test
@@ -3086,6 +3236,87 @@ public class MySqlAntlrDdlParserTest {
         assertThat(getColumnSchema(table, "my_dateB").defaultValue()).isEqualTo(LocalDateTime.of(9999, 12, 31, 0, 0, 0).toEpochSecond(ZoneOffset.UTC) * 1_000);
     }
 
+    @FixFor("DBZ-6824")
+    @Test
+    public void parseDefaultValueWhichNeedTrim() {
+        String ddl = " CREATE TABLE default_value_test (" +
+                "id INTEGER NOT NULL PRIMARY KEY," +
+                "boolean_c BOOLEAN DEFAULT ' 0 '," +
+                "bit_c BIT DEFAULT b'1'," +
+                "tiny_c TINYINT DEFAULT ' 2 '," +
+                "tiny_un_c TINYINT UNSIGNED DEFAULT ' 3 '," +
+                "tiny_un_z_c TINYINT UNSIGNED ZEROFILL DEFAULT ' 4 '," +
+                "small_c SMALLINT DEFAULT ' 5 '," +
+                "small_un_c SMALLINT UNSIGNED DEFAULT ' 6 '," +
+                "small_un_z_c SMALLINT UNSIGNED ZEROFILL DEFAULT ' 7 '," +
+                "medium_c MEDIUMINT DEFAULT ' 8 '," +
+                "medium_un_c MEDIUMINT UNSIGNED DEFAULT ' 9 '," +
+                "medium_un_z_c MEDIUMINT UNSIGNED ZEROFILL DEFAULT ' 10 '," +
+                "int_c INTEGER DEFAULT ' 11 '," +
+                "int_un_c INTEGER UNSIGNED DEFAULT ' 12 '," +
+                "int_un_z_c INTEGER UNSIGNED ZEROFILL DEFAULT ' 13 '," +
+                "int11_c INT(11) DEFAULT ' 14 '," +
+                "big_c BIGINT DEFAULT ' 15 '," +
+                "big_un_c BIGINT UNSIGNED DEFAULT ' 16 '," +
+                "big_un_z_c BIGINT UNSIGNED ZEROFILL DEFAULT ' 17 '," +
+                "decimal_c DECIMAL(8, 4) DEFAULT ' 18  '," +
+                "decimal_un_c DECIMAL(8, 4) UNSIGNED DEFAULT ' 19 '," +
+                "decimal_un_z_c DECIMAL(8, 4) UNSIGNED ZEROFILL DEFAULT ' 20 '," +
+                "numeric_c NUMERIC(6, 0) DEFAULT ' 21 '," +
+                "big_decimal_c DECIMAL(65, 1) DEFAULT ' 22 '," +
+                "real_c REAL DEFAULT ' 23.0'," +
+                "float_c FLOAT DEFAULT ' 24.0'," +
+                "float_un_c FLOAT UNSIGNED DEFAULT ' 25'," +
+                "float_un_z_c FLOAT UNSIGNED ZEROFILL DEFAULT ' 26'," +
+                "double_c DOUBLE DEFAULT ' 27'," +
+                "double_un_c DOUBLE UNSIGNED DEFAULT ' 28'," +
+                "double_un_z_c DOUBLE UNSIGNED ZEROFILL DEFAULT ' 29'," +
+                "date_c DATE DEFAULT ' 2023-01-01 '," +
+                "time_c TIME DEFAULT ' 01:01 '," +
+                "timestamp_c TIMESTAMP DEFAULT ' 2018-04-27 13:28:43 '," +
+                "datetime_c DATETIME DEFAULT ' 2018-04-27 13:28:43 '," +
+                "year_c YEAR DEFAULT ' 2023 ');";
+        parser.parse(ddl, tables);
+        Table table = tables.forTable(new TableId(null, null, "default_value_test"));
+        assertThat(table.columnWithName("id").isOptional()).isEqualTo(false);
+        assertThat(getColumnSchema(table, "boolean_c").defaultValue()).isEqualTo(false);
+        assertThat(getColumnSchema(table, "bit_c").defaultValue()).isEqualTo(true);
+        assertThat(getColumnSchema(table, "tiny_c").defaultValue()).isEqualTo((short) 2);
+        assertThat(getColumnSchema(table, "tiny_un_c").defaultValue()).isEqualTo((short) 3);
+        assertThat(getColumnSchema(table, "tiny_un_z_c").defaultValue()).isEqualTo((short) 4);
+        assertThat(getColumnSchema(table, "small_c").defaultValue()).isEqualTo((short) 5);
+        assertThat(getColumnSchema(table, "small_un_c").defaultValue()).isEqualTo(6);
+        assertThat(getColumnSchema(table, "small_un_z_c").defaultValue()).isEqualTo(7);
+        assertThat(getColumnSchema(table, "medium_c").defaultValue()).isEqualTo(8);
+        assertThat(getColumnSchema(table, "medium_un_c").defaultValue()).isEqualTo(9);
+        assertThat(getColumnSchema(table, "medium_un_z_c").defaultValue()).isEqualTo(10);
+        assertThat(getColumnSchema(table, "int_c").defaultValue()).isEqualTo(11);
+        assertThat(getColumnSchema(table, "int_un_c").defaultValue()).isEqualTo(12);
+        assertThat(getColumnSchema(table, "int_un_z_c").defaultValue()).isEqualTo(13);
+        assertThat(getColumnSchema(table, "int11_c").defaultValue()).isEqualTo(14);
+        assertThat(getColumnSchema(table, "big_c").defaultValue()).isEqualTo(15L);
+        assertThat(getColumnSchema(table, "big_un_c").defaultValue()).isEqualTo(new BigDecimal(16));
+        assertThat(getColumnSchema(table, "big_un_z_c").defaultValue()).isEqualTo(new BigDecimal(17));
+        assertThat(getColumnSchema(table, "decimal_c").defaultValue()).isEqualTo(18.0);
+        assertThat(getColumnSchema(table, "decimal_un_c").defaultValue()).isEqualTo(19.0);
+        assertThat(getColumnSchema(table, "decimal_un_z_c").defaultValue()).isEqualTo(20.0);
+        assertThat(getColumnSchema(table, "numeric_c").defaultValue()).isEqualTo(21.0);
+        assertThat(getColumnSchema(table, "big_decimal_c").defaultValue()).isEqualTo(22.0);
+        assertThat(getColumnSchema(table, "real_c").defaultValue()).isEqualTo(23.0f);
+        assertThat(getColumnSchema(table, "float_c").defaultValue()).isEqualTo(24.0f);
+        assertThat(getColumnSchema(table, "float_un_c").defaultValue()).isEqualTo(25.0f);
+        assertThat(getColumnSchema(table, "float_un_z_c").defaultValue()).isEqualTo(26.0f);
+        assertThat(getColumnSchema(table, "double_c").defaultValue()).isEqualTo(27.0);
+        assertThat(getColumnSchema(table, "double_un_c").defaultValue()).isEqualTo(28.0);
+        assertThat(getColumnSchema(table, "double_un_z_c").defaultValue()).isEqualTo(29.0);
+        assertThat(getColumnSchema(table, "date_c").defaultValue()).isEqualTo((int) LocalDate.of(2023, 1, 1).toEpochDay());
+        assertThat(getColumnSchema(table, "time_c").defaultValue()).isEqualTo((long) LocalTime.of(1, 1).toSecondOfDay() * 1_000 * 1_000);
+        ZonedDateTime logicalDefaultValue = Timestamp.valueOf("2018-04-27 13:28:43").toInstant().atZone(ZoneId.systemDefault());
+        assertThat(getColumnSchema(table, "timestamp_c").defaultValue()).isEqualTo(ZonedTimestamp.toIsoString(logicalDefaultValue, ZoneOffset.UTC, x -> x, -1));
+        assertThat(getColumnSchema(table, "datetime_c").defaultValue()).isEqualTo(LocalDateTime.of(2018, 4, 27, 13, 28, 43).toEpochSecond(ZoneOffset.UTC) * 1_000);
+        assertThat(getColumnSchema(table, "year_c").defaultValue()).isEqualTo(2023);
+    }
+
     @Test
     @FixFor("DBZ-860")
     public void shouldTreatPrimaryKeyColumnsImplicitlyAsNonNull() {
@@ -3123,7 +3354,7 @@ public class MySqlAntlrDdlParserTest {
 
         Table table = tables.forTable(new TableId(null, null, "my_table"));
         ZonedDateTime zdt = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneOffset.UTC);
-        String isoEpoch = ZonedTimestamp.toIsoString(zdt, ZoneOffset.UTC, MySqlValueConverters::adjustTemporal);
+        String isoEpoch = ZonedTimestamp.toIsoString(zdt, ZoneOffset.UTC, MySqlValueConverters::adjustTemporal, null);
 
         assertThat(table.columnWithName("ts_col").isOptional()).isEqualTo(false);
         assertThat(table.columnWithName("ts_col").hasDefaultValue()).isEqualTo(true);
@@ -3277,8 +3508,34 @@ public class MySqlAntlrDdlParserTest {
         assertThat(getColumnSchema(table, "bi").defaultValue()).isNull();
     }
 
+    @Test
+    @FixFor("DBZ-6357")
+    public void shouldSupportNationalChar() {
+        String ddl = "CREATE TABLE ttt(c NATIONAL CHAR)";
+        parser.parse(ddl, tables);
+
+        Table table = tables.forTable(new TableId(null, null, "ttt"));
+        assertThat(table).isNotNull();
+        assertThat(table.retrieveColumnNames()).containsExactly("c");
+        assertThat(table.primaryKeyColumnNames()).isEmpty();
+        assertColumn(table, "c", "NATIONAL CHAR", Types.NCHAR, 1, "utf8", true);
+    }
+
+    @FixFor("DBZ-7230")
+    @Test
+    public void shouldParseCreateTableWithBitDefaultLength() {
+        String ddl = "CREATE TABLE t ( c1 BIT NULL );";
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(1);
+        Table t = tables.forTable(new TableId(null, null, "t"));
+        assertThat(t).isNotNull();
+        assertThat(t.retrieveColumnNames()).containsExactly("c1");
+        assertThat(t.primaryKeyColumnNames()).isEmpty();
+        assertColumn(t, "c1", "BIT", Types.BIT, 1, -1, true, false, false);
+    }
+
     private String toIsoString(String timestamp) {
-        return ZonedTimestamp.toIsoString(Timestamp.valueOf(timestamp).toInstant().atZone(ZoneId.systemDefault()), null);
+        return ZonedTimestamp.toIsoString(Timestamp.valueOf(timestamp).toInstant().atZone(ZoneId.systemDefault()), null, null);
     }
 
     /**
@@ -3436,19 +3693,19 @@ public class MySqlAntlrDdlParserTest {
 
     class MysqlDdlParserWithSimpleTestListener extends MySqlAntlrDdlParser {
 
-        public MysqlDdlParserWithSimpleTestListener(DdlChanges changesListener) {
+        MysqlDdlParserWithSimpleTestListener(DdlChanges changesListener) {
             this(changesListener, false);
         }
 
-        public MysqlDdlParserWithSimpleTestListener(DdlChanges changesListener, TableFilter tableFilter) {
+        MysqlDdlParserWithSimpleTestListener(DdlChanges changesListener, TableFilter tableFilter) {
             this(changesListener, false, false, tableFilter);
         }
 
-        public MysqlDdlParserWithSimpleTestListener(DdlChanges changesListener, boolean includeViews) {
+        MysqlDdlParserWithSimpleTestListener(DdlChanges changesListener, boolean includeViews) {
             this(changesListener, includeViews, false, TableFilter.includeAll());
         }
 
-        public MysqlDdlParserWithSimpleTestListener(DdlChanges changesListener, boolean includeViews, boolean includeComments) {
+        MysqlDdlParserWithSimpleTestListener(DdlChanges changesListener, boolean includeViews, boolean includeComments) {
             this(changesListener, includeViews, includeComments, TableFilter.includeAll());
         }
 

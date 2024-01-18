@@ -13,7 +13,6 @@ import java.util.List;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.assertj.core.api.Assertions;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -75,7 +74,7 @@ public class MySqlSchemaNameAdjustmentModeIT extends AbstractConnectorTest {
 
         SourceRecords records = consumeRecordsByTopic(6 + 1); // 6 DDL changes, 1 INSERT
         final List<SourceRecord> results = records.recordsForTopic(DATABASE.topicForTable("name-adjustment"));
-        Assertions.assertThat(results).hasSize(1);
+        assertThat(results).hasSize(1);
 
         return (Struct) results.get(0).value();
     }

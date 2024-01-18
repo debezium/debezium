@@ -22,7 +22,7 @@ public interface ValueConverterProvider {
      * @param columnDefinition the column definition; never null
      * @return the schema builder; null if the column's type information is unknown
      */
-    public SchemaBuilder schemaBuilder(Column columnDefinition);
+    SchemaBuilder schemaBuilder(Column columnDefinition);
 
     /**
      * Returns a {@link ValueConverter} that can be used to convert the JDBC values corresponding to the given JDBC temporal type
@@ -36,5 +36,5 @@ public interface ValueConverterProvider {
      *            never null
      * @return the value converter; never null
      */
-    public ValueConverter converter(Column columnDefinition, Field fieldDefn);
+    ValueConverter converter(Column columnDefinition, Field fieldDefn);
 }

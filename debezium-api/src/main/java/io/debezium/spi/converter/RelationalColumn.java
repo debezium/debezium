@@ -14,7 +14,6 @@ import io.debezium.common.annotation.Incubating;
  * A definition of a converted relational column.
  *
  * @author Randall Hauch
-
  */
 @Incubating
 public interface RelationalColumn extends ConvertedField {
@@ -82,4 +81,13 @@ public interface RelationalColumn extends ConvertedField {
      * @return {@code true} if the default value was provided, or {@code false} otherwise
      */
     boolean hasDefaultValue();
+
+    /**
+     * Get the character set associated with the column.
+     *
+     * @return the character set name
+     */
+    default String charsetName() {
+        return null;
+    }
 }

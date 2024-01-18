@@ -8,6 +8,8 @@ package io.debezium.connector;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 
+import io.debezium.config.CommonConnectorConfig;
+
 /**
  * Converts the connector SourceInfo into publicly visible source field of the message.
  * It is expected that when the connector SourceInfo schema changes then a legacy class will be created
@@ -19,10 +21,12 @@ import org.apache.kafka.connect.data.Struct;
  */
 public interface SourceInfoStructMaker<T extends AbstractSourceInfo> {
 
+    void init(String connector, String version, CommonConnectorConfig connectorConfig);
+
     /**
      * Returns the schema of the source info.
      */
-    public Schema schema();
+    Schema schema();
 
     /**
      * Converts the connector's source info into the struct to be included in the message as the source field.
@@ -30,5 +34,5 @@ public interface SourceInfoStructMaker<T extends AbstractSourceInfo> {
      * @param sourceInfo
      * @return the converted struct
      */
-    public Struct struct(T sourceInfo);
+    Struct struct(T sourceInfo);
 }

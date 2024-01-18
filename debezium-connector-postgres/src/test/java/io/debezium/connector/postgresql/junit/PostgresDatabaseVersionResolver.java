@@ -21,7 +21,7 @@ public class PostgresDatabaseVersionResolver implements DatabaseVersionResolver 
     @Override
     public DatabaseVersion getVersion() {
         try {
-            try (final PostgresConnection postgresConnection = TestHelper.create()) {
+            try (PostgresConnection postgresConnection = TestHelper.create()) {
                 final DatabaseMetaData metadata = postgresConnection.connection().getMetaData();
                 return new DatabaseVersion(metadata.getDatabaseMajorVersion(), metadata.getDatabaseMinorVersion(), 0);
             }

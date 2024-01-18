@@ -22,7 +22,8 @@ public class DataTypeBuilder {
     private int scale = -1;
     private int arrayDimsLength = 0;
     private final int[] arrayDims = new int[40];
-    private static final Pattern SIGNED_UNSIGNED_PATTERN = Pattern.compile("(.*)SIGNED UNSIGNED(.*)", Pattern.CASE_INSENSITIVE);
+    private static final Pattern SIGNED_UNSIGNED_ZEROFILL_PATTERN = Pattern
+            .compile("(.*)\\s+(SIGNED UNSIGNED ZEROFILL|SIGNED UNSIGNED|SIGNED ZEROFILL)", Pattern.CASE_INSENSITIVE);
 
     public void addToName(String str) {
         if (length == -1) {
@@ -105,19 +106,41 @@ public class DataTypeBuilder {
             name.append(' ');
             name.append(suffix);
         }
-        return new DataType(cleanSignedUnsigned(expression), cleanSignedUnsigned(name), jdbcType, length, scale, arrayDims, arrayDimsLength);
+        return new DataType(
+                adjustSignedUnsignedZerofill(expression),
+                adjustSignedUnsignedZerofill(name),
+                jdbcType,
+                length,
+                scale,
+                arrayDims,
+                arrayDimsLength);
     }
 
     /**
-     * Replace "signed unsigned" to "unsigned" when ddl statements contain multiple signed/unsigned keywords
+     * This method will adjust the suffix names of numeric data type.
+     * In connector streaming phase, the ddl parser maybe meet the invalid definition of suffix names with numeric data type,
+     * will adjust to appropriate values.
+     * e.g. replace "SIGNED UNSIGNED ZEROFILL" or "SIGNED ZEROFILL" to "UNSIGNED ZEROFILL", "SIGNED UNSIGNED" to "UNSIGNED"
+     * and adjust to "UNSIGNED ZEROFILL" if "zerofill" appears alone.
      */
-    private String cleanSignedUnsigned(StringBuilder origin) {
-        Matcher matcher = SIGNED_UNSIGNED_PATTERN.matcher(origin.toString());
+    private String adjustSignedUnsignedZerofill(StringBuilder origin) {
+        Matcher matcher = SIGNED_UNSIGNED_ZEROFILL_PATTERN.matcher(origin.toString());
         if (matcher.matches()) {
-            return matcher.replaceFirst("$1UNSIGNED$2");
+            String suffix = matcher.group(2).toUpperCase();
+            switch (suffix) {
+                case "SIGNED UNSIGNED ZEROFILL":
+                case "SIGNED ZEROFILL":
+                    return matcher.replaceFirst("$1 UNSIGNED ZEROFILL");
+                case "SIGNED UNSIGNED":
+                    return matcher.replaceFirst("$1 UNSIGNED");
+                default:
+                    return origin.toString();
+            }
         }
-        else {
-            return origin.toString();
+        if (origin.toString().toUpperCase().contains("ZEROFILL")
+                && !origin.toString().toUpperCase().contains("UNSIGNED")) {
+            return origin.toString().toUpperCase().replaceFirst("ZEROFILL", "UNSIGNED ZEROFILL");
         }
+        return origin.toString();
     }
 }

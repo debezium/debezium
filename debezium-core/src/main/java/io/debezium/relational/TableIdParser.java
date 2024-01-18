@@ -53,7 +53,7 @@ class TableIdParser {
         private final String identifier;
         private final TableIdPredicates predicates;
 
-        public TableIdTokenizer(String identifier, TableIdPredicates predicates) {
+        TableIdTokenizer(String identifier, TableIdPredicates predicates) {
             this.identifier = identifier;
             this.predicates = predicates;
         }
@@ -269,7 +269,7 @@ class TableIdParser {
         boolean escaped;
         char quotingChar;
 
-        public ParsingContext(CharacterStream input, Tokens tokens, TableIdPredicates predicates) {
+        ParsingContext(CharacterStream input, Tokens tokens, TableIdPredicates predicates) {
             this.input = input;
             this.tokens = tokens;
             this.predicates = predicates;

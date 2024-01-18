@@ -34,7 +34,7 @@ In this case, this contains the row's primary key.
 If you use Podman, run the following command:
 [source,shell,options="nowrap",subs="+attributes"]
 ----
-$ sudo podman run -it --rm --name watcher --pod dbz quay.io/debezium/kafka:{debezium-docker-label} watch-topic -a -k dbserver1.inventory.customers
+$ podman run -it --rm --name watcher --pod dbz quay.io/debezium/kafka:{debezium-docker-label} watch-topic -a -k dbserver1.inventory.customers
 ----
 ====
 

@@ -24,7 +24,7 @@ import io.debezium.util.Iterators;
  */
 public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
 
-    static interface Entry extends Comparable<Entry> {
+    interface Entry extends Comparable<Entry> {
 
         /**
          * Get the index of the entry

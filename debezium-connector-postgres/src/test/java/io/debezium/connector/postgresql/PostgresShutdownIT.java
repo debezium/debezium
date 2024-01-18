@@ -30,7 +30,7 @@ import io.debezium.embedded.EmbeddedEngine;
 import io.debezium.heartbeat.DatabaseHeartbeatImpl;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConfiguration;
-import io.debezium.util.ContainerImageVersions;
+import io.debezium.testing.testcontainers.util.ContainerImageVersions;
 import io.debezium.util.Testing;
 
 /**
@@ -45,7 +45,7 @@ public class PostgresShutdownIT extends AbstractConnectorTest {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PostgresShutdownIT.class);
 
-    private static final String POSTGRES_IMAGE = ContainerImageVersions.getStableImage("debezium/example-postgres");
+    private static final String POSTGRES_IMAGE = ContainerImageVersions.getStableImage("quay.io/debezium/example-postgres");
 
     private static final String INSERT_STMT = "INSERT INTO s1.a (aa) VALUES (1);" +
             "INSERT INTO s2.a (aa) VALUES (1);";

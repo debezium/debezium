@@ -5,10 +5,11 @@
  */
 package io.debezium.connector.sqlserver;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.sql.SQLException;
 import java.util.concurrent.TimeUnit;
 
-import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.Before;
@@ -74,8 +75,8 @@ public class EventProcessingFailureHandlingIT extends AbstractConnectorTest {
         connection.execute("INSERT INTO tablea VALUES (1, 'seed')");
 
         SourceRecords records = consumeRecordsByTopic(1);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(1);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).isNull();
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(1);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).isNull();
 
         // Will allow insertion of strings into what was originally a BIGINT NOT NULL column
         // This will cause NumberFormatExceptions which return nulls and thus an error due to the column being NOT NULL
@@ -90,8 +91,8 @@ public class EventProcessingFailureHandlingIT extends AbstractConnectorTest {
         }
 
         records = consumeRecordsByTopic(RECORDS_PER_TABLE);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).isNull();
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).isNull();
 
         Awaitility.await()
                 .alias("Found warning message in logs")
@@ -116,8 +117,8 @@ public class EventProcessingFailureHandlingIT extends AbstractConnectorTest {
         connection.execute("INSERT INTO tablea VALUES (1, 'seed')");
 
         SourceRecords records = consumeRecordsByTopic(1);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(1);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).isNull();
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(1);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).isNull();
 
         // Will allow insertion of strings into what was originally a BIGINT NOT NULL column
         // This will cause NumberFormatExceptions which return nulls and thus an error due to the column being NOT NULL
@@ -132,8 +133,8 @@ public class EventProcessingFailureHandlingIT extends AbstractConnectorTest {
         }
 
         records = consumeRecordsByTopic(RECORDS_PER_TABLE);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).isNull();
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).isNull();
     }
 
     @Test
@@ -152,8 +153,8 @@ public class EventProcessingFailureHandlingIT extends AbstractConnectorTest {
         connection.execute("INSERT INTO tablea VALUES (1, 'seed')");
 
         SourceRecords records = consumeRecordsByTopic(1);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(1);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).isNull();
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(1);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).isNull();
 
         // Will allow insertion of strings into what was originally a BIGINT NOT NULL column
         // This will cause NumberFormatExceptions which return nulls and thus an error due to the column being NOT NULL
@@ -171,7 +172,7 @@ public class EventProcessingFailureHandlingIT extends AbstractConnectorTest {
                 .alias("Found error message in logs")
                 .atMost(TestHelper.waitTimeForLogEntries(), TimeUnit.SECONDS).until(() -> {
                     boolean foundErrorMessageInLogs = logInterceptor.containsStacktraceElement("Error while processing event at offset {");
-                    return foundErrorMessageInLogs && !engine.isRunning();
+                    return foundErrorMessageInLogs && !isEngineRunning.get();
                 });
     }
 }

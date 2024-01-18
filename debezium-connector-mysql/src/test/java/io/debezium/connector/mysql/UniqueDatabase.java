@@ -91,7 +91,7 @@ public class UniqueDatabase {
      * Creates an instance with given Debezium logical name and database name and id suffix same
      * as another database. This is handy for tests that need multpli databases and can use regex
      * based whitelisting.
-    
+
      * @param serverName - logical Debezium server name
      * @param databaseName - the name of the database (prix)
      * @param sibling - a database whose unique suffix will be used
@@ -193,10 +193,14 @@ public class UniqueDatabase {
         Builder builder = Configuration.create()
                 .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.hostname", "localhost"))
                 .with(MySqlConnectorConfig.PORT, System.getProperty("database.port", "3306"))
+                .with(MySqlConnectorConfig.JDBC_PROTOCOL, System.getProperty("database.protocol",
+                        MySqlConnectorConfig.JDBC_PROTOCOL.defaultValueAsString()))
+                .with(MySqlConnectorConfig.JDBC_DRIVER, System.getProperty("database.jdbc.driver",
+                        MySqlConnectorConfig.JDBC_DRIVER.defaultValueAsString()))
                 .with(MySqlConnectorConfig.USER, "snapper")
                 .with(MySqlConnectorConfig.PASSWORD, "snapperpass");
 
-        String sslMode = System.getProperty("database.ssl.mode", "disabled");
+        String sslMode = System.getProperty("database.ssl.mode", "preferred");
 
         if (sslMode.equals("disabled")) {
             builder.with(MySqlConnectorConfig.SSL_MODE, MySqlConnectorConfig.SecureConnectionMode.DISABLED);
@@ -215,6 +219,9 @@ public class UniqueDatabase {
         if (dbHistoryPath != null) {
             builder.with(FileSchemaHistory.FILE_PATH, dbHistoryPath);
         }
+
+        String connectorAdapter = System.getProperty("connector.adapter", "mysql");
+        builder.with(MySqlConnectorConfig.CONNECTOR_ADAPTER, connectorAdapter);
 
         return builder;
     }

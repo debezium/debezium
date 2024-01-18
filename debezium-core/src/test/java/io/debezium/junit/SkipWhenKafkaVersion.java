@@ -26,7 +26,7 @@ public @interface SkipWhenKafkaVersion {
 
     String description() default "";
 
-    public enum KafkaVersion {
+    enum KafkaVersion {
         KAFKA_1XX {
             @Override
             boolean isLessThan(int major, int minor, int patch) {

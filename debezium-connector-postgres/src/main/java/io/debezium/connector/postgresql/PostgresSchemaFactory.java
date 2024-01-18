@@ -12,7 +12,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.postgresql.data.Ltree;
 import io.debezium.data.Envelope;
 import io.debezium.schema.SchemaFactory;
-import io.debezium.util.SchemaNameAdjuster;
+import io.debezium.schema.SchemaNameAdjuster;
 
 public class PostgresSchemaFactory extends SchemaFactory {
 

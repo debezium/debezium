@@ -31,13 +31,13 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.assertj.core.api.Assertions;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.config.Configuration;
+import io.debezium.config.Configuration.Builder;
 import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.data.Bits;
@@ -167,6 +167,21 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         // then start the producer and validate all records are there
         buildNoStreamProducer(TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true));
+
+        final TestConsumer consumer = testConsumer(1, "public");
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+
+        final Map<String, List<SchemaAndValueField>> expectedValuesByTopicName = Collect.hashMapOf("public.custom_table", schemasAndValuesForCustomTypes());
+        consumer.process(record -> assertReadRecord(record, expectedValuesByTopicName));
+    }
+
+    @Test
+    public void shouldGenerateSnapshotsForCustomDatatypesWithIncludeUnknownFalse() throws Exception {
+        TestHelper.execute(INSERT_CUSTOM_TYPES_STMT);
+
+        // then start the producer and validate all records are there
+        buildNoStreamProducer(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, false));
 
         final TestConsumer consumer = testConsumer(1, "public");
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
@@ -376,7 +391,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
             assertReadRecord(record, expectedValuesByTopicName);
             assertSourceInfo(record);
 
-            assertRecordOffsetAndSnapshotSource(record, SnapshotRecord.LAST_IN_DATA_COLLECTION);
+            assertRecordOffsetAndSnapshotSource(record, SnapshotRecord.LAST);
         });
     }
 
@@ -426,7 +441,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         int expectedTotalCount = expectedTopicCounts.values().stream().mapToInt(Integer::intValue).sum();
 
         TestConsumer consumer = testConsumer(expectedTotalCount);
-        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+        consumer.await(TestHelper.waitTimeForRecords() * 30L, TimeUnit.SECONDS);
 
         Map<String, Integer> actualTopicCounts = new HashMap<>();
         AtomicInteger actualTotalCount = new AtomicInteger(0);
@@ -436,7 +451,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
             Struct key = (Struct) record.key();
             if (key != null) {
                 final Integer id = key.getInt32("pk");
-                Assertions.assertThat(ids).doesNotContain(id);
+                assertThat(ids).doesNotContain(id);
                 ids.add(id);
             }
 
@@ -473,6 +488,24 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
 
         final Map<String, List<SchemaAndValueField>> expectedValuesByTopicName = Collect.hashMapOf("public.hstore_table", schemaAndValueFieldForJsonEncodedHStoreType());
+
+        consumer.process(record -> assertReadRecord(record, expectedValuesByTopicName));
+    }
+
+    @Test
+    @FixFor("DBZ-6384")
+    public void shouldGenerateSnapshotsForHstoresMapMode() throws Exception {
+        TestHelper.dropAllSchemas();
+        TestHelper.execute("CREATE TABLE hstore_table (pk serial, hs hstore, PRIMARY KEY(pk));");
+        TestHelper.execute(INSERT_HSTORE_TYPE_STMT);
+
+        // then start the producer and validate all records are there
+        buildNoStreamProducer(TestHelper.defaultConfig().with(PostgresConnectorConfig.HSTORE_HANDLING_MODE, PostgresConnectorConfig.HStoreHandlingMode.MAP));
+
+        TestConsumer consumer = testConsumer(1, "public", "Quoted__");
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+
+        final Map<String, List<SchemaAndValueField>> expectedValuesByTopicName = Collect.hashMapOf("public.hstore_table", schemaAndValueFieldForMapEncodedHStoreType());
 
         consumer.process(record -> assertReadRecord(record, expectedValuesByTopicName));
     }
@@ -636,21 +669,25 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
                         .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "MONEY")
                         .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, String.valueOf(Integer.MAX_VALUE))
                         .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "0")
+                        .parameter(TestHelper.COLUMN_NAME_PARAMETER_KEY, "salary")
                         .build(), 7.25),
                 new SchemaAndValueField("salary2", SchemaBuilder.float64().optional()
                         .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "MONEY2")
                         .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, String.valueOf(Integer.MAX_VALUE))
                         .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "0")
+                        .parameter(TestHelper.COLUMN_NAME_PARAMETER_KEY, "salary2")
                         .build(), 8.25),
                 new SchemaAndValueField("a", SchemaBuilder.float64().optional()
                         .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "NUMERIC")
                         .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, "8")
                         .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "3")
+                        .parameter(TestHelper.COLUMN_NAME_PARAMETER_KEY, "a")
                         .build(), 12345.123),
                 new SchemaAndValueField("area", SchemaBuilder.float64().optional()
                         .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "FLOAT83")
                         .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, "8")
                         .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "3")
+                        .parameter(TestHelper.COLUMN_NAME_PARAMETER_KEY, "area")
                         .build(), 12345.123));
 
         consumer.process(record -> assertReadRecord(record, Collect.hashMapOf("public.alias_table", expected)));
@@ -677,6 +714,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
                         .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "VARBIT2")
                         .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, "3")
                         .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "0")
+                        .parameter(TestHelper.COLUMN_NAME_PARAMETER_KEY, "value")
                         .build(), new byte[]{ 5 }));
 
         consumer.process(record -> assertReadRecord(record, Collect.hashMapOf("public.alias_table", expected)));
@@ -881,6 +919,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
                         .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "TEST_TYPE")
                         .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, String.valueOf(Integer.MAX_VALUE))
                         .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "0")
+                        .parameter(TestHelper.COLUMN_NAME_PARAMETER_KEY, "value")
                         .build(), "V1"));
 
         consumer.process(record -> assertReadRecord(record, Collect.hashMapOf("public.enum_table", expected)));
@@ -908,6 +947,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
                         .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "_TEST_TYPE")
                         .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, String.valueOf(Integer.MAX_VALUE))
                         .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "0")
+                        .parameter(TestHelper.COLUMN_NAME_PARAMETER_KEY, "value")
                         .build(), Arrays.asList("V1", "V2")));
 
         consumer.process(record -> assertReadRecord(record, Collect.hashMapOf("public.enum_array_table", expected)));
@@ -951,6 +991,77 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
 
         final Map<String, List<SchemaAndValueField>> expectedValueByTopicName = Collect.hashMapOf("public.bytea_binmode_table", schemaAndValueForByteaBytes());
+
+        consumer.process(record -> assertReadRecord(record, expectedValueByTopicName));
+    }
+
+    @Test
+    @FixFor("DBZ-6232")
+    public void shouldGenerateSnapshotForArrayOfByteaAsListOfBytes() throws Exception {
+        TestHelper.dropAllSchemas();
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.execute(INSERT_BYTEA_BINMODE_STMT);
+
+        buildNoStreamProducer(TestHelper.defaultConfig());
+
+        TestConsumer consumer = testConsumer(1, "public");
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+
+        final Map<String, List<SchemaAndValueField>> expectedValueByTopicName = Collect.hashMapOf("public.bytea_binmode_table", schemaAndValueForByteaBytes());
+
+        consumer.process(record -> assertReadRecord(record, expectedValueByTopicName));
+    }
+
+    @Test
+    @FixFor("DBZ-6232")
+    public void shouldGenerateSnapshotForArrayOfByteaAsListOfBase64String() throws Exception {
+        TestHelper.dropAllSchemas();
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.execute(INSERT_BYTEA_BINMODE_STMT);
+
+        buildNoStreamProducer(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.BINARY_HANDLING_MODE, BinaryHandlingMode.BASE64));
+
+        TestConsumer consumer = testConsumer(1, "public");
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+
+        final Map<String, List<SchemaAndValueField>> expectedValueByTopicName = Collect.hashMapOf("public.bytea_binmode_table", schemaAndValueForByteaBase64());
+
+        consumer.process(record -> assertReadRecord(record, expectedValueByTopicName));
+    }
+
+    @Test
+    @FixFor("DBZ-6232")
+    public void shouldGenerateSnapshotForArrayOfByteaAsListOfBase64UrlSafeString() throws Exception {
+        TestHelper.dropAllSchemas();
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.execute(INSERT_BYTEA_BINMODE_STMT);
+
+        buildNoStreamProducer(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.BINARY_HANDLING_MODE, BinaryHandlingMode.BASE64_URL_SAFE));
+
+        TestConsumer consumer = testConsumer(1, "public");
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+
+        final Map<String, List<SchemaAndValueField>> expectedValueByTopicName = Collect.hashMapOf("public.bytea_binmode_table", schemaAndValueForByteaBase64UrlSafe());
+
+        consumer.process(record -> assertReadRecord(record, expectedValueByTopicName));
+    }
+
+    @Test
+    @FixFor("DBZ-6232")
+    public void shouldGenerateSnapshotForArrayOfByteaAsListOfHexString() throws Exception {
+        TestHelper.dropAllSchemas();
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.execute(INSERT_BYTEA_BINMODE_STMT);
+
+        buildNoStreamProducer(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.BINARY_HANDLING_MODE, BinaryHandlingMode.HEX));
+
+        TestConsumer consumer = testConsumer(1, "public");
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+
+        final Map<String, List<SchemaAndValueField>> expectedValueByTopicName = Collect.hashMapOf("public.bytea_binmode_table", schemaAndValueForByteaHex());
 
         consumer.process(record -> assertReadRecord(record, expectedValueByTopicName));
     }
@@ -1122,7 +1233,29 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
                 .forEach(i -> VerifyRecord.isValidRead(recordsForTopicPart.remove(0), PK_FIELD, expectedPks[i]));
     }
 
+    @Test
+    @FixFor("DBZ-6669")
+    public void shouldGenerateSnapshotWhenSignalDataCollectionIsPresentWithoutTableIncludeList() throws Exception {
+
+        TestHelper.dropAllSchemas();
+        TestHelper.execute("CREATE TABLE t1 (pk SERIAL, aa integer, PRIMARY KEY(pk)); INSERT INTO t1 VALUES (default, 11)");
+
+        buildWithStreamProducer(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.INITIAL)
+                .with(PostgresConnectorConfig.SIGNAL_DATA_COLLECTION, "public.debezium_signal")
+                .with(PostgresConnectorConfig.INCLUDE_SCHEMA_CHANGES, true));
+
+        TestConsumer consumer = testConsumer(1);
+
+        consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
+
+        final SourceRecord first = consumer.remove();
+        VerifyRecord.isValidRead(first, PK_FIELD, 1);
+        assertRecordOffsetAndSnapshotSource(first, SnapshotRecord.LAST);
+    }
+
     private void buildNoStreamProducer(Configuration.Builder config) {
+        alterConfig(config);
         start(PostgresConnector.class, config
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_ONLY)
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE_CLASS, CustomTestSnapshot.class.getName())
@@ -1132,11 +1265,16 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     }
 
     private void buildWithStreamProducer(Configuration.Builder config) {
+        alterConfig(config);
         start(PostgresConnector.class, config
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.ALWAYS)
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE_CLASS, CustomTestSnapshot.class.getName())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
                 .build());
         assertConnectorIsRunning();
+    }
+
+    protected void alterConfig(Builder config) {
+
     }
 }

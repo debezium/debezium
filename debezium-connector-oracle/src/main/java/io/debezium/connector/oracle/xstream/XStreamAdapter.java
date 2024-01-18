@@ -13,13 +13,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.oracle.AbstractStreamingAdapter;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OraclePartition;
-import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.OracleTaskContext;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.SourceInfo;
@@ -27,6 +27,7 @@ import io.debezium.document.Document;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotContext;
+import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
@@ -40,7 +41,7 @@ import io.debezium.util.Clock;
  *
  * @author Chris Cranford
  */
-public class XStreamAdapter extends AbstractStreamingAdapter {
+public class XStreamAdapter extends AbstractStreamingAdapter<XStreamStreamingChangeEventSourceMetrics> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(XStreamAdapter.class);
 
@@ -85,7 +86,7 @@ public class XStreamAdapter extends AbstractStreamingAdapter {
                                                                                       OracleDatabaseSchema schema,
                                                                                       OracleTaskContext taskContext,
                                                                                       Configuration jdbcConfig,
-                                                                                      OracleStreamingChangeEventSourceMetrics streamingMetrics) {
+                                                                                      XStreamStreamingChangeEventSourceMetrics streamingMetrics) {
         return new XstreamStreamingChangeEventSource(
                 connectorConfig,
                 connection,
@@ -94,6 +95,14 @@ public class XStreamAdapter extends AbstractStreamingAdapter {
                 clock,
                 schema,
                 streamingMetrics);
+    }
+
+    @Override
+    public XStreamStreamingChangeEventSourceMetrics getStreamingMetrics(OracleTaskContext taskContext,
+                                                                        ChangeEventQueueMetrics changeEventQueueMetrics,
+                                                                        EventMetadataProvider metadataProvider,
+                                                                        OracleConnectorConfig connectorConfig) {
+        return new XStreamStreamingChangeEventSourceMetrics(taskContext, changeEventQueueMetrics, metadataProvider);
     }
 
     @Override

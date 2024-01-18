@@ -22,7 +22,6 @@ import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.connector.oracle.OracleSchemaChangeEventEmitter;
-import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.connector.oracle.xstream.XstreamStreamingChangeEventSource.PositionAndScn;
 import io.debezium.pipeline.ErrorHandler;
@@ -60,15 +59,15 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
     private final OracleOffsetContext offsetContext;
     private final boolean tablenameCaseInsensitive;
     private final XstreamStreamingChangeEventSource eventSource;
-    private final OracleStreamingChangeEventSourceMetrics streamingMetrics;
+    private final XStreamStreamingChangeEventSourceMetrics streamingMetrics;
     private final Map<String, ChunkColumnValues> columnChunks;
     private RowLCR currentRow;
 
-    public LcrEventHandler(OracleConnectorConfig connectorConfig, ErrorHandler errorHandler,
-                           EventDispatcher<OraclePartition, TableId> dispatcher, Clock clock,
-                           OracleDatabaseSchema schema, OraclePartition partition, OracleOffsetContext offsetContext,
-                           boolean tablenameCaseInsensitive, XstreamStreamingChangeEventSource eventSource,
-                           OracleStreamingChangeEventSourceMetrics streamingMetrics) {
+    LcrEventHandler(OracleConnectorConfig connectorConfig, ErrorHandler errorHandler,
+                    EventDispatcher<OraclePartition, TableId> dispatcher, Clock clock,
+                    OracleDatabaseSchema schema, OraclePartition partition, OracleOffsetContext offsetContext,
+                    boolean tablenameCaseInsensitive, XstreamStreamingChangeEventSource eventSource,
+                    XStreamStreamingChangeEventSourceMetrics streamingMetrics) {
         this.connectorConfig = connectorConfig;
         this.errorHandler = errorHandler;
         this.dispatcher = dispatcher;
@@ -151,7 +150,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
     }
 
     private void dispatchDataChangeEvent(RowLCR lcr, Map<String, Object> chunkValues) throws InterruptedException {
-        LOGGER.debug("Processing DML event {}", lcr);
+        LOGGER.info("Processing DML event {}", lcr);
 
         if (RowLCR.COMMIT.equals(lcr.getCommandType())) {
             final Instant commitTimestamp = lcr.getSourceTime().timestampValue().toInstant();
@@ -168,6 +167,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
                 return;
             }
 
+            LOGGER.warn("Obtaining schema for table {}, which should be already loaded, this may signal potential bug in fetching table schemas.", tableId);
             final String tableDdl;
             try {
                 tableDdl = getTableMetadataDdl(tableId);
@@ -181,6 +181,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
             LOGGER.info("Table {} will be captured.", tableId);
             dispatcher.dispatchSchemaChangeEvent(
                     partition,
+                    offsetContext,
                     tableId,
                     new OracleSchemaChangeEventEmitter(
                             connectorConfig,
@@ -254,6 +255,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
 
         dispatcher.dispatchSchemaChangeEvent(
                 partition,
+                offsetContext,
                 tableId,
                 new OracleSchemaChangeEventEmitter(
                         connectorConfig,
@@ -392,6 +394,11 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
                         resolvedChunkValues.put(columnName, chunkValues.getStringValue());
                         break;
 
+                    case ChunkColumnValue.XMLTYPE:
+                        resolvedChunkValues.put(columnName, chunkValues.getXmlValue());
+                        break;
+
+                    case ChunkColumnValue.RAW:
                     case ChunkColumnValue.BLOB:
                         resolvedChunkValues.put(columnName, chunkValues.getByteArray());
                         break;

@@ -9,26 +9,33 @@ import java.sql.SQLException;
 import java.sql.Savepoint;
 import java.sql.Statement;
 import java.time.Instant;
-import java.time.OffsetDateTime;
-import java.util.Iterator;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.DebeziumException;
+import io.debezium.connector.oracle.logminer.LogMinerOracleOffsetContextLoader;
+import io.debezium.jdbc.JdbcConnection;
+import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.notification.NotificationService;
+import io.debezium.pipeline.source.SnapshottingTask;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
+import io.debezium.relational.Tables;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.util.Clock;
+import io.debezium.util.Strings;
 
 /**
  * A {@link StreamingChangeEventSource} for Oracle.
@@ -43,25 +50,29 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     private final OracleConnection jdbcConnection;
     private final OracleDatabaseSchema databaseSchema;
 
-    public OracleSnapshotChangeEventSource(OracleConnectorConfig connectorConfig, OracleConnection jdbcConnection,
+    public OracleSnapshotChangeEventSource(OracleConnectorConfig connectorConfig, MainConnectionProvidingConnectionFactory<OracleConnection> connectionFactory,
                                            OracleDatabaseSchema schema, EventDispatcher<OraclePartition, TableId> dispatcher, Clock clock,
-                                           SnapshotProgressListener<OraclePartition> snapshotProgressListener) {
-        super(connectorConfig, jdbcConnection, schema, dispatcher, clock, snapshotProgressListener);
-
+                                           SnapshotProgressListener<OraclePartition> snapshotProgressListener,
+                                           NotificationService<OraclePartition, OracleOffsetContext> notificationService) {
+        super(connectorConfig, connectionFactory, schema, dispatcher, clock, snapshotProgressListener, notificationService);
         this.connectorConfig = connectorConfig;
-        this.jdbcConnection = jdbcConnection;
+        this.jdbcConnection = connectionFactory.mainConnection();
         this.databaseSchema = schema;
     }
 
     @Override
-    protected SnapshottingTask getSnapshottingTask(OraclePartition partition, OracleOffsetContext previousOffset) {
+    public SnapshottingTask getSnapshottingTask(OraclePartition partition, OracleOffsetContext previousOffset) {
         boolean snapshotSchema = true;
-        boolean snapshotData = true;
+        boolean snapshotData;
+
+        List<String> dataCollectionsToBeSnapshotted = connectorConfig.getDataCollectionsToBeSnapshotted();
+        Map<String, String> snapshotSelectOverridesByTable = connectorConfig.getSnapshotSelectOverridesByTable().entrySet().stream()
+                .collect(Collectors.toMap(e -> e.getKey().identifier(), Map.Entry::getValue));
 
         // for ALWAYS snapshot mode don't use exiting offset to have up-to-date SCN
-        if (OracleConnectorConfig.SnapshotMode.ALWAYS == connectorConfig.getSnapshotMode()) {
+        if (OracleConnectorConfig.SnapshotMode.ALWAYS == this.connectorConfig.getSnapshotMode()) {
             LOGGER.info("Snapshot mode is set to ALWAYS, not checking exiting offset.");
-            snapshotData = connectorConfig.getSnapshotMode().includeData();
+            snapshotData = this.connectorConfig.getSnapshotMode().includeData();
         }
         // found a previous offset and the earlier snapshot has completed
         else if (previousOffset != null && !previousOffset.isSnapshotRunning()) {
@@ -71,7 +82,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
         }
         else {
             LOGGER.info("No previous offset has been found.");
-            snapshotData = connectorConfig.getSnapshotMode().includeData();
+            snapshotData = this.connectorConfig.getSnapshotMode().includeData();
         }
 
         if (snapshotData && snapshotSchema) {
@@ -81,17 +92,24 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
             LOGGER.info("According to the connector configuration only schema will be snapshot.");
         }
 
-        return new SnapshottingTask(snapshotSchema, snapshotData);
+        return new SnapshottingTask(snapshotSchema, snapshotData, dataCollectionsToBeSnapshotted, snapshotSelectOverridesByTable, false);
     }
 
     @Override
-    protected SnapshotContext<OraclePartition, OracleOffsetContext> prepare(OraclePartition partition)
-            throws Exception {
+    protected SnapshotContext<OraclePartition, OracleOffsetContext> prepare(OraclePartition partition, boolean onDemand) {
         if (connectorConfig.getPdbName() != null) {
             jdbcConnection.setSessionToPdb(connectorConfig.getPdbName());
         }
 
-        return new OracleSnapshotContext(partition, connectorConfig.getCatalogName());
+        return new OracleSnapshotContext(partition, connectorConfig.getCatalogName(), onDemand);
+    }
+
+    @Override
+    protected void connectionPoolConnectionCreated(RelationalSnapshotContext<OraclePartition, OracleOffsetContext> snapshotContext,
+                                                   JdbcConnection connection) {
+        if (connectorConfig.getPdbName() != null) {
+            ((OracleConnection) connection).setSessionToPdb(connectorConfig.getPdbName());
+        }
     }
 
     @Override
@@ -151,7 +169,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     @Override
     protected void readTableStructure(ChangeEventSourceContext sourceContext,
                                       RelationalSnapshotContext<OraclePartition, OracleOffsetContext> snapshotContext,
-                                      OracleOffsetContext offsetContext)
+                                      OracleOffsetContext offsetContext, SnapshottingTask snapshottingTask)
             throws SQLException, InterruptedException {
         Set<TableId> capturedSchemaTables;
         if (databaseSchema.storeOnlyCapturedTables()) {
@@ -165,9 +183,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
 
         Set<String> schemas = capturedSchemaTables.stream().map(TableId::schema).collect(Collectors.toSet());
 
-        // reading info only for the schemas we're interested in as per the set of captured tables;
-        // while the passed table name filter alone would skip all non-included tables, reading the schema
-        // would take much longer that way
+        final Tables.TableFilter tableFilter = getTableFilter(snapshottingTask, snapshotContext);
         for (String schema : schemas) {
             if (!sourceContext.isRunning()) {
                 throw new InterruptedException("Interrupted while reading structure of schema " + schema);
@@ -176,10 +192,23 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
                     snapshotContext.tables,
                     null,
                     schema,
-                    null,
+                    tableFilter,
                     null,
                     false);
         }
+    }
+
+    private Tables.TableFilter getTableFilter(SnapshottingTask snapshottingTask, RelationalSnapshotContext<OraclePartition, OracleOffsetContext> snapshotContext) {
+
+        if (snapshottingTask.isOnDemand()) {
+            return Tables.TableFilter.fromPredicate(snapshotContext.capturedTables::contains);
+        }
+
+        // reading info only for the schemas we're interested in as per the set of captured tables;
+        // while the passed table name filter alone would skip all non-included tables, reading the schema
+        // would take much longer that way
+        // however, for users interested only in captured tables, we need to pass also table filter
+        return connectorConfig.storeOnlyCapturedTables() ? connectorConfig.getTableFilters().dataCollectionFilter() : null;
     }
 
     @Override
@@ -194,39 +223,8 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     }
 
     @Override
-    protected void createSchemaChangeEventsForTables(ChangeEventSourceContext sourceContext,
-                                                     RelationalSnapshotContext<OraclePartition, OracleOffsetContext> snapshotContext,
-                                                     SnapshottingTask snapshottingTask)
-            throws Exception {
-        tryStartingSnapshot(snapshotContext);
-        for (Iterator<TableId> iterator = snapshotContext.capturedSchemaTables.iterator(); iterator.hasNext();) {
-            final TableId tableId = iterator.next();
-            if (!sourceContext.isRunning()) {
-                throw new InterruptedException("Interrupted while capturing schema of table " + tableId);
-            }
-
-            LOGGER.info("Capturing structure of table {}", tableId);
-
-            Table table = snapshotContext.tables.forTable(tableId);
-
-            if (schema().isHistorized()) {
-                snapshotContext.offset.event(tableId, getClock().currentTime());
-
-                // If data are not snapshotted then the last schema change must set last snapshot flag
-                if (!snapshottingTask.snapshotData() && !iterator.hasNext()) {
-                    lastSnapshotRecord(snapshotContext);
-                }
-
-                dispatcher.dispatchSchemaChangeEvent(snapshotContext.partition, table.id(), (receiver) -> {
-                    try {
-                        receiver.schemaChangeEvent(getCreateTableEvent(snapshotContext, table));
-                    }
-                    catch (Exception e) {
-                        throw new DebeziumException(e);
-                    }
-                });
-            }
-        }
+    protected Collection<TableId> getTablesForSchemaChange(RelationalSnapshotContext<OraclePartition, OracleOffsetContext> snapshotContext) {
+        return snapshotContext.capturedSchemaTables;
     }
 
     @Override
@@ -244,14 +242,14 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     }
 
     @Override
-    protected Instant getSnapshotSourceTimestamp(RelationalSnapshotContext<OraclePartition, OracleOffsetContext> snapshotContext, TableId tableId) {
+    protected Instant getSnapshotSourceTimestamp(JdbcConnection jdbcConnection, OracleOffsetContext offset, TableId tableId) {
         try {
-            Optional<OffsetDateTime> snapshotTs = jdbcConnection.getScnToTimestamp(snapshotContext.offset.getScn());
+            Optional<Instant> snapshotTs = ((OracleConnection) jdbcConnection).getScnToTimestamp(offset.getScn());
             if (snapshotTs.isEmpty()) {
                 throw new ConnectException("Failed reading SCN timestamp from source database");
             }
 
-            return snapshotTs.get().toInstant();
+            return snapshotTs.get();
         }
         catch (SQLException e) {
             throw new ConnectException("Failed reading SCN timestamp from source database", e);
@@ -276,14 +274,23 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     }
 
     @Override
-    protected void complete(SnapshotContext<OraclePartition, OracleOffsetContext> snapshotContext) {
+    protected List<Pattern> getSignalDataCollectionPattern(String signalingDataCollection) {
+        // Oracle expects this value to be supplied using "<database>.<schema>.<table>"; however the
+        // TableIdMapper used by the connector uses only "<schema>.<table>". This primarily targets
+        // a fix for this specific use case as a much larger refactor is likely necessary long term.
+        final TableId tableId = TableId.parse(signalingDataCollection);
+        return Strings.listOfRegex(tableId.schema() + "." + tableId.table(), Pattern.CASE_INSENSITIVE);
+    }
+
+    @Override
+    public void close() {
         if (connectorConfig.getPdbName() != null) {
             jdbcConnection.resetSessionToCdb();
         }
     }
 
-    private static String quote(TableId tableId) {
-        return TableId.parse(tableId.schema() + "." + tableId.table(), true).toDoubleQuotedString();
+    private String quote(TableId tableId) {
+        return new TableId(null, tableId.schema(), tableId.table()).toDoubleQuotedString();
     }
 
     /**
@@ -293,8 +300,13 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
 
         private Savepoint preSchemaSnapshotSavepoint;
 
-        public OracleSnapshotContext(OraclePartition partition, String catalogName) throws SQLException {
-            super(partition, catalogName);
+        OracleSnapshotContext(OraclePartition partition, String catalogName, boolean onDemand) {
+            super(partition, catalogName, onDemand);
         }
+    }
+
+    @Override
+    protected OracleOffsetContext copyOffset(RelationalSnapshotContext<OraclePartition, OracleOffsetContext> snapshotContext) {
+        return new LogMinerOracleOffsetContextLoader(connectorConfig).load(snapshotContext.offset.getOffset());
     }
 }

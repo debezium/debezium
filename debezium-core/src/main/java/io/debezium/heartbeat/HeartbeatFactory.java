@@ -7,9 +7,9 @@ package io.debezium.heartbeat;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.spi.topic.TopicNamingStrategy;
-import io.debezium.util.SchemaNameAdjuster;
 
 /**
  * A factory for creating the appropriate {@link Heartbeat} implementation based on the connector

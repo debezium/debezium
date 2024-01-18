@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
+import static io.debezium.junit.EqualityCheck.GREATER_THAN_OR_EQUAL;
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -27,6 +28,7 @@ import io.debezium.util.Testing;
  * @author Chris Cranford
  */
 @SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 7, reason = "Generated values were not added until MySQL 5.7")
+@SkipWhenDatabaseVersion(check = GREATER_THAN_OR_EQUAL, major = 11, reason = "MariaDB does not allow you to specify AS and NOT NULL")
 public class MysqlDefaultGeneratedValueIT extends AbstractConnectorTest {
 
     // 4 meta events (set character_set etc.) and then 15 tables with 3 events each (drop DDL, create DDL, insert)

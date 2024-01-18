@@ -111,6 +111,7 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
                 new DataTypeEntry(Types.VARCHAR, MySqlParser.TEXT),
                 new DataTypeEntry(Types.VARCHAR, MySqlParser.MEDIUMTEXT),
                 new DataTypeEntry(Types.VARCHAR, MySqlParser.LONGTEXT),
+                new DataTypeEntry(Types.VARCHAR, MySqlParser.LONG),
                 new DataTypeEntry(Types.NCHAR, MySqlParser.NCHAR),
                 new DataTypeEntry(Types.NVARCHAR, MySqlParser.NCHAR, MySqlParser.VARYING),
                 new DataTypeEntry(Types.NVARCHAR, MySqlParser.NVARCHAR),
@@ -127,6 +128,7 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
         dataTypeResolverBuilder.registerDataTypes(MySqlParser.NationalStringDataTypeContext.class.getCanonicalName(), Arrays.asList(
                 new DataTypeEntry(Types.NVARCHAR, MySqlParser.NATIONAL, MySqlParser.VARCHAR).setSuffixTokens(MySqlParser.BINARY),
                 new DataTypeEntry(Types.NCHAR, MySqlParser.NATIONAL, MySqlParser.CHARACTER).setSuffixTokens(MySqlParser.BINARY),
+                new DataTypeEntry(Types.NCHAR, MySqlParser.NATIONAL, MySqlParser.CHAR).setSuffixTokens(MySqlParser.BINARY),
                 new DataTypeEntry(Types.NVARCHAR, MySqlParser.NCHAR, MySqlParser.VARCHAR).setSuffixTokens(MySqlParser.BINARY)));
         dataTypeResolverBuilder.registerDataTypes(MySqlParser.NationalVaryingStringDataTypeContext.class.getCanonicalName(), Arrays.asList(
                 new DataTypeEntry(Types.NVARCHAR, MySqlParser.NATIONAL, MySqlParser.CHAR, MySqlParser.VARYING),
@@ -178,7 +180,8 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
                 new DataTypeEntry(Types.NUMERIC, MySqlParser.NUMERIC)
                         .setSuffixTokens(MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL)
                         .setDefaultLengthScaleDimension(10, 0),
-                new DataTypeEntry(Types.BIT, MySqlParser.BIT),
+                new DataTypeEntry(Types.BIT, MySqlParser.BIT)
+                        .setDefaultLengthDimension(1),
                 new DataTypeEntry(Types.TIME, MySqlParser.TIME),
                 new DataTypeEntry(Types.TIMESTAMP_WITH_TIMEZONE, MySqlParser.TIMESTAMP),
                 new DataTypeEntry(Types.TIMESTAMP, MySqlParser.DATETIME),
@@ -325,6 +328,23 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
     }
 
     /**
+     * Parse column names for unique index from {@link MySqlParser.IndexColumnNamesContext}. This method will set
+     * unique key column names to table if there are no optional.
+     *
+     * @param indexColumnNamesContext unique key index column names context.
+     * @param tableEditor editor for table where primary key index is parsed.
+     */
+    public void parseUniqueIndexColumnNames(MySqlParser.IndexColumnNamesContext indexColumnNamesContext, TableEditor tableEditor) {
+        List<Column> indexColumns = getIndexColumns(indexColumnNamesContext, tableEditor);
+        if (indexColumns.stream().filter(col -> Objects.isNull(col) || col.isOptional()).count() > 0) {
+            logger.warn("Skip to set unique index columns {} to primary key which including optional columns", indexColumns);
+        }
+        else {
+            tableEditor.setPrimaryKeyNames(indexColumns.stream().map(Column::name).collect(Collectors.toList()));
+        }
+    }
+
+    /**
      * Determine if a table's unique index should be included when parsing relative unique index statement.
      *
      * @param indexColumnNamesContext unique index column names context.
@@ -332,6 +352,10 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
      * @return true if the index is to be included; false otherwise.
      */
     public boolean isTableUniqueIndexIncluded(MySqlParser.IndexColumnNamesContext indexColumnNamesContext, TableEditor tableEditor) {
+        return getIndexColumns(indexColumnNamesContext, tableEditor).stream().filter(Objects::isNull).count() == 0;
+    }
+
+    private List<Column> getIndexColumns(MySqlParser.IndexColumnNamesContext indexColumnNamesContext, TableEditor tableEditor) {
         return indexColumnNamesContext.indexColumnName().stream()
                 .map(indexColumnNameContext -> {
                     String columnName;
@@ -346,7 +370,7 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
                     }
                     return tableEditor.columnWithName(columnName);
                 })
-                .filter(Objects::isNull).count() == 0;
+                .collect(Collectors.toList());
     }
 
     /**
@@ -404,7 +428,7 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
         // Replace comma to backslash followed by comma (this escape sequence implies comma is part of the option)
         // Replace backlash+single-quote to a single-quote.
         // Replace double single-quote to a single-quote.
-        return option.replaceAll(",", "\\\\,").replaceAll("\\\\'", "'").replaceAll("''", "'");
+        return option.replaceAll(",", "\\\\,").replaceAll("\\\\'", "'").replace("''", "'");
     }
 
     public MySqlValueConverters getConverters() {

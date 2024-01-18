@@ -46,7 +46,7 @@ public class MySqlGeometryIT extends AbstractConnectorTest {
     @Before
     public void beforeEach() {
         stopConnector();
-        databaseDifferences = databaseGeoDifferences(MySqlTestConnection.isMySQL5());
+        databaseDifferences = databaseGeoDifferences(MySqlTestConnection.isMySQL5() || MySqlTestConnection.isMariaDb());
 
         DATABASE = new UniqueDatabase("geometryit", databaseDifferences.geometryDatabaseName())
                 .withDbHistoryPath(SCHEMA_HISTORY_PATH);

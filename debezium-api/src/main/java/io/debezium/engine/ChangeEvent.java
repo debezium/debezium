@@ -5,23 +5,32 @@
  */
 package io.debezium.engine;
 
-import io.debezium.common.annotation.Incubating;
+import java.util.Collections;
+import java.util.List;
 
 /**
- * A data change event with key and value.
+ * A data change event with key, value, and headers.
  *
  * @param <K>
  * @param <V>
  */
-@Incubating
 public interface ChangeEvent<K, V> {
 
-    public K key();
+    K key();
 
-    public V value();
+    V value();
+
+    default <H> List<Header<H>> headers() {
+        return Collections.emptyList();
+    }
 
     /**
      * @return A name of the logical destination for which the event is intended
      */
-    public String destination();
+    String destination();
+
+    /**
+     * @return The partition number for the event. Can be null.
+     */
+    Integer partition();
 }

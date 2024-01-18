@@ -1,0 +1,9 @@
+
+
+
+  
+    
+        
+        
+{"id":"d139b9b7-7777-4547-917d-111111111111", "type":"execute-snapshot", "data":{"data-collections": ["public.MyFirstTable", "public.MySecondTable"]}}
+{"id":"d139b9b7-7777-4547-917d-222222222222", "type":"execute-snapshot", "data":{"data-collections": ["public2.MyFirstTable", "public2.MySecondTable"]}}

@@ -5,11 +5,8 @@
  */
 package io.debezium.engine.format;
 
-import io.debezium.common.annotation.Incubating;
-
 /**
  * A {@link SerializationFormat} defining the Protobuf format serialized as byte[].
  */
-@Incubating
 public class Protobuf implements SerializationFormat<byte[]> {
 }

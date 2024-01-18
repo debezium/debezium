@@ -39,6 +39,12 @@ public @interface SkipWhenAdapterNameIsNot {
             boolean isNotEqualTo(String adapterName) {
                 return !adapterName.equalsIgnoreCase("logminer");
             }
+        },
+        OLR {
+            @java.lang.Override
+            boolean isNotEqualTo(String adapterName) {
+                return !adapterName.equalsIgnoreCase("olr");
+            }
         };
 
         abstract boolean isNotEqualTo(String adapterName);

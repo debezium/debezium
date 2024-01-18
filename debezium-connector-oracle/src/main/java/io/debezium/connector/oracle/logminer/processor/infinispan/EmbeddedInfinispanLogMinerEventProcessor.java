@@ -12,12 +12,15 @@ import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFF
 
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 
 import org.infinispan.Cache;
 import org.infinispan.commons.api.BasicCache;
 import org.infinispan.commons.util.CloseableIterator;
 import org.infinispan.configuration.cache.Configuration;
 import org.infinispan.configuration.cache.ConfigurationBuilder;
+import org.infinispan.configuration.global.GlobalConfiguration;
+import org.infinispan.configuration.global.GlobalConfigurationBuilder;
 import org.infinispan.configuration.parsing.ConfigurationBuilderHolder;
 import org.infinispan.configuration.parsing.ParserRegistry;
 import org.infinispan.manager.DefaultCacheManager;
@@ -32,8 +35,8 @@ import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OraclePartition;
-import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.Scn;
+import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
@@ -67,11 +70,12 @@ public class EmbeddedInfinispanLogMinerEventProcessor extends AbstractInfinispan
                                                     OraclePartition partition,
                                                     OracleOffsetContext offsetContext,
                                                     OracleDatabaseSchema schema,
-                                                    OracleStreamingChangeEventSourceMetrics metrics) {
+                                                    LogMinerStreamingChangeEventSourceMetrics metrics) {
         super(context, connectorConfig, jdbcConnection, dispatcher, partition, offsetContext, schema, metrics);
 
         LOGGER.info("Using Infinispan in embedded mode.");
-        this.cacheManager = new DefaultCacheManager();
+        this.cacheManager = new DefaultCacheManager(
+                parseAndGetGlobalConfiguration(connectorConfig));
         this.dropBufferOnStop = connectorConfig.isLogMiningBufferDropOnStop();
 
         this.transactionCache = createCache(TRANSACTIONS_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS);
@@ -79,6 +83,7 @@ public class EmbeddedInfinispanLogMinerEventProcessor extends AbstractInfinispan
         this.schemaChangesCache = createCache(SCHEMA_CHANGES_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_SCHEMA_CHANGES);
         this.eventCache = createCache(EVENTS_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_EVENTS);
 
+        reCreateInMemoryCache();
         displayCacheStatistics();
     }
 
@@ -140,6 +145,48 @@ public class EmbeddedInfinispanLogMinerEventProcessor extends AbstractInfinispan
         return minimumScn;
     }
 
+    @Override
+    protected Optional<InfinispanTransaction> getOldestTransactionInCache() {
+        InfinispanTransaction transaction = null;
+        if (!transactionCache.isEmpty()) {
+            try (CloseableIterator<InfinispanTransaction> iterator = transactionCache.values().iterator()) {
+                // Seed with the first element
+                transaction = iterator.next();
+                while (iterator.hasNext()) {
+                    final InfinispanTransaction entry = iterator.next();
+                    int comparison = entry.getStartScn().compareTo(transaction.getStartScn());
+                    if (comparison < 0) {
+                        // if entry has a smaller scn, it came before.
+                        transaction = entry;
+                    }
+                    else if (comparison == 0) {
+                        // if entry has an equal scn, compare the change times.
+                        if (entry.getChangeTime().isBefore(transaction.getChangeTime())) {
+                            transaction = entry;
+                        }
+                    }
+                }
+            }
+        }
+        return Optional.ofNullable(transaction);
+    }
+
+    @Override
+    protected String getFirstActiveTransactionKey() {
+        try (CloseableIterator<String> iterator = transactionCache.keySet().iterator()) {
+            if (iterator.hasNext()) {
+                return iterator.next();
+            }
+        }
+        return null;
+    }
+
+    @Override
+    protected void purgeCache(Scn minCacheScn) {
+        removeIf(processedTransactionsCache.entrySet().iterator(), entry -> Scn.valueOf(entry.getValue()).compareTo(minCacheScn) < 0);
+        removeIf(schemaChangesCache.entrySet().iterator(), entry -> Scn.valueOf(entry.getKey()).compareTo(minCacheScn) < 0);
+    }
+
     private <K, V> Cache<K, V> createCache(String cacheName, OracleConnectorConfig connectorConfig, Field field) {
         Objects.requireNonNull(cacheName);
 
@@ -168,12 +215,22 @@ public class EmbeddedInfinispanLogMinerEventProcessor extends AbstractInfinispan
             throw new DebeziumException("Infinispan cache configuration for '" + cacheName +
                     "' contains multiple cache configurations and should only contain one.");
         }
-        else if (builders.size() == 0) {
+        else if (builders.isEmpty()) {
             throw new DebeziumException("Infinispan cache configuration for '" + cacheName +
                     "' contained no valid cache configuration. Please check your connector configuration");
         }
         else {
             return builders.values().iterator().next().build();
         }
+    }
+
+    private GlobalConfiguration parseAndGetGlobalConfiguration(OracleConnectorConfig connectorConfig) {
+        final String globalCacheConfiguration = connectorConfig.getLogMiningInifispanGlobalConfiguration();
+        if (globalCacheConfiguration == null) {
+            // if no configuration provided, use the default
+            return new GlobalConfigurationBuilder().build();
+        }
+        final ConfigurationBuilderHolder builderHolder = new ParserRegistry().parse(globalCacheConfiguration);
+        return builderHolder.getGlobalConfigurationBuilder().build();
     }
 }

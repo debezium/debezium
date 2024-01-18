@@ -5,19 +5,18 @@
  */
 package io.debezium.connector.mongodb;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.fail;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.connect.data.Struct;
-import org.assertj.core.api.Assertions;
-import org.bson.BsonDocument;
-import org.bson.BsonString;
 import org.bson.Document;
 import org.bson.types.ObjectId;
 import org.slf4j.Logger;
@@ -25,12 +24,17 @@ import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoDatabase;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Configuration.Builder;
-import io.debezium.connector.mongodb.ConnectionContext.MongoPrimary;
+import io.debezium.connector.mongodb.connection.ConnectionStrings;
+import io.debezium.connector.mongodb.connection.MongoDbConnection;
+import io.debezium.testing.testcontainers.MongoDbDeployment;
+import io.debezium.util.Collect;
 
 /**
  * A common test configuration options
@@ -41,23 +45,45 @@ import io.debezium.connector.mongodb.ConnectionContext.MongoPrimary;
 public class TestHelper {
     protected final static Logger logger = LoggerFactory.getLogger(TestHelper.class);
 
+    public static final List<Integer> MONGO_VERSION = getMongoVersion();
     private static final String TEST_PROPERTY_PREFIX = "debezium.test.";
+
+    private static final Set<String> BUILT_IN_DB_NAMES = Collect.unmodifiableSet("local", "admin", "config");
+
     private static final ObjectMapper mapper = new ObjectMapper();
 
+    private static List<Integer> getMongoVersion() {
+        var prop = System.getProperty("version.mongo.server", "6.0");
+        var parsableVersion = StringUtils.substringBefore(prop, "-");
+        var parts = parsableVersion.split("\\.");
+
+        return Stream.concat(Arrays.stream(parts), Stream.of("0", "0", "0"))
+                .limit(3)
+                .map(Integer::parseInt)
+                .collect(Collectors.toList());
+    }
+
+    public static String connectionString(MongoDbDeployment mongo) {
+        return ConnectionStrings.appendParameter(mongo.getConnectionString(), "readPreference", "secondaryPreferred");
+    }
+
     public static Configuration getConfiguration() {
+        return getConfiguration("mongodb://dummy:27017");
+    }
+
+    public static Configuration getConfiguration(MongoDbDeployment mongo) {
+        var cs = connectionString(mongo);
+        return getConfiguration(cs);
+    }
+
+    public static Configuration getConfiguration(String connectionString) {
         final Builder cfgBuilder = Configuration.fromSystemProperties("connector.").edit()
-                .withDefault(MongoDbConnectorConfig.HOSTS, "rs0/localhost:27017")
-                .withDefault(MongoDbConnectorConfig.AUTO_DISCOVER_MEMBERS, false)
+                .withDefault(MongoDbConnectorConfig.CONNECTION_STRING, connectionString)
                 .withDefault(CommonConnectorConfig.TOPIC_PREFIX, "mongo1");
         return cfgBuilder.build();
     }
 
-    public static MongoPrimary primary(MongoDbTaskContext context) {
-        ReplicaSet replicaSet = ReplicaSet.parse(context.getConnectionContext().hosts());
-        return context.getConnectionContext().primaryFor(replicaSet, context.filters(), connectionErrorHandler(3));
-    }
-
-    public static BiConsumer<String, Throwable> connectionErrorHandler(int numErrorsBeforeFailing) {
+    public static MongoDbConnection.ErrorHandler connectionErrorHandler(int numErrorsBeforeFailing) {
         AtomicInteger attempts = new AtomicInteger();
         return (desc, error) -> {
             if (attempts.incrementAndGet() > numErrorsBeforeFailing) {
@@ -67,42 +93,36 @@ public class TestHelper {
         };
     }
 
-    public static void cleanDatabase(MongoPrimary primary, String dbName) {
-        primary.execute("clean-db", mongo -> {
-            MongoDatabase db1 = mongo.getDatabase(dbName);
-            db1.listCollectionNames().forEach((Consumer<String>) ((String x) -> {
+    public static MongoClient connect(MongoDbDeployment mongo) {
+        return MongoClients.create(mongo.getConnectionString());
+    }
+
+    public static void cleanDatabase(MongoDbDeployment mongo, String dbName) {
+        try (var client = connect(mongo)) {
+            MongoDatabase db1 = client.getDatabase(dbName);
+            db1.listCollectionNames().forEach((String x) -> {
                 logger.info("Removing collection '{}' from database '{}'", x, dbName);
                 db1.getCollection(x).drop();
-            }));
-        });
+            });
+        }
     }
 
-    public static Document databaseInformation(MongoPrimary primary, String dbName) {
-        final AtomicReference<Document> ret = new AtomicReference<>();
-        primary.execute("clean-db", mongo -> {
-            MongoDatabase db1 = mongo.getDatabase(dbName);
-            final BsonDocument command = new BsonDocument();
-            command.put("buildinfo", new BsonString(""));
-            ret.set(db1.runCommand(command));
-        });
-        return ret.get();
+    public static void cleanDatabases(MongoDbDeployment mongo) {
+        try (var client = connect(mongo)) {
+            client.listDatabaseNames().forEach(name -> {
+                if (!BUILT_IN_DB_NAMES.contains(name)) {
+                    client.getDatabase(name).drop();
+                }
+            });
+        }
     }
 
-    public static List<Integer> getVersionArray(MongoPrimary primary, String dbName) {
-        final Document serverInfo = databaseInformation(primary, dbName);
-        @SuppressWarnings("unchecked")
-        final List<Integer> version = (List<Integer>) serverInfo.get("versionArray");
-        return version;
+    public static boolean transactionsSupported() {
+        return MONGO_VERSION.get(0) >= 4;
     }
 
-    public static boolean transactionsSupported(MongoPrimary primary, String dbName) {
-        final List<Integer> version = getVersionArray(primary, dbName);
-        return version.get(0) >= 4;
-    }
-
-    public static boolean decimal128Supported(MongoPrimary primary, String dbName) {
-        final List<Integer> version = getVersionArray(primary, dbName);
-        return (version.get(0) >= 4) || (version.get(0) == 3 && version.get(1) >= 4);
+    public static boolean decimal128Supported() {
+        return (MONGO_VERSION.get(0) >= 4) || (MONGO_VERSION.get(0) == 3 && MONGO_VERSION.get(1) >= 4);
     }
 
     public static String lines(String... lines) {
@@ -129,9 +149,9 @@ public class TestHelper {
 
     public static void assertChangeStreamUpdate(ObjectId oid, Struct value, String after, List<String> removedFields,
                                                 String updatedFields) {
-        Assertions.assertThat(value.getString("after")).isEqualTo(after.replace("<OID>", oid.toHexString()));
-        Assertions.assertThat(value.getStruct("updateDescription").getString("updatedFields")).isEqualTo(updatedFields);
-        Assertions.assertThat(value.getStruct("updateDescription").getArray("removedFields")).isEqualTo(removedFields);
+        assertThat(value.getString("after")).isEqualTo(after.replace("<OID>", oid.toHexString()));
+        assertThat(value.getStruct("updateDescription").getString("updatedFields")).isEqualTo(updatedFields);
+        assertThat(value.getStruct("updateDescription").getArray("removedFields")).isEqualTo(removedFields);
     }
 
     public static void assertChangeStreamUpdateAsDocs(ObjectId oid, Struct value, String after,
@@ -139,27 +159,28 @@ public class TestHelper {
         Document expectedAfter = TestHelper.getDocumentWithoutLanguageVersion(after.replace("<OID>", oid.toHexString()));
         Document actualAfter = TestHelper
                 .getDocumentWithoutLanguageVersion(value.getString("after"));
-        Assertions.assertThat(actualAfter).isEqualTo(expectedAfter);
+        assertThat(actualAfter).isEqualTo(expectedAfter);
         final String actualUpdatedFields = value.getStruct("updateDescription").getString("updatedFields");
         if (actualUpdatedFields != null) {
-            Assertions.assertThat(updatedFields).isNotNull();
+            assertThat(updatedFields).isNotNull();
             try {
-                Assertions.assertThat((Object) mapper.readTree(actualUpdatedFields)).isEqualTo(mapper.readTree(updatedFields));
+                assertThat((Object) mapper.readTree(actualUpdatedFields)).isEqualTo(mapper.readTree(updatedFields));
             }
             catch (JsonProcessingException e) {
                 fail("Failed to parse JSON <" + actualUpdatedFields + "> or <" + updatedFields + ">");
             }
         }
         else {
-            Assertions.assertThat(updatedFields).isNull();
+            assertThat(updatedFields).isNull();
         }
         final List<Object> actualRemovedFields = value.getStruct("updateDescription").getArray("removedFields");
         if (actualRemovedFields != null) {
-            Assertions.assertThat(removedFields).isNotNull();
-            Assertions.assertThat(actualRemovedFields.containsAll(removedFields) && removedFields.containsAll(actualRemovedFields));
+            assertThat(removedFields).isNotNull();
+            assertThat(actualRemovedFields.containsAll(removedFields) && removedFields.containsAll(actualRemovedFields));
         }
         else {
-            Assertions.assertThat(removedFields).isNull();
+            assertThat(removedFields).isNull();
         }
     }
+
 }

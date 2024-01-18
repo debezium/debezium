@@ -5,13 +5,14 @@
  */
 package io.debezium.connector.mysql;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.nio.file.Path;
 import java.sql.SQLException;
 import java.util.List;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.assertj.core.api.Assertions;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -99,7 +100,7 @@ public class MySqlSchemaHistoryIT extends AbstractConnectorTest {
         }
         records = consumeRecordsByTopic(1);
         final List<SourceRecord> schemaChanges = records.recordsForTopic(DATABASE.getServerName());
-        Assertions.assertThat(getDdl(schemaChanges, 0)).startsWith("RENAME TABLE `t-1` TO `new-t-1`");
+        assertThat(getDdl(schemaChanges, 0)).startsWith("RENAME TABLE `t-1` TO `new-t-1`");
 
         stopConnector();
 
@@ -126,8 +127,8 @@ public class MySqlSchemaHistoryIT extends AbstractConnectorTest {
         }
         records = consumeRecordsByTopic(2);
         final List<SourceRecord> schemaChanges = records.recordsForTopic(DATABASE.getServerName());
-        Assertions.assertThat(getDdl(schemaChanges, 0)).startsWith("RENAME TABLE `t-1` TO `new-t-1`");
-        Assertions.assertThat(getDdl(schemaChanges, 1)).startsWith("RENAME TABLE `t.2` TO `new.t.2`");
+        assertThat(getDdl(schemaChanges, 0)).startsWith("RENAME TABLE `t-1` TO `new-t-1`");
+        assertThat(getDdl(schemaChanges, 1)).startsWith("RENAME TABLE `t.2` TO `new.t.2`");
 
         stopConnector();
 
@@ -154,7 +155,7 @@ public class MySqlSchemaHistoryIT extends AbstractConnectorTest {
         }
         records = consumeRecordsByTopic(1);
         final List<SourceRecord> schemaChanges = records.recordsForTopic(DATABASE.getServerName());
-        Assertions.assertThat(getDdl(schemaChanges, 0)).startsWith("ALTER TABLE `t-1` RENAME TO `new-t-1`");
+        assertThat(getDdl(schemaChanges, 0)).startsWith("ALTER TABLE `t-1` RENAME TO `new-t-1`");
 
         stopConnector();
 
@@ -166,14 +167,14 @@ public class MySqlSchemaHistoryIT extends AbstractConnectorTest {
     private void assertDdls(SourceRecords records) {
         final List<SourceRecord> schemaChanges = records.recordsForTopic(DATABASE.getServerName());
         int index = 0;
-        Assertions.assertThat(getDdl(schemaChanges, index++)).startsWith("SET");
-        Assertions.assertThat(getDdl(schemaChanges, index++)).startsWith("DROP TABLE IF EXISTS `" + DATABASE.getDatabaseName() + "`.`t-1`");
-        Assertions.assertThat(getDdl(schemaChanges, index++)).startsWith("DROP TABLE IF EXISTS `" + DATABASE.getDatabaseName() + "`.`t.2`");
-        Assertions.assertThat(getDdl(schemaChanges, index++)).startsWith("DROP DATABASE IF EXISTS `" + DATABASE.getDatabaseName() + "`");
-        Assertions.assertThat(getDdl(schemaChanges, index++)).startsWith("CREATE DATABASE `" + DATABASE.getDatabaseName() + "`");
-        Assertions.assertThat(getDdl(schemaChanges, index++)).startsWith("USE `" + DATABASE.getDatabaseName() + "`");
-        Assertions.assertThat(getDdl(schemaChanges, index++)).startsWith("CREATE TABLE `t-1`");
-        Assertions.assertThat(getDdl(schemaChanges, index++)).startsWith("CREATE TABLE `t.2`");
+        assertThat(getDdl(schemaChanges, index++)).startsWith("SET");
+        assertThat(getDdl(schemaChanges, index++)).startsWith("DROP TABLE IF EXISTS `" + DATABASE.getDatabaseName() + "`.`t-1`");
+        assertThat(getDdl(schemaChanges, index++)).startsWith("DROP TABLE IF EXISTS `" + DATABASE.getDatabaseName() + "`.`t.2`");
+        assertThat(getDdl(schemaChanges, index++)).startsWith("DROP DATABASE IF EXISTS `" + DATABASE.getDatabaseName() + "`");
+        assertThat(getDdl(schemaChanges, index++)).startsWith("CREATE DATABASE `" + DATABASE.getDatabaseName() + "`");
+        assertThat(getDdl(schemaChanges, index++)).startsWith("USE `" + DATABASE.getDatabaseName() + "`");
+        assertThat(getDdl(schemaChanges, index++)).startsWith("CREATE TABLE `t-1`");
+        assertThat(getDdl(schemaChanges, index++)).startsWith("CREATE TABLE `t.2`");
     }
 
     private String getDdl(final List<SourceRecord> schemaChanges, int index) {

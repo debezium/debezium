@@ -28,7 +28,7 @@ import io.debezium.annotation.NotThreadSafe;
 @NotThreadSafe
 public interface Document extends Iterable<Document.Field>, Comparable<Document> {
 
-    static interface Field extends Comparable<Field> {
+    interface Field extends Comparable<Field> {
 
         /**
          * Get the name of the field

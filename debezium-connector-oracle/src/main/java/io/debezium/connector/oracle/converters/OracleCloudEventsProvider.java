@@ -5,10 +5,8 @@
  */
 package io.debezium.connector.oracle.converters;
 
-import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.Struct;
-
 import io.debezium.connector.oracle.Module;
+import io.debezium.converters.recordandmetadata.RecordAndMetadata;
 import io.debezium.converters.spi.CloudEventsMaker;
 import io.debezium.converters.spi.CloudEventsProvider;
 import io.debezium.converters.spi.RecordParser;
@@ -26,12 +24,12 @@ public class OracleCloudEventsProvider implements CloudEventsProvider {
     }
 
     @Override
-    public RecordParser createParser(Schema schema, Struct record) {
-        return new OracleRecordParser(schema, record);
+    public RecordParser createParser(RecordAndMetadata recordAndMetadata) {
+        return new OracleRecordParser(recordAndMetadata);
     }
 
     @Override
-    public CloudEventsMaker createMaker(RecordParser parser, SerializerType contentType, String dataSchemaUriBase) {
-        return new OracleCloudEventsMaker(parser, contentType, dataSchemaUriBase);
+    public CloudEventsMaker createMaker(RecordParser parser, SerializerType contentType, String dataSchemaUriBase, String cloudEventsSchemaName) {
+        return new OracleCloudEventsMaker(parser, contentType, dataSchemaUriBase, cloudEventsSchemaName);
     }
 }

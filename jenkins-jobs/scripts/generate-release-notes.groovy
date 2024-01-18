@@ -157,7 +157,7 @@ Gracefully stop the running connector, remove the old plugin files, install the 
 Upon restart, the $version connectors will continue where the previous connector left off.
 As one might expect, all change events previously written to Kafka by the old connector will not be modified.
 
-If you are using our container images, then please do not forget to pull them fresh from https://hub.docker.com/u/debezium[DockerHub].
+If you are using our container images, then please do not forget to pull them fresh from https://quay.io/organization/debezium[Quay.io].
 
 """
 asciidocPlaceholderSection('Breaking changes', breakingChanges)

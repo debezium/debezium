@@ -91,7 +91,7 @@ public interface ReplicationConnection extends AutoCloseable {
         return new PostgresReplicationConnection.ReplicationConnectionBuilder(config);
     }
 
-    public void reconnect() throws SQLException;
+    void reconnect() throws SQLException;
 
     /**
      * A builder for {@link ReplicationConnection}
@@ -112,7 +112,7 @@ public interface ReplicationConnection extends AutoCloseable {
          * @return this instance
          * @see #DEFAULT_SLOT_NAME
          */
-        Builder withSlot(final String slotName);
+        Builder withSlot(String slotName);
 
         /**
          * Sets the publication name for the PG logical publication
@@ -121,7 +121,7 @@ public interface ReplicationConnection extends AutoCloseable {
          * @return this instance
          * @see #DEFAULT_PUBLICATION_NAME
          */
-        Builder withPublication(final String publicationName);
+        Builder withPublication(String publicationName);
 
         /**
          * Sets the publication tables to watch for the PG logical publication
@@ -130,7 +130,7 @@ public interface ReplicationConnection extends AutoCloseable {
          * @return this instance
          * @see #config.getTableFilters()
          */
-        Builder withTableFilter(final RelationalTableFilters tableFilter);
+        Builder withTableFilter(RelationalTableFilters tableFilter);
 
         /**
          * Sets the publication autocreate mode for the PG logical publication
@@ -139,7 +139,7 @@ public interface ReplicationConnection extends AutoCloseable {
          * @return this instance
          * @see #PostgresConnectorConfig.PublicationAutocreateMode.ALL_TABLES
          */
-        Builder withPublicationAutocreateMode(final PostgresConnectorConfig.AutoCreateMode publicationAutocreateMode);
+        Builder withPublicationAutocreateMode(PostgresConnectorConfig.AutoCreateMode publicationAutocreateMode);
 
         /**
          * Sets the instance for the PG logical decoding plugin
@@ -148,7 +148,7 @@ public interface ReplicationConnection extends AutoCloseable {
          * @return this instance
          * @see #PROTOBUF_PLUGIN_NAME
          */
-        Builder withPlugin(final PostgresConnectorConfig.LogicalDecoder plugin);
+        Builder withPlugin(PostgresConnectorConfig.LogicalDecoder plugin);
 
         /**
          * Whether or not to drop the replication slot once the replication connection closes
@@ -157,7 +157,7 @@ public interface ReplicationConnection extends AutoCloseable {
          * @return this instance
          * @see #DEFAULT_DROP_SLOT_ON_CLOSE
          */
-        Builder dropSlotOnClose(final boolean dropSlotOnClose);
+        Builder dropSlotOnClose(boolean dropSlotOnClose);
 
         /**
          * The number of milli-seconds the replication connection should periodically send updates to the server.
@@ -165,7 +165,7 @@ public interface ReplicationConnection extends AutoCloseable {
          * @param statusUpdateInterval a duration; null or non-positive value causes Postgres' default to be applied
          * @return this instance
          */
-        Builder statusUpdateInterval(final Duration statusUpdateInterval);
+        Builder statusUpdateInterval(Duration statusUpdateInterval);
 
         Builder withTypeRegistry(TypeRegistry typeRegistry);
 
@@ -185,14 +185,7 @@ public interface ReplicationConnection extends AutoCloseable {
          * @return this instance
          * @see #STREAM_PARAMS
          */
-        Builder streamParams(final String streamParams);
-
-        /**
-         * Whether or not the snapshot is executed
-         * @param doSnapshot true if a snapshot is going to be executed, false if otherwise
-         * @return this instance
-         */
-        Builder doSnapshot(final boolean doSnapshot);
+        Builder streamParams(String streamParams);
 
         /**
          * Provides a JDBC connection used to query metadata, database information, ...

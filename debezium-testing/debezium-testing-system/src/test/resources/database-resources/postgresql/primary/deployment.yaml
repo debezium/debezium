@@ -1,0 +1,54 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: postgresql-primary
+  labels:
+    app: postgresql
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgresql
+      deployment: postgresql-primary
+  template:
+    metadata:
+      labels:
+        app: postgresql
+        deployment: postgresql-primary
+    spec:
+      containers:
+      - resources: {}
+        name: postgresql
+        env:
+        - name: POSTGRES_PASSWORD
+          value: ${database.postgresql.password}
+        - name: POSTGRES_DB
+          value: ${database.postgresql.dbname}
+        - name: POSTGRES_USER
+          value: ${database.postgresql.username}
+        ports:
+        - containerPort: 5432
+          protocol: TCP
+        imagePullPolicy: Always
+        livenessProbe:
+          initialDelaySeconds: 30
+          tcpSocket:
+            port: 5432
+          timeoutSeconds: 1
+        readinessProbe:
+          exec:
+            command:
+            - "/bin/sh"
+            - "-i"
+            - "-c"
+            - "PGPASSWORD=${POSTGRES_PASSWORD} /usr/bin/psql -w -U ${POSTGRES_USER} -d ${POSTGRES_DB} -c 'SELECT 1'"
+          initialDelaySeconds: 5
+          timeoutSeconds: 1
+        terminationMessagePolicy: File
+        terminationMessagePath: /dev/termination-log
+        image: ${ocp.image.postgresql}
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      dnsPolicy: ClusterFirst
+  strategy:
+    type: Recreate

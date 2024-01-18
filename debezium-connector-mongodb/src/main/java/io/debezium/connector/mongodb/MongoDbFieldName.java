@@ -16,10 +16,6 @@ import io.debezium.data.Envelope.FieldName;
  */
 public class MongoDbFieldName {
 
-    // Oplog fields
-    public static final String PATCH = "patch";
-    public static final String FILTER = "filter";
-
     // Change Streams fields
     public static final String UPDATE_DESCRIPTION = "updateDescription";
     public static final String REMOVED_FIELDS = "removedFields";

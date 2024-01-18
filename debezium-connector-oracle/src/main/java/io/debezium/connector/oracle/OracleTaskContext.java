@@ -10,6 +10,6 @@ import io.debezium.connector.common.CdcSourceTaskContext;
 public class OracleTaskContext extends CdcSourceTaskContext {
 
     public OracleTaskContext(OracleConnectorConfig config, OracleDatabaseSchema schema) {
-        super(config.getContextName(), config.getLogicalName(), schema::tableIds);
+        super(config.getContextName(), config.getLogicalName(), config.getCustomMetricTags(), schema::tableIds);
     }
 }

@@ -61,7 +61,7 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter<P
     public PostgresChangeRecordEmitter(PostgresPartition partition, OffsetContext offset, Clock clock, PostgresConnectorConfig connectorConfig, PostgresSchema schema,
                                        PostgresConnection connection, TableId tableId,
                                        ReplicationMessage message) {
-        super(partition, offset, clock);
+        super(partition, offset, clock, connectorConfig);
 
         this.schema = schema;
         this.message = message;
@@ -181,7 +181,7 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter<P
                     cachedOldToastedValues.put(columnName, value);
                 }
                 else {
-                    if (value == UnchangedToastedReplicationMessageColumn.UNCHANGED_TOAST_VALUE) {
+                    if (UnchangedToastedReplicationMessageColumn.isUnchangedToastedValue(value)) {
                         final Object candidate = cachedOldToastedValues.get(columnName);
                         if (candidate != null) {
                             value = candidate;
@@ -377,4 +377,5 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter<P
     protected boolean skipEmptyMessages() {
         return true;
     }
+
 }

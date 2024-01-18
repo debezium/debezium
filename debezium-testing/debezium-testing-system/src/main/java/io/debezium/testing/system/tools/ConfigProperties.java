@@ -24,11 +24,17 @@ public final class ConfigProperties {
 
     public static final long WAIT_SCALE_FACTOR = longProperty("test.wait.scale", 1);
 
+    public static final boolean PRODUCT_BUILD = booleanProperty("test.product.build");
+    public static final boolean PREPARE_NAMESPACES_AND_STRIMZI = booleanProperty("test.prepare.strimzi");
+
     // DockerConfiguration configuration
     public static final String DOCKER_IMAGE_KAFKA_RHEL = System.getProperty("test.docker.image.kc");
-    public static final String DOCKER_IMAGE_MYSQL = System.getProperty("test.docker.image.mysql", "quay.io/debezium/example-mysql:latest");
+    public static final String DOCKER_IMAGE_MYSQL = System.getProperty("test.docker.image.mysql", "quay.io/debezium/example-mysql-master:latest");
+    public static final String DOCKER_IMAGE_MYSQL_REPLICA = System.getProperty("test.docker.image.mysql.replica", "quay.io/debezium/example-mysql-replica:latest");
+
     public static final String DOCKER_IMAGE_POSTGRESQL = System.getProperty("test.docker.image.postgresql", "quay.io/debezium/example-postgres:latest");
     public static final String DOCKER_IMAGE_MONGO = System.getProperty("test.docker.image.mongo", "quay.io/debezium/example-mongodb:latest");
+    public static final String DOCKER_IMAGE_MONGO_SHARDED = System.getProperty("test.docker.image.mongo.sharded", "quay.io/debezium/example-mongodb:latest");
     public static final String DOCKER_IMAGE_SQLSERVER = System.getProperty("test.docker.image.sqlserver", "mcr.microsoft.com/mssql/server:2019-latest");
     public static final String DOCKER_IMAGE_DB2 = System.getProperty("test.docker.image.db2", "quay.io/debezium/db2-cdc:latest");
     public static final String DOCKER_IMAGE_ORACLE = System.getProperty("test.docker.image.oracle", "quay.io/rh_integration/dbz-oracle:19.3.0");
@@ -50,15 +56,16 @@ public final class ConfigProperties {
     public static final Optional<String> OCP_PULL_SECRET_PATH = stringOptionalProperty("test.ocp.pull.secret.paths");
 
     // Strimzi configuration
-    public static final String STRIMZI_OPERATOR_NAME = System.getProperty("test.strimzi.operator.name", "strimzi-cluster-operator");
+    public static final String STRIMZI_OPERATOR_CHANNEL = System.getProperty("test.strimzi.operator.channel", "stable");
+
     public static final boolean STRIMZI_OPERATOR_CONNECTORS = booleanProperty("test.strimzi.operator.connectors", true);
-    public static final String STRIMZI_CRD_VERSION = System.getProperty("test.strimzi.crd.version", "v1beta2");
     public static final String STRIMZI_VERSION_KAFKA = System.getProperty("test.strimzi.version.kafka", "3.1.0");
-    public static final boolean STRIMZI_KC_BUILD = booleanProperty("test.strimzi.kc.build", true);
-    public static final String STRIMZI_KC_IMAGE = System.getProperty("test.strimzi.kc.image");
 
     // Apicurio Registry configuration
     public static final String APICURIO_LOG_LEVEL = System.getProperty("test.apicurio.log.level", "INFO");
+    public static final String APICURIO_OPERATOR_CHANNEL = System.getProperty("test.apicurio.operator.channel", "2.x");
+
+    public static final boolean APICURIO_TLS_ENABLED = booleanProperty("test.apicurio.tls.enabled", false);
 
     // MySql Configuration
     public static final String DATABASE_MYSQL_USERNAME = System.getProperty("test.database.mysql.username", "mysqluser");
@@ -96,6 +103,8 @@ public final class ConfigProperties {
     public static final Optional<String> DATABASE_MONGO_HOST = stringOptionalProperty("test.database.mongo.host");
     public static final int DATABASE_MONGO_PORT = Integer.parseInt(System.getProperty("test.database.mongo.port", "27017"));
 
+    public static final String DATABASE_MONGO_DOCKER_DESKTOP_PORTS = System.getProperty("database.mongo.docker.desktop.ports", "27017:27117");
+    public static final int DATABASE_MONGO_DOCKER_REPLICA_SIZE = Integer.parseInt(System.getProperty("database.mongo.docker.replica.size", "1"));
     // DB2 Configuration
     public static final String DATABASE_DB2_USERNAME = System.getProperty("test.database.db2.username", "db2inst1");
     public static final String DATABASE_DB2_PASSWORD = System.getProperty("test.database.db2.password", "=Password!");
@@ -108,20 +117,12 @@ public final class ConfigProperties {
 
     // Oracle Configuration
     public static final boolean DATABASE_ORACLE = booleanProperty("test.database.oracle", true);
-    public static final String DATABASE_ORACLE_USERNAME = System.getProperty("test.database.oracle..username", "debezium");
+    public static final String DATABASE_ORACLE_USERNAME = System.getProperty("test.database.oracle.username", "debezium");
     public static final String DATABASE_ORACLE_PASSWORD = System.getProperty("test.database.oracle.password", "dbz");
     public static final String DATABASE_ORACLE_DBZ_USERNAME = System.getProperty("test.database.oracle.dbz.username", "c##dbzuser");
     public static final String DATABASE_ORACLE_DBZ_PASSWORD = System.getProperty("test.database.oracle.dbz.password", "dbz");
     public static final String DATABASE_ORACLE_DBNAME = System.getProperty("test.database.oracle.dbname", "ORCLCDB");
     public static final String DATABASE_ORACLE_PDBNAME = System.getProperty("test.database.oracle.pdbname", "ORCLPDB1");
-
-    // Artifact Server
-    public static final String ARTIFACT_SERVER_URL = System.getProperty("test.as.url");
-    public static final String ARTIFACT_SERVER_DBZ_VERSION = System.getProperty("test.as.debezium.version");
-    public static final String ARTIFACT_SERVER_APC_VERSION = System.getProperty("test.as.apicurio.version");
-    public static final String ARTIFACT_SERVER_APC_URL = System.getProperty("test.as.apicurio.url");
-    public static final String ARTIFACT_SERVER_DB2_DRIVER_VERSION = System.getProperty("test.as.db2.driver.version");
-    public static final String ARTIFACT_SERVER_ORACLE_DRIVER_VERSION = System.getProperty("test.as.oracle.driver.version");
 
     private static boolean booleanProperty(String key) {
         return booleanProperty(key, false);

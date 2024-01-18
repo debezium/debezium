@@ -28,8 +28,8 @@ public class MemoryTransaction extends AbstractTransaction {
     private int numberOfEvents;
     private List<LogMinerEvent> events;
 
-    public MemoryTransaction(String transactionId, Scn startScn, Instant changeTime, String userName) {
-        super(transactionId, startScn, changeTime, userName);
+    public MemoryTransaction(String transactionId, Scn startScn, Instant changeTime, String userName, Integer redoThreadId) {
+        super(transactionId, startScn, changeTime, userName, redoThreadId);
         this.events = new ArrayList<>();
         start();
     }
@@ -54,13 +54,16 @@ public class MemoryTransaction extends AbstractTransaction {
     }
 
     public boolean removeEventWithRowId(String rowId) {
-        return events.removeIf(event -> {
+        // Should always iterate from the back of the event queue and remove the last that matches row-id.
+        for (int i = events.size() - 1; i >= 0; i--) {
+            final LogMinerEvent event = events.get(i);
             if (event.getRowId().equals(rowId)) {
+                events.remove(i);
                 LOGGER.trace("Undo applied for event {}.", event);
                 return true;
             }
-            return false;
-        });
+        }
+        return false;
     }
 
     @Override

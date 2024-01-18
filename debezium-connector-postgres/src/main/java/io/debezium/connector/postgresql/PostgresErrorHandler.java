@@ -20,8 +20,8 @@ import io.debezium.util.Collect;
  */
 public class PostgresErrorHandler extends ErrorHandler {
 
-    public PostgresErrorHandler(PostgresConnectorConfig connectorConfig, ChangeEventQueue<?> queue) {
-        super(PostgresConnector.class, connectorConfig, queue);
+    public PostgresErrorHandler(PostgresConnectorConfig connectorConfig, ChangeEventQueue<?> queue, ErrorHandler replacedErrorHandler) {
+        super(PostgresConnector.class, connectorConfig, queue, replacedErrorHandler);
     }
 
     @Override

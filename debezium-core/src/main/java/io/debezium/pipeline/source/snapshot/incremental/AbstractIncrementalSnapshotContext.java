@@ -10,6 +10,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
@@ -19,6 +20,7 @@ import java.util.Optional;
 import java.util.Queue;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -30,6 +32,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.debezium.DebeziumException;
 import io.debezium.annotation.NotThreadSafe;
+import io.debezium.pipeline.signal.actions.snapshotting.AdditionalCondition;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.util.HexConverter;
@@ -54,8 +57,12 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
     public static final String DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ADDITIONAL_CONDITION = DATA_COLLECTIONS_TO_SNAPSHOT_KEY
             + "_additional_condition";
 
+    public static final String DATA_COLLECTIONS_TO_SNAPSHOT_KEY_SURROGATE_KEY = DATA_COLLECTIONS_TO_SNAPSHOT_KEY
+            + "_surrogate_key";
+
     public static final String EVENT_PRIMARY_KEY = INCREMENTAL_SNAPSHOT_KEY + "_primary_key";
     public static final String TABLE_MAXIMUM_KEY = INCREMENTAL_SNAPSHOT_KEY + "_maximum_key";
+    public static final String CORRELATION_ID = INCREMENTAL_SNAPSHOT_KEY + "_correlation_id";
 
     /**
      * @code(true) if window is opened and deduplication should be executed
@@ -89,6 +96,8 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
     private Table schema;
 
     private boolean schemaVerificationPassed;
+
+    private String correlationId;
 
     /**
      * Determines if the incremental snapshot was paused or not.
@@ -153,7 +162,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
     }
 
     private String arrayToSerializedString(Object[] array) {
-        try (final ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        try (ByteArrayOutputStream bos = new ByteArrayOutputStream();
                 ObjectOutputStream oos = new ObjectOutputStream(bos)) {
             oos.writeObject(array);
             return HexConverter.convertToHexString(bos.toByteArray());
@@ -164,7 +173,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
     }
 
     private Object[] serializedStringToArray(String field, String serialized) {
-        try (final ByteArrayInputStream bis = new ByteArrayInputStream(HexConverter.convertFromHex(serialized));
+        try (ByteArrayInputStream bis = new ByteArrayInputStream(HexConverter.convertFromHex(serialized));
                 ObjectInputStream ois = new ObjectInputStream(bis)) {
             return (Object[]) ois.readObject();
         }
@@ -182,7 +191,8 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
                         LinkedHashMap<String, String> map = new LinkedHashMap<>();
                         map.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ID, x.getId().toString());
                         map.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ADDITIONAL_CONDITION,
-                                x.getAdditionalCondition().orElse(null));
+                                x.getAdditionalCondition().isEmpty() ? null : x.getAdditionalCondition().orElse(null));
+                        map.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_SURROGATE_KEY, x.getSurrogateKey().isEmpty() ? null : x.getSurrogateKey().orElse(null));
                         return map;
                     })
                     .collect(Collectors.toList());
@@ -198,7 +208,8 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
             List<LinkedHashMap<String, String>> dataCollections = mapper.readValue(dataCollectionsStr, mapperTypeRef);
             List<DataCollection<T>> dataCollectionsList = dataCollections.stream()
                     .map(x -> new DataCollection<T>((T) TableId.parse(x.get(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ID), useCatalogBeforeSchema),
-                            Optional.ofNullable(x.get(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ADDITIONAL_CONDITION))))
+                            Optional.ofNullable(x.get(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ADDITIONAL_CONDITION)).orElse(""),
+                            Optional.ofNullable(x.get(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_SURROGATE_KEY)).orElse("")))
                     .collect(Collectors.toList());
             return dataCollectionsList;
         }
@@ -218,6 +229,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
         offset.put(EVENT_PRIMARY_KEY, arrayToSerializedString(lastEventKeySent));
         offset.put(TABLE_MAXIMUM_KEY, arrayToSerializedString(maximumKey));
         offset.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY, dataCollectionsToSnapshotAsString());
+        offset.put(CORRELATION_ID, correlationId);
         return offset;
     }
 
@@ -226,24 +238,55 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
     }
 
     @SuppressWarnings("unchecked")
-    public List<DataCollection<T>> addDataCollectionNamesToSnapshot(List<String> dataCollectionIds, Optional<String> additionalCondition) {
+    public List<DataCollection<T>> addDataCollectionNamesToSnapshot(String correlationId, List<String> dataCollectionIds, List<AdditionalCondition> additionalCondition,
+                                                                    String surrogateKey) {
+
+        LOGGER.trace("Adding data collections names {} to snapshot", dataCollectionIds);
         final List<DataCollection<T>> newDataCollectionIds = dataCollectionIds.stream()
-                .map(x -> new DataCollection<T>((T) TableId.parse(x, useCatalogBeforeSchema), additionalCondition))
+                .map(buildDataCollection(additionalCondition, surrogateKey))
                 .collect(Collectors.toList());
         addTablesIdsToSnapshot(newDataCollectionIds);
+        this.correlationId = correlationId;
         return newDataCollectionIds;
+    }
+
+    private Function<String, DataCollection<T>> buildDataCollection(List<AdditionalCondition> additionalCondition, String surrogateKey) {
+        return expandedCollectionName -> {
+            String filter = additionalCondition.stream()
+                    .filter(condition -> condition.getDataCollection().matcher(expandedCollectionName).matches())
+                    .map(AdditionalCondition::getFilter)
+                    .findFirst()
+                    .orElse("");
+            return new DataCollection<T>((T) TableId.parse(expandedCollectionName, useCatalogBeforeSchema), filter, surrogateKey);
+        };
     }
 
     @Override
     public void stopSnapshot() {
         this.dataCollectionsToSnapshot.clear();
+        this.correlationId = null;
     }
 
     @Override
     @SuppressWarnings("unchecked")
     public boolean removeDataCollectionFromSnapshot(String dataCollectionId) {
         final T collectionId = (T) TableId.parse(dataCollectionId, useCatalogBeforeSchema);
-        return dataCollectionsToSnapshot.removeAll(Arrays.asList(new DataCollection<T>(collectionId, null)));
+        return dataCollectionsToSnapshot.removeAll(Arrays.asList(new DataCollection<T>(collectionId)));
+    }
+
+    @Override
+    public List<DataCollection<T>> getDataCollections() {
+        return new ArrayList<>(dataCollectionsToSnapshot);
+    }
+
+    @Override
+    public void unsetCorrelationId() {
+        this.correlationId = null;
+    }
+
+    @Override
+    public String getCorrelationId() {
+        return this.correlationId;
     }
 
     protected static <U> IncrementalSnapshotContext<U> init(AbstractIncrementalSnapshotContext<U> context, Map<String, ?> offsets) {
@@ -260,6 +303,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
         if (dataCollectionsStr != null) {
             context.addTablesIdsToSnapshot(context.stringToDataCollections(dataCollectionsStr));
         }
+        context.correlationId = (String) offsets.get(CORRELATION_ID);
         return context;
     }
 

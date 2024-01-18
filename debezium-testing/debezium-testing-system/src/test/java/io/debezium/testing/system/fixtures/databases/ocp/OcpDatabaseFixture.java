@@ -8,6 +8,7 @@ package io.debezium.testing.system.fixtures.databases.ocp;
 import org.junit.jupiter.api.extension.ExtensionContext;
 
 import io.debezium.testing.system.fixtures.databases.DatabaseFixture;
+import io.debezium.testing.system.tools.ConfigProperties;
 import io.debezium.testing.system.tools.databases.DatabaseController;
 import io.fabric8.openshift.client.OpenShiftClient;
 
@@ -18,5 +19,12 @@ public abstract class OcpDatabaseFixture<T extends DatabaseController<?>> extend
     public OcpDatabaseFixture(Class<T> controllerType, ExtensionContext.Store store) {
         super(controllerType, store);
         this.ocp = retrieve(OpenShiftClient.class);
+    }
+
+    @Override
+    public void teardown() throws Exception {
+        if (dbController != null && !ConfigProperties.PREPARE_NAMESPACES_AND_STRIMZI) {
+            dbController.reload();
+        }
     }
 }

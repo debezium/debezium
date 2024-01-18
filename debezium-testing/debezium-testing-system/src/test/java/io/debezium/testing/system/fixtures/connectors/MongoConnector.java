@@ -28,4 +28,5 @@ public class MongoConnector extends ConnectorFixture<MongoDatabaseController> {
     public ConnectorConfigBuilder connectorConfig(String connectorName) {
         return new ConnectorFactories(kafkaController).mongo(dbController, connectorName);
     }
+
 }

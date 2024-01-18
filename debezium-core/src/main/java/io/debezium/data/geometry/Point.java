@@ -96,7 +96,7 @@ public class Point extends Geometry {
     /**
      * Creates a value for this schema using 2 given coordinates.
      *
-     * @param pointSchema a {@link Schema} instance which represents a point; may not be null
+     * @param geomSchema a {@link Schema} instance which represents a point; may not be null
      * @param x the X coordinate of the point; may not be null
      * @param y the Y coordinate of the point; may not be null
      * @return a {@link Struct} which represents a Connect value for this schema; never null
@@ -112,7 +112,7 @@ public class Point extends Geometry {
 
     /**
      * Create a value for this schema using WKB
-     * @param pointSchema a {@link Schema} instance which represents a point; may not be null
+     * @param geomSchema a {@link Schema} instance which represents a point; may not be null
      * @param wkb the original Well-Known binary representation of the coordinate; may not be null
      * @param srid the coordinate reference system identifier; null if unset/unknown
      * @return a {@link Struct} which represents a Connect value for this schema; never null

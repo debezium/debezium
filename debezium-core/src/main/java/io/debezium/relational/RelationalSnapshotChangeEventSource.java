@@ -9,15 +9,26 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalLong;
+import java.util.Queue;
 import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CompletionService;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutorCompletionService;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -30,9 +41,12 @@ import io.debezium.DebeziumException;
 import io.debezium.connector.SnapshotRecord;
 import io.debezium.jdbc.CancellableResultSet;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.EventDispatcher.SnapshotReceiver;
+import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.source.AbstractSnapshotChangeEventSource;
+import io.debezium.pipeline.source.SnapshottingTask;
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
@@ -40,7 +54,9 @@ import io.debezium.pipeline.spi.ChangeRecordEmitter;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.pipeline.spi.SnapshotResult;
+import io.debezium.relational.RelationalDatabaseConnectorConfig.SnapshotTablesRowCountOrder;
 import io.debezium.schema.SchemaChangeEvent;
+import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
 import io.debezium.util.ColumnUtils;
 import io.debezium.util.Strings;
@@ -60,20 +76,25 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     private static final Logger LOGGER = LoggerFactory.getLogger(RelationalSnapshotChangeEventSource.class);
 
     public static final Pattern SELECT_ALL_PATTERN = Pattern.compile("\\*");
+    public static final Pattern MATCH_ALL_PATTERN = Pattern.compile(".*");
 
     private final RelationalDatabaseConnectorConfig connectorConfig;
     private final JdbcConnection jdbcConnection;
+    private final MainConnectionProvidingConnectionFactory<? extends JdbcConnection> jdbcConnectionFactory;
     private final RelationalDatabaseSchema schema;
     protected final EventDispatcher<P, TableId> dispatcher;
     protected final Clock clock;
     private final SnapshotProgressListener<P> snapshotProgressListener;
+    protected Queue<JdbcConnection> connectionPool;
 
     public RelationalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig connectorConfig,
-                                               JdbcConnection jdbcConnection, RelationalDatabaseSchema schema,
-                                               EventDispatcher<P, TableId> dispatcher, Clock clock, SnapshotProgressListener<P> snapshotProgressListener) {
-        super(connectorConfig, snapshotProgressListener);
+                                               MainConnectionProvidingConnectionFactory<? extends JdbcConnection> jdbcConnectionFactory,
+                                               RelationalDatabaseSchema schema, EventDispatcher<P, TableId> dispatcher, Clock clock,
+                                               SnapshotProgressListener<P> snapshotProgressListener, NotificationService<P, O> notificationService) {
+        super(connectorConfig, snapshotProgressListener, notificationService);
         this.connectorConfig = connectorConfig;
-        this.jdbcConnection = jdbcConnection;
+        this.jdbcConnection = jdbcConnectionFactory.mainConnection();
+        this.jdbcConnectionFactory = jdbcConnectionFactory;
         this.schema = schema;
         this.dispatcher = dispatcher;
         this.clock = clock;
@@ -87,7 +108,16 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         final RelationalSnapshotContext<P, O> ctx = (RelationalSnapshotContext<P, O>) snapshotContext;
 
         Connection connection = null;
+        Throwable exceptionWhileSnapshot = null;
         try {
+
+            Set<Pattern> dataCollectionsToBeSnapshotted = getDataCollectionPattern(snapshottingTask.getDataCollections());
+
+            Map<DataCollectionId, String> snapshotSelectOverridesByTable = snapshottingTask.getFilterQueries().entrySet().stream()
+                    .collect(Collectors.toMap(e -> TableId.parse(e.getKey()), Map.Entry::getValue));
+
+            preSnapshot();
+
             LOGGER.info("Snapshot step 1 - Preparing");
 
             if (previousOffset != null && previousOffset.isSnapshotRunning()) {
@@ -101,8 +131,10 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
             // Note that there's a minor race condition here: a new table matching the filters could be created between
             // this call and the determination of the initial snapshot position below; this seems acceptable, though
-            determineCapturedTables(ctx);
+            determineCapturedTables(ctx, dataCollectionsToBeSnapshotted, snapshottingTask);
             snapshotProgressListener.monitoredDataCollectionsDetermined(snapshotContext.partition, ctx.capturedTables);
+            // Init jdbc connection pool for reading table schema and data
+            connectionPool = createConnectionPool(ctx);
 
             LOGGER.info("Snapshot step 3 - Locking captured tables {}", ctx.capturedTables);
 
@@ -114,7 +146,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
             determineSnapshotOffset(ctx, previousOffset);
 
             LOGGER.info("Snapshot step 5 - Reading structure of captured tables");
-            readTableStructure(context, ctx, previousOffset);
+            readTableStructure(context, ctx, previousOffset, snapshottingTask);
 
             if (snapshottingTask.snapshotSchema()) {
                 LOGGER.info("Snapshot step 6 - Persisting schema history");
@@ -130,7 +162,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
             if (snapshottingTask.snapshotData()) {
                 LOGGER.info("Snapshot step 7 - Snapshotting data");
-                createDataEvents(context, ctx);
+                createDataEvents(context, ctx, connectionPool, snapshotSelectOverridesByTable, snapshottingTask);
             }
             else {
                 LOGGER.info("Snapshot step 7 - Skipping snapshotting of data");
@@ -143,9 +175,52 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
             dispatcher.alwaysDispatchHeartbeatEvent(ctx.partition, ctx.offset);
             return SnapshotResult.completed(ctx.offset);
         }
-        finally {
-            rollbackTransaction(connection);
+        catch (final Exception | AssertionError e) {
+            LOGGER.error("Error during snapshot", e);
+            exceptionWhileSnapshot = e;
+            throw e;
         }
+        finally {
+            try {
+                if (connectionPool != null) {
+                    for (JdbcConnection conn : connectionPool) {
+                        if (!jdbcConnection.equals(conn)) {
+                            conn.close();
+                        }
+                    }
+                }
+                rollbackTransaction(connection);
+            }
+            catch (final Exception e) {
+                LOGGER.error("Error in finally block", e);
+                if (exceptionWhileSnapshot != null) {
+                    e.addSuppressed(exceptionWhileSnapshot);
+                }
+                throw e;
+            }
+        }
+    }
+
+    private Queue<JdbcConnection> createConnectionPool(final RelationalSnapshotContext<P, O> ctx) throws SQLException {
+        Queue<JdbcConnection> connectionPool = new ConcurrentLinkedQueue<>();
+        connectionPool.add(jdbcConnection);
+
+        int snapshotMaxThreads = Math.max(1, Math.min(connectorConfig.getSnapshotMaxThreads(), ctx.capturedTables.size()));
+        if (snapshotMaxThreads > 1) {
+            Optional<String> firstQuery = getSnapshotConnectionFirstSelect(ctx, ctx.capturedTables.iterator().next());
+            for (int i = 1; i < snapshotMaxThreads; i++) {
+                JdbcConnection conn = jdbcConnectionFactory.newConnection().setAutoCommit(false);
+                conn.connection().setTransactionIsolation(jdbcConnection.connection().getTransactionIsolation());
+                connectionPoolConnectionCreated(ctx, conn);
+                connectionPool.add(conn);
+                if (firstQuery.isPresent()) {
+                    conn.execute(firstQuery.get());
+                }
+            }
+        }
+
+        LOGGER.info("Created connection pool with {} threads", snapshotMaxThreads);
+        return connectionPool;
     }
 
     public Connection createSnapshotConnection() throws SQLException {
@@ -160,36 +235,57 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     protected void connectionCreated(RelationalSnapshotContext<P, O> snapshotContext) throws Exception {
     }
 
+    /**
+     * Executes steps which have to be taken just after a connection pool connection is created.
+     */
+    protected void connectionPoolConnectionCreated(RelationalSnapshotContext<P, O> snapshotContext, JdbcConnection connection) throws SQLException {
+    }
+
+    protected List<Pattern> getSignalDataCollectionPattern(String signalingDataCollection) {
+        return Strings.listOfRegex(signalingDataCollection, Pattern.CASE_INSENSITIVE);
+    }
+
     private Stream<TableId> toTableIds(Set<TableId> tableIds, Pattern pattern) {
         return tableIds
                 .stream()
-                .filter(tid -> pattern.asPredicate().test(connectorConfig.getTableIdMapper().toString(tid)) || connectorConfig.isSignalDataCollection(tid))
+                .filter(tid -> pattern.asMatchPredicate().test(connectorConfig.getTableIdMapper().toString(tid)))
                 .sorted();
     }
 
-    private Set<TableId> sort(Set<TableId> capturedTables) throws Exception {
+    private Set<TableId> addSignalingCollectionAndSort(Set<TableId> capturedTables) {
+
         String tableIncludeList = connectorConfig.tableIncludeList();
-        if (tableIncludeList != null) {
-            return Strings.listOfRegex(tableIncludeList, Pattern.CASE_INSENSITIVE)
-                    .stream()
-                    .flatMap(pattern -> toTableIds(capturedTables, pattern))
-                    .collect(Collectors.toCollection(LinkedHashSet::new));
+        String signalingDataCollection = connectorConfig.getSignalingDataCollectionId();
+
+        List<Pattern> captureTablePatterns = new ArrayList<>();
+        if (!Strings.isNullOrBlank(tableIncludeList)) {
+            captureTablePatterns.addAll(Strings.listOfRegex(tableIncludeList, Pattern.CASE_INSENSITIVE));
         }
-        return capturedTables
+        else {
+            captureTablePatterns.add(MATCH_ALL_PATTERN);
+        }
+
+        if (!Strings.isNullOrBlank(signalingDataCollection)) {
+            captureTablePatterns.addAll(getSignalDataCollectionPattern(signalingDataCollection));
+        }
+
+        return captureTablePatterns
                 .stream()
-                .sorted()
+                .flatMap(pattern -> toTableIds(capturedTables, pattern))
                 .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
-    private void determineCapturedTables(RelationalSnapshotContext<P, O> ctx) throws Exception {
+    private void determineCapturedTables(RelationalSnapshotContext<P, O> ctx, Set<Pattern> dataCollectionsToBeSnapshotted, SnapshottingTask snapshottingTask)
+            throws Exception {
+
         Set<TableId> allTableIds = getAllTableIds(ctx);
-        Set<TableId> snapshottedTableIds = determineDataCollectionsToBeSnapshotted(allTableIds).collect(Collectors.toSet());
+        Set<TableId> snapshottedTableIds = determineDataCollectionsToBeSnapshotted(allTableIds, dataCollectionsToBeSnapshotted).collect(Collectors.toSet());
 
         Set<TableId> capturedTables = new HashSet<>();
         Set<TableId> capturedSchemaTables = new HashSet<>();
 
         for (TableId tableId : allTableIds) {
-            if (connectorConfig.getTableFilters().eligibleForSchemaDataCollectionFilter().isIncluded(tableId)) {
+            if (connectorConfig.getTableFilters().eligibleForSchemaDataCollectionFilter().isIncluded(tableId) && !snapshottingTask.isOnDemand()) {
                 LOGGER.info("Adding table {} to the list of capture schema tables", tableId);
                 capturedSchemaTables.add(tableId);
             }
@@ -205,11 +301,12 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
             }
         }
 
-        ctx.capturedTables = sort(capturedTables);
-        ctx.capturedSchemaTables = capturedSchemaTables
-                .stream()
-                .sorted()
-                .collect(Collectors.toCollection(LinkedHashSet::new));
+        ctx.capturedTables = addSignalingCollectionAndSort(capturedTables);
+        ctx.capturedSchemaTables = snapshottingTask.isOnDemand() ? ctx.capturedTables
+                : capturedSchemaTables
+                        .stream()
+                        .sorted()
+                        .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
     /**
@@ -238,7 +335,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
      * Reads the structure of all the captured tables, writing it to {@link RelationalSnapshotContext#tables}.
      */
     protected abstract void readTableStructure(ChangeEventSourceContext sourceContext,
-                                               RelationalSnapshotContext<P, O> snapshotContext, O offsetContext)
+                                               RelationalSnapshotContext<P, O> snapshotContext, O offsetContext, SnapshottingTask snapshottingTask)
             throws Exception;
 
     /**
@@ -258,34 +355,43 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                                                      SnapshottingTask snapshottingTask)
             throws Exception {
         tryStartingSnapshot(snapshotContext);
-        for (Iterator<TableId> iterator = snapshotContext.capturedTables.iterator(); iterator.hasNext();) {
+        if (!schema.isHistorized()) {
+            return;
+        }
+        for (Iterator<TableId> iterator = getTablesForSchemaChange(snapshotContext).iterator(); iterator.hasNext();) {
             final TableId tableId = iterator.next();
             if (!sourceContext.isRunning()) {
                 throw new InterruptedException("Interrupted while capturing schema of table " + tableId);
             }
 
-            LOGGER.debug("Capturing structure of table {}", tableId);
+            LOGGER.info("Capturing structure of table {}", tableId);
 
-            Table table = snapshotContext.tables.forTable(tableId);
+            snapshotContext.offset.event(tableId, getClock().currentTime());
 
-            if (schema.isHistorized()) {
-                snapshotContext.offset.event(tableId, getClock().currentTime());
-
-                // If data are not snapshotted then the last schema change must set last snapshot flag
-                if (!snapshottingTask.snapshotData() && !iterator.hasNext()) {
-                    lastSnapshotRecord(snapshotContext);
-                }
-
-                dispatcher.dispatchSchemaChangeEvent(snapshotContext.partition, table.id(), (receiver) -> {
-                    try {
-                        receiver.schemaChangeEvent(getCreateTableEvent(snapshotContext, table));
-                    }
-                    catch (Exception e) {
-                        throw new DebeziumException(e);
-                    }
-                });
+            // If data are not snapshotted then the last schema change must set last snapshot flag
+            if (!snapshottingTask.snapshotData() && !iterator.hasNext()) {
+                lastSnapshotRecord(snapshotContext);
             }
+
+            SchemaChangeEvent event = getCreateTableEvent(snapshotContext, snapshotContext.tables.forTable(tableId));
+            if (HistorizedRelationalDatabaseSchema.class.isAssignableFrom(schema.getClass()) &&
+                    ((HistorizedRelationalDatabaseSchema) schema).skipSchemaChangeEvent(event)) {
+                continue;
+            }
+
+            dispatcher.dispatchSchemaChangeEvent(snapshotContext.partition, snapshotContext.offset, tableId, (receiver) -> {
+                try {
+                    receiver.schemaChangeEvent(event);
+                }
+                catch (Exception e) {
+                    throw new DebeziumException(e);
+                }
+            });
         }
+    }
+
+    protected Collection<TableId> getTablesForSchemaChange(RelationalSnapshotContext<P, O> snapshotContext) {
+        return snapshotContext.capturedTables;
     }
 
     /**
@@ -296,33 +402,87 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
             throws Exception;
 
     private void createDataEvents(ChangeEventSourceContext sourceContext,
-                                  RelationalSnapshotContext<P, O> snapshotContext)
+                                  RelationalSnapshotContext<P, O> snapshotContext,
+                                  Queue<JdbcConnection> connectionPool, Map<DataCollectionId, String> snapshotSelectOverridesByTable,
+                                  SnapshottingTask snapshottingTask)
             throws Exception {
-        SnapshotReceiver<P> snapshotReceiver = dispatcher.getSnapshotChangeEventReceiver();
         tryStartingSnapshot(snapshotContext);
 
-        final int tableCount = snapshotContext.capturedTables.size();
-        int tableOrder = 1;
-        LOGGER.info("Snapshotting contents of {} tables while still in transaction", tableCount);
-        for (Iterator<TableId> tableIdIterator = snapshotContext.capturedTables.iterator(); tableIdIterator.hasNext();) {
-            final TableId tableId = tableIdIterator.next();
-            snapshotContext.firstTable = tableOrder == 1;
-            snapshotContext.lastTable = !tableIdIterator.hasNext();
+        SnapshotReceiver<P> snapshotReceiver = dispatcher.getSnapshotChangeEventReceiver();
 
-            if (!sourceContext.isRunning()) {
-                throw new InterruptedException("Interrupted while snapshotting table " + tableId);
+        int snapshotMaxThreads = connectionPool.size();
+        LOGGER.info("Creating snapshot worker pool with {} worker thread(s)", snapshotMaxThreads);
+        ExecutorService executorService = Executors.newFixedThreadPool(snapshotMaxThreads);
+        CompletionService<Void> completionService = new ExecutorCompletionService<>(executorService);
+
+        Map<TableId, String> queryTables = new HashMap<>();
+        Map<TableId, OptionalLong> rowCountTables = new LinkedHashMap<>();
+        for (TableId tableId : snapshotContext.capturedTables) {
+            final Optional<String> selectStatement = determineSnapshotSelect(snapshotContext, tableId, snapshotSelectOverridesByTable);
+            if (selectStatement.isPresent()) {
+                LOGGER.info("For table '{}' using select statement: '{}'", tableId, selectStatement.get());
+                queryTables.put(tableId, selectStatement.get());
+
+                final OptionalLong rowCount = rowCountForTable(tableId);
+                rowCountTables.put(tableId, rowCount);
+            }
+            else {
+                LOGGER.warn("For table '{}' the select statement was not provided, skipping table", tableId);
+                snapshotProgressListener.dataCollectionSnapshotCompleted(snapshotContext.partition, tableId, 0);
+            }
+        }
+
+        if (connectorConfig.snapshotOrderByRowCount() != SnapshotTablesRowCountOrder.DISABLED) {
+            LOGGER.info("Sort tables by row count '{}'", connectorConfig.snapshotOrderByRowCount());
+            final var orderFactor = (connectorConfig.snapshotOrderByRowCount() == SnapshotTablesRowCountOrder.ASCENDING) ? 1 : -1;
+            rowCountTables = rowCountTables.entrySet().stream()
+                    .sorted(Map.Entry.comparingByValue((a, b) -> orderFactor * Long.compare(a.orElse(0), b.orElse(0))))
+                    .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
+        }
+
+        Queue<O> offsets = new ConcurrentLinkedQueue<>();
+        offsets.add(snapshotContext.offset);
+        for (int i = 1; i < snapshotMaxThreads; i++) {
+            offsets.add(copyOffset(snapshotContext));
+        }
+
+        try {
+            int tableCount = rowCountTables.size();
+            int tableOrder = 1;
+            for (TableId tableId : rowCountTables.keySet()) {
+                boolean firstTable = tableOrder == 1 && snapshotMaxThreads == 1;
+                boolean lastTable = tableOrder == tableCount && snapshotMaxThreads == 1;
+                String selectStatement = queryTables.get(tableId);
+                OptionalLong rowCount = rowCountTables.get(tableId);
+                notificationService.initialSnapshotNotificationService().notifyTableInProgress(
+                        snapshotContext.partition,
+                        snapshotContext.offset,
+                        tableId.identifier(),
+                        rowCountTables.keySet());
+                Callable<Void> callable = createDataEventsForTableCallable(sourceContext, snapshotContext, snapshotReceiver,
+                        snapshotContext.tables.forTable(tableId), firstTable, lastTable, tableOrder++, tableCount, selectStatement, rowCount, connectionPool, offsets);
+                completionService.submit(callable);
             }
 
-            LOGGER.debug("Snapshotting table {}", tableId);
-
-            createDataEventsForTable(sourceContext, snapshotContext, snapshotReceiver, snapshotContext.tables.forTable(tableId), tableOrder++, tableCount);
+            for (int i = 0; i < tableCount; i++) {
+                completionService.take().get();
+            }
+        }
+        finally {
+            executorService.shutdownNow();
         }
 
         releaseDataSnapshotLocks(snapshotContext);
-        snapshotContext.offset.preSnapshotCompletion();
+        for (O offset : offsets) {
+            offset.preSnapshotCompletion();
+        }
         snapshotReceiver.completeSnapshot();
-        snapshotContext.offset.postSnapshotCompletion();
+        for (O offset : offsets) {
+            offset.postSnapshotCompletion();
+        }
     }
+
+    protected abstract O copyOffset(RelationalSnapshotContext<P, O> snapshotContext);
 
     protected void tryStartingSnapshot(RelationalSnapshotContext<P, O> snapshotContext) {
         if (!snapshotContext.offset.isSnapshotRunning()) {
@@ -335,52 +495,64 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
      * For Postgresql its globally static for all tables since postgresql snapshot process setting auto commit off.
      * For Mysql its static per table and might be ~second behind of the select statements start ts.
      */
-    protected Instant getSnapshotSourceTimestamp(RelationalSnapshotContext<P, O> snapshotContext, TableId tableId) {
+    protected Instant getSnapshotSourceTimestamp(JdbcConnection jdbcConnection, O offset, TableId tableId) {
         try {
-            Optional<Timestamp> snapshotTs = jdbcConnection.getCurrentTimestamp();
+            Optional<Instant> snapshotTs = jdbcConnection.getCurrentTimestamp();
             if (snapshotTs.isEmpty()) {
                 throw new ConnectException("Failed reading CURRENT_TIMESTAMP from source database");
             }
 
-            return snapshotTs.get().toInstant();
+            return snapshotTs.get();
         }
         catch (SQLException e) {
             throw new ConnectException("Failed reading CURRENT_TIMESTAMP from source database", e);
         }
     }
 
-    /**
-     * Dispatches the data change events for the records of a single table.
-     */
-    private void createDataEventsForTable(ChangeEventSourceContext sourceContext,
-                                          RelationalSnapshotContext<P, O> snapshotContext,
-                                          SnapshotReceiver<P> snapshotReceiver, Table table, int tableOrder,
-                                          int tableCount)
+    private Callable<Void> createDataEventsForTableCallable(ChangeEventSourceContext sourceContext, RelationalSnapshotContext<P, O> snapshotContext,
+                                                            SnapshotReceiver<P> snapshotReceiver, Table table, boolean firstTable, boolean lastTable, int tableOrder,
+                                                            int tableCount, String selectStatement, OptionalLong rowCount, Queue<JdbcConnection> connectionPool,
+                                                            Queue<O> offsets) {
+        return () -> {
+            JdbcConnection connection = connectionPool.poll();
+            O offset = offsets.poll();
+            try {
+                doCreateDataEventsForTable(sourceContext, snapshotContext, offset, snapshotReceiver, table, firstTable, lastTable, tableOrder, tableCount,
+                        selectStatement, rowCount, connection);
+            }
+            finally {
+                offsets.add(offset);
+                connectionPool.add(connection);
+            }
+            return null;
+        };
+    }
+
+    private void doCreateDataEventsForTable(ChangeEventSourceContext sourceContext, RelationalSnapshotContext<P, O> snapshotContext, O offset,
+                                            SnapshotReceiver<P> snapshotReceiver, Table table,
+                                            boolean firstTable, boolean lastTable, int tableOrder, int tableCount, String selectStatement, OptionalLong rowCount,
+                                            JdbcConnection jdbcConnection)
             throws InterruptedException {
+
+        if (!sourceContext.isRunning()) {
+            throw new InterruptedException("Interrupted while snapshotting table " + table.id());
+        }
 
         long exportStart = clock.currentTimeInMillis();
         LOGGER.info("Exporting data from table '{}' ({} of {} tables)", table.id(), tableOrder, tableCount);
 
-        final Optional<String> selectStatement = determineSnapshotSelect(snapshotContext, table.id());
-        if (!selectStatement.isPresent()) {
-            LOGGER.warn("For table '{}' the select statement was not provided, skipping table", table.id());
-            snapshotProgressListener.dataCollectionSnapshotCompleted(snapshotContext.partition, table.id(), 0);
-            return;
-        }
-        LOGGER.info("\t For table '{}' using select statement: '{}'", table.id(), selectStatement.get());
-        final OptionalLong rowCount = rowCountForTable(table.id());
-        Instant sourceTableSnapshotTimestamp = getSnapshotSourceTimestamp(snapshotContext, table.id());
+        Instant sourceTableSnapshotTimestamp = getSnapshotSourceTimestamp(jdbcConnection, offset, table.id());
 
-        try (Statement statement = readTableStatement(rowCount);
-                ResultSet rs = CancellableResultSet.from(statement.executeQuery(selectStatement.get()))) {
+        try (Statement statement = readTableStatement(jdbcConnection, rowCount);
+                ResultSet rs = resultSetForDataEvents(selectStatement, statement)) {
 
             ColumnUtils.ColumnArray columnArray = ColumnUtils.toArray(rs, table);
             long rows = 0;
             Timer logTimer = getTableScanLogTimer();
-            snapshotContext.lastRecordInTable = false;
+            boolean hasNext = rs.next();
 
-            if (rs.next()) {
-                while (!snapshotContext.lastRecordInTable) {
+            if (hasNext) {
+                while (hasNext) {
                     if (!sourceContext.isRunning()) {
                         throw new InterruptedException("Interrupted while snapshotting table " + table.id());
                     }
@@ -402,46 +574,52 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                         logTimer = getTableScanLogTimer();
                     }
 
-                    snapshotContext.firstRecordInTable = rows == 1;
-                    snapshotContext.lastRecordInTable = !rs.next();
-                    setSnapshotMarker(snapshotContext);
+                    hasNext = rs.next();
+                    setSnapshotMarker(offset, firstTable, lastTable, rows == 1, !hasNext);
 
                     dispatcher.dispatchSnapshotEvent(snapshotContext.partition, table.id(),
-                            getChangeRecordEmitter(snapshotContext, table.id(), row, sourceTableSnapshotTimestamp), snapshotReceiver);
+                            getChangeRecordEmitter(snapshotContext.partition, offset, table.id(), row, sourceTableSnapshotTimestamp), snapshotReceiver);
                 }
             }
-            else if (snapshotContext.lastTable) {
-                lastSnapshotRecord(snapshotContext);
+            else {
+                setSnapshotMarker(offset, firstTable, lastTable, false, true);
             }
 
-            LOGGER.info("\t Finished exporting {} records for table '{}'; total duration '{}'", rows,
-                    table.id(), Strings.duration(clock.currentTimeInMillis() - exportStart));
+            LOGGER.info("\t Finished exporting {} records for table '{}' ({} of {} tables); total duration '{}'",
+                    rows, table.id(), tableOrder, tableCount, Strings.duration(clock.currentTimeInMillis() - exportStart));
             snapshotProgressListener.dataCollectionSnapshotCompleted(snapshotContext.partition, table.id(), rows);
+            notificationService.initialSnapshotNotificationService().notifyCompletedTableSuccessfully(snapshotContext.partition,
+                    snapshotContext.offset, table.id().identifier(), rows, snapshotContext.capturedTables);
         }
         catch (SQLException e) {
+            notificationService.initialSnapshotNotificationService().notifyCompletedTableWithError(snapshotContext.partition,
+                    snapshotContext.offset,
+                    table.id().identifier());
             throw new ConnectException("Snapshotting of table " + table.id() + " failed", e);
         }
     }
 
-    private void setSnapshotMarker(RelationalSnapshotContext<P, O> snapshotContext) {
-        if (snapshotContext.lastRecordInTable && snapshotContext.lastTable) {
-            snapshotContext.offset.markSnapshotRecord(SnapshotRecord.LAST); // Absolute last record
-            return;
-        }
+    protected ResultSet resultSetForDataEvents(String selectStatement, Statement statement)
+            throws SQLException {
+        return CancellableResultSet.from(statement.executeQuery(selectStatement));
+    }
 
-        if (snapshotContext.firstRecordInTable && snapshotContext.firstTable) {
-            snapshotContext.offset.markSnapshotRecord(SnapshotRecord.FIRST); // Absolute first record
-            return;
+    private void setSnapshotMarker(OffsetContext offset, boolean firstTable, boolean lastTable, boolean firstRecordInTable,
+                                   boolean lastRecordInTable) {
+        if (lastRecordInTable && lastTable) {
+            offset.markSnapshotRecord(SnapshotRecord.LAST);
         }
-
-        if (snapshotContext.lastRecordInTable) {
-            snapshotContext.offset.markSnapshotRecord(SnapshotRecord.LAST_IN_DATA_COLLECTION);
+        else if (firstRecordInTable && firstTable) {
+            offset.markSnapshotRecord(SnapshotRecord.FIRST);
         }
-        else if (snapshotContext.firstRecordInTable) {
-            snapshotContext.offset.markSnapshotRecord(SnapshotRecord.FIRST_IN_DATA_COLLECTION);
+        else if (lastRecordInTable) {
+            offset.markSnapshotRecord(SnapshotRecord.LAST_IN_DATA_COLLECTION);
+        }
+        else if (firstRecordInTable) {
+            offset.markSnapshotRecord(SnapshotRecord.FIRST_IN_DATA_COLLECTION);
         }
         else {
-            snapshotContext.offset.markSnapshotRecord(SnapshotRecord.TRUE);
+            offset.markSnapshotRecord(SnapshotRecord.TRUE);
         }
     }
 
@@ -463,10 +641,10 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     /**
      * Returns a {@link ChangeRecordEmitter} producing the change records for the given table row.
      */
-    protected ChangeRecordEmitter<P> getChangeRecordEmitter(SnapshotContext<P, O> snapshotContext, TableId tableId,
+    protected ChangeRecordEmitter<P> getChangeRecordEmitter(P partition, O offset, TableId tableId,
                                                             Object[] row, Instant timestamp) {
-        snapshotContext.offset.event(tableId, timestamp);
-        return new SnapshotChangeRecordEmitter<>(snapshotContext.partition, snapshotContext.offset, row, getClock());
+        offset.event(tableId, timestamp);
+        return new SnapshotChangeRecordEmitter<>(partition, offset, row, getClock(), connectorConfig);
     }
 
     /**
@@ -474,16 +652,12 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
      * defaulting to a statement provided by the DB-specific change event source.
      *
      * @param tableId the table to generate a query for
+     * @param snapshotSelectOverridesByTable the select overrides by table
      * @return a valid query string or empty if table will not be snapshotted
      */
-    private Optional<String> determineSnapshotSelect(RelationalSnapshotContext<P, O> snapshotContext, TableId tableId) {
-        String overriddenSelect = connectorConfig.getSnapshotSelectOverridesByTable().get(tableId);
-
-        // try without catalog id, as this might or might not be populated based on the given connector
-        if (overriddenSelect == null) {
-            overriddenSelect = connectorConfig.getSnapshotSelectOverridesByTable().get(new TableId(null, tableId.schema(), tableId.table()));
-        }
-
+    private Optional<String> determineSnapshotSelect(RelationalSnapshotContext<P, O> snapshotContext, TableId tableId,
+                                                     Map<DataCollectionId, String> snapshotSelectOverridesByTable) {
+        String overriddenSelect = getSnapshotSelectOverridesByTable(tableId, snapshotSelectOverridesByTable);
         if (overriddenSelect != null) {
             return Optional.of(enhanceOverriddenSelect(snapshotContext, overriddenSelect, tableId));
         }
@@ -491,6 +665,17 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         List<String> columns = getPreparedColumnNames(snapshotContext.partition, schema.tableFor(tableId));
 
         return getSnapshotSelect(snapshotContext, tableId, columns);
+    }
+
+    protected String getSnapshotSelectOverridesByTable(TableId tableId, Map<DataCollectionId, String> snapshotSelectOverrides) {
+        String overriddenSelect = snapshotSelectOverrides.get(tableId);
+
+        // try without catalog id, as this might or might not be populated based on the given connector
+        if (overriddenSelect == null) {
+            overriddenSelect = snapshotSelectOverrides.get(new TableId(null, tableId.schema(), tableId.table()));
+        }
+
+        return overriddenSelect;
     }
 
     /**
@@ -505,7 +690,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                 .stream()
                 .filter(columnName -> additionalColumnFilter(partition, table.id(), columnName))
                 .filter(columnName -> connectorConfig.getColumnFilter().matches(table.id().catalog(), table.id().schema(), table.id().table(), columnName))
-                .map(columnName -> jdbcConnection.quotedColumnIdString(columnName))
+                .map(jdbcConnection::quotedColumnIdString)
                 .collect(Collectors.toList());
 
         if (columnNames.isEmpty()) {
@@ -513,7 +698,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
             columnNames = table.retrieveColumnNames()
                     .stream()
-                    .map(columnName -> jdbcConnection.quotedColumnIdString(columnName))
+                    .map(jdbcConnection::quotedColumnIdString)
                     .collect(Collectors.toList());
         }
 
@@ -548,14 +733,14 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     protected abstract Optional<String> getSnapshotSelect(RelationalSnapshotContext<P, O> snapshotContext,
                                                           TableId tableId, List<String> columns);
 
-    protected RelationalDatabaseSchema schema() {
-        return schema;
+    protected Optional<String> getSnapshotConnectionFirstSelect(RelationalSnapshotContext<P, O> snapshotContext, TableId tableId) {
+        return Optional.empty();
     }
 
     /**
      * Allow per-connector query creation to override for best database performance depending on the table size.
      */
-    protected Statement readTableStatement(OptionalLong tableSize) throws SQLException {
+    protected Statement readTableStatement(JdbcConnection jdbcConnection, OptionalLong tableSize) throws SQLException {
         return jdbcConnection.readTableStatement(connectorConfig, tableSize);
     }
 
@@ -577,18 +762,16 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
             extends SnapshotContext<P, O> {
         public final String catalogName;
         public final Tables tables;
+        public final boolean onDemand;
 
         public Set<TableId> capturedTables;
         public Set<TableId> capturedSchemaTables;
-        public boolean firstTable;
-        public boolean firstRecordInTable;
-        public boolean lastTable;
-        public boolean lastRecordInTable;
 
-        public RelationalSnapshotContext(P partition, String catalogName) throws SQLException {
+        public RelationalSnapshotContext(P partition, String catalogName, boolean onDemand) {
             super(partition);
             this.catalogName = catalogName;
             this.tables = new Tables();
+            this.onDemand = onDemand;
         }
     }
 
@@ -597,5 +780,9 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     }
 
     protected void postSnapshot() throws InterruptedException {
+    }
+
+    protected void preSnapshot() throws InterruptedException {
+
     }
 }

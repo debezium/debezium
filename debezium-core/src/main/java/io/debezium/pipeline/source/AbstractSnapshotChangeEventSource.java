@@ -7,8 +7,10 @@ package io.debezium.pipeline.source;
 
 import java.time.Duration;
 import java.util.Collection;
+import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.slf4j.Logger;
@@ -17,14 +19,17 @@ import org.slf4j.LoggerFactory;
 import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigurationDefaults;
+import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.pipeline.spi.SnapshotResult;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
+import io.debezium.util.Strings;
 import io.debezium.util.Threads;
 
 /**
@@ -33,7 +38,7 @@ import io.debezium.util.Threads;
  *
  * @author Chris Cranford
  */
-public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O extends OffsetContext> implements SnapshotChangeEventSource<P, O> {
+public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O extends OffsetContext> implements SnapshotChangeEventSource<P, O>, AutoCloseable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractSnapshotChangeEventSource.class);
 
@@ -45,34 +50,45 @@ public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O e
     private final CommonConnectorConfig connectorConfig;
     private final SnapshotProgressListener<P> snapshotProgressListener;
 
-    public AbstractSnapshotChangeEventSource(CommonConnectorConfig connectorConfig, SnapshotProgressListener<P> snapshotProgressListener) {
+    protected final NotificationService<P, O> notificationService;
+
+    public AbstractSnapshotChangeEventSource(CommonConnectorConfig connectorConfig, SnapshotProgressListener<P> snapshotProgressListener,
+                                             NotificationService<P, O> notificationService) {
         this.connectorConfig = connectorConfig;
         this.snapshotProgressListener = snapshotProgressListener;
+        this.notificationService = notificationService;
+    }
+
+    protected Offsets<P, OffsetContext> getOffsets(SnapshotContext<P, O> ctx, O previousOffset, SnapshottingTask snapshottingTask) {
+        return Offsets.of(ctx.partition, previousOffset);
     }
 
     @Override
-    public SnapshotResult<O> execute(ChangeEventSourceContext context, P partition, O previousOffset) throws InterruptedException {
-        SnapshottingTask snapshottingTask = getSnapshottingTask(partition, previousOffset);
-        if (snapshottingTask.shouldSkipSnapshot()) {
-            LOGGER.debug("Skipping snapshotting");
-            return SnapshotResult.skipped(previousOffset);
-        }
-
-        delaySnapshotIfNeeded(context);
+    public SnapshotResult<O> execute(ChangeEventSourceContext context, P partition, O previousOffset, SnapshottingTask snapshottingTask) throws InterruptedException {
 
         final SnapshotContext<P, O> ctx;
         try {
-            ctx = prepare(partition);
+            ctx = prepare(partition, snapshottingTask.isOnDemand());
         }
         catch (Exception e) {
             LOGGER.error("Failed to initialize snapshot context.", e);
             throw new RuntimeException(e);
         }
 
+        Offsets<P, OffsetContext> offsets = getOffsets(ctx, previousOffset, snapshottingTask);
+        if (snapshottingTask.shouldSkipSnapshot()) {
+            LOGGER.debug("Skipping snapshotting");
+            notificationService.initialSnapshotNotificationService().notifySkipped(offsets.getTheOnlyPartition(), offsets.getTheOnlyOffset());
+            return SnapshotResult.skipped(previousOffset);
+        }
+
+        delaySnapshotIfNeeded(context);
+
         boolean completedSuccessfully = true;
 
         try {
             snapshotProgressListener.snapshotStarted(partition);
+            notificationService.initialSnapshotNotificationService().notifyStarted(offsets.getTheOnlyPartition(), offsets.getTheOnlyOffset());
             return doExecute(context, previousOffset, ctx, snapshottingTask);
         }
         catch (InterruptedException e) {
@@ -86,22 +102,26 @@ public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O e
         }
         finally {
             LOGGER.info("Snapshot - Final stage");
-            complete(ctx);
+            close();
 
             if (completedSuccessfully) {
                 LOGGER.info("Snapshot completed");
+                completed(ctx);
                 snapshotProgressListener.snapshotCompleted(partition);
+
+                notificationService.initialSnapshotNotificationService().notifyCompleted(offsets.getTheOnlyPartition(), offsets.getTheOnlyOffset());
             }
             else {
                 LOGGER.warn("Snapshot was not completed successfully, it will be re-executed upon connector restart");
-                snapshotProgressListener.snapshotAborted(partition);
+                aborted(ctx);
+                snapshotProgressListener.snapshotAborted(offsets.getTheOnlyPartition());
             }
         }
     }
 
-    protected <T extends DataCollectionId> Stream<T> determineDataCollectionsToBeSnapshotted(final Collection<T> allDataCollections) {
-        final Set<Pattern> snapshotAllowedDataCollections = connectorConfig.getDataCollectionsToBeSnapshotted();
-        if (snapshotAllowedDataCollections.size() == 0) {
+    protected <T extends DataCollectionId> Stream<T> determineDataCollectionsToBeSnapshotted(final Collection<T> allDataCollections,
+                                                                                             Set<Pattern> snapshotAllowedDataCollections) {
+        if (snapshotAllowedDataCollections.isEmpty()) {
             return allDataCollections.stream();
         }
         else {
@@ -153,20 +173,45 @@ public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O e
     /**
      * Returns the snapshotting task based on the previous offset (if available) and the connector's snapshotting mode.
      */
-    protected abstract SnapshottingTask getSnapshottingTask(P partition, O previousOffset);
+    public abstract SnapshottingTask getSnapshottingTask(P partition, O previousOffset);
 
     /**
      * Prepares the taking of a snapshot and returns an initial {@link SnapshotContext}.
      */
-    protected abstract SnapshotContext<P, O> prepare(P partition) throws Exception;
+    protected abstract SnapshotContext<P, O> prepare(P partition, boolean onDemand) throws Exception;
 
     /**
      * Completes the snapshot, doing any required clean-up (resource disposal etc.).
      * The snapshot may have run successfully or have been aborted at this point.
      *
+     */
+    @Override
+    public void close() {
+    }
+
+    /**
+     * Completes the snapshot, doing any required clean-up (resource disposal etc.).
+     * The snapshot have run successfully at this point.
+     *
      * @param snapshotContext snapshot context
      */
-    protected void complete(SnapshotContext<P, O> snapshotContext) {
+    protected void completed(SnapshotContext<P, O> snapshotContext) {
+    }
+
+    /**
+     * Completes the snapshot, doing any required clean-up (resource disposal etc.).
+     * The snapshot is aborted at this point.
+     *
+     * @param snapshotContext snapshot context
+     */
+    protected void aborted(SnapshotContext<P, O> snapshotContext) {
+    }
+
+    protected Set<Pattern> getDataCollectionPattern(List<String> dataCollections) {
+        return dataCollections.stream()
+                .map(tables -> Strings.setOfRegex(tables, Pattern.CASE_INSENSITIVE))
+                .flatMap(Collection::stream)
+                .collect(Collectors.toSet());
     }
 
     /**
@@ -185,46 +230,4 @@ public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O e
         }
     }
 
-    /**
-     * A configuration describing the task to be performed during snapshotting.
-     */
-    public static class SnapshottingTask {
-
-        private final boolean snapshotSchema;
-        private final boolean snapshotData;
-
-        public SnapshottingTask(boolean snapshotSchema, boolean snapshotData) {
-            this.snapshotSchema = snapshotSchema;
-            this.snapshotData = snapshotData;
-        }
-
-        /**
-         * Whether data (rows in captured tables) should be snapshotted.
-         */
-        public boolean snapshotData() {
-            return snapshotData;
-        }
-
-        /**
-         * Whether the schema of captured tables should be snapshotted.
-         */
-        public boolean snapshotSchema() {
-            return snapshotSchema;
-        }
-
-        /**
-         * Whether to skip the snapshot phase.
-         *
-         * By default this method will skip performing a snapshot if both {@link #snapshotSchema()} and
-         * {@link #snapshotData()} return {@code false}.
-         */
-        public boolean shouldSkipSnapshot() {
-            return !snapshotSchema() && !snapshotData();
-        }
-
-        @Override
-        public String toString() {
-            return "SnapshottingTask [snapshotSchema=" + snapshotSchema + ", snapshotData=" + snapshotData + "]";
-        }
-    }
 }

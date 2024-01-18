@@ -91,7 +91,7 @@ public class SetStatementParserListener extends MySqlParserBaseListener {
     public void enterSetCharset(MySqlParser.SetCharsetContext ctx) {
         String charsetName = ctx.charsetName() != null ? parser.withoutQuotes(ctx.charsetName()) : parser.currentDatabaseCharset();
         // Sets variables according to documentation at
-        // https://dev.mysql.com/doc/refman/5.7/en/set-character-set.html
+        // https://dev.mysql.com/doc/refman/8.2/en/set-character-set.html
         // Using default scope for these variables, because this type of set statement you cannot specify
         // the scope manually
         parser.systemVariables().setVariable(MySqlSystemVariables.MySqlScope.SESSION, MySqlSystemVariables.CHARSET_NAME_CLIENT, charsetName);
@@ -105,7 +105,7 @@ public class SetStatementParserListener extends MySqlParserBaseListener {
     public void enterSetNames(MySqlParser.SetNamesContext ctx) {
         String charsetName = ctx.charsetName() != null ? parser.withoutQuotes(ctx.charsetName()) : parser.currentDatabaseCharset();
         // Sets variables according to documentation at
-        // https://dev.mysql.com/doc/refman/5.7/en/set-names.html
+        // https://dev.mysql.com/doc/refman/8.2/en/set-names.html
         // Using default scope for these variables, because this type of set statement you cannot specify
         // the scope manually
         parser.systemVariables().setVariable(MySqlSystemVariables.MySqlScope.SESSION, MySqlSystemVariables.CHARSET_NAME_CLIENT, charsetName);

@@ -28,12 +28,20 @@ public @interface SkipWhenConnectorUnderTest {
 
     String description() default "";
 
-    public enum Connector {
+    enum Connector {
         SQL_SERVER {
 
             @Override
             boolean isEqualTo(String packageName) {
                 return packageName != null && packageName.startsWith("io.debezium.connector.sqlserver");
+            }
+        },
+
+        POSTGRES {
+
+            @Override
+            boolean isEqualTo(String packageName) {
+                return packageName != null && packageName.startsWith("io.debezium.connector.postgresql");
             }
         },
 

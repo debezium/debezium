@@ -24,6 +24,7 @@ import org.junit.Test;
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
+import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
@@ -69,6 +70,11 @@ public class OracleDefaultValueIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-3710")
     public void shouldHandleNumericDefaultTypes() throws Exception {
+        // TODO: remove once we upgrade Apicurio version (DBZ-7357)
+        if (VerifyRecord.isApucurioAvailable()) {
+            skipAvroValidation();
+        }
+
         List<ColumnDefinition> columnDefinitions = Arrays.asList(
                 new ColumnDefinition("val_int", "int",
                         "1", "2",
@@ -145,6 +151,11 @@ public class OracleDefaultValueIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-3710")
     public void shouldHandleFloatPointDefaultTypes() throws Exception {
+        // TODO: remove once we upgrade Apicurio version (DBZ-7357)
+        if (VerifyRecord.isApucurioAvailable()) {
+            skipAvroValidation();
+        }
+
         List<ColumnDefinition> columnDefinitions = Arrays.asList(
                 new ColumnDefinition("val_bf", "binary_float",
                         "3.14", "6.28",
@@ -270,14 +281,14 @@ public class OracleDefaultValueIT extends AbstractConnectorTest {
                 new ColumnDefinition("val_tstz", "timestamp with time zone",
                         "TO_TIMESTAMP_TZ('2018-03-27 01:34:56.00789 -11:00', 'yyyy-mm-dd HH24:MI:SS.FF5 TZH:TZM')",
                         "TO_TIMESTAMP_TZ('2019-04-28 02:35:57.00891 -10:00', 'yyyy-mm-dd HH24:MI:SS.FF5 TZH:TZM')",
-                        "2018-03-27T01:34:56.00789-11:00",
-                        "2019-04-28T02:35:57.00891-10:00",
+                        "2018-03-27T01:34:56.007890-11:00",
+                        "2019-04-28T02:35:57.008910-10:00",
                         AssertionType.FIELD_DEFAULT_EQUAL),
                 new ColumnDefinition("val_tsltz", "timestamp with local time zone",
                         "TO_TIMESTAMP_TZ('2018-03-27 01:34:56.00789 -11:00', 'yyyy-mm-dd HH24:MI:SS.FF5 TZH:TZM')",
                         "TO_TIMESTAMP_TZ('2019-04-28 02:35:57.00891 -10:00', 'yyyy-mm-dd HH24:MI:SS.FF5 TZH:TZM')",
-                        "2018-03-27T12:34:56.00789Z", // 1am + 11 hours, stored in UTC and returned in UTC
-                        "2019-04-28T12:35:57.00891Z", // 2am + 10 hours, stored in UTC and returned in UTC
+                        "2018-03-27T12:34:56.007890Z", // 1am + 11 hours, stored in UTC and returned in UTC
+                        "2019-04-28T12:35:57.008910Z", // 2am + 10 hours, stored in UTC and returned in UTC
                         AssertionType.FIELD_DEFAULT_EQUAL));
 
         shouldHandleDefaultValuesCommon(columnDefinitions);
@@ -807,8 +818,8 @@ public class OracleDefaultValueIT extends AbstractConnectorTest {
         public final AssertionType assertionType;
         public final boolean temporalType;
 
-        public ColumnDefinition(String name, String definition, String addDefaultValue, String modifyDefaultValue,
-                                Object expectedAddDefaultValue, Object expectedModifyDefaultValue, AssertionType assertionType) {
+        ColumnDefinition(String name, String definition, String addDefaultValue, String modifyDefaultValue,
+                         Object expectedAddDefaultValue, Object expectedModifyDefaultValue, AssertionType assertionType) {
             this.name = name;
             this.definition = definition;
             this.addDefaultValue = addDefaultValue;

@@ -5,15 +5,12 @@
  */
 package io.debezium.engine;
 
-import io.debezium.common.annotation.Incubating;
-
 /**
  * A data change event described as a single object.
  *
  * @param <V>
  */
-@Incubating
 public interface RecordChangeEvent<V> {
 
-    public V record();
+    V record();
 }

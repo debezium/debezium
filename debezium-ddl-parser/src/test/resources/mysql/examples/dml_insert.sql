@@ -23,6 +23,7 @@ SELECT * FROM f3p1 WHERE 1;
 #begin
 -- insert base syntax
 insert ignore into t1(col1, col2, col3) values ('abc', 0, .12), ('adfasdf',23432, -.12);
+INSERT INTO test_auto_inc () VALUES ();
 -- http://dev.mysql.com/doc/refman/5.6/en/insert.html
 INSERT INTO tbl_name (col1,col2) VALUES(col2*2, 15);
 INSERT INTO tbl_name (col1,col2) VALUES(15,col1*2);
@@ -44,3 +45,14 @@ insert INTO `wptests_posts` (`post_author`, `post_date`, `post_date_gmt`, `post_
 #end
 insert into sql_log values(retGUID,log_type,log_text,0,0,current_user,now());
 insert into sql_log values(retGUID,log_type,log_text,0,0,current_user(),now());
+#begin
+CREATE TABLE tbl (tbl.a BIGINT);
+CREATE TABLE tbl (.a BIGINT);
+INSERT INTO tbl (tbl.a) SELECT * FROM another_table;
+INSERT INTO tbl (.tbl.a) SELECT * FROM another_table;
+#end
+
+#begin
+---https://dev.mysql.com/doc/refman/8.0/en/insert.html
+INSERT INTO t1 (a,b,c) VALUES (1,2,3),(4,5,6) AS new ON DUPLICATE KEY UPDATE c = new.a+new.b; 
+#end

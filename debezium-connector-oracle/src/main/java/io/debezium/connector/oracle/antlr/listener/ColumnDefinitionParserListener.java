@@ -194,7 +194,8 @@ public class ColumnDefinitionParserListener extends BaseParserListener {
                     setPrecision(precisionPart, columnEditor);
                 }
             }
-            else if (ctx.native_datatype_element().CHAR() != null) {
+            else if (ctx.native_datatype_element().CHAR() != null ||
+                    ctx.native_datatype_element().CHARACTER() != null) {
                 columnEditor
                         .jdbcType(Types.CHAR)
                         .type("CHAR")
@@ -297,6 +298,11 @@ public class ColumnDefinitionParserListener extends BaseParserListener {
                 columnEditor
                         .jdbcType(Types.VARCHAR)
                         .type("ROWID");
+            }
+            else if (ctx.native_datatype_element().XMLTYPE() != null) {
+                columnEditor
+                        .jdbcType(OracleTypes.SQLXML)
+                        .type("XMLTYPE");
             }
             else {
                 columnEditor

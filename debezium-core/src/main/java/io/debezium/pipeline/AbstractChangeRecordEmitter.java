@@ -5,6 +5,7 @@
  */
 package io.debezium.pipeline;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.spi.ChangeRecordEmitter;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -24,10 +25,13 @@ public abstract class AbstractChangeRecordEmitter<P extends Partition, T extends
     private final OffsetContext offsetContext;
     private final Clock clock;
 
-    public AbstractChangeRecordEmitter(P partition, OffsetContext offsetContext, Clock clock) {
+    private final CommonConnectorConfig connectorConfig;
+
+    public AbstractChangeRecordEmitter(P partition, OffsetContext offsetContext, Clock clock, CommonConnectorConfig connectorConfig) {
         this.partition = partition;
         this.offsetContext = offsetContext;
         this.clock = clock;
+        this.connectorConfig = connectorConfig;
     }
 
     @Override
@@ -67,6 +71,10 @@ public abstract class AbstractChangeRecordEmitter<P extends Partition, T extends
      */
     public Clock getClock() {
         return clock;
+    }
+
+    public boolean skipMessagesWithoutChange() {
+        return connectorConfig.skipMessagesWithoutChange();
     }
 
     /**

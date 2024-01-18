@@ -5,7 +5,7 @@
  */
 package io.debezium.outbox.quarkus.internal;
 
-import javax.enterprise.event.Observes;
+import jakarta.enterprise.event.Observes;
 
 import io.debezium.outbox.quarkus.ExportedEvent;
 

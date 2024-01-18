@@ -5,11 +5,8 @@
  */
 package io.debezium.engine.format;
 
-import io.debezium.common.annotation.Incubating;
-
 /**
  * A {@link SerializationFormat} defining the JSON format serialized as String.
  */
-@Incubating
 public class Json implements SerializationFormat<String> {
 }

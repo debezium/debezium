@@ -34,8 +34,8 @@ ifdef::community[]
 If you use Podman, run the following command:s
 [source,shell,options="nowrap",subs="+attributes"]
 ----
-$ sudo podman pod create --name=dbz --publish "9092,3306,8083"
-$ sudo podman run -it --rm --name zookeeper --pod dbz quay.io/debezium/zookeeper:{debezium-docker-label}
+$ podman pod create --name=dbz -p 8083:8083
+$ podman run -it --rm --name zookeeper --pod dbz quay.io/debezium/zookeeper:{debezium-docker-label}
 ----
 ====
 endif::community[]

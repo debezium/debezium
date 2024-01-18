@@ -21,6 +21,7 @@ import io.debezium.connector.postgresql.connection.LogicalDecodingMessage;
 import io.debezium.connector.postgresql.connection.Lsn;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
+import io.debezium.connector.postgresql.connection.ReplicationMessage;
 import io.debezium.connector.postgresql.connection.ReplicationMessage.Operation;
 import io.debezium.connector.postgresql.connection.ReplicationStream;
 import io.debezium.connector.postgresql.connection.WalPositionLocator;
@@ -79,6 +80,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
      */
     private long numberOfEventsSinceLastEventSentOrWalGrowingWarning = 0;
     private Lsn lastCompletelyProcessedLsn;
+    private PostgresOffsetContext effectiveOffset;
 
     public PostgresStreamingChangeEventSource(PostgresConnectorConfig connectorConfig, Snapshotter snapshotter,
                                               PostgresConnection connection, PostgresEventDispatcher<TableId> dispatcher, ErrorHandler errorHandler, Clock clock,
@@ -98,8 +100,14 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
     }
 
     @Override
-    public void init() {
+    public void init(PostgresOffsetContext offsetContext) {
+
+        this.effectiveOffset = offsetContext == null ? PostgresOffsetContext.initialContext(connectorConfig, connection, clock) : offsetContext;
         // refresh the schema so we have a latest view of the DB tables
+        initSchema();
+    }
+
+    private void initSchema() {
         try {
             taskContext.refreshSchema(connection, true);
         }
@@ -122,18 +130,16 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         // instead of the last position in the database
         boolean hasStartLsnStoredInContext = offsetContext != null;
 
-        if (!hasStartLsnStoredInContext) {
-            offsetContext = PostgresOffsetContext.initialContext(connectorConfig, connection, clock);
-        }
-
         try {
             final WalPositionLocator walPosition;
 
             if (hasStartLsnStoredInContext) {
                 // start streaming from the last recorded position in the offset
-                final Lsn lsn = offsetContext.lastCompletelyProcessedLsn() != null ? offsetContext.lastCompletelyProcessedLsn() : offsetContext.lsn();
+                final Lsn lsn = this.effectiveOffset.lastCompletelyProcessedLsn() != null ? this.effectiveOffset.lastCompletelyProcessedLsn()
+                        : this.effectiveOffset.lsn();
+                final Operation lastProcessedMessageType = this.effectiveOffset.lastProcessedMessageType();
                 LOGGER.info("Retrieved latest position from stored offset '{}'", lsn);
-                walPosition = new WalPositionLocator(offsetContext.lastCommitLsn(), lsn);
+                walPosition = new WalPositionLocator(this.effectiveOffset.lastCommitLsn(), lsn, lastProcessedMessageType);
                 replicationStream.compareAndSet(null, replicationConnection.startStreaming(lsn, walPosition));
             }
             else {
@@ -147,20 +153,20 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
             ReplicationStream stream = this.replicationStream.get();
             stream.startKeepAlive(Threads.newSingleThreadExecutor(PostgresConnector.class, connectorConfig.getLogicalName(), KEEP_ALIVE_THREAD_NAME));
 
-            init();
+            initSchema();
 
             // If we need to do a pre-snapshot streaming catch up, we should allow the snapshot transaction to persist
             // but normally we want to start streaming without any open transactions.
-            if (!isInPreSnapshotCatchUpStreaming(offsetContext)) {
+            if (!isInPreSnapshotCatchUpStreaming(this.effectiveOffset)) {
                 connection.commit();
             }
 
             this.lastCompletelyProcessedLsn = replicationStream.get().startLsn();
 
             if (walPosition.searchingEnabled()) {
-                searchWalPosition(context, stream, walPosition);
+                searchWalPosition(context, partition, this.effectiveOffset, stream, walPosition);
                 try {
-                    if (!isInPreSnapshotCatchUpStreaming(offsetContext)) {
+                    if (!isInPreSnapshotCatchUpStreaming(this.effectiveOffset)) {
                         connection.commit();
                     }
                 }
@@ -174,7 +180,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                 stream = this.replicationStream.get();
                 stream.startKeepAlive(Threads.newSingleThreadExecutor(PostgresConnector.class, connectorConfig.getLogicalName(), KEEP_ALIVE_THREAD_NAME));
             }
-            processMessages(context, partition, offsetContext, stream);
+            processMessages(context, partition, this.effectiveOffset, stream);
         }
         catch (Throwable e) {
             errorHandler.setProducerThrowable(e);
@@ -212,82 +218,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         while (context.isRunning() && (offsetContext.getStreamingStoppingLsn() == null ||
                 (lastCompletelyProcessedLsn.compareTo(offsetContext.getStreamingStoppingLsn()) < 0))) {
 
-            boolean receivedMessage = stream.readPending(message -> {
-                final Lsn lsn = stream.lastReceivedLsn();
-
-                if (message.isLastEventForLsn()) {
-                    lastCompletelyProcessedLsn = lsn;
-                }
-
-                // Tx BEGIN/END event
-                if (message.isTransactionalMessage()) {
-                    if (!connectorConfig.shouldProvideTransactionMetadata()) {
-                        LOGGER.trace("Received transactional message {}", message);
-                        // Don't skip on BEGIN message as it would flush LSN for the whole transaction
-                        // too early
-                        if (message.getOperation() == Operation.COMMIT) {
-                            commitMessage(partition, offsetContext, lsn);
-                        }
-                        return;
-                    }
-
-                    offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, message.getCommitTime(), toLong(message.getTransactionId()),
-                            taskContext.getSlotXmin(connection),
-                            null);
-                    if (message.getOperation() == Operation.BEGIN) {
-                        dispatcher.dispatchTransactionStartedEvent(partition, toString(message.getTransactionId()), offsetContext, message.getCommitTime());
-                    }
-                    else if (message.getOperation() == Operation.COMMIT) {
-                        commitMessage(partition, offsetContext, lsn);
-                        dispatcher.dispatchTransactionCommittedEvent(partition, offsetContext, message.getCommitTime());
-                    }
-                    maybeWarnAboutGrowingWalBacklog(true);
-                }
-                else if (message.getOperation() == Operation.MESSAGE) {
-                    offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, message.getCommitTime(), toLong(message.getTransactionId()),
-                            taskContext.getSlotXmin(connection));
-
-                    // non-transactional message that will not be followed by a COMMIT message
-                    if (message.isLastEventForLsn()) {
-                        commitMessage(partition, offsetContext, lsn);
-                    }
-
-                    dispatcher.dispatchLogicalDecodingMessage(
-                            partition,
-                            offsetContext,
-                            clock.currentTimeAsInstant().toEpochMilli(),
-                            (LogicalDecodingMessage) message);
-
-                    maybeWarnAboutGrowingWalBacklog(true);
-                }
-                // DML event
-                else {
-                    TableId tableId = null;
-                    if (message.getOperation() != Operation.NOOP) {
-                        tableId = PostgresSchema.parse(message.getTable());
-                        Objects.requireNonNull(tableId);
-                    }
-
-                    offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, message.getCommitTime(), toLong(message.getTransactionId()),
-                            taskContext.getSlotXmin(connection),
-                            tableId);
-
-                    boolean dispatched = message.getOperation() != Operation.NOOP && dispatcher.dispatchDataChangeEvent(
-                            partition,
-                            tableId,
-                            new PostgresChangeRecordEmitter(
-                                    partition,
-                                    offsetContext,
-                                    clock,
-                                    connectorConfig,
-                                    schema,
-                                    connection,
-                                    tableId,
-                                    message));
-
-                    maybeWarnAboutGrowingWalBacklog(dispatched);
-                }
-            });
+            boolean receivedMessage = stream.readPending(message -> processReplicationMessages(partition, offsetContext, stream, message));
 
             probeConnectionIfNeeded();
 
@@ -296,9 +227,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                 lsnFlushingAllowed = true;
             }
             else {
-                if (offsetContext.hasCompletelyProcessedPosition()) {
-                    dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
-                }
+                dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
                 noMessageIterations++;
                 if (noMessageIterations >= THROTTLE_NO_MESSAGE_BEFORE_PAUSE) {
                     noMessageIterations = 0;
@@ -312,10 +241,100 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                 // for the snapshot, this block must not commit during catch up streaming.
                 connection.commit();
             }
+
+            if (context.isPaused()) {
+                LOGGER.info("Streaming will now pause");
+                context.streamingPaused();
+                context.waitSnapshotCompletion();
+                LOGGER.info("Streaming resumed");
+            }
         }
     }
 
-    private void searchWalPosition(ChangeEventSourceContext context, final ReplicationStream stream, final WalPositionLocator walPosition)
+    private void processReplicationMessages(PostgresPartition partition, PostgresOffsetContext offsetContext, ReplicationStream stream, ReplicationMessage message)
+            throws SQLException, InterruptedException {
+
+        final Lsn lsn = stream.lastReceivedLsn();
+
+        if (message.isLastEventForLsn()) {
+            lastCompletelyProcessedLsn = lsn;
+        }
+
+        // Tx BEGIN/END event
+        if (message.isTransactionalMessage()) {
+            if (!connectorConfig.shouldProvideTransactionMetadata()) {
+                LOGGER.trace("Received transactional message {}", message);
+                // Don't skip on BEGIN message as it would flush LSN for the whole transaction
+                // too early
+                if (message.getOperation() == Operation.COMMIT) {
+                    commitMessage(partition, offsetContext, lsn);
+                }
+                return;
+            }
+
+            offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, message.getCommitTime(), toLong(message.getTransactionId()),
+                    taskContext.getSlotXmin(connection),
+                    null,
+                    message.getOperation());
+            if (message.getOperation() == Operation.BEGIN) {
+                dispatcher.dispatchTransactionStartedEvent(partition, toString(message.getTransactionId()), offsetContext, message.getCommitTime());
+            }
+            else if (message.getOperation() == Operation.COMMIT) {
+                commitMessage(partition, offsetContext, lsn);
+                dispatcher.dispatchTransactionCommittedEvent(partition, offsetContext, message.getCommitTime());
+            }
+            maybeWarnAboutGrowingWalBacklog(true);
+        }
+        else if (message.getOperation() == Operation.MESSAGE) {
+            offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, message.getCommitTime(), toLong(message.getTransactionId()),
+                    taskContext.getSlotXmin(connection),
+                    message.getOperation());
+
+            // non-transactional message that will not be followed by a COMMIT message
+            if (message.isLastEventForLsn()) {
+                commitMessage(partition, offsetContext, lsn);
+            }
+
+            dispatcher.dispatchLogicalDecodingMessage(
+                    partition,
+                    offsetContext,
+                    clock.currentTimeAsInstant().toEpochMilli(),
+                    (LogicalDecodingMessage) message);
+
+            maybeWarnAboutGrowingWalBacklog(true);
+        }
+        // DML event
+        else {
+            TableId tableId = null;
+            if (message.getOperation() != Operation.NOOP) {
+                tableId = PostgresSchema.parse(message.getTable());
+                Objects.requireNonNull(tableId);
+            }
+
+            offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, message.getCommitTime(), toLong(message.getTransactionId()),
+                    taskContext.getSlotXmin(connection),
+                    tableId,
+                    message.getOperation());
+
+            boolean dispatched = message.getOperation() != Operation.NOOP && dispatcher.dispatchDataChangeEvent(
+                    partition,
+                    tableId,
+                    new PostgresChangeRecordEmitter(
+                            partition,
+                            offsetContext,
+                            clock,
+                            connectorConfig,
+                            schema,
+                            connection,
+                            tableId,
+                            message));
+
+            maybeWarnAboutGrowingWalBacklog(dispatched);
+        }
+    }
+
+    private void searchWalPosition(ChangeEventSourceContext context, PostgresPartition partition, PostgresOffsetContext offsetContext,
+                                   final ReplicationStream stream, final WalPositionLocator walPosition)
             throws SQLException, InterruptedException {
         AtomicReference<Lsn> resumeLsn = new AtomicReference<>();
         int noMessageIterations = 0;
@@ -332,6 +351,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                 noMessageIterations = 0;
             }
             else {
+                dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
                 noMessageIterations++;
                 if (noMessageIterations >= THROTTLE_NO_MESSAGE_BEFORE_PAUSE) {
                     noMessageIterations = 0;
@@ -402,6 +422,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
             final Lsn changeLsn = Lsn.valueOf((Long) offset.get(PostgresOffsetContext.LAST_COMPLETELY_PROCESSED_LSN_KEY));
             final Lsn lsn = (commitLsn != null) ? commitLsn : changeLsn;
 
+            LOGGER.debug("Received offset commit request on commit LSN '{}' and change LSN '{}'", commitLsn, changeLsn);
             if (replicationStream != null && lsn != null) {
                 if (!lsnFlushingAllowed) {
                     LOGGER.info("Received offset commit request on '{}', but ignoring it. LSN flushing is not allowed yet", lsn);
@@ -421,6 +442,11 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         catch (SQLException e) {
             throw new ConnectException(e);
         }
+    }
+
+    @Override
+    public PostgresOffsetContext getOffsetContext() {
+        return effectiveOffset;
     }
 
     /**
@@ -449,7 +475,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
     }
 
     @FunctionalInterface
-    public static interface PgConnectionSupplier {
+    public interface PgConnectionSupplier {
         BaseConnection get() throws SQLException;
     }
 }

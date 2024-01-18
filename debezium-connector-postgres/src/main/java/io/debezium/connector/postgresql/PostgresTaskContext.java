@@ -41,7 +41,7 @@ public class PostgresTaskContext extends CdcSourceTaskContext {
     private Long lastXmin;
 
     protected PostgresTaskContext(PostgresConnectorConfig config, PostgresSchema schema, TopicNamingStrategy<TableId> topicNamingStrategy) {
-        super(config.getContextName(), config.getLogicalName(), Collections::emptySet);
+        super(config.getContextName(), config.getLogicalName(), config.getCustomMetricTags(), Collections::emptySet);
 
         this.config = config;
         if (config.xminFetchInterval().toMillis() > 0) {
@@ -76,7 +76,7 @@ public class PostgresTaskContext extends CdcSourceTaskContext {
         }
         assert (this.refreshXmin != null);
 
-        if (this.refreshXmin.hasElapsed()) {
+        if (this.refreshXmin.hasElapsed() || lastXmin == null) {
             lastXmin = getCurrentSlotState(connection).slotCatalogXmin();
             if (LOGGER.isDebugEnabled()) {
                 LOGGER.debug("Fetched new xmin from slot of {}", lastXmin);
@@ -95,7 +95,7 @@ public class PostgresTaskContext extends CdcSourceTaskContext {
         return connection.getReplicationSlotState(config.slotName(), config.plugin().getPostgresPluginName());
     }
 
-    protected ReplicationConnection createReplicationConnection(boolean doSnapshot, PostgresConnection jdbcConnection) throws SQLException {
+    protected ReplicationConnection createReplicationConnection(PostgresConnection jdbcConnection) throws SQLException {
         final boolean dropSlotOnStop = config.dropSlotOnStop();
         if (dropSlotOnStop) {
             LOGGER.warn(
@@ -114,7 +114,6 @@ public class PostgresTaskContext extends CdcSourceTaskContext {
                 .streamParams(config.streamParams())
                 .statusUpdateInterval(config.statusUpdateInterval())
                 .withTypeRegistry(jdbcConnection.getTypeRegistry())
-                .doSnapshot(doSnapshot)
                 .withSchema(schema)
                 .jdbcMetadataConnection(jdbcConnection)
                 .build();

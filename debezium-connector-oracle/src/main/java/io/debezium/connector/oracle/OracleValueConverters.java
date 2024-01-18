@@ -8,6 +8,7 @@ package io.debezium.connector.oracle;
 import static io.debezium.util.NumberConversions.BYTE_FALSE;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.sql.Blob;
 import java.sql.Clob;
 import java.sql.SQLException;
@@ -227,15 +228,15 @@ public class OracleValueConverters extends JdbcValueConverters {
             case Types.FLOAT:
                 return data -> convertVariableScale(column, fieldDefn, data);
             case OracleTypes.TIMESTAMPTZ:
-            case OracleTypes.TIMESTAMPLTZ:
                 return (data) -> convertTimestampWithZone(column, fieldDefn, data);
+            case OracleTypes.TIMESTAMPLTZ:
+                return (data) -> convertTimestampWithLocalZone(column, fieldDefn, data);
             case OracleTypes.INTERVALYM:
                 return (data) -> convertIntervalYearMonth(column, fieldDefn, data);
             case OracleTypes.INTERVALDS:
                 return (data) -> convertIntervalDaySecond(column, fieldDefn, data);
             case OracleTypes.RAW:
-                // Raw data types are not supported
-                return null;
+                return (data) -> convertBinary(column, fieldDefn, data, binaryMode);
         }
 
         return super.converter(column, fieldDefn);
@@ -284,21 +285,20 @@ public class OracleValueConverters extends JdbcValueConverters {
             return ((CHAR) data).stringValue();
         }
         if (data instanceof Clob) {
-            if (!lobEnabled) {
-                if (column.isOptional()) {
-                    return null;
+            if (lobEnabled) {
+                try {
+                    Clob clob = (Clob) data;
+                    // Note that java.sql.Clob specifies that the first character starts at 1
+                    // and that length must be greater-than or equal to 0. So for an empty
+                    // clob field, a call to getSubString(1, 0) is perfectly valid.
+                    return clob.getSubString(1, (int) clob.length());
                 }
-                return "";
+                catch (SQLException e) {
+                    throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
+                }
             }
-            try {
-                Clob clob = (Clob) data;
-                // Note that java.sql.Clob specifies that the first character starts at 1
-                // and that length must be greater-than or equal to 0. So for an empty
-                // clob field, a call to getSubString(1, 0) is perfectly valid.
-                return clob.getSubString(1, (int) clob.length());
-            }
-            catch (SQLException e) {
-                throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
+            else {
+                data = UNAVAILABLE_VALUE;
             }
         }
         if (data instanceof String) {
@@ -334,18 +334,16 @@ public class OracleValueConverters extends JdbcValueConverters {
                 }
             }
             else if (data instanceof Blob) {
-                if (!lobEnabled) {
-                    if (column.isOptional()) {
-                        return null;
-                    }
-                    else {
-                        data = NumberConversions.BYTE_ZERO;
-                    }
-                }
-                else {
+                if (lobEnabled) {
                     Blob blob = (Blob) data;
                     data = blob.getBytes(1, Long.valueOf(blob.length()).intValue());
                 }
+                else {
+                    data = UNAVAILABLE_VALUE;
+                }
+            }
+            else if (data instanceof RAW) {
+                data = ((RAW) data).getBytes();
             }
 
             if (data == UNAVAILABLE_VALUE) {
@@ -389,6 +387,9 @@ public class OracleValueConverters extends JdbcValueConverters {
                 throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
             }
         }
+        else if (data instanceof Double) {
+            return ((Double) data).floatValue();
+        }
         else if (data instanceof String) {
             return Float.parseFloat((String) data);
         }
@@ -423,10 +424,12 @@ public class OracleValueConverters extends JdbcValueConverters {
                 throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
             }
         }
-
-        if (data instanceof String) {
-            // In the case when the value is of String, convert it to a BigDecimal so that we can then
-            // aptly apply the scale adjustment below.
+        else if (data instanceof BigInteger) {
+            // OpenLogReplicator
+            data = toBigDecimal(column, fieldDefn, data.toString());
+        }
+        else if (data instanceof String) {
+            // LogMiner
             data = toBigDecimal(column, fieldDefn, data);
         }
 
@@ -574,7 +577,7 @@ public class OracleValueConverters extends JdbcValueConverters {
             }
             else if (data instanceof TIMESTAMPTZ) {
                 final TIMESTAMPTZ ts = (TIMESTAMPTZ) data;
-                data = ZonedDateTime.ofInstant(ts.timestampValue(connection.connection()).toInstant(), ts.getTimeZone().toZoneId());
+                data = ts.toZonedDateTime();
             }
             else if (data instanceof TIMESTAMPLTZ) {
                 final TIMESTAMPLTZ ts = (TIMESTAMPLTZ) data;
@@ -619,6 +622,10 @@ public class OracleValueConverters extends JdbcValueConverters {
         if (data instanceof String) {
             data = resolveTimestampStringAsInstant((String) data);
         }
+        else if (data instanceof Long) {
+            // todo: should we do this in OpenLogReplicator?
+            data = Instant.ofEpochSecond(0, (long) data);
+        }
         return super.convertTimestampToEpochNanos(column, fieldDefn, fromOracleTimeClasses(column, data));
     }
 
@@ -656,7 +663,21 @@ public class OracleValueConverters extends JdbcValueConverters {
                 data = ZonedDateTime.from(TIMESTAMP_TZ_FORMATTER.parse(dateText.trim()));
             }
         }
-        return super.convertTimestampWithZone(column, fieldDefn, fromOracleTimeClasses(column, data));
+        final Object javaData = fromOracleTimeClasses(column, data);
+        return convertValue(column, fieldDefn, javaData, fallbackTimestampWithTimeZone, (r) -> {
+            try {
+                // Fractional width for zoned timestamp is set in scale if schema obtained via snapshot
+                // if obtained via streaming then it is in length
+                final Integer fraction = column.scale().orElse(column.length());
+                r.deliver(ZonedTimestamp.toIsoString(javaData, defaultOffset, adjuster, fraction));
+            }
+            catch (IllegalArgumentException e) {
+            }
+        });
+    }
+
+    protected Object convertTimestampWithLocalZone(Column column, Field fieldDefn, Object data) {
+        return convertTimestampWithZone(column, fieldDefn, data);
     }
 
     protected Object convertIntervalYearMonth(Column column, Field fieldDefn, Object data) {
@@ -736,8 +757,8 @@ public class OracleValueConverters extends JdbcValueConverters {
         if (m.matches()) {
             final int sign = "-".equals(m.group(1)) ? -1 : 1;
             if (intervalHandlingMode == OracleConnectorConfig.IntervalHandlingMode.STRING) {
-                double seconds = (double) (sign * Integer.parseInt(m.group(5)))
-                        + (double) Integer.parseInt(Strings.pad(m.group(6), 6, '0')) / 1_000_000D;
+                double seconds = sign * ((double) (Integer.parseInt(m.group(5)))
+                        + (double) Integer.parseInt(Strings.pad(m.group(6), 6, '0')) / 1_000_000D);
                 r.deliver(Interval.toIsoString(
                         0,
                         0,

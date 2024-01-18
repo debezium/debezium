@@ -5,11 +5,8 @@
  */
 package io.debezium.engine.format;
 
-import io.debezium.common.annotation.Incubating;
-
 /**
  * A {@link SerializationFormat} defining the Avro format serialized as byte[].
  */
-@Incubating
 public class Avro implements SerializationFormat<byte[]> {
 }

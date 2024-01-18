@@ -5,9 +5,9 @@
  */
 package io.debezium.outbox.quarkus.it;
 
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
 
 /**
  * This entity class is merely a placeholder to address two concerns:

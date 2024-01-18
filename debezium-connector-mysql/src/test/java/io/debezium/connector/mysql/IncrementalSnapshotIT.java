@@ -6,6 +6,7 @@
 
 package io.debezium.connector.mysql;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -24,7 +25,6 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.assertj.core.api.Assertions;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -72,6 +72,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY.getValue())
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                 .with(MySqlConnectorConfig.SIGNAL_DATA_COLLECTION, DATABASE.qualifiedTableName("debezium_signal"))
+                .with(CommonConnectorConfig.SIGNAL_POLL_INTERVAL_MS, 1)
                 .with(MySqlConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 10)
                 .with(MySqlConnectorConfig.INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES, true)
                 .with(CommonConnectorConfig.SCHEMA_NAME_ADJUSTMENT_MODE, SchemaNameAdjustmentMode.AVRO);
@@ -93,11 +94,22 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue())
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                 .with(MySqlConnectorConfig.SIGNAL_DATA_COLLECTION, DATABASE.qualifiedTableName("debezium_signal"))
+                .with(CommonConnectorConfig.SIGNAL_POLL_INTERVAL_MS, 5)
                 .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, tableIncludeList)
                 .with(MySqlConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 10)
                 .with(MySqlConnectorConfig.INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES, true)
                 .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, storeOnlyCapturedDdl)
                 .with(CommonConnectorConfig.SCHEMA_NAME_ADJUSTMENT_MODE, SchemaNameAdjustmentMode.AVRO);
+    }
+
+    @Override
+    protected String connector() {
+        return "mysql";
+    }
+
+    @Override
+    protected String server() {
+        return DATABASE.getServerName();
     }
 
     @Override
@@ -220,7 +232,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
         final int batchSize = 10;
         try (JdbcConnection connection = databaseConnection()) {
             connection.setAutoCommit(false);
-            connection.execute("SET binlog_rows_query_log_events=ON");
+            ((MySqlTestConnection) connection).databaseAsserts().setBinlogRowQueryEventsOn(connection);
             for (int i = 0; i < ROW_COUNT; i++) {
                 connection.executeWithoutCommitting(
                         String.format("UPDATE %s SET aa = aa + 2000 WHERE pk > %s AND pk <= %s", tableName(),
@@ -254,7 +266,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
         Testing.Print.enable();
         final int ROWS = 10;
 
-        try (final JdbcConnection connection = databaseConnection()) {
+        try (JdbcConnection connection = databaseConnection()) {
             connection.setAutoCommit(false);
             for (int i = 0; i < ROWS; i++) {
                 connection.executeWithoutCommitting(String.format(
@@ -297,7 +309,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
             LocalDate dt = dateTime.toLocalDate();
             LocalDate d = LocalDate.parse(String.format("%s-05-01", 2000 + i));
             LocalTime t = LocalTime.parse(String.format("0%s:00:00", i));
-            Assertions.assertThat(dbChanges).contains(entry(i + 1, List.of(dt, d, t)));
+            assertThat(dbChanges).contains(entry(i + 1, List.of(dt, d, t)));
         }
     }
 
@@ -307,7 +319,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
         Testing.Print.enable();
         final LogInterceptor logInterceptor = new LogInterceptor(MySqlBinaryProtocolFieldReader.class);
 
-        try (final JdbcConnection connection = databaseConnection()) {
+        try (JdbcConnection connection = databaseConnection()) {
             connection.setAutoCommit(false);
             connection.executeWithoutCommitting("INSERT INTO a_date (pk) VALUES (1)");
             connection.commit();
@@ -332,7 +344,25 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
                 },
                 DATABASE.topicForTable("a_date"),
                 null);
-        Assertions.assertThat(dbChanges).contains(entry(1, Arrays.asList(0, null)));
+        assertThat(dbChanges).contains(entry(1, Arrays.asList(0, null)));
         assertFalse(logInterceptor.containsWarnMessage("Invalid length when read MySQL DATE value. BIN_LEN_DATE is 0."));
+    }
+
+    @Test
+    @FixFor("DBZ-6937")
+    public void incrementalSnapshotOnly() throws Exception {
+        // Testing.Print.enable();
+
+        populateTable();
+        final Configuration config = config().with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER).build();
+        start(connectorClass(), config, loggingCompletion());
+
+        sendAdHocSnapshotSignal();
+
+        final int expectedRecordCount = ROW_COUNT;
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
+        for (int i = 0; i < expectedRecordCount; i++) {
+            assertThat(dbChanges).contains(entry(i + 1, i));
+        }
     }
 }

@@ -15,7 +15,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.oracle.antlr.OracleDdlParser;
-import io.debezium.connector.oracle.logminer.processor.TruncateReceiver;
 import io.debezium.pipeline.spi.SchemaChangeEventEmitter;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -25,6 +24,7 @@ import io.debezium.relational.ddl.DdlParserListener;
 import io.debezium.relational.ddl.DdlParserListener.TableAlteredEvent;
 import io.debezium.relational.ddl.DdlParserListener.TableCreatedEvent;
 import io.debezium.relational.ddl.DdlParserListener.TableDroppedEvent;
+import io.debezium.relational.ddl.DdlParserListener.TableTruncatedEvent;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.text.MultipleParsingExceptions;
 import io.debezium.text.ParsingException;
@@ -47,13 +47,13 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
     private final String objectOwner;
     private final String ddlText;
     private final TableFilter filters;
-    private final OracleStreamingChangeEventSourceMetrics streamingMetrics;
+    private final AbstractOracleStreamingChangeEventSourceMetrics streamingMetrics;
     private final TruncateReceiver truncateReceiver;
 
     public OracleSchemaChangeEventEmitter(OracleConnectorConfig connectorConfig, OraclePartition partition,
                                           OracleOffsetContext offsetContext, TableId tableId, String sourceDatabaseName,
                                           String objectOwner, String ddlText, OracleDatabaseSchema schema,
-                                          Instant changeTime, OracleStreamingChangeEventSourceMetrics streamingMetrics,
+                                          Instant changeTime, AbstractOracleStreamingChangeEventSourceMetrics streamingMetrics,
                                           TruncateReceiver truncateReceiver) {
         this.partition = partition;
         this.offsetContext = offsetContext;
@@ -85,9 +85,9 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
         }
         catch (ParsingException | MultipleParsingExceptions e) {
             if (schema.skipUnparseableDdlStatements()) {
-                LOGGER.warn("Ignoring unparsable DDL statement '{}': {}", ddlText, e);
+                LOGGER.warn("Ignoring unparsable DDL statement '{}':", ddlText, e);
                 streamingMetrics.incrementWarningCount();
-                streamingMetrics.incrementUnparsableDdlCount();
+                streamingMetrics.incrementSchemaChangeParseErrorCount();
             }
             else {
                 throw e;
@@ -109,7 +109,7 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
                             changeEvents.add(dropTableEvent(partition, tableBefore, (TableDroppedEvent) event));
                             break;
                         case TRUNCATE_TABLE:
-                            truncateReceiver.processTruncateEvent();
+                            changeEvents.add(truncateTableEvent(partition, (TableTruncatedEvent) event));
                             break;
                         default:
                             LOGGER.info("Skipped DDL event type {}: {}", event.type(), ddlText);
@@ -119,7 +119,15 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
             });
 
             for (SchemaChangeEvent event : changeEvents) {
-                receiver.schemaChangeEvent(event);
+                if (!schema.skipSchemaChangeEvent(event)) {
+                    if (SchemaChangeEvent.SchemaChangeEventType.TRUNCATE == event.getType()) {
+                        truncateReceiver.processTruncateEvent();
+                    }
+                    else {
+                        receiver.schemaChangeEvent(event);
+                    }
+
+                }
             }
         }
     }
@@ -173,4 +181,16 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
                 event.statement(),
                 tableSchemaBeforeDrop);
     }
+
+    private SchemaChangeEvent truncateTableEvent(OraclePartition partition, TableTruncatedEvent event) {
+        offsetContext.tableEvent(tableId, changeTime);
+        return SchemaChangeEvent.ofTruncate(
+                partition,
+                offsetContext,
+                tableId.catalog(),
+                tableId.schema(),
+                event.statement(),
+                schema.tableFor(event.tableId()));
+    }
+
 }

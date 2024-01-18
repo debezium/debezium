@@ -6,6 +6,8 @@
 
 package io.debezium.connector.postgresql;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -17,7 +19,6 @@ import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.Before;
@@ -94,7 +95,7 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
         final List<SourceRecord> records = new ArrayList<>();
 
         // Database sometimes insert an empty transaction, we must skip those
-        Awaitility.await("Skip empty transactions and find the data").atMost(Duration.ofSeconds(TestHelper.waitTimeForRecords() * 3)).until(() -> {
+        Awaitility.await("Skip empty transactions and find the data").atMost(Duration.ofSeconds(TestHelper.waitTimeForRecords() * 3L)).until(() -> {
             final List<SourceRecord> candidate = consumeRecordsByTopic(2).allRecordsInOrder();
             if (candidate.get(1).topic().contains("transaction")) {
                 // empty transaction, should be skipped
@@ -105,7 +106,7 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
             return true;
         });
 
-        Assertions.assertThat(records).hasSize(4);
+        assertThat(records).hasSize(4);
         final String beginTxId = assertBeginTransaction(records.get(0));
         assertRecordTransactionMetadata(records.get(1), beginTxId, 1, 1);
         assertRecordTransactionMetadata(records.get(2), beginTxId, 2, 1);
@@ -118,13 +119,13 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
         final Struct beginKey = (Struct) record.key();
         final Map<String, Object> offset = (Map<String, Object>) record.sourceOffset();
 
-        Assertions.assertThat(begin.getString("status")).isEqualTo("BEGIN");
-        Assertions.assertThat(begin.getInt64("event_count")).isNull();
+        assertThat(begin.getString("status")).isEqualTo("BEGIN");
+        assertThat(begin.getInt64("event_count")).isNull();
         final String txId = begin.getString("id");
-        Assertions.assertThat(beginKey.getString("id")).isEqualTo(txId);
+        assertThat(beginKey.getString("id")).isEqualTo(txId);
 
         final String expectedId = Arrays.stream(txId.split(":")).findFirst().get();
-        Assertions.assertThat(offset.get("transaction_id")).isEqualTo(expectedId);
+        assertThat(offset.get("transaction_id")).isEqualTo(expectedId);
         return txId;
     }
 
@@ -136,16 +137,15 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
         final String expectedId = Arrays.stream(beginTxId.split(":")).findFirst().get();
         final String expectedTxId = String.format("%s:%s", expectedId, offset.get("lsn"));
 
-        Assertions.assertThat(end.getString("status")).isEqualTo("END");
-        Assertions.assertThat(end.getString("id")).isEqualTo(expectedTxId);
-        Assertions.assertThat(end.getInt64("event_count")).isEqualTo(expectedEventCount);
-        Assertions.assertThat(endKey.getString("id")).isEqualTo(expectedTxId);
+        assertThat(end.getString("status")).isEqualTo("END");
+        assertThat(end.getString("id")).isEqualTo(expectedTxId);
+        assertThat(end.getInt64("event_count")).isEqualTo(expectedEventCount);
+        assertThat(endKey.getString("id")).isEqualTo(expectedTxId);
 
-        Assertions
-                .assertThat(end.getArray("data_collections").stream().map(x -> (Struct) x)
-                        .collect(Collectors.toMap(x -> x.getString("data_collection"), x -> x.getInt64("event_count"))))
+        assertThat(end.getArray("data_collections").stream().map(x -> (Struct) x)
+                .collect(Collectors.toMap(x -> x.getString("data_collection"), x -> x.getInt64("event_count"))))
                 .isEqualTo(expectedPerTableCount.entrySet().stream().collect(Collectors.toMap(x -> x.getKey(), x -> x.getValue().longValue())));
-        Assertions.assertThat(offset.get("transaction_id")).isEqualTo(expectedId);
+        assertThat(offset.get("transaction_id")).isEqualTo(expectedId);
     }
 
     @Override
@@ -155,9 +155,9 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
         final String expectedId = Arrays.stream(beginTxId.split(":")).findFirst().get();
         final String expectedTxId = String.format("%s:%s", expectedId, offset.get("lsn"));
 
-        Assertions.assertThat(change.getString("id")).isEqualTo(expectedTxId);
-        Assertions.assertThat(change.getInt64("total_order")).isEqualTo(expectedTotalOrder);
-        Assertions.assertThat(change.getInt64("data_collection_order")).isEqualTo(expectedCollectionOrder);
-        Assertions.assertThat(offset.get("transaction_id")).isEqualTo(expectedId);
+        assertThat(change.getString("id")).isEqualTo(expectedTxId);
+        assertThat(change.getInt64("total_order")).isEqualTo(expectedTotalOrder);
+        assertThat(change.getInt64("data_collection_order")).isEqualTo(expectedCollectionOrder);
+        assertThat(offset.get("transaction_id")).isEqualTo(expectedId);
     }
 }

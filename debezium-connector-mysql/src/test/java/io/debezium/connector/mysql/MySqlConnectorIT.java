@@ -22,6 +22,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -30,16 +32,18 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.assertj.core.api.Assertions;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
+import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotLockingMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
+import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotNewTables;
 import io.debezium.connector.mysql.MySqlTestConnection.MySqlVersion;
 import io.debezium.converters.CloudEventsConverterTest;
 import io.debezium.data.Envelope;
@@ -52,6 +56,7 @@ import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.RelationalChangeRecordEmitter;
+import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingMode;
 import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.schema.DatabaseSchema;
@@ -119,6 +124,42 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
+    public void shouldNotStartWithUnknownJdbcDriver() {
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.JDBC_DRIVER, "foo.bar")
+                .build();
+
+        final AtomicBoolean successResult = new AtomicBoolean();
+        final AtomicReference<String> message = new AtomicReference<>();
+        start(MySqlConnector.class, config, (success, msg, error) -> {
+            successResult.set(success);
+            message.set(msg);
+        });
+
+        assertThat(successResult.get()).isEqualTo(false);
+        assertThat(message.get()).contains("java.lang.ClassNotFoundException: foo.bar");
+        assertConnectorNotRunning();
+    }
+
+    @Test
+    public void shouldNotStartWithWrongProtocol() {
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.JDBC_PROTOCOL, "foo:bar")
+                .build();
+
+        final AtomicBoolean successResult = new AtomicBoolean();
+        final AtomicReference<String> message = new AtomicReference<>();
+        start(MySqlConnector.class, config, (success, msg, error) -> {
+            successResult.set(success);
+            message.set(msg);
+        });
+
+        assertThat(successResult.get()).isEqualTo(false);
+        assertThat(message.get()).contains("Unable to obtain a JDBC connection");
+        assertConnectorNotRunning();
+    }
+
+    @Test
     public void shouldFailToValidateInvalidConfiguration() {
         Configuration config = Configuration.create()
                 .with(MySqlConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
@@ -161,54 +202,65 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
     @Test
     public void shouldValidateAcceptableConfiguration() {
-        Configuration config = DATABASE.defaultJdbcConfigBuilder()
-                .with(MySqlConnectorConfig.SERVER_ID, 18765)
-                .with(CommonConnectorConfig.TOPIC_PREFIX, "myServer")
-                .with(KafkaSchemaHistory.BOOTSTRAP_SERVERS, "some.host.com")
-                .with(KafkaSchemaHistory.TOPIC, "my.db.history.topic")
-                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                .with(MySqlConnectorConfig.ON_CONNECT_STATEMENTS, "SET SESSION wait_timeout=2000")
-                .build();
+        Configuration config = Configuration.create().build();
         MySqlConnector connector = new MySqlConnector();
         Config result = connector.validate(config.asMap());
 
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.HOSTNAME);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.PORT);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.USER);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.PASSWORD);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.ON_CONNECT_STATEMENTS);
-        assertNoConfigurationErrors(result, CommonConnectorConfig.TOPIC_PREFIX);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.SERVER_ID);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLES_IGNORE_BUILTIN);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.DATABASE_INCLUDE_LIST);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.DATABASE_EXCLUDE_LIST);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLE_INCLUDE_LIST);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLE_EXCLUDE_LIST);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.COLUMN_EXCLUDE_LIST);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.COLUMN_INCLUDE_LIST);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.MSG_KEY_COLUMNS);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.CONNECTION_TIMEOUT_MS);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.KEEP_ALIVE);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.KEEP_ALIVE_INTERVAL_MS);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.MAX_QUEUE_SIZE);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.MAX_BATCH_SIZE);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.POLL_INTERVAL_MS);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.SCHEMA_HISTORY);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_MODE);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_NEW_TABLES);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_MODE);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_KEYSTORE);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_KEYSTORE_PASSWORD);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_TRUSTSTORE);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_TRUSTSTORE_PASSWORD);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.DECIMAL_HANDLING_MODE);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.TIME_PRECISION_MODE);
-        assertNoConfigurationErrors(result, KafkaSchemaHistory.BOOTSTRAP_SERVERS);
-        assertNoConfigurationErrors(result, KafkaSchemaHistory.TOPIC);
-        assertNoConfigurationErrors(result, KafkaSchemaHistory.RECOVERY_POLL_ATTEMPTS);
-        assertNoConfigurationErrors(result, KafkaSchemaHistory.RECOVERY_POLL_INTERVAL_MS);
+        // validate that the required fields have errors
+        assertConfigurationErrors(result, MySqlConnectorConfig.HOSTNAME, 1);
+        assertConfigurationErrors(result, MySqlConnectorConfig.USER, 1);
+        assertConfigurationErrors(result, MySqlConnectorConfig.SERVER_ID, 1);
+        assertConfigurationErrors(result, CommonConnectorConfig.TOPIC_PREFIX, 1);
+
+        // validate the non required fields
+        validateConfigField(result, MySqlConnectorConfig.PORT, 3306);
+        validateConfigField(result, MySqlConnectorConfig.PASSWORD, null);
+        validateConfigField(result, MySqlConnectorConfig.ON_CONNECT_STATEMENTS, null);
+        validateConfigField(result, MySqlConnectorConfig.TABLES_IGNORE_BUILTIN, Boolean.TRUE);
+        validateConfigField(result, MySqlConnectorConfig.DATABASE_INCLUDE_LIST, null);
+        validateConfigField(result, MySqlConnectorConfig.DATABASE_EXCLUDE_LIST, null);
+        validateConfigField(result, MySqlConnectorConfig.TABLE_INCLUDE_LIST, null);
+        validateConfigField(result, MySqlConnectorConfig.TABLE_EXCLUDE_LIST, null);
+        validateConfigField(result, MySqlConnectorConfig.COLUMN_EXCLUDE_LIST, null);
+        validateConfigField(result, MySqlConnectorConfig.COLUMN_INCLUDE_LIST, null);
+        validateConfigField(result, MySqlConnectorConfig.MSG_KEY_COLUMNS, null);
+        validateConfigField(result, MySqlConnectorConfig.CONNECTION_TIMEOUT_MS, 30000);
+        validateConfigField(result, MySqlConnectorConfig.KEEP_ALIVE, Boolean.TRUE);
+        validateConfigField(result, MySqlConnectorConfig.KEEP_ALIVE_INTERVAL_MS, 60000L);
+        validateConfigField(result, MySqlConnectorConfig.MAX_QUEUE_SIZE, 8192);
+        validateConfigField(result, MySqlConnectorConfig.MAX_BATCH_SIZE, 2048);
+        validateConfigField(result, MySqlConnectorConfig.POLL_INTERVAL_MS, 500L);
+        validateConfigField(result, MySqlConnectorConfig.SCHEMA_HISTORY, "io.debezium.storage.kafka.history.KafkaSchemaHistory");
+        validateConfigField(result, MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, Boolean.TRUE);
+        validateConfigField(result, MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL);
+        validateConfigField(result, MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE, SnapshotLockingMode.MINIMAL);
+        validateConfigField(result, MySqlConnectorConfig.SNAPSHOT_NEW_TABLES, SnapshotNewTables.OFF);
+        validateConfigField(result, MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.PREFERRED);
+        validateConfigField(result, MySqlConnectorConfig.SSL_KEYSTORE, null);
+        validateConfigField(result, MySqlConnectorConfig.SSL_KEYSTORE_PASSWORD, null);
+        validateConfigField(result, MySqlConnectorConfig.SSL_TRUSTSTORE, null);
+        validateConfigField(result, MySqlConnectorConfig.SSL_TRUSTSTORE_PASSWORD, null);
+        validateConfigField(result, MySqlConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.PRECISE);
+        validateConfigField(result, MySqlConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS);
+    }
+
+    private <T> void validateConfigField(Config config, Field field, T expectedValue) {
+        assertNoConfigurationErrors(config, field);
+        Object actualValue = configValue(config, field.name()).value();
+        if (actualValue == null) {
+            actualValue = field.defaultValue();
+        }
+        if (expectedValue == null) {
+            assertThat(actualValue).isNull();
+        }
+        else {
+            if (expectedValue instanceof EnumeratedValue) {
+                assertThat(((EnumeratedValue) expectedValue).getValue()).isEqualTo(actualValue.toString());
+            }
+            else {
+                assertThat(expectedValue).isEqualTo(actualValue);
+            }
+        }
     }
 
     /**
@@ -617,7 +669,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
             assertThat(persistedOffsetSource.binlogFilename()).isEqualTo(positionBeforeInserts.binlogFilename());
             assertThat(persistedOffsetSource.binlogFilename()).isEqualTo(positionAfterInserts.binlogFilename());
             final MySqlVersion mysqlVersion = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName()).getMySqlVersion();
-            if (mysqlVersion == MySqlVersion.MYSQL_5_5 || mysqlVersion == MySqlVersion.MYSQL_5_6) {
+            if (mysqlVersion == MySqlVersion.MYSQL_5_5 || mysqlVersion == MySqlVersion.MYSQL_5_6 || mysqlVersion == MySqlVersion.MARIADB_11) {
                 // todo: for some reason on MySQL 5.6, the binlog position does not behave like it does on MySQL 5.7 - why?
                 assertThat(persistedOffsetSource.binlogPosition()).isGreaterThanOrEqualTo(positionBeforeInserts.binlogPosition());
             }
@@ -881,11 +933,28 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         }
 
         SourceRecords records = consumeRecordsByTopic(15);
-        final List<SourceRecord> migrationTestRecords = records.recordsForTopic(DATABASE.topicForTable("migration_test"));
+        List<SourceRecord> migrationTestRecords = records.recordsForTopic(DATABASE.topicForTable("migration_test"));
         assertThat(migrationTestRecords.size()).isEqualTo(1);
-        final SourceRecord record = migrationTestRecords.get(0);
-        assertThat(((Struct) record.key()).getString("mgb_no")).isEqualTo("2");
+        SourceRecord record = migrationTestRecords.get(0);
+        assertThat(record.key()).isNull();
         assertThat(records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).size()).isEqualTo(13);
+
+        // Set column mgb_no to required, will treat this unique index column as primary key
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+            try (JdbcConnection connection = db.connect()) {
+                connection.execute(
+                        "alter table migration_test change column mgb_no mgb_no varchar(20) not null",
+                        "alter table migration_test drop index migration_test_mgb_no_uindex",
+                        "create unique index migration_test_mgb_no_uindex on migration_test (mgb_no)",
+                        "insert into migration_test values(2,'3')");
+            }
+        }
+
+        records = consumeRecordsByTopic(4);
+        migrationTestRecords = records.recordsForTopic(DATABASE.topicForTable("migration_test"));
+        assertThat(migrationTestRecords.size()).isEqualTo(1);
+        record = migrationTestRecords.get(0);
+        assertThat(((Struct) record.key()).getString("mgb_no")).isEqualTo("3");
 
         stopConnector();
     }
@@ -964,7 +1033,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         }
 
         final SourceRecord record = consumeRecord();
-        Assertions.assertThat(record.topic()).isEqualTo(DATABASE.topicForTable("customers"));
+        assertThat(record.topic()).isEqualTo(DATABASE.topicForTable("customers"));
     }
 
     @Test
@@ -1557,8 +1626,9 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     }
 
     /**
-     * This test case validates that if you disable MySQL option binlog_rows_query_log_events, then
-     * the original SQL statement for an INSERT statement is NOT parsed into the resulting event.
+     * This test case validates that if you disable MySQL option binlog_rows_query_log_events or
+     * the Maria option binlog_annotate_row_events, then the original SQL statement for an
+     * INSERT statement is NOT parsed into the resulting event.
      */
     @Test
     @FixFor("DBZ-706")
@@ -1588,7 +1658,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
             try (JdbcConnection connection = db.connect()) {
                 // Disable Query log option
-                connection.execute("SET binlog_rows_query_log_events=OFF");
+                db.databaseAsserts().setBinlogRowQueryEventsOff(connection);
 
                 // Execute insert statement.
                 connection.execute(insertSqlStatement);
@@ -1609,8 +1679,9 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     }
 
     /**
-     * This test case validates that if you enable MySQL option binlog_rows_query_log_events,
-     * but configure the connector to NOT include the query, it will not be included in the event.
+     * This test case validates that if you enable MySQL option binlog_rows_query_log_events
+     * or the MariaDB option binlog_annotate_row_events but configure the connector to NOT
+     * include the query, it will not be included in the event.
      */
     @Test
     @FixFor("DBZ-706")
@@ -1639,7 +1710,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
             try (JdbcConnection connection = db.connect()) {
                 // Enable Query log option
-                connection.execute("SET binlog_rows_query_log_events=ON");
+                db.databaseAsserts().setBinlogRowQueryEventsOn(connection);
 
                 // Execute insert statement.
                 connection.execute(insertSqlStatement);
@@ -1661,8 +1732,9 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     }
 
     /**
-     * This test case validates that if you enable MySQL option binlog_rows_query_log_events, then
-     * the original SQL statement for an INSERT statement is parsed into the resulting event.
+     * This test case validates that if you enable MySQL option binlog_rows_query_log_events or
+     * the MariaDB option binlog_annotate_row_events, then the original SQL statement for an
+     * INSERT statement is parsed into the resulting event.
      */
     @Test
     @FixFor("DBZ-706")
@@ -1691,7 +1763,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
             try (JdbcConnection connection = db.connect()) {
                 // Enable Query log option
-                connection.execute("SET binlog_rows_query_log_events=ON");
+                db.databaseAsserts().setBinlogRowQueryEventsOn(connection);
 
                 // Execute insert statement.
                 connection.execute(insertSqlStatement);
@@ -1713,8 +1785,9 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     }
 
     /**
-     * This test case validates that if you enable MySQL option binlog_rows_query_log_events, then
-     * the issue multiple INSERTs, the appropriate SQL statements are parsed into the resulting events.
+     * This test case validates that if you enable MySQL option binlog_rows_query_log_events or
+     * the MariaDB option binlog_annotate_rows_event, then the issue multiple INSERTs, the
+     * appropriate SQL statements are parsed into the resulting events.
      */
     @Test
     @FixFor("DBZ-706")
@@ -1746,7 +1819,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
             try (JdbcConnection connection = db.connect()) {
                 // Enable Query log option
-                connection.execute("SET binlog_rows_query_log_events=ON");
+                db.databaseAsserts().setBinlogRowQueryEventsOn(connection);
 
                 // Execute insert statement.
                 connection.execute(insertSqlStatement1);
@@ -1776,8 +1849,9 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     }
 
     /**
-     * This test case validates that if you enable MySQL option binlog_rows_query_log_events, then
-     * the issue single multi-row INSERT, the appropriate SQL statements are parsed into the resulting events.
+     * This test case validates that if you enable MySQL option binlog_rows_query_log_events or the
+     * MariaDB option binlog_annotate_row_events, then the issue single multi-row INSERT, the
+     * appropriate SQL statements are parsed into the resulting events.
      */
     @Test
     @FixFor("DBZ-706")
@@ -1808,7 +1882,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
             try (JdbcConnection connection = db.connect()) {
                 // Enable Query log option
-                connection.execute("SET binlog_rows_query_log_events=ON");
+                db.databaseAsserts().setBinlogRowQueryEventsOn(connection);
 
                 // Execute insert statement.
                 connection.execute(insertSqlStatement);
@@ -1837,8 +1911,9 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     }
 
     /**
-     * This test case validates that if you enable MySQL option binlog_rows_query_log_events, then
-     * the original SQL statement for a DELETE over a single row is parsed into the resulting event.
+     * This test case validates that if you enable MySQL option binlog_rows_query_log_events or
+     * the MariaDB option binlog_annotate_row_events, then the original SQL statement for a
+     * DELETE over a single row is parsed into the resulting event.
      */
     @Test
     @FixFor("DBZ-706")
@@ -1867,7 +1942,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
             try (JdbcConnection connection = db.connect()) {
                 // Enable Query log option
-                connection.execute("SET binlog_rows_query_log_events=ON");
+                db.databaseAsserts().setBinlogRowQueryEventsOn(connection);
 
                 // Execute insert statement.
                 connection.execute(deleteSqlStatement);
@@ -1888,8 +1963,9 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     }
 
     /**
-     * This test case validates that if you enable MySQL option binlog_rows_query_log_events, then
-     * issue a multi-row DELETE, the resulting events get the original SQL statement.
+     * This test case validates that if you enable MySQL option binlog_rows_query_log_events or
+     * the MariaDB option binlog_annotate_row_events, then issue a multi-row DELETE, the
+     * resulting events get the original SQL statement.
      */
     @Test
     @FixFor("DBZ-706")
@@ -1918,7 +1994,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
             try (JdbcConnection connection = db.connect()) {
                 // Enable Query log option
-                connection.execute("SET binlog_rows_query_log_events=ON");
+                db.databaseAsserts().setBinlogRowQueryEventsOn(connection);
 
                 // Execute insert statement.
                 connection.execute(deleteSqlStatement);
@@ -1947,8 +2023,9 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     }
 
     /**
-     * This test case validates that if you enable MySQL option binlog_rows_query_log_events, then
-     * the original SQL statement for an UPDATE over a single row is parsed into the resulting event.
+     * This test case validates that if you enable MySQL option binlog_rows_query_log_events or
+     * the MariaDB option binlog_annotate_row_events, then the original SQL statement for an
+     * UPDATE over a single row is parsed into the resulting event.
      */
     @Test
     @FixFor("DBZ-706")
@@ -1977,7 +2054,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
             try (JdbcConnection connection = db.connect()) {
                 // Enable Query log option
-                connection.execute("SET binlog_rows_query_log_events=ON");
+                db.databaseAsserts().setBinlogRowQueryEventsOn(connection);
 
                 // Execute insert statement.
                 connection.execute(updateSqlStatement);
@@ -1998,8 +2075,9 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     }
 
     /**
-     * This test case validates that if you enable MySQL option binlog_rows_query_log_events, then
-     * the original SQL statement for an UPDATE over a single row is parsed into the resulting event.
+     * This test case validates that if you enable MySQL option binlog_rows_query_log_events or
+     * the MariaDB option binlog_annotate_row_events, then the original SQL statement for an
+     * UPDATE over a single row is parsed into the resulting event.
      */
     @Test
     @FixFor("DBZ-706")
@@ -2028,7 +2106,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
             try (JdbcConnection connection = db.connect()) {
                 // Enable Query log option
-                connection.execute("SET binlog_rows_query_log_events=ON");
+                db.databaseAsserts().setBinlogRowQueryEventsOn(connection);
 
                 // Execute insert statement.
                 connection.execute(updateSqlStatement);
@@ -2175,8 +2253,8 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
         recordsForTopic.forEach(record -> {
             Struct key = (Struct) record.key();
-            Assertions.assertThat(key.get("id")).isNotNull();
-            Assertions.assertThat(key.get("name")).isNotNull();
+            assertThat(key.get("id")).isNotNull();
+            assertThat(key.get("name")).isNotNull();
         });
     }
 
@@ -2205,8 +2283,8 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
         recordsForTopic.forEach(record -> {
             Struct key = (Struct) record.key();
-            Assertions.assertThat(key.get("id")).isNotNull();
-            Assertions.assertThat(key.get("name")).isNotNull();
+            assertThat(key.get("id")).isNotNull();
+            assertThat(key.get("name")).isNotNull();
         });
     }
 
@@ -2233,8 +2311,8 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
         recordsForTopic.forEach(record -> {
             Struct key = (Struct) record.key();
-            Assertions.assertThat(key.get("id")).isNotNull();
-            Assertions.assertThat(key.get("name")).isNotNull();
+            assertThat(key.get("id")).isNotNull();
+            assertThat(key.get("name")).isNotNull();
         });
 
     }
@@ -2542,7 +2620,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     private static class NoTombStonesHandler implements DebeziumEngine.ChangeConsumer<SourceRecord> {
         protected BlockingQueue<SourceRecord> recordQueue;
 
-        public NoTombStonesHandler(BlockingQueue<SourceRecord> recordQueue) {
+        NoTombStonesHandler(BlockingQueue<SourceRecord> recordQueue) {
             this.recordQueue = recordQueue;
         }
 

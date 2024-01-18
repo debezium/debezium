@@ -11,19 +11,14 @@ import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.testing.system.tools.WaitConditions;
-import io.debezium.testing.system.tools.databases.DatabaseInitListener;
 import io.debezium.testing.system.tools.databases.OcpSqlDatabaseController;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
-import io.fabric8.kubernetes.client.dsl.ExecWatch;
 import io.fabric8.openshift.client.OpenShiftClient;
 
 /**
@@ -34,7 +29,7 @@ public class OcpSqlServerController extends OcpSqlDatabaseController {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OcpSqlServerController.class);
     private static final String DB_INIT_SCRIPT_PATH = "/database-resources/sqlserver/inventory.sql";
-    private static final String DB_INIT_SCRIPT_PATH_CONTAINER = "/opt/inventory.sql";
+    private static final String DB_INIT_SCRIPT_PATH_CONTAINER = "/tmp/inventory.sql";
 
     private final Path initScript;
 
@@ -59,16 +54,6 @@ public class OcpSqlServerController extends OcpSqlDatabaseController {
         ocp.pods().inNamespace(project).withName(pod.getMetadata().getName())
                 .file(DB_INIT_SCRIPT_PATH_CONTAINER)
                 .upload(initScript);
-
-        CountDownLatch latch = new CountDownLatch(1);
-        try (ExecWatch exec = ocp.pods().inNamespace(project).withName(pod.getMetadata().getName())
-                .inContainer("sqlserver")
-                .writingOutput(System.out) // CHECKSTYLE IGNORE RegexpSinglelineJava FOR NEXT 2 LINES
-                .writingError(System.err)
-                .usingListener(new DatabaseInitListener("sqlserver", latch))
-                .exec("/opt/mssql-tools/bin/sqlcmd", "-U", "sa", "-P", DATABASE_SQLSERVER_SA_PASSWORD, "-i", "/opt/inventory.sql")) {
-            LOGGER.info("Waiting until database is initialized");
-            latch.await(WaitConditions.scaled(1), TimeUnit.MINUTES);
-        }
+        executeInitCommand(deployment, "/opt/mssql-tools/bin/sqlcmd", "-U", "sa", "-P", DATABASE_SQLSERVER_SA_PASSWORD, "-i", DB_INIT_SCRIPT_PATH_CONTAINER);
     }
 }

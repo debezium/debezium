@@ -17,12 +17,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.OracleConnectorConfig;
-import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.Scn;
+import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
+import io.debezium.util.Strings;
 
 /**
  * A {@link LogWriterFlushStrategy} for Oracle RAC that performs a transaction-scoped commit
@@ -40,8 +42,9 @@ public class RacCommitLogWriterFlushStrategy implements LogWriterFlushStrategy {
     private static final Logger LOGGER = LoggerFactory.getLogger(RacCommitLogWriterFlushStrategy.class);
 
     private final Map<String, CommitLogWriterFlushStrategy> flushStrategies = new HashMap<>();
-    private final OracleStreamingChangeEventSourceMetrics streamingMetrics;
+    private final LogMinerStreamingChangeEventSourceMetrics streamingMetrics;
     private final JdbcConfiguration jdbcConfiguration;
+    private final OracleConnectorConfig connectorConfig;
     private final Set<String> hosts;
 
     /**
@@ -52,9 +55,10 @@ public class RacCommitLogWriterFlushStrategy implements LogWriterFlushStrategy {
      * @param streamingMetrics the streaming metrics, must not be {@code null}
      */
     public RacCommitLogWriterFlushStrategy(OracleConnectorConfig connectorConfig, JdbcConfiguration jdbcConfig,
-                                           OracleStreamingChangeEventSourceMetrics streamingMetrics) {
+                                           LogMinerStreamingChangeEventSourceMetrics streamingMetrics) {
         this.jdbcConfiguration = jdbcConfig;
         this.streamingMetrics = streamingMetrics;
+        this.connectorConfig = connectorConfig;
         this.hosts = connectorConfig.getRacNodes().stream().map(String::toUpperCase).collect(Collectors.toSet());
         recreateRacNodeFlushStrategies();
     }
@@ -119,8 +123,8 @@ public class RacCommitLogWriterFlushStrategy implements LogWriterFlushStrategy {
         // Create strategies by host
         for (String hostName : hosts) {
             try {
-                final String[] parts = hostName.split(":");
-                flushStrategies.put(hostName, createHostFlushStrategy(parts[0], Integer.parseInt(parts[1])));
+                final String[] parts = parseHostName(hostName);
+                flushStrategies.put(hostName, createHostFlushStrategy(parts[0], Integer.parseInt(parts[1]), parts[2]));
             }
             catch (SQLException e) {
                 throw new DebeziumException("Cannot connect to RAC node '" + hostName + "'", e);
@@ -128,13 +132,39 @@ public class RacCommitLogWriterFlushStrategy implements LogWriterFlushStrategy {
         }
     }
 
-    private CommitLogWriterFlushStrategy createHostFlushStrategy(String hostName, Integer port) throws SQLException {
-        JdbcConfiguration jdbcHostConfig = JdbcConfiguration.adapt(jdbcConfiguration.edit()
+    private String[] parseHostName(String hostName) {
+        final String[] parts = new String[3];
+        final String[] colonParts = hostName.split(":");
+        parts[0] = colonParts[0];
+        if (colonParts[1].contains("/")) {
+            // SID provided
+            final int slashIndex = colonParts[1].indexOf('/');
+            parts[1] = colonParts[1].substring(0, slashIndex);
+            parts[2] = colonParts[1].substring(slashIndex + 1);
+            return parts;
+        }
+        else {
+            // No SID provided
+            parts[1] = colonParts[1];
+            parts[2] = null;
+        }
+
+        return parts;
+    }
+
+    private CommitLogWriterFlushStrategy createHostFlushStrategy(String hostName, Integer port, String sid) throws SQLException {
+        Configuration.Builder jdbcConfigBuilder = jdbcConfiguration.edit()
                 .with(JdbcConfiguration.HOSTNAME, hostName)
-                .with(JdbcConfiguration.PORT, port).build());
+                .with(JdbcConfiguration.PORT, port);
+
+        if (!Strings.isNullOrBlank(sid)) {
+            jdbcConfigBuilder = jdbcConfigBuilder.with(JdbcConfiguration.DATABASE, sid);
+        }
+
+        final JdbcConfiguration jdbcHostConfig = JdbcConfiguration.adapt(jdbcConfigBuilder.build());
 
         LOGGER.debug("Creating flush connection to RAC node '{}'", hostName);
-        return new CommitLogWriterFlushStrategy(jdbcHostConfig);
+        return new CommitLogWriterFlushStrategy(connectorConfig, jdbcHostConfig);
     }
 
     /**

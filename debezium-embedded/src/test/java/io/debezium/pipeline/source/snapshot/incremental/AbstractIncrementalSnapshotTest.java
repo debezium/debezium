@@ -5,29 +5,31 @@
  */
 package io.debezium.pipeline.source.snapshot.incremental;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import java.nio.file.Path;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+import java.util.Objects;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Predicate;
+import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
 
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
 import org.junit.Test;
 
@@ -35,242 +37,21 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
-import io.debezium.engine.DebeziumEngine;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.EqualityCheck;
 import io.debezium.junit.SkipWhenConnectorUnderTest;
 import io.debezium.junit.SkipWhenConnectorUnderTest.Connector;
 import io.debezium.junit.logging.LogInterceptor;
-import io.debezium.pipeline.signal.StopSnapshot;
-import io.debezium.util.Testing;
+import io.debezium.kafka.KafkaCluster;
+import io.debezium.pipeline.notification.channels.SinkNotificationChannel;
+import io.debezium.pipeline.signal.actions.snapshotting.StopSnapshot;
 
-public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector> extends AbstractConnectorTest {
+public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector> extends AbstractSnapshotTest<T> {
 
-    protected static final int ROW_COUNT = 1_000;
-    private static final int MAXIMUM_NO_RECORDS_CONSUMES = 5;
-
-    protected static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-is.txt")
-            .toAbsolutePath();
-
-    protected abstract Class<T> connectorClass();
-
-    protected abstract JdbcConnection databaseConnection();
-
-    protected abstract String topicName();
-
-    protected abstract String tableName();
-
-    protected abstract List<String> topicNames();
-
-    protected abstract List<String> tableNames();
-
-    protected abstract String signalTableName();
-
-    protected String signalTableNameSanitized() {
-        return signalTableName();
-    }
-
-    protected abstract Configuration.Builder config();
-
-    protected abstract Configuration.Builder mutableConfig(boolean signalTableOnly, boolean storeOnlyCapturedDdl);
-
-    protected String alterTableAddColumnStatement(String tableName) {
-        return "ALTER TABLE " + tableName + " add col3 int default 0";
-    }
-
-    protected String alterTableDropColumnStatement(String tableName) {
-        return "ALTER TABLE " + tableName + " drop column col3";
-    }
-
-    protected String tableDataCollectionId() {
-        return tableName();
-    }
-
-    protected List<String> tableDataCollectionIds() {
-        return tableNames();
-    }
-
-    protected void populateTable(JdbcConnection connection, String tableName) throws SQLException {
-        connection.setAutoCommit(false);
-        for (int i = 0; i < ROW_COUNT; i++) {
-            connection.executeWithoutCommitting(String.format("INSERT INTO %s (%s, aa) VALUES (%s, %s)",
-                    tableName, connection.quotedColumnIdString(pkFieldName()), i + 1, i));
-        }
-        connection.commit();
-    }
-
-    protected void populateTable(JdbcConnection connection) throws SQLException {
-        populateTable(connection, tableName());
-    }
-
-    protected void populateTables(JdbcConnection connection) throws SQLException {
-        for (String tableName : tableNames()) {
-            populateTable(connection, tableName);
-        }
-    }
-
-    protected void populateTable() throws SQLException {
-        try (final JdbcConnection connection = databaseConnection()) {
-            populateTable(connection);
-        }
-    }
-
-    protected void populateTableWithSpecificValue(int startRow, int count, int value) throws SQLException {
-        try (final JdbcConnection connection = databaseConnection()) {
-            populateTableWithSpecificValue(connection, tableName(), startRow, count, value);
-        }
-    }
-
-    private void populateTableWithSpecificValue(JdbcConnection connection, String tableName, int startRow, int count, int value)
-            throws SQLException {
-        connection.setAutoCommit(false);
-        for (int i = startRow + 1; i <= startRow + count; i++) {
-            connection.executeWithoutCommitting(
-                    String.format("INSERT INTO %s (%s, aa) VALUES (%s, %s)",
-                            tableName, connection.quotedColumnIdString(pkFieldName()), count + i, value));
-        }
-        connection.commit();
-    }
-
-    protected void populateTables() throws SQLException {
-        try (final JdbcConnection connection = databaseConnection()) {
-            populateTables(connection);
-        }
-    }
-
-    protected void populate4PkTable(JdbcConnection connection, String tableName) throws SQLException {
-        connection.setAutoCommit(false);
-        for (int i = 0; i < ROW_COUNT; i++) {
-            final int id = i + 1;
-            final int pk1 = id / 1000;
-            final int pk2 = (id / 100) % 10;
-            final int pk3 = (id / 10) % 10;
-            final int pk4 = id % 10;
-            connection.executeWithoutCommitting(String.format("INSERT INTO %s (pk1, pk2, pk3, pk4, aa) VALUES (%s, %s, %s, %s, %s)",
-                    tableName,
-                    pk1,
-                    pk2,
-                    pk3,
-                    pk4,
-                    i));
-        }
-        connection.commit();
-    }
-
-    protected Map<Integer, Integer> consumeMixedWithIncrementalSnapshot(int recordCount) throws InterruptedException {
-        return consumeMixedWithIncrementalSnapshot(recordCount, topicName());
-    }
-
-    protected Map<Integer, Integer> consumeMixedWithIncrementalSnapshot(int recordCount, String topicName) throws InterruptedException {
-        return consumeMixedWithIncrementalSnapshot(recordCount, record -> ((Struct) record.value()).getStruct("after").getInt32(valueFieldName()), x -> true, null,
-                topicName);
-    }
-
-    protected <V> Map<Integer, V> consumeMixedWithIncrementalSnapshot(int recordCount, Function<SourceRecord, V> valueConverter,
-                                                                      Predicate<Map.Entry<Integer, V>> dataCompleted,
-                                                                      Consumer<List<SourceRecord>> recordConsumer,
-                                                                      String topicName)
-            throws InterruptedException {
-        return consumeMixedWithIncrementalSnapshot(recordCount, dataCompleted, k -> k.getInt32(pkFieldName()), valueConverter, topicName, recordConsumer);
-    }
-
-    protected <V> Map<Integer, V> consumeMixedWithIncrementalSnapshot(int recordCount,
-                                                                      Predicate<Map.Entry<Integer, V>> dataCompleted,
-                                                                      Function<Struct, Integer> idCalculator,
-                                                                      Function<SourceRecord, V> valueConverter,
-                                                                      String topicName,
-                                                                      Consumer<List<SourceRecord>> recordConsumer)
-            throws InterruptedException {
-        final Map<Integer, V> dbChanges = new HashMap<>();
-        int noRecords = 0;
-        for (;;) {
-            final SourceRecords records = consumeRecordsByTopic(1);
-            final List<SourceRecord> dataRecords = records.recordsForTopic(topicName);
-            if (records.allRecordsInOrder().isEmpty()) {
-                noRecords++;
-                Assertions.assertThat(noRecords).describedAs(String.format("Too many no data record results, %d < %d", dbChanges.size(), recordCount))
-                        .isLessThanOrEqualTo(MAXIMUM_NO_RECORDS_CONSUMES);
-                continue;
-            }
-            noRecords = 0;
-            if (dataRecords == null || dataRecords.isEmpty()) {
-                continue;
-            }
-            dataRecords.forEach(record -> {
-                final int id = idCalculator.apply((Struct) record.key());
-                final V value = valueConverter.apply(record);
-                dbChanges.put(id, value);
-            });
-            if (recordConsumer != null) {
-                recordConsumer.accept(dataRecords);
-            }
-            if (dbChanges.size() >= recordCount) {
-                if (!dbChanges.entrySet().stream().anyMatch(dataCompleted.negate())) {
-                    break;
-                }
-            }
-        }
-
-        Assertions.assertThat(dbChanges).hasSize(recordCount);
-        return dbChanges;
-    }
-
-    protected Map<Integer, SourceRecord> consumeRecordsMixedWithIncrementalSnapshot(int recordCount) throws InterruptedException {
-        return consumeMixedWithIncrementalSnapshot(recordCount, Function.identity(), x -> true, null, topicName());
-    }
-
-    protected Map<Integer, Integer> consumeMixedWithIncrementalSnapshot(int recordCount, Predicate<Map.Entry<Integer, Integer>> dataCompleted,
-                                                                        Consumer<List<SourceRecord>> recordConsumer)
-            throws InterruptedException {
-        return consumeMixedWithIncrementalSnapshot(recordCount, record -> ((Struct) record.value()).getStruct("after").getInt32(valueFieldName()), dataCompleted,
-                recordConsumer, topicName());
-    }
-
-    protected Map<Integer, SourceRecord> consumeRecordsMixedWithIncrementalSnapshot(int recordCount, Predicate<Map.Entry<Integer, SourceRecord>> dataCompleted,
-                                                                                    Consumer<List<SourceRecord>> recordConsumer)
-            throws InterruptedException {
-        return consumeMixedWithIncrementalSnapshot(recordCount, Function.identity(), dataCompleted, recordConsumer, topicName());
-    }
-
-    protected String valueFieldName() {
-        return "aa";
-    }
-
-    protected String pkFieldName() {
-        return "pk";
-    }
+    protected static KafkaCluster kafka;
 
     protected String getSignalTypeFieldName() {
         return "type";
-    }
-
-    protected void sendAdHocSnapshotSignal(String... dataCollectionIds) throws SQLException {
-        sendAdHocSnapshotSignalWithAdditionalCondition(Optional.empty(), dataCollectionIds);
-    }
-
-    protected void sendAdHocSnapshotSignalWithAdditionalCondition(Optional<String> additionalCondition, String... dataCollectionIds) {
-        final String dataCollectionIdsList = Arrays.stream(dataCollectionIds)
-                .map(x -> '"' + x + '"')
-                .collect(Collectors.joining(", "));
-        try (final JdbcConnection connection = databaseConnection()) {
-            String query;
-            if (additionalCondition.isPresent()) {
-                query = String.format(
-                        "INSERT INTO %s VALUES('ad-hoc', 'execute-snapshot', '{\"data-collections\": [%s], \"additional-condition\": %s}')",
-                        signalTableName(), dataCollectionIdsList, additionalCondition.get());
-            }
-            else {
-                query = String.format(
-                        "INSERT INTO %s VALUES('ad-hoc', 'execute-snapshot', '{\"data-collections\": [%s]}')",
-                        signalTableName(), dataCollectionIdsList);
-            }
-            logger.info("Sending signal with query {}", query);
-            connection.execute(query);
-        }
-        catch (Exception e) {
-            logger.warn("Failed to send signal", e);
-        }
     }
 
     protected void sendAdHocSnapshotStopSignal(String... dataCollectionIds) throws SQLException {
@@ -282,7 +63,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
             collections = ",\"data-collections\": [" + dataCollectionIdsList + "]";
         }
 
-        try (final JdbcConnection connection = databaseConnection()) {
+        try (JdbcConnection connection = databaseConnection()) {
             String query = String.format(
                     "INSERT INTO %s VALUES('ad-hoc', 'stop-snapshot', '{\"type\": \"INCREMENTAL\"" + collections + "}')",
                     signalTableName());
@@ -298,8 +79,37 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         sendAdHocSnapshotSignal(tableDataCollectionId());
     }
 
+    protected void sendAdHocKafkaSnapshotSignal() throws ExecutionException, InterruptedException {
+        sendExecuteSnapshotKafkaSignal(tableDataCollectionId());
+    }
+
+    protected void sendExecuteSnapshotKafkaSignal(String fullTableNames) throws ExecutionException, InterruptedException {
+        String signalValue = String.format(
+                "{\"type\":\"execute-snapshot\",\"data\": {\"data-collections\": [\"%s\"], \"type\": \"INCREMENTAL\"}}",
+                fullTableNames);
+        sendKafkaSignal(signalValue);
+    }
+
+    protected String getSignalsTopic() {
+        return "signals_topic";
+    }
+
+    protected void sendKafkaSignal(String signalValue) throws ExecutionException, InterruptedException {
+        final ProducerRecord<String, String> executeSnapshotSignal = new ProducerRecord<>(getSignalsTopic(), PARTITION_NO, SERVER_NAME, signalValue);
+
+        final Configuration signalProducerConfig = Configuration.create()
+                .withDefault(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.brokerList())
+                .withDefault(ProducerConfig.CLIENT_ID_CONFIG, "signals")
+                .withDefault(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class)
+                .withDefault(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class)
+                .build();
+        try (KafkaProducer<String, String> producer = new KafkaProducer<>(signalProducerConfig.asProperties())) {
+            producer.send(executeSnapshotSignal).get();
+        }
+    }
+
     protected void sendPauseSignal() {
-        try (final JdbcConnection connection = databaseConnection()) {
+        try (JdbcConnection connection = databaseConnection()) {
             String query = String.format("INSERT INTO %s VALUES('test-pause', 'pause-snapshot', '')", signalTableName());
             logger.info("Sending pause signal with query {}", query);
             connection.execute(query);
@@ -310,7 +120,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
     }
 
     protected void sendResumeSignal() {
-        try (final JdbcConnection connection = databaseConnection()) {
+        try (JdbcConnection connection = databaseConnection()) {
             String query = String.format("INSERT INTO %s VALUES('test-resume', 'resume-snapshot', '')", signalTableName());
             logger.info("Sending resume signal with query {}", query);
             connection.execute(query);
@@ -318,39 +128,6 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         catch (Exception e) {
             logger.warn("Failed to send resume signal", e);
         }
-    }
-
-    protected void startConnector(DebeziumEngine.CompletionCallback callback) {
-        startConnector(Function.identity(), callback, true);
-    }
-
-    protected void startConnector(Function<Configuration.Builder, Configuration.Builder> custConfig) {
-        startConnector(custConfig, loggingCompletion(), true);
-    }
-
-    protected void startConnector(Function<Configuration.Builder, Configuration.Builder> custConfig,
-                                  DebeziumEngine.CompletionCallback callback, boolean expectNoRecords) {
-        final Configuration config = custConfig.apply(config()).build();
-        start(connectorClass(), config, callback);
-        waitForConnectorToStart();
-
-        waitForAvailableRecords(5, TimeUnit.SECONDS);
-        if (expectNoRecords) {
-            // there shouldn't be any snapshot records
-            assertNoRecordsToConsume();
-        }
-    }
-
-    protected void startConnectorWithSnapshot(Function<Configuration.Builder, Configuration.Builder> custConfig) {
-        startConnector(custConfig, loggingCompletion(), false);
-    }
-
-    protected void startConnector() {
-        startConnector(Function.identity(), loggingCompletion(), true);
-    }
-
-    protected void waitForConnectorToStart() {
-        assertConnectorIsRunning();
     }
 
     @Test
@@ -365,7 +142,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         final int expectedRecordCount = ROW_COUNT;
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i));
+            assertThat(dbChanges).contains(entry(i + 1, i));
         }
     }
 
@@ -381,7 +158,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         final int expectedRecordCount = ROW_COUNT;
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i));
+            assertThat(dbChanges).contains(entry(i + 1, i));
         }
     }
 
@@ -409,7 +186,35 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         final int expectedRecordCount = ROW_COUNT * 2;
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i));
+            assertThat(dbChanges).contains(entry(i + 1, i));
+        }
+    }
+
+    @Test
+    public void insertsWithKafkaSnapshotSignal() throws Exception {
+        // Testing.Print.enable();
+
+        populateTable();
+        startConnector();
+
+        sendAdHocSnapshotSignal();
+
+        try (JdbcConnection connection = databaseConnection()) {
+            connection.setAutoCommit(false);
+            for (int i = 0; i < ROW_COUNT; i++) {
+                connection.executeWithoutCommitting(String.format("INSERT INTO %s (%s, aa) VALUES (%s, %s)",
+                        tableName(),
+                        connection.quotedColumnIdString(pkFieldName()),
+                        i + ROW_COUNT + 1,
+                        i + ROW_COUNT));
+            }
+            connection.commit();
+        }
+
+        final int expectedRecordCount = ROW_COUNT * 2;
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
+        for (int i = 0; i < expectedRecordCount; i++) {
+            assertThat(dbChanges).contains(entry(i + 1, i));
         }
     }
 
@@ -441,7 +246,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount,
                 x -> x.getValue() >= 2000, null);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i + 2000));
+            assertThat(dbChanges).contains(entry(i + 1, i + 2000));
         }
     }
 
@@ -490,7 +295,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
                     }
                 });
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i + 2000));
+            assertThat(dbChanges).contains(entry(i + 1, i + 2000));
         }
     }
 
@@ -511,7 +316,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount,
                 x -> x.getValue() >= 2000, null);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i + 2000));
+            assertThat(dbChanges).contains(entry(i + 1, i + 2000));
         }
     }
 
@@ -545,7 +350,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
                     }
                 });
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i));
+            assertThat(dbChanges).contains(entry(i + 1, i));
         }
     }
 
@@ -574,7 +379,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         final int expectedRecordCount = ROW_COUNT;
         Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i));
+            assertThat(dbChanges).contains(entry(i + 1, i));
         }
 
         // Initiate a schema change to the table immediately before the adhoc-snapshot
@@ -589,7 +394,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
         dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i));
+            assertThat(dbChanges).contains(entry(i + 1, i));
         }
     }
 
@@ -602,13 +407,34 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         final int expectedRecordCount = ROW_COUNT;
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i));
+            assertThat(dbChanges).contains(entry(i + 1, i));
         }
+    }
+
+    @Test
+    @FixFor("DBZ-6945")
+    public void snapshotWithDuplicateDataCollections() throws Exception {
+        populateTable();
+        startConnector();
+        sendAdHocSnapshotSignal(tableDataCollectionId(), tableDataCollectionId());
+
+        final int expectedRecordCount = ROW_COUNT;
+        Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
+        for (int i = 0; i < expectedRecordCount; i++) {
+            assertThat(dbChanges).contains(entry(i + 1, i));
+        }
+
+        SourceRecords sourceRecords = consumeRecordsByTopic(1, 1);
+        assertTrue(Objects.isNull(sourceRecords.recordsForTopic(topicName())));
+
     }
 
     @Test
     @FixFor("DBZ-4271")
     public void stopCurrentIncrementalSnapshotWithoutCollectionsAndTakeNewNewIncrementalSnapshotAfterRestart() throws Exception {
+
+        // Testing.Print.enable();
+
         final LogInterceptor interceptor = new LogInterceptor(AbstractIncrementalSnapshotChangeEventSource.class);
 
         // We will use chunk size of 1 to have very small batches to guarantee that when we stop
@@ -626,7 +452,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
         // Consume any residual left-over events after stopping incremental snapshots such as open/close
         // and wait for the stop message in the connector logs
-        Assertions.assertThat(consumeAnyRemainingIncrementalSnapshotEventsAndCheckForStopMessage(
+        assertThat(consumeAnyRemainingIncrementalSnapshotEventsAndCheckForStopMessage(
                 interceptor, "Stopping incremental snapshot")).isTrue();
 
         // stop the connector
@@ -635,7 +461,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         // restart the connector
         // should start with no available records, should not have any incremental snapshot state
         startConnector();
-        Assertions.assertThat(interceptor.containsMessage("No incremental snapshot in progress")).isTrue();
+        assertThat(interceptor.containsMessage("No incremental snapshot in progress")).isTrue();
 
         sendAdHocSnapshotSignal();
 
@@ -654,13 +480,16 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         final int expectedRecordCount = ROW_COUNT * 2;
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i));
+            assertThat(dbChanges).contains(entry(i + 1, i));
         }
     }
 
     @Test
     @FixFor("DBZ-4271")
     public void stopCurrentIncrementalSnapshotWithAllCollectionsAndTakeNewNewIncrementalSnapshotAfterRestart() throws Exception {
+
+        // Testing.Print.enable();
+
         final LogInterceptor interceptor = new LogInterceptor(AbstractIncrementalSnapshotChangeEventSource.class);
 
         // We will use chunk size of 1 to have very small batches to guarantee that when we stop
@@ -678,7 +507,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
         // Consume any residual left-over events after stopping incremental snapshots such as open/close
         // and wait for the stop message in the connector logs
-        Assertions.assertThat(consumeAnyRemainingIncrementalSnapshotEventsAndCheckForStopMessage(
+        assertThat(consumeAnyRemainingIncrementalSnapshotEventsAndCheckForStopMessage(
                 interceptor, "Removing '[" + tableDataCollectionId() + "]' collections from incremental snapshot")).isTrue();
 
         // stop the connector
@@ -687,7 +516,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         // restart the connector
         // should start with no available records, should not have any incremental snapshot state
         startConnector();
-        Assertions.assertThat(interceptor.containsMessage("No incremental snapshot in progress")).isTrue();
+        assertThat(interceptor.containsMessage("No incremental snapshot in progress")).isTrue();
 
         sendAdHocSnapshotSignal();
 
@@ -706,7 +535,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         final int expectedRecordCount = ROW_COUNT * 2;
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i));
+            assertThat(dbChanges).contains(entry(i + 1, i));
         }
     }
 
@@ -722,13 +551,13 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         startConnector(x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 250));
 
         final List<String> collectionIds = tableDataCollectionIds();
-        Assertions.assertThat(collectionIds).hasSize(2);
+        assertThat(collectionIds).hasSize(2);
 
         final List<String> tableNames = tableNames();
-        Assertions.assertThat(tableNames).hasSize(2);
+        assertThat(tableNames).hasSize(2);
 
         final List<String> topicNames = topicNames();
-        Assertions.assertThat(topicNames).hasSize(2);
+        assertThat(topicNames).hasSize(2);
 
         final String collectionIdToRemove = collectionIds.get(1);
         final String tableToSnapshot = tableNames.get(0);
@@ -757,7 +586,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         final int expectedRecordCount = ROW_COUNT * 2;
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount, topicToConsume);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i));
+            assertThat(dbChanges).contains(entry(i + 1, i));
         }
     }
 
@@ -773,13 +602,13 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         startConnector(x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 250));
 
         final List<String> collectionIds = tableDataCollectionIds();
-        Assertions.assertThat(collectionIds).hasSize(2);
+        assertThat(collectionIds).hasSize(2);
 
         final List<String> tableNames = tableNames();
-        Assertions.assertThat(tableNames).hasSize(2);
+        assertThat(tableNames).hasSize(2);
 
         final List<String> topicNames = topicNames();
-        Assertions.assertThat(topicNames).hasSize(2);
+        assertThat(topicNames).hasSize(2);
 
         final String collectionIdToRemove = collectionIds.get(0);
         final String tableToSnapshot = tableNames.get(1);
@@ -808,7 +637,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         final int expectedRecordCount = ROW_COUNT * 2;
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount, topicToConsume);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i));
+            assertThat(dbChanges).contains(entry(i + 1, i));
         }
     }
 
@@ -836,7 +665,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         final int expectedRecordCount = ROW_COUNT;
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i));
+            assertThat(dbChanges).contains(entry(i + 1, i));
         }
 
         stopConnector();
@@ -877,7 +706,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         if ((expectedRecordCount - beforeResume) > 0) {
             Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount - beforeResume);
             for (int i = beforeResume + 1; i < expectedRecordCount; i++) {
-                Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i));
+                assertThat(dbChanges).contains(entry(i + 1, i));
             }
         }
     }
@@ -889,6 +718,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         int expectedCount = 10, expectedValue = 12345678;
         populateTable();
         populateTableWithSpecificValue(2000, expectedCount, expectedValue);
+        waitForCdcTransactionPropagation(3);
         final Configuration config = config().build();
         startAndConsumeTillEnd(connectorClass(), config);
         waitForConnectorToStart();
@@ -897,7 +727,33 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         // there shouldn't be any snapshot records
         assertNoRecordsToConsume();
 
-        sendAdHocSnapshotSignalWithAdditionalCondition(Optional.of(String.format("\"aa = %s\"", expectedValue)),
+        sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey(String.format("\"aa = %s\"", expectedValue), "",
+                tableDataCollectionId());
+
+        final Map<Integer, SourceRecord> dbChanges = consumeRecordsMixedWithIncrementalSnapshot(expectedCount,
+                x -> true, null);
+        assertEquals(expectedCount, dbChanges.size());
+        assertTrue(dbChanges.values().stream().allMatch(v -> (((Struct) v.value()).getStruct("after")
+                .getInt32(valueFieldName())).equals(expectedValue)));
+    }
+
+    @Test
+    public void snapshotWithNewAdditionalConditionsField() throws Exception {
+        // Testing.Print.enable();
+
+        int expectedCount = 10, expectedValue = 12345678;
+        populateTable();
+        populateTableWithSpecificValue(2000, expectedCount, expectedValue);
+        waitForCdcTransactionPropagation(3);
+        final Configuration config = config().build();
+        startAndConsumeTillEnd(connectorClass(), config);
+        waitForConnectorToStart();
+
+        waitForAvailableRecords(1, TimeUnit.SECONDS);
+        // there shouldn't be any snapshot records
+        assertNoRecordsToConsume();
+
+        sendAdHocSnapshotSignalWithAdditionalConditionsWithSurrogateKey(Map.of(tableDataCollectionId(), String.format("aa = %s", expectedValue)), "",
                 tableDataCollectionId());
 
         final Map<Integer, SourceRecord> dbChanges = consumeRecordsMixedWithIncrementalSnapshot(expectedCount,
@@ -916,7 +772,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
         final int recordsCount = ROW_COUNT;
 
-        sendAdHocSnapshotSignalWithAdditionalCondition(Optional.of("\"\""), tableDataCollectionId());
+        sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey("\"\"", "", tableDataCollectionId());
 
         final Map<Integer, SourceRecord> dbChanges = consumeRecordsMixedWithIncrementalSnapshot(recordsCount,
                 x -> true, null);
@@ -930,6 +786,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         int expectedCount = 1000, expectedValue = 12345678;
         populateTable();
         populateTableWithSpecificValue(2000, expectedCount, expectedValue);
+        waitForCdcTransactionPropagation(3);
         final Configuration config = config().build();
         startAndConsumeTillEnd(connectorClass(), config);
         waitForConnectorToStart();
@@ -938,8 +795,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         // there shouldn't be any snapshot records
         assertNoRecordsToConsume();
 
-        sendAdHocSnapshotSignalWithAdditionalCondition(Optional.of(String.format("\"aa = %s\"", expectedValue)),
-                tableDataCollectionId());
+        sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey(String.format("\"aa = %s\"", expectedValue), "", tableDataCollectionId());
 
         final AtomicInteger recordCounter = new AtomicInteger();
         final AtomicBoolean restarted = new AtomicBoolean();
@@ -956,6 +812,217 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
                 });
         assertEquals(expectedCount, dbChanges.size());
         assertTrue(dbChanges.values().stream().allMatch(v -> v.equals(expectedValue)));
+    }
+
+    @Test
+    public void snapshotWithSurrogateKey() throws Exception {
+        // Testing.Print.enable();
+
+        populateTable();
+        startConnector();
+
+        sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey("", "\"aa\"", tableDataCollectionId());
+
+        final int expectedRecordCount = ROW_COUNT;
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
+        for (int i = 0; i < expectedRecordCount; i++) {
+            assertThat(dbChanges).contains(entry(i + 1, i));
+        }
+    }
+
+    @Test
+    public void snapshotWithAdditionalConditionWithSurrogateKey() throws Exception {
+        // Testing.Print.enable();
+
+        int expectedCount = 10, expectedValue = 12345678;
+        populateTable();
+        populateTableWithSpecificValue(2000, expectedCount, expectedValue);
+        waitForCdcTransactionPropagation(3);
+        final Configuration config = config().build();
+        startAndConsumeTillEnd(connectorClass(), config);
+        waitForConnectorToStart();
+
+        waitForAvailableRecords(1, TimeUnit.SECONDS);
+        // there shouldn't be any snapshot records
+        assertNoRecordsToConsume();
+
+        sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey(String.format("\"aa = %s\"", expectedValue), "\"aa\"", tableDataCollectionId());
+
+        final Map<Integer, SourceRecord> dbChanges = consumeRecordsMixedWithIncrementalSnapshot(expectedCount,
+                x -> true, null);
+        assertEquals(expectedCount, dbChanges.size());
+        assertTrue(dbChanges.values().stream().allMatch(v -> (((Struct) v.value()).getStruct("after")
+                .getInt32(valueFieldName())).equals(expectedValue)));
+    }
+
+    @Test
+    public void testNotification() throws Exception {
+
+        populateTable();
+        startConnector(x -> x.with(CommonConnectorConfig.NOTIFICATION_ENABLED_CHANNELS, "sink")
+                .with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, defaultIncrementalSnapshotChunkSize())
+                .with(SinkNotificationChannel.NOTIFICATION_TOPIC, "io.debezium.notification"), loggingCompletion(), false);
+
+        waitForConnectorToStart();
+
+        waitForAvailableRecords(1, TimeUnit.SECONDS);
+
+        waitForStreamingRunning(connector(), server(), getStreamingNamespace(), task());
+
+        sendAdHocSnapshotSignal();
+
+        List<SourceRecord> records = new ArrayList<>();
+        String topicName = topicName();
+
+        List<SourceRecord> notifications = new ArrayList<>();
+        consumeRecords(100, record -> {
+            if (topicName.equalsIgnoreCase(record.topic())) {
+                records.add(record);
+            }
+            if ("io.debezium.notification".equals(record.topic())) {
+                notifications.add(record);
+            }
+        });
+
+        sendPauseSignal();
+
+        consumeAvailableRecords(record -> {
+            if (topicName.equalsIgnoreCase(record.topic())) {
+                records.add(record);
+            }
+            if ("io.debezium.notification".equals(record.topic())) {
+                notifications.add(record);
+            }
+        });
+
+        sendResumeSignal();
+
+        SourceRecords sourceRecords = consumeRecordsByTopicUntil(incrementalSnapshotCompleted());
+
+        records.addAll(sourceRecords.recordsForTopic(topicName()));
+        notifications.addAll(sourceRecords.recordsForTopic("io.debezium.notification"));
+
+        List<Integer> values = records.stream()
+                .map(r -> ((Struct) r.value()))
+                .map(getRecordValue())
+                .collect(Collectors.toList());
+
+        for (int i = 0; i < ROW_COUNT - 1; i++) {
+            assertThat(values.get(i)).isEqualTo(i);
+        }
+
+        assertCorrectIncrementalSnapshotNotification(notifications);
+    }
+
+    @Test
+    public void insertInsertWatermarkingStrategy() throws Exception {
+        // Testing.Print.enable();
+
+        populateTable();
+        startConnector();
+
+        sendAdHocSnapshotSignal();
+
+        try (JdbcConnection connection = databaseConnection()) {
+            connection.setAutoCommit(false);
+            for (int i = 0; i < ROW_COUNT; i++) {
+                connection.executeWithoutCommitting(String.format("INSERT INTO %s (%s, aa) VALUES (%s, %s)",
+                        tableName(),
+                        connection.quotedColumnIdString(pkFieldName()),
+                        i + ROW_COUNT + 1,
+                        i + ROW_COUNT));
+            }
+            connection.commit();
+        }
+
+        final int expectedRecordCount = ROW_COUNT * 2;
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
+        for (int i = 0; i < expectedRecordCount; i++) {
+            assertThat(dbChanges).contains(entry(i + 1, i));
+        }
+
+        assertOpenCloseEventCount(rs -> {
+            rs.next();
+            assertThat(rs.getInt(1)).isNotZero();
+        });
+    }
+
+    @Test
+    public void insertDeleteWatermarkingStrategy() throws Exception {
+        // Testing.Print.enable();
+
+        populateTable();
+        startConnector(x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_WATERMARKING_STRATEGY, "insert_delete")
+                .with(CommonConnectorConfig.TOMBSTONES_ON_DELETE, false)); // Remove tombstone to avoid failure of VerifyRecord.isValid
+
+        sendAdHocSnapshotSignal();
+
+        try (JdbcConnection connection = databaseConnection()) {
+            connection.setAutoCommit(false);
+            for (int i = 0; i < ROW_COUNT; i++) {
+                connection.executeWithoutCommitting(String.format("INSERT INTO %s (%s, aa) VALUES (%s, %s)",
+                        tableName(),
+                        connection.quotedColumnIdString(pkFieldName()),
+                        i + ROW_COUNT + 1,
+                        i + ROW_COUNT));
+            }
+            connection.commit();
+        }
+
+        final int expectedRecordCount = ROW_COUNT * 2;
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
+
+        for (int i = 0; i < expectedRecordCount; i++) {
+            assertThat(dbChanges).contains(entry(i + 1, i));
+        }
+
+        assertOpenCloseEventCount(rs -> {
+            rs.next();
+            assertThat(rs.getInt(1)).isZero();
+        });
+    }
+
+    private void assertOpenCloseEventCount(JdbcConnection.ResultSetConsumer consumer) throws SQLException {
+        try (JdbcConnection connection = databaseConnection()) {
+            connection.query("SELECT count(id) from " + signalTableName() + " where type='snapshot-window-close'", consumer);
+        }
+    }
+
+    protected int defaultIncrementalSnapshotChunkSize() {
+        return 1;
+    }
+
+    private static BiPredicate<Integer, SourceRecord> incrementalSnapshotCompleted() {
+        return (recordsConsumed, record) -> record.topic().equals("io.debezium.notification") &&
+                ((Struct) record.value()).getString("aggregate_type").equals("Incremental Snapshot") &&
+                ((Struct) record.value()).getString("type").equals("COMPLETED");
+    }
+
+    private void assertCorrectIncrementalSnapshotNotification(List<SourceRecord> notifications) {
+        List<Struct> incrementalSnapshotNotification = notifications.stream().map(s -> ((Struct) s.value()))
+                .filter(s -> s.getString("aggregate_type").equals("Incremental Snapshot"))
+                .collect(Collectors.toList());
+
+        assertThat(incrementalSnapshotNotification.stream().anyMatch(s -> s.getString("type").equals("STARTED"))).isTrue();
+        assertThat(incrementalSnapshotNotification.stream().anyMatch(s -> s.getString("type").equals("PAUSED"))).isTrue();
+        assertThat(incrementalSnapshotNotification.stream().anyMatch(s -> s.getString("type").equals("RESUMED"))).isTrue();
+        assertThat(incrementalSnapshotNotification.stream().anyMatch(s -> s.getString("type").equals("IN_PROGRESS"))).isTrue();
+        assertThat(incrementalSnapshotNotification.stream().anyMatch(s -> s.getString("type").equals("TABLE_SCAN_COMPLETED"))).isTrue();
+        assertThat(incrementalSnapshotNotification.stream().anyMatch(s -> s.getString("type").equals("COMPLETED"))).isTrue();
+
+        assertThat(incrementalSnapshotNotification.stream().map(s -> s.getString("id"))
+                .distinct()
+                .collect(Collectors.toList())).contains("ad-hoc");
+
+        Struct inProgress = incrementalSnapshotNotification.stream().filter(s -> s.getString("type").equals("IN_PROGRESS")).findFirst().get();
+        assertThat(inProgress.getMap("additional_data"))
+                .containsEntry("current_collection_in_progress", tableDataCollectionId())
+                .containsEntry("maximum_key", "1000")
+                .containsEntry("last_processed_key", String.valueOf(defaultIncrementalSnapshotChunkSize()));
+
+        Struct completed = incrementalSnapshotNotification.stream().filter(s -> s.getString("type").equals("TABLE_SCAN_COMPLETED")).findFirst().get();
+        assertThat(completed.getMap("additional_data"))
+                .containsEntry("total_rows_scanned", "1000");
     }
 
     protected void sendAdHocSnapshotSignalAndWait(String... collectionIds) throws Exception {
@@ -1017,8 +1084,4 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         return stopMessageFound.get();
     }
 
-    @Override
-    protected int getMaximumEnqueuedRecordCount() {
-        return ROW_COUNT * 3;
-    }
 }

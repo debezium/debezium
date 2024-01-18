@@ -14,6 +14,7 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -32,6 +33,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.Task;
 import org.apache.kafka.connect.file.FileStreamSourceConnector;
+import org.apache.kafka.connect.header.ConnectHeaders;
+import org.apache.kafka.connect.header.Headers;
 import org.apache.kafka.connect.json.JsonDeserializer;
 import org.apache.kafka.connect.runtime.WorkerConfig;
 import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
@@ -41,11 +44,11 @@ import org.apache.kafka.connect.transforms.Transformation;
 import org.apache.kafka.connect.transforms.predicates.Predicate;
 import org.apache.kafka.connect.util.Callback;
 import org.apache.kafka.connect.util.SafeObjectInputStream;
-import org.assertj.core.api.Assertions;
 import org.junit.Before;
 import org.junit.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.google.common.base.Charsets;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
@@ -53,9 +56,11 @@ import io.debezium.connector.simple.SimpleSourceConnector;
 import io.debezium.doc.FixFor;
 import io.debezium.engine.ChangeEvent;
 import io.debezium.engine.DebeziumEngine;
+import io.debezium.engine.Header;
 import io.debezium.engine.RecordChangeEvent;
 import io.debezium.engine.format.ChangeEventFormat;
 import io.debezium.engine.format.Json;
+import io.debezium.engine.format.JsonByteArray;
 import io.debezium.engine.spi.OffsetCommitPolicy;
 import io.debezium.util.Collect;
 import io.debezium.util.LoggingContext;
@@ -151,7 +156,7 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
         CountDownLatch firstLatch = new CountDownLatch(1);
 
         // create an engine with our custom class
-        final DebeziumEngine<ChangeEvent<String, String>> engine = DebeziumEngine.create(Json.class, Json.class)
+        final DebeziumEngine<ChangeEvent<String, String>> engine = DebeziumEngine.create(Json.class, Json.class, Json.class)
                 .using(props)
                 .notifying((records, committer) -> {
                     assertThat(records.size()).isGreaterThanOrEqualTo(NUMBER_OF_LINES);
@@ -186,18 +191,18 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
     @Test
     public void interruptedTaskShutsDown() throws Exception {
 
-        Configuration config = Configuration.create()
-                .with(EmbeddedEngine.ENGINE_NAME, "testing-connector")
-                .with(EmbeddedEngine.CONNECTOR_CLASS, InterruptedConnector.class)
-                .with(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH)
-                .with(EmbeddedEngine.OFFSET_FLUSH_INTERVAL_MS, 0)
-                .with(EmbeddedEngine.OFFSET_STORAGE, InterruptingOffsetStore.class)
-                .build();
+        final Properties props = new Properties();
+        props.put(EmbeddedEngineConfig.ENGINE_NAME.name(), "testing-connector");
+        props.put(EmbeddedEngineConfig.CONNECTOR_CLASS.name(), InterruptedConnector.class.getName());
+        props.put(EmbeddedEngineConfig.OFFSET_FLUSH_INTERVAL_MS.name(), 0);
+        props.put(EmbeddedEngineConfig.OFFSET_STORAGE.name(), InterruptingOffsetStore.class.getName());
+        props.put(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
+        props.put(DebeziumEngine.OFFSET_FLUSH_INTERVAL_MS_PROP, "0");
 
         CountDownLatch firstLatch = new CountDownLatch(1);
 
-        engine = EmbeddedEngine.create()
-                .using(config)
+        final DebeziumEngine<ChangeEvent<String, String>> engine = DebeziumEngine.create(Json.class)
+                .using(props)
                 .notifying((records, committer) -> {
                 })
                 .using(this.getClass().getClassLoader())
@@ -222,22 +227,22 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
     @Test
     public void interruptedOffsetCommitShutsDown() throws Exception {
 
-        Configuration config = Configuration.create()
-                .with(SimpleSourceConnector.BATCH_COUNT, 1)
-                .with(EmbeddedEngine.ENGINE_NAME, "testing-connector")
-                .with(EmbeddedEngine.CONNECTOR_CLASS, SimpleSourceConnector.class)
-                .with(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH)
-                .with(EmbeddedEngine.OFFSET_STORAGE, InterruptingOffsetStore.class)
-                .build();
+        final Properties props = new Properties();
+        props.put(EmbeddedEngineConfig.ENGINE_NAME.name(), "testing-connector");
+        props.put(EmbeddedEngineConfig.CONNECTOR_CLASS.name(), SimpleSourceConnector.class.getName());
+        props.put(EmbeddedEngineConfig.OFFSET_STORAGE.name(), InterruptingOffsetStore.class.getName());
+        props.put(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
+        props.put(SimpleSourceConnector.BATCH_COUNT, 1);
+        props.put(DebeziumEngine.OFFSET_FLUSH_INTERVAL_MS_PROP, "0");
 
         CountDownLatch firstLatch = new CountDownLatch(1);
 
-        engine = EmbeddedEngine.create()
-                .using(config)
+        final DebeziumEngine engine = DebeziumEngine.create(ChangeEventFormat.of(Connect.class))
+                .using(props)
                 .using(OffsetCommitPolicy.always())
                 .notifying((records, committer) -> {
 
-                    for (SourceRecord record : records) {
+                    for (RecordChangeEvent<SourceRecord> record : records) {
                         committer.markProcessed(record);
                     }
                     committer.markBatchFinished();
@@ -301,24 +306,26 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
         // Add initial content to the file ...
         appendLinesToSource(NUMBER_OF_LINES);
 
-        Configuration config = Configuration.copy(connectorConfig)
-                .with(EmbeddedEngine.ENGINE_NAME, "testing-connector")
-                .with(EmbeddedEngine.CONNECTOR_CLASS, FileStreamSourceConnector.class)
-                .with(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH)
-                .with(EmbeddedEngine.OFFSET_FLUSH_INTERVAL_MS, 0)
-                .build();
+        final Properties props = new Properties();
+        props.put(EmbeddedEngineConfig.ENGINE_NAME.name(), "testing-connector");
+        props.put(EmbeddedEngineConfig.CONNECTOR_CLASS.name(), FileStreamSourceConnector.class.getName());
+        props.put(EmbeddedEngineConfig.OFFSET_FLUSH_INTERVAL_MS.name(), 0);
+        props.put(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
+        props.put(FileStreamSourceConnector.FILE_CONFIG, TEST_FILE_PATH.toAbsolutePath().toString());
+        props.put(FileStreamSourceConnector.TOPIC_CONFIG, "topicX");
+        props.put(DebeziumEngine.OFFSET_FLUSH_INTERVAL_MS_PROP, "0");
 
         CountDownLatch firstLatch = new CountDownLatch(1);
         CountDownLatch allLatch = new CountDownLatch(6);
 
         // create an engine with our custom class
-        engine = EmbeddedEngine.create()
-                .using(config)
+        final DebeziumEngine engine = DebeziumEngine.create(ChangeEventFormat.of(Connect.class))
+                .using(props)
                 .notifying((records, committer) -> {
                     assertThat(records.size()).isGreaterThanOrEqualTo(NUMBER_OF_LINES);
                     Integer groupCount = records.size() / NUMBER_OF_LINES;
 
-                    for (SourceRecord r : records) {
+                    for (RecordChangeEvent<SourceRecord> r : records) {
                         committer.markProcessed(r);
                     }
 
@@ -364,9 +371,14 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
         props.setProperty("offset.flush.interval.ms", "0");
         props.setProperty("file", TEST_FILE_PATH.toAbsolutePath().toString());
         props.setProperty("topic", "topicX");
+        props.setProperty("transforms", "header");
+        props.setProperty("transforms.header.type", AddHeaderTransform.class.getName());
 
         CountDownLatch firstLatch = new CountDownLatch(1);
         CountDownLatch allLatch = new CountDownLatch(6);
+
+        Headers expectedHeaders = new ConnectHeaders();
+        expectedHeaders.addString("headerKey", "headerValue");
 
         // create an engine with our custom class
         final DebeziumEngine<RecordChangeEvent<SourceRecord>> engine = DebeziumEngine.create(ChangeEventFormat.of(Connect.class))
@@ -376,6 +388,7 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
                     Integer groupCount = records.size() / NUMBER_OF_LINES;
 
                     for (RecordChangeEvent<SourceRecord> r : records) {
+                        assertThat(r.record().headers()).isEqualTo(expectedHeaders);
                         committer.markProcessed(r);
                     }
 
@@ -593,20 +606,28 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
         props.setProperty("file", TEST_FILE_PATH.toAbsolutePath().toString());
         props.setProperty("topic", "topicX");
         props.setProperty("converter.schemas.enable", "false");
+        props.setProperty("transforms", "header");
+        props.setProperty("transforms.header.type", AddHeaderTransform.class.getName());
 
         CountDownLatch firstLatch = new CountDownLatch(1);
         CountDownLatch allLatch = new CountDownLatch(6);
 
+        EmbeddedEngineHeader<String> expectedHeader = new EmbeddedEngineHeader<>("headerKey", "\"headerValue\"");
+
         // create an engine with our custom class
-        final DebeziumEngine<ChangeEvent<String, String>> engine = DebeziumEngine.create(Json.class)
+        final DebeziumEngine<ChangeEvent<String, String>> engine = DebeziumEngine.create(Json.class, Json.class, Json.class)
                 .using(props)
                 .notifying((records, committer) -> {
                     assertThat(records.size()).isGreaterThanOrEqualTo(NUMBER_OF_LINES);
-                    Integer groupCount = records.size() / NUMBER_OF_LINES;
+                    int groupCount = records.size() / NUMBER_OF_LINES;
 
                     for (ChangeEvent<String, String> r : records) {
-                        Assertions.assertThat(r.key()).isNull();
-                        Assertions.assertThat(r.value()).startsWith("\"Generated line number ");
+                        assertThat(r.key()).isNull();
+                        assertThat(r.value()).startsWith("\"Generated line number ");
+
+                        List<Header<String>> headers = r.headers();
+                        assertThat(headers).allMatch(h -> h.getKey().equals(expectedHeader.getKey()) && h.getValue().equals(expectedHeader.getValue()));
+
                         committer.markProcessed(r);
                     }
 
@@ -638,6 +659,173 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
 
         // Stop the connector ...
         stopConnector();
+    }
+
+    @Test
+    @FixFor("DBZ-5926")
+    public void shouldRunDebeziumEngineWithMismatchedTypes() throws Exception {
+        // Add initial content to the file ...
+        appendLinesToSource(NUMBER_OF_LINES);
+
+        final Properties props = new Properties();
+        props.setProperty("name", "debezium-engine");
+        props.setProperty("connector.class", "org.apache.kafka.connect.file.FileStreamSourceConnector");
+        props.setProperty(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
+        props.setProperty("offset.flush.interval.ms", "0");
+        props.setProperty("file", TEST_FILE_PATH.toAbsolutePath().toString());
+        props.setProperty("topic", "topicX");
+        props.setProperty("converter.schemas.enable", "false");
+        props.setProperty("transforms", "header");
+        props.setProperty("transforms.header.type", AddHeaderTransform.class.getName());
+
+        CountDownLatch firstLatch = new CountDownLatch(1);
+        CountDownLatch allLatch = new CountDownLatch(6);
+
+        EmbeddedEngineHeader<byte[]> expectedHeader = new EmbeddedEngineHeader<>("headerKey", "\"headerValue\"".getBytes(StandardCharsets.UTF_8));
+
+        // create an engine with our custom class
+        final DebeziumEngine<ChangeEvent<String, byte[]>> engine = DebeziumEngine.create(Json.class, JsonByteArray.class, JsonByteArray.class)
+                .using(props)
+                .notifying((records, committer) -> {
+                    assertThat(records.size()).isGreaterThanOrEqualTo(NUMBER_OF_LINES);
+                    int groupCount = records.size() / NUMBER_OF_LINES;
+
+                    for (ChangeEvent<String, byte[]> r : records) {
+                        assertThat(r.key()).isNull();
+                        assertThat(new String(r.value(), Charsets.UTF_8)).startsWith("\"Generated line number ");
+
+                        List<Header<byte[]>> headers = r.headers();
+                        assertThat(headers).hasSize(1);
+                        assertThat(headers).allMatch(h -> h.getKey().equals(expectedHeader.getKey()) && Arrays.equals(h.getValue(), expectedHeader.getValue()));
+
+                        committer.markProcessed(r);
+                    }
+
+                    committer.markBatchFinished();
+                    firstLatch.countDown();
+                    for (int i = 0; i < groupCount; i++) {
+                        allLatch.countDown();
+                    }
+                })
+                .using(this.getClass().getClassLoader())
+                .build();
+
+        ExecutorService exec = Executors.newFixedThreadPool(1);
+        exec.execute(() -> {
+            LoggingContext.forConnector(getClass().getSimpleName(), "", "engine");
+            engine.run();
+        });
+
+        firstLatch.await(5000, TimeUnit.MILLISECONDS);
+        assertThat(firstLatch.getCount()).isEqualTo(0);
+
+        for (int i = 0; i < 5; i++) {
+            // Add a few more lines, and then verify they are consumed ...
+            appendLinesToSource(NUMBER_OF_LINES);
+            Thread.sleep(10);
+        }
+        allLatch.await(5000, TimeUnit.MILLISECONDS);
+        assertThat(allLatch.getCount()).isEqualTo(0);
+
+        // Stop the connector ...
+        stopConnector();
+    }
+
+    @Test
+    @FixFor("DBZ-5583")
+    public void verifyBadCommitPolicyClassName() {
+
+        final Properties props = new Properties();
+        props.put(EmbeddedEngineConfig.ENGINE_NAME.name(), "testing-connector");
+        props.put(EmbeddedEngineConfig.CONNECTOR_CLASS.name(), SimpleSourceConnector.class.getName());
+        props.put(EmbeddedEngineConfig.OFFSET_COMMIT_POLICY.name(), "badclassname"); // force ClassNotFoundException
+        props.put(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
+        // props.put(DebeziumEngine.OFFSET_FLUSH_INTERVAL_MS_PROP, "0");
+
+        final AtomicBoolean exceptionCaught = new AtomicBoolean(false);
+
+        final DebeziumEngine<ChangeEvent<String, String>> engine = DebeziumEngine.create(Json.class)
+                .using(props)
+                .notifying((records, committer) -> {
+                })
+                .using(this.getClass().getClassLoader())
+                .using((success, message, error) -> {
+                    Throwable rootCause = Throwables.getRootCause(error);
+                    assertThat(rootCause).isInstanceOf(ClassNotFoundException.class);
+                    assertThat(rootCause.getMessage()).contains("badclassname");
+                    exceptionCaught.set(true);
+                })
+                .build();
+
+        engine.run();
+
+        assertThat(exceptionCaught.get()).isTrue();
+    }
+
+    @FixFor("DBZ-4720")
+    @Test
+    public void validationThrowsException() throws Exception {
+        // Add initial content to the file ...
+        appendLinesToSource(NUMBER_OF_LINES);
+
+        // Start the connector ...
+        AtomicReference<String> errorReference = new AtomicReference<>();
+        start(FileStreamSourceConnector.class, Configuration.from(new Properties()), (success, message, error) -> {
+            if (message != null) {
+                errorReference.set(message);
+            }
+        });
+
+        assertNoRecordsToConsume();
+
+        assertThat(errorReference.get()).isNotNull();
+        assertThat(errorReference.get()).contains("Connector configuration is not valid. ");
+        assertThat(isEngineRunning.get()).isFalse();
+    }
+
+    @Test
+    @FixFor("DBZ-7099")
+    public void shouldHandleNoDefaultOffsetFlushInterval() throws IOException, InterruptedException {
+        final Properties props = new Properties();
+        props.put(EmbeddedEngineConfig.ENGINE_NAME.name(), "testing-connector");
+        props.put(EmbeddedEngineConfig.CONNECTOR_CLASS.name(), SimpleSourceConnector.class.getName());
+        props.put(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
+        props.put(EmbeddedEngineConfig.WAIT_FOR_COMPLETION_BEFORE_INTERRUPT_MS.name(), "10");
+
+        final CountDownLatch engineRunning = new CountDownLatch(1);
+        final CountDownLatch engineStopped = new CountDownLatch(1);
+        final AtomicBoolean engineSucceeded = new AtomicBoolean(false);
+
+        final DebeziumEngine<ChangeEvent<String, String>> engine = DebeziumEngine.create(Json.class)
+                .using(props)
+                .notifying((records, committer) -> {
+                    engineRunning.countDown();
+                })
+                .using(this.getClass().getClassLoader())
+                .using(new DebeziumEngine.ConnectorCallback() {
+                    @Override
+                    public void connectorStarted() {
+                        isEngineRunning.compareAndExchange(false, true);
+                    }
+                })
+                .using((success, message, error) -> {
+                    engineSucceeded.set(success);
+                    engineStopped.countDown();
+                })
+                .build();
+
+        ExecutorService exec = Executors.newFixedThreadPool(1);
+        exec.execute(() -> {
+            LoggingContext.forConnector(getClass().getSimpleName(), "", "engine");
+            engine.run();
+        });
+
+        engineRunning.await(100, TimeUnit.MILLISECONDS);
+        assertThat(isEngineRunning.get()).isTrue();
+
+        engine.close();
+        engineStopped.await(100, TimeUnit.MILLISECONDS);
+        assertThat(engineSucceeded.get()).isTrue();
     }
 
     protected void appendLinesToSource(int numberOfLines) throws IOException {
@@ -675,56 +863,31 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
                 false);
     }
 
-    @Test
-    @FixFor("DBZ-5583")
-    public void verifyBadCommitPolicyClassName() {
+    public static class AddHeaderTransform implements Transformation<SourceRecord> {
 
-        Configuration config = Configuration.create()
-                .with(EmbeddedEngine.ENGINE_NAME, "testing-connector")
-                .with(EmbeddedEngine.CONNECTOR_CLASS, SimpleSourceConnector.class)
-                .with(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH)
-                .with(EmbeddedEngine.OFFSET_COMMIT_POLICY, "badclassname") // force ClassNotFoundException
-                .build();
+        @Override
+        public void configure(Map<String, ?> configs) {
+        }
 
-        final AtomicBoolean exceptionCaught = new AtomicBoolean(false);
+        @Override
+        public SourceRecord apply(SourceRecord record) {
+            Headers headers = new ConnectHeaders();
+            headers.addString("headerKey", "headerValue");
 
-        engine = EmbeddedEngine.create()
-                .using(config)
-                .notifying((records, committer) -> {
-                })
-                .using(this.getClass().getClassLoader())
-                .using((success, message, error) -> {
-                    Throwable rootCause = Throwables.getRootCause(error);
-                    assertThat(rootCause).isInstanceOf(ClassNotFoundException.class);
-                    assertThat(rootCause.getMessage()).contains("badclassname");
-                    exceptionCaught.set(true);
-                })
-                .build();
+            record = record.newRecord(
+                    record.topic(), record.kafkaPartition(), record.keySchema(), record.key(), record.valueSchema(), record.value(), record.timestamp(), headers);
 
-        engine.run();
+            return record;
+        }
 
-        assertThat(exceptionCaught.get()).isTrue();
-    }
+        @Override
+        public ConfigDef config() {
+            return new ConfigDef();
+        }
 
-    @FixFor("DBZ-4720")
-    @Test
-    public void validationThrowsException() throws Exception {
-        // Add initial content to the file ...
-        appendLinesToSource(NUMBER_OF_LINES);
-
-        // Start the connector ...
-        AtomicReference<String> errorReference = new AtomicReference<>();
-        start(FileStreamSourceConnector.class, Configuration.from(new Properties()), (success, message, error) -> {
-            if (message != null) {
-                errorReference.set(message);
-            }
-        });
-
-        assertNoRecordsToConsume();
-
-        assertThat(errorReference.get()).isNotNull();
-        assertThat(errorReference.get()).contains("Connector configuration is not valid. ");
-        assertThat(this.engine.isRunning()).isFalse();
+        @Override
+        public void close() {
+        }
     }
 }
 
@@ -790,5 +953,10 @@ class InterruptingOffsetStore implements OffsetBackingStore {
 
     @Override
     public void configure(WorkerConfig workerConfig) {
+    }
+
+    @Override
+    public Set<Map<String, Object>> connectorPartitions(String connectorName) {
+        return null;
     }
 }

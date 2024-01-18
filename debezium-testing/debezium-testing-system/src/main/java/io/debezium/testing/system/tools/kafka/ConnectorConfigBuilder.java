@@ -34,7 +34,7 @@ public class ConnectorConfigBuilder {
     }
 
     public String getDbServerName() {
-        return connectorName.replaceAll("-", "_");
+        return connectorName.replace('-', '_');
     }
 
     public ConnectorConfigBuilder put(String key, Object value) {

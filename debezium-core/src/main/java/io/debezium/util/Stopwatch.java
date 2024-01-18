@@ -53,7 +53,7 @@ public abstract class Stopwatch {
      * The average and total durations as measured by one or more stopwatches.
      */
     @ThreadSafe
-    public static interface Durations {
+    public interface Durations {
 
         /**
          * Get the statistics for the durations in nanoseconds.
@@ -66,48 +66,48 @@ public abstract class Stopwatch {
     /**
      * The timing statistics for a recorded set of samples.
      */
-    public static interface Statistics {
+    public interface Statistics {
         /**
          * Returns the count of durations recorded.
          *
          * @return the count of durations
          */
-        public long getCount();
+        long getCount();
 
         /**
          * Returns the total of all recorded durations.
          *
          * @return The total duration; never null but possibly {@link Duration#ZERO}.
          */
-        public Duration getTotal();
+        Duration getTotal();
 
         /**
          * Returns the minimum of all recorded durations.
          *
          * @return The minimum duration; never null but possibly {@link Duration#ZERO}.
          */
-        public Duration getMinimum();
+        Duration getMinimum();
 
         /**
          * Returns the maximum of all recorded durations.
          *
          * @return The maximum duration; never null but possibly {@link Duration#ZERO}.
          */
-        public Duration getMaximum();
+        Duration getMaximum();
 
         /**
          * Returns the arithmetic mean of all recorded durations.
          *
          * @return The average duration; never null but possibly {@link Duration#ZERO}.
          */
-        public Duration getAverage();
+        Duration getAverage();
 
         /**
          * Returns a string representation of the total of all recorded durations.
          *
          * @return the string representation of the total duration; never null but possibly {@link Duration#ZERO}.
          */
-        default public String getTotalAsString() {
+        default String getTotalAsString() {
             return asString(getTotal());
         }
 
@@ -116,7 +116,7 @@ public abstract class Stopwatch {
          *
          * @return the string representation of the minimum duration; never null but possibly {@link Duration#ZERO}.
          */
-        default public String getMinimumAsString() {
+        default String getMinimumAsString() {
             return asString(getMinimum());
         }
 
@@ -125,7 +125,7 @@ public abstract class Stopwatch {
          *
          * @return the string representation of the maximum duration; never null but possibly {@link Duration#ZERO}.
          */
-        default public String getMaximumAsString() {
+        default String getMaximumAsString() {
             return asString(getMaximum());
         }
 
@@ -134,7 +134,7 @@ public abstract class Stopwatch {
          *
          * @return the string representation of the average duration; never null but possibly {@link Duration#ZERO}.
          */
-        default public String getAverageAsString() {
+        default String getAverageAsString() {
             return asString(getAverage());
         }
     }
@@ -264,7 +264,7 @@ public abstract class Stopwatch {
      * </p>
      */
     @ThreadSafe
-    public static interface StopwatchSet extends Durations {
+    public interface StopwatchSet extends Durations {
         /**
          * Create a new stopwatch that records durations with this set.
          *
@@ -277,7 +277,7 @@ public abstract class Stopwatch {
          *
          * @param runnable the function to call
          */
-        default public void time(Runnable runnable) {
+        default void time(Runnable runnable) {
             time(1, runnable);
         }
 
@@ -287,7 +287,7 @@ public abstract class Stopwatch {
          * @param runnable the function that is to be executed; may not be null
          * @return the result of the operation
          */
-        default public <T> T time(Callable<T> runnable) {
+        default <T> T time(Callable<T> runnable) {
             Stopwatch sw = create().start();
             try {
                 return runnable.call();
@@ -309,7 +309,7 @@ public abstract class Stopwatch {
          * @param repeat the number of times to repeat the function call; must be positive
          * @param runnable the function to call; may not be null
          */
-        default public void time(int repeat, Runnable runnable) {
+        default void time(int repeat, Runnable runnable) {
             for (int i = 0; i != repeat; ++i) {
                 Stopwatch sw = create().start();
                 try {
@@ -330,7 +330,7 @@ public abstract class Stopwatch {
          *            in the time measurements; may be null
          * @throws Exception the exception thrown by the runnable function
          */
-        default public <T> void time(int repeat, Callable<T> runnable, Consumer<T> cleanup) throws Exception {
+        default <T> void time(int repeat, Callable<T> runnable, Consumer<T> cleanup) throws Exception {
             for (int i = 0; i != repeat; ++i) {
                 T result = null;
                 Stopwatch sw = create().start();

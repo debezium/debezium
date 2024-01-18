@@ -5,6 +5,8 @@
  */
 package io.debezium.util;
 
+import java.math.BigDecimal;
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
 
@@ -25,7 +27,7 @@ public class ApproximateStructSizeCalculator {
 
     public static long getApproximateRecordSize(SourceRecord changeEvent) {
         // assuming 100 bytes per entry of partition / offset / header
-        long value = changeEvent.sourcePartition().size() * 100 + changeEvent.sourceOffset().size() * 100 + changeEvent.headers().size() * 100;
+        long value = changeEvent.sourcePartition().size() * 100L + changeEvent.sourceOffset().size() * 100L + changeEvent.headers().size() * 100L;
         value += 8; // timestamp
 
         // key and value, ignoring schemas, assuming they are constant, shared on the heap
@@ -62,7 +64,17 @@ public class ApproximateStructSizeCalculator {
                 final String s = (String) value;
                 return (s == null) ? 0 : EMPTY_STRING_SIZE + s.getBytes().length;
             case BYTES:
-                final byte[] b = (byte[]) value;
+                byte[] b;
+                if (value instanceof BigDecimal) {
+                    b = ((BigDecimal) value).unscaledValue().toByteArray();
+                }
+                else if (value instanceof ByteBuffer) {
+                    ByteBuffer buffer = (ByteBuffer) value;
+                    b = toArray(buffer, 0, buffer.remaining());
+                }
+                else {
+                    b = (byte[]) value;
+                }
                 return (b == null) ? 0 : EMPTY_BYTES_SIZE + b.length;
             case STRUCT:
                 return getStructSize((Struct) value);
@@ -97,5 +109,19 @@ public class ApproximateStructSizeCalculator {
             size += getValueSize(valueSchema, entry.getValue());
         }
         return size;
+    }
+
+    private static byte[] toArray(ByteBuffer buffer, int offset, int size) {
+        byte[] dest = new byte[size];
+        if (buffer.hasArray()) {
+            System.arraycopy(buffer.array(), buffer.position() + buffer.arrayOffset() + offset, dest, 0, size);
+        }
+        else {
+            int pos = buffer.position();
+            buffer.position(pos + offset);
+            buffer.get(dest);
+            buffer.position(pos);
+        }
+        return dest;
     }
 }

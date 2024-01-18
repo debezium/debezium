@@ -54,6 +54,10 @@ public abstract class SqlServerTests extends ConnectorTest {
         return prefix + "." + key;
     }
 
+    private String updateRerouteTopic() {
+        return connectorConfig.getDbServerName() + ".u.customers";
+    }
+
     public void renameCustomer(SqlDatabaseController dbController, String oldName, String newName) throws SQLException {
         SqlDatabaseClient client = dbController.getDatabaseClient(DATABASE_SQLSERVER_DBZ_USERNAME, DATABASE_SQLSERVER_DBZ_PASSWORD);
         String sql = "UPDATE customers SET first_name = '" + newName + "' WHERE first_name = '" + oldName + "'";
@@ -107,7 +111,7 @@ public abstract class SqlServerTests extends ConnectorTest {
     public void shouldRerouteUpdates(SqlDatabaseController dbController) throws SQLException {
         renameCustomer(dbController, "Tom", "Thomas");
 
-        String updatesTopic = topic("u.customers");
+        String updatesTopic = updateRerouteTopic();
         awaitAssert(() -> assertions.assertRecordsCount(topic("dbo.customers"), 5));
         awaitAssert(() -> assertions.assertRecordsCount(updatesTopic, 1));
         awaitAssert(() -> assertions.assertRecordsContain(updatesTopic, "Thomas"));

@@ -16,6 +16,8 @@ import io.debezium.config.Configuration.Builder;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.junit.ConditionalFail;
+import io.debezium.junit.Flaky;
 import io.debezium.junit.SkipTestRule;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotTest;
 import io.debezium.relational.history.SchemaHistory;
@@ -27,6 +29,8 @@ public class IncrementalSnapshotWithRecompileIT extends AbstractIncrementalSnaps
 
     @Rule
     public SkipTestRule skipRule = new SkipTestRule();
+    @Rule
+    public ConditionalFail conditionalFail = new ConditionalFail();
 
     @Before
     public void before() throws SQLException {
@@ -120,5 +124,41 @@ public class IncrementalSnapshotWithRecompileIT extends AbstractIncrementalSnaps
                 .with(SqlServerConnectorConfig.INCREMENTAL_SNAPSHOT_OPTION_RECOMPILE, true)
                 .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, tableIncludeList)
                 .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, storeOnlyCapturedDdl);
+    }
+
+    @Override
+    protected String connector() {
+        return "sql_server";
+    }
+
+    @Override
+    protected String server() {
+        return TestHelper.TEST_SERVER_NAME;
+    }
+
+    @Override
+    protected String task() {
+        return "0";
+    }
+
+    @Override
+    protected String database() {
+        return TestHelper.TEST_DATABASE_1;
+    }
+
+    @Override
+    protected void waitForCdcTransactionPropagation(int expectedTransactions) throws Exception {
+        TestHelper.waitForCdcTransactionPropagation(connection, TestHelper.TEST_DATABASE_1, expectedTransactions);
+    }
+
+    @Override
+    protected int defaultIncrementalSnapshotChunkSize() {
+        return 250;
+    }
+
+    @Override
+    @Flaky("DBZ-5393")
+    public void stopCurrentIncrementalSnapshotWithAllCollectionsAndTakeNewNewIncrementalSnapshotAfterRestart() throws Exception {
+        super.stopCurrentIncrementalSnapshotWithAllCollectionsAndTakeNewNewIncrementalSnapshotAfterRestart();
     }
 }

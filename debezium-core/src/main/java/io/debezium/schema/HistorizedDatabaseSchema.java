@@ -6,6 +6,7 @@
 package io.debezium.schema;
 
 import java.util.Collection;
+import java.util.function.Predicate;
 
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Offsets;
@@ -25,11 +26,11 @@ import io.debezium.spi.schema.DataCollectionId;
 public interface HistorizedDatabaseSchema<I extends DataCollectionId> extends DatabaseSchema<I> {
 
     @FunctionalInterface
-    public static interface SchemaChangeEventConsumer {
+    interface SchemaChangeEventConsumer {
 
         void consume(SchemaChangeEvent event, Collection<TableId> tableIds);
 
-        static SchemaChangeEventConsumer NOOP = (x, y) -> {
+        SchemaChangeEventConsumer NOOP = (x, y) -> {
         };
     }
 
@@ -43,7 +44,11 @@ public interface HistorizedDatabaseSchema<I extends DataCollectionId> extends Da
 
     void initializeStorage();
 
-    default boolean storeOnlyCapturedTables() {
-        return false;
-    }
+    Predicate<String> ddlFilter();
+
+    boolean skipUnparseableDdlStatements();
+
+    boolean storeOnlyCapturedTables();
+
+    boolean storeOnlyCapturedDatabases();
 }

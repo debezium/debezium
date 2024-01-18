@@ -39,7 +39,7 @@ public class PlainKafkaAssertions implements KafkaAssertions<String, String> {
             consumer.subscribe(Collections.singleton(topic));
             consumer.seekToBeginning(consumer.assignment());
             ConsumerRecords<String, String> records = consumer.poll(Duration.of(10, ChronoUnit.SECONDS));
-            long matchingCount = StreamSupport.stream(records.records(topic).spliterator(), false).filter(r -> r.value().contains(content)).count();
+            long matchingCount = StreamSupport.stream(records.records(topic).spliterator(), false).filter(r -> r.value() != null && r.value().contains(content)).count();
             assertThat(matchingCount).withFailMessage("Topic '%s' doesn't have message containing <%s>.", topic, content).isGreaterThan(0);
         }
     }

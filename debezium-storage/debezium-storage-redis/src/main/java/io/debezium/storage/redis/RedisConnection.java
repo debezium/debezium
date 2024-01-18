@@ -5,11 +5,14 @@
  */
 package io.debezium.storage.redis;
 
+import java.util.regex.Pattern;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 
+import redis.clients.jedis.DefaultJedisClientConfig;
 import redis.clients.jedis.HostAndPort;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.exceptions.JedisConnectionException;
@@ -25,8 +28,10 @@ public class RedisConnection {
 
     public static final String DEBEZIUM_OFFSETS_CLIENT_NAME = "debezium:offsets";
     public static final String DEBEZIUM_SCHEMA_HISTORY = "debezium:schema_history";
+    private static final String HOST_PORT_ERROR = "Invalid host:port format in '<...>.redis.address' property.";
 
     private String address;
+    private int dbIndex;
     private String user;
     private String password;
     private int connectionTimeout;
@@ -34,7 +39,7 @@ public class RedisConnection {
     private boolean sslEnabled;
 
     /**
-     * 
+     *
      * @param address
      * @param user
      * @param password
@@ -42,8 +47,11 @@ public class RedisConnection {
      * @param socketTimeout
      * @param sslEnabled
      */
-    public RedisConnection(String address, String user, String password, int connectionTimeout, int socketTimeout, boolean sslEnabled) {
+    public RedisConnection(String address, int dbIndex, String user, String password, int connectionTimeout, int socketTimeout, boolean sslEnabled) {
+        validateHostPort(address);
+
         this.address = address;
+        this.dbIndex = dbIndex;
         this.user = user;
         this.password = password;
         this.connectionTimeout = connectionTimeout;
@@ -52,7 +60,7 @@ public class RedisConnection {
     }
 
     /**
-     * 
+     *
      * @param clientName
      * @param waitEnabled
      * @param waitTimeout
@@ -70,7 +78,8 @@ public class RedisConnection {
 
         Jedis client;
         try {
-            client = new Jedis(address.getHost(), address.getPort(), this.connectionTimeout, this.socketTimeout, this.sslEnabled);
+            client = new Jedis(address, DefaultJedisClientConfig.builder().database(this.dbIndex).connectionTimeoutMillis(this.connectionTimeout)
+                    .socketTimeoutMillis(this.socketTimeout).ssl(this.sslEnabled).build());
 
             if (this.user != null) {
                 client.auth(this.user, this.password);
@@ -102,5 +111,12 @@ public class RedisConnection {
         LOGGER.info("Using Redis client '{}'", redisClient);
 
         return redisClient;
+    }
+
+    private void validateHostPort(String address) {
+        Pattern pattern = Pattern.compile("^[\\w.-]+:\\d{1,5}+$");
+        if (!pattern.matcher(address).matches()) {
+            throw new DebeziumException(HOST_PORT_ERROR);
+        }
     }
 }

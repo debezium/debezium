@@ -38,11 +38,15 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestRule;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig.EventProcessingFailureHandlingMode;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
+import io.debezium.connector.mysql.junit.SkipTestDependingOnDatabaseRule;
+import io.debezium.connector.mysql.junit.SkipWhenDatabaseIs;
+import io.debezium.connector.mysql.junit.SkipWhenDatabaseIs.Type;
 import io.debezium.data.Envelope;
 import io.debezium.data.KeyValueStore;
 import io.debezium.data.KeyValueStore.Collection;
@@ -53,7 +57,6 @@ import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.heartbeat.DatabaseHeartbeatImpl;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConnection;
-import io.debezium.junit.SkipTestRule;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.history.SchemaHistory;
@@ -65,7 +68,7 @@ import io.debezium.util.Testing;
  * @author Randall Hauch, Jiri Pechanec
  *
  */
-@SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 6, reason = "DDL uses fractional second data types, not supported until MySQL 5.6")
+@SkipWhenDatabaseIs(value = Type.MYSQL, versions = @SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 6, reason = "DDL uses fractional second data types, not supported until MySQL 5.6"))
 public class StreamingSourceIT extends AbstractConnectorTest {
 
     private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-binlog.txt").toAbsolutePath();
@@ -79,7 +82,7 @@ public class StreamingSourceIT extends AbstractConnectorTest {
     private SchemaChangeHistory schemaChanges;
 
     @Rule
-    public SkipTestRule skipRule = new SkipTestRule();
+    public TestRule skipRule = new SkipTestDependingOnDatabaseRule();
 
     @Before
     public void beforeEach() {
@@ -345,12 +348,14 @@ public class StreamingSourceIT extends AbstractConnectorTest {
 
         consumeAtLeast(expectedChanges);
 
+        String dateTime = MySqlTestConnection.isMariaDb() ? "2014-09-08T17:51:04.77" : "2014-09-08T17:51:04.780";
+
         // Check the records via the store ...
         List<SourceRecord> sourceRecords = store.sourceRecords();
         assertThat(sourceRecords.size()).isEqualTo(1);
         // TIMESTAMP should be converted to UTC, using the DB's (or connection's) time zone
         ZonedDateTime expectedTimestamp = ZonedDateTime.of(
-                LocalDateTime.parse("2014-09-08T17:51:04.780"),
+                LocalDateTime.parse(dateTime),
                 UniqueDatabase.TIMEZONE)
                 .withZoneSameInstant(ZoneOffset.UTC);
 
@@ -390,14 +395,23 @@ public class StreamingSourceIT extends AbstractConnectorTest {
         Struct value = (Struct) sourceRecord.value();
         Struct after = value.getStruct(Envelope.FieldName.AFTER);
 
+        String durationValue = "PT517H51M4.78S";
+        long timeWithNanoSeconds = 1_864_264_780_000_000L;
+        int nanos = 780;
+        if (MySqlTestConnection.isMariaDb()) {
+            durationValue = "PT517H51M4.77S";
+            timeWithNanoSeconds = 1_864_264_770_000_000L;
+            nanos = 770;
+        }
+
         // '517:51:04.777'
         long c1 = after.getInt64("c1");
         Duration c1Time = Duration.ofNanos(c1 * 1_000);
-        Duration c1ExpectedTime = toDuration("PT517H51M4.78S");
+        Duration c1ExpectedTime = toDuration(durationValue);
         assertEquals(c1ExpectedTime, c1Time);
         assertEquals(c1ExpectedTime.toNanos(), c1Time.toNanos());
-        assertThat(c1Time.toNanos()).isEqualTo(1864264780000000L);
-        assertThat(c1Time).isEqualTo(Duration.ofHours(517).plusMinutes(51).plusSeconds(4).plusMillis(780));
+        assertThat(c1Time.toNanos()).isEqualTo(timeWithNanoSeconds);
+        assertThat(c1Time).isEqualTo(Duration.ofHours(517).plusMinutes(51).plusSeconds(4).plusMillis(nanos));
 
         // '-13:14:50'
         long c2 = after.getInt64("c2");
@@ -457,7 +471,8 @@ public class StreamingSourceIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-1208")
-    @SkipWhenDatabaseVersion(check = LESS_THAN_OR_EQUAL, major = 5, minor = 6, reason = "MySQL 5.6 does not support SSL")
+    @SkipWhenDatabaseIs(value = Type.MYSQL, versions = @SkipWhenDatabaseVersion(check = LESS_THAN_OR_EQUAL, major = 5, minor = 6, reason = "MySQL 5.6 does not support SSL"))
+    @SkipWhenDatabaseIs(value = Type.MARIADB, reason = "MariaDB does not support SSL by default")
     public void shouldFailOnUnknownTlsProtocol() {
         final UniqueDatabase REGRESSION_DATABASE = new UniqueDatabase("logical_server_name", "regression_test")
                 .withDbHistoryPath(SCHEMA_HISTORY_PATH);
@@ -483,7 +498,8 @@ public class StreamingSourceIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-1208")
-    @SkipWhenDatabaseVersion(check = LESS_THAN_OR_EQUAL, major = 5, minor = 6, reason = "MySQL 5.6 does not support SSL")
+    @SkipWhenDatabaseIs(value = Type.MYSQL, versions = @SkipWhenDatabaseVersion(check = LESS_THAN_OR_EQUAL, major = 5, minor = 6, reason = "MySQL 5.6 does not support SSL"))
+    @SkipWhenDatabaseIs(value = Type.MARIADB, reason = "MariaDB does not support SSL by default")
     public void shouldAcceptTls12() throws Exception {
         final UniqueDatabase REGRESSION_DATABASE = new UniqueDatabase("logical_server_name", "regression_test")
                 .withDbHistoryPath(SCHEMA_HISTORY_PATH);
@@ -578,10 +594,10 @@ public class StreamingSourceIT extends AbstractConnectorTest {
         start(MySqlConnector.class, config, (success, message, error) -> exception.set(error));
 
         try (
-                final MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());
-                final JdbcConnection connection = db.connect();
-                final Connection jdbc = connection.connection();
-                final Statement statement = jdbc.createStatement()) {
+                MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());
+                JdbcConnection connection = db.connect();
+                Connection jdbc = connection.connection();
+                Statement statement = jdbc.createStatement()) {
             if (mode == null) {
                 waitForStreamingRunning("mysql", DATABASE.getServerName(), "streaming");
             }
@@ -608,7 +624,7 @@ public class StreamingSourceIT extends AbstractConnectorTest {
     }
 
     private String productsTableName() throws SQLException {
-        try (final MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
             return db.isTableIdCaseSensitive() ? "products" : "Products";
         }
     }

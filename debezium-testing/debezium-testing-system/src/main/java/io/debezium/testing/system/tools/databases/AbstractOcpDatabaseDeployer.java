@@ -5,8 +5,6 @@
  */
 package io.debezium.testing.system.tools.databases;
 
-import static io.debezium.testing.system.tools.OpenShiftUtils.isRunningFromOcp;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -19,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.testing.system.tools.Deployer;
 import io.debezium.testing.system.tools.OpenShiftUtils;
 import io.debezium.testing.system.tools.YAML;
+import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
@@ -29,14 +28,13 @@ import io.fabric8.openshift.client.OpenShiftClient;
  */
 public abstract class AbstractOcpDatabaseDeployer<T> implements Deployer<T> {
 
-    public static final String EXTERNAL_SERVICE_TYPE_LB = "LoadBalancer";
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractOcpDatabaseDeployer.class);
-    private final OpenShiftClient ocp;
-    private final OpenShiftUtils ocpUtils;
-    private final String project;
-    private final Secret pullSecret;
-    private Deployment deployment;
-    private List<Service> services;
+    protected final OpenShiftClient ocp;
+    protected final OpenShiftUtils ocpUtils;
+    protected final String project;
+    protected final Secret pullSecret;
+    protected Deployment deployment;
+    protected List<Service> services;
 
     public AbstractOcpDatabaseDeployer(
                                        String project,
@@ -62,9 +60,8 @@ public abstract class AbstractOcpDatabaseDeployer<T> implements Deployer<T> {
 
     @Override
     public T deploy() {
-        LOGGER.info("Deploying pull secrets");
-
         if (pullSecret != null) {
+            LOGGER.info("Deploying pull secrets");
             ocp.secrets().inNamespace(project).createOrReplace(pullSecret);
             ocpUtils.linkPullSecret(project, "default", pullSecret);
         }
@@ -91,7 +88,8 @@ public abstract class AbstractOcpDatabaseDeployer<T> implements Deployer<T> {
 
         protected String project;
         protected Deployment deployment;
-        protected List<Service> services = new ArrayList<>();
+        protected PersistentVolumeClaim pvc;
+        protected List<Service> services;
         protected OpenShiftClient ocpClient;
         protected Secret pullSecret;
 
@@ -110,38 +108,21 @@ public abstract class AbstractOcpDatabaseDeployer<T> implements Deployer<T> {
             return self();
         }
 
-        public B withLocalServices(String... yamlPath) {
+        public B withServices(String... yamlPath) {
             List<Service> services = Arrays.stream(yamlPath)
-                    .filter(p -> !isLbService(p))
-                    .map(p -> YAML.fromResource(p, Service.class))
-                    .collect(Collectors.toList());
-            return withServices(services);
-        }
-
-        public B withPublicServices(String... yamlPath) {
-            if (isRunningFromOcp()) {
-                return self();
-            }
-            List<Service> services = Arrays.stream(yamlPath)
-                    .filter(this::isLbService)
                     .map(p -> YAML.fromResource(p, Service.class))
                     .collect(Collectors.toList());
             return withServices(services);
         }
 
         public B withServices(Collection<Service> services) {
-            this.services.addAll(services);
+            this.services = new ArrayList<>(services);
             return self();
         }
 
         public B withPullSecrets(String yamlPath) {
             this.pullSecret = YAML.from(yamlPath, Secret.class);
             return self();
-        }
-
-        private boolean isLbService(String yamlPath) {
-            Service service = YAML.fromResource(yamlPath, Service.class);
-            return EXTERNAL_SERVICE_TYPE_LB.equals(service.getSpec().getType());
         }
     }
 }

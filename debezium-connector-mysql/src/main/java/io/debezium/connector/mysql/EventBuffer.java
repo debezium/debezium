@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 
 import com.github.shyiko.mysql.binlog.event.Event;
 import com.github.shyiko.mysql.binlog.event.EventType;
+import com.github.shyiko.mysql.binlog.event.MariadbGtidEventData;
 import com.github.shyiko.mysql.binlog.event.QueryEventData;
 
 import io.debezium.connector.mysql.MySqlStreamingChangeEventSource.BinlogPosition;
@@ -63,7 +64,7 @@ class EventBuffer {
      */
     private BinlogPosition forwardTillPosition;
 
-    public EventBuffer(int capacity, MySqlStreamingChangeEventSource streamingChangeEventSource, ChangeEventSourceContext changeEventSourceContext) {
+    EventBuffer(int capacity, MySqlStreamingChangeEventSource streamingChangeEventSource, ChangeEventSourceContext changeEventSourceContext) {
         this.capacity = capacity;
         this.buffer = new ArrayBlockingQueue<>(capacity);
         this.streamingChangeEventSource = streamingChangeEventSource;
@@ -85,7 +86,7 @@ class EventBuffer {
         // buffer was full and the end of the TX; in this case there's nothing to do
         // besides directly emitting the events
         if (isReplayingEventsBeyondBufferCapacity()) {
-            streamingChangeEventSource.handleEvent(partition, offsetContext, event);
+            streamingChangeEventSource.handleEvent(partition, offsetContext, changeEventSourceContext, event);
             return;
         }
 
@@ -104,6 +105,16 @@ class EventBuffer {
             }
             else {
                 consumeEvent(partition, offsetContext, event);
+            }
+        }
+        else if (event.getHeader().getEventType() == EventType.MARIADB_GTID) {
+            // When the GTID_EVENT has flag 1 set (meaning there is no following commit),
+            // then we don't create a new transaction for this. This typically happens
+            // for DDL operations which are always transaction scoped.
+            MariadbGtidEventData gtidEventData = (MariadbGtidEventData) event.getData();
+            if ((gtidEventData.getFlags() & 0x01) != 0x01) {
+                // signals a new transaction for MariaDB, treat like QUERY events with BEGIN
+                beginTransaction(partition, offsetContext, event);
             }
         }
         else if (event.getHeader().getEventType() == EventType.XID) {
@@ -164,7 +175,7 @@ class EventBuffer {
             addToBuffer(event);
         }
         else {
-            streamingChangeEventSource.handleEvent(partition, offsetContext, event);
+            streamingChangeEventSource.handleEvent(partition, offsetContext, changeEventSourceContext, event);
         }
     }
 
@@ -198,7 +209,7 @@ class EventBuffer {
         }
         LOGGER.debug("Executing events from buffer");
         for (Event e : buffer) {
-            streamingChangeEventSource.handleEvent(partition, offsetContext, e);
+            streamingChangeEventSource.handleEvent(partition, offsetContext, changeEventSourceContext, e);
         }
         LOGGER.debug("Executing events from binlog that have not fit into buffer");
         if (isInBufferFullMode()) {

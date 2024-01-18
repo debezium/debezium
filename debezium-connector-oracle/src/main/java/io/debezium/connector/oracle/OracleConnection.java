@@ -8,9 +8,10 @@ package io.debezium.connector.oracle;
 import java.sql.Clob;
 import java.sql.DatabaseMetaData;
 import java.sql.SQLException;
+import java.sql.SQLRecoverableException;
 import java.sql.Statement;
-import java.sql.Timestamp;
-import java.time.OffsetDateTime;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -19,6 +20,8 @@ import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.RetriableException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -74,6 +77,18 @@ public class OracleConnection extends JdbcConnection {
 
     public OracleConnection(JdbcConfiguration config) {
         this(config, true);
+    }
+
+    public OracleConnection(JdbcConfiguration config, ConnectionFactory connectionFactory) {
+        this(config, connectionFactory, true);
+    }
+
+    public OracleConnection(JdbcConfiguration config, ConnectionFactory connectionFactory, boolean showVersion) {
+        super(config, connectionFactory, QUOTED_CHARACTER, QUOTED_CHARACTER);
+        this.databaseVersion = resolveOracleDatabaseVersion();
+        if (showVersion) {
+            LOGGER.info("Database Version: {}", databaseVersion.getBanner());
+        }
     }
 
     public OracleConnection(JdbcConfiguration config, boolean showVersion) {
@@ -168,6 +183,9 @@ public class OracleConnection extends JdbcConnection {
             }
         }
         catch (SQLException e) {
+            if (e instanceof SQLRecoverableException) {
+                throw new RetriableException("Failed to resolve Oracle database version", e);
+            }
             throw new RuntimeException("Failed to resolve Oracle database version", e);
         }
 
@@ -235,9 +253,9 @@ public class OracleConnection extends JdbcConnection {
     }
 
     @Override
-    public Optional<Timestamp> getCurrentTimestamp() throws SQLException {
+    public Optional<Instant> getCurrentTimestamp() throws SQLException {
         return queryAndMap("SELECT CURRENT_TIMESTAMP FROM DUAL",
-                rs -> rs.next() ? Optional.of(rs.getTimestamp(1)) : Optional.empty());
+                rs -> rs.next() ? Optional.of(rs.getTimestamp(1).toInstant()) : Optional.empty());
     }
 
     @Override
@@ -450,10 +468,10 @@ public class OracleConnection extends JdbcConnection {
      * @return an optional timestamp when the system change number occurred
      * @throws SQLException if a database exception occurred
      */
-    public Optional<OffsetDateTime> getScnToTimestamp(Scn scn) throws SQLException {
+    public Optional<Instant> getScnToTimestamp(Scn scn) throws SQLException {
         try {
             return queryAndMap("SELECT scn_to_timestamp('" + scn + "') FROM DUAL", rs -> rs.next()
-                    ? Optional.of(rs.getObject(1, OffsetDateTime.class))
+                    ? Optional.of(rs.getTimestamp(1).toInstant())
                     : Optional.empty());
         }
         catch (SQLException e) {
@@ -466,6 +484,49 @@ public class OracleConnection extends JdbcConnection {
             // Any other SQLException should be thrown
             throw e;
         }
+    }
+
+    public Scn getScnAdjustedByTime(Scn scn, Duration adjustment) throws SQLException {
+        try {
+            final String result = prepareQueryAndMap(
+                    "SELECT timestamp_to_scn(scn_to_timestamp(?) - (? / 86400000)) FROM DUAL",
+                    st -> {
+                        st.setString(1, scn.toString());
+                        st.setLong(2, adjustment.toMillis());
+                    },
+                    singleResultMapper(rs -> rs.getString(1), "Failed to get adjusted SCN from: " + scn));
+            return Scn.valueOf(result);
+        }
+        catch (SQLException e) {
+            if (e.getErrorCode() == 8181 || e.getErrorCode() == 8180) {
+                // This happens when the SCN provided is outside the flashback/undo area
+                return Scn.NULL;
+            }
+            throw e;
+        }
+    }
+
+    public boolean isArchiveLogDestinationValid(String archiveDestinationName) throws SQLException {
+        return prepareQueryAndMap("SELECT STATUS, TYPE FROM V$ARCHIVE_DEST_STATUS WHERE DEST_NAME=?",
+                st -> st.setString(1, archiveDestinationName),
+                rs -> {
+                    if (!rs.next()) {
+                        throw new DebeziumException(
+                                String.format("Archive log destination name '%s' is unknown to Oracle",
+                                        archiveDestinationName));
+                    }
+                    return "VALID".equals(rs.getString("STATUS")) && "LOCAL".equals(rs.getString("TYPE"));
+                });
+    }
+
+    public boolean isOnlyOneArchiveLogDestinationValid() throws SQLException {
+        return queryAndMap("SELECT COUNT(1) FROM V$ARCHIVE_DEST_STATUS WHERE STATUS='VALID' AND TYPE='LOCAL'",
+                rs -> {
+                    if (!rs.next()) {
+                        throw new DebeziumException("Unable to resolve number of archive log destinations");
+                    }
+                    return rs.getLong(1) == 1L;
+                });
     }
 
     @Override
@@ -507,4 +568,47 @@ public class OracleConnection extends JdbcConnection {
             super(message);
         }
     }
+
+    @Override
+    public String buildReselectColumnQuery(TableId tableId, List<String> columns, List<String> keyColumns, Struct source) {
+        final String commitScn = source.getString(SourceInfo.COMMIT_SCN_KEY);
+        final TableId oracleTableId = new TableId(null, tableId.schema(), tableId.table());
+        if (Strings.isNullOrEmpty(commitScn)) {
+            return super.buildReselectColumnQuery(oracleTableId, columns, keyColumns, source);
+        }
+
+        return String.format("SELECT %s FROM (SELECT * FROM %s AS OF SCN %s) WHERE %s",
+                columns.stream().map(this::quotedColumnIdString).collect(Collectors.joining(",")),
+                quotedTableIdString(oracleTableId),
+                commitScn,
+                keyColumns.stream().map(key -> key + "=?").collect(Collectors.joining(" AND ")));
+    }
+
+    @Override
+    public Map<String, Object> reselectColumns(String query, TableId tableId, List<String> columns, List<Object> bindValues) throws SQLException {
+        return optionallyDoInContainer(() -> super.reselectColumns(query, tableId, columns, bindValues));
+    }
+
+    private <T> T optionallyDoInContainer(ContainerWork<T> work) throws SQLException {
+        boolean swapped = false;
+        try {
+            final String pdbName = config().getString("pdb.name");
+            if (!Strings.isNullOrEmpty(pdbName)) {
+                setSessionToPdb(pdbName);
+                swapped = true;
+            }
+            return work.execute();
+        }
+        finally {
+            if (swapped) {
+                resetSessionToCdb();
+            }
+        }
+    }
+
+    @FunctionalInterface
+    interface ContainerWork<T> {
+        T execute() throws SQLException;
+    }
+
 }

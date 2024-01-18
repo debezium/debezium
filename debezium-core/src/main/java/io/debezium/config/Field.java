@@ -51,6 +51,8 @@ import io.debezium.util.Strings;
 public final class Field {
 
     public static final String INTERNAL_PREFIX = "internal.";
+    private static final String EMPTY_STRING = "";
+    private static final CharSequence SPACE = " ";
 
     /**
      * Create a set of fields.
@@ -228,9 +230,7 @@ public final class Field {
             if (other == null || other == this) {
                 return this;
             }
-            return (config, field, problems) -> {
-                return validate(config, field, problems) + other.validate(config, field, problems);
-            };
+            return (config, field, problems) -> validate(config, field, problems) + other.validate(config, field, problems);
         }
     }
 
@@ -246,7 +246,7 @@ public final class Field {
          * @param config the configuration; may not be null
          * @return the list of valid values
          */
-        public List<Object> validValues(Field field, Configuration config);
+        List<Object> validValues(Field field, Configuration config);
 
         /**
          * Set the visibility of the field given the current configuration values.
@@ -254,7 +254,7 @@ public final class Field {
          * @param config the configuration; may not be null
          * @return {@code true} if the field is to be visible, or {@code false} otherwise
          */
-        public boolean visible(Field field, Configuration config);
+        boolean visible(Field field, Configuration config);
     }
 
     public enum Group {
@@ -764,7 +764,7 @@ public final class Field {
     public Field required() {
         return new Field(name(), displayName(), type(), width(), description(), importance, dependents,
                 defaultValueGenerator, validator, recommender, true, group, allowedValues)
-                        .withValidation(Field::isRequired);
+                .withValidation(Field::isRequired);
     }
 
     public Field optional() {
@@ -1171,6 +1171,23 @@ public final class Field {
         return errors;
     }
 
+    public static int isListOfMap(Configuration config, Field field, ValidationOutput problems) {
+        String value = config.getString(field);
+        int errors = 0;
+
+        if (!Strings.isNullOrBlank(value)) {
+            List<String> values = Strings.listOf(value, x -> x.split(","), String::trim);
+            for (String v : values) {
+                List<String> items = Strings.listOf(v, x -> x.split("="), String::trim);
+                if (items.size() != 2) {
+                    problems.accept(field, value, "A equivalent-separated map of valid key/value pairs is expected, for example: k1=v1,k2=v2");
+                    return ++errors;
+                }
+            }
+        }
+        return errors;
+    }
+
     public static int isRegex(Configuration config, Field field, ValidationOutput problems) {
         String value = config.getString(field);
         int errors = 0;
@@ -1354,6 +1371,34 @@ public final class Field {
         }
         catch (DateTimeException e) {
             problems.accept(field, value, "A zone offset string representation is expected");
+            return 1;
+        }
+        return 0;
+    }
+
+    public static int notContainEmptyElements(Configuration config, Field field, ValidationOutput problems) {
+
+        if (!config.hasKey(field)) {
+            return 0;
+        }
+
+        List<String> values = config.getList(field);
+        if (values.contains(EMPTY_STRING)) {
+            problems.accept(field, values, "Empty string element(s) not permitted");
+            return 1;
+        }
+        return 0;
+    }
+
+    public static int notContainSpaceInAnyElement(Configuration config, Field field, ValidationOutput problems) {
+
+        if (!config.hasKey(field)) {
+            return 0;
+        }
+
+        List<String> values = config.getList(field);
+        if (values.stream().anyMatch(h -> h.contains(SPACE))) {
+            problems.accept(field, values, "Element(s) containing space not permitted");
             return 1;
         }
         return 0;

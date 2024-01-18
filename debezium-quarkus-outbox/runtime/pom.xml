@@ -6,8 +6,8 @@
     <parent>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-quarkus-outbox-parent</artifactId>
-        <version>2.1.0-SNAPSHOT</version>
-	<relativePath>../pom.xml</relativePath>
+        <version>2.6.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
     </parent>
 
     <artifactId>debezium-quarkus-outbox</artifactId>
@@ -21,27 +21,13 @@
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-jackson</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-smallrye-opentracing</artifactId>
+            <artifactId>quarkus-opentelemetry</artifactId>
             <optional>true</optional>
         </dependency>
-        <!-- Needed specifically for AdditionalJaxbMappingProducerImpl usage -->
-        <dependency>
-            <groupId>io.smallrye</groupId>
-            <artifactId>jandex</artifactId>
-        </dependency>
-        <!-- Needed primarily for @Incubating annotation -->
         <dependency>
             <groupId>io.debezium</groupId>
-            <artifactId>debezium-api</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-junit5-internal</artifactId>
-            <scope>test</scope>
+            <artifactId>debezium-quarkus-outbox-common</artifactId>
+            <version>${project.version}</version>
         </dependency>
     </dependencies>
 
@@ -51,12 +37,12 @@
                 <plugin>
                     <groupId>io.quarkus</groupId>
                     <artifactId>quarkus-maven-plugin</artifactId>
-                    <version>${quarkus.version}</version>
+                    <version>${quarkus.version.extension}</version>
                 </plugin>
                 <plugin>
                     <groupId>io.quarkus</groupId>
-                    <artifactId>quarkus-bootstrap-maven-plugin</artifactId>
-                    <version>${quarkus.version}</version>
+                    <artifactId>quarkus-extension-maven-plugin</artifactId>
+                    <version>${quarkus.version.extension}</version>
                     <executions>
                         <execution>
                             <goals>
@@ -78,7 +64,7 @@
             </plugin>
             <plugin>
                 <groupId>io.quarkus</groupId>
-                <artifactId>quarkus-bootstrap-maven-plugin</artifactId>
+                <artifactId>quarkus-extension-maven-plugin</artifactId>
             </plugin>
             <plugin>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -87,7 +73,7 @@
                         <path>
                             <groupId>io.quarkus</groupId>
                             <artifactId>quarkus-extension-processor</artifactId>
-                            <version>${quarkus.version}</version>
+                            <version>${quarkus.version.extension}</version>
                         </path>
                     </annotationProcessorPaths>
                 </configuration>

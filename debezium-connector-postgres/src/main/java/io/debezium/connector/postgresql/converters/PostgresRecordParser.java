@@ -7,10 +7,9 @@ package io.debezium.connector.postgresql.converters;
 
 import java.util.Set;
 
-import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
 
+import io.debezium.converters.recordandmetadata.RecordAndMetadata;
 import io.debezium.converters.spi.RecordParser;
 import io.debezium.data.Envelope;
 import io.debezium.util.Collect;
@@ -25,14 +24,16 @@ public class PostgresRecordParser extends RecordParser {
     static final String TXID_KEY = "txId";
     static final String XMIN_KEY = "xmin";
     static final String LSN_KEY = "lsn";
+    static final String SEQUENCE_KEY = "sequence";
 
     static final Set<String> POSTGRES_SOURCE_FIELD = Collect.unmodifiableSet(
             TXID_KEY,
             XMIN_KEY,
-            LSN_KEY);
+            LSN_KEY,
+            SEQUENCE_KEY);
 
-    public PostgresRecordParser(Schema schema, Struct record) {
-        super(schema, record, Envelope.FieldName.BEFORE, Envelope.FieldName.AFTER);
+    public PostgresRecordParser(RecordAndMetadata recordAndMetadata) {
+        super(recordAndMetadata, Envelope.FieldName.BEFORE, Envelope.FieldName.AFTER);
     }
 
     @Override

@@ -28,9 +28,9 @@ public class MySqlChangeRecordEmitter extends RelationalChangeRecordEmitter<MySq
     private final Object[] before;
     private final Object[] after;
 
-    public MySqlChangeRecordEmitter(MySqlPartition partition, OffsetContext offset, Clock clock, Envelope.Operation operation, Serializable[] before,
-                                    Serializable[] after) {
-        super(partition, offset, clock);
+    public MySqlChangeRecordEmitter(MySqlPartition partition, OffsetContext offset, Clock clock, Operation operation, Serializable[] before,
+                                    Serializable[] after, MySqlConnectorConfig connectorConfig) {
+        super(partition, offset, clock, connectorConfig);
         this.offset = offset;
         this.operation = operation;
         this.before = before;
@@ -49,12 +49,12 @@ public class MySqlChangeRecordEmitter extends RelationalChangeRecordEmitter<MySq
 
     @Override
     protected Object[] getOldColumnValues() {
-        return before != null ? before : null;
+        return before;
     }
 
     @Override
     protected Object[] getNewColumnValues() {
-        return after != null ? after : null;
+        return after;
     }
 
     @Override

@@ -9,6 +9,15 @@
             </item>
         </revapi.ignore>
     </version-1.5.0>
+    <version-2.5.0>
+        <revapi.ignore>
+            <item>
+              <code>java.method.addedToInterface</code>
+              <class>io.debezium.engine.ChangeEvent</class>
+              <justification>This interface is not supposed to be implemented by clients.</justification>
+            </item>
+        </revapi.ignore>
+    </version-2.5.0>
     <!-- No changes as of yet. This is just an example of how to tell Revapi to ignore intentional changes.
     <version-1.2.0>
         <revapi.ignore>

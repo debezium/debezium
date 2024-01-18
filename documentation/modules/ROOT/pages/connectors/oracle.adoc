@@ -5,9 +5,12 @@
 
 :context: oracle
 :data-collection: table
+:database-port: 1521
 :mbean-name: {context}
+:connector-class: Oracle
 :connector-file: {context}
 :connector-name: Oracle
+:include-list-example: PUBLIC.INVENTORY
 ifdef::community[]
 :toc:
 :toc-placement: macro
@@ -33,8 +36,7 @@ endif::product[]
 
 {prodname} ingests change events from Oracle by using the native LogMiner database package
 ifdef::community[]
- or the https://docs.oracle.com/database/121/XSTRM/xstrm_intro.htm#XSTRM72647[XStream API].
-While the connector might work with a variety of Oracle versions and editions, only Oracle EE 12 and 19 have been tested.
+, the https://docs.oracle.com/database/121/XSTRM/xstrm_intro.htm#XSTRM72647[XStream API], or https://www.bersler.com/openlogreplicator/[OpenLogReplicator].
 endif::community[]
 ifdef::product[]
 .
@@ -48,7 +50,7 @@ Information and procedures for using a {prodname} Oracle connector are organized
   * xref:deployment-of-debezium-oracle-connectors[]
   * xref:descriptions-of-debezium-oracle-connector-configuration-properties[]
   * xref:monitoring-debezium-oracle-connector-performance[]
-  * xref:how-debezium-oracle-connectors-handle-faults-and-problems[]
+  * xref:debezium-oracle-connector-frequently-asked-questions[]
 endif::product[]
 
 // Type: assembly
@@ -63,6 +65,8 @@ ifdef::product[]
 For more information, see the following topics:
 
 * xref:how-debezium-oracle-connectors-perform-database-snapshots[]
+* xref:debezium-oracle-ad-hoc-snapshots[]
+* xref:debezium-oracle-incremental-snapshots[]
 * xref:default-names-of-kafka-topics-that-receive-debezium-oracle-change-event-records[]
 * xref:how-debezium-oracle-connectors-expose-database-schema-changes[]
 * xref:debezium-oracle-connector-generated-events-that-represent-transaction-boundaries[]
@@ -80,20 +84,73 @@ Typically, the redo logs on an Oracle server are configured to not retain the co
 As a result, the {prodname} Oracle connector cannot retrieve the entire history of the database from the logs.
 To enable the connector to establish a baseline for the current state of the database, the first time that the connector starts, it performs an initial _consistent snapshot_ of the database.
 
-You can customize the way that the connector creates snapshots by setting the value of the xref:oracle-property-snapshot-mode[`snapshot.mode`] connector configuration property.
-By default, the connector's snapshot mode is set to `initial`.
+[NOTE]
+====
+If the time needed to complete the initial snapshot exceeds the `UNDO_RETENTION` time that is set for the database (fifteen minutes, by default), an ORA-01555 exception can occur.
+For more information about the error, and about the steps that you can take to recover from it, see the xref:what-causes-ora-01555-and-how-to-handle-it[Frequently asked questions].
+====
+
+ifdef::product[]
+You can find more information about snapshots in the following sections:
+
+* xref:debezium-oracle-ad-hoc-snapshots[]
+* xref:debezium-oracle-incremental-snapshots[]
+endif::product[]
+
 
 [[default-workflow-for-performing-an-initial-snapshot]]
-.Default connector workflow for creating an initial snapshot
+.Default workflow that the Oracle connector uses to perform an initial snapshot
+The following workflow lists the steps that {prodname} takes to create a snapshot.
+These steps describe the process for a snapshot when the xref:{context}-property-snapshot-mode[`snapshot.mode`]  configuration property is set to its default value, which is `initial`.
+You can customize the way that the connector creates snapshots by changig the value of the `snapshot.mode` property.
+If you configure a different snapshot mode, the connector completes the snapshot by using a modified version of this workflow.
+
 When the snapshot mode is set to the default, the connector completes the following tasks to create a snapshot:
 
-1. Determines the tables to be captured.
-2. Obtains a `ROW SHARE MODE` lock on each of the captured tables to prevent structural changes from occurring during creation of the snapshot. {prodname} holds the locks for only a short time.
-3. Reads the current system change number (SCN) position from the server's redo log.
-4. Captures the structure of all relevant tables.
-5. Releases the locks obtained in Step 2.
-6. Scans all of the relevant database tables and schemas as valid at the SCN position that was read in Step 3 (`SELECT * FROM ... AS OF SCN 123`), generates a `READ` event for each row, and then writes the event records to the table-specific Kafka topic.
-7. Records the successful completion of the snapshot in the connector offsets.
+1. Establish a connection to the database.
+
+2. Determine the tables to be captured.
+By default, the connector captures all tables except those with xref:schemas-that-the-debezium-oracle-connector-excludes-when-capturing-change-events[schemas that exclude them from capture].
+After the snapshot completes, the connector continues to stream data for the specified tables.
+If you want the connector to capture data only from specific tables you can direct the connector to capture the data for only a subset of tables or table elements by setting properties such as xref:{context}-property-table-include-list[`table.include.list`] or xref:{context}-property-table-exclude-list[`table.exclude.list`].
+
+3. Obtain a `ROW SHARE MODE` lock on each of the captured tables to prevent structural changes from occurring during creation of the snapshot.
+   {prodname} holds the locks for only a short time.
+
+4. Read the current system change number (SCN) position from the server's redo log.
+
+5. Capture the structure of all database tables, or all tables that are designated for capture.
+The connector persists schema information in its internal database schema history topic.
+The schema history provides information about the structure that is in effect when a change event occurs. +
++
+[NOTE]
+====
+By default, the connector captures the schema of every table in the database that is in capture mode, including tables that are not configured for capture.
+If tables are not configured for capture, the initial snapshot captures only their structure; it does not capture any table data.
+For more information about why snapshots persist schema information for tables that you did not include in the initial snapshot, see xref:understanding-why-initial-snapshots-capture-the-schema-history-for-all-tables[Understanding why initial snapshots capture the schema for all tables].
+====
+
+6. Release the locks obtained in Step 3.
+Other database clients can now write to any previously locked tables.
+
+7. At the SCN position that was read in Step 4, the connector scans the tables that are designated for capture (`SELECT * FROM ... AS OF SCN 123`).
+During the scan, the connector completes the following tasks:
+
+.. Confirms that the table was created before the snapshot began.
+If the table was created after the snapshot began, the connector skips the table.
+After the snapshot is complete, and the connector transitions to streaming, it emits change events for any tables that were created after the snapshot began.
+
+.. Produces a `read` event for each row that is captured from a table.
+All `read` events contain the same SCN position, which is the SCN position that was obtained in step 4.
+
+.. Emits each `read` event to the Kafka topic for the source table.
+
+.. Releases data table locks, if applicable.
+
+8. Record the successful completion of the snapshot in the connector offsets.
+
+The resulting initial snapshot captures the current state of each row in the captured tables.
+From this baseline state, the connector captures subsequent changes as they occur.
 
 After the snapshot process begins, if the process is interrupted due to connector failure, rebalancing, or other reasons, the process restarts after the connector restarts.
 After the connector completes the initial snapshot, it continues streaming from the position that it read in Step 3 so that it does not miss any updates.
@@ -129,21 +186,185 @@ WARNING: Do not use this mode to perform a snapshot if schema changes were commi
 
 For more information, see xref:oracle-property-snapshot-mode[`snapshot.mode`] in the table of connector configuration properties.
 
+// ModuleID: oracle-description-of-why-initial-snapshots-capture-the-schema-history-for-all-tables
+// Title: Description of why initial snapshots capture the schema history for all tables
+// Type: concept
+[id="understanding-why-initial-snapshots-capture-the-schema-history-for-all-tables"]
+==== Understanding why initial snapshots capture the schema history for all tables
+
+The initial snapshot that a connector runs captures two types of information:
+
+Table data::
+Information about `INSERT`, `UPDATE`, and `DELETE` operations in tables that are named in the connector's xref:{context}-property-table-include-list[`table.include.list`] property.
+Schema data::
+DDL statements that describe the structural changes that are applied to tables.
+Schema data is persisted to both the internal schema history topic, and to the connector's schema change topic, if one is configured.
+
+After you run an initial snapshot, you might notice that the snapshot captures schema information for tables that are not designated for capture.
+By default, initial snapshots are designed to capture schema information for every table that is present in the database, not only from tables that are designated for capture.
+Connectors require that the table's schema is present in the schema history topic before they can capture a table.
+By enabling the initial snapshot to capture schema data for tables that are not part of the original capture set, {prodname} prepares the connector to readily capture event data from these tables should that later become necessary.
+If the initial snapshot does not capture a table's schema, you must add the schema to the history topic before the connector can capture data from the table.
+
+In some cases, you might want to limit schema capture in the initial snapshot.
+This can be useful when you want to reduce the time required to complete a snapshot.
+Or when {prodname} connects to the database instance through a user account that has access to multiple logical databases, but you want the connector to capture changes only from tables in a specific logic database.
+
+.Additional information
+* xref:oracle-capturing-data-from-tables-not-captured-by-the-initial-snapshot-no-schema-change[Capturing data from tables not captured by the initial snapshot (no schema change)]
+* xref:oracle-capturing-data-from-new-tables-with-schema-changes[Capturing data from tables not captured by the initial snapshot (schema change)]
+* Setting the xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.store.only.captured.tables.ddl`] property to specify the tables from which to capture schema information.
+* Setting the xref:{context}-property-database-history-store-only-captured-databases-ddl[`schema.history.internal.store.only.captured.databases.ddl`] property to specify the logical databases from which to capture schema changes.
+
+// Type: procedure
+[id="oracle-capturing-data-from-tables-not-captured-by-the-initial-snapshot-no-schema-change"]
+==== Capturing data from tables not captured by the initial snapshot (no schema change)
+
+In some cases, you might want the connector to capture data from a table whose schema was not captured by the initial snapshot.
+Depending on the connector configuration, the initial snapshot might capture the table schema only for specific tables in the database.
+If the table schema is not present in the history topic, the connector fails to capture the table, and reports a missing schema error.
+
+You might still be able to capture data from the table, but you must perform additional steps to add the table schema.
+
+.Prerequisites
+
+* You want to capture data from a table with a schema that the connector did not capture during the initial snapshot.
+* All entries for the table in the transaction log use the same schema.
+For information about capturing data from a new table that has undergone structural changes, see xref:oracle-capturing-data-from-new-tables-with-schema-changes[].
+
+.Procedure
+1. Stop the connector.
+2. Remove the internal database schema history topic that is specified by the xref:{context}-property-database-history-kafka-topic[`schema.history.internal.kafka.topic property`].
+3. In the connector configuration:
+.. Set the xref:{context}-property-snapshot-mode[`snapshot.mode`] to `schema_only_recovery`.
+.. Set the value of xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.store.only.captured.tables.ddl`] to `false`.
+.. Add the tables that you want the connector to capture to `table.include.list`.
+This guarantees that in the future, the connector can reconstruct the schema history for all tables.
+4. Restart the connector.
+The snapshot recovery process rebuilds the schema history based on the current structure of the tables.
+5. (Optional) After the snapshot completes, initiate an xref:debezium-oracle-incremental-snapshots[incremental snapshot] to capture existing data for newly added tables along with changes to other tables that occurred while that connector was off-line.
+6. (Optional) Reset the `snapshot.mode` back to `schema_only` to prevent the connector from initiating recovery after a future restart.
+
+// Type: procedure
+[id="oracle-capturing-data-from-new-tables-with-schema-changes"]
+==== Capturing data from tables not captured by the initial snapshot (schema change)
+
+If a schema change is applied to a table, records that are committed before the schema change have different structures than those that were committed after the change.
+When {prodname} captures data from a table, it reads the schema history to ensure that it applies the correct schema to each event.
+If the schema is not present in the schema history topic, the connector is unable to capture the table, and an error results.
+
+If you want to capture data from a table that was not captured by the initial snapshot, and the schema of the table was modified, you must add the schema to the history topic, if it is not already available.
+You can add the schema by running a new schema snapshot, or by running an initial snapshot for the table.
+
+.Prerequisites
+* You want to capture data from a table with a schema that the connector did not capture during the initial snapshot.
+* A schema change was applied to the table so that the records to be captured do not have a uniform structure.
+
+.Procedure
+
+Initial snapshot captured the schema for all tables (`store.only.captured.tables.ddl` was set to `false`)::
+1. Edit the xref:oracle-property-table-include-list[`table.include.list`] property to specify the tables that you want to capture.
+2. Restart the connector.
+3. Initiate an xref:debezium-oracle-incremental-snapshots[incremental snapshot] if you want to capture existing data from the newly added tables.
+
+Initial snapshot did not capture the schema for all tables (`store.only.captured.tables.ddl` was set to `true`)::
+If the initial snapshot did not save the schema of the table that you want to capture, complete one of the following procedures:
+
+Procedure 1: Schema snapshot, followed by incremental snapshot:::
+In this procedure, the connector first performs a schema snapshot.
+You can then initiate an incremental snapshot to enable the connector to synchronize data.
+1. Stop the connector.
+2. Remove the internal database schema history topic that is specified by the xref:{context}-property-database-history-kafka-topic[`schema.history.internal.kafka.topic property`].
+3. Clear the offsets in the configured Kafka Connect link:{link-kafka-docs}/#connectconfigs_offset.storage.topic[`offset.storage.topic`].
+For more information about how to remove offsets, see the link:https://debezium.io/documentation/faq/#how_to_remove_committed_offsets_for_a_connector[{prodname} community FAQ].
++
+[WARNING]
+====
+Removing offsets should be performed only by advanced users who have experience in manipulating internal Kafka Connect data.
+This operation is potentially destructive, and should be performed only as a last resort.
+====
+4. Set values for properties in the connector configuration as described in the following steps:
+.. Set the value of the xref:oracle-property-snapshot-mode[`snapshot.mode`] property to `schema_only`.
+.. Edit the xref:oracle-property-table-include-list[`table.include.list`] to add the tables that you want to capture.
+5. Restart the connector.
+6. Wait for {prodname} to capture the schema of the new and existing tables.
+Data changes that occurred any tables after the connector stopped are not captured.
+7. To ensure that no data is lost, initiate an xref:debezium-oracle-incremental-snapshots[incremental snapshot].
+
+Procedure 2: Initial snapshot, followed by optional incremental snapshot:::
+In this procedure the connector performs a full initial snapshot of the database.
+As with any initial snapshot, in a database with many large tables, running an initial snapshot can be a time-consuming operation.
+After the snapshot completes, you can optionally trigger an incremental snapshot to capture any changes that occur while the connector is off-line.
+
+1. Stop the connector.
+2. Remove the internal database schema history topic that is specified by the xref:oracle-property-database-history-kafka-topic[`schema.history.internal.kafka.topic property`].
+3. Clear the offsets in the configured Kafka Connect link:{link-kafka-docs}/#connectconfigs_offset.storage.topic[`offset.storage.topic`].
+For more information about how to remove offsets, see the link:https://debezium.io/documentation/faq/#how_to_remove_committed_offsets_for_a_connector[{prodname} community FAQ].
++
+[WARNING]
+====
+Removing offsets should be performed only by advanced users who have experience in manipulating internal Kafka Connect data.
+This operation is potentially destructive, and should be performed only as a last resort.
+====
+4. Edit the xref:{context}-property-table-include-list[`table.include.list`] to add the tables that you want to capture.
+5. Set values for properties in the connector configuration as described in the following steps:
+.. Set the value of the xref:{context}-property-snapshot-mode[`snapshot.mode`] property to `initial`.
+.. (Optional) Set xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.store.only.captured.tables.ddl`] to `false`.
+6. Restart the connector.
+The connector takes a full database snapshot.
+After the snapshot completes, the connector transitions to streaming.
+7. (Optional) To capture any data that changed while the connector was off-line, initiate an xref:debezium-oracle-incremental-snapshots[incremental snapshot].
+
 // Type: concept
 // ModuleID: debezium-oracle-ad-hoc-snapshots
 [id="oracle-ad-hoc-snapshots"]
-==== Ad hoc snapshots
+=== Ad hoc snapshots
 include::{partialsdir}/modules/all-connectors/con-connector-ad-hoc-snapshots.adoc[leveloffset=+3]
 
-// Type: concept
-[id="oracle-incremental-snapshots"]
-==== Incremental snapshots
+// Type: assembly
+// ModuleID: debezium-oracle-incremental-snapshots
+[id="debezium-oracle-incremental-snapshots"]
+=== Incremental snapshots
 include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+3]
 
 [WARNING]
 ====
 The {prodname} connector for Oracle does not support schema changes while an incremental snapshot is running.
 ====
+
+// Type: procedure
+// ModuleID: debezium-oracle-triggering-an-incremental-snapshot
+[id="oracle-triggering-an-incremental-snapshot"]
+==== Triggering an incremental snapshot
+
+include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-sql.adoc[leveloffset=+3]
+
+// Type: procedure
+// ModuleID:debezium-oracle-using-the-kafka-signaling-channel-to-trigger-an-incremental-snapshot
+[id="oracle-triggering-an-incremental-snapshot-kafka"]
+==== Using the Kafka signaling channel to trigger an incremental snapshot
+
+include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-kafka.adoc[leveloffset=+1]
+
+// Type: procedure
+// ModuleID: debezium-oracle-stopping-an-incremental-snapshot
+[id="oracle-stopping-an-incremental-snapshot"]
+==== Stopping an incremental snapshot
+
+include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot-sql.adoc[leveloffset=+3]
+
+// Type: procedure
+// ModuleID: debezium-oracle-using-the-kafka-signaling-channel-to-stop-an-incremental-snapshot
+[id="oracle-stopping-an-incremental-snapshot-kafka"]
+==== Using the Kafka signaling channel to stop an incremental snapshot
+
+include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot-kafka.adoc[leveloffset=+1]
+
+// Type: concept
+[id="oracle-blocking-snapshots"]
+==== Blocking snapshots
+
+include::{partialsdir}/modules/all-connectors/con-connector-blocking-snapshot.adoc[leveloffset=+3]
 
 // Type: concept
 // ModuleID: default-names-of-kafka-topics-that-receive-debezium-oracle-change-event-records
@@ -177,7 +398,33 @@ The connector applies similar naming conventions to label its internal database 
 
 If the default topic name do not meet your requirements, you can configure custom topic names.
 To configure custom topic names, you specify regular expressions in the logical topic routing SMT.
-For more information about using the logical topic routing SMT to customize topic naming, see xref:{link-topic-routing}#topic-routing[Topic routing].
+For more information about using the logical topic routing SMT to customize topic naming, see {link-prefix}:{link-topic-routing}#topic-routing[Topic routing].
+
+// Type: concept
+// ModuleID: how-debezium-oracle-connectors-handle-database-schema-changes
+// Title: How {prodname} Oracle connectors handle database schema changes
+[[oracle-schema-history-topic]]
+=== Schema history topic
+
+When a database client queries a database, the client uses the database’s current schema.
+However, the database schema can be changed at any time, which means that the connector must be able to identify what the schema was at the time each insert, update, or delete operation was recorded.
+Also, a connector cannot necessarily apply the current schema to every event.
+If an event is relatively old, it's possible that it was recorded before the current schema was applied.
+
+To ensure correct processing of events that occur after a schema change, Oracle includes in the redo log not only the row-level changes that affect the data, but also the DDL statements that are applied to the database.
+As the connector encounters these DDL statements in the redo log, it parses them and updates an in-memory representation of each table’s schema.
+The connector uses this schema representation to identify the structure of the tables at the time of each insert, update, or delete operation and to produce the appropriate change event.
+In a separate database schema history Kafka topic, the connector records all DDL statements along with the position in the redo log where each DDL statement appeared.
+
+When the connector restarts after either a crash or a graceful stop, it starts reading the redo log from a specific position, that is, from a specific point in time.
+The connector rebuilds the table structures that existed at this point in time by reading the database schema history Kafka topic and parsing all DDL statements up to the point in the redo log where the connector is starting.
+
+This database schema history topic is internal for internal connector use only.
+Optionally, the connector can also xref:oracle-schema-change-topic[emit schema change events to a different topic that is intended for consumer applications].
+
+.Additional resources
+
+* xref:oracle-topic-names[Default names for topics] that receive {prodname} event records.
 
 // Type: concept
 // ModuleID: how-debezium-oracle-connectors-expose-database-schema-changes
@@ -185,12 +432,52 @@ For more information about using the logical topic routing SMT to customize topi
 [[oracle-schema-change-topic]]
 === Schema change topic
 
-You can configure a {prodname} Oracle connector to produce schema change events that describe structural changes that are applied to captured tables in the database.
+You can configure a {prodname} Oracle connector to produce schema change events that describe structural changes that are applied to tables in the database.
 The connector writes schema change events to a Kafka topic named `_<serverName>_`, where `_topicName_` is the namespace that is specified in the xref:oracle-property-topic-prefix[`topic.prefix`] configuration property.
 
-{prodname} emits a new message to this topic whenever it streams data from a new table.
+{prodname} emits a new message to the schema change topic whenever it streams data from a new table, or when the structure of the table is altered.
+
+ifdef::community[]
+[NOTE]
+====
+Following a change in table structure, you must follow (the xref:surrogate-schema-evolution[schema evolution procedure]).
+====
+endif::community[]
 
 Messages that the connector sends to the schema change topic contain a payload, and, optionally, also contain the schema of the change event message.
+
+The schema for the schema change event has the following elements:
+
+`name`:: The name of the schema change event message.
+`type`:: The type of the change event message.
+`version`:: The version of the schema. The version is an integer that is incremented each time the schema is changed.
+`fields`:: The fields that are included in the change event message.
+
+.Example: Schema of the Oracle connector schema change topic
+The following example shows a typical schema in JSON format.
+
+[source,json,indent=0,subs="+attributes"]
+----
+{
+  "schema": {
+    "type": "struct",
+    "fields": [
+      {
+        "type": "string",
+        "optional": false,
+        "field": "databaseName"
+      }
+    ],
+    "optional": false,
+    "name": "io.debezium.connector.oracle.SchemaChangeKey",
+    "version": 1
+  },
+  "payload": {
+    "databaseName": "inventory"
+  }
+}
+----
+
 The payload of a schema change event message includes the following elements:
 
 `ddl`:: Provides the SQL `CREATE`, `ALTER`, or `DROP` statement that results in the schema change.
@@ -237,14 +524,6 @@ The schema change topic message format is in an incubating state and might chang
 ====
 endif::community[]
 
-ifdef::community[]
-{prodname} emits a new message to this topic whenever it streams data from a new table, or when the structure of the table is altered.
-
-[NOTE]
-====
-Following a change in table structure, you must follow (the xref:{link-oracle-connector}#surrogate-schema-evolution[schema evolution procedure]).
-====
-endif::community[]
 
 .Example: Message emitted to the Oracle connector schema change topic
 The following example shows a typical schema change message in JSON format.
@@ -429,7 +708,8 @@ In the following example, the `payload` field contains the `databaseName` key:
       }
     ],
     "optional": false,
-    "name": "io.debezium.connector.oracle.SchemaChangeKey"
+    "name": "io.debezium.connector.oracle.SchemaChangeKey",
+    "version": 1
   },
   "payload": {
     "databaseName": "ORCLPDB1"
@@ -533,6 +813,37 @@ The following example shows a typical transaction event message:
 }
 ----
 
+[[oracle-logminer-query-modes]]
+=== Query Modes
+
+The {prodname} Oracle connector integrates with Oracle LogMiner by default.
+This integration requires a specialized set of steps which includes generating a complex JDBC SQL query to ingest the changes recorded in the transaction logs as change events.
+The `V$LOGMNR_CONTENTS` view used by the JDBC SQL query does not have any indices to improve the query's performance, and so there are different query modes that can be used that control how the SQL query is generated as a way to improve the query's execution.
+
+The xref:oracle-property-log-mining-query-filter-mode[`log.mining.query.filter.mode`] connector property can be configured with one of the following to influence how the JDBC SQL query is generated:
+
+
+`none`:: (Default) This mode creates a JDBC query that only filters based on the different operation types, such as inserts, updates, or deletes, at the database level.
+When filtering the data based on the schema, table, or username include/exclude lists, this is done during the processing loop within the connector. +
+ +
+This mode is often useful when capturing a small number of tables from a database that is not heavily saturated with changes.
+The generated query is quite simple, and focuses primarily on reading as quickly as possible with low database overhead.
+
+`in`:: This mode creates a JDBC query that filters not only operation types at the database level, but also schema, table, and username include/exclude lists.
+The query's predicates are generated using a SQL in-clause based on the values specified in the include/exclude list configuration properties. +
+ +
+This mode is often useful when capturing a large number of tables from a database that is heavily saturated with changes.
+The generated query is much more complex than the `none` mode, and focuses on reducing network overhead and performing as much filtering at the database level as possible. +
+ +
+Finally, **do not** specify regular expressions as part of schema and table include/exclude configuration properties.
+Using regular expressions will cause the connector to not match changes based on these configuration properties, causing changes to be missed.
+
+`regex`:: This mode creates a JDBC query that filters not only operation types at the database level, but also schema, table, and username include/exclude lists.
+However, unlike the `in` mode, this mode generates a SQL query using the Oracle `REGEXP_LIKE` operator using a conjunction or disjunction depending on whether include or excluded values are specified. +
+ +
+This mode is often useful when capturing a variable number of tables that can be identified using a small number of regular expressions.
+The generated query is much more complex than any other mode, and focuses on reducing network overhead and performing as much filtering at the database level as possible. +
+
 // Type: concept
 // ModuleID: how-the-debezium-oracle-connector-uses-event-buffering
 // Title: How the {prodname} Oracle connector uses event buffering
@@ -568,7 +879,10 @@ For example, the following illustrates what an embedded configuration would look
 ----
 <local-cache name="transactions">
   <persistence passivation="false">
-    <file-store fetch-state="true" read-only="false" preload="true" shared="false" segmented="false" path="./data" />
+    <file-store read-only="false" preload="true" shared="false">
+      <data path="./data"/>
+      <index path="./index"/>
+    </file-store>
   </persistence>
 </local-cache>
 ----
@@ -576,6 +890,13 @@ For example, the following illustrates what an embedded configuration would look
 Looking at the configuration in-depth, the cache is configured to be persistent.
 All caches should be configured this way to avoid loss of transaction events across connector restarts if a transaction is in-progress.
 Additionally, the location where the cache is kept is defined by the `path` attribute and this should be a shared location accessible all possible runtime environments.
+
+[IMPORTANT]
+====
+The Infinispan buffer implementation utilizes multiple cache configurations with different names.
+There should be a cache defined for `transactions`, `events`, `processed-transactions`, and `schema-changes`.
+Each configuration can be tuned to your performance needs or be identical other than the cache name.
+====
 
 [NOTE]
 ====
@@ -589,7 +910,10 @@ Another example, the following illustrates the same cache configured with an Inf
 <distributed-cache name="transactions" statistics="true">
   <encoding media-type="application/x-protostream" />
   <persistence passivation="false">
-    <file-store fetch-state="true" read-only="false" preload="true" shared="false" segmented="false" />
+   <file-store read-only="false" preload="true" shared="false">
+     <data path="./data"/>
+     <index path="./index"/>
+   </file-store>
   </persistence>
 </distributed-cache>
 ----
@@ -947,7 +1271,7 @@ The following example shows the value of a _create_ event value from the `custom
                         "field": "rs_id"
                     },
                     {
-                        "type": "int32",
+                        "type": "int64",
                         "optional": true,
                         "field": "ssn"
                     },
@@ -1021,7 +1345,7 @@ In the preceding example, notice how the event defines the following schema:
 [TIP]
 ====
 The names of the schemas for the `before` and `after` fields are of the form `_<logicalName>_._<schemaName>_._<tableName>_.Value`, and thus are entirely independent from the schemas for all other tables.
-As a result, when you use the xref:{link-avro-serialization}#avro-serialization[Avro converter], the Avro schemas for tables in each logical source have their own evolution and history.
+As a result, when you use the {link-prefix}:{link-avro-serialization}#avro-serialization[Avro converter], the Avro schemas for tables in each logical source have their own evolution and history.
 ====
 
 The `payload` portion of this event's _value_, provides information about the event.
@@ -1031,7 +1355,7 @@ It describes that a row was created (`op=c`), and shows that the `after` field v
 ====
 By default, the JSON representations of events are much larger than the rows that they describe.
 The larger size is due to the JSON representation including both the schema and payload portions of a message.
-You can use the xref:{link-avro-serialization}#avro-serialization[Avro Converter] to decrease the size of messages that the connector writes to Kafka topics.
+You can use the {link-prefix}:{link-avro-serialization}#avro-serialization[Avro Converter] to decrease the size of messages that the connector writes to Kafka topics.
 ====
 
 // Type: continue
@@ -1096,7 +1420,7 @@ When the columns for a row's primary/unique key are updated, the value of the ro
 As a result, {prodname} emits _three_ events after such an update:
 
 * A `DELETE` event.
-* A xref:{link-oracle-connector}#oracle-tombstone-events[tombstone event] with the old key for the row.
+* A xref:oracle-tombstone-events[tombstone event] with the old key for the row.
 * An `INSERT` event that provides the new key for the row.
 ====
 
@@ -1284,7 +1608,7 @@ The following table describes how the connector maps basic character types.
 .Mappings for Oracle basic character types
 [cols="20%a,15%a,55%a",options="header"]
 |===
-|Oracle Data Type
+|Oracle data type
 |Literal type (schema type)
 |Semantic type (schema name) and Notes
 
@@ -1333,7 +1657,7 @@ The following table describes how the connector maps binary and character large 
 .Mappings for Oracle binary and character LOB types
 [cols="20%a,15%a,55%a",options="header"]
 |===
-|Oracle Data Type
+|Oracle data type
 |Literal type (schema type)
 |Semantic type (schema name) and Notes
 
@@ -1343,7 +1667,12 @@ The following table describes how the connector maps binary and character large 
 
 |`BLOB`
 |`BYTES`
-|Either the raw bytes (the default), a base64-encoded String, or a base64-url-safe-encoded String, or a hex-encoded String, based on the xref:oracle-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting.
+|Depending on the setting of the xref:oracle-property-binary-handling-mode[`binary.handling.mode`] property in the connector configuration, the connector maps LOB values of this type to one of the following semantic types:
+
+* Raw bytes (the default)
+* A base64-encoded string
+* A base64-url-safe-encoded string
+* A hex-encoded string
 
 |`CLOB`
 |`STRING`
@@ -1363,7 +1692,12 @@ The following table describes how the connector maps binary and character large 
 
 |`RAW`
 |n/a
-|_This data type is not supported._
+|Depending on the setting of the xref:oracle-property-binary-handling-mode[`binary.handling.mode`] property in the connector configuration, the connector maps LOB values of this type to one of the following semantic types:
+
+* Raw bytes (the default)
+* A base64-encoded string
+* A base64-url-safe-encoded string
+* A hex-encoded string
 
 |===
 
@@ -1392,7 +1726,7 @@ For more information, see the _Semantic type and Notes_ column in the following 
 .Mappings for Oracle numeric data types
 [cols="20%a,15%a,55%a",options="header"]
 |===
-|Oracle Data Type
+|Oracle data type
 |Literal type (schema type)
 |Semantic type (schema name) and Notes
 
@@ -1491,6 +1825,21 @@ When the `decimal.handling.mode` property is set to `double`, the connector repr
 When the `decimal.handling.mode` property is set to `string`, the connector represents `REAL` values as their formatted string representation with schema type `STRING`.
 
 |===
+
+As mention above, Oracle allows negative scales in `NUMBER` type.
+This can cause an issue during conversion to the Avro format when the number is represented as the `Decimal`.
+`Decimal` type includes scale information, but https://avro.apache.org/docs/1.11.1/specification/#decimal[Avro specification] allows only positive values for the scale.
+Depending on the schema registry used, it may result into Avro serialization failure.
+To avoid this issue, you can use `NumberToZeroScaleConverter`, which converts sufficiently high numbers (P - S >= 19) with negative scale into `Decimal` type with zero scale.
+It can be configured as follows:
+[source]
+----
+converters=zero_scale
+zero_scale.type=io.debezium.connector.oracle.converters.NumberToZeroScaleConverter
+zero_scale.decimal.mode=precise
+----
+
+By default, the number is converted to `Decimal` type (`zero_scale.decimal.mode=precise`), but for completeness remaining two supported types (`double` and `string`) are supported as well.
 
 [id="oracle-boolean-types"]
 === Boolean types
@@ -1654,7 +2003,7 @@ The following table describes how the connector maps ROWID (row address) data ty
 .Mappings for Oracle ROWID data types
 [cols="20%a,15%a,55%a",options="header"]
 |===
-|Oracle Data Type
+|Oracle data type
 |Literal type (schema type)
 |Semantic type (schema name) and Notes
 
@@ -1674,6 +2023,40 @@ endif::product[]
 
 |===
 
+[id="oracle-xml-types"]
+=== XML types
+ifdef::community[]
+[NOTE]
+====
+Support for `XMLTYPE` is currently in an incubating state.
+Depending on the feedback that we receive, the exact semantics, configuration options, and so forth might change in future revisions.
+Please let us know if you encounter any problems while using these data types.
+====
+endif::community[]
+ifdef::product[]
+[IMPORTANT]
+====
+Use of the `XMLTYPE` with the {prodname} Oracle connector is a Technology Preview feature only.
+Technology Preview features are not supported with Red Hat production service level agreements (SLAs) and might not be functionally complete.
+Red Hat does not recommend using them in production. These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+For more information about the support scope of Red Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview[https://access.redhat.com/support/offerings/techpreview].
+====
+endif::product[]
+The following table describes how the connector maps XMLTYPE data types.
+
+.Mappings for Oracle XMLTYPE data types
+[cols="20%a,15%a,55%a",options="header"]
+|===
+|Oracle data type
+|Literal type (schema type)
+|Semantic type (schema name) and Notes
+
+|`XMLTYPE`
+|`STRING`
+|`io.debezium.data.Xml`
+
+|===
+
 [id="oracle-user-defined-types"]
 === User-defined types
 
@@ -1685,7 +2068,7 @@ At this time, you cannot use the {prodname} Oracle connector with any of these u
 === Oracle-supplied types
 
 Oracle provides SQL-based interfaces that you can use to define new types when the built-in or ANSI-supported types are insufficient.
-Oracle offers several commonly used data types to serve a broad array of purposes such as *Any*, *XML*, or *Spatial* types.
+Oracle offers several commonly used data types to serve a broad array of purposes such as *Any* or *Spatial* types.
 At this time, you cannot use the {prodname} Oracle connector with any of these data types.
 
 [[oracle-default-values]]
@@ -1860,6 +2243,36 @@ If the redo log lacks sufficient capacity, both the database and the {prodname} 
 Consult with your database administrator to evaluate whether the database might require increased log capacity.
 
 // Type: procedure
+// ModuleID: oracle-connector-specifying-the-archive-log-destination
+// Title: Specifying the archive log destination that the {prodname} Oracle connector uses
+=== Archive log destinations
+
+Oracle database administrators can configure up to 31 different destinations for archive logs.
+Administrators can set parameters for each destination to designate it for a specific use, for example, log shipping for physical standbys, or external storage to allow for extended log retention.
+Oracle reports details about archive log destinations in the `V$ARCHIVE_DEST_STATUS` view.
+
+The {prodname} Oracle connector only uses destinations that have a status of `VALID` and a type of `LOCAL`.
+If your Oracle environment includes multiple destinations that satisfy that criteria, consult with your Oracle administrator to determine which archive log destination {prodname} should use.
+
+.Procedure
+* To specify the archive log destination that you want {prodname} to use, set the xref:oracle-property-log-mining-archive-destination-name[`log.mining.archive.destination.name`] property in the connector configuration. +
+ +
+For example, in an organization with archive destinations `LOG_ARCHIVE_DEST_2` and `LOG_ARCHIVE_DEST_3`, if both destinations satisfy the criteria for use with {prodname} (that is, `status` is `VALID` and `type` is `LOCAL`),  to configure the connector to use `LOG_ARCHIVE_DEST_3`, set the value of the `log.mining.archive.destination.name` property as follows:
+
+[source,json]
+----
+{
+  "log.mining.archive.destination.name": "LOG_ARCHIVE_DEST_3"
+}
+----
+
+[WARNING]
+====
+If your Oracle environment includes multiple destinations that satisfy that criteria, and you fail to specify the preferred destination, the {prodname} Oracle connector selects the destination path at random.
+Because the retention policy that is configured for each destination might differ, this can lead to errors if the connector selects a path from which the requested log data was deleted.
+====
+
+// Type: procedure
 // ModuleID: creating-an-oracle-user-for-the-debezium-oracle-connector
 // Title: Creating an Oracle user for the {prodname} Oracle connector
 [id="creating-users-for-the-connector"]
@@ -1922,6 +2335,9 @@ sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
   GRANT SELECT ON V_$ARCHIVE_DEST_STATUS TO c##dbzuser CONTAINER=ALL; <22>
   GRANT SELECT ON V_$TRANSACTION TO c##dbzuser CONTAINER=ALL; <23>
 
+  GRANT SELECT ON V_$MYSTAT TO c##dbzuser CONTAINER=ALL; <24>
+  GRANT SELECT ON V_$STATNAME TO c##dbzuser CONTAINER=ALL; <25>
+
   exit;
 ----
 
@@ -1980,7 +2396,7 @@ The flush table allows the connector to explicitly control flushing of the LGWR 
 If snapshot locks are explicitly disabled via configuration, this grant can be safely ignored.
 
 |12
-|CREATE ANY SEQUENCE
+|CREATE SEQUENCE
 |Enables the connector to create a sequence in its default tablespace.
 
 |13
@@ -1995,7 +2411,7 @@ On newer versions of Oracle this is granted via the `LOGMINING` role but on olde
 This is required to interact with Oracle LogMiner.
 On newer versions of Oracle this is granted via the `LOGMINING` role but on older versions, this must be explicitly granted.
 
-|15 to 23
+|15 to 25
 |SELECT ON V_$....
 |Enables the connector to read these tables.
 The connector must be able to read information about the Oracle redo and archive logs, and the current transaction state, to prepare the Oracle LogMiner session.
@@ -2008,7 +2424,18 @@ Without these grants, the connector cannot operate.
 [id="support-for-oracle-standby-databases"]
 === Standby databases
 ifdef::product[]
-The {prodname} Oracle connector cannot be used with Oracle physical or logical standby databases.
+[IMPORTANT]
+====
+The ability for the {prodname} Oracle connector to ingest changes from a read-only logical standby database is a Developer Preview feature.
+Developer Preview features are not supported by Red{nbsp}Hat in any way and are not functionally complete or production-ready.
+Do not use Developer Preview software for production or business-critical workloads.
+Developer Preview software provides early access to upcoming product software in advance of its possible inclusion in a Red{nbsp}Hat product offering.
+Customers can use this software to test functionality and provide feedback during the development process.
+This software might not have any documentation, is subject to change or removal at any time, and has received limited testing.
+Red{nbsp}Hat might provide ways to submit feedback on Developer Preview software without an associated SLA.
+
+For more information about the support scope of Red{nbsp}Hat Developer Preview software, see link:https://access.redhat.com/support/offerings/devpreview/[Developer Preview Support Scope].
+====
 endif::product[]
 ifdef::community[]
 An Oracle database can be configured with either a physical or a logical standby environment to provide for recovery after of a production failure.
@@ -2026,6 +2453,7 @@ When using a physical standby, it is sufficient to reconfigure the {prodname} Or
 In the case of a logical standby, the standby is not an exact copy of the production database, so the SCN offsets in the standby differ from those in the production database.
 If you use a logical standby, to help ensure that {prodname} does not miss any change events, after the database is open, configure a new connector and perform a new database snapshot.
 endif::community[]
+
 // Type: assembly
 // ModuleID: deployment-of-debezium-oracle-connectors
 // Title: Deployment of {prodname} Oracle connectors
@@ -2037,19 +2465,23 @@ To deploy a {prodname} Oracle connector, you install the {prodname} Oracle conne
 
 .Prerequisites
 * link:https://zookeeper.apache.org/[Apache ZooKeeper], link:http://kafka.apache.org/[Apache Kafka], and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
-* Oracle Database is installed, and is xref:{link-oracle-connector}#setting-up-oracle[configured to work with the {prodname} connector].
+* Oracle Database is installed, and is xref:setting-up-oracle[configured to work with the {prodname} connector].
 
 .Procedure
 
 . Download the {prodname} https://repo1.maven.org/maven2/io/debezium/debezium-connector-oracle/{debezium-version}/debezium-connector-oracle-{debezium-version}-plugin.tar.gz[Oracle connector plug-in archive].
 . Extract the files into your Kafka Connect environment.
 . Download the link:https://repo1.maven.org/maven2/com/oracle/database/jdbc/ojdbc8/{ojdbc8-version}/ojdbc8-{ojdbc8-version}.jar[JDBC driver for Oracle] from Maven Central and extract the downloaded driver file to the directory that contains the {prodname} Oracle connector JAR file.
++
+NOTE: If you use the {prodname} Oracle connector with Oracle XStream, obtain the JDBC driver as part of the Oracle Instant Client package.
+For more information, see xref:obtaining-oracle-jdbc-driver-and-xstreams-api-files[].
+. Download the link:https://repo1.maven.org/maven2/com/oracle/database/xml/xdb/{ojdbc8-version}/xdb-{ojdbc8-version}.jar[XDB library for Oracle] from Maven Central and extract the downloaded file to the directory that contains the {prodname} Oracle connector JAR file.
 . Add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`].
 . Restart your Kafka Connect process to pick up the new JAR files.
 
 .Next steps
 
-* xref:{link-oracle-connector}#oracle-example-configuration[Configure the connector] and xref:{link-oracle-connector}#oracle-adding-connector-configuration[add the configuration to your Kafka Connect cluster.]
+* xref:oracle-example-configuration[Configure the connector] and xref:oracle-adding-connector-configuration[add the configuration to your Kafka Connect cluster.]
 
 endif::community[]
 
@@ -2077,26 +2509,12 @@ For more information, see xref:obtaining-the-oracle-jdbc-driver[Obtaining the Or
 === Obtaining the Oracle JDBC driver
 
 Due to licensing requirements, the Oracle JDBC driver file that {prodname} requires to connect to an Oracle database is not included in the {prodname} Oracle connector archive.
-ifdef::product[]
 The driver is available for download from Maven Central.
 Depending on the deployment method that you use, you retrieve the driver by adding a command to the Kafka Connect custom resource or to the Dockerfile that you use to build the connector image.
 
 * If you use {StreamsName} to add the connector to your Kafka Connect image, add the Maven Central location for the driver to `builds.plugins.artifact.url` in the `KafkaConnect` custom resource as shown in xref:using-streams-to-deploy-debezium-oracle-connectors[].
 * If you use a Dockerfile to build a container image for the connector, insert a `curl` command in the Dockerfile to specify the URL for downloading the required driver file from Maven Central.
 For more information, see xref:deploying-debezium-oracle-connectors[Deploying a {prodname} Oracle connector by building a custom Kafka Connect container image from a Dockerfile].
-
-endif::product[]
-ifdef::community[]
-
-NOTE: If you use the {prodname} Oracle connector with Oracle XStream, obtain the JDBC driver as part of the Oracle Instant Client package.
-For more information, see xref:obtaining-oracle-jdbc-driver-and-xstreams-api-files[].
-
-.Procedure
-
-. From a browser, link:https://repo1.maven.org/maven2/com/oracle/database/jdbc/ojdbc8/{ojdbc8-version}/ojdbc8-{ojdbc8-version}.jar[download the 'ojdbc8.jar' from Maven Central].
-. Copy the downloaded driver file to the directory that contains the {prodname} Oracle connector JAR file (`debezium-connector-oracle-{debezium-version}.jar`).
-endif::community[]
-
 
 // Type: concept
 [id="openshift-streams-oracle-connector-deployment"]
@@ -2107,7 +2525,7 @@ include::{partialsdir}/modules/all-connectors/con-connector-streams-deployment.a
 // Type: procedure
 [id="using-streams-to-deploy-debezium-oracle-connectors"]
 === Using {StreamsName} to deploy a {prodname} Oracle connector
-include::{partialsdir}/modules/all-connectors/proc-using-streams-to-deploy-a-debezium-connector.adoc[leveloffset=+1]
+include::{partialsdir}/modules/all-connectors/proc-using-streams-to-deploy-a-debezium-db2-ora-pg-connector.adoc[leveloffset=+1]
 
 // Type: procedure
 [id="deploying-debezium-oracle-connectors"]
@@ -2138,7 +2556,7 @@ You then need to create the following custom resources (CRs):
 * The Kafka Connect server has access to Maven Central to download the required JDBC driver for Oracle.
   You can also use a local copy of the driver, or one that is available from a local Maven repository or other HTTP server.
 +
-For more information, see xref:{link-oracle-connector}#obtaining-the-oracle-jdbc-driver[Obtaining the Oracle JDBC driver].
+For more information, see xref:obtaining-the-oracle-jdbc-driver[Obtaining the Oracle JDBC driver].
 
 .Procedure
 
@@ -2156,9 +2574,9 @@ FROM {DockerKafkaConnect}
 USER root:root
 RUN mkdir -p /opt/kafka/plugins/debezium // <2>
 RUN cd /opt/kafka/plugins/debezium/ \
-&& curl -O {red-hat-maven-repository}debezium/debezium-connector-{connector-file}/{debezium-version}-redhat-__<build_number>__/debezium-connector-{connector-file}-{debezium-version}-redhat-__<build_number>__-plugin.zip \
-&& unzip debezium-connector-{connector-file}-{debezium-version}-redhat-__<build_number>__-plugin.zip \
-&& rm debezium-connector-{connector-file}-{debezium-version}-redhat-__<build_number>__-plugin.zip
+&& curl -O {red-hat-maven-repository}debezium/debezium-connector-{connector-file}/{debezium-version}-redhat-{debezium-build-number}/debezium-connector-{connector-file}-{debezium-version}-redhat-{debezium-build-number}-plugin.zip \
+&& unzip debezium-connector-{connector-file}-{debezium-version}-redhat-{debezium-build-number}-plugin.zip \
+&& rm debezium-connector-{connector-file}-{debezium-version}-redhat-{debezium-build-number}-plugin.zip
 RUN cd /opt/kafka/plugins/debezium/ \
 && curl -O https://repo1.maven.org/maven2/com/oracle/ojdbc/ojdbc8/21.1.0.0/ojdbc8-21.1.0.0.jar
 USER 1001
@@ -2210,7 +2628,8 @@ docker push _<myregistry.io>_/debezium-container-for-oracle:latest
 ----
 
 .. Create a new {prodname} Oracle KafkaConnect custom resource (CR).
-For example, create a KafkaConnect CR with the name `dbz-connect.yaml` that specifies `annotations` and `image` properties as shown in the following example:
+For example, create a `KafkaConnect` CR with the name `dbz-connect.yaml` that specifies `annotations` and `image` properties.
+The following example shows an excerpt from a `dbz-connect.yaml` file that describes a `KafkaConnect` custom resource. +
 +
 =====================================================================
 [source,yaml,subs="+attributes"]
@@ -2223,6 +2642,8 @@ metadata:
     strimzi.io/use-connector-resources: "true" // <1>
 spec:
   image: debezium-container-for-oracle // <2>
+
+  ...
 ----
 =====================================================================
 +
@@ -2262,7 +2683,7 @@ This host has a database named `ORCLCDB`, and `server1` is the server's logical 
 apiVersion: {KafkaConnectorApiVersion}
 kind: KafkaConnector
 metadata:
-  name: inventory-connector // <1>
+  name: inventory-connector-{context} // <1>
   labels:
     strimzi.io/cluster: my-connect-cluster
   annotations:
@@ -2276,7 +2697,7 @@ spec:
     database.password: dbz // <6>
     database.dbname: ORCLCDB // <7>
     database.pdb.name : ORCLPDB1, <8>
-    topic.prefix: server1 // <9>
+    topic.prefix: inventory-connector-{context} // <9>
     schema.history.internal.kafka.bootstrap.servers: kafka:9092 // <10>
     schema.history.internal.kafka.topic: schema-changes.inventory // <11>
 ----
@@ -2299,10 +2720,10 @@ spec:
 |The port number of the Oracle instance.
 
 |5
-|The name of the Oracle user, as specified in xref:{link-oracle-connector}#creating-users-for-the-connector[Creating users for the connector].
+|The name of the Oracle user, as specified in xref:creating-users-for-the-connector[Creating users for the connector].
 
 |6
-|The password for the Oracle user, as specified in xref:{link-oracle-connector}#creating-users-for-the-connector[Creating users for the connector].
+|The password for the Oracle user, as specified in xref:creating-users-for-the-connector[Creating users for the connector].
 
 |7
 |The name of the database to capture changes from.
@@ -2366,8 +2787,8 @@ Optionally, you can ignore, mask, or truncate columns that contain sensitive dat
 <2> The name of this Oracle connector class.
 <3> The address of the Oracle instance.
 <4> The port number of the Oracle instance.
-<5> The name of the Oracle user, as specified in xref:{link-oracle-connector}#creating-users-for-the-connector[Creating users for the connector].
-<6> The password for the Oracle user, as specified in xref:{link-oracle-connector}#creating-users-for-the-connector[Creating users for the connector].
+<5> The name of the Oracle user, as specified in xref:creating-users-for-the-connector[Creating users for the connector].
+<6> The password for the Oracle user, as specified in xref:creating-users-for-the-connector[Creating users for the connector].
 <7> The name of the database to capture changes from.
 <8> Topic prefix that identifies and provides a namespace for the Oracle database server from which the connector captures changes.
 <9> The maximum number of tasks to create for this connector.
@@ -2401,8 +2822,7 @@ The following JSON example shows the same configuration as in the preceding exam
 ----
 endif::community[]
 
-
-For the complete list of the configuration properties that you can set for the {prodname} Oracle connector, see xref:{link-oracle-connector}#oracle-connector-properties[Oracle connector properties].
+For the complete list of the configuration properties that you can set for the {prodname} Oracle connector, see xref:oracle-connector-properties[Oracle connector properties].
 
 ifdef::community[]
 You can send this configuration with a `POST` command to a running Kafka Connect service.
@@ -2419,19 +2839,19 @@ To start running a {prodname} Oracle connector, create a connector configuration
 
 .Prerequisites
 
-* xref:{link-oracle-connector}#setting-up-oracle[Oracle is configured for use with {prodname}].
+* xref:setting-up-oracle[Oracle is configured for use with {prodname}].
 * The {prodname} Oracle connector is installed.
 
 .Procedure
 
-. Create a xref:{link-oracle-connector}#oracle-example-configuration[configuration] for the Oracle connector.
+. Create a xref:oracle-example-configuration[configuration] for the Oracle connector.
 
 . Use the link:{link-kafka-docs}/#connect_rest[Kafka Connect REST API] to add that connector configuration to your Kafka Connect cluster.
 endif::community[]
 
 .Results
 
-After the connector starts, it xref:{link-oracle-connector}#oracle-snapshots[performs a consistent snapshot] of the Oracle databases that the connector is configured for.
+After the connector starts, it xref:oracle-snapshots[performs a consistent snapshot] of the Oracle databases that the connector is configured for.
 The connector then starts generating data change events for row-level operations and streaming the change event records to Kafka topics.
 
 // Type: concept
@@ -2547,7 +2967,7 @@ The following configuration properties are _required_ unless a default value is 
 For example, `boolean`. +
 This property is required to enable the connector to use a custom converter.
 
-For each converter that you configure for a connector, you must also add a `.type` property, which specifies the fully-qualifed name of the class that implements the converter interface.
+For each converter that you configure for a connector, you must also add a `.type` property, which specifies the fully-qualified name of the class that implements the converter interface.
 The `.type` property uses the following format: +
 
 `_<converterSymbolicName>_.type` +
@@ -2585,7 +3005,8 @@ For example, to define a `selector` parameter that specifies the subset of colum
 
 |[[oracle-property-database-dbname]]<<oracle-property-database-dbname, `+database.dbname+`>>
 |No default
-|Name of the database to connect to. Must be the CDB name when working with the CDB + PDB model.
+|Name of the database to connect to.
+In a container database environment, specify the name of the root container database (CDB), not the name of an included pluggable database (PDB).
 
 |[[oracle-property-database-url]]<<oracle-property-database-url, `+database.url+`>>
 |No default
@@ -2614,8 +3035,10 @@ The connector is also unable to recover its database schema history topic.
 |`logminer`
 |The adapter implementation that the connector uses when it streams database changes.
 You can set the following values:
-`logminer`(default):: The connector uses the native Oracle LogMiner API.
+
+`logminer` (default):: The connector uses the native Oracle LogMiner API.
 ifdef::community[]
+`olr`:: The connector uses OpenLogReplicator.
 `xstream`:: The connector uses the Oracle XStreams API.
 endif::community[]
 |[[oracle-property-snapshot-mode]]<<oracle-property-snapshot-mode, `+snapshot.mode+`>>
@@ -2658,20 +3081,25 @@ You can set the following values:
   Use this setting only if no schema changes might occur during the creation of the snapshot.
 
 |[[oracle-property-snapshot-include-collection-list]]<<oracle-property-snapshot-include-collection-list, `+snapshot.include.collection.list+`>>
-| All tables specified in `table.include.list`
-|An optional, comma-separated list of regular expressions that match the fully-qualified names (`_<schemaName>_._<tableName>_`) of the tables to include in a snapshot.
+| All tables specified in the connector's xref:{context}-property-table-include-list[`table.include.list`] property.
+|An optional, comma-separated list of regular expressions that match the fully-qualified names (`__<databaseName>.____<schemaName>__.__<tableName>__`) of the tables to include in a snapshot.
+
+In a multitenant container database (CDB) environment, the regular expression must include the xref:oracle-property-database-pdb-name[pluggable database (PDB) name], using the format `__<pdbName>__.__<schemaName>__.__<tableName>__`.
+
+To match the name of a table, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the table; it does not match substrings that might be present in a table name. +
 ifdef::product[]
 Only POSIX regular expressions are valid.
 endif::product[]
 ifdef::community[]
 In environments that use the LogMiner implementation, you must use POSIX regular expressions only.
 endif::community[]
-The specified items must be named in the connector's xref:{context}-property-table-include-list[`table.include.list`] property.
+
+A snapshot can only include tables that are named in the connector's xref:{context}-property-table-include-list[`table.include.list`] property.
+
 This property takes effect only if the connector's xref:oracle-property-snapshot-mode[`snapshot.mode`] property is set to a value other than `never`. +
 This property does not affect the behavior of incremental snapshots. +
 
-To match the name of a table, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
-That is, the specified expression is matched against the entire name string of the table; it does not match substrings that might be present in a table name.
 
 |[[oracle-property-snapshot-select-statement-overrides]]<<oracle-property-snapshot-select-statement-overrides, `+snapshot.select.statement.overrides+`>>
 |No default
@@ -2815,6 +3243,10 @@ To match the name of a column, {prodname} applies the regular expression that yo
 That is, the specified expression is matched against the entire name string of the column it does not match substrings that might be present in a column name. +
 If you include this property in the configuration, do not set the `column.include.list` property.
 
+|[[oracle-property-skip-messages-without-change]]<<oracle-property-skip-messages-without-change, `+skip.messages.without.change+`>>
+|`false`
+| Specifies whether to skip publishing messages when there is no change in included columns. This would essentially filter messages if there is no change in columns included as per `column.include.list` or `column.exclude.list` properties.
+
 |[[oracle-property-column-mask-hash]]<<oracle-property-column-mask-hash, `column.mask.hash._hashAlgorithm_.with.salt._salt_`>>;
 [[oracle-property-column-mask-hash-v2]]<<oracle-property-column-mask-hash-v2, `column.mask.hash.v2._hashAlgorithm_.with.salt._salt_`>>
 |_n/a_
@@ -2852,6 +3284,17 @@ Hashing strategy version 2 should be used to ensure fidelity if the value is bei
 
 * `none` does not apply any adjustment. +
 * `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
+* `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java +
+
+|[[oracle-property-field-name-adjustment-mode]]<<oracle-property-field-name-adjustment-mode,`+field.name.adjustment.mode+`>>
+|none
+|Specifies how field names should be adjusted for compatibility with the message converter used by the connector. Possible settings:  +
+
+* `none` does not apply any adjustment. +
+* `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
+* `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java +
+
+See {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming] for more details.
 
 |[[oracle-property-decimal-handling-mode]]<<oracle-property-decimal-handling-mode, `+decimal.handling.mode+`>>
 |`precise`
@@ -3030,25 +3473,20 @@ After the connector inserts records into the configured table, it is able to rec
 Use this property to prevent snapshot interruptions when you start multiple connectors in a cluster, which might cause re-balancing of connectors.
 
 |[[oracle-property-snapshot-fetch-size]]<<oracle-property-snapshot-fetch-size, `+snapshot.fetch.size+`>>
-|`2000`
+|`10000`
 |Specifies the maximum number of rows that should be read in one go from each table while taking a snapshot.
 The connector reads table contents in multiple batches of the specified size.
 
 |[[oracle-property-query-fetch-size]]<<oracle-property-query-fetch-size, `+query.fetch.size+`>>
-|No default
+|`10000`
 |Specifies the number of rows that will be fetched for each database round-trip of a given query.
-Defaults to the JDBC driver's default fetch size.
-
-|[[oracle-property-sanitize-field-names]]<<oracle-property-sanitize-field-names, `+sanitize.field.names+`>>
-|`true` when the connector configuration explicitly specifies the `key.converter` or `value.converter` parameters to use Avro, otherwise defaults to `false`.
-|Specifies whether field names are normalized to comply with Avro naming requirements.
-For more information, see xref:{link-avro-serialization}#avro-naming[Avro naming].
+Using a value of `0` will use the JDBC driver's default fetch size.
 
 |[[oracle-property-provide-transaction-metadata]]<<oracle-property-provide-transaction-metadata, `+provide.transaction.metadata+`>>
 |`false`
 |Set the property to `true` if you want {prodname} to generate events with transaction boundaries and enriches data events envelope with transaction metadata.
 
-See xref:{link-oracle-connector}#oracle-transaction-metadata[Transaction Metadata] for additional details.
+See xref:oracle-transaction-metadata[Transaction Metadata] for additional details.
 
 |[[oracle-property-log-mining-strategy]]<<oracle-property-log-mining-strategy, `+log.mining.strategy+`>>
 |`redo_log_catalog`
@@ -3061,6 +3499,18 @@ This also enables tracking DDL changes against captured tables, so if the schema
 This allows LogMiner to mine substantially faster but at the expense that DDL changes cannot be tracked.
 If the captured table(s) schema changes infrequently or never, this is the ideal choice.
 
+|[[oracle-property-log-mining-query-filter-mode]]<<oracle-property-log-mining-query-filter-mode, `+log.mining.query.filter.mode+`>>
+|`none`
+|Specifies the mining query mode that controls how the Oracle LogMiner query is built. +
+ +
+`none`:: The query is generated without doing any schema, table, or username filtering in the query. +
+ +
+`in`:: The query is generated using a standard SQL in-clause to filter schema, table, and usernames on the database side.
+The schema, table, and username configuration include/exclude lists should not specify any regular expressions as the query is built using the values directly. +
+ +
+`regex`:: The query is generated using Oracle's `REGEXP_LIKE` operator to filter schema and table names on the database side, along with usernames using a SQL in-clause.
+The schema and table configuration include/exclude lists can safely specify regular expressions.
+
 |[[oracle-property-log-mining-buffer-type]]<<oracle-property-log-mining-buffer-type, `+log.mining.buffer.type+`>>
 |`memory`
 |The buffer type controls how the connector manages buffering transaction data. +
@@ -3071,8 +3521,8 @@ When this option is active, the buffer state is not persisted across restarts.
 Following a restart, recreate the buffer from the SCN value of the current offset. +
 ifdef::community[]
  +
-`infinispan_embedded` - This option uses an embedded Infinispan cache to buffer transaction data and persist it to disk.
-+
+`infinispan_embedded` - This option uses an embedded Infinispan cache to buffer transaction data and persist it to disk. +
+ +
 `infinispan_remote` - This option uses a remote Infinispan cluster to buffer transaction data and persist it to disk.
 
 
@@ -3081,6 +3531,11 @@ ifdef::community[]
 |The maximum number of events a transaction is capable of having in the transaction buffer.
 Transactions with event counts that exceed this threshold not be emitted and will be abandoned.
 The default behavior is there is no transaction event threshold.
+
+|[[oracle-property-log-mining-buffer-infinispan-cache-global]]<<oracle-property-log-mining-buffer-infinispan-cache-global, `+log.mining.buffer.infinispan.cache.global+`>>
+|No default
+|The XML configuration for the Infinispan global configuration.
+For more information, see xref:oracle-event-buffering-infinispan[Infinispan event buffering].
 
 |[[oracle-property-log-mining-buffer-infinispan-cache-transactions]]<<oracle-property-log-mining-buffer-infinispan-cache-transactions, `+log.mining.buffer.infinispan.cache.transactions+`>>
 |No default
@@ -3111,13 +3566,20 @@ The default behavior is that the buffer state is always retained between restart
 Set to `true` only in testing or development environments.
 endif::community[]
 
-|[[oracle-property-log-mining-session-max-ms]]<<oracle-property-log-mining-session-max-ms, `+log.mining.session.max.xs+`>>
+|[[oracle-property-log-mining-session-max-ms]]<<oracle-property-log-mining-session-max-ms, `+log.mining.session.max.ms+`>>
 |`0`
 |The maximum number of milliseconds that a LogMiner session can be active before a new session is used. +
  +
 For low volume systems, a LogMiner session may consume too much PGA memory when the same session is used for a long period of time.
 The default behavior is to only use a new LogMiner session when a log switch is detected.
 By setting this value to something greater than `0`, this specifies the maximum number of milliseconds a LogMiner session can be active before it gets stopped and started to deallocate and reallocate PGA memory.
+
+|[[oracle-property-log-mining-restart-connection]]<<oracle-property-log-mining-restart-connection, `+log.mining.restart.connection+`>>
+|`false`
+|Specifies whether the JDBC connection will be closed and re-opened on log switches or when mining session has reached maximum lifetime threshold. +
+ +
+By default, the JDBC connection is not closed across log switches or maximum session lifetimes. +
+This should be enabled if you experience excessive Oracle SGA growth with LogMiner.
 
 |[[oracle-property-log-mining-batch-size-min]]<<oracle-property-log-mining-batch-size-min, `+log.mining.batch.size.min+`>>
 |`1000`
@@ -3130,6 +3592,7 @@ By setting this value to something greater than `0`, this specifies the maximum 
 |[[oracle-property-log-mining-batch-size-default]]<<oracle-property-log-mining-batch-size-default, `+log.mining.batch.size.default+`>>
 |`20000`
 |The starting SCN interval size that the connector uses for reading data from redo/archive logs.
+This also servers as a measure for adjusting batch size - when the difference between current SCN and beginning/end SCN of the batch is bigger than this value, batch size is increased/decreased.
 
 |[[oracle-property-log-mining-sleep-time-min-ms]]<<oracle-property-log-mining-sleep-time-min-ms, `+log.mining.sleep.time.min.ms+`>>
 |`0`
@@ -3168,25 +3631,27 @@ The degree of latency depends on how frequently the database is configured to ar
 |The number of milliseconds the connector will sleep in between polling to determine if the starting system change number is in the archive logs.
 If `log.mining.archive.log.only.mode` is not enabled, this setting is not used.
 
-|[[oracle-property-log-mining-transaction-retention-hours]]<<oracle-property-log-mining-transaction-retention-hours, `log.mining.transaction.retention.hours`>>
+|[[oracle-property-log-mining-transaction-retention-ms]]<<oracle-property-log-mining-transaction-retention-ms, `log.mining.transaction.retention.ms`>>
 |`0`
-|Positive integer value that specifies the number of hours to retain long running transactions between redo log switches.
+|Positive integer value that specifies the number of milliseconds to retain long running transactions between redo log switches.
 When set to `0`, transactions are retained until a commit or rollback is detected.
 
-The LogMiner adapter maintains an in-memory buffer of all running transactions.
+By default, the LogMiner adapter maintains an in-memory buffer of all running transactions.
 Because all of the DML operations that are part of a transaction are buffered until a commit or rollback is detected,
 long-running transactions should be avoided in order to not overflow that buffer.
 Any transaction that exceeds this configured value is discarded entirely, and the connector does not emit any messages for the operations that were part of the transaction.
-ifdef::community[]
-While this option allows the behavior to be configured on a case-by-case basis,
-we have plans to enhance this behavior in a future release by means of adding a scalable transaction buffer, (see xref:{jira-url}/browse/DBZ-3123[DBZ-3123]).
-endif::community[]
+
 |[[oracle-property-log-mining-archive-destination-name]]<<oracle-property-log-mining-archive-destination-name, `+log.mining.archive.destination.name+`>>
 |No default
 |Specifies the configured Oracle archive destination to use when mining archive logs with LogMiner. +
  +
 The default behavior automatically selects the first valid, local configured destination.
 However, you can use a specific destination can be used by providing the destination name, for example, `LOG_ARCHIVE_DEST_5`.
+
+|[[oracle-property-log-mining-username-include-list]]<<oracle-property-log-mining-username-include-list, `+log.mining.username.include.list+`>>
+|No default
+|List of database users to include from the LogMiner query.
+It can be useful to set this property if you want the capturing process to include changes from the specified users.
 
 |[[oracle-property-log-mining-username-exclude-list]]<<oracle-property-log-mining-username-exclude-list, `+log.mining.username.exclude.list+`>>
 |No default
@@ -3202,6 +3667,12 @@ If the difference between the SCN values is greater than the specified value, an
 |`20000`
 |Specifies a value,  in milliseconds, that the connector compares to the difference between the current and previous SCN timestamps  to determine whether an SCN gap exists.
 If the difference between the timestamps is less than the specified value, and the SCN delta is greater than xref:oracle-property-log-mining-scn-gap-detection-gap-size-min[`log.mining.scn.gap.detection.gap.size.min`], then an SCN gap is detected and the connector uses a mining window larger than the configured maximum batch.
+
+|[[oracle-property-log-mining-flush-table-name]]<<oracle-property-log-mining-flush-table-name, `+log.mining.flush.table.name+`>>
+|`LOG_MINING_FLUSH`
+|Specifies the name of the flush table that coordinates flushing the Oracle LogWriter Buffer (LGWR) to the redo logs.
+Typically, multiple connectors can use the same flush table.
+However, if connectors encounter table lock contention errors, use this property to specify a dedicated table for each connector deployment.
 
 |[[oracle-property-lob-enabled]]<<oracle-property-lob-enabled, `+lob.enabled+`>>
 |`false`
@@ -3262,17 +3733,52 @@ By default, only truncate operations are skipped.
 
 |[[oracle-property-signal-data-collection]]<<oracle-property-signal-data-collection,`+signal.data.collection+`>>
 |No default value
-a|Fully-qualified name of the data collection that is used to send xref:{link-signalling}#debezium-signaling-enabling-signaling[signals] to the connector.
+a|Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}#debezium-signaling-enabling-source-signaling-channel[signals] to the connector.
 When you use this property with an Oracle pluggable database (PDB), set its value to the name of the root database. +
 Use the following format to specify the collection name: +
 `_<databaseName>_._<schemaName>_._<tableName>_`
 
+|[[oracle-property-signal-enabled-channels]]<<oracle-property-signal-enabled-channels, `+signal.enabled.channels+`>>
+|source
+| List of the signaling channel names that are enabled for the connector.
+By default, the following channels are available:
+
+* `source`
+* `kafka`
+* `file`
+* `jmx`
+ifdef::community[]
+Optionally, you can also implement a {link-prefix}:{link-signalling}#debezium-signaling-enabling-custom-signaling-channel[custom signaling channel].
+endif::community[]
+|[[oracle-property-notification-enabled-channels]]<<oracle-property-notification-enabled-channels, `+notification.enabled.channels+`>>
+|No default
+| List of notification channel names that are enabled for the connector.
+By default, the following channels are available:
+
+* `sink`
+* `log`
+* `jmx`
+ifdef::community[]
+Optionally, you can also implement a {link-prefix}:{link-notification}#debezium-notification-custom-channel[custom notification channel].
+endif::community[]
 |[[oracle-property-incremental-snapshot-chunk-size]]<<oracle-property-incremental-snapshot-chunk-size, `+incremental.snapshot.chunk.size+`>>
 |`1024`
 |The maximum number of rows that the connector fetches and reads into memory during an incremental snapshot chunk.
 Increasing the chunk size provides greater efficiency, because the snapshot runs fewer snapshot queries of a greater size.
 However, larger chunk sizes also require more memory to buffer the snapshot data.
 Adjust the chunk size to a value that provides the best performance in your environment.
+
+|[[oracle-property-incremental-snapshot-watermarking-strategy]]<<oracle-property-incremental-snapshot-watermarking-strategy, `+incremental.snapshot.watermarking.strategy+`>>
+|`insert_insert`
+|Specifies the watermarking mechanism that the connector uses during an incremental snapshot to deduplicate events that might be captured by an incremental snapshot and then recaptured after streaming resumes. +
+You can specify one of the following options:
+
+`insert_insert`:: When you send a signal to initiate an incremental snapshot, for every chunk that {prodname} reads during the snapshot, it writes an entry to the signaling data collection to record the signal to open the snapshot window.
+After the snapshot completes, {prodname} inserts a second entry that records the signal to close the window.
+`insert_delete`:: When you send a signal to initiate an incremental snapshot, for every chunk that {prodname} reads, it writes a single entry to the signaling data collection to record the signal to open the snapshot window.
+After the snapshot completes, this entry is removed.
+No entry is created for the signal to close the snapshot window.
+Set this option to prevent rapid growth of the signaling data collection.
 
 |[[oracle-property-topic-naming-strategy]]<<oracle-property-topic-naming-strategy, `topic.naming.strategy`>>
 |`io.debezium.schema.SchemaTopicNamingStrategy`
@@ -3302,11 +3808,48 @@ _topic.prefix_._topic.transaction_ +
  +
 For example, if the topic prefix is `fulfillment`, the default topic name is `fulfillment.transaction`.
 
+|[[oracle-property-snapshot-max-threads]]<<oracle-property-snapshot-max-threads, `snapshot.max.threads`>>
+|`1`
+|Specifies the number of threads that the connector uses when performing an initial snapshot.
+To enable parallel initial snapshots, set the property to a value greater than 1.
+In a parallel initial snapshot, the connector processes multiple tables concurrently.
+ifdef::community[]
+This feature is incubating.
+endif::community[]
+ifdef::product[]
+[IMPORTANT]
+====
+Parallel initial snapshots is a Technology Preview feature only.
+Technology Preview features are not supported with Red Hat production service level agreements (SLAs) and might not be functionally complete.
+Red Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+For more information about the support scope of Red Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
+endif::product[]
+
+|[[oracle-property-custom-metric-tags]]<<oracle-property-custom-metric-tags, `custom.metric.tags`>>
+|`No default`
+|The custom metric tags will accept key-value pairs to customize the MBean object name which should be appended the end of regular name, each key would represent a tag for the MBean object name, and the corresponding value would be the value of that tag the key is. For example: `k1=v1,k2=v2`.
+
+|[[oracle-property-errors-max-retires]]<<oracle-property-errors-max-retires, `errors.max.retries`>>
+|`-1`
+|The maximum number of retries on retriable errors (e.g. connection errors) before failing (-1 = no limit, 0 = disabled, > 0 = num of retries).
+
 |===
 
 [id="debezium-oracle-connector-database-history-configuration-properties"]
 ==== {prodname} Oracle connector database schema history configuration properties
 include::../../partials/modules/all-connectors/ref-connector-configuration-database-history-properties.adoc[leveloffset=+1]
+
+[id="debezium-{context}-connector-kafka-signals-configuration-properties"]
+==== {prodname} connector Kafka signals configuration properties
+
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-signals-configuration-properties.adoc[leveloffset=+1]
+
+[id="debezium-{context}-connector-kafka-notifications-configuration-properties"]
+==== {prodname} connector sink notifications configuration properties
+
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-notification-configuration-properties.adoc[leveloffset=+1]
 
 [id="debezium-oracle-connector-pass-through-database-driver-configuration-properties"]
 ==== {prodname} Oracle connector pass-through database driver configuration properties
@@ -3321,11 +3864,11 @@ include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-databas
 
 The {prodname} Oracle connector provides three metric types in addition to the built-in support for JMX metrics that Apache Zookeeper, Apache Kafka, and Kafka Connect have.
 
-* xref:{link-oracle-connector}#oracle-snapshot-metrics[snapshot metrics]; for monitoring the connector when performing snapshots
-* xref:{link-oracle-connector}#oracle-streaming-metrics[streaming metrics]; for monitoring the connector when processing change events
-* xref:{link-oracle-connector}#oracle-schema-history-metrics[schema history metrics]; for monitoring the status of the connector's schema history
+* xref:oracle-snapshot-metrics[snapshot metrics]; for monitoring the connector when performing snapshots
+* xref:oracle-streaming-metrics[streaming metrics]; for monitoring the connector when processing change events
+* xref:oracle-schema-history-metrics[schema history metrics]; for monitoring the status of the connector's schema history
 
-Please refer to the xref:{link-debezium-monitoring}#monitoring-debezium[monitoring documentation] for details of how to expose these metrics via JMX.
+Please refer to the {link-prefix}:{link-debezium-monitoring}#monitoring-debezium[monitoring documentation] for details of how to expose these metrics via JMX.
 
 // Type: reference
 // ModuleID: debezium-oracle-connector-snapshot-metrics
@@ -3360,19 +3903,24 @@ The {prodname} Oracle connector also provides the following additional streaming
 |Attributes |Type |Description
 
 |[[oracle-streaming-metrics-currentscn]]<<oracle-streaming-metrics-currentscn, `+CurrentScn+`>>
-|`string`
+|`BigInteger`
 |The most recent system change number that has been processed.
 
 |[[oracle-streaming-metrics-oldest-scn]]<<oracle-streaming-metrics-oldest-scn, `+OldestScn+`>>
-|`string`
+|`BigInteger`
 |The oldest system change number in the transaction buffer.
 
+|[[oracle-streaming-metrics-oldest-scn-age-in-milliseconds]]<<oracle-streaming-metrics-oldest-scn-age-in-milliseconds, `+OldestScnAgeInMilliseconds+`>>
+|`long`
+|The oldest system change number's age in milliseconds.
+If the buffer is empty, the value will be `0`.
+
 |[[oracle-streaming-metrics-committed-scn]]<<oracle-streaming-metrics-committed-scn, `+CommittedScn+`>>
-|`string`
+|`BigInteger`
 |The last committed system change number from the transaction buffer.
 
 |[[oracle-streaming-metrics-offset-scn]]<<oracle-streaming-metrics-offset-scn, `+OffsetScn+`>>
-|`string`
+|`BigInteger`
 |The system change number currently written to the connector's offsets.
 
 |[[oracle-streaming-metrics-currentredologfilename]]<<oracle-streaming-metrics-currentredologfilename, `+CurrentRedoLogFileName+`>>
@@ -3486,7 +4034,7 @@ The {prodname} Oracle connector also provides the following additional streaming
 |[[oracle-streaming-metrics-hourstokeeptransactioninbuffer]]<<oracle-streaming-metrics-hourstokeeptransactioninbuffer, `+HoursToKeepTransactionInBuffer+`>>
 |`int`
 |The number of hours that transactions are retained by the connector's in-memory buffer without being committed or rolled back before being discarded.
-See <<oracle-property-log-mining-transaction-retention-hours, `log.mining.transaction.retention`>> for more details.
+For more information, see xref:oracle-property-log-mining-transaction-retention-ms[`log.mining.transaction.retention.ms`].
 
 |[[oracle-streaming-metrics-number-of-active-transactions]]<<oracle-streaming-metrics-number-of-active-transactions, `+NumberOfActiveTransactions+`>>
 |`long`
@@ -3527,7 +4075,11 @@ endif::community[]
 |[[oracle-streaming-metrics-abandoned-transaction-ids]]<<oracle-streaming-metrics-abandoned-transaction-ids, `+AbandonedTransactionIds+`>>
 |`string[]`
 |An array of the most recent abandoned transaction identifiers removed from the transaction buffer due to their age.
-See <<oracle-property-log-mining-transaction-retention-hours, `log.mining.transaction.retention.hours`>> for details.
+See <<oracle-property-log-mining-transaction-retention-ms, `log.mining.transaction.retention.ms`>> for details.
+
+|[[oracle-streaming-metrics-abandoned-transaction-count]]<<oracle-streaming-metrics-abandoned-transaction-count, `+AbandonedTransactionCount+`>>
+|`long`
+|Current number of entries in the xref:oracle-streaming-metrics-abandoned-transaction-ids[abandoned transactions] list.
 
 |[[oracle-streaming-metrics-rolled-back-transaction-ids]]<<oracle-streaming-metrics-rolled-back-transaction-ids, `+RolledBackTransactionIds+`>>
 |`string[]`
@@ -3760,6 +4312,297 @@ After the connector's commit SCN advances beyond the DDL change, to prevent unpa
 
 |===
 
+[[oracle-openlogreplicator-support]]
+== OpenLogReplicator support
+
+[NOTE]
+====
+The OpenLogReplicator ingestion adapter is currently in incubating state, i.e. exact semantics, configuration options etc. may change in future revisions, based on the feedback we receive.
+Please let us know if you encounter any problems.
+====
+
+The {prodname} Oracle connector by default ingests changes using native Oracle LogMiner.
+However, the connector can be toggled to use OpenLogReplicator, an open-source and free third-party application that reads Oracle changes directly from the redo and archive logs with low impact on the database.
+To configure the connector to use OpenLogReplicator, you must apply specific database and connector configurations that differ from those that you use with LogMiner.
+
+.Prerequisites
+
+* Download and compile OpenLogReplicator for your database environment.
+* OpenLogReplicator must be installed with direct access to the archive and redo log files. This does not necessarily require installation on the physical database server if the archive and redo logs can be accessed via some shared filesystem.
+
+=== How OpenLogReplicator works
+
+OpenLogReplicator takes on the role of Oracle LogMiner and Oracle XStream when the {prodname} Oracle connector streams changes.
+It is responsible for the capturing of changes in the redo and archive logs as they occur and batching those changes into logical transactions.
+{prodname} Oracle connector is a consumer of OpenLogReplicator by connecting to the network endpoint provided by OpenLogReplicator and ingesting the transactions as they're batched.
+
+After the OpenLogReplicator adapter ingests changes, the {prodname} Oracle connector transforms the events into xref:#oracle-events[data change events] just like any other adapter.
+
+From a network topology perspective, the {prodname} Oracle connector relies on network connections to both the Oracle database and to the OpenLogReplicator.
+Similarly, OpenLogReplicator requires a network connection to the Oracle database, as well as direct access to the raw redo and archive logs.
+
+=== Preparing the database
+
+The Oracle database must be configured to generate specific files, called archive logs.
+An archive log is a saved copy of a full online redo log.
+The database must be placed in `ARCHIVELOG` mode before it can archive redo log files.
+To place the database in `ARCHIVELOG` mode, you must set specific configuration properties to specify the destination for saving the archive log files.
+
+The following example shows a command for placing a database into archive log mode:
+
+.Configuration needed for OpenLogReplicator
+====
+[source,indent=0]
+----
+ORACLE_SID=ORCLCDB dbz_oracle sqlplus /nolog
+
+CONNECT sys/top_secret AS SYSDBA
+alter system set db_recovery_file_dest_size = 5G;
+alter system set db_recovery_file_dest = '/opt/oracle/oradata/recovery_area' scope=spfile;
+shutdown immediate
+startup mount
+alter database archivelog;
+alter database open;
+-- Should show "Database log mode: Archive Mode"
+archive log list
+
+exit;
+----
+====
+
+For {prodname} to generate change events that show the `before` and `after` states of a table row, supplemental logging must be active on the database.
+Supplemental logging adds column data to the redo logs to identify the rows that are affected when a table is modified.
+
+You can use different methods to configure supplemental logging.
+To support {prodname}, you must enable at least minimal database-level supplemental logging.
+Minimal supplemental logging writes the least amount of information needed to be able to create change events.
+The following example shows a command that you might use to enable minimal supplemental logging.
+
+.Configure database-level supplemental logging
+====
+[source,sql,indent=0]
+----
+ALTER DATABASE ADD SUPPLEMENTAL LOG DATA
+----
+====
+
+[NOTE]
+====
+{prodname} for Oracle can work with a higher degree of supplemental logging at the database level, if that is already configured for other purposes.
+But if you do not require higher fidelity logging to support other applications, you can reduce database-level logging to the minimum level.
+====
+
+For each captured table, you must explicitly configure a higher fidelity supplemental logging, called `(ALL) COLUMNS`.
+The `(ALL) COLUMNS` logging level guarantees that Oracle captures the state of a column regardless of whether the column changed when a redo entry is written to the redo log.
+Enabling the higher logging level enables {prodname} for Oracle to generate change events that provide the accurate _before_ and _after_ states for a row.
+
+The following example shows a command for enabling supplemental logging for each captured table.
+
+.Configure captured table supplemental logging
+====
+[source,sql,indent=0]
+----
+ALTER TABLE inventory.customers ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS
+----
+====
+
+[IMPORTANT]
+====
+Whenever new tables are added to the {prodname} Oracle's connector configuration, you must configure supplemental logging for each table.
+If a table that is configured for capture is not correctly configured for supplemental logging, after the connector begins streaming, it returns a warning message.
+====
+
+=== Creating connector users
+
+The {prodname} Oracle connector requires a user account to be set up with specific permissions so that the connector can capture change events.
+This user account will be used by both {prodname} and OpenLogReplicator.
+The following example shows a possible user account configuration for deploying {prodname} with OpenLogReplicator in a multi-tenant Oracle environment.
+
+[[oracle-create-users-openlogreplicator]]
+.Creating OpenLogReplicator user
+====
+[source,indent=0]
+----
+# Create Log Miner Tablespace and User
+sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba <<- EOF
+  CREATE TABLESPACE LOGMINER_TBS DATAFILE '/opt/oracle/oradata/ORCLCDB/logminer_tbs.dbf' SIZE 25M REUSE AUTOEXTEND ON MAXSIZE UNLIMITED;
+  exit;
+EOF
+
+sqlplus sys/top_secret@//localhost:1521/ORCLPDB1 as sysdba <<- EOF
+  CREATE TABLESPACE LOGMINER_TBS DATAFILE '/opt/oracle/oradata/ORCLCDB/ORCLPDB1/logminer_tbs.dbf' SIZE 25M REUSE AUTOEXTEND ON MAXSIZE UNLIMITED;
+  exit;
+EOF
+
+sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba <<- EOF
+  CREATE USER c##dbzuser IDENTIFIED BY dbz DEFAULT TABLESPACE LOGMINER_TBS QUOTA UNLIMITED ON LOGMINER_TBS CONTAINER=ALL;
+
+  -- Debezium specific permissions
+  GRANT CREATE SESSION TO c##dbzuser CONTAINER=ALL;
+  GRANT SET CONTAINER TO c##dbzuser CONTAINER=ALL;
+  GRANT SELECT ON V_\$DATABASE TO c##dbzuser CONTAINER=ALL;
+  GRANT SELECT ANY DICTIONARY TO c##dbzuser CONTAINER=ALL;
+  GRANT LOCK ANY TABLE TO c##dbzuser CONTAINER=ALL;
+  -- These can be reduced from ANY TABLE to your captured tables depending on your security model
+  GRANT SELECT ANY TABLE TO c##dbzuser CONTAINER=ALL;
+  GRANT FLASHBACK ANY TABLE TO c##dbzuser CONTAINER=ALL;
+
+  -- OpenLogReplicator specific permissions
+  ALTER SESSION SET CONTAINER = ORCLPDB1;
+  GRANT SELECT, FLASHBACK ON SYS.CCOL$ TO c##dbzuser;
+  GRANT SELECT, FLASHBACK ON SYS.CDEF$ TO c##dbzuser;
+  GRANT SELECT, FLASHBACK ON SYS.COL$ TO c##dbzuser;
+  GRANT SELECT, FLASHBACK ON SYS.DEFERRED_STG$ TO c##dbzuser;
+  GRANT SELECT, FLASHBACK ON SYS.ECOL$ TO c##dbzuser;
+  GRANT SELECT, FLASHBACK ON SYS.LOB$ TO c##dbzuser;
+  GRANT SELECT, FLASHBACK ON SYS.LOBCOMPPART$ TO c##dbzuser;
+  GRANT SELECT, FLASHBACK ON SYS.LOBFRAG$ TO c##dbzuser;
+  GRANT SELECT, FLASHBACK ON SYS.OBJ$ TO c##dbzuser;
+  GRANT SELECT, FLASHBACK ON SYS.TAB$ TO c##dbzuser;
+  GRANT SELECT, FLASHBACK ON SYS.TABCOMPART$ TO c##dbzuser;
+  GRANT SELECT, FLASHBACK ON SYS.TABPART$ TO c##dbzuser;
+  GRANT SELECT, FLASHBACK ON SYS.TABSUBPART$ TO c##dbzuser;
+  GRANT SELECT, FLASHBACK ON SYS.TS$ TO c##dbzuser;
+  GRANT SELECT, FLASHBACK ON SYS.USER$ TO c##dbzuser;
+
+  exit;
+EOF
+----
+====
+
+[[selecting-the-open-log-replicator-adapter]]
+=== Configuring the OpenLogReplicator adapter
+
+By default, {prodname} uses Oracle LogMiner to ingest change events from Oracle.
+You can modify the default settings to configure the connector to use the OpenLogReplicator adapter in place of LogMiner.
+
+In the example that follows, the following properties are added to the connector configuration to enable the connector to use the OpenLogReplicator adapter:
+
+* `database.connection.adapter`
+* `openlogreplicator.source`
+* `openlogreplicator.host`
+* `openlogreplicator.port`
+
+[source,json,indent=0]
+----
+{
+    "name": "inventory-connector",
+    "config": {
+        "connector.class" : "io.debezium.connector.oracle.OracleConnector",
+        "tasks.max" : "1",
+        "topic.prefix" : "server1",
+        "database.hostname" : "<oracle ip>",
+        "database.port" : "1521",
+        "database.user" : "c##dbzuser",
+        "database.password" : "dbz",
+        "database.dbname" : "ORCLCDB",
+        "database.pdb.name" : "ORCLPDB1",
+        "schema.history.internal.kafka.bootstrap.servers" : "kafka:9092",
+        "schema.history.internal.kafka.topic": "schema-changes.inventory",
+        "database.connection.adapter": "olr",
+        "openlogreplicator.source": "ORACLE",
+        "openlogreplicator.host": "<ip address or hostname of OpenLogReplicator>",
+        "openlogreplicator.port": "<port OpenLogReplicator is listening on>"
+    }
+}
+----
+
+[id="building-openlogreplicator"]
+=== Building OpenLogReplicator
+
+OpenLogReplicator does not distribute binaries, so you must build the third-party tool from code.
+OpenLogReplicator is written in C++; however, the author provides a container image to build the source for a variety of operating systems, including RHEL, Fedora, CentOS, Debian, and others.
+For information about how to build the tool using a container, see the This https://github.com/bersler/OpenLogReplicator-docker[OpenLogReplicator GitHub repository].
+
+[id="obtaining-oracle-jdbc-driver-openlogreplicator"]
+=== Obtaining the Oracle JDBC driver for OpenLogReplicator
+
+When you use the {prodname} Oracle connector with the OpenLogReplicator, you must  obtain the Oracle JDBC driver to connect to Oracle databases.
+For more information, see xref:obtaining-the-oracle-jdbc-driver[Obtaining the Oracle JDBC driver].
+
+[[oracle-openlogreplicator-configuration]]
+=== OpenLogReplicator configuration
+
+OpenLogReplicator is a third-party standalone process that is responsible for reading the Oracle redo and archive logs.
+Unlike other {prodname} Oracle adapters, this means that there are two configurable components that must be configured independently of one another.
+
+You configure OpenLogReplicator by using a JSON file called `scripts/OpenLogReplicator.json`.
+For more information about the required format of this file, see the https://github.com/bersler/OpenLogReplicator/blob/master/documentation/reference-manual/reference-manual.adoc#openlogreplicator-json-file-format[OpenLogReplicator documentation].
+
+.OpenLogReplicator configuration
+====
+[source,json,indent=0]
+----
+{
+  "version": "1.3.0",
+  "source": [{
+    "alias": "SOURCE",
+    "name": "ORACLE", <1>
+    "reader": {
+      "type": "online",
+      "path-mapping": ["/opt/olr/recovery_area", "/opt/olr/recovery_area/ORCLCDB/archivelog"], <2>
+      "user": "c##dbzuser", <3>
+      "password": "dbz", <4>
+      "server": "//<ip>:<port>/ORCLPDB1" <5>
+    },
+    "format": { <6>
+      "type": "json",
+      "column": 2,
+      "db": 3,
+      "interval-dts": 9,
+      "interval-ytm": 4,
+      "message": 2,
+      "rid": 1,
+      "schema": 7,
+      "scn-all": 1,
+      "timestamp-all": 1
+    }
+  }],
+  "target": [{
+    "alias": "DEBEZIUM",
+    "source": "SOURCE",
+    "writer": {
+      "type": "network", <7>
+      "uri": "<host>:<port>" <8>
+    }
+  }]
+}
+----
+<1> This should match the `openlogreplicator.source` connector configuration.
+<2> List of file path pairs `[before1,after1,befor2,after2,...]` where if a log file path matches one of the `beforeX` prefixes, the prefix is replaced with the `afterX` path.  This is useful when OpenLogReplicator is running on a different host than the source database and the path to the redo and archive logs different between the database and the OpenLogReplicator process.
+<3> This should match the `database.user` connector property.
+<4> This should match the `database.password` connector property.
+<5> This should point to the database host, port, and Oracle SID.
+<6> This specifies the payload format ingested by {prodname} Oracle connector. Use these values as specified, as these are the only format options that we require beyond the defaults.
+<7> This must specify `network`, as {prodname} Oracle connector communicates with OpenLogReplicator via a network connection.
+<8> This specifies the bind host and port that OpenLogReplicator listens for connections on.  This should be accessible by {prodname} Oracle connector.
+====
+
+[[oracle-openlogreplicator-connector-properties]]
+=== OpenLogReplicator connector properties
+
+The following configuration properties are required when using OpenLogReplicator.
+
+[cols="30%a,25%a,45%a"]
+|===
+|Property
+|Default
+|Description
+
+|[[oracle-property-openlogreplicator-source]]<<oracle-property-openlogreplicator-source, `+openlogreplicator.source+`>>
+|No default
+|The logical name of the configured `source.name` element in the OpenLogReplicator JSON configuration.
+
+|[[oracle-property-openlogreplicator-host]]<<oracle-property-openlogreplicator-host, `+openlogreplicator.host+`>>
+|No default
+|The host name or IP address of the OpenLogReplicator network service.
+
+|[[oracle-property-openlogreplicator-port]]<<oracle-property-openlogreplicator-port, `+openlogreplicator.port+`>>
+|No default
+|The port number that is used by the OpenLogReplicator network service.
+
+|===
+
 [[oracle-xstreams-support]]
 == XStreams support
 
@@ -3919,7 +4762,7 @@ A single XStream Outbound server cannot be shared by multiple {prodname} Oracle 
 Each connector requires a unique XStream Outbound connector to be configured.
 ====
 
-[[selecting-the-adapter]]
+[[selecting-the-xstream-adapter]]
 === Configuring the XStream adapter
 
 By default, {prodname} uses Oracle LogMiner to ingest change events from Oracle.
@@ -4023,6 +4866,9 @@ This diverged behavior is captured in https://issues.redhat.com/browse/DBZ-4741[
 
 endif::community[]
 
+// Type: concept
+// ModuleID: debezium-oracle-connector-frequently-asked-questions
+// Title: Oracle connector frequently asked questions
 [[oracle-frequently-asked-questions]]
 == Frequently Asked Questions
 
@@ -4090,12 +4936,6 @@ This mining strategy option should not be used if the tables being captured are 
 It's important that all data changes be lock-stepped with the schema change such that all changes have been captured from the logs for the table, stop the connector, apply the schema change, and restart the connector and resume data changes on the table.
 This option requires less Oracle database memory and Oracle LogMiner sessions generally start substantially faster since the data dictionary does not need to be loaded or primed by the LogMiner process.
 
-*Why are changes made by SYS or SYSTEM users not captured?*::
-The Oracle database uses the `SYS` and `SYSTEM` user accounts to perform a multitude of internal operations in the redo logs that are not important for change data capture.
-When the {prodname} Oracle connector reads changes from Oracle LogMiner, changes made by these two user accounts are filtered out automatically.
-So if you are using either of these two user accounts and not seeing change events, this is why changes made by those users are not captured.
-You should use a designated non-system user account to perform all changes you wish to be captured.
-
 *Why does the connector appear to stop capturing changes on AWS?*::
 Due to the https://aws.amazon.com/blogs/networking-and-content-delivery/best-practices-for-deploying-gateway-load-balancer[fixed idle timeout of 350 seconds on the AWS Gateway Load Balancer],
 JDBC calls that require more than 350 seconds to complete can hang indefinitely.
@@ -4130,6 +4970,7 @@ database.url=jdbc:oracle:thin:username/password!@(DESCRIPTION=(ENABLE=broken)(AD
 The preceding steps configure the TCP network stack to send keep-alive packets every 60 seconds.
 As a result, the AWS Gateway Load Balancer does not timeout when JDBC calls to the LogMiner API take more than 350 seconds to complete, enabling the connector to continue to read changes from the database's transaction logs.
 
+[id="what-causes-ora-01555-and-how-to-handle-it"]
 *What's the cause for ORA-01555 and how to handle it?*::
 The {prodname} Oracle connector uses flashback queries when the initial snapshot phase executes.
 A flashback query is a special type of query that relies on the flashback area, maintained by the database's `UNDO_RETENTION` database parameter, to return the results of a query based on what the contents of the table had at a given time, or in our case at a given SCN.
@@ -4183,3 +5024,16 @@ ORA-25191: cannot reference overflow table of an index-organized table
 +
 If an ORA-25191 exception is thrown, please raise a Jira issue with the details about the table and it's mappings, related to other parent tables, etc.
 As a workaround, the include/exclude configuration options can be adjusted to prevent the connector from accessing such tables.
+
+
+*How to solve SAX feature external-general-entities not supported*::
+Debezium 2.4 introduced support for Oracle's `XMLTYPE` column type and to support this feature, the Oracle `xdb` and `xmlparserv2` dependencies are required. +
+ +
+Oracle's `xmlparserv2` dependency implements a SAX-based parser and if the runtime finds an uses this implementation rather than the other on the classpath, this error will occur.
+In order to influence specifically which SAX implementation is used generally, the JVM will need to be started with a specific argument. +
+ +
+When the following JVM argument is provided, the Oracle connector will start successfully without this error.
+[source,bash]
+----
+-Djavax.xml.parsers.SAXParserFactory=com.sun.org.apache.xerces.internal.jaxp.SAXParserFactoryImpl
+----

@@ -22,7 +22,7 @@ import io.debezium.relational.TableId;
  *
  * @author Chris Cranford
  */
-public abstract class AbstractStreamingAdapter implements StreamingAdapter {
+public abstract class AbstractStreamingAdapter<T extends AbstractOracleStreamingChangeEventSourceMetrics> implements StreamingAdapter<T> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractStreamingAdapter.class);
 

@@ -10,6 +10,7 @@ import static io.debezium.util.NumberConversions.BYTE_ZERO;
 import static io.debezium.util.NumberConversions.SHORT_FALSE;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.CharBuffer;
@@ -83,12 +84,12 @@ public class JdbcValueConverters implements ValueConverterProvider {
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
 
-    private final ZoneOffset defaultOffset;
+    protected final ZoneOffset defaultOffset;
 
     /**
      * Fallback value for TIMESTAMP WITH TZ is epoch
      */
-    private final String fallbackTimestampWithTimeZone;
+    protected final String fallbackTimestampWithTimeZone;
 
     /**
      * Fallback value for TIME WITH TZ is 00:00
@@ -97,7 +98,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
     protected final boolean adaptiveTimePrecisionMode;
     protected final boolean adaptiveTimeMicrosecondsPrecisionMode;
     protected final DecimalMode decimalMode;
-    private final TemporalAdjuster adjuster;
+    protected final TemporalAdjuster adjuster;
     protected final BigIntUnsignedMode bigIntUnsignedMode;
     protected final BinaryHandlingMode binaryMode;
 
@@ -139,7 +140,8 @@ public class JdbcValueConverters implements ValueConverterProvider {
         this.fallbackTimestampWithTimeZone = ZonedTimestamp.toIsoString(
                 OffsetDateTime.of(LocalDate.ofEpochDay(0), LocalTime.MIDNIGHT, defaultOffset),
                 defaultOffset,
-                adjuster);
+                adjuster,
+                null);
         this.fallbackTimeWithTimeZone = ZonedTime.toIsoString(
                 OffsetTime.of(LocalTime.MIDNIGHT, defaultOffset),
                 defaultOffset,
@@ -389,7 +391,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
     protected Object convertTimestampWithZone(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, fallbackTimestampWithTimeZone, (r) -> {
             try {
-                r.deliver(ZonedTimestamp.toIsoString(data, defaultOffset, adjuster));
+                r.deliver(ZonedTimestamp.toIsoString(data, defaultOffset, adjuster, column.length()));
             }
             catch (IllegalArgumentException e) {
             }
@@ -1067,6 +1069,9 @@ public class JdbcValueConverters implements ValueConverterProvider {
             if (data instanceof BigDecimal) {
                 r.deliver(data);
             }
+            else if (data instanceof BigInteger) {
+                r.deliver(new BigDecimal((BigInteger) data));
+            }
             else if (data instanceof Boolean) {
                 r.deliver(NumberConversions.getBigDecimal((Boolean) data));
             }
@@ -1276,17 +1281,18 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object handleUnknownData(Column column, Field fieldDefn, Object data) {
+        Class<?> dataClass = data.getClass();
+        String clazzName = dataClass.isArray() ? dataClass.getSimpleName() : dataClass.getName();
         if (column.isOptional() || fieldDefn.schema().isOptional()) {
-            Class<?> dataClass = data.getClass();
+
             if (logger.isWarnEnabled()) {
                 logger.warn("Unexpected value for JDBC type {} and column {}: class={}", column.jdbcType(), column,
-                        dataClass.isArray() ? dataClass.getSimpleName() : dataClass.getName()); // don't include value in case its
-                                                                                                // sensitive
+                        clazzName); // don't include value in case its sensitive
             }
             return null;
         }
         throw new IllegalArgumentException("Unexpected value for JDBC type " + column.jdbcType() + " and column " + column +
-                ": class=" + data.getClass()); // don't include value in case its sensitive
+                ": class=" + clazzName); // don't include value in case its sensitive
     }
 
     protected int getTimePrecision(Column column) {

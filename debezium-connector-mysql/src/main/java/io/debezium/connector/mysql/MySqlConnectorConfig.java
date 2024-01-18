@@ -17,6 +17,7 @@ import org.apache.kafka.common.config.ConfigDef.Width;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
@@ -24,6 +25,10 @@ import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
+import io.debezium.connector.mysql.strategy.ConnectorAdapter;
+import io.debezium.connector.mysql.strategy.mariadb.MariaDbConnectorAdapter;
+import io.debezium.connector.mysql.strategy.mariadb.hybrid.MariaDbHybridConnectorAdapter;
+import io.debezium.connector.mysql.strategy.mysql.MySqlConnectorAdapter;
 import io.debezium.function.Predicates;
 import io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
@@ -33,10 +38,9 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.HistoryRecordComparator;
-import io.debezium.relational.history.SchemaHistory;
 import io.debezium.schema.DefaultTopicNamingStrategy;
-import io.debezium.storage.kafka.history.KafkaSchemaHistory;
 import io.debezium.util.Collect;
+import io.debezium.util.Strings;
 
 /**
  * The configuration properties.
@@ -55,7 +59,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     /**
      * The set of predefined BigIntUnsignedHandlingMode options or aliases.
      */
-    public static enum BigIntUnsignedHandlingMode implements EnumeratedValue {
+    public enum BigIntUnsignedHandlingMode implements EnumeratedValue {
         /**
          * Represent {@code BIGINT UNSIGNED} values as precise {@link BigDecimal} values, which are
          * represented in change events in a binary form. This is precise but difficult to use.
@@ -70,7 +74,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
 
         private final String value;
 
-        private BigIntUnsignedHandlingMode(String value) {
+        BigIntUnsignedHandlingMode(String value) {
             this.value = value;
         }
 
@@ -127,7 +131,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     /**
      * The set of predefined SnapshotMode options or aliases.
      */
-    public static enum SnapshotMode implements EnumeratedValue {
+    public enum SnapshotMode implements EnumeratedValue {
 
         /**
          * Perform a snapshot when it is needed.
@@ -172,8 +176,8 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
         private final boolean shouldSnapshotOnSchemaError;
         private final boolean shouldSnapshotOnDataError;
 
-        private SnapshotMode(String value, boolean includeSchema, boolean includeData, boolean shouldStream, boolean shouldSnapshotOnSchemaError,
-                             boolean shouldSnapshotOnDataError) {
+        SnapshotMode(String value, boolean includeSchema, boolean includeData, boolean shouldStream, boolean shouldSnapshotOnSchemaError,
+                     boolean shouldSnapshotOnDataError) {
             this.value = value;
             this.includeSchema = includeSchema;
             this.includeData = includeData;
@@ -265,7 +269,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
         }
     }
 
-    public static enum SnapshotNewTables implements EnumeratedValue {
+    public enum SnapshotNewTables implements EnumeratedValue {
         /**
          * Do not snapshot new tables
          */
@@ -278,7 +282,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
 
         private final String value;
 
-        private SnapshotNewTables(String value) {
+        SnapshotNewTables(String value) {
             this.value = value;
         }
 
@@ -325,7 +329,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     /**
      * The set of predefined Snapshot Locking Mode options.
      */
-    public static enum SnapshotLockingMode implements EnumeratedValue {
+    public enum SnapshotLockingMode implements EnumeratedValue {
 
         /**
          * This mode will block all writes for the entire duration of the snapshot.
@@ -361,7 +365,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
 
         private final String value;
 
-        private SnapshotLockingMode(String value) {
+        SnapshotLockingMode(String value) {
             this.value = value;
         }
 
@@ -434,7 +438,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     /**
      * The set of predefined SecureConnectionMode options or aliases.
      */
-    public static enum SecureConnectionMode implements EnumeratedValue {
+    public enum SecureConnectionMode implements EnumeratedValue {
         /**
          * Establish an unencrypted connection.
          */
@@ -463,7 +467,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
 
         private final String value;
 
-        private SecureConnectionMode(String value) {
+        SecureConnectionMode(String value) {
             this.value = value;
         }
 
@@ -508,8 +512,99 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     }
 
     /**
+     * Set of predefined connector adapter modes.
+     */
+    public enum ConnectorAdapterMode implements EnumeratedValue {
+        /**
+         * Expects the target database to be MySQL using the MySQL driver.
+         * This should also be used if the target database is MySQL compliant but isn't MariaDB.
+         */
+        MYSQL("mysql") {
+            @Override
+            protected ConnectorAdapter getAdapter(MySqlConnectorConfig connectorConfig) {
+                LOGGER.info("Using " + MySqlConnectorAdapter.class.getName());
+                return new MySqlConnectorAdapter(connectorConfig);
+            }
+        },
+
+        /**
+         * Expects the target database to be MariaDB using the MariaDB driver.
+         */
+        MARIADB("mariadb") {
+            @Override
+            protected ConnectorAdapter getAdapter(MySqlConnectorConfig connectorConfig) {
+                LOGGER.info("Using " + MariaDbConnectorAdapter.class.getName());
+                return new MariaDbConnectorAdapter(connectorConfig);
+            }
+        },
+
+        /**
+         * Expects the target database to be MariaDB but uses the MySQL driver.
+         */
+        MARIADB_HYBRID("mariadb-hybrid") {
+            @Override
+            protected ConnectorAdapter getAdapter(MySqlConnectorConfig connectorConfig) {
+                LOGGER.info("Using " + MariaDbHybridConnectorAdapter.class.getName());
+                return new MariaDbHybridConnectorAdapter(connectorConfig);
+            }
+        };
+
+        private final String value;
+
+        protected abstract ConnectorAdapter getAdapter(MySqlConnectorConfig connectorConfig);
+
+        ConnectorAdapterMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static ConnectorAdapterMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (ConnectorAdapterMode option : ConnectorAdapterMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static ConnectorAdapterMode parse(String value, String defaultValue) {
+            ConnectorAdapterMode mode = parse(value);
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+            return mode;
+        }
+    }
+
+    /**
      * {@link Integer#MIN_VALUE Minimum value} used for fetch size hint.
      * See <a href="https://issues.jboss.org/browse/DBZ-94">DBZ-94</a> for details.
+     *
+     * This fetch size is not valid for MariaDB and per <a href="https://jira.mariadb.org/browse/CONJ-977">CONJ-997</a>
+     * they believe that the MySQL implementation for this is not according to the spec. Starting
+     * with MariaDB driver's 3.x+, this value cannot be negative. See the configuration method
+     * {@link #resolveDefaultFetchSize(Configuration)} for more details when MariaDB is enabled.
      */
     protected static final int DEFAULT_SNAPSHOT_FETCH_SIZE = Integer.MIN_VALUE;
 
@@ -564,13 +659,13 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
 
     public static final Field SSL_MODE = Field.create("database.ssl.mode")
             .withDisplayName("SSL mode")
-            .withEnum(SecureConnectionMode.class, SecureConnectionMode.DISABLED)
+            .withEnum(SecureConnectionMode.class, SecureConnectionMode.PREFERRED)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_SSL, 0))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
             .withDescription("Whether to use an encrypted connection to MySQL. Options include: "
-                    + "'disabled' (the default) to use an unencrypted connection; "
-                    + "'preferred' to establish a secure (encrypted) connection if the server supports secure connections, "
+                    + "'disabled' to use an unencrypted connection; "
+                    + "'preferred' (the default) to establish a secure (encrypted) connection if the server supports secure connections, "
                     + "but fall back to an unencrypted connection otherwise; "
                     + "'required' to use a secure (encrypted) connection, and fail if one cannot be established; "
                     + "'verify_ca' like 'required' but additionally verify the server TLS certificate against the configured Certificate Authority "
@@ -615,8 +710,8 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     public static final Field TABLES_IGNORE_BUILTIN = RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN
             .withDependents(DATABASE_INCLUDE_LIST_NAME);
 
-    public static final Field JDBC_DRIVER = Field.create("database.jdbc.driver")
-            .withDisplayName("Jdbc Driver Class Name")
+    public static final Field JDBC_DRIVER = Field.create(DATABASE_CONFIG_PREFIX + "jdbc.driver")
+            .withDisplayName("JDBC Driver Class Name")
             .withType(Type.CLASS)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 41))
             .withWidth(Width.MEDIUM)
@@ -624,6 +719,15 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
             .withImportance(Importance.LOW)
             .withValidation(Field::isClassName)
             .withDescription("JDBC Driver class name used to connect to the MySQL database server.");
+
+    public static final Field JDBC_PROTOCOL = Field.create(DATABASE_CONFIG_PREFIX + "protocol")
+            .withDisplayName("JDBC Protocol")
+            .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 42))
+            .withWidth(Width.MEDIUM)
+            .withDefault("jdbc:mysql")
+            .withImportance(Importance.LOW)
+            .withDescription("JDBC protocol to use with the driver.");
 
     /**
      * A comma-separated list of regular expressions that match source UUIDs in the GTID set used to find the binlog
@@ -731,21 +835,6 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
             .withDefault(DEFAULT_BINLOG_BUFFER_SIZE)
             .withValidation(Field::isNonNegativeInteger);
 
-    /**
-     * The database schema history class is hidden in the {@link #configDef()} since that is designed to work with a user interface,
-     * and in these situations using Kafka is the only way to go.
-     */
-    public static final Field SCHEMA_HISTORY = Field.create("schema.history.internal")
-            .withDisplayName("Database schema history class")
-            .withType(Type.CLASS)
-            .withWidth(Width.LONG)
-            .withImportance(Importance.LOW)
-            .withInvisibleRecommender()
-            .withDescription("The name of the SchemaHistory class that should be used to store and recover database schema changes. "
-                    + "The configuration properties for the history are prefixed with the '"
-                    + SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + "' string.")
-            .withDefault(KafkaSchemaHistory.class.getName());
-
     public static final Field TOPIC_NAMING_STRATEGY = Field.create("topic.naming.strategy")
             .withDisplayName("Topic naming strategy class")
             .withType(Type.CLASS)
@@ -762,7 +851,9 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
             .withDescription("Whether the connector should include the original SQL query that generated the change event. "
-                    + "Note: This option requires MySQL be configured with the binlog_rows_query_log_events option set to ON. Query will not be present for events generated from snapshot. "
+                    + "Note: This option requires MySQL be configured with the binlog_rows_query_log_events option set to ON. "
+                    + "If using MariaDB, configure the binlog_annotate_row_events option must be set to ON. "
+                    + "Query will not be present for events generated from snapshot. "
                     + "WARNING: Enabling this option may expose tables or fields explicitly excluded or masked by including the original SQL statement in the change event. "
                     + "For this reason the default value is 'false'.")
             .withDefault(false);
@@ -774,12 +865,13 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDescription("The criteria for running a snapshot upon startup of the connector. "
-                    + "Options include: "
-                    + "'when_needed' to specify that the connector run a snapshot upon startup whenever it deems it necessary; "
-                    + "'schema_only' to only take a snapshot of the schema (table structures) but no actual data; "
-                    + "'initial' (the default) to specify the connector can run a snapshot only when no offsets are available for the logical server name; "
-                    + "'initial_only' same as 'initial' except the connector should stop after completing the snapshot and before it would normally read the binlog; and"
-                    + "'never' to specify the connector should never run a snapshot and that upon first startup the connector should read from the beginning of the binlog. "
+                    + "Select one of the following snapshot options: "
+                    + "'when_needed': On startup, the connector runs a snapshot if one is needed.; "
+                    + "'schema_only': If the connector does not detect any offsets for the logical server name, it runs a snapshot that captures only the schema (table structures), but not any table data. After the snapshot completes, the connector begins to stream changes from the binlog.; "
+                    + "'schema_only_recovery': The connector performs a snapshot that captures only the database schema history. The connector then transitions back to streaming. Use this setting to restore a corrupted or lost database schema history topic. Do not use if the database schema was modified after the connector stopped.; "
+                    + "'initial' (default): If the connector does not detect any offsets for the logical server name, it runs a snapshot that captures the current full state of the configured tables. After the snapshot completes, the connector begins to stream changes from the binlog.; "
+                    + "'initial_only': The connector performs a snapshot as it does for the 'initial' option, but after the connector completes the snapshot, it stops, and does not stream changes from the binlog.; "
+                    + "'never': The connector does not run a snapshot. Upon first startup, the connector immediately begins reading from the beginning of the binlog. "
                     + "The 'never' mode should be used with care, and only when the binlog is known to contain all history.");
 
     public static final Field SNAPSHOT_LOCKING_MODE = Field.create("snapshot.locking.mode")
@@ -875,13 +967,28 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
             .withImportance(Importance.LOW)
             .withDescription("Switched connector to use alternative methods to deliver signals to Debezium instead of writing to signaling table");
 
+    public static final Field CONNECTOR_ADAPTER = Field.create("connector.adapter")
+            .withDisplayName("Connection adapter to be used")
+            .withEnum(ConnectorAdapterMode.class, ConnectorAdapterMode.MYSQL)
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 28))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("Specifies the connection adapter to be used");
+
+    public static final Field SOURCE_INFO_STRUCT_MAKER = CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER
+            .withDefault(MySqlSourceInfoStructMaker.class.getName());
+
+    public static final Field STORE_ONLY_CAPTURED_DATABASES_DDL = HistorizedRelationalDatabaseConnectorConfig.STORE_ONLY_CAPTURED_DATABASES_DDL
+            .withDefault(true);
+
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("MySQL")
             .excluding(
                     SCHEMA_INCLUDE_LIST,
                     SCHEMA_EXCLUDE_LIST,
                     RelationalDatabaseConnectorConfig.TIME_PRECISION_MODE,
-                    RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN)
+                    RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN,
+                    HistorizedRelationalDatabaseConnectorConfig.STORE_ONLY_CAPTURED_DATABASES_DDL)
             .type(
                     HOSTNAME,
                     PORT,
@@ -910,7 +1017,9 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
                     SCHEMA_NAME_ADJUSTMENT_MODE,
                     ROW_COUNT_FOR_STREAMING_RESULT_SETS,
                     INCREMENTAL_SNAPSHOT_CHUNK_SIZE,
-                    INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES)
+                    INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES,
+                    STORE_ONLY_CAPTURED_DATABASES_DDL,
+                    CONNECTOR_ADAPTER)
             .events(
                     INCLUDE_SQL_QUERY,
                     TABLE_IGNORE_BUILTIN,
@@ -921,7 +1030,8 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
                     GTID_SOURCE_FILTER_DML_EVENTS,
                     BUFFER_SIZE_FOR_BINLOG_READER,
                     EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE,
-                    INCONSISTENT_SCHEMA_HANDLING_MODE)
+                    INCONSISTENT_SCHEMA_HANDLING_MODE,
+                    SOURCE_INFO_STRUCT_MAKER)
             .create();
 
     protected static ConfigDef configDef() {
@@ -956,6 +1066,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     private final Predicate<String> gtidSourceFilter;
     private final EventProcessingFailureHandlingMode inconsistentSchemaFailureHandlingMode;
     private final boolean readOnlyConnection;
+    private final ConnectorAdapter connectorAdapter;
 
     public MySqlConnectorConfig(Configuration config) {
         super(
@@ -963,7 +1074,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
                 config,
                 TableFilter.fromPredicate(MySqlConnectorConfig::isNotBuiltInTable),
                 true,
-                DEFAULT_SNAPSHOT_FETCH_SIZE,
+                resolveDefaultFetchSize(config),
                 ColumnFilterMode.CATALOG,
                 false);
 
@@ -986,6 +1097,11 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
         final String gtidSetExcludes = config.getString(MySqlConnectorConfig.GTID_SOURCE_EXCLUDES);
         this.gtidSourceFilter = gtidSetIncludes != null ? Predicates.includesUuids(gtidSetIncludes)
                 : (gtidSetExcludes != null ? Predicates.excludesUuids(gtidSetExcludes) : null);
+
+        this.storeOnlyCapturedDatabasesDdl = config.getBoolean(STORE_ONLY_CAPTURED_DATABASES_DDL);
+
+        // This should always be last to guarantee the full configuration is passed in the constructor
+        this.connectorAdapter = ConnectorAdapterMode.parse(config.getString(CONNECTOR_ADAPTER)).getAdapter(this);
     }
 
     public boolean useCursorFetch() {
@@ -1067,9 +1183,20 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
         return 0;
     }
 
+    private static int resolveDefaultFetchSize(Configuration config) {
+        if (usesMariaDbProtocol(config)) {
+            // In order to mimic MySQL's Integer.MIN_VALUE logic which indicates to stream 1 row
+            // at a time, for MariaDB we need to explicitly set the driver with a fetch size of
+            // 1 as MariaDB drivers 3.x+ do not support the old non-compliant JDBC-spec style
+            // that MySQL uses.
+            return 1;
+        }
+        return DEFAULT_SNAPSHOT_FETCH_SIZE;
+    }
+
     @Override
     protected SourceInfoStructMaker<? extends AbstractSourceInfo> getSourceInfoStructMaker(Version version) {
-        return new MySqlSourceInfoStructMaker(Module.name(), Module.version(), this);
+        return getSourceInfoStructMaker(SOURCE_INFO_STRUCT_MAKER, Module.name(), Module.version(), this);
     }
 
     @Override
@@ -1132,6 +1259,10 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
         return config.getInteger(MySqlConnectorConfig.BUFFER_SIZE_FOR_BINLOG_READER);
     }
 
+    public ConnectorAdapter getConnectorAdapter() {
+        return connectorAdapter;
+    }
+
     /**
      * Get the predicate function that will return {@code true} if a GTID source is to be included, or {@code false} if
      * a GTID source is to be excluded.
@@ -1156,7 +1287,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
 
     @Override
     protected HistoryRecordComparator getHistoryRecordComparator() {
-        return new MySqlHistoryRecordComparator(gtidSourceFilter());
+        return connectorAdapter.getHistoryRecordComparator();
     }
 
     public static boolean isBuiltInDatabase(String databaseName) {
@@ -1179,5 +1310,19 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
      */
     boolean useGlobalLock() {
         return !"true".equals(config.getString(TEST_DISABLE_GLOBAL_LOCKING));
+    }
+
+    public boolean usesMariaDbProtocol() {
+        return usesMariaDbProtocol(config);
+    }
+
+    public static boolean usesMariaDbProtocol(Configuration config) {
+        if (config.hasKey(MySqlConnectorConfig.JDBC_PROTOCOL)) {
+            final String protocol = config.getString(MySqlConnectorConfig.JDBC_PROTOCOL);
+            if (!Strings.isNullOrBlank(protocol) && protocol.equalsIgnoreCase("jdbc:mariadb")) {
+                return true;
+            }
+        }
+        return false;
     }
 }

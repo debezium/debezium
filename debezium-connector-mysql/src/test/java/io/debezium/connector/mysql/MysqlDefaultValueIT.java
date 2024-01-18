@@ -35,6 +35,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.jdbc.JdbcConnection;
@@ -72,6 +73,10 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         DATABASE.createAndInitialize();
         initializeConnectorTestFramework();
         Testing.Files.delete(SCHEMA_HISTORY_PATH);
+        // TODO: remove once we upgrade Apicurio version (DBZ-7357)
+        if (VerifyRecord.isApucurioAvailable()) {
+            skipAvroValidation();
+        }
     }
 
     @After
@@ -81,6 +86,17 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         }
         finally {
             Testing.Files.delete(SCHEMA_HISTORY_PATH);
+        }
+    }
+
+    @Override
+    protected void validate(SourceRecord record) {
+        // TODO: remove once we upgrade Apicurio version (DBZ-7357)
+        if (VerifyRecord.isApucurioAvailable()) {
+            VerifyRecord.isValid(record, true);
+        }
+        else {
+            super.validate(record);
         }
     }
 
@@ -505,7 +521,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         // Testing.Print.enable();
 
         consumeRecordsByTopic(EVENT_COUNT);
-        try (final Connection conn = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
+        try (Connection conn = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
             conn.createStatement().execute("CREATE TABLE ti_boolean_table (" +
                     "  A TINYINT(1) NOT NULL DEFAULT TRUE," +
                     "  B TINYINT(2) NOT NULL DEFAULT FALSE" +
@@ -535,7 +551,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         Testing.Print.enable();
         waitForSnapshotToBeCompleted("mysql", DATABASE.getServerName());
         consumeRecordsByTopic(EVENT_COUNT);
-        try (final Connection conn = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
+        try (Connection conn = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
             conn.createStatement().execute("CREATE TABLE int_boolean_table (" +
                     "  A INT(1) NOT NULL DEFAULT TRUE," +
                     "  B INT(2) NOT NULL DEFAULT FALSE" +
@@ -673,7 +689,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
 
         String value1 = "1970-01-01 00:00:01";
         ZonedDateTime t = java.sql.Timestamp.valueOf(value1).toInstant().atZone(ZoneId.systemDefault());
-        String isoString = ZonedTimestamp.toIsoString(t, ZoneId.systemDefault(), MySqlValueConverters::adjustTemporal);
+        String isoString = getZonedDateTimeIsoString(t);
         assertThat(schemaB.defaultValue()).isEqualTo(isoString);
 
         String value2 = "2018-01-03 00:00:10";
@@ -700,7 +716,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         assertThat(schemaM.defaultValue()).isEqualTo(Duration.ofHours(123).plus(123456, ChronoUnit.MICROS).toNanos() / 1_000);
         // current timestamp will be replaced with epoch timestamp
         ZonedDateTime t5 = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneOffset.UTC);
-        String isoString5 = ZonedTimestamp.toIsoString(t5, ZoneOffset.UTC, MySqlValueConverters::adjustTemporal);
+        String isoString5 = ZonedTimestamp.toIsoString(t5, ZoneOffset.UTC, MySqlValueConverters::adjustTemporal, null);
         assertThat(schemaJ.defaultValue()).isEqualTo(
                 MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())
                         .databaseAsserts()
@@ -742,7 +758,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
 
         String value1 = "1970-01-01 00:00:01";
         ZonedDateTime t = java.sql.Timestamp.valueOf(value1).toInstant().atZone(ZoneId.systemDefault());
-        String isoString = ZonedTimestamp.toIsoString(t, ZoneId.systemDefault(), MySqlValueConverters::adjustTemporal);
+        String isoString = getZonedDateTimeIsoString(t);
         assertThat(schemaB.defaultValue()).isEqualTo(isoString);
 
         LocalDateTime localDateTimeC = LocalDateTime.from(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").parse("2018-01-03 00:00:10"));
@@ -792,7 +808,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
             try (JdbcConnection connection = db.connect()) {
                 // Enable Query log option
-                connection.execute("SET binlog_rows_query_log_events=ON");
+                db.databaseAsserts().setBinlogRowQueryEventsOn(connection);
 
                 connection.execute("alter table DBZ_771_CUSTOMERS change customer_type customer_type int default 42;");
                 connection.execute("insert into DBZ_771_CUSTOMERS (id) values (2);");
@@ -832,7 +848,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
             try (JdbcConnection connection = db.connect()) {
                 // Enable Query log option
-                connection.execute("SET binlog_rows_query_log_events=ON");
+                db.databaseAsserts().setBinlogRowQueryEventsOn(connection);
 
                 connection.execute("alter table DBZ_771_CUSTOMERS change customer_type customer_type int;");
                 connection.execute("insert into DBZ_771_CUSTOMERS (id, customer_type) values (2, 456);");
@@ -853,7 +869,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
     }
 
     @Test
-    @FixFor("DBZ-2267")
+    @FixFor({ "DBZ-2267", "DBZ-6029" })
     public void alterDateAndTimeTest() throws Exception {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
@@ -870,8 +886,8 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
             try (JdbcConnection connection = db.connect()) {
                 connection.execute("create table ALTER_DATE_TIME (ID int primary key);");
-                connection.execute("alter table ALTER_DATE_TIME add column CREATED timestamp not null default current_timestamp");
-                connection.execute("insert into ALTER_DATE_TIME values(1000, default);");
+                connection.execute("alter table ALTER_DATE_TIME add column (CREATED timestamp not null default current_timestamp, C time not null default '08:00')");
+                connection.execute("insert into ALTER_DATE_TIME values(1000, default, default);");
             }
         }
 
@@ -881,7 +897,9 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         validate(record);
 
         final Schema columnSchema = record.valueSchema().fields().get(1).schema().fields().get(1).schema();
+        final Schema schemaC = record.valueSchema().fields().get(1).schema().fields().get(2).schema();
         assertThat(columnSchema.defaultValue()).isEqualTo("1970-01-01T00:00:00Z");
+        assertThat(schemaC.defaultValue()).isEqualTo(28800000000L);
     }
 
     @Test
@@ -1002,6 +1020,23 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
 
     private void assertFieldDefaultValue(Struct value, String fieldName, Object defaultValue) {
         assertThat(value.schema().field(fieldName).schema().defaultValue()).isEqualTo(defaultValue);
+    }
+
+    private static String getZonedDateTimeIsoString(ZonedDateTime zdt) {
+        if (MySqlTestConnection.isMariaDb()) {
+            // MariaDB applies the time-zone shift to the SHOW CREATE TABLE response when generating
+            // the SQL for the default value resolution which MySQL does not. This is because MariaDB
+            // pushes the "timezone=auto" connection argument to the server level whereas the MySQL
+            // "connectionTimeZone" is managed at the driver level on data responses only. In this
+            // case, MariaDB's default value resolution will always account for the current host
+            // time-zone difference with the host-system's time-zone.
+            long serverOffsetSecs = UniqueDatabase.TIMEZONE.getRules().getOffset(zdt.toInstant()).getTotalSeconds();
+            long hostOffsetSecs = ZoneOffset.systemDefault().getRules().getOffset(zdt.toInstant()).getTotalSeconds();
+            long timeDelta = serverOffsetSecs - hostOffsetSecs;
+            zdt = zdt.minusSeconds(timeDelta);
+            return ZonedTimestamp.toIsoString(zdt, UniqueDatabase.TIMEZONE, MySqlValueConverters::adjustTemporal, null);
+        }
+        return ZonedTimestamp.toIsoString(zdt, ZoneId.systemDefault(), MySqlValueConverters::adjustTemporal, null);
     }
 
 }

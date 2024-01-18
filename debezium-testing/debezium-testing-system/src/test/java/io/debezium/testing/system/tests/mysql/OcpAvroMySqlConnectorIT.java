@@ -14,7 +14,10 @@ import io.debezium.testing.system.assertions.KafkaAssertions;
 import io.debezium.testing.system.fixtures.OcpClient;
 import io.debezium.testing.system.fixtures.connectors.MySqlConnector;
 import io.debezium.testing.system.fixtures.databases.ocp.OcpMySql;
+import io.debezium.testing.system.fixtures.databases.ocp.OcpMySqlReplica;
 import io.debezium.testing.system.fixtures.kafka.OcpKafka;
+import io.debezium.testing.system.fixtures.operator.OcpApicurioOperator;
+import io.debezium.testing.system.fixtures.operator.OcpStrimziOperator;
 import io.debezium.testing.system.fixtures.registry.OcpApicurio;
 import io.debezium.testing.system.tools.kafka.ConnectorConfigBuilder;
 import io.debezium.testing.system.tools.kafka.KafkaConnectController;
@@ -29,9 +32,12 @@ import fixture5.annotations.Fixture;
 @Tag("avro")
 @Tag("apicurio")
 @Fixture(OcpClient.class)
+@Fixture(OcpStrimziOperator.class)
 @Fixture(OcpKafka.class)
+@Fixture(OcpApicurioOperator.class)
 @Fixture(OcpApicurio.class)
 @Fixture(OcpMySql.class)
+@Fixture(OcpMySqlReplica.class)
 @Fixture(MySqlConnector.class)
 @ExtendWith(FixtureExtension.class)
 public class OcpAvroMySqlConnectorIT extends MySqlTests {

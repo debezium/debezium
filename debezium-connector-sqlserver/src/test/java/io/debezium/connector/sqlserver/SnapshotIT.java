@@ -7,21 +7,23 @@ package io.debezium.connector.sqlserver;
 
 import static io.debezium.connector.sqlserver.SqlServerConnectorConfig.SNAPSHOT_ISOLATION_MODE;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.TABLE_INCLUDE_LIST;
+import static junit.framework.TestCase.assertEquals;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertNull;
 
 import java.math.BigDecimal;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.Assert;
@@ -298,8 +300,8 @@ public class SnapshotIT extends AbstractConnectorTest {
 
         TestHelper.waitForSnapshotToBeCompleted();
         final SourceRecord record = consumeRecord();
-        Assertions.assertThat(record).isNotNull();
-        Assertions.assertThat(record.topic()).startsWith("__debezium-heartbeat");
+        assertThat(record).isNotNull();
+        assertThat(record.topic()).startsWith("__debezium-heartbeat");
     }
 
     @Test
@@ -327,8 +329,8 @@ public class SnapshotIT extends AbstractConnectorTest {
         List<SourceRecord> tableA = records.recordsForTopic("server1.testDB1.dbo.table_a");
         List<SourceRecord> tableB = records.recordsForTopic("server1.testDB1.dbo.table_b");
 
-        Assertions.assertThat(tableA).hasSize(1);
-        Assertions.assertThat(tableB).isNull();
+        assertThat(tableA).hasSize(1);
+        assertThat(tableB).isNull();
         TestHelper.waitForSnapshotToBeCompleted();
         connection.execute("INSERT INTO table_a VALUES(22, 'some_name', 556)");
         connection.execute("INSERT INTO table_b VALUES(24, 'some_name', 558)");
@@ -337,8 +339,8 @@ public class SnapshotIT extends AbstractConnectorTest {
         tableA = records.recordsForTopic("server1.testDB1.dbo.table_a");
         tableB = records.recordsForTopic("server1.testDB1.dbo.table_b");
 
-        Assertions.assertThat(tableA).hasSize(1);
-        Assertions.assertThat(tableB).hasSize(1);
+        assertThat(tableA).hasSize(1);
+        assertThat(tableB).hasSize(1);
 
         stopConnector();
     }
@@ -389,12 +391,12 @@ public class SnapshotIT extends AbstractConnectorTest {
                 .put("name", "some_name")
                 .put("amount", 447);
 
-        Assertions.assertThat(tableA).hasSize(1);
+        assertThat(tableA).hasSize(1);
         SourceRecordAssert.assertThat(tableA.get(0))
                 .valueAfterFieldIsEqualTo(expectedValueA)
                 .valueAfterFieldSchemaIsEqualTo(expectedSchemaA);
 
-        Assertions.assertThat(tableB).hasSize(1);
+        assertThat(tableB).hasSize(1);
         SourceRecordAssert.assertThat(tableB.get(0))
                 .valueAfterFieldIsEqualTo(expectedValueB)
                 .valueAfterFieldSchemaIsEqualTo(expectedSchemaB);
@@ -424,12 +426,12 @@ public class SnapshotIT extends AbstractConnectorTest {
         List<SourceRecord> tableA = records.recordsForTopic("server1.testDB1.dbo.table_a");
         List<SourceRecord> tableB = records.recordsForTopic("server1.testDB1.dbo.table_b");
 
-        Assertions.assertThat(tableB).hasSize(1);
-        Assertions.assertThat(tableA).isNull();
+        assertThat(tableB).hasSize(1);
+        assertThat(tableA).isNull();
 
         records = consumeRecordsByTopic(1);
         tableA = records.recordsForTopic("server1.testDB1.dbo.table_a");
-        Assertions.assertThat(tableA).hasSize(1);
+        assertThat(tableA).hasSize(1);
 
         stopConnector();
     }
@@ -460,18 +462,18 @@ public class SnapshotIT extends AbstractConnectorTest {
         List<SourceRecord> tableB = records.recordsForTopic("server1.testDB1.dbo.table_ab");
         List<SourceRecord> tableC = records.recordsForTopic("server1.testDB1.dbo.table_ac");
 
-        Assertions.assertThat(tableB).hasSize(1);
-        Assertions.assertThat(tableA).isNull();
-        Assertions.assertThat(tableC).isNull();
+        assertThat(tableB).hasSize(1);
+        assertThat(tableA).isNull();
+        assertThat(tableC).isNull();
 
         records = consumeRecordsByTopic(1);
         tableA = records.recordsForTopic("server1.testDB1.dbo.table_a");
-        Assertions.assertThat(tableA).hasSize(1);
-        Assertions.assertThat(tableC).isNull();
+        assertThat(tableA).hasSize(1);
+        assertThat(tableC).isNull();
 
         records = consumeRecordsByTopic(1);
         tableC = records.recordsForTopic("server1.testDB1.dbo.table_ac");
-        Assertions.assertThat(tableC).hasSize(1);
+        assertThat(tableC).hasSize(1);
 
         stopConnector();
     }
@@ -503,18 +505,18 @@ public class SnapshotIT extends AbstractConnectorTest {
         List<SourceRecord> tableB = records.recordsForTopic("server1.testDB1.dbo.table_ab");
         List<SourceRecord> tableC = records.recordsForTopic("server1.testDB1.dbo.table_ac");
 
-        Assertions.assertThat(tableA).hasSize(1);
-        Assertions.assertThat(tableB).isNull();
-        Assertions.assertThat(tableC).isNull();
+        assertThat(tableA).hasSize(1);
+        assertThat(tableB).isNull();
+        assertThat(tableC).isNull();
 
         records = consumeRecordsByTopic(1);
         tableB = records.recordsForTopic("server1.testDB1.dbo.table_ab");
-        Assertions.assertThat(tableB).hasSize(1);
-        Assertions.assertThat(tableC).isNull();
+        assertThat(tableB).hasSize(1);
+        assertThat(tableC).isNull();
 
         records = consumeRecordsByTopic(1);
         tableC = records.recordsForTopic("server1.testDB1.dbo.table_ac");
-        Assertions.assertThat(tableC).hasSize(1);
+        assertThat(tableC).hasSize(1);
 
         stopConnector();
     }
@@ -583,13 +585,47 @@ public class SnapshotIT extends AbstractConnectorTest {
         assertThat(recordsForTopic.get(0).key()).isNotNull();
         Struct value = (Struct) ((Struct) recordsForTopic.get(0).value()).get("after");
         System.out.println("DATA: " + value);
-        Assertions.assertThat(value.get("id")).isEqualTo(1);
-        Assertions.assertThat(value.get("name")).isEqualTo("k");
+        assertThat(value.get("id")).isEqualTo(1);
+        assertThat(value.get("name")).isEqualTo("k");
 
         stopConnector();
     }
 
+    @Test
+    @FixFor("DBZ-6811")
+    public void shouldSendHeartbeatsWhenNoRecordsAreSent() throws Exception {
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(Heartbeat.HEARTBEAT_INTERVAL, 100)
+                .build();
+
+        start(SqlServerConnector.class, config);
+        TestHelper.waitForSnapshotToBeCompleted();
+
+        final AtomicInteger heartbeatCount = new AtomicInteger();
+        Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> {
+            final SourceRecord record = consumeRecord();
+            if (record != null) {
+                if (record.topic().startsWith("__debezium-heartbeat")) {
+                    assertHeartBeatRecord(record);
+                    heartbeatCount.incrementAndGet();
+                }
+            }
+            return heartbeatCount.get() > 10;
+        });
+    }
+
     private void assertRecord(Struct record, List<SchemaAndValueField> expected) {
         expected.forEach(schemaAndValueField -> schemaAndValueField.assertFor(record));
+    }
+
+    private void assertHeartBeatRecord(SourceRecord heartbeat) {
+        assertEquals("__debezium-heartbeat." + TestHelper.TEST_SERVER_NAME, heartbeat.topic());
+
+        Struct key = (Struct) heartbeat.key();
+        assertThat(key.get("serverName")).isEqualTo(TestHelper.TEST_SERVER_NAME);
+
+        Struct value = (Struct) heartbeat.value();
+        assertThat(value.getInt64("ts_ms")).isLessThanOrEqualTo(Instant.now().toEpochMilli());
     }
 }

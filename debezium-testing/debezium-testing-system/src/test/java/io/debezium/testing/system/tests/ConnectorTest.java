@@ -15,7 +15,7 @@ public abstract class ConnectorTest {
     protected final KafkaController kafkaController;
     protected final KafkaConnectController connectController;
     protected final KafkaAssertions<?, ?> assertions;
-    protected final ConnectorConfigBuilder connectorConfig;
+    protected ConnectorConfigBuilder connectorConfig;
 
     public ConnectorTest(KafkaController kafkaController, KafkaConnectController connectController,
                          ConnectorConfigBuilder connectorConfig, KafkaAssertions<?, ?> assertions) {

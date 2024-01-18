@@ -7,8 +7,15 @@ package io.debezium.connector.mongodb;
 
 import java.util.Optional;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import io.debezium.connector.mongodb.connection.MongoDbConnection;
+import io.debezium.connector.mongodb.metrics.MongoDbStreamingChangeEventSourceMetrics;
+import io.debezium.connector.mongodb.snapshot.MongoDbIncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.ChangeEventSource;
 import io.debezium.pipeline.source.spi.ChangeEventSourceFactory;
@@ -26,36 +33,40 @@ import io.debezium.util.Clock;
  */
 public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory<MongoDbPartition, MongoDbOffsetContext> {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbConnection.class);
+
     private final MongoDbConnectorConfig configuration;
     private final ErrorHandler errorHandler;
     private final EventDispatcher<MongoDbPartition, CollectionId> dispatcher;
     private final Clock clock;
-    private final ReplicaSets replicaSets;
     private final MongoDbTaskContext taskContext;
     private final MongoDbSchema schema;
+    private final MongoDbStreamingChangeEventSourceMetrics streamingMetrics;
 
     public MongoDbChangeEventSourceFactory(MongoDbConnectorConfig configuration, ErrorHandler errorHandler,
                                            EventDispatcher<MongoDbPartition, CollectionId> dispatcher, Clock clock,
-                                           ReplicaSets replicaSets, MongoDbTaskContext taskContext, MongoDbSchema schema) {
+                                           MongoDbTaskContext taskContext, MongoDbSchema schema,
+                                           MongoDbStreamingChangeEventSourceMetrics streamingMetrics) {
         this.configuration = configuration;
         this.errorHandler = errorHandler;
         this.dispatcher = dispatcher;
         this.clock = clock;
-        this.replicaSets = replicaSets;
         this.taskContext = taskContext;
         this.schema = schema;
+        this.streamingMetrics = streamingMetrics;
     }
 
     @Override
-    public SnapshotChangeEventSource<MongoDbPartition, MongoDbOffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener<MongoDbPartition> snapshotProgressListener) {
+    public SnapshotChangeEventSource<MongoDbPartition, MongoDbOffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener<MongoDbPartition> snapshotProgressListener,
+                                                                                                          NotificationService<MongoDbPartition, MongoDbOffsetContext> notificationService) {
         return new MongoDbSnapshotChangeEventSource(
                 configuration,
                 taskContext,
-                replicaSets,
                 dispatcher,
                 clock,
                 snapshotProgressListener,
-                errorHandler);
+                errorHandler,
+                notificationService);
     }
 
     @Override
@@ -63,26 +74,27 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
         return new MongoDbStreamingChangeEventSource(
                 configuration,
                 taskContext,
-                replicaSets,
                 dispatcher,
                 errorHandler,
-                clock);
+                clock,
+                streamingMetrics);
     }
 
     @Override
     public Optional<IncrementalSnapshotChangeEventSource<MongoDbPartition, ? extends DataCollectionId>> getIncrementalSnapshotChangeEventSource(
                                                                                                                                                 MongoDbOffsetContext offsetContext,
                                                                                                                                                 SnapshotProgressListener<MongoDbPartition> snapshotProgressListener,
-                                                                                                                                                DataChangeEventListener<MongoDbPartition> dataChangeEventListener) {
+                                                                                                                                                DataChangeEventListener<MongoDbPartition> dataChangeEventListener,
+                                                                                                                                                NotificationService<MongoDbPartition, MongoDbOffsetContext> notificationService) {
         final MongoDbIncrementalSnapshotChangeEventSource incrementalSnapshotChangeEventSource = new MongoDbIncrementalSnapshotChangeEventSource(
                 configuration,
                 taskContext,
-                replicaSets,
                 dispatcher,
                 schema,
                 clock,
                 snapshotProgressListener,
-                dataChangeEventListener);
+                dataChangeEventListener,
+                notificationService);
         return Optional.of(incrementalSnapshotChangeEventSource);
     }
 }

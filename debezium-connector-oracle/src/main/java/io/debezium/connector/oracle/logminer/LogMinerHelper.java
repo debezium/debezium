@@ -12,8 +12,10 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -22,6 +24,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.annotation.VisibleForTesting;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.relational.Column;
@@ -99,8 +102,54 @@ public class LogMinerHelper {
         throw new IllegalStateException("None of log files contains offset SCN: " + lastProcessedScn + ", re-snapshot is required.");
     }
 
-    private static boolean hasLogFilesStartingBeforeOrAtScn(List<LogFile> logs, Scn scn) {
-        return logs.stream().anyMatch(l -> l.getFirstScn().compareTo(scn) <= 0);
+    @VisibleForTesting
+    public static boolean hasLogFilesStartingBeforeOrAtScn(List<LogFile> logs, Scn scn) {
+        final Map<Integer, List<LogFile>> threadLogs = logs.stream().collect(Collectors.groupingBy(LogFile::getThread));
+
+        // NOTE:
+        // This check verifies that each redo thread has at least a single log that starts on or before the
+        // specified start SCN point. There is no need to check the sequence validity if there is a log
+        // currently missing for a redo thread that doesn't come before the log read position.
+        for (Map.Entry<Integer, List<LogFile>> entry : threadLogs.entrySet()) {
+            if (!entry.getValue().stream().anyMatch(l -> l.getFirstScn().compareTo(scn) <= 0)) {
+                LOGGER.debug("Redo thread {} does not yet have any logs before or at SCN {}.", entry.getKey(), scn);
+                return false;
+            }
+        }
+
+        // NOTE:
+        // Each Oracle Redo Thread (one in standalone and one per node with Oracle RAC) maintain a series of
+        // consecutive (continuous) sequences for logs and while the same sequences may be shared across one
+        // or more Oracle RAC nodes, the data they contain does not interleave and the sequences should be
+        // treated as independent values. Therefore, we need to iterate the redo thread log set, calculate
+        // the min/max sequence values and guarantee that there are no sequence gaps per redo thread.
+        for (Map.Entry<Integer, List<LogFile>> entry : threadLogs.entrySet()) {
+            long min = Long.MAX_VALUE;
+            long max = Long.MIN_VALUE;
+            for (LogFile logFile : entry.getValue()) {
+                min = Math.min(logFile.getSequence().longValue(), min);
+                max = Math.max(logFile.getSequence().longValue(), max);
+            }
+            LOGGER.debug("Redo thread {} - min: {}, max: {}", entry.getKey(), min, max);
+
+            // Now iterate the logs and verify that we have no sequence gap.
+            for (long sequenceId = min; sequenceId <= max; sequenceId++) {
+                boolean found = false;
+                for (LogFile logFile : entry.getValue()) {
+                    if (logFile.getSequence().longValue() == sequenceId) {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    LOGGER.warn("Failed to find a log file with sequence {}, forcing re-check.", sequenceId);
+                    return false;
+                }
+            }
+        }
+
+        LOGGER.debug("Redo threads {} have logs before or at SCN {}.", threadLogs.keySet(), scn);
+        return true;
     }
 
     private static Scn getMinimumScn(List<LogFile> logs) {
@@ -140,38 +189,45 @@ public class LogMinerHelper {
                     // archive log record
                     LogFile logFile = new LogFile(fileName, firstScn, nextScn, sequence, LogFile.Type.ARCHIVE, thread);
                     if (logFile.getNextScn().compareTo(offsetScn) >= 0) {
-                        LOGGER.trace("Archive log {} with SCN range {} to {} sequence {} to be added.", fileName, firstScn, nextScn, sequence);
+                        LOGGER.debug("Archive log {} with SCN range {} to {} sequence {} to be added.", fileName, firstScn, nextScn, sequence);
                         archivedLogFiles.add(logFile);
                     }
                 }
                 else if ("ONLINE".equals(type)) {
                     LogFile logFile = new LogFile(fileName, firstScn, nextScn, sequence, LogFile.Type.REDO, CURRENT.equalsIgnoreCase(status), thread);
                     if (logFile.isCurrent() || logFile.getNextScn().compareTo(offsetScn) >= 0) {
-                        LOGGER.trace("Online redo log {} with SCN range {} to {} ({}) sequence {} to be added.", fileName, firstScn, nextScn, status, sequence);
+                        LOGGER.debug("Online redo log {} with SCN range {} to {} ({}) sequence {} to be added.", fileName, firstScn, nextScn, status, sequence);
                         onlineLogFiles.add(logFile);
                     }
                     else {
-                        LOGGER.trace("Online redo log {} with SCN range {} to {} ({}) sequence {} to be excluded.", fileName, firstScn, nextScn, status, sequence);
+                        LOGGER.debug("Online redo log {} with SCN range {} to {} ({}) sequence {} to be excluded.", fileName, firstScn, nextScn, status, sequence);
                     }
                 }
             }
         });
 
+        return deduplicateLogFiles(archivedLogFiles, onlineLogFiles);
+    }
+
+    @VisibleForTesting
+    public static List<LogFile> deduplicateLogFiles(Collection<LogFile> archiveLogs, Collection<LogFile> redoLogs) {
+        final List<LogFile> logFiles = new ArrayList<>();
+
         // DBZ-3563
         // To avoid duplicate log files (ORA-01289 cannot add duplicate logfile)
-        // Remove the archive log which has the same sequence number.
-        for (LogFile redoLog : onlineLogFiles) {
-            archivedLogFiles.removeIf(f -> {
-                if (f.getSequence().equals(redoLog.getSequence())) {
-                    LOGGER.trace("Removing archive log {} with duplicate sequence {} to {}", f.getFileName(), f.getSequence(), redoLog.getFileName());
+        // Remove the archive log which has the same sequence number and redo thread number.
+        for (LogFile redoLog : redoLogs) {
+            archiveLogs.removeIf(f -> {
+                if (f.equals(redoLog)) {
+                    LOGGER.debug("Removing redo thread {} archive log {} with duplicate sequence {} to {}",
+                            f.getThread(), f.getFileName(), f.getSequence(), redoLog.getFileName());
                     return true;
                 }
                 return false;
             });
         }
-        logFiles.addAll(archivedLogFiles);
-        logFiles.addAll(onlineLogFiles);
-
+        logFiles.addAll(archiveLogs);
+        logFiles.addAll(redoLogs);
         return logFiles;
     }
 

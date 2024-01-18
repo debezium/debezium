@@ -271,6 +271,11 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
         if (Types.NCHAR == jdbcDataType || Types.NVARCHAR == jdbcDataType) {
             // NCHAR and NVARCHAR columns always uses utf8 as charset
             columnEditor.charsetName("utf8");
+
+            if (Types.NCHAR == jdbcDataType && columnEditor.length() == -1) {
+                // Explicitly set NCHAR column size as 1 when no length specified
+                columnEditor.length(1);
+            }
         }
         else {
             columnEditor.charsetName(charsetName);

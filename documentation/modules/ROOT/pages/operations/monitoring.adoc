@@ -35,14 +35,14 @@ be sure to use distinct JMX ports for each service.
 In addition to the built-in support for JMX metrics in Kafka, Zookeeper, and Kafka Connect,
 each connector provides additional metrics that you can use to monitor their activities.
 
-* xref:{link-mysql-connector}#mysql-monitoring[MySQL connector metrics]
-* xref:{link-mongodb-connector}#mongodb-monitoring[MongoDB connector metrics]
-* xref:{link-postgresql-connector}#postgresql-monitoring[PostgreSQL connector metrics]
-* xref:{link-sqlserver-connector}#sqlserver-monitoring[SQL Server connector metrics]
-* xref:{link-db2-connector}#db2-monitoring[Db2 connector metrics]
+* {link-prefix}:{link-db2-connector}#db2-monitoring[Db2 connector metrics]
+* {link-prefix}:{link-mongodb-connector}#mongodb-monitoring[MongoDB connector metrics]
+* {link-prefix}:{link-mysql-connector}#mysql-monitoring[MySQL connector metrics]
+* {link-prefix}:{link-oracle-connector}#oracle-monitoring[Oracle connector metrics]
+* {link-prefix}:{link-postgresql-connector}#postgresql-monitoring[PostgreSQL connector metrics]
+* {link-prefix}:{link-sqlserver-connector}#sqlserver-monitoring[SQL Server connector metrics]
 ifdef::community[]
-* xref:{link-oracle-connector}#oracle-monitoring[Oracle connector metrics]
-* xref:{link-cassandra-connector}#cassandra-monitoring[Cassandra connector metrics]
+* {link-prefix}:{link-cassandra-connector}#cassandra-monitoring[Cassandra connector metrics]
 endif::community[]
 
 
@@ -201,7 +201,7 @@ and maps the Docker host's port 9010 to the container's JMX port:
 
 [source,shell,options="nowrap"]
 ----
-$ docker run -it --rm --name zookeeper -p 2181:2181 -p 2888:2888 -p 3888:3888 -p 9010:9010 -e JMXPORT=9010 -e JMXHOST=10.0.1.10 debezium/zookeeper:latest
+$ docker run -it --rm --name zookeeper -p 2181:2181 -p 2888:2888 -p 3888:3888 -p 9010:9010 -e JMXPORT=9010 -e JMXHOST=10.0.1.10 quay.io/debezium/zookeeper:latest
 ----
 ====
 
@@ -243,7 +243,7 @@ and maps the Docker host's port 9011 to the container's JMX port:
 
 [source,shell,options="nowrap"]
 ----
-$ docker run -it --rm --name kafka -p 9092:9092 -p 9011:9011 -e JMXPORT=9011 -e JMXHOST=10.0.1.10 --link zookeeper:zookeeper debezium/kafka:latest
+$ docker run -it --rm --name kafka -p 9092:9092 -p 9011:9011 -e JMXPORT=9011 -e JMXHOST=10.0.1.10 --link zookeeper:zookeeper quay.io/debezium/kafka:latest
 ----
 ====
 
@@ -295,7 +295,7 @@ $ docker run -it --rm --name connect \
   --link zookeeper:zookeeper \
   --link kafka:kafka \
   --link mysql:mysql \
-  debezium/connect:latest
+  quay.io/debezium/connect:latest
 ----
 ====
 

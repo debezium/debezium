@@ -17,7 +17,7 @@ import java.math.BigDecimal;
 public class MySqlUnsignedIntegerConverter {
     /**
      * Maximum values for Unsigned Integer Types. Needed in order to calculate actual value of an Unsigned Integer Types from binlog value.
-     * Reference to {@see https://dev.mysql.com/doc/refman/5.7/en/integer-types.html}
+     * Reference to {@see https://dev.mysql.com/doc/refman/8.2/en/integer-types.html}
      */
     private static final short TINYINT_MAX_VALUE = 255;
     private static final int SMALLINT_MAX_VALUE = 65535;

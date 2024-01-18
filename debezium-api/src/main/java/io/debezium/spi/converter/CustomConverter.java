@@ -28,7 +28,7 @@ public interface CustomConverter<S, F extends ConvertedField> {
     /**
      * Callback for registering a converter.
      */
-    public interface ConverterRegistration<S> {
+    interface ConverterRegistration<S> {
 
         /**
          * Registers the given schema and converter for the current field. Should not be

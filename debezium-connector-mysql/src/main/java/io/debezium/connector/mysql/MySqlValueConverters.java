@@ -26,7 +26,6 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -40,9 +39,13 @@ import com.github.shyiko.mysql.binlog.event.deserialization.json.JsonBinary;
 
 import io.debezium.DebeziumException;
 import io.debezium.annotation.Immutable;
+import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
+import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
+import io.debezium.connector.mysql.strategy.ConnectorAdapter;
 import io.debezium.data.Json;
+import io.debezium.data.SpecialValueDecimal;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Column;
@@ -56,7 +59,7 @@ import io.debezium.util.Strings;
  * <p>
  * This class always uses UTC for the default time zone when converting values without timezone information to values that require
  * timezones. This is because MySQL {@code TIMESTAMP} values are always
- * <a href="https://dev.mysql.com/doc/refman/5.7/en/datetime.html">stored in UTC</a> (unlike {@code DATETIME} values) and
+ * <a href="https://dev.mysql.com/doc/refman/8.2/en/datetime.html">stored in UTC</a> (unlike {@code DATETIME} values) and
  * are replicated in this form. Meanwhile, the MySQL Binlog Client library will {@link AbstractRowsEventDataDeserializer
  * deserialize} these as {@link java.sql.Timestamp} values that have no timezone and, therefore, are presumed to be in UTC.
  * When the column is properly marked with a {@link Types#TIMESTAMP_WITH_TIMEZONE} type, the converters will need to convert
@@ -69,7 +72,7 @@ import io.debezium.util.Strings;
 public class MySqlValueConverters extends JdbcValueConverters {
 
     @FunctionalInterface
-    public static interface ParsingErrorHandler {
+    public interface ParsingErrorHandler {
         void error(String message, Exception exception);
     }
 
@@ -78,7 +81,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
     /**
      * Used to parse values of TIME columns. Format: 000:00:00.000000.
      */
-    private static final Pattern TIME_FIELD_PATTERN = Pattern.compile("(\\-?[0-9]*):([0-9]*):([0-9]*)(\\.([0-9]*))?");
+    private static final Pattern TIME_FIELD_PATTERN = Pattern.compile("(\\-?[0-9]*):([0-9]*)(:([0-9]*))?(\\.([0-9]*))?");
 
     /**
      * Used to parse values of DATE columns. Format: 000-00-00.
@@ -91,7 +94,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
     private static final Pattern TIMESTAMP_FIELD_PATTERN = Pattern.compile("([0-9]*)-([0-9]*)-([0-9]*) .*");
 
     /**
-     * A utility method that adjusts <a href="https://dev.mysql.com/doc/refman/5.7/en/two-digit-years.html">ambiguous</a> 2-digit
+     * A utility method that adjusts <a href="https://dev.mysql.com/doc/refman/8.2/en/two-digit-years.html">ambiguous</a> 2-digit
      * year values of DATETIME, DATE, and TIMESTAMP types using these MySQL-specific rules:
      * <ul>
      * <li>Year values in the range 00-69 are converted to 2000-2069.</li>
@@ -115,6 +118,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
     }
 
     private final ParsingErrorHandler parsingErrorHandler;
+    private final ConnectorAdapter connectorAdapter;
 
     /**
      * Create a new instance that always uses UTC for the default time zone when_needed converting values without timezone information
@@ -128,9 +132,16 @@ public class MySqlValueConverters extends JdbcValueConverters {
      *            {@link io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode#PRECISE} is to be used
      * @param binaryMode how binary columns should be represented
      */
+    @VisibleForTesting
     public MySqlValueConverters(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, BigIntUnsignedMode bigIntUnsignedMode,
                                 BinaryHandlingMode binaryMode) {
-        this(decimalMode, temporalPrecisionMode, bigIntUnsignedMode, binaryMode, x -> x, MySqlValueConverters::defaultParsingErrorHandler);
+        this(decimalMode, temporalPrecisionMode, bigIntUnsignedMode, binaryMode, x -> x, MySqlValueConverters::defaultParsingErrorHandler, resolveDefaultAdapter());
+    }
+
+    private static ConnectorAdapter resolveDefaultAdapter() {
+        Configuration config = Configuration.empty();
+        MySqlConnectorConfig connectorConfig = new MySqlConnectorConfig(config);
+        return MySqlConnectorConfig.ConnectorAdapterMode.MYSQL.getAdapter(connectorConfig);
     }
 
     /**
@@ -145,12 +156,14 @@ public class MySqlValueConverters extends JdbcValueConverters {
      *            {@link io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode#PRECISE} is to be used
      * @param binaryMode how binary columns should be represented
      * @param adjuster a temporal adjuster to make a database specific time modification before conversion
+     * @param connectorAdapter the connector adapter
      */
     public MySqlValueConverters(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, BigIntUnsignedMode bigIntUnsignedMode,
                                 BinaryHandlingMode binaryMode,
-                                TemporalAdjuster adjuster, ParsingErrorHandler parsingErrorHandler) {
+                                TemporalAdjuster adjuster, ParsingErrorHandler parsingErrorHandler, ConnectorAdapter connectorAdapter) {
         super(decimalMode, temporalPrecisionMode, ZoneOffset.UTC, adjuster, bigIntUnsignedMode, binaryMode);
         this.parsingErrorHandler = parsingErrorHandler;
+        this.connectorAdapter = connectorAdapter;
     }
 
     @Override
@@ -208,7 +221,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
                 case PRECISE:
                     // In order to capture unsigned INT 64-bit data source, org.apache.kafka.connect.data.Decimal:Byte will be required to safely capture all valid values with scale of 0
                     // Source: https://kafka.apache.org/0102/javadoc/org/apache/kafka/connect/data/Schema.Type.html
-                    return Decimal.builder(0);
+                    return SpecialValueDecimal.builder(DecimalMode.PRECISE, 20, 0);
             }
         }
         if ((matches(typeName, "FLOAT")
@@ -331,10 +344,10 @@ public class MySqlValueConverters extends JdbcValueConverters {
             logger.warn("Column is missing a character set: {}", column);
             return null;
         }
-        String encoding = MySqlConnection.getJavaEncodingForMysqlCharSet(mySqlCharsetName);
+        String encoding = connectorAdapter.getJavaEncodingForCharSet(mySqlCharsetName);
         if (encoding == null) {
             logger.debug("Column uses MySQL character set '{}', which has no mapping to a Java character set, will try it in lowercase", mySqlCharsetName);
-            encoding = MySqlConnection.getJavaEncodingForMysqlCharSet(mySqlCharsetName.toLowerCase());
+            encoding = connectorAdapter.getJavaEncodingForCharSet(mySqlCharsetName.toLowerCase());
         }
         if (encoding == null) {
             logger.warn("Column uses MySQL character set '{}', which has no mapping to a Java character set", mySqlCharsetName);
@@ -657,12 +670,8 @@ public class MySqlValueConverters extends JdbcValueConverters {
             if (data instanceof byte[]) {
                 // The binlog utility sends a byte array for any Geometry type, we will use our own binaryParse to parse the byte to WKB, hence
                 // to the suitable class
-                if (data instanceof byte[]) {
-                    // The binlog utility sends a byte array for any Geometry type, we will use our own binaryParse to parse the byte to WKB, hence
-                    // to the suitable class
-                    MySqlGeometry mySqlGeometry = MySqlGeometry.fromBytes((byte[]) data);
-                    r.deliver(io.debezium.data.geometry.Geometry.createValue(fieldDefn.schema(), mySqlGeometry.getWkb(), mySqlGeometry.getSrid()));
-                }
+                MySqlGeometry mySqlGeometry = MySqlGeometry.fromBytes((byte[]) data);
+                r.deliver(io.debezium.data.geometry.Geometry.createValue(fieldDefn.schema(), mySqlGeometry.getWkb(), mySqlGeometry.getSrid()));
             }
         });
     }
@@ -850,16 +859,21 @@ public class MySqlValueConverters extends JdbcValueConverters {
     public static Duration stringToDuration(String timeString) {
         Matcher matcher = TIME_FIELD_PATTERN.matcher(timeString);
         if (!matcher.matches()) {
-            throw new RuntimeException("Unexpected format for TIME column: " + timeString);
+            throw new DebeziumException("Unexpected format for TIME column: " + timeString);
         }
 
-        long hours = Long.parseLong(matcher.group(1));
-        long minutes = Long.parseLong(matcher.group(2));
-        long seconds = Long.parseLong(matcher.group(3));
+        final long hours = Long.parseLong(matcher.group(1));
+        final long minutes = Long.parseLong(matcher.group(2));
+        final String secondsGroup = matcher.group(4);
+        long seconds = 0;
         long nanoSeconds = 0;
-        String microSecondsString = matcher.group(5);
-        if (microSecondsString != null) {
-            nanoSeconds = Long.parseLong(Strings.justifyLeft(microSecondsString, 9, '0'));
+
+        if (secondsGroup != null) {
+            seconds = Long.parseLong(secondsGroup);
+            String microSecondsString = matcher.group(6);
+            if (microSecondsString != null) {
+                nanoSeconds = Long.parseLong(Strings.justifyLeft(microSecondsString, 9, '0'));
+            }
         }
 
         if (hours >= 0) {

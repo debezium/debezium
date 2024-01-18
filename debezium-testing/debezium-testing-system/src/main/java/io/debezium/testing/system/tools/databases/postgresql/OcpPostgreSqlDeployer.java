@@ -11,7 +11,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.testing.system.tools.databases.AbstractOcpDatabaseDeployer;
-import io.debezium.testing.system.tools.databases.OcpSqlDatabaseController;
 import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.openshift.client.OpenShiftClient;
@@ -19,7 +18,7 @@ import io.fabric8.openshift.client.OpenShiftClient;
 /**
  * @author Jakub Cechacek
  */
-public class OcpPostgreSqlDeployer extends AbstractOcpDatabaseDeployer<OcpSqlDatabaseController> {
+public class OcpPostgreSqlDeployer extends AbstractOcpDatabaseDeployer<OcpPostgreSqlController> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OcpPostgreSqlDeployer.class);
 
@@ -32,9 +31,9 @@ public class OcpPostgreSqlDeployer extends AbstractOcpDatabaseDeployer<OcpSqlDat
     }
 
     @Override
-    public OcpSqlDatabaseController getController(
-                                                  Deployment deployment, List<Service> services, OpenShiftClient ocp) {
-        return new OcpSqlDatabaseController(deployment, services, "postgresql", ocp);
+    public OcpPostgreSqlController getController(
+                                                 Deployment deployment, List<Service> services, OpenShiftClient ocp) {
+        return new OcpPostgreSqlController(deployment, services, "postgresql", ocp);
     }
 
     public static class Deployer extends DatabaseBuilder<Deployer, OcpPostgreSqlDeployer> {

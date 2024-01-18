@@ -8,7 +8,6 @@ package io.debezium.connector.oracle.logminer.processor.memory;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.time.Duration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -25,10 +24,8 @@ import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OraclePartition;
-import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.Scn;
-import io.debezium.connector.oracle.logminer.LogMinerQueryBuilder;
-import io.debezium.connector.oracle.logminer.SqlUtils;
+import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
 import io.debezium.connector.oracle.logminer.processor.AbstractLogMinerEventProcessor;
@@ -47,12 +44,10 @@ import io.debezium.util.Loggings;
 public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor<MemoryTransaction> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MemoryLogMinerEventProcessor.class);
-
-    private final OracleConnection jdbcConnection;
     private final EventDispatcher<OraclePartition, TableId> dispatcher;
     private final OraclePartition partition;
     private final OracleOffsetContext offsetContext;
-    private final OracleStreamingChangeEventSourceMetrics metrics;
+    private final LogMinerStreamingChangeEventSourceMetrics metrics;
 
     /**
      * Cache of transactions, keyed based on the transaction's unique identifier
@@ -63,7 +58,6 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
      */
     private final Map<String, Scn> recentlyProcessedTransactionsCache = new HashMap<>();
     private final Set<Scn> schemaChangesCache = new HashSet<>();
-    private final Set<String> abandonedTransactionsCache = new HashSet<>();
 
     public MemoryLogMinerEventProcessor(ChangeEventSourceContext context,
                                         OracleConnectorConfig connectorConfig,
@@ -72,13 +66,12 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
                                         OraclePartition partition,
                                         OracleOffsetContext offsetContext,
                                         OracleDatabaseSchema schema,
-                                        OracleStreamingChangeEventSourceMetrics metrics) {
-        super(context, connectorConfig, schema, partition, offsetContext, dispatcher, metrics);
-        this.jdbcConnection = jdbcConnection;
+                                        LogMinerStreamingChangeEventSourceMetrics metrics) {
+        super(context, connectorConfig, schema, partition, offsetContext, dispatcher, metrics, jdbcConnection);
         this.dispatcher = dispatcher;
         this.partition = partition;
         this.offsetContext = offsetContext;
-        this.metrics = metrics;
+        this.metrics = (LogMinerStreamingChangeEventSourceMetrics) metrics;
     }
 
     @Override
@@ -88,7 +81,7 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
 
     @Override
     protected MemoryTransaction createTransaction(LogMinerEventRow row) {
-        return new MemoryTransaction(row.getTransactionId(), row.getScn(), row.getChangeTime(), row.getUserName());
+        return new MemoryTransaction(row.getTransactionId(), row.getScn(), row.getChangeTime(), row.getUserName(), row.getThread());
     }
 
     @Override
@@ -135,44 +128,6 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
     }
 
     @Override
-    public void abandonTransactions(Duration retention) throws InterruptedException {
-        if (!Duration.ZERO.equals(retention)) {
-            final Scn offsetScn = offsetContext.getScn();
-            Optional<Scn> lastScnToAbandonTransactions = getLastScnToAbandon(jdbcConnection, offsetScn, retention);
-            if (lastScnToAbandonTransactions.isPresent()) {
-                Scn thresholdScn = lastScnToAbandonTransactions.get();
-                LOGGER.warn("All transactions with SCN <= {} will be abandoned.", thresholdScn);
-                Scn smallestScn = getTransactionCacheMinimumScn();
-                if (!smallestScn.isNull()) {
-                    if (thresholdScn.compareTo(smallestScn) < 0) {
-                        thresholdScn = smallestScn;
-                    }
-
-                    Iterator<Map.Entry<String, MemoryTransaction>> iterator = transactionCache.entrySet().iterator();
-                    while (iterator.hasNext()) {
-                        Map.Entry<String, MemoryTransaction> entry = iterator.next();
-                        if (entry.getValue().getStartScn().compareTo(thresholdScn) <= 0) {
-                            LOGGER.warn("Transaction {} is being abandoned.", entry.getKey());
-                            abandonedTransactionsCache.add(entry.getKey());
-                            iterator.remove();
-
-                            metrics.addAbandonedTransactionId(entry.getKey());
-                            metrics.setActiveTransactions(transactionCache.size());
-                        }
-                    }
-
-                    // Update the oldest scn metric are transaction abandonment
-                    smallestScn = getTransactionCacheMinimumScn();
-                    metrics.setOldestScn(smallestScn.isNull() ? Scn.valueOf(-1) : smallestScn);
-                }
-
-                offsetContext.setScn(thresholdScn);
-                dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
-            }
-        }
-    }
-
-    @Override
     protected boolean isRecentlyProcessed(String transactionId) {
         return recentlyProcessedTransactionsCache.containsKey(transactionId);
     }
@@ -188,17 +143,13 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
     }
 
     @Override
-    protected void removeTransactionAndEventsFromCache(MemoryTransaction transaction) {
-        abandonedTransactionsCache.remove(transaction.getTransactionId());
-    }
-
-    @Override
     protected Iterator<LogMinerEvent> getTransactionEventIterator(MemoryTransaction transaction) {
         return transaction.getEvents().iterator();
     }
 
     @Override
     protected void finalizeTransactionCommit(String transactionId, Scn commitScn) {
+        getAbandonedTransactionsCache().remove(transactionId);
         if (getConfig().isLobEnabled()) {
             // cache recently committed transactions by transaction id
             recentlyProcessedTransactionsCache.put(transactionId, commitScn);
@@ -208,10 +159,16 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
     @Override
     protected void finalizeTransactionRollback(String transactionId, Scn rollbackScn) {
         transactionCache.remove(transactionId);
-        abandonedTransactionsCache.remove(transactionId);
+        getAbandonedTransactionsCache().remove(transactionId);
         if (getConfig().isLobEnabled()) {
             recentlyProcessedTransactionsCache.put(transactionId, rollbackScn);
         }
+    }
+
+    @Override
+    protected String getFirstActiveTransactionKey() {
+        final Iterator<String> keyIterator = transactionCache.keySet().iterator();
+        return keyIterator.hasNext() ? keyIterator.next() : null;
     }
 
     @Override
@@ -224,7 +181,7 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
 
     @Override
     protected void addToTransaction(String transactionId, LogMinerEventRow row, Supplier<LogMinerEvent> eventSupplier) {
-        if (abandonedTransactionsCache.contains(transactionId)) {
+        if (getAbandonedTransactionsCache().contains(transactionId)) {
             LOGGER.warn("Event for abandoned transaction {}, skipped.", transactionId);
             return;
         }
@@ -246,10 +203,10 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
                 // Add new event at eventId offset
                 LOGGER.trace("Transaction {}, adding event reference at index {}", transactionId, eventId);
                 transaction.getEvents().add(eventSupplier.get());
-                metrics.calculateLagMetrics(row.getChangeTime());
+                metrics.calculateLagFromSource(row.getChangeTime());
             }
 
-            metrics.setActiveTransactions(getTransactionCache().size());
+            metrics.setActiveTransactionCount(getTransactionCache().size());
         }
         else if (!getConfig().isLobEnabled()) {
             // Explicitly only log this warning when LobEnabled is false because its commonplace for a
@@ -266,8 +223,7 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
 
     @Override
     protected PreparedStatement createQueryStatement() throws SQLException {
-        final String query = LogMinerQueryBuilder.build(getConfig());
-        return jdbcConnection.connection().prepareStatement(query,
+        return jdbcConnection.connection().prepareStatement(getQueryString(),
                 ResultSet.TYPE_FORWARD_ONLY,
                 ResultSet.CONCUR_READ_ONLY,
                 ResultSet.HOLD_CURSORS_OVER_COMMIT);
@@ -315,36 +271,6 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
         }
     }
 
-    /**
-     * Calculates the SCN as a watermark to abandon for long running transactions.
-     * The criteria is do not let the offset SCN expire from archives older the specified retention hours.
-     *
-     * @param connection database connection, should not be {@code null}
-     * @param offsetScn offset system change number, should not be {@code null}
-     * @param retention duration to tolerate long running transactions before being abandoned, must not be {@code null}
-     * @return an optional system change number as the watermark for transaction buffer abandonment
-     */
-    protected Optional<Scn> getLastScnToAbandon(OracleConnection connection, Scn offsetScn, Duration retention) {
-        try {
-            Float diffInDays = connection.singleOptionalValue(SqlUtils.diffInDaysQuery(offsetScn), rs -> rs.getFloat(1));
-            if (diffInDays != null && (diffInDays * 24) > retention.toHours()) {
-                return Optional.of(offsetScn);
-            }
-            return Optional.empty();
-        }
-        catch (SQLException e) {
-            LOGGER.error("Cannot calculate days difference for transaction abandonment", e);
-            metrics.incrementErrorCount();
-            return Optional.of(offsetScn);
-        }
-    }
-
-    @Override
-    protected void abandonTransactionOverEventThreshold(MemoryTransaction transaction) {
-        super.abandonTransactionOverEventThreshold(transaction);
-        abandonedTransactionsCache.add(transaction.getTransactionId());
-    }
-
     @Override
     protected Scn getTransactionCacheMinimumScn() {
         return transactionCache.values().stream()
@@ -352,4 +278,28 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
                 .min(Scn::compareTo)
                 .orElse(Scn.NULL);
     }
+
+    @Override
+    protected Optional<MemoryTransaction> getOldestTransactionInCache() {
+        MemoryTransaction transaction = null;
+        if (!transactionCache.isEmpty()) {
+            // Seed with the first element
+            transaction = transactionCache.values().iterator().next();
+            for (MemoryTransaction entry : transactionCache.values()) {
+                int comparison = entry.getStartScn().compareTo(transaction.getStartScn());
+                if (comparison < 0) {
+                    // if entry has a smaller scn, it came before.
+                    transaction = entry;
+                }
+                else if (comparison == 0) {
+                    // if entry has an equal scn, compare the change times.
+                    if (entry.getChangeTime().isBefore(transaction.getChangeTime())) {
+                        transaction = entry;
+                    }
+                }
+            }
+        }
+        return Optional.ofNullable(transaction);
+    }
+
 }

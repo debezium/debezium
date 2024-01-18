@@ -54,7 +54,7 @@ public class CustomTestSnapshot implements Snapshotter {
     }
 
     @Override
-    public String snapshotTransactionIsolationLevelStatement(SlotCreationResult newSlotInfo) {
+    public String snapshotTransactionIsolationLevelStatement(SlotCreationResult newSlotInfo, boolean isOnDemand) {
         if (newSlotInfo != null) {
             String snapSet = String.format("SET TRANSACTION SNAPSHOT '%s';", newSlotInfo.snapshotName());
             return "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ; \n" + snapSet;

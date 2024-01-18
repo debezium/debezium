@@ -9,6 +9,7 @@ import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -32,7 +33,7 @@ public class Threads {
     /**
      * Measures the amount time that has elapsed since the last {@link #reset() reset}.
      */
-    public static interface TimeSince {
+    public interface TimeSince {
         /**
          * Reset the elapsed time to 0.
          */
@@ -50,7 +51,7 @@ public class Threads {
      * Expires after defined time period.
      *
      */
-    public static interface Timer {
+    public interface Timer {
 
         /**
          * @return true if current time is greater than start time plus requested time period
@@ -305,5 +306,9 @@ public class Threads {
 
     public static ExecutorService newSingleThreadExecutor(Class<? extends SourceConnector> connector, String connectorId, String name) {
         return newSingleThreadExecutor(connector, connectorId, name, false);
+    }
+
+    public static ScheduledExecutorService newSingleThreadScheduledExecutor(Class<? extends SourceConnector> connector, String connectorId, String name, boolean daemon) {
+        return Executors.newSingleThreadScheduledExecutor(threadFactory(connector, connectorId, name, false, daemon));
     }
 }

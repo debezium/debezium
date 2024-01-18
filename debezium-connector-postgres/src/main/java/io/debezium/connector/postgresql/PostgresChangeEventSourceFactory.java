@@ -12,7 +12,9 @@ import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.spi.SlotCreationResult;
 import io.debezium.connector.postgresql.spi.SlotState;
 import io.debezium.connector.postgresql.spi.Snapshotter;
+import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.ErrorHandler;
+import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.ChangeEventSourceFactory;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
@@ -27,7 +29,7 @@ import io.debezium.util.Strings;
 public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactory<PostgresPartition, PostgresOffsetContext> {
 
     private final PostgresConnectorConfig configuration;
-    private final PostgresConnection jdbcConnection;
+    private final MainConnectionProvidingConnectionFactory<PostgresConnection> connectionFactory;
     private final ErrorHandler errorHandler;
     private final PostgresEventDispatcher<TableId> dispatcher;
     private final Clock clock;
@@ -38,12 +40,13 @@ public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactor
     private final SlotCreationResult slotCreatedInfo;
     private final SlotState startingSlotInfo;
 
-    public PostgresChangeEventSourceFactory(PostgresConnectorConfig configuration, Snapshotter snapshotter, PostgresConnection jdbcConnection,
+    public PostgresChangeEventSourceFactory(PostgresConnectorConfig configuration, Snapshotter snapshotter,
+                                            MainConnectionProvidingConnectionFactory<PostgresConnection> connectionFactory,
                                             ErrorHandler errorHandler, PostgresEventDispatcher<TableId> dispatcher, Clock clock, PostgresSchema schema,
-                                            PostgresTaskContext taskContext,
-                                            ReplicationConnection replicationConnection, SlotCreationResult slotCreatedInfo, SlotState startingSlotInfo) {
+                                            PostgresTaskContext taskContext, ReplicationConnection replicationConnection, SlotCreationResult slotCreatedInfo,
+                                            SlotState startingSlotInfo) {
         this.configuration = configuration;
-        this.jdbcConnection = jdbcConnection;
+        this.connectionFactory = connectionFactory;
         this.errorHandler = errorHandler;
         this.dispatcher = dispatcher;
         this.clock = clock;
@@ -56,17 +59,19 @@ public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactor
     }
 
     @Override
-    public SnapshotChangeEventSource<PostgresPartition, PostgresOffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener<PostgresPartition> snapshotProgressListener) {
+    public SnapshotChangeEventSource<PostgresPartition, PostgresOffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener<PostgresPartition> snapshotProgressListener,
+                                                                                                            NotificationService<PostgresPartition, PostgresOffsetContext> notificationService) {
         return new PostgresSnapshotChangeEventSource(
                 configuration,
                 snapshotter,
-                jdbcConnection,
+                connectionFactory,
                 schema,
                 dispatcher,
                 clock,
                 snapshotProgressListener,
                 slotCreatedInfo,
-                startingSlotInfo);
+                startingSlotInfo,
+                notificationService);
     }
 
     @Override
@@ -74,7 +79,7 @@ public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactor
         return new PostgresStreamingChangeEventSource(
                 configuration,
                 snapshotter,
-                jdbcConnection,
+                connectionFactory.mainConnection(),
                 dispatcher,
                 errorHandler,
                 clock,
@@ -87,7 +92,8 @@ public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactor
     public Optional<IncrementalSnapshotChangeEventSource<PostgresPartition, ? extends DataCollectionId>> getIncrementalSnapshotChangeEventSource(
                                                                                                                                                  PostgresOffsetContext offsetContext,
                                                                                                                                                  SnapshotProgressListener<PostgresPartition> snapshotProgressListener,
-                                                                                                                                                 DataChangeEventListener<PostgresPartition> dataChangeEventListener) {
+                                                                                                                                                 DataChangeEventListener<PostgresPartition> dataChangeEventListener,
+                                                                                                                                                 NotificationService<PostgresPartition, PostgresOffsetContext> notificationService) {
         // If no data collection id is provided, don't return an instance as the implementation requires
         // that a signal data collection id be provided to work.
         if (Strings.isNullOrEmpty(configuration.getSignalingDataCollectionId())) {
@@ -95,12 +101,13 @@ public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactor
         }
         final PostgresSignalBasedIncrementalSnapshotChangeEventSource incrementalSnapshotChangeEventSource = new PostgresSignalBasedIncrementalSnapshotChangeEventSource(
                 configuration,
-                jdbcConnection,
+                connectionFactory.mainConnection(),
                 dispatcher,
                 schema,
                 clock,
                 snapshotProgressListener,
-                dataChangeEventListener);
+                dataChangeEventListener,
+                notificationService);
         return Optional.of(incrementalSnapshotChangeEventSource);
     }
 }

@@ -50,15 +50,63 @@ public final class Strings {
      * @param input the input string
      * @param splitter the function that splits the input into multiple items; may not be null
      * @param factory the factory for creating string items into filter matches; may not be null
+     * @param trim specifies whether each input item is trimmed before being added to the returned collection
      * @return the set of objects included in the list; never null
      */
-    public static <T> Set<T> setOf(String input, Function<String, String[]> splitter, Function<String, T> factory) {
+    private static <T> Set<T> setOf(String input, Function<String, String[]> splitter, Function<String, T> factory, boolean trim) {
         if (input == null) {
             return Collections.emptySet();
         }
         Set<T> matches = new HashSet<>();
         for (String item : splitter.apply(input)) {
-            T obj = factory.apply(item);
+            T obj = factory.apply(trim ? item.trim() : item);
+            if (obj != null) {
+                matches.add(obj);
+            }
+        }
+        return matches;
+    }
+
+    /**
+     * Generate the set of values that are included in the list.
+     *
+     * @param input the input string
+     * @param splitter the function that splits the input into multiple items; may not be null
+     * @param factory the factory for creating string items into filter matches; may not be null
+     * @return the set of objects included in the list; never null
+     */
+    public static <T> Set<T> setOf(String input, Function<String, String[]> splitter, Function<String, T> factory) {
+        return setOf(input, splitter, factory, false);
+    }
+
+    /**
+     * Generate the set of values that are included in the list, with each element trimmed.
+     *
+     * @param input the input string
+     * @param splitter the function that splits the input into multiple items; may not be null
+     * @param factory the factory for creating string items into filter matches; may not be null
+     * @return the set of objects included in the list; never null
+     */
+    public static <T> Set<T> setOfTrimmed(String input, Function<String, String[]> splitter, Function<String, T> factory) {
+        return setOf(input, splitter, factory, true);
+    }
+
+    /**
+     * Generate the list of values that are included in the list.
+     *
+     * @param input the input string
+     * @param splitter the function that splits the input into multiple items; may not be null
+     * @param factory the factory for creating string items into filter matches; may not be null
+     * @param trim specifies whether each input item is trimmed before being added to the returned collection
+     * @return the list of objects included in the list; never null
+     */
+    private static <T> List<T> listOf(String input, Function<String, String[]> splitter, Function<String, T> factory, boolean trim) {
+        if (input == null) {
+            return Collections.emptyList();
+        }
+        List<T> matches = new ArrayList<T>();
+        for (String item : splitter.apply(input)) {
+            T obj = factory.apply(trim ? item.trim() : item);
             if (obj != null) {
                 matches.add(obj);
             }
@@ -75,17 +123,19 @@ public final class Strings {
      * @return the list of objects included in the list; never null
      */
     public static <T> List<T> listOf(String input, Function<String, String[]> splitter, Function<String, T> factory) {
-        if (input == null) {
-            return Collections.emptyList();
-        }
-        List<T> matches = new ArrayList<T>();
-        for (String item : splitter.apply(input)) {
-            T obj = factory.apply(item);
-            if (obj != null) {
-                matches.add(obj);
-            }
-        }
-        return matches;
+        return listOf(input, splitter, factory, false);
+    }
+
+    /**
+     * Generate the list of values that are included in the list, with each element trimmed.
+     *
+     * @param input the input string
+     * @param splitter the function that splits the input into multiple items; may not be null
+     * @param factory the factory for creating string items into filter matches; may not be null
+     * @return the list of objects included in the list; never null
+     */
+    public static <T> List<T> listOfTrimmed(String input, Function<String, String[]> splitter, Function<String, T> factory) {
+        return listOf(input, splitter, factory, true);
     }
 
     /**
@@ -101,6 +151,18 @@ public final class Strings {
     }
 
     /**
+     * Generate the set of values that are included in the list delimited by the given delimiter, with each element trimmed.
+     *
+     * @param input the input string
+     * @param delimiter the character used to delimit the items in the input
+     * @param factory the factory for creating string items into filter matches; may not be null
+     * @return the set of objects included in the list; never null
+     */
+    public static <T> Set<T> setOfTrimmed(String input, char delimiter, Function<String, T> factory) {
+        return setOfTrimmed(input, (str) -> str.split("[" + delimiter + "]"), factory);
+    }
+
+    /**
      * Generate the set of values that are included in the list separated by commas.
      *
      * @param input the input string
@@ -109,6 +171,17 @@ public final class Strings {
      */
     public static <T> Set<T> setOf(String input, Function<String, T> factory) {
         return setOf(input, ',', factory);
+    }
+
+    /**
+     * Generate the set of values that are included in the list separated by commas, with each element trimmed.
+     *
+     * @param input the input string
+     * @param factory the factory for creating string items into filter matches; may not be null
+     * @return the set of objects included in the list; never null
+     */
+    public static <T> Set<T> setOfTrimmed(String input, Function<String, T> factory) {
+        return setOfTrimmed(input, ',', factory);
     }
 
     /**
@@ -154,7 +227,7 @@ public final class Strings {
      * Represents a predicate (boolean-valued function) of one character argument.
      */
     @FunctionalInterface
-    public static interface CharacterPredicate {
+    public interface CharacterPredicate {
         /**
          * Evaluates this predicate on the given character argument.
          *
@@ -394,7 +467,7 @@ public final class Strings {
         return justifyLeft(original, length, padChar, false);
     }
 
-    public static enum Justify {
+    public enum Justify {
         LEFT,
         RIGHT,
         CENTER;
@@ -1096,6 +1169,20 @@ public final class Strings {
         return null;
     }
 
+    /**
+     * Masks sensitive data in given string
+     *
+     * @param original original string containing possibly sensitive data
+     * @param mask replacement string
+     * @param sensitives sensitive data to be masked
+     * @return original string with sensitive data masked
+     */
+    public static String mask(String original, String mask, String... sensitives) {
+        return Arrays.stream(sensitives)
+                .filter(Objects::nonNull)
+                .reduce(original, (masked, sensitive) -> masked.replace(sensitive, "***"));
+    }
+
     private Strings() {
     }
 
@@ -1104,7 +1191,7 @@ public final class Strings {
      * If a comma is part of expression then it can be prepended with <code>'\'</code> so
      * it will not act as a separator.
      */
-    private static class RegExSplitter implements Tokenizer {
+    public static class RegExSplitter implements Tokenizer {
 
         public static String[] split(String identifier) {
             TokenStream stream = new TokenStream(identifier, new RegExSplitter(), true);

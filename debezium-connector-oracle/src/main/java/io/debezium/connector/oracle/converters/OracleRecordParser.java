@@ -7,10 +7,9 @@ package io.debezium.connector.oracle.converters;
 
 import java.util.Set;
 
-import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
 
+import io.debezium.converters.recordandmetadata.RecordAndMetadata;
 import io.debezium.converters.spi.RecordParser;
 import io.debezium.data.Envelope;
 import io.debezium.util.Collect;
@@ -29,8 +28,8 @@ public class OracleRecordParser extends RecordParser {
             COMMIT_SCN_KEY,
             LCR_POSITION_KEY);
 
-    public OracleRecordParser(Schema schema, Struct record) {
-        super(schema, record, Envelope.FieldName.BEFORE, Envelope.FieldName.AFTER);
+    public OracleRecordParser(RecordAndMetadata recordAndMetadata) {
+        super(recordAndMetadata, Envelope.FieldName.BEFORE, Envelope.FieldName.AFTER);
     }
 
     @Override

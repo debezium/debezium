@@ -136,7 +136,7 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
         private final boolean tableIdCaseInsensitive;
         private final ConcurrentMap<TableId, TableSchema> values;
 
-        public SchemasByTableId(boolean tableIdCaseInsensitive) {
+        SchemasByTableId(boolean tableIdCaseInsensitive) {
             this.tableIdCaseInsensitive = tableIdCaseInsensitive;
             this.values = new ConcurrentHashMap<>();
         }

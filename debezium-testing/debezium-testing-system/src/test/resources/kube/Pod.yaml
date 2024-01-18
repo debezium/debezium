@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "testsuite"
+  namespace: debezium-testsuite
+spec:
+  restartPolicy: Never
+  volumes:
+    - name: testsuite-volume
+      persistentVolumeClaim:
+        claimName: testsuite-storage-claim
+  containers:
+    - name: "dbz-testing-system"
+      image: #IMAGE
+      imagePullPolicy: Always
+      ports:
+        - containerPort: 9000
+          protocol: "TCP"
+      volumeMounts:
+        - mountPath: /root/.m2
+          name: testsuite-volume
+      env:
+        - name: TESTSUITE_ARGUMENTS
+          value: -Dtest.prepare.strimzi=true -DskipTests=true -Dtest.strimzi.version.kafka=3.5.0 -Dtest.wait.scale=1 -Dtest.strimzi.kc.build=true -Dtest.ocp.project.debezium=debezium-test -Dimage.as=AS_IMAGE -Dtest.strimzi.operator.channel=stable -Dgroups="!avro&openshift"
+        - name: DBZ_GIT_BRANCH
+          value: "main"
+        - name: DBZ_GIT_REPOSITORY
+          value: "https://github.com/debezium/debezium.git"
+        - name: DBZ_OCP_PROJECT_DEBEZIUM
+          value: "debezium"
+        - name: DBZ_SECRET_NAME
+          value: "docker-secret"
