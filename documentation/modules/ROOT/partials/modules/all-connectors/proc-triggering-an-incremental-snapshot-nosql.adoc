@@ -4,8 +4,8 @@ You submit a signal to the signaling {data-collection} by using the MongoDB `ins
 
 After {prodname} detects the change in the signaling {data-collection}, it reads the signal, and runs the requested snapshot operation.
 
-The query that you submit specifies the {data-collection}s to include in the snapshot, and, optionally, specifies the kind of snapshot operation.
-Currently, the only valid option for snapshots operations is the default value, `incremental`.
+The query that you submit specifies the {data-collection}s to include in the snapshot, and, optionally, specifies the type of snapshot operation.
+Currently, the only valid options for snapshots operations are `incremental`and `blocking`.
 
 To specify the {data-collection}s to include in the snapshot, provide a `data-collections` array that lists the {data-collection}s or an array of regular expressions used to match {data-collection}s, for example, +
 `{"data-collections": ["public.Collection1", "public.Collection2"]}` +
@@ -80,8 +80,8 @@ The array lists regular expressions which match {data-collection}s by their full
 
 |5
 |`incremental`
-|An optional `type` component of the `data` field of a signal that specifies the kind of snapshot operation to run. +
-Currently, the only valid option is the default value, `incremental`. +
+|An optional `type` component of the `data` field of a signal that specifies the type of snapshot operation to run. +
+Currently supports the `incremental` and `blocking` types. +
 If you do not specify a value, the connector runs an incremental snapshot.
 |===
 
@@ -111,7 +111,7 @@ The following example, shows the JSON for an incremental snapshot event that is 
 |1
 |`snapshot`
 |Specifies the type of snapshot operation to run. +
-Currently, the only valid option is the default value, `incremental`. +
+Currently, the only valid options are `blocking` and `incremental`. +
 Specifying a `type` value in the SQL query that you submit to the signaling {data-collection} is optional. +
 If you do not specify a value, the connector runs an incremental snapshot.
 

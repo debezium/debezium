@@ -14,7 +14,7 @@ The signal type is `execute-snapshot`, and the `data` field must have the follow
 |`type`
 |`incremental`
 | The type of the snapshot to be executed.
-Currently {prodname} supports only the `incremental` type.  +
+Currently {prodname} supports the `incremental` and `blocking` types. +
 See the next section for more details.
 
 |`data-collections`
