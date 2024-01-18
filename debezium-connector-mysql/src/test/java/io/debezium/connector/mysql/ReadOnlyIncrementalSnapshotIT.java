@@ -300,7 +300,7 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
         populateTable();
         AtomicReference<Throwable> exception = new AtomicReference<>();
         startConnector((success, message, error) -> exception.set(error));
-        waitForConnectorShutdown("mysql", DATABASE.getServerName());
+        waitForEngineShutdown();
         stopConnector();
         final Throwable e = exception.get();
         if (e != null) {
