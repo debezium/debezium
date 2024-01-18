@@ -63,7 +63,7 @@ If this component of the `data` field is omitted, the signal stops the entire in
 
 |5
 |`incremental`
-|A required component of the `data` field of a signal that specifies the kind of snapshot operation that is to be stopped. +
+|A required component of the `data` field of a signal that specifies the type of snapshot operation that is to be stopped. +
 Currently, the only valid option is `incremental`. +
 If you do not specify a `type` value, the signal fails to stop the incremental snapshot.
 |===
