@@ -23,6 +23,7 @@ mvn org.apache.maven.plugins:maven-dependency-plugin:2.8:get \
 Add Oracle drivers for oracle connector
 ``` bash
 ORACLE_ARTIFACT_VERSION=$(mvn -q -DforceStdout help:evaluate -Dexpression=version.oracle.driver)
+ORACLE_INSTANTCLIENT_ARTIFACT_VERSION=$(mvn -q -DforceStdout help:evaluate -Dexpression=version.oracle.instantclient)
 ORACLE_ARTIFACT_DIR="${PWD}/oracle-libs/${ORACLE_ARTIFACT_VERSION}.0"
 
 mkdir -p ${ORACLE_ARTIFACT_DIR}
@@ -31,7 +32,7 @@ mvn install:install-file -DgroupId=com.oracle.instantclient -DartifactId=ojdbc8 
     -Dversion=${ORACLE_ARTIFACT_VERSION} -Dpackaging=jar -Dfile=ojdbc8.jar \
     -Dmaven.repo.local=${MAVEN_REPO}
 mvn install:install-file -DgroupId=com.oracle.instantclient -DartifactId=xstreams \
-    -Dversion=${ORACLE_ARTIFACT_VERSION} -Dpackaging=jar -Dfile=xstreams.jar \
+    -Dversion=${ORACLE_INSTANTCLIENT_ARTIFACT_VERSION} -Dpackaging=jar -Dfile=xstreams.jar \
     -Dmaven.repo.local=${MAVEN_REPO}
 ```
 
