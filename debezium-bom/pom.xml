@@ -241,7 +241,7 @@
             <dependency>
                 <groupId>com.oracle.instantclient</groupId>
                 <artifactId>xstreams</artifactId>
-                <version>${version.oracle.driver}</version>
+                <version>${version.oracle.instantclient}</version>
             </dependency>
 
             <!-- Db2 JDBC driver -->

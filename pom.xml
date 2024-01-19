@@ -130,12 +130,15 @@
         <version.mysql.binlog>0.29.0</version.mysql.binlog>
         <version.mongo.driver>4.11.0</version.mongo.driver>
         <version.sqlserver.driver>12.4.2.jre8</version.sqlserver.driver>
-        <version.oracle.driver>23.3.0.0</version.oracle.driver>
         <version.db2.driver>11.5.0.0</version.db2.driver>
         <version.informix.changestream.client>1.1.3</version.informix.changestream.client>
         <version.informix.driver>4.50.10</version.informix.driver>
         <version.cassandra.driver>4.14.0</version.cassandra.driver>
         <version.mariadb.driver>3.2.0</version.mariadb.driver>
+        <!-- These two should be aligned by major versions but minor could vary -->
+        <!-- Oracle publishes the driver versions more frequently than the instant client -->
+        <version.oracle.driver>21.6.0.0</version.oracle.driver>
+        <version.oracle.instantclient>21.6.0.0</version.oracle.instantclient>
 
         <!-- Databases, should align with database drivers -->
         <version.mysql.server>8.2</version.mysql.server>

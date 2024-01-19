@@ -809,5 +809,15 @@
                 <log.mining.read.only.mode>true</log.mining.read.only.mode>
             </properties>
         </profile>
+        <profile>
+            <id>oracle-23</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <properties>
+                <version.oracle.driver>23.3.0.23.09</version.oracle.driver>
+                <version.oracle.instantclient>23.3.0.0</version.oracle.instantclient>
+            </properties>
+        </profile>
     </profiles>
 </project>
