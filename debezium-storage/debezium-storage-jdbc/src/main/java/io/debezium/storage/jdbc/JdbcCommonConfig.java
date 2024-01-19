@@ -45,7 +45,7 @@ public class JdbcCommonConfig {
 
     public JdbcCommonConfig(Configuration config, String prefix) {
         config = config.subset(prefix, true);
-        LOGGER.info("Configuration for '{}' with prefix '{}': {}", getClass().getSimpleName(), prefix, config.asMap());
+        LOGGER.info("Configuration for '{}' with prefix '{}': {}", getClass().getSimpleName(), prefix, config.withMaskedPasswords().asMap());
         if (!config.validateAndRecord(getAllConfigurationFields(), error -> LOGGER.error("Validation error for property with prefix '{}': {}", prefix, error))) {
             throw new DebeziumException(
                     String.format("Error configuring an instance of '%s' with prefix '%s'; check the logs for errors", getClass().getSimpleName(), prefix));
