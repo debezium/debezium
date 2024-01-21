@@ -85,6 +85,7 @@ public class OracleConnection extends JdbcConnection {
 
     public OracleConnection(JdbcConfiguration config, ConnectionFactory connectionFactory, boolean showVersion) {
         super(config, connectionFactory, QUOTED_CHARACTER, QUOTED_CHARACTER);
+        LOGGER.trace("JDBC connection string: " + connectionString(config));
         this.databaseVersion = resolveOracleDatabaseVersion();
         if (showVersion) {
             LOGGER.info("Database Version: {}", databaseVersion.getBanner());
@@ -93,6 +94,7 @@ public class OracleConnection extends JdbcConnection {
 
     public OracleConnection(JdbcConfiguration config, boolean showVersion) {
         super(config, resolveConnectionFactory(config), QUOTED_CHARACTER, QUOTED_CHARACTER);
+        LOGGER.trace("JDBC connection string: " + connectionString(config));
         this.databaseVersion = resolveOracleDatabaseVersion();
         if (showVersion) {
             LOGGER.info("Database Version: {}", databaseVersion.getBanner());
