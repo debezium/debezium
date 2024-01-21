@@ -2,6 +2,30 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.3.7.Final
+January 21st 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12418258)
+
+### New features since 2.3.6.Final
+
+None
+
+
+### Breaking changes since 2.3.6.Final
+
+None
+
+
+### Fixes since 2.3.6.Final
+
+* Oracle connector is ocasionally unable to find SCN [DBZ-7345](https://issues.redhat.com/browse/DBZ-7345)
+
+
+### Other changes since 2.3.6.Final
+
+None
+
+
+
 ## 2.3.6.Final
 January 12nd 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12418914)
 
