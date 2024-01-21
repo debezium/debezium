@@ -328,6 +328,7 @@ jobs:
       environments:
         - variables:
             ORACLE_VERSION: 23.3.0.0
+            ORACLE_PROFILE_ARGS: "-Poracle-23 -pl debezium-connector-oracle"
             TEST_PROFILE: oracle
 
   ###############################################################################################

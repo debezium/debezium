@@ -306,6 +306,11 @@ public class TestHelper {
     public static OracleConnection testConnection() {
         Configuration config = testConfig().build();
         Configuration jdbcConfig = config.subset(DATABASE_PREFIX, true);
+        LOGGER.info("JDBC config: ");
+        for (var entry : jdbcConfig.asMap().entrySet()) {
+            LOGGER.info(entry.getKey() + "------" + entry.getValue());
+        }
+
         return createConnection(config, JdbcConfiguration.adapt(jdbcConfig), false);
     }
 
