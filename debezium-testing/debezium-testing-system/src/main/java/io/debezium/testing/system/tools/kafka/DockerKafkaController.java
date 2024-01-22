@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.testing.system.tools.kafka.docker.KafkaContainer;
+import io.debezium.testing.system.tools.kafka.docker.ZookeeperContainer;
 
 /**
  * This class provides control over Kafka instance deployed as DockerContainer
@@ -24,6 +25,7 @@ public class DockerKafkaController implements KafkaController {
     private static final Logger LOGGER = LoggerFactory.getLogger(DockerKafkaController.class);
 
     private final KafkaContainer container;
+    private ZookeeperContainer zookeeperContainer;
 
     public DockerKafkaController(KafkaContainer container) {
         this.container = container;
@@ -36,6 +38,10 @@ public class DockerKafkaController implements KafkaController {
     @Override
     public String getPublicBootstrapAddress() {
         return container.getPublicBootstrapAddress();
+    }
+
+    public void setZookeeperContainer(ZookeeperContainer zookeeperContainer) {
+        this.zookeeperContainer = zookeeperContainer;
     }
 
     @Override
@@ -51,7 +57,8 @@ public class DockerKafkaController implements KafkaController {
     @Override
     public boolean undeploy() {
         container.stop();
-        return container.isRunning();
+        zookeeperContainer.stop();
+        return zookeeperContainer.isRunning();
     }
 
     @Override
