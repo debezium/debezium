@@ -59,7 +59,7 @@
         <version.mockito>3.0.0</version.mockito>
         <version.awaitility>4.0.1</version.awaitility>
         <version.testcontainers>1.19.1</version.testcontainers>
-        <version.jsonpath>2.7.0</version.jsonpath>
+        <version.jsonpath>2.9.0</version.jsonpath>
         <version.jsonassert>1.5.0</version.jsonassert>
         <version.org.reflections>0.9.12</version.org.reflections>
         <version.cassandra.unit>3.5.0.1</version.cassandra.unit>
