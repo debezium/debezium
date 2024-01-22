@@ -77,7 +77,7 @@ public class MySqlSchemaHistoryIT extends AbstractAsyncEngineConnectorTest {
         stopConnector();
 
         start(MySqlConnector.class, config);
-        assertConnectorIsRunning();
+        waitForStreamingRunning("mysql", DATABASE.getServerName(), getStreamingNamespace());
         stopConnector();
     }
 
@@ -105,7 +105,7 @@ public class MySqlSchemaHistoryIT extends AbstractAsyncEngineConnectorTest {
         stopConnector();
 
         start(MySqlConnector.class, config);
-        assertConnectorIsRunning();
+        waitForStreamingRunning("mysql", DATABASE.getServerName(), getStreamingNamespace());
         stopConnector();
     }
 
@@ -133,7 +133,7 @@ public class MySqlSchemaHistoryIT extends AbstractAsyncEngineConnectorTest {
         stopConnector();
 
         start(MySqlConnector.class, config);
-        assertConnectorIsRunning();
+        waitForStreamingRunning("mysql", DATABASE.getServerName(), getStreamingNamespace());
         stopConnector();
     }
 
@@ -160,7 +160,7 @@ public class MySqlSchemaHistoryIT extends AbstractAsyncEngineConnectorTest {
         stopConnector();
 
         start(MySqlConnector.class, config);
-        assertConnectorIsRunning();
+        waitForStreamingRunning("mysql", DATABASE.getServerName(), getStreamingNamespace());
         stopConnector();
     }
 
