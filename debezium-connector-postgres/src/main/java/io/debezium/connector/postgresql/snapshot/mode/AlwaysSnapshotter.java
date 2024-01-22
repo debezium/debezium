@@ -3,17 +3,28 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
+package io.debezium.connector.postgresql.snapshot.mode;
 
-package io.debezium.connector.postgresql;
+import java.util.Map;
 
-import io.debezium.connector.postgresql.snapshot.query.SelectAllSnapshotQuery;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import io.debezium.connector.postgresql.PostgresConnectorConfig;
 import io.debezium.spi.snapshot.Snapshotter;
 
-public class CustomStartFromStreamingTestSnapshot extends SelectAllSnapshotQuery implements Snapshotter {
+public class AlwaysSnapshotter implements Snapshotter {
+
+    private final static Logger LOGGER = LoggerFactory.getLogger(AlwaysSnapshotter.class);
 
     @Override
     public String name() {
-        return CustomStartFromStreamingTestSnapshot.class.getName();
+        return PostgresConnectorConfig.SnapshotMode.ALWAYS.getValue();
+    }
+
+    @Override
+    public void configure(Map<String, ?> properties) {
+
     }
 
     @Override
@@ -28,6 +39,7 @@ public class CustomStartFromStreamingTestSnapshot extends SelectAllSnapshotQuery
 
     @Override
     public boolean shouldSnapshot() {
+        LOGGER.info("Taking a new snapshot as per configuration");
         return true;
     }
 
@@ -43,11 +55,6 @@ public class CustomStartFromStreamingTestSnapshot extends SelectAllSnapshotQuery
 
     @Override
     public boolean shouldSnapshotSchema() {
-        return false;
-    }
-
-    @Override
-    public boolean shouldStreamEventsStartingFromSnapshot() {
         return false;
     }
 }

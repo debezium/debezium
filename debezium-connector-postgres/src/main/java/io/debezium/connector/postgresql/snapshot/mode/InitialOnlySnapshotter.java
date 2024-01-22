@@ -3,24 +3,20 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.postgresql.snapshot;
+package io.debezium.connector.postgresql.snapshot.mode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.postgresql.PostgresConnectorConfig;
-import io.debezium.connector.postgresql.spi.OffsetState;
-import io.debezium.connector.postgresql.spi.SlotState;
 
-public class InitialOnlySnapshotter extends QueryingSnapshotter {
+public class InitialOnlySnapshotter extends InitialSnapshotter {
 
     private final static Logger LOGGER = LoggerFactory.getLogger(InitialOnlySnapshotter.class);
-    private OffsetState sourceInfo;
 
     @Override
-    public void init(PostgresConnectorConfig config, OffsetState sourceInfo, SlotState slotState) {
-        super.init(config, sourceInfo, slotState);
-        this.sourceInfo = sourceInfo;
+    public String name() {
+        return PostgresConnectorConfig.SnapshotMode.INITIAL_ONLY.getValue();
     }
 
     @Override
@@ -30,11 +26,12 @@ public class InitialOnlySnapshotter extends QueryingSnapshotter {
 
     @Override
     public boolean shouldSnapshot() {
-        if (sourceInfo == null) {
+
+        if (!offsetContextExists) {
             LOGGER.info("Taking initial snapshot for new datasource");
             return true;
         }
-        else if (sourceInfo.snapshotInEffect()) {
+        else if (isSnapshotInProgress) {
             LOGGER.info("Found previous incomplete snapshot");
             return true;
         }

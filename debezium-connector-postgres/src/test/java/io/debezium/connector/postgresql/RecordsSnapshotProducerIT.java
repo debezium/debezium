@@ -1264,7 +1264,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         alterConfig(config);
         start(PostgresConnector.class, config
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_ONLY)
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE_CLASS, CustomTestSnapshot.class.getName())
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE_CUSTOM_NAME, CustomTestSnapshot.class.getName())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
                 .build());
         assertConnectorIsRunning();
@@ -1274,7 +1274,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         alterConfig(config);
         start(PostgresConnector.class, config
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.ALWAYS)
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE_CLASS, CustomTestSnapshot.class.getName())
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE_CUSTOM_NAME, CustomTestSnapshot.class.getName())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
                 .build());
         assertConnectorIsRunning();
