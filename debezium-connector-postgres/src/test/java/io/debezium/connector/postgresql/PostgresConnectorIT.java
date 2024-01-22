@@ -71,6 +71,7 @@ import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.LogicalDecoder;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
+import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotQueryMode;
 import io.debezium.connector.postgresql.connection.AbstractMessageDecoder;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.PostgresReplicationConnection;
@@ -80,7 +81,7 @@ import io.debezium.connector.postgresql.connection.pgoutput.PgOutputMessageDecod
 import io.debezium.connector.postgresql.junit.SkipTestDependingOnDecoderPluginNameRule;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIs;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot;
-import io.debezium.connector.postgresql.snapshot.InitialOnlySnapshotter;
+import io.debezium.connector.postgresql.snapshot.mode.InitialOnlySnapshotter;
 import io.debezium.connector.postgresql.spi.SlotState;
 import io.debezium.converters.CloudEventsConverterTest;
 import io.debezium.data.Envelope;
@@ -1653,7 +1654,9 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         TestHelper.execute(SETUP_TABLES_STMT);
         Configuration config = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.CUSTOM.getValue())
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE_CLASS, CustomTestSnapshot.class.getName())
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE_CUSTOM_NAME, CustomTestSnapshot.class.getName())
+                .with(PostgresConnectorConfig.SNAPSHOT_QUERY_MODE, SnapshotQueryMode.CUSTOM)
+                .with(PostgresConnectorConfig.SNAPSHOT_QUERY_MODE_CUSTOM_NAME, CustomTestSnapshot.class.getName())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
                 .build();
         start(PostgresConnector.class, config);
@@ -1684,7 +1687,9 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
         config = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.CUSTOM.getValue())
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE_CLASS, CustomTestSnapshot.class.getName())
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE_CUSTOM_NAME, CustomTestSnapshot.class.getName())
+                .with(PostgresConnectorConfig.SNAPSHOT_QUERY_MODE, SnapshotQueryMode.CUSTOM)
+                .with(PostgresConnectorConfig.SNAPSHOT_QUERY_MODE_CUSTOM_NAME, CustomTestSnapshot.class.getName())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                 .build();
         start(PostgresConnector.class, config);
@@ -1972,7 +1977,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         // Perform an regular snapshot
         Configuration config = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.CUSTOM.getValue())
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE_CLASS, CustomStartFromStreamingTestSnapshot.class.getName())
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE_CUSTOM_NAME, CustomStartFromStreamingTestSnapshot.class.getName())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
                 .build();
         start(PostgresConnector.class, config);
@@ -1995,7 +2000,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         // Perform catch up streaming and resnapshot everything
         config = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.CUSTOM.getValue())
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE_CLASS, CustomStartFromStreamingTestSnapshot.class.getName())
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE_CUSTOM_NAME, CustomStartFromStreamingTestSnapshot.class.getName())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
                 .build();
         start(PostgresConnector.class, config);
@@ -2055,7 +2060,9 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         // Perform a custom partial snapshot
         config = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.CUSTOM.getValue())
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE_CLASS, CustomPartialTableTestSnapshot.class.getName())
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE_CUSTOM_NAME, CustomPartialTableTestSnapshot.class.getName())
+                .with(PostgresConnectorConfig.SNAPSHOT_QUERY_MODE, SnapshotQueryMode.CUSTOM)
+                .with(PostgresConnectorConfig.SNAPSHOT_QUERY_MODE_CUSTOM_NAME, CustomPartialTableTestSnapshot.class.getName())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
                 .build();
         start(PostgresConnector.class, config);
@@ -2120,7 +2127,9 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         // Perform a custom partial snapshot
         config = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.CUSTOM.getValue())
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE_CLASS, CustomPartialTableTestSnapshot.class.getName())
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE_CUSTOM_NAME, CustomPartialTableTestSnapshot.class.getName())
+                .with(PostgresConnectorConfig.SNAPSHOT_QUERY_MODE, SnapshotQueryMode.CUSTOM)
+                .with(PostgresConnectorConfig.SNAPSHOT_QUERY_MODE_CUSTOM_NAME, CustomPartialTableTestSnapshot.class.getName())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
                 .build();
         start(PostgresConnector.class, config);
@@ -2171,7 +2180,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
                 "CREATE TABLE s1.lifecycle_state (hook text, state text, PRIMARY KEY(hook));");
         Configuration config = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.CUSTOM.getValue())
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE_CLASS, CustomLifecycleHookTestSnapshot.class.getName())
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE_CUSTOM_NAME, CustomLifecycleHookTestSnapshot.class.getName())
                 .build();
         start(PostgresConnector.class, config);
         assertConnectorIsRunning();
@@ -3379,7 +3388,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
                 .with(PostgresConnectorConfig.POLL_INTERVAL_MS, 60 * 1000)
                 .with(PostgresConnectorConfig.SNAPSHOT_FETCH_SIZE, 1)
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.CUSTOM.getValue())
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE_CLASS, CustomLifecycleHookTestSnapshot.class.getName())
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE_CUSTOM_NAME, CustomLifecycleHookTestSnapshot.class.getName())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE);
 
         DebeziumEngine.CompletionCallback completionCallback = (success, message, error) -> {
@@ -3436,7 +3445,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
                 .until(() -> finished.get());
         assertThat(status.get()).isFalse();
         assertNull(error.get());
-        assertThat(message.get()).contains("snapshot.custom_class cannot be empty when snapshot.mode 'custom' is defined");
+        assertThat(message.get()).contains("snapshot.mode.custom.name cannot be empty when snapshot.mode 'custom' is defined");
     }
 
     @FixFor("DBZ-5917")

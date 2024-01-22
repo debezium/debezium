@@ -93,7 +93,6 @@ public class PostgresConnector extends RelationalBaseSourceConnector {
                 // Prepare connection without initial statement execution
                 connection.connection(false);
                 testConnection(connection);
-                checkWalLevel(connection, postgresConfig);
                 checkLoginReplicationRoles(connection);
             }
             catch (SQLException e) {
@@ -140,21 +139,6 @@ public class PostgresConnector extends RelationalBaseSourceConnector {
                         "Could not fetch roles"))) {
             final String errorMessage = "Postgres roles LOGIN and REPLICATION are not assigned to user: " + connection.username();
             LOGGER.error(errorMessage);
-        }
-    }
-
-    private static void checkWalLevel(PostgresConnection connection, PostgresConnectorConfig config) throws SQLException {
-        final String walLevel = connection.queryAndMap(
-                "SHOW wal_level",
-                connection.singleResultMapper(rs -> rs.getString("wal_level"), "Could not fetch wal_level"));
-        if (!"logical".equals(walLevel)) {
-            if (config.getSnapshotter() != null && config.getSnapshotter().shouldStream()) {
-                // Logical WAL_LEVEL is only necessary for CDC snapshotting
-                throw new SQLException("Postgres server wal_level property must be 'logical' but is: '" + walLevel + "'");
-            }
-            else {
-                LOGGER.warn("WAL_LEVEL check failed but this is ignored as CDC was not requested");
-            }
         }
     }
 

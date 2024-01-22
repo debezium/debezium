@@ -1,0 +1,3 @@
+io.debezium.connector.postgresql.CustomTestSnapshot
+io.debezium.connector.postgresql.CustomPartialTableTestSnapshot
+io.debezium.connector.postgresql.CustomStartFromStreamingTestSnapshot
