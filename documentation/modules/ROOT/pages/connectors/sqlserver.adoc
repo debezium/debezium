@@ -916,7 +916,10 @@ a|Name of the schema that defines the structure of the key's payload. This schem
 ifdef::community[]
 [NOTE]
 ====
-Although the `column.exclude.list` and `column.include.list` connector configuration properties allow you to capture only a subset of table columns, all columns in a primary or unique key are always included in the event's key.
+When {prodname} emits a change event record, it sets the message key for each record to the name of the primary key or unique key column of the source table.
+{prodname} must be able to read these columns to function properly.
+If you set the xref:sqlserver-property-column-include-list[`column.include.list`] or xref:sqlserver-property-column-exclude-list[`column.exclude.list`] properties in the connector configuration,
+be sure that your settings permit the connector to capture the required primary key or unique key columns.
 ====
 
 [WARNING]
@@ -2519,9 +2522,13 @@ If you include this property in the configuration, do not also set the `table.in
 |[[sqlserver-property-column-include-list]]<<sqlserver-property-column-include-list, `+column.include.list+`>>
 |_empty string_
 |An optional comma-separated list of regular expressions that match the fully-qualified names of columns that should be included in the change event message values.
-Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_.
-Note that primary key columns are always included in the event's key, even if not included in the value.
-For now, table primary key has to be always explicitly included in the list of captured columns.+
+Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_. +
+
+[NOTE]
+====
+Each change event record that {prodname} emits for a table includes an event key that contains fields for each column in the table's primary key or unique key.
+To ensure that event keys are generated correctly, if you set this property, be sure to explicitly list the primary key columns of any captured tables.
+====
 
 To match the name of a column, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
 That is, the specified expression is matched against the entire name string of the column; it does not match substrings that might be present in a column name. +
