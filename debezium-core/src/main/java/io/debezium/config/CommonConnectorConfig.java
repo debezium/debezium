@@ -854,6 +854,23 @@ public abstract class CommonConnectorConfig {
                     + "'warn' (the default) the value of column of event that conversion failed will be null and be logged with warn level; "
                     + "'skip' the value of column of event that conversion failed will be null and be logged with debug level.");
 
+    public static final Field SNAPSHOT_MODE_CUSTOM_NAME = Field.create("snapshot.mode.custom.name")
+            .withDisplayName("Snapshot Mode Custom Name")
+            .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 11))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withValidation((config, field, output) -> {
+                if ("custom".equalsIgnoreCase(config.getString("snapshot.mode")) && config.getString(field, "").isEmpty()) {
+                    output.accept(field, "", "snapshot.mode.custom.name cannot be empty when snapshot.mode 'custom' is defined");
+                    return 1;
+                }
+                return 0;
+            })
+            .withDescription(
+                    "When 'snapshot.mode' is set as custom, this setting must be set to specify a the name of the custom implementation provided in the 'name()' method. "
+                            + "The implementations must implement the 'Snapshotter' interface and is called on each app boot to determine whether to do a snapshot.");
+
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
             .connector(
                     EVENT_PROCESSING_FAILURE_HANDLING_MODE,
@@ -867,6 +884,7 @@ public abstract class CommonConnectorConfig {
                     SNAPSHOT_MODE_TABLES,
                     SNAPSHOT_FETCH_SIZE,
                     SNAPSHOT_MAX_THREADS,
+                    SNAPSHOT_MODE_CUSTOM_NAME,
                     RETRIABLE_RESTART_WAIT,
                     QUERY_FETCH_SIZE,
                     MAX_RETRIES_ON_ERROR,
@@ -901,6 +919,8 @@ public abstract class CommonConnectorConfig {
     private final int incrementalSnapshotChunkSize;
     private final boolean incrementalSnapshotAllowSchemaChanges;
     private final int snapshotMaxThreads;
+
+    private final String snapshotModeCustomName;
     private final Integer queryFetchSize;
     private final SourceInfoStructMaker<? extends AbstractSourceInfo> sourceInfoStructMaker;
     private final boolean shouldProvideTransactionMetadata;
@@ -944,6 +964,7 @@ public abstract class CommonConnectorConfig {
         this.retriableRestartWait = Duration.ofMillis(config.getLong(RETRIABLE_RESTART_WAIT));
         this.snapshotFetchSize = config.getInteger(SNAPSHOT_FETCH_SIZE, defaultSnapshotFetchSize);
         this.snapshotMaxThreads = config.getInteger(SNAPSHOT_MAX_THREADS);
+        this.snapshotModeCustomName = config.getString(SNAPSHOT_MODE_CUSTOM_NAME);
         this.queryFetchSize = config.getInteger(QUERY_FETCH_SIZE);
         this.incrementalSnapshotChunkSize = config.getInteger(INCREMENTAL_SNAPSHOT_CHUNK_SIZE);
         this.incrementalSnapshotAllowSchemaChanges = config.getBoolean(INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES);
@@ -1063,6 +1084,10 @@ public abstract class CommonConnectorConfig {
 
     public int getSnapshotMaxThreads() {
         return snapshotMaxThreads;
+    }
+
+    public String getSnapshotModeCustomName() {
+        return snapshotModeCustomName;
     }
 
     public int getQueryFetchSize() {

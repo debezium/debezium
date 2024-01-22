@@ -3,16 +3,27 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.spi.snapshot;
+package io.debezium.snapshot.spi;
 
 import java.util.List;
 import java.util.Optional;
 
+import io.debezium.service.Service;
+import io.debezium.spi.common.Configurable;
+
 /**
- * This interface is used to determine the query used during data snapshot
+ * {@link SnapshotQuery} is used to determine the query used during data snapshot
  *
+ * @author Mario Fiore Vitale
  */
-public interface SnapshotQuery {
+public interface SnapshotQuery extends Configurable, Service {
+
+    /**
+     * @return the name of the snapshot lock.
+     *
+     *
+     */
+    String name();
 
     /**
      * Generate a valid query string for the specified table, or an empty {@link Optional}
