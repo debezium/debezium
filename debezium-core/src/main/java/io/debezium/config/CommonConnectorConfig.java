@@ -857,7 +857,7 @@ public abstract class CommonConnectorConfig {
     public static final Field SNAPSHOT_MODE_CUSTOM_NAME = Field.create("snapshot.mode.custom.name")
             .withDisplayName("Snapshot Mode Custom Name")
             .withType(Type.STRING)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 11))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 12))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
             .withValidation((config, field, output) -> {
