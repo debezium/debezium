@@ -183,7 +183,7 @@ jobs:
 
       - name: Cache Maven Repository
         id: maven-cache-check
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
@@ -231,7 +231,7 @@ jobs:
 
       - name: Cache Maven Repository
         id: maven-cache-check
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
@@ -272,7 +272,7 @@ jobs:
           java-version: 17
 
       - name: Cache Maven Repository
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
@@ -310,7 +310,7 @@ jobs:
           java-version: 17
 
       - name: Cache Maven Repository
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
@@ -347,7 +347,7 @@ jobs:
           java-version: 17
 
       - name: Cache Maven Repository
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
@@ -383,7 +383,7 @@ jobs:
           java-version: 17
 
       - name: Cache Maven Repository
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
@@ -423,7 +423,7 @@ jobs:
           java-version: 17
 
       - name: Cache Maven Repository
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
@@ -456,7 +456,7 @@ jobs:
           java-version: 17
 
       - name: Cache Maven Repository
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
@@ -492,7 +492,7 @@ jobs:
           java-version: 17
 
       - name: Cache Maven Repository
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
@@ -525,7 +525,7 @@ jobs:
           java-version: 17
 
       - name: Cache Maven Repository
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
@@ -558,7 +558,7 @@ jobs:
           java-version: 17
 
       - name: Cache Maven Repository
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
@@ -590,7 +590,7 @@ jobs:
           java-version: 17
 
       - name: Cache Maven Repository
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
@@ -622,7 +622,7 @@ jobs:
           java-version: 17
 
       - name: Cache Maven Repository
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
@@ -655,7 +655,7 @@ jobs:
           java-version: 17
 
       - name: Cache Maven Repository
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
@@ -717,7 +717,7 @@ jobs:
       # For this build, we do not care if there are or are not changes in the sibling repository since this
       # job will only ever fire if there are changes in the common paths identified in the files_changed job.
       - name: Cache Maven Repository
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
@@ -784,7 +784,7 @@ jobs:
       # For this build, we do not care if there are or are not changes in the sibling repository since this
       # job will only ever fire if there are changes in the common paths identified in the files_changed job.
       - name: Cache Maven Repository
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
@@ -841,7 +841,7 @@ jobs:
       # For this build, we do not care if there are or are not changes in the sibling repository since this
       # job will only ever fire if there are changes in the common paths identified in the files_changed job.
       - name: Cache Maven Repository
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
@@ -898,7 +898,7 @@ jobs:
       # For this build, we do not care if there are or are not changes in the sibling repository since this
       # job will only ever fire if there are changes in the common paths identified in the files_changed job.
       - name: Cache Maven Repository
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
@@ -955,7 +955,7 @@ jobs:
       # For this build, we do not care if there are or are not changes in the sibling repository since this
       # job will only ever fire if there are changes in the common paths identified in the files_changed job.
       - name: Cache Maven Repository
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
@@ -1013,7 +1013,7 @@ jobs:
       # For this build, we do not care if there are or are not changes in the sibling repository since this
       # job will only ever fire if there are changes in the common paths identified in the files_changed job.
       - name: Cache Maven Repository
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
