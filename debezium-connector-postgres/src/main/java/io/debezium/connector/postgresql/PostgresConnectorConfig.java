@@ -857,7 +857,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withEnum(SnapshotLockingMode.class, SnapshotLockingMode.NONE)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 13))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 12))
             .withDescription("Controls how the connector holds locks on tables while performing the schema snapshot. The 'shared' "
                     + "which means the connector will hold a table lock that prevents exclusive table access for just the initial portion of the snapshot "
                     + "while the database schemas and other metadata are being read. The remaining work in a snapshot involves selecting all rows from "
@@ -868,7 +868,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     public static final Field SNAPSHOT_LOCKING_MODE_CUSTOM_NAME = Field.create("snapshot.locking.mode.custom.name")
             .withDisplayName("Snapshot Locking Mode Custom Name")
             .withType(Type.STRING)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 14))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 13))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
             .withValidation((config, field, output) -> {
@@ -879,7 +879,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                 return 0;
             })
             .withDescription(
-                    "When 'snapshot.locking.mode' is set as custom, this setting must be set to specify the name of the custom implementation provided in the 'name()' method. "
+                    "When 'snapshot.locking.mode' is set as custom, this setting must be set to specify a the name of the custom implementation provided in the 'name()' method. "
                             + "The implementations must implement the 'SnapshotterLocking' interface and is called to determine how to lock tables during schema snapshot.");
 
     public static final Field SNAPSHOT_QUERY_MODE = Field.create("snapshot.query.mode")
@@ -887,13 +887,13 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withEnum(SnapshotQueryMode.class, SnapshotQueryMode.SELECT_ALL)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 15))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 14))
             .withDescription("Controls query used during the snapshot");
 
     public static final Field SNAPSHOT_QUERY_MODE_CUSTOM_NAME = Field.create("snapshot.query.mode.custom.name")
             .withDisplayName("Snapshot Query Mode Custom Name")
             .withType(Type.STRING)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 16))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 15))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
             .withValidation((config, field, output) -> {
@@ -904,7 +904,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                 return 0;
             })
             .withDescription(
-                    "When 'snapshot.query.mode' is set as custom, this setting must be set to specify the name of the custom implementation provided in the 'name()' method. "
+                    "When 'snapshot.query.mode' is set as custom, this setting must be set to specify a the name of the custom implementation provided in the 'name()' method. "
                             + "The implementations must implement the 'SnapshotterQuery' interface and is called to determine how to build queries during snapshot.");
 
     /**

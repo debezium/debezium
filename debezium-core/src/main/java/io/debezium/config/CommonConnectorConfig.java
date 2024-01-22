@@ -843,6 +843,23 @@ public abstract class CommonConnectorConfig {
                     + "'insert_insert' both open and close signal is written into signal data collection (default); "
                     + "'insert_delete' only open signal is written on signal data collection, the close will delete the relative open signal;");
 
+    public static final Field SNAPSHOT_MODE_CUSTOM_NAME = Field.create("snapshot.mode.custom.name")
+            .withDisplayName("Snapshot Mode Custom Name")
+            .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 11))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withValidation((config, field, output) -> {
+                if ("custom".equalsIgnoreCase(config.getString("snapshot.mode")) && config.getString(field, "").isEmpty()) {
+                    output.accept(field, "", "snapshot.mode.custom.name cannot be empty when snapshot.mode 'custom' is defined");
+                    return 1;
+                }
+                return 0;
+            })
+            .withDescription(
+                    "When 'snapshot.mode' is set as custom, this setting must be set to specify a the name of the custom implementation provided in the 'name()' method. "
+                            + "The implementations must implement the 'Snapshotter' interface and is called on each app boot to determine whether to do a snapshot.");
+
     public static final Field EVENT_CONVERTING_FAILURE_HANDLING_MODE = Field.create("event.converting.failure.handling.mode")
             .withDisplayName("Event converting failure handling mode")
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 26))
