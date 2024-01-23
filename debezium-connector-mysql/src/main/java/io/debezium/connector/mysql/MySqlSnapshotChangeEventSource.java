@@ -99,7 +99,13 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
         // found a previous offset and the earlier snapshot has completed
         if (previousOffset != null && !previousOffset.isSnapshotRunning()) {
 
-            LOGGER.info("A previous offset indicating a completed snapshot has been found. Neither schema nor data will be snapshotted.");
+            if (databaseSchema.isStorageInitializationExecuted()) {
+                LOGGER.info(
+                        "A previous offset indicating a completed snapshot has been found, schema will still be snapshotted since we are in schema_only_recovery mode.");
+            }
+            else {
+                LOGGER.info("A previous offset indicating a completed snapshot has been found. Neither schema nor data will be snapshotted.");
+            }
             return new SnapshottingTask(databaseSchema.isStorageInitializationExecuted(), false, dataCollectionsToBeSnapshotted, snapshotSelectOverridesByTable, false);
         }
 
