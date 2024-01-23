@@ -9,6 +9,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.spi.schema.DataCollectionId;
@@ -46,7 +47,9 @@ public class TransactionContext {
     }
 
     public Map<String, Object> store(Map<String, Object> offset) {
-        offset.put(OFFSET_TRANSACTION_ID, transactionId);
+        if (!Objects.isNull(transactionId)) {
+            offset.put(OFFSET_TRANSACTION_ID, transactionId);
+        }
         final String tableCountPrefix = OFFSET_TABLE_COUNT_PREFIX;
         for (final Entry<String, Long> e : perTableEventCount.entrySet()) {
             offset.put(tableCountPrefix + e.getKey(), e.getValue());
