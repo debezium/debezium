@@ -197,14 +197,60 @@ public class SqlServerConnectionIT {
 
             // and issue a test call to a CDC wrapper function
             Thread.sleep(5_000); // Need to wait to make sure the min_lsn is available
-            List<String> capturedColumns = Arrays.asList("int_no_default_not_null", "int_no_default", "bigint_column", "int_column", "smallint_column", "tinyint_column",
-                    "bit_column", "decimal_column", "decimal_mismatch_default", "numeric_column", "numeric_mismatch_default", "money_column", "money_mismatch_default",
-                    "smallmoney_column", "smallmoney_mismatch_default", "float_column", "real_column",
-                    "date_column", "datetime_column", "datetime2_column", "datetime2_0_column", "datetime2_1_column", "datetime2_2_column", "datetime2_3_column",
-                    "datetime2_4_column", "datetime2_5_column", "datetime2_6_column", "datetime2_7_column", "datetimeoffset_column", "smalldatetime_column",
-                    "time_column", "time_0_column", "time_1_column", "time_2_column", "time_3_column", "time_4_column", "time_5_column", "time_6_column",
-                    "time_7_column", "char_column", "varchar_column", "text_column", "nchar_column", "nvarchar_column", "ntext_column", "binary_column",
-                    "varbinary_column", "image_column");
+            List<String> capturedColumns = Arrays
+                    .asList(
+                            "int_no_default_not_null",
+                            "int_no_default",
+                            "bigint_column",
+                            "int_column",
+                            "smallint_column",
+                            "tinyint_column",
+                            "bit_column",
+                            "decimal_column",
+                            "decimal_mismatch_default",
+                            "numeric_column",
+                            "numeric_mismatch_default",
+                            "money_column",
+                            "money_mismatch_default",
+                            "smallmoney_column",
+                            "smallmoney_mismatch_default",
+                            "float_column",
+                            "real_column",
+
+                            "date_column",
+                            "datetime_column",
+                            "datetime2_column",
+                            "datetime2_0_column",
+                            "datetime2_1_column",
+                            "datetime2_2_column",
+                            "datetime2_3_column",
+                            "datetime2_4_column",
+                            "datetime2_5_column",
+                            "datetime2_6_column",
+                            "datetime2_7_column",
+                            "datetimeoffset_column",
+                            "smalldatetime_column",
+
+                            "time_column",
+                            "time_0_column",
+                            "time_1_column",
+                            "time_2_column",
+                            "time_3_column",
+                            "time_4_column",
+                            "time_5_column",
+                            "time_6_column",
+                            "time_7_column",
+
+                            "char_column",
+                            "varchar_column",
+                            "text_column",
+                            "nchar_column",
+                            "nvarchar_column",
+                            "ntext_column",
+
+                            "binary_column",
+                            "varbinary_column",
+                            "image_column");
 
             SqlServerChangeTable changeTable = new SqlServerChangeTable(new TableId("testDB1", "dbo", "table_with_defaults"),
                     null, 0, null, capturedColumns);
@@ -333,6 +379,26 @@ public class SqlServerConnectionIT {
                     + "    real_no_default real,"
                     + "    real_default_null real default null,"
                     + "    real_column real default (1.2345e3),"
+
+                    + "    char_default_null_no_paren char(10) default null,"
+                    + "    char_default_null_single_paren char(10) default (NULL),"
+                    + "    char_default_null_double_paren char(10) default ((NULL)),"
+                    + "    varchar_default_null_no_paren varchar(10) default null,"
+                    + "    varchar_default_null_single_paren varchar(10) default (NULL),"
+                    + "    varchar_default_null_double_paren varchar(10) default ((NULL)),"
+                    + "    text_default_null_no_paren text default null,"
+                    + "    text_default_null_single_paren text default (NULL),"
+                    + "    text_default_null_double_paren text default ((NULL)),"
+                    + "    nchar_default_null_no_paren nchar(10) default null,"
+                    + "    nchar_default_null_single_paren nchar(10) default (NULL),"
+                    + "    nchar_default_null_double_paren nchar(10) default ((NULL)),"
+                    + "    nvarchar_default_null_no_paren nvarchar(10) default null,"
+                    + "    nvarchar_default_null_single_paren nvarchar(10) default (NULL),"
+                    + "    nvarchar_default_null_double_paren nvarchar(10) default ((NULL)),"
+                    + "    ntext_default_null_no_paren ntext default null,"
+                    + "    ntext_default_null_single_paren ntext default (NULL),"
+                    + "    ntext_default_null_double_paren ntext default ((NULL)),"
+
                     + ");";
 
             connection.execute(sql);
@@ -375,7 +441,26 @@ public class SqlServerConnectionIT {
                             "real_no_default_not_null",
                             "real_no_default",
                             "real_default_null",
-                            "real_column");
+                            "real_column",
+
+                            "char_default_null_no_paren",
+                            "char_default_null_single_paren",
+                            "char_default_null_double_paren",
+                            "varchar_default_null_no_paren",
+                            "varchar_default_null_single_paren",
+                            "varchar_default_null_double_paren",
+                            "text_default_null_no_paren",
+                            "text_default_null_single_paren",
+                            "text_default_null_double_paren",
+                            "nchar_default_null_no_paren",
+                            "nchar_default_null_single_paren",
+                            "nchar_default_null_double_paren",
+                            "nvarchar_default_null_no_paren",
+                            "nvarchar_default_null_single_paren",
+                            "nvarchar_default_null_double_paren",
+                            "ntext_default_null_no_paren",
+                            "ntext_default_null_single_paren",
+                            "ntext_default_null_double_paren");
 
             SqlServerChangeTable changeTable = new SqlServerChangeTable(new TableId("testDB1", "dbo", "table_with_defaults"),
                     null, 0, null, capturedColumns);
@@ -416,6 +501,25 @@ public class SqlServerConnectionIT {
             assertColumnHasDefaultValue(table, "real_no_default", null, tableSchemaBuilder);
             assertColumnHasDefaultValue(table, "real_default_null", null, tableSchemaBuilder);
             assertColumnHasDefaultValue(table, "real_column", 1234.5f, tableSchemaBuilder);
+
+            assertColumnHasDefaultValue(table, "char_default_null_no_paren", null, tableSchemaBuilder);
+            assertColumnHasDefaultValue(table, "char_default_null_single_paren", null, tableSchemaBuilder);
+            assertColumnHasDefaultValue(table, "char_default_null_double_paren", null, tableSchemaBuilder);
+            assertColumnHasDefaultValue(table, "varchar_default_null_no_paren", null, tableSchemaBuilder);
+            assertColumnHasDefaultValue(table, "varchar_default_null_single_paren", null, tableSchemaBuilder);
+            assertColumnHasDefaultValue(table, "varchar_default_null_double_paren", null, tableSchemaBuilder);
+            assertColumnHasDefaultValue(table, "text_default_null_no_paren", null, tableSchemaBuilder);
+            assertColumnHasDefaultValue(table, "text_default_null_single_paren", null, tableSchemaBuilder);
+            assertColumnHasDefaultValue(table, "text_default_null_double_paren", null, tableSchemaBuilder);
+            assertColumnHasDefaultValue(table, "nchar_default_null_no_paren", null, tableSchemaBuilder);
+            assertColumnHasDefaultValue(table, "nchar_default_null_single_paren", null, tableSchemaBuilder);
+            assertColumnHasDefaultValue(table, "nchar_default_null_double_paren", null, tableSchemaBuilder);
+            assertColumnHasDefaultValue(table, "nvarchar_default_null_no_paren", null, tableSchemaBuilder);
+            assertColumnHasDefaultValue(table, "nvarchar_default_null_single_paren", null, tableSchemaBuilder);
+            assertColumnHasDefaultValue(table, "nvarchar_default_null_double_paren", null, tableSchemaBuilder);
+            assertColumnHasDefaultValue(table, "ntext_default_null_no_paren", null, tableSchemaBuilder);
+            assertColumnHasDefaultValue(table, "ntext_default_null_single_paren", null, tableSchemaBuilder);
+            assertColumnHasDefaultValue(table, "ntext_default_null_double_paren", null, tableSchemaBuilder);
         }
     }
 
