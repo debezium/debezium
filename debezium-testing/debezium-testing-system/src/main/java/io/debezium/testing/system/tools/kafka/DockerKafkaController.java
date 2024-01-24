@@ -9,13 +9,14 @@ import static io.debezium.testing.system.tools.WaitConditions.scaled;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static org.awaitility.Awaitility.await;
 
-import lombok.Getter;
-import lombok.Setter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.testing.system.tools.kafka.docker.KafkaContainer;
 import io.debezium.testing.system.tools.kafka.docker.ZookeeperContainer;
+
+import lombok.Getter;
+import lombok.Setter;
 
 /**
  * This class provides control over Kafka instance deployed as DockerContainer

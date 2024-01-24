@@ -111,7 +111,7 @@ public class DockerKafkaConnectController implements KafkaConnectController {
     @Override
     public boolean undeploy() {
         container.stop();
-        return container.isRunning();
+        return !container.isRunning();
     }
 
     @Override
