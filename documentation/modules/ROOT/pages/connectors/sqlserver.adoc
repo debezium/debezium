@@ -248,7 +248,7 @@ Removing offsets should be performed only by advanced users who have experience 
 This operation is potentially destructive, and should be performed only as a last resort.
 ====
 4. Apply the following changes to the connector configuration:
-.. (Optional) Set the value of xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.captured.tables.ddl`] to `false`.
+.. (Optional) Set the value of xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.store.only.captured.tables.ddl`] to `false`.
 This setting causes the snapshot to capture the schema for all tables, and guarantees that, in the future, the connector can reconstruct the schema history for all tables. +
 +
 [NOTE]
@@ -258,7 +258,7 @@ Snapshots that capture the schema for all tables require more time to complete.
 .. Add the tables that you want the connector to capture to xref:{context}-property-table-include-list[`table.include.list`].
 .. Set the xref:{context}-property-snapshot-mode[`snapshot.mode`] to one of the following values:
 `initial`:: When you restart the connector, it takes a full snapshot of the database that captures the table data and table structures. +
-If you select this option, consider setting the value of the xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.captured.tables.ddl`] property to `false` to enable the connector to capture the schema of all tables.
+If you select this option, consider setting the value of the xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.store.only.captured.tables.ddl`] property to `false` to enable the connector to capture the schema of all tables.
 `schema_only`:: When you restart the connector, it takes a snapshot that captures only the table schema.
 Unlike a full data snapshot, this option does not capture any table data.
 Use this option if you want to restart the connector more quickly than with a full snapshot.
