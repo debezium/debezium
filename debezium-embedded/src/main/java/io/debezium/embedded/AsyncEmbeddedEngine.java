@@ -1200,6 +1200,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
 
     /**
      * The default implementation of {@link DebeziumEngine.RecordCommitter}.
+     * The implementation is not thread safe and the user has to ensure it's used in thread safe manner.
      */
     private static class SourceRecordCommitter implements DebeziumEngine.RecordCommitter<SourceRecord> {
 
@@ -1221,15 +1222,14 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         }
 
         @Override
-        // TODO do we need synchronized here? Possibly not.
-        public synchronized void markProcessed(SourceRecord record) throws InterruptedException {
+        public void markProcessed(SourceRecord record) throws InterruptedException {
             task.commitRecord(record);
             recordsSinceLastCommit += 1;
             offsetWriter.offset(record.sourcePartition(), record.sourceOffset());
         }
 
         @Override
-        public synchronized void markBatchFinished() throws InterruptedException {
+        public void markBatchFinished() throws InterruptedException {
             final Duration durationSinceLastCommit = Duration.ofMillis(clock.currentTimeInMillis() - timeOfLastCommitMillis);
             if (offsetCommitPolicy.performCommit(recordsSinceLastCommit, durationSinceLastCommit)) {
                 try {
@@ -1245,7 +1245,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         }
 
         @Override
-        public synchronized void markProcessed(SourceRecord record, DebeziumEngine.Offsets sourceOffsets) throws InterruptedException {
+        public void markProcessed(SourceRecord record, DebeziumEngine.Offsets sourceOffsets) throws InterruptedException {
             DebeziumEngineCommon.SourceRecordOffsets offsets = (DebeziumEngineCommon.SourceRecordOffsets) sourceOffsets;
             SourceRecord recordWithUpdatedOffsets = new SourceRecord(record.sourcePartition(), offsets.getOffsets(), record.topic(),
                     record.kafkaPartition(), record.keySchema(), record.key(), record.valueSchema(), record.value(),
