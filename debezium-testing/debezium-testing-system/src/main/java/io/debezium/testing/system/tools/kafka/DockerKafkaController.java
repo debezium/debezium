@@ -9,6 +9,8 @@ import static io.debezium.testing.system.tools.WaitConditions.scaled;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static org.awaitility.Awaitility.await;
 
+import lombok.Getter;
+import lombok.Setter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,29 +26,23 @@ public class DockerKafkaController implements KafkaController {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DockerKafkaController.class);
 
-    private final KafkaContainer container;
+    @Getter
+    private final KafkaContainer kafkaContainer;
+    @Setter
     private ZookeeperContainer zookeeperContainer;
 
     public DockerKafkaController(KafkaContainer container) {
-        this.container = container;
-    }
-
-    public KafkaContainer getContainer() {
-        return container;
+        this.kafkaContainer = container;
     }
 
     @Override
     public String getPublicBootstrapAddress() {
-        return container.getPublicBootstrapAddress();
-    }
-
-    public void setZookeeperContainer(ZookeeperContainer zookeeperContainer) {
-        this.zookeeperContainer = zookeeperContainer;
+        return kafkaContainer.getPublicBootstrapAddress();
     }
 
     @Override
     public String getBootstrapAddress() {
-        return container.getBootstrapAddress();
+        return kafkaContainer.getBootstrapAddress();
     }
 
     @Override
@@ -56,15 +52,15 @@ public class DockerKafkaController implements KafkaController {
 
     @Override
     public boolean undeploy() {
-        container.stop();
+        kafkaContainer.stop();
         zookeeperContainer.stop();
-        return zookeeperContainer.isRunning();
+        return !zookeeperContainer.isRunning() && !kafkaContainer.isRunning();
     }
 
     @Override
     public void waitForCluster() {
         await()
                 .atMost(scaled(5), MINUTES)
-                .until(container::isRunning);
+                .until(kafkaContainer::isRunning);
     }
 }
