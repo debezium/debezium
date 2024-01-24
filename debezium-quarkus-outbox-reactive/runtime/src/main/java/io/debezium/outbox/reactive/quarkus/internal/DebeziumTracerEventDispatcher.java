@@ -48,7 +48,7 @@ public class DebeziumTracerEventDispatcher extends AbstractEventDispatcher {
     @ConsumeEvent(value = "debezium-outbox", codec = DebeziumCustomCodec.class)
     public Uni<Void> onExportedEvent(Object incomingevent) {
         ExportedEvent<?, ?> event = (ExportedEvent<?, ?>) incomingevent;
-        LOGGER.debug("An exported event was found for type {}" + event.getType());
+        LOGGER.debug("An exported event was found for type {}", event.getType());
         final Tracer tracer = openTelemetry.getTracer(TRACING_COMPONENT);
         final SpanBuilder spanBuilder = tracer.spanBuilder(OPERATION_NAME);
         final DataMapTracingSetter exportedSpanData = DataMapTracingSetter.create();
