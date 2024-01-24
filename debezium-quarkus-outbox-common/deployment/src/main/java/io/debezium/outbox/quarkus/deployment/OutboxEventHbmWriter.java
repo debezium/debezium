@@ -238,9 +238,7 @@ public class OutboxEventHbmWriter {
         column.setName(config.tracingSpan.name);
         column.setLength(256);
 
-        if (config.tracingSpan.columnDefinition.isPresent()) {
-            column.setSqlType(config.tracingSpan.columnDefinition.get());
-        }
+        config.tracingSpan.columnDefinition.ifPresent(column::setSqlType);
 
         attribute.getColumnOrFormula().add(column);
 
