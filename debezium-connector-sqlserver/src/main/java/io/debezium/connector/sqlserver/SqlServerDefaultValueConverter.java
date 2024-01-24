@@ -153,14 +153,14 @@ class SqlServerDefaultValueConverter implements DefaultValueConverter {
         });
 
         // Character strings
-        result.put("char", (c, v) -> v.substring(2, v.length() - 2)); // Sample value: ('aaa')
-        result.put("text", (c, v) -> v.substring(2, v.length() - 2)); // Sample value: ('aaa')
-        result.put("varchar", (c, v) -> v.substring(2, v.length() - 2)); // Sample value: ('aaa')
+        result.put("char", (c, v) -> nullableStringDefaultValueMapper(c, v, (col, value) -> String.valueOf(value))); // Sample value: ('aaa')
+        result.put("text", (c, v) -> nullableStringDefaultValueMapper(c, v, (col, value) -> String.valueOf(value))); // Sample value: ('aaa')
+        result.put("varchar", (c, v) -> nullableStringDefaultValueMapper(c, v, (col, value) -> String.valueOf(value))); // Sample value: ('aaa')
 
         // Unicode character strings
-        result.put("nchar", (c, v) -> v.substring(2, v.length() - 2)); // Sample value: ('aaa')
-        result.put("ntext", (c, v) -> v.substring(2, v.length() - 2)); // Sample value: ('aaa')
-        result.put("nvarchar", (c, v) -> v.substring(2, v.length() - 2)); // Sample value: ('aaa')
+        result.put("nchar", (c, v) -> nullableStringDefaultValueMapper(c, v, (col, value) -> String.valueOf(value))); // Sample value: ('aaa')
+        result.put("ntext", (c, v) -> nullableStringDefaultValueMapper(c, v, (col, value) -> String.valueOf(value))); // Sample value: ('aaa')
+        result.put("nvarchar", (c, v) -> nullableStringDefaultValueMapper(c, v, (col, value) -> String.valueOf(value))); // Sample value: ('aaa')
 
         // Binary strings
         result.put("binary", (c, v) -> HexConverter.convertFromHex(v.substring(3, v.length() - 1))); // Sample value: (0x0102030405)
@@ -181,5 +181,13 @@ class SqlServerDefaultValueConverter implements DefaultValueConverter {
         else {
             return mapper.parse(column, value);
         }
+    }
+
+    public static Object nullableStringDefaultValueMapper(Column column, String v, DefaultValueMapper mapper) throws Exception {
+        int start = v.indexOf('\'') == -1 ? 0 : v.indexOf('\'') + 1;
+        int end = !v.contains("'") ? v.length() : v.lastIndexOf('\'');
+        final String value = v.substring(start, end); // trim (a single occurrence) of leading and trailing single quote
+        // Call the default nullable mapper to trim any leftover parentheses yet, e.g. when (NULL) sample value arrived
+        return nullableDefaultValueMapper(column, value, mapper);
     }
 }
