@@ -14,6 +14,12 @@
     <name>Debezium Quarkus :: Reactive Outbox</name>
     <packaging>pom</packaging>
 
+    <properties>
+        <!-- Quarkus has moved to Java 17 as baseline -->
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+    </properties>
+
     <dependencyManagement>
         <dependencies>
             <dependency>
