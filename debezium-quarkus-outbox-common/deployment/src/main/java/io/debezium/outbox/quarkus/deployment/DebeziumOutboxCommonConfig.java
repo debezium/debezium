@@ -112,7 +112,7 @@ public class DebeziumOutboxCommonConfig {
 
         /**
          * The column's attribute converter fully qualified class name.
-         * @see javax.persistence.AttributeConverter
+         * @see jakarta.persistence.AttributeConverter
          */
         @ConfigItem
         public Optional<String> converter;
@@ -134,7 +134,7 @@ public class DebeziumOutboxCommonConfig {
 
         /**
          * The column's attribute converter fully qualified class name.
-         * @see javax.persistence.AttributeConverter
+         * @see jakarta.persistence.AttributeConverter
          */
         @ConfigItem
         public Optional<String> converter;
@@ -156,7 +156,7 @@ public class DebeziumOutboxCommonConfig {
 
         /**
          * The column's attribute converter fully qualified class name.
-         * @see javax.persistence.AttributeConverter
+         * @see jakarta.persistence.AttributeConverter
          */
         @ConfigItem
         public Optional<String> converter;
@@ -178,7 +178,7 @@ public class DebeziumOutboxCommonConfig {
 
         /**
          * The column's attribute converter fully qualified class name.
-         * @see javax.persistence.AttributeConverter
+         * @see jakarta.persistence.AttributeConverter
          */
         @ConfigItem
         public Optional<String> converter;
@@ -200,7 +200,7 @@ public class DebeziumOutboxCommonConfig {
 
         /**
          * The column's attribute converter fully qualified class name.
-         * @see javax.persistence.AttributeConverter
+         * @see jakarta.persistence.AttributeConverter
          */
         @ConfigItem
         public Optional<String> converter;

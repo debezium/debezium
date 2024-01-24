@@ -5,12 +5,9 @@
  */
 package io.debezium.outbox.reactive.quarkus.it;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.fail;
 
-import org.hibernate.QueryException;
-import org.hibernate.metamodel.spi.MetamodelImplementor;
+import org.hibernate.metamodel.spi.MappingMetamodelImplementor;
 import org.hibernate.persister.entity.EntityPersister;
 import org.junit.jupiter.api.Test;
 
@@ -31,18 +28,12 @@ public class OutboxWithoutOpenTelemetryTest extends AbstractOutboxTest {
 
     @Test
     public void testOutboxEntityMetamodelDoesntHaveTracingSpanColumn() throws Exception {
-        final MetamodelImplementor metadata = (MetamodelImplementor) sessionFactory.getMetamodel();
+        final MappingMetamodelImplementor metadata = (MappingMetamodelImplementor) sessionFactory.getMetamodel();
 
-        final EntityPersister persister = metadata.entityPersister(OutboxConstants.OUTBOX_ENTITY_FULLNAME);
+        final EntityPersister persister = metadata.findEntityDescriptor(OutboxConstants.OUTBOX_ENTITY_FULLNAME);
         assertNotNull(persister);
 
-        try {
-            assertEquals(String.class, persister.getPropertyType("aggregateType").getReturnedClass());
-            persister.getPropertyType("tracingspancontext");
-            fail("Expected exception not thrown");
-        }
-        catch (QueryException e) {
-            assertEquals("could not resolve property: tracingspancontext of: io.debezium.outbox.quarkus.internal.OutboxEvent", e.getMessage());
-        }
+        TestAsserts.assertIsType(persister, String.class, "aggregateType");
+        TestAsserts.assertHasNoMapping(persister, "tracingspancontext");
     }
 }

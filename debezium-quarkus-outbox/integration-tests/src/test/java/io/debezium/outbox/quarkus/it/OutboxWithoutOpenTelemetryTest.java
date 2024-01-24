@@ -5,9 +5,7 @@
  */
 package io.debezium.outbox.quarkus.it;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 
 import org.hibernate.engine.spi.SessionImplementor;
 import org.hibernate.metamodel.spi.MappingMetamodelImplementor;
@@ -36,7 +34,7 @@ public class OutboxWithoutOpenTelemetryTest extends AbstractOutboxTest {
         final EntityPersister persister = metadata.getEntityDescriptor(OutboxConstants.OUTBOX_ENTITY_FULLNAME);
         assertNotNull(persister);
 
-        assertEquals(String.class.getName(), persister.findAttributeMapping("aggregateType").getJavaType().getTypeName());
-        assertNull(persister.findAttributeMapping("tracingspancontext"));
+        TestAsserts.assertIsType(persister, String.class, "aggregateType");
+        TestAsserts.assertHasNoMapping(persister, "tracingspancontext");
     }
 }

@@ -60,8 +60,8 @@ public class OutboxTest extends AbstractOutboxTest {
         catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
-        final Map row = (Map) sessionFactory.withSession(
-                session -> session.createQuery("FROM OutboxEvent").getSingleResult())
+        final Map row = sessionFactory.withSession(
+                session -> session.createSelectionQuery("FROM OutboxEvent", Map.class).getSingleResult())
                 .await().indefinitely();
         assertNotNull(row.get("id"));
         assertEquals(1L, row.get("aggregateId"));

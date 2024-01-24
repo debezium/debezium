@@ -13,6 +13,7 @@ import io.debezium.outbox.reactive.quarkus.DebeziumCustomCodec;
 import io.smallrye.mutiny.Uni;
 import io.vertx.core.eventbus.DeliveryOptions;
 import io.vertx.mutiny.core.eventbus.EventBus;
+import io.vertx.mutiny.core.eventbus.Message;
 
 @ApplicationScoped
 public class DebeziumOutboxHandler {
@@ -24,6 +25,6 @@ public class DebeziumOutboxHandler {
 
     public Uni<Object> persistToOutbox(ExportedEvent<?, ?> incomingEvent) {
         return bus.<Object> request("debezium-outbox", incomingEvent, options)
-                .onItem().transform(message -> message.body());
+                .onItem().transform(Message::body);
     }
 }
