@@ -1674,6 +1674,12 @@ The `connect.decimal.precision` schema parameter contains an integer that repres
 The `scale` schema parameter contains an integer that represents how many digits the decimal point is shifted.
 The `connect.decimal.precision` schema parameter contains an integer that  represents the precision of the given decimal value.
 
+|`DECFLOAT`
+|`BYTES`
+|`io.debezium.data.VariableScaleDecimal` +
+ +
+Contains a structure with two fields: `scale` of type `INT32` that contains the scale of the transferred value and `value`of type `BYTES` containing the original value in an unscaled form.
+
 |===
 
 // Type: assembly
