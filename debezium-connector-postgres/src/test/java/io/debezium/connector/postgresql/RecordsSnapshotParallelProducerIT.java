@@ -46,4 +46,9 @@ public class RecordsSnapshotParallelProducerIT extends RecordsSnapshotProducerIT
 
     }
 
+    @Override
+    protected boolean checkRecordOrder() {
+        return false;
+    }
+
 }

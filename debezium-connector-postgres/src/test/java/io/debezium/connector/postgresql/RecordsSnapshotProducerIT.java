@@ -247,10 +247,16 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
 
         AtomicInteger counter = new AtomicInteger(0);
+        boolean checkOrder = checkRecordOrder();
         consumer.process(record -> {
             int counterVal = counter.getAndIncrement();
-            int expectedPk = (counterVal % 3) + 1; // each table has 3 entries keyed 1-3
-            VerifyRecord.isValidRead(record, PK_FIELD, expectedPk);
+            if (checkOrder) {
+                int expectedPk = (counterVal % 3) + 1; // each table has 3 entries keyed 1-3
+                VerifyRecord.isValidRead(record, PK_FIELD, expectedPk);
+            }
+            else {
+                VerifyRecord.isValidRead(record);
+            }
             SnapshotRecord expectedType = (counterVal % 3) == 0 ? SnapshotRecord.FIRST_IN_DATA_COLLECTION
                     : (counterVal % 3) == 1 ? SnapshotRecord.TRUE
                             : (counterVal == expectedRecordsCount - 1) ? SnapshotRecord.LAST : SnapshotRecord.LAST_IN_DATA_COLLECTION;
@@ -1272,6 +1278,10 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
                 .build());
         assertConnectorIsRunning();
+    }
+
+    protected boolean checkRecordOrder() {
+        return true;
     }
 
     protected void alterConfig(Builder config) {
