@@ -15,9 +15,6 @@ import org.slf4j.LoggerFactory;
 import io.debezium.testing.system.tools.kafka.docker.KafkaContainer;
 import io.debezium.testing.system.tools.kafka.docker.ZookeeperContainer;
 
-import lombok.Getter;
-import lombok.Setter;
-
 /**
  * This class provides control over Kafka instance deployed as DockerContainer
  *
@@ -27,10 +24,16 @@ public class DockerKafkaController implements KafkaController {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DockerKafkaController.class);
 
-    @Getter
     private final KafkaContainer kafkaContainer;
-    @Setter
     private ZookeeperContainer zookeeperContainer;
+
+    public KafkaContainer getKafkaContainer() {
+        return kafkaContainer;
+    }
+
+    public void setZookeeperContainer(ZookeeperContainer zookeeperContainer) {
+        this.zookeeperContainer = zookeeperContainer;
+    }
 
     public DockerKafkaController(KafkaContainer container) {
         this.kafkaContainer = container;
