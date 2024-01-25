@@ -51,6 +51,7 @@ import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.spi.ChangeRecordEmitter;
 import io.debezium.pipeline.spi.SnapshotResult;
+import io.debezium.snapshot.SnapshotterService;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
 import io.debezium.util.Strings;
@@ -71,11 +72,12 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
     private final Clock clock;
     private final SnapshotProgressListener<MongoDbPartition> snapshotProgressListener;
     private final ErrorHandler errorHandler;
+    private final SnapshotterService snapshotterService;
 
     public MongoDbSnapshotChangeEventSource(MongoDbConnectorConfig connectorConfig, MongoDbTaskContext taskContext,
                                             EventDispatcher<MongoDbPartition, CollectionId> dispatcher, Clock clock,
                                             SnapshotProgressListener<MongoDbPartition> snapshotProgressListener, ErrorHandler errorHandler,
-                                            NotificationService<MongoDbPartition, MongoDbOffsetContext> notificationService) {
+                                            NotificationService<MongoDbPartition, MongoDbOffsetContext> notificationService, SnapshotterService snapshotterService) {
         super(connectorConfig, snapshotProgressListener, notificationService);
         this.connectorConfig = connectorConfig;
         this.taskContext = taskContext;
@@ -83,6 +85,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
         this.clock = clock;
         this.snapshotProgressListener = snapshotProgressListener;
         this.errorHandler = errorHandler;
+        this.snapshotterService = snapshotterService;
     }
 
     @Override

@@ -38,6 +38,7 @@ import io.debezium.pipeline.signal.SignalProcessor;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
+import io.debezium.snapshot.SnapshotterService;
 import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext.PreviousContext;
 
@@ -133,6 +134,8 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
 
             MongoDbChangeEventSourceMetricsFactory metricsFactory = new MongoDbChangeEventSourceMetricsFactory();
 
+            SnapshotterService snapshotterService = null; // TODO with DBZ-7304
+
             ChangeEventSourceCoordinator<MongoDbPartition, MongoDbOffsetContext> coordinator = new ChangeEventSourceCoordinator<>(
                     previousOffset,
                     errorHandler,
@@ -145,12 +148,13 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
                             clock,
                             taskContext,
                             schema,
-                            metricsFactory.getStreamingMetrics(taskContext, queue, metadataProvider)),
+                            metricsFactory.getStreamingMetrics(taskContext, queue, metadataProvider),
+                            snapshotterService),
                     metricsFactory,
                     dispatcher,
                     schema,
                     signalProcessor,
-                    notificationService);
+                    notificationService, snapshotterService);
 
             coordinator.start(taskContext, this.queue, metadataProvider);
 

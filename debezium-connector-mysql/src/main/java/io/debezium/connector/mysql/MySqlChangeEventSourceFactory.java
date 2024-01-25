@@ -25,6 +25,7 @@ import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.relational.TableId;
+import io.debezium.snapshot.SnapshotterService;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
 import io.debezium.util.Strings;
@@ -45,10 +46,12 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
     // but in the core shared code.
     private final ChangeEventQueue<DataChangeEvent> queue;
 
+    private final SnapshotterService snapshotterService;
+
     public MySqlChangeEventSourceFactory(MySqlConnectorConfig configuration, MainConnectionProvidingConnectionFactory<AbstractConnectorConnection> connectionFactory,
                                          ErrorHandler errorHandler, EventDispatcher<MySqlPartition, TableId> dispatcher, Clock clock, MySqlDatabaseSchema schema,
                                          MySqlTaskContext taskContext, MySqlStreamingChangeEventSourceMetrics streamingMetrics,
-                                         ChangeEventQueue<DataChangeEvent> queue) {
+                                         ChangeEventQueue<DataChangeEvent> queue, SnapshotterService snapshotterService) {
         this.configuration = configuration;
         this.connectionFactory = connectionFactory;
         this.errorHandler = errorHandler;
@@ -58,13 +61,23 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
         this.streamingMetrics = streamingMetrics;
         this.queue = queue;
         this.schema = schema;
+        this.snapshotterService = snapshotterService;
     }
 
     @Override
     public SnapshotChangeEventSource<MySqlPartition, MySqlOffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener<MySqlPartition> snapshotProgressListener,
                                                                                                       NotificationService<MySqlPartition, MySqlOffsetContext> notificationService) {
-        return new MySqlSnapshotChangeEventSource(configuration, connectionFactory, taskContext.getSchema(), dispatcher, clock,
-                (MySqlSnapshotChangeEventSourceMetrics) snapshotProgressListener, this::modifyAndFlushLastRecord, this::preSnapshot, notificationService);
+        return new MySqlSnapshotChangeEventSource(
+                configuration,
+                connectionFactory,
+                taskContext.getSchema(),
+                dispatcher,
+                clock,
+                (MySqlSnapshotChangeEventSourceMetrics) snapshotProgressListener,
+                this::modifyAndFlushLastRecord,
+                this::preSnapshot,
+                notificationService,
+                snapshotterService);
     }
 
     private void preSnapshot() {
@@ -78,6 +91,7 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
 
     @Override
     public StreamingChangeEventSource<MySqlPartition, MySqlOffsetContext> getStreamingChangeEventSource() {
+
         queue.disableBuffering();
         return new MySqlStreamingChangeEventSource(
                 configuration,
@@ -86,7 +100,8 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
                 errorHandler,
                 clock,
                 taskContext,
-                streamingMetrics);
+                streamingMetrics,
+                snapshotterService);
     }
 
     @Override

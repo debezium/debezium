@@ -23,6 +23,7 @@ import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
+import io.debezium.snapshot.SnapshotterService;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
 
@@ -42,11 +43,12 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
     private final MongoDbTaskContext taskContext;
     private final MongoDbSchema schema;
     private final MongoDbStreamingChangeEventSourceMetrics streamingMetrics;
+    private final SnapshotterService snapshotterService;
 
     public MongoDbChangeEventSourceFactory(MongoDbConnectorConfig configuration, ErrorHandler errorHandler,
                                            EventDispatcher<MongoDbPartition, CollectionId> dispatcher, Clock clock,
                                            MongoDbTaskContext taskContext, MongoDbSchema schema,
-                                           MongoDbStreamingChangeEventSourceMetrics streamingMetrics) {
+                                           MongoDbStreamingChangeEventSourceMetrics streamingMetrics, SnapshotterService snapshotterService) {
         this.configuration = configuration;
         this.errorHandler = errorHandler;
         this.dispatcher = dispatcher;
@@ -54,6 +56,7 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
         this.taskContext = taskContext;
         this.schema = schema;
         this.streamingMetrics = streamingMetrics;
+        this.snapshotterService = snapshotterService;
     }
 
     @Override
@@ -66,7 +69,8 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
                 clock,
                 snapshotProgressListener,
                 errorHandler,
-                notificationService);
+                notificationService,
+                snapshotterService);
     }
 
     @Override
