@@ -3035,6 +3035,13 @@ endif::product[]
 |`-1`
 |The maximum number of retries on retriable errors (e.g. connection errors) before failing (-1 = no limit, 0 = disabled, > 0 = num of retries).
 
+|[[sqlserver-property-data-query-mode]]<<sqlserver-property-data-query-mode, `data.query.mode`>>
+|`function`
+|Controls how the connector queries CDC data. The following modes are supported:
+
+* `function`: The data is queried by calling `cdc.[fn_cdc_get_all_changes_#]` function. This is the default mode.
+* `direct`: Makes the connector to query change tables directly. Switching to `direct` mode and creating an index on `(\\__$start_lsn ASC, __$seqval ASC, __$operation ASC)` columns for each change table significantly speeds up querying CDC data.
+
 |===
 
 [id="debezium-sqlserver-connector-database-history-configuration-properties"]
