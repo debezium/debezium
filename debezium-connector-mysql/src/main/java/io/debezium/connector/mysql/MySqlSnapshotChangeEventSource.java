@@ -53,6 +53,8 @@ import io.debezium.relational.RelationalTableFilters;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaChangeEvent;
+import io.debezium.snapshot.SnapshotterService;
+import io.debezium.spi.snapshot.Snapshotter;
 import io.debezium.util.Clock;
 import io.debezium.util.Collect;
 import io.debezium.util.Strings;
@@ -78,8 +80,9 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
                                           MySqlSnapshotChangeEventSourceMetrics metrics,
                                           BlockingConsumer<Function<SourceRecord, SourceRecord>> lastEventProcessor,
                                           Runnable preSnapshotAction,
-                                          NotificationService<MySqlPartition, MySqlOffsetContext> notificationService) {
-        super(connectorConfig, connectionFactory, schema, dispatcher, clock, metrics, notificationService);
+                                          NotificationService<MySqlPartition, MySqlOffsetContext> notificationService, SnapshotterService snapshotterService) {
+
+        super(connectorConfig, connectionFactory, schema, dispatcher, clock, metrics, notificationService, snapshotterService);
         this.connectorConfig = connectorConfig;
         this.connection = connectionFactory.mainConnection();
         this.filters = connectorConfig.getTableFilters();
@@ -91,6 +94,8 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
 
     @Override
     public SnapshottingTask getSnapshottingTask(MySqlPartition partition, MySqlOffsetContext previousOffset) {
+
+        final Snapshotter snapshotter = snapshotterService.getSnapshotter();
 
         List<String> dataCollectionsToBeSnapshotted = connectorConfig.getDataCollectionsToBeSnapshotted();
         Map<String, String> snapshotSelectOverridesByTable = connectorConfig.getSnapshotSelectOverridesByTable().entrySet().stream()
@@ -110,14 +115,14 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
         }
 
         LOGGER.info("No previous offset has been found");
-        if (this.connectorConfig.getSnapshotMode().includeData()) {
+        if (snapshotter.shouldSnapshotSchema() && snapshotter.shouldSnapshot()) {
             LOGGER.info("According to the connector configuration both schema and data will be snapshotted");
         }
         else {
             LOGGER.info("According to the connector configuration only schema will be snapshotted");
         }
 
-        return new SnapshottingTask(this.connectorConfig.getSnapshotMode().includeSchema(), this.connectorConfig.getSnapshotMode().includeData(),
+        return new SnapshottingTask(snapshotter.shouldSnapshotSchema(), snapshotter.shouldSnapshot(),
                 dataCollectionsToBeSnapshotted,
                 snapshotSelectOverridesByTable, false);
     }

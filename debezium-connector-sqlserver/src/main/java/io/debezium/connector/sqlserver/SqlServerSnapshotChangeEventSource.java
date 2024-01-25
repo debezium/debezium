@@ -33,6 +33,7 @@ import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.schema.SchemaChangeEvent;
+import io.debezium.snapshot.SnapshotterService;
 import io.debezium.util.Clock;
 
 public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChangeEventSource<SqlServerPartition, SqlServerOffsetContext> {
@@ -52,8 +53,9 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
     public SqlServerSnapshotChangeEventSource(SqlServerConnectorConfig connectorConfig, MainConnectionProvidingConnectionFactory<SqlServerConnection> connectionFactory,
                                               SqlServerDatabaseSchema schema, EventDispatcher<SqlServerPartition, TableId> dispatcher, Clock clock,
                                               SnapshotProgressListener<SqlServerPartition> snapshotProgressListener,
-                                              NotificationService<SqlServerPartition, SqlServerOffsetContext> notificationService) {
-        super(connectorConfig, connectionFactory, schema, dispatcher, clock, snapshotProgressListener, notificationService);
+                                              NotificationService<SqlServerPartition, SqlServerOffsetContext> notificationService,
+                                              SnapshotterService snapshotterService) {
+        super(connectorConfig, connectionFactory, schema, dispatcher, clock, snapshotProgressListener, notificationService, snapshotterService);
         this.connectorConfig = connectorConfig;
         this.jdbcConnection = connectionFactory.mainConnection();
         this.sqlServerDatabaseSchema = schema;

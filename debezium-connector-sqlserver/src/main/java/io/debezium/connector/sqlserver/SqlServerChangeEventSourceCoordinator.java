@@ -30,6 +30,7 @@ import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.spi.SnapshotResult;
 import io.debezium.schema.DatabaseSchema;
+import io.debezium.snapshot.SnapshotterService;
 import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.Metronome;
@@ -55,9 +56,10 @@ public class SqlServerChangeEventSourceCoordinator extends ChangeEventSourceCoor
                                                  DatabaseSchema<?> schema,
                                                  Clock clock,
                                                  SignalProcessor<SqlServerPartition, SqlServerOffsetContext> signalProcessor,
-                                                 NotificationService<SqlServerPartition, SqlServerOffsetContext> notificationService) {
+                                                 NotificationService<SqlServerPartition, SqlServerOffsetContext> notificationService,
+                                                 SnapshotterService snapshotterService) {
         super(previousOffsets, errorHandler, connectorType, connectorConfig, changeEventSourceFactory,
-                changeEventSourceMetricsFactory, eventDispatcher, schema, signalProcessor, notificationService);
+                changeEventSourceMetricsFactory, eventDispatcher, schema, signalProcessor, notificationService, snapshotterService);
         this.clock = clock;
         this.pollInterval = connectorConfig.getPollInterval();
     }

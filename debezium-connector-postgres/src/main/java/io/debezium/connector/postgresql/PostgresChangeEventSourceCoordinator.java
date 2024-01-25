@@ -49,7 +49,7 @@ public class PostgresChangeEventSourceCoordinator extends ChangeEventSourceCoord
                                                 SignalProcessor<PostgresPartition, PostgresOffsetContext> signalProcessor,
                                                 NotificationService<PostgresPartition, PostgresOffsetContext> notificationService) {
         super(previousOffsets, errorHandler, connectorType, connectorConfig, changeEventSourceFactory,
-                changeEventSourceMetricsFactory, eventDispatcher, schema, signalProcessor, notificationService);
+                changeEventSourceMetricsFactory, eventDispatcher, schema, signalProcessor, notificationService, snapshotterService);
         this.snapshotterService = snapshotterService;
         this.slotInfo = slotInfo;
     }

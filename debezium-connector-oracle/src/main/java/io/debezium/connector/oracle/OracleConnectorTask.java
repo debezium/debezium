@@ -36,6 +36,7 @@ import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
+import io.debezium.snapshot.SnapshotterService;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Clock;
 import io.debezium.util.Strings;
@@ -143,17 +144,18 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         NotificationService<OraclePartition, OracleOffsetContext> notificationService = new NotificationService<>(getNotificationChannels(),
                 connectorConfig, SchemaFactory.get(), dispatcher::enqueueNotification);
 
+        SnapshotterService snapshotterService = null; // TODO with DBZ-7302
         ChangeEventSourceCoordinator<OraclePartition, OracleOffsetContext> coordinator = new ChangeEventSourceCoordinator<>(
                 previousOffsets,
                 errorHandler,
                 OracleConnector.class,
                 connectorConfig,
                 new OracleChangeEventSourceFactory(connectorConfig, connectionFactory, errorHandler, dispatcher, clock, schema, jdbcConfig, taskContext,
-                        streamingMetrics),
+                        streamingMetrics, snapshotterService),
                 new OracleChangeEventSourceMetricsFactory(streamingMetrics),
                 dispatcher,
                 schema, signalProcessor,
-                notificationService);
+                notificationService, snapshotterService);
 
         coordinator.start(taskContext, this.queue, metadataProvider);
 
