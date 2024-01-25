@@ -239,7 +239,12 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         final ChangeStreamIterable<BsonDocument> stream = MongoUtil.openChangeStream(client, taskContext);
 
         if (taskContext.getCaptureMode().isFullUpdate()) {
-            stream.fullDocument(FullDocument.UPDATE_LOOKUP);
+            if (connectorConfig.getCaptureModeFullUpdateType().isPostImage()) {
+                stream.fullDocument(FullDocument.WHEN_AVAILABLE);
+            }
+            else {
+                stream.fullDocument(FullDocument.UPDATE_LOOKUP);
+            }
         }
         if (taskContext.getCaptureMode().isIncludePreImage()) {
             stream.fullDocumentBeforeChange(FullDocumentBeforeChange.WHEN_AVAILABLE);
