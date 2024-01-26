@@ -724,7 +724,7 @@ alterSpecification
         | SET (VISIBLE | INVISIBLE)
         | DROP DEFAULT)                                             #alterByAlterColumnDefault
     | ALTER INDEX uid (VISIBLE | INVISIBLE)                         #alterByAlterIndexVisibility
-    | DROP FOREIGN KEY ifExists? uid                                #alterByDropForeignKey // here ifExists is MariaDB-specific only
+    | DROP FOREIGN KEY ifExists? (uid | fullId)                     #alterByDropForeignKey // here ifExists is MariaDB-specific only. fullId is mariadb only
     | DISABLE KEYS                                                  #alterByDisableKeys
     | ENABLE KEYS                                                   #alterByEnableKeys
     | RENAME renameFormat=(TO | AS)? (uid | fullId)                 #alterByRename
@@ -2240,6 +2240,7 @@ uid
     //| REVERSE_QUOTE_ID
     | CHARSET_REVERSE_QOUTE_STRING
     | STRING_LITERAL
+    | CHARSET_REVERSE_QOUTE_ID_LITERAL
     ;
 
 simpleId
