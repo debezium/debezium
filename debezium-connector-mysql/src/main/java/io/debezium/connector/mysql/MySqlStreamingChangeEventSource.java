@@ -50,6 +50,7 @@ import io.debezium.DebeziumException;
 import io.debezium.annotation.SingleThreadAccess;
 import io.debezium.config.CommonConnectorConfig.EventProcessingFailureHandlingMode;
 import io.debezium.config.Configuration;
+import io.debezium.connector.mysql.snapshot.mode.NeverSnapshotter;
 import io.debezium.connector.mysql.strategy.AbstractConnectorConnection;
 import io.debezium.connector.mysql.strategy.ConnectorAdapter;
 import io.debezium.data.Envelope.Operation;
@@ -61,6 +62,7 @@ import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
+import io.debezium.snapshot.SnapshotterService;
 import io.debezium.time.Conversions;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
@@ -83,6 +85,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
     private final Clock clock;
     private final EventProcessingFailureHandlingMode eventDeserializationFailureHandlingMode;
     private final EventProcessingFailureHandlingMode inconsistentSchemaHandlingMode;
+    private final SnapshotterService snapshotterService;
 
     private int startingRowNumber = 0;
     private long initialEventsToSkip = 0L;
@@ -168,7 +171,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
 
     public MySqlStreamingChangeEventSource(MySqlConnectorConfig connectorConfig, AbstractConnectorConnection connection,
                                            EventDispatcher<MySqlPartition, TableId> dispatcher, ErrorHandler errorHandler, Clock clock,
-                                           MySqlTaskContext taskContext, MySqlStreamingChangeEventSourceMetrics metrics) {
+                                           MySqlTaskContext taskContext, MySqlStreamingChangeEventSourceMetrics metrics, SnapshotterService snapshotterService) {
 
         this.taskContext = taskContext;
         this.connectorConfig = connectorConfig;
@@ -181,6 +184,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
 
         eventDeserializationFailureHandlingMode = connectorConfig.getEventProcessingFailureHandlingMode();
         inconsistentSchemaHandlingMode = connectorConfig.inconsistentSchemaFailureHandlingMode();
+        this.snapshotterService = snapshotterService;
 
         // Set up the log reader ...
         client = connectorAdapter.getBinaryLogClientConfigurator().configure(
@@ -828,11 +832,12 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
 
     @Override
     public void execute(ChangeEventSourceContext context, MySqlPartition partition, MySqlOffsetContext offsetContext) throws InterruptedException {
-        if (!connectorConfig.getSnapshotMode().shouldStream()) {
-            LOGGER.info("Streaming is disabled for snapshot mode {}", connectorConfig.getSnapshotMode());
+
+        if (!snapshotterService.getSnapshotter().shouldStream()) {
+            LOGGER.info("Streaming is disabled for snapshot mode {}", snapshotterService.getSnapshotter().name());
             return;
         }
-        if (connectorConfig.getSnapshotMode() != MySqlConnectorConfig.SnapshotMode.NEVER) {
+        if (!(snapshotterService.getSnapshotter() instanceof NeverSnapshotter)) {
             taskContext.getSchema().assureNonEmptySchema();
         }
         final Set<Operation> skippedOperations = connectorConfig.getSkippedOperations();

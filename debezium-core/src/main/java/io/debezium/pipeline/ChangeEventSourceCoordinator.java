@@ -49,6 +49,7 @@ import io.debezium.pipeline.spi.Partition;
 import io.debezium.pipeline.spi.SnapshotResult;
 import io.debezium.pipeline.spi.SnapshotResult.SnapshotResultStatus;
 import io.debezium.schema.DatabaseSchema;
+import io.debezium.snapshot.SnapshotterService;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.Threads;
@@ -98,7 +99,7 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
                                         ChangeEventSourceFactory<P, O> changeEventSourceFactory,
                                         ChangeEventSourceMetricsFactory<P> changeEventSourceMetricsFactory, EventDispatcher<P, ?> eventDispatcher,
                                         DatabaseSchema<?> schema,
-                                        SignalProcessor<P, O> signalProcessor, NotificationService<P, O> notificationService) {
+                                        SignalProcessor<P, O> signalProcessor, NotificationService<P, O> notificationService, SnapshotterService snapshotterService) {
         this.previousOffsets = previousOffsets;
         this.errorHandler = errorHandler;
         this.changeEventSourceFactory = changeEventSourceFactory;

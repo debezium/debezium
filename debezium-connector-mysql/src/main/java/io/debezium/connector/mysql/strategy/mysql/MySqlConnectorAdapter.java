@@ -34,6 +34,7 @@ import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSn
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.relational.TableId;
+import io.debezium.snapshot.SnapshotterService;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
 
@@ -68,7 +69,8 @@ public class MySqlConnectorAdapter implements ConnectorAdapter {
 
     @Override
     public void setOffsetContextBinlogPositionAndGtidDetailsForSnapshot(MySqlOffsetContext offsetContext,
-                                                                        AbstractConnectorConnection connection)
+                                                                        AbstractConnectorConnection connection,
+                                                                        SnapshotterService snapshotterService)
             throws Exception {
         LOGGER.info("Read binlog position of MySQL primary server");
         final String showMasterStmt = "SHOW MASTER STATUS";
@@ -85,7 +87,7 @@ public class MySqlConnectorAdapter implements ConnectorAdapter {
                             gtidSet);
                 }
             }
-            else if (!connectorConfig.getSnapshotMode().shouldStream()) {
+            else if (!snapshotterService.getSnapshotter().shouldStream()) {
                 LOGGER.warn("Failed retrieving binlog position, continuing as streaming CDC wasn't requested");
             }
             else {
