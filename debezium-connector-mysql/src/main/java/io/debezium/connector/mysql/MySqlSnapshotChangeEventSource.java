@@ -301,7 +301,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
         ctx.offset = offsetContext;
 
         connectorConfig.getConnectorAdapter()
-                .setOffsetContextBinlogPositionAndGtidDetailsForSnapshot(offsetContext, connection);
+                .setOffsetContextBinlogPositionAndGtidDetailsForSnapshot(offsetContext, connection, snapshotterService);
 
         tryStartingSnapshot(ctx);
     }

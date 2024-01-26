@@ -20,6 +20,7 @@ import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChang
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
+import io.debezium.snapshot.SnapshotterService;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
 
@@ -46,7 +47,8 @@ public interface ConnectorAdapter {
      * @throws Exception if an exception is thrown
      */
     void setOffsetContextBinlogPositionAndGtidDetailsForSnapshot(MySqlOffsetContext offsetContext,
-                                                                 AbstractConnectorConnection connection)
+                                                                 AbstractConnectorConnection connection,
+                                                                 SnapshotterService snapshotterService)
             throws Exception;
 
     // todo: should we consider splitting value converters, it may prove useful in the future

@@ -52,15 +52,18 @@ public abstract class SnapshotterServiceProvider implements ServiceProvider<Snap
         final SnapshotQuery snapshotQueryService = serviceRegistry.tryGetService(SnapshotQuery.class);
         final SnapshotLock snapshotLockService = serviceRegistry.tryGetService(SnapshotLock.class);
 
-        return snapshotter.map(s -> {
-            s.configure(configuration.asMap());
-            if (s instanceof BeanRegistryAware) {
-                ((BeanRegistryAware) s).injectBeanRegistry(beanRegistry);
-            }
-            return new SnapshotterService(s, snapshotQueryService, snapshotLockService);
-        })
+        return snapshotter.map(s -> getSnapshotterService(configuration, s, beanRegistry, snapshotQueryService, snapshotLockService))
                 .orElseThrow(() -> new DebeziumException(String.format("Unable to find %s snapshotter. Please check your configuration.", snapshotMode)));
 
+    }
+
+    private static SnapshotterService getSnapshotterService(Configuration configuration, Snapshotter s, BeanRegistry beanRegistry, SnapshotQuery snapshotQueryService,
+                                                            SnapshotLock snapshotLockService) {
+        s.configure(configuration.asMap());
+        if (s instanceof BeanRegistryAware) {
+            ((BeanRegistryAware) s).injectBeanRegistry(beanRegistry);
+        }
+        return new SnapshotterService(s, snapshotQueryService, snapshotLockService);
     }
 
     @Override
