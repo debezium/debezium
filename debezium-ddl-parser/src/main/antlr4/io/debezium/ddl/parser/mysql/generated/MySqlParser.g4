@@ -724,7 +724,7 @@ alterSpecification
         | SET (VISIBLE | INVISIBLE)
         | DROP DEFAULT)                                             #alterByAlterColumnDefault
     | ALTER INDEX uid (VISIBLE | INVISIBLE)                         #alterByAlterIndexVisibility
-    | DROP FOREIGN KEY ifExists? uid                                #alterByDropForeignKey // here ifExists is MariaDB-specific only
+    | DROP FOREIGN KEY ifExists? uid dottedId?                      #alterByDropForeignKey // here ifExists and dottedId is MariaDB-specific only
     | DISABLE KEYS                                                  #alterByDisableKeys
     | ENABLE KEYS                                                   #alterByEnableKeys
     | RENAME renameFormat=(TO | AS)? (uid | fullId)                 #alterByRename
