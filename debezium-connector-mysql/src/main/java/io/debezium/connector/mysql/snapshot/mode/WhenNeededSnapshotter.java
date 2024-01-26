@@ -11,20 +11,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.bean.StandardBeanNames;
-import io.debezium.bean.spi.BeanRegistry;
-import io.debezium.bean.spi.BeanRegistryAware;
 import io.debezium.connector.mysql.MySqlConnectorConfig;
 import io.debezium.connector.mysql.MySqlOffsetContext;
 import io.debezium.connector.mysql.MySqlPartition;
-import io.debezium.connector.mysql.strategy.mysql.MySqlConnection;
+import io.debezium.connector.mysql.strategy.AbstractConnectorConnection;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.spi.snapshot.Snapshotter;
 
-public class WhenNeededSnapshotter implements Snapshotter, BeanRegistryAware {
+public class WhenNeededSnapshotter extends BeanAwareSnapshotter implements Snapshotter {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(WhenNeededSnapshotter.class);
-
-    private BeanRegistry beanRegistry;
 
     @Override
     public String name() {
@@ -37,15 +33,10 @@ public class WhenNeededSnapshotter implements Snapshotter, BeanRegistryAware {
     }
 
     @Override
-    public void injectBeanRegistry(BeanRegistry beanRegistry) {
-        this.beanRegistry = beanRegistry;
-    }
-
-    @Override
     public void validate(boolean offsetContextExists, boolean isSnapshotInProgress) {
 
-        final MySqlConnection connection = beanRegistry.lookupByName(StandardBeanNames.JDBC_CONNECTION, MySqlConnection.class);
         final MySqlConnectorConfig config = beanRegistry.lookupByName(StandardBeanNames.CONNECTOR_CONFIG, MySqlConnectorConfig.class);
+        final AbstractConnectorConnection connection = beanRegistry.lookupByName(StandardBeanNames.JDBC_CONNECTION, getConnectionClass(config));
         final Offsets<MySqlPartition, MySqlOffsetContext> mySqloffsets = beanRegistry.lookupByName(StandardBeanNames.OFFSETS, Offsets.class);
         final MySqlOffsetContext offset = mySqloffsets.getTheOnlyOffset();
 

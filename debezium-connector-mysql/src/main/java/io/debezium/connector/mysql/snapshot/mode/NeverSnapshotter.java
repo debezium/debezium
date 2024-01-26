@@ -15,7 +15,7 @@ import io.debezium.bean.StandardBeanNames;
 import io.debezium.connector.mysql.MySqlConnectorConfig;
 import io.debezium.connector.mysql.MySqlOffsetContext;
 import io.debezium.connector.mysql.MySqlPartition;
-import io.debezium.connector.mysql.strategy.mysql.MySqlConnection;
+import io.debezium.connector.mysql.strategy.AbstractConnectorConnection;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.spi.snapshot.Snapshotter;
 
@@ -36,8 +36,8 @@ public class NeverSnapshotter extends BeanAwareSnapshotter implements Snapshotte
     @Override
     public void validate(boolean offsetContextExists, boolean isSnapshotInProgress) {
 
-        final MySqlConnection connection = beanRegistry.lookupByName(StandardBeanNames.JDBC_CONNECTION, MySqlConnection.class);
         final MySqlConnectorConfig config = beanRegistry.lookupByName(StandardBeanNames.CONNECTOR_CONFIG, MySqlConnectorConfig.class);
+        final AbstractConnectorConnection connection = beanRegistry.lookupByName(StandardBeanNames.JDBC_CONNECTION, getConnectionClass(config));
         final Offsets<MySqlPartition, MySqlOffsetContext> mySqloffsets = beanRegistry.lookupByName(StandardBeanNames.OFFSETS, Offsets.class);
         final MySqlOffsetContext offset = mySqloffsets.getTheOnlyOffset();
 
