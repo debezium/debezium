@@ -51,22 +51,14 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
 
     // TODO Consider which (if any) information should be exposed in source info
     public static final String INCREMENTAL_SNAPSHOT_KEY = "incremental_snapshot";
-    public static final String DATA_COLLECTIONS_TO_SNAPSHOT_KEY = INCREMENTAL_SNAPSHOT_KEY + "_collections";
-
-    public static final String DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ID = DATA_COLLECTIONS_TO_SNAPSHOT_KEY + "_id";
-
-    public static final String DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ADDITIONAL_CONDITION = DATA_COLLECTIONS_TO_SNAPSHOT_KEY
-            + "_additional_condition";
-
-    public static final String DATA_COLLECTIONS_TO_SNAPSHOT_KEY_SURROGATE_KEY = DATA_COLLECTIONS_TO_SNAPSHOT_KEY
-            + "_surrogate_key";
 
     public static final String EVENT_PRIMARY_KEY = INCREMENTAL_SNAPSHOT_KEY + "_primary_key";
     public static final String TABLE_MAXIMUM_KEY = INCREMENTAL_SNAPSHOT_KEY + "_maximum_key";
     public static final String CORRELATION_ID = INCREMENTAL_SNAPSHOT_KEY + "_correlation_id";
+    private final SnapshotDataCollection<T> snapshotDataCollection = new SnapshotDataCollection<>();
 
     /**
-     * @code(true) if window is opened and deduplication should be executed
+     * {@code true} if window is opened and deduplication should be executed
      */
     protected boolean windowOpened = false;
 
@@ -78,7 +70,6 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
     // TODO After extracting add into source info optional block
     // incrementalSnapshotWindow{String from, String to}
     // State to be stored and recovered from offsets
-    private final Queue<DataCollection<T>> dataCollectionsToSnapshot = new LinkedList<>();
 
     private final boolean useCatalogBeforeSchema;
     /**
@@ -104,11 +95,6 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
      * Determines if the incremental snapshot was paused or not.
      */
     private final AtomicBoolean paused = new AtomicBoolean(false);
-    private final ObjectMapper mapper = new ObjectMapper();
-    private String dataCollectionsToSnapshotJson;
-
-    private final TypeReference<List<LinkedHashMap<String, String>>> mapperTypeRef = new TypeReference<>() {
-    };
 
     public AbstractIncrementalSnapshotContext(boolean useCatalogBeforeSchema) {
         this.useCatalogBeforeSchema = useCatalogBeforeSchema;
@@ -185,49 +171,8 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
         }
     }
 
-    private String dataCollectionsToSnapshotAsString() {
-        // TODO Handle non-standard table ids containing dots, commas etc.
-
-        if (!Strings.isNullOrEmpty(dataCollectionsToSnapshotJson)) {
-            // A cached value to improve performance since this method is called in the "store"
-            // that is called during events processing
-            return dataCollectionsToSnapshotJson;
-        }
-
-        try {
-            List<LinkedHashMap<String, String>> dataCollectionsMap = dataCollectionsToSnapshot.stream()
-                    .map(x -> {
-                        LinkedHashMap<String, String> map = new LinkedHashMap<>();
-                        map.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ID, x.getId().toString());
-                        map.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ADDITIONAL_CONDITION, x.getAdditionalCondition().orElse(null));
-                        map.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_SURROGATE_KEY, x.getSurrogateKey().orElse(null));
-                        return map;
-                    })
-                    .collect(Collectors.toList());
-            return mapper.writeValueAsString(dataCollectionsMap);
-        }
-        catch (JsonProcessingException e) {
-            throw new DebeziumException("Cannot serialize dataCollectionsToSnapshot information");
-        }
-    }
-
-    private List<DataCollection<T>> stringToDataCollections(String dataCollectionsStr) {
-        try {
-            List<LinkedHashMap<String, String>> dataCollections = mapper.readValue(dataCollectionsStr, mapperTypeRef);
-            List<DataCollection<T>> dataCollectionsList = dataCollections.stream()
-                    .map(x -> new DataCollection<T>((T) TableId.parse(x.get(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ID), useCatalogBeforeSchema),
-                            Optional.ofNullable(x.get(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ADDITIONAL_CONDITION)).orElse(""),
-                            Optional.ofNullable(x.get(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_SURROGATE_KEY)).orElse("")))
-                    .collect(Collectors.toList());
-            return dataCollectionsList;
-        }
-        catch (JsonProcessingException e) {
-            throw new DebeziumException("Cannot de-serialize dataCollectionsToSnapshot information");
-        }
-    }
-
     public boolean snapshotRunning() {
-        return !dataCollectionsToSnapshot.isEmpty();
+        return !snapshotDataCollection.isEmpty();
     }
 
     public Map<String, Object> store(Map<String, Object> offset) {
@@ -236,14 +181,13 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
         }
         offset.put(EVENT_PRIMARY_KEY, arrayToSerializedString(lastEventKeySent));
         offset.put(TABLE_MAXIMUM_KEY, arrayToSerializedString(maximumKey));
-        offset.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY, dataCollectionsToSnapshotAsString());
+        offset.put(SnapshotDataCollection.DATA_COLLECTIONS_TO_SNAPSHOT_KEY, snapshotDataCollection.dataCollectionsAsJsonString());
         offset.put(CORRELATION_ID, correlationId);
         return offset;
     }
 
     private void addTablesIdsToSnapshot(List<DataCollection<T>> dataCollectionIds) {
-        dataCollectionsToSnapshot.addAll(dataCollectionIds);
-        dataCollectionsToSnapshotJson = dataCollectionsToSnapshotAsString();
+        snapshotDataCollection.add(dataCollectionIds);
     }
 
     @SuppressWarnings("unchecked")
@@ -271,8 +215,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
 
     @Override
     public void stopSnapshot() {
-        this.dataCollectionsToSnapshot.clear();
-        this.dataCollectionsToSnapshotJson = null;
+        this.snapshotDataCollection.clear();
         this.correlationId = null;
     }
 
@@ -280,14 +223,12 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
     @SuppressWarnings("unchecked")
     public boolean removeDataCollectionFromSnapshot(String dataCollectionId) {
         final T collectionId = (T) TableId.parse(dataCollectionId, useCatalogBeforeSchema);
-        boolean removed = dataCollectionsToSnapshot.removeAll(Arrays.asList(new DataCollection<T>(collectionId)));
-        this.dataCollectionsToSnapshotJson = dataCollectionsToSnapshotAsString();
-        return removed;
+        return snapshotDataCollection.remove(List.of(new DataCollection<>(collectionId)));
     }
 
     @Override
     public List<DataCollection<T>> getDataCollections() {
-        return new ArrayList<>(dataCollectionsToSnapshot);
+        return new ArrayList<>(snapshotDataCollection.getDataCollectionsToSnapshot());
     }
 
     @Override
@@ -309,11 +250,10 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
         final String maximumKeyStr = (String) offsets.get(TABLE_MAXIMUM_KEY);
         context.maximumKey = (maximumKeyStr != null) ? context.serializedStringToArray(TABLE_MAXIMUM_KEY, maximumKeyStr)
                 : null;
-        final String dataCollectionsStr = (String) offsets.get(DATA_COLLECTIONS_TO_SNAPSHOT_KEY);
-        context.dataCollectionsToSnapshot.clear();
-        context.dataCollectionsToSnapshotJson = null;
+        final String dataCollectionsStr = (String) offsets.get(SnapshotDataCollection.DATA_COLLECTIONS_TO_SNAPSHOT_KEY);
+        context.snapshotDataCollection.clear();
         if (dataCollectionsStr != null) {
-            context.addTablesIdsToSnapshot(context.stringToDataCollections(dataCollectionsStr));
+            context.addTablesIdsToSnapshot(context.snapshotDataCollection.stringToDataCollections(dataCollectionsStr, context.useCatalogBeforeSchema));
         }
         context.correlationId = (String) offsets.get(CORRELATION_ID);
         return context;
@@ -324,11 +264,11 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
     }
 
     public DataCollection<T> currentDataCollectionId() {
-        return dataCollectionsToSnapshot.peek();
+        return snapshotDataCollection.peek();
     }
 
     public int dataCollectionsToBeSnapshottedCount() {
-        return dataCollectionsToSnapshot.size();
+        return snapshotDataCollection.size();
     }
 
     public void nextChunkPosition(Object[] end) {
@@ -358,9 +298,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
 
     public DataCollection<T> nextDataCollection() {
         resetChunk();
-        DataCollection<T> nextDataCollection = dataCollectionsToSnapshot.poll();
-        this.dataCollectionsToSnapshotJson = dataCollectionsToSnapshotAsString();
-        return nextDataCollection;
+        return snapshotDataCollection.getNext();
     }
 
     public void startNewChunk() {
@@ -404,8 +342,112 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
     @Override
     public String toString() {
         return "IncrementalSnapshotContext [windowOpened=" + windowOpened + ", chunkEndPosition="
-                + Arrays.toString(chunkEndPosition) + ", dataCollectionsToSnapshot=" + dataCollectionsToSnapshot
+                + Arrays.toString(chunkEndPosition) + ", dataCollectionsToSnapshot=" + snapshotDataCollection.getDataCollectionsToSnapshot()
                 + ", lastEventKeySent=" + Arrays.toString(lastEventKeySent) + ", maximumKey="
                 + Arrays.toString(maximumKey) + "]";
+    }
+
+    public static class SnapshotDataCollection<T> extends LinkedList<DataCollection<T>> {
+
+        public static final String DATA_COLLECTIONS_TO_SNAPSHOT_KEY = INCREMENTAL_SNAPSHOT_KEY + "_collections";
+
+        public static final String DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ID = DATA_COLLECTIONS_TO_SNAPSHOT_KEY + "_id";
+
+        public static final String DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ADDITIONAL_CONDITION = DATA_COLLECTIONS_TO_SNAPSHOT_KEY
+                + "_additional_condition";
+
+        public static final String DATA_COLLECTIONS_TO_SNAPSHOT_KEY_SURROGATE_KEY = DATA_COLLECTIONS_TO_SNAPSHOT_KEY
+                + "_surrogate_key";
+        private final ObjectMapper mapper = new ObjectMapper();
+        private final TypeReference<List<LinkedHashMap<String, String>>> mapperTypeRef = new TypeReference<>() {
+        };
+        private final Queue<DataCollection<T>> dataCollectionsToSnapshot = new LinkedList<>();
+        private String dataCollectionsToSnapshotJson;
+
+        public SnapshotDataCollection() {
+        }
+
+        public void add(List<DataCollection<T>> dataCollectionIds) {
+            this.dataCollectionsToSnapshot.addAll(dataCollectionIds);
+            this.dataCollectionsToSnapshotJson = jsonString();
+        }
+
+        public DataCollection<T> getNext() {
+            DataCollection<T> nextDataCollection = this.dataCollectionsToSnapshot.poll();
+            this.dataCollectionsToSnapshotJson = jsonString();
+            return nextDataCollection;
+        }
+
+        public DataCollection<T> peek() {
+            return this.dataCollectionsToSnapshot.peek();
+        }
+
+        public int size() {
+            return this.dataCollectionsToSnapshot.size();
+        }
+
+        public void clear() {
+            this.dataCollectionsToSnapshot.clear();
+            this.dataCollectionsToSnapshotJson = null;
+        }
+
+        public boolean isEmpty() {
+            return this.dataCollectionsToSnapshot.isEmpty();
+        }
+
+        public boolean remove(List<DataCollection<T>> toRemove) {
+            boolean removed = this.dataCollectionsToSnapshot.removeAll(toRemove);
+            this.dataCollectionsToSnapshotJson = jsonString();
+            return removed;
+        }
+
+        public String dataCollectionsAsJsonString() {
+            return this.dataCollectionsToSnapshotJson;
+        }
+
+        public Queue<DataCollection<T>> getDataCollectionsToSnapshot() {
+            return this.dataCollectionsToSnapshot;
+        }
+
+        private String jsonString() {
+            // TODO Handle non-standard table ids containing dots, commas etc.
+
+            if (!Strings.isNullOrEmpty(dataCollectionsToSnapshotJson)) {
+                // A cached value to improve performance since this method is called in the "store"
+                // that is called during events processing
+                return dataCollectionsToSnapshotJson;
+            }
+
+            try {
+                List<LinkedHashMap<String, String>> dataCollectionsMap = dataCollectionsToSnapshot.stream()
+                        .map(x -> {
+                            LinkedHashMap<String, String> map = new LinkedHashMap<>();
+                            map.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ID, x.getId().toString());
+                            map.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ADDITIONAL_CONDITION, x.getAdditionalCondition().orElse(null));
+                            map.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_SURROGATE_KEY, x.getSurrogateKey().orElse(null));
+                            return map;
+                        })
+                        .collect(Collectors.toList());
+
+                return mapper.writeValueAsString(dataCollectionsMap);
+            }
+            catch (JsonProcessingException e) {
+                throw new DebeziumException("Cannot serialize dataCollectionsToSnapshot information");
+            }
+        }
+
+        private List<DataCollection<T>> stringToDataCollections(String dataCollectionsStr, boolean useCatalogBeforeSchema) {
+            try {
+                List<LinkedHashMap<String, String>> dataCollections = mapper.readValue(dataCollectionsStr, mapperTypeRef);
+                return dataCollections.stream()
+                        .map(x -> new DataCollection<>((T) TableId.parse(x.get(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ID), useCatalogBeforeSchema),
+                                Optional.ofNullable(x.get(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ADDITIONAL_CONDITION)).orElse(""),
+                                Optional.ofNullable(x.get(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_SURROGATE_KEY)).orElse("")))
+                        .collect(Collectors.toList());
+            }
+            catch (JsonProcessingException e) {
+                throw new DebeziumException("Cannot de-serialize dataCollectionsToSnapshot information");
+            }
+        }
     }
 }
