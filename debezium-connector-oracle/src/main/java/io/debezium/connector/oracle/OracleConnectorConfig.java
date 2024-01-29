@@ -601,6 +601,15 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withDefault(false)
             .withValidation(OracleConnectorConfig::validateLogMiningIncludeRedoSql);
 
+    public static final Field SNAPSHOT_DATABASE_ERRORS_MAX_RETRIES = Field.create("snapshot.database.errors.max.retries")
+            .withDisplayName("The maximum number of retries before snapshot database errors are not retried")
+            .withType(Type.INT)
+            .withDefault(0)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withValidation(Field::isNonNegativeInteger)
+            .withDescription("The number of attempts to retry database errors during snapshots before failing.");
+
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("Oracle")
             .excluding(
@@ -669,7 +678,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_INCLUDE_REDO_SQL,
                     OLR_SOURCE,
                     OLR_HOST,
-                    OLR_PORT)
+                    OLR_PORT,
+                    SNAPSHOT_DATABASE_ERRORS_MAX_RETRIES)
             .events(SOURCE_INFO_STRUCT_MAKER)
             .create();
 
@@ -699,6 +709,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final String snapshotEnhancementToken;
     private final SnapshotLockingMode snapshotLockingMode;
     private final int queryFetchSize;
+    private final int snapshotRetryDatabaseErrorsMaxRetries;
 
     // LogMiner options
     private final LogMiningStrategy logMiningStrategy;
@@ -768,6 +779,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         }
 
         this.queryFetchSize = config.getInteger(QUERY_FETCH_SIZE);
+        this.snapshotRetryDatabaseErrorsMaxRetries = config.getInteger(SNAPSHOT_DATABASE_ERRORS_MAX_RETRIES);
 
         // LogMiner
         this.logMiningStrategy = LogMiningStrategy.parse(config.getString(LOG_MINING_STRATEGY));
@@ -847,6 +859,10 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     @Override
     public int getQueryFetchSize() {
         return queryFetchSize;
+    }
+
+    public int getSnapshotRetryDatabaseErrorsMaxRetries() {
+        return snapshotRetryDatabaseErrorsMaxRetries;
     }
 
     @Override
