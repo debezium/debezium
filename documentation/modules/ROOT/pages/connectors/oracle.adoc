@@ -90,6 +90,16 @@ If the time needed to complete the initial snapshot exceeds the `UNDO_RETENTION`
 For more information about the error, and about the steps that you can take to recover from it, see the xref:what-causes-ora-01555-and-how-to-handle-it[Frequently asked questions].
 ====
 
+[IMPORTANT]
+====
+During a table's snapshot, it's possible for Oracle to raise an ORA-01466 exception.
+This happens when a user modifies the schema of the table or adds, changes, or drops an index or related object associated with the table being snapshot.
+In the event this happens, the connector will stop and the initial snapshot will need to be taken from the beginning.
+
+To remediate the problem, you can configure the xref:oracle-property-snapshot-database-errors-max-retries[`snapshot.database.errors.max.retries`] property with a value greater than `0` so that the specific table's snapshot will restart.
+While the entire snapshot will not start from the beginning when retrying, the specific table in question will be re-read from the beginning and the table's topic will contain duplicate snapshot events.
+====
+
 ifdef::product[]
 You can find more information about snapshots in the following sections:
 
@@ -3877,6 +3887,12 @@ These features provide early access to upcoming product features, enabling custo
 For more information about the support scope of Red Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
 ====
 endif::product[]
+
+|[[oracle-property-snapshot-database-errors-max-retries]]<oracle-property-snapshot-database-errors-max-retries, `snapshot.database.errors.max.retries`>>
+|`0`
+|Specifies the number of retry attempts to snapshot a table when a database error occurs.
+This configuration property currently only retries failures related to `ORA-01466` exceptions.
+By default, no additional retries will be performed.
 
 |[[oracle-property-custom-metric-tags]]<<oracle-property-custom-metric-tags, `custom.metric.tags`>>
 |`No default`
