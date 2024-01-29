@@ -12,24 +12,24 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig;
 
 public class DefaultMongoDbAuthProvider implements MongoDbAuthProvider {
-    private String username;
-    private String password;
-    private String adminDbName;
+
+    private MongoDbConnectorConfig connectorConfig;
 
     @Override
     public void init(Configuration config) {
-        username = config.getString(MongoDbConnectorConfig.USER);
-        password = config.getString(MongoDbConnectorConfig.PASSWORD);
-        adminDbName = config.getString(MongoDbConnectorConfig.AUTH_SOURCE);
+        this.connectorConfig = new MongoDbConnectorConfig(config);
     }
 
     @Override
     public Builder addAuthConfig(Builder settings) {
         // Use credential if provided as properties
-        if (username != null || password != null) {
-            settings.credential(MongoCredential.createCredential(username, adminDbName, password.toCharArray()));
-        }
+        var user = connectorConfig.getUser();
+        var password = connectorConfig.getPassword();
+        var authSource = connectorConfig.getAuthSource();
 
+        if (user != null || password != null) {
+            settings.credential(MongoCredential.createCredential(user, authSource, password.toCharArray()));
+        }
         return settings;
     }
 }
