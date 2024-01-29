@@ -693,7 +693,7 @@ This operation is potentially destructive, and should be performed only as a las
 6. Restart the connector.
 The connector takes a full database snapshot.
 After the snapshot completes, the connector transitions to streaming.
-7. (Optional) To capture any data that changed while the connector was off-line, initiate an xref:mysql-incremental-snapshots[incremental snapshot].
+7. (Optional) To capture any data that changed while the connector was off-line, initiate an xref:debezium-mysql-incremental-snapshots[incremental snapshot].
 
 // Type: concept
 // ModuleID: debezium-mysql-ad-hoc-snapshots
