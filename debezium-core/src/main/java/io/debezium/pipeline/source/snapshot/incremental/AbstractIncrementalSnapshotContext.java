@@ -36,6 +36,7 @@ import io.debezium.pipeline.signal.actions.snapshotting.AdditionalCondition;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.util.HexConverter;
+import io.debezium.util.Strings;
 
 /**
  * A class describing current state of incremental snapshot
@@ -102,10 +103,11 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
     /**
      * Determines if the incremental snapshot was paused or not.
      */
-    private AtomicBoolean paused = new AtomicBoolean(false);
-    private ObjectMapper mapper = new ObjectMapper();
+    private final AtomicBoolean paused = new AtomicBoolean(false);
+    private final ObjectMapper mapper = new ObjectMapper();
+    private String dataCollectionsToSnapshotJson;
 
-    private TypeReference<List<LinkedHashMap<String, String>>> mapperTypeRef = new TypeReference<>() {
+    private final TypeReference<List<LinkedHashMap<String, String>>> mapperTypeRef = new TypeReference<>() {
     };
 
     public AbstractIncrementalSnapshotContext(boolean useCatalogBeforeSchema) {
@@ -185,14 +187,20 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
 
     private String dataCollectionsToSnapshotAsString() {
         // TODO Handle non-standard table ids containing dots, commas etc.
+
+        if (!Strings.isNullOrEmpty(dataCollectionsToSnapshotJson)) {
+            // A cached value to improve performance since this method is called in the "store"
+            // that is called during events processing
+            return dataCollectionsToSnapshotJson;
+        }
+
         try {
             List<LinkedHashMap<String, String>> dataCollectionsMap = dataCollectionsToSnapshot.stream()
                     .map(x -> {
                         LinkedHashMap<String, String> map = new LinkedHashMap<>();
                         map.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ID, x.getId().toString());
-                        map.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ADDITIONAL_CONDITION,
-                                x.getAdditionalCondition().isEmpty() ? null : x.getAdditionalCondition().orElse(null));
-                        map.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_SURROGATE_KEY, x.getSurrogateKey().isEmpty() ? null : x.getSurrogateKey().orElse(null));
+                        map.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ADDITIONAL_CONDITION, x.getAdditionalCondition().orElse(null));
+                        map.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_SURROGATE_KEY, x.getSurrogateKey().orElse(null));
                         return map;
                     })
                     .collect(Collectors.toList());
@@ -235,6 +243,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
 
     private void addTablesIdsToSnapshot(List<DataCollection<T>> dataCollectionIds) {
         dataCollectionsToSnapshot.addAll(dataCollectionIds);
+        dataCollectionsToSnapshotJson = dataCollectionsToSnapshotAsString();
     }
 
     @SuppressWarnings("unchecked")
@@ -263,6 +272,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
     @Override
     public void stopSnapshot() {
         this.dataCollectionsToSnapshot.clear();
+        this.dataCollectionsToSnapshotJson = null;
         this.correlationId = null;
     }
 
@@ -270,7 +280,9 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
     @SuppressWarnings("unchecked")
     public boolean removeDataCollectionFromSnapshot(String dataCollectionId) {
         final T collectionId = (T) TableId.parse(dataCollectionId, useCatalogBeforeSchema);
-        return dataCollectionsToSnapshot.removeAll(Arrays.asList(new DataCollection<T>(collectionId)));
+        boolean removed = dataCollectionsToSnapshot.removeAll(Arrays.asList(new DataCollection<T>(collectionId)));
+        this.dataCollectionsToSnapshotJson = dataCollectionsToSnapshotAsString();
+        return removed;
     }
 
     @Override
@@ -299,6 +311,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
                 : null;
         final String dataCollectionsStr = (String) offsets.get(DATA_COLLECTIONS_TO_SNAPSHOT_KEY);
         context.dataCollectionsToSnapshot.clear();
+        context.dataCollectionsToSnapshotJson = null;
         if (dataCollectionsStr != null) {
             context.addTablesIdsToSnapshot(context.stringToDataCollections(dataCollectionsStr));
         }
@@ -345,7 +358,9 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
 
     public DataCollection<T> nextDataCollection() {
         resetChunk();
-        return dataCollectionsToSnapshot.poll();
+        DataCollection<T> nextDataCollection = dataCollectionsToSnapshot.poll();
+        this.dataCollectionsToSnapshotJson = dataCollectionsToSnapshotAsString();
+        return nextDataCollection;
     }
 
     public void startNewChunk() {
