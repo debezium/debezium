@@ -229,6 +229,9 @@ public abstract class AbstractNotificationsIT<T extends SourceConnector> extends
     }
 
     private void assertTableNotificationsSentToJmx(List<Notification> notifications, String tableName) {
+        // For debugging purposes
+        System.out.println("---assertTableNotificationsSentToJmx---");
+        notifications.forEach(System.out::println);
         Optional<Notification> tableNotification;
         tableNotification = notifications.stream()
                 .filter(v -> v.getType().equals("IN_PROGRESS") && v.getAdditionalData().containsValue(tableName))
@@ -250,6 +253,9 @@ public abstract class AbstractNotificationsIT<T extends SourceConnector> extends
     }
 
     private void assertTableNotificationsSentToTopic(List<SourceRecord> notifications, String tableName) {
+        // For debugging purposes
+        System.out.println("---assertTableNotificationsSentToTopic---");
+        notifications.forEach(System.out::println);
         Optional<Struct> tableNotification;
         tableNotification = notifications.stream()
                 .map(s -> ((Struct) s.value()))

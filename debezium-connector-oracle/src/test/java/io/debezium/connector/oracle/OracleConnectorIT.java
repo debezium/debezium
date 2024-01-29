@@ -5356,7 +5356,9 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             TestHelper.dropTable(connection, "dbz6495");
 
             try (OracleConnection admin = TestHelper.adminConnection()) {
-                admin.setSessionToPdb(TestHelper.DATABASE);
+                if (TestHelper.isUsingPdb()) {
+                    admin.setSessionToPdb(TestHelper.getDatabaseName());
+                }
                 TestHelper.dropTable(admin, "c##dbzuser.signals");
                 admin.execute("CREATE TABLE c##dbzuser.signals (id varchar2(64), type varchar2(32), data varchar2(2048))");
                 TestHelper.streamTable(admin, "c##dbzuser.signals");
@@ -5388,7 +5390,9 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         finally {
             TestHelper.dropTable(connection, "dbz6528");
             try (OracleConnection admin = TestHelper.adminConnection()) {
-                admin.setSessionToPdb(TestHelper.DATABASE);
+                if (TestHelper.isUsingPdb()) {
+                    admin.setSessionToPdb(TestHelper.getDatabaseName());
+                }
                 TestHelper.dropTable(admin, "c##dbzuser.signals");
             }
         }
