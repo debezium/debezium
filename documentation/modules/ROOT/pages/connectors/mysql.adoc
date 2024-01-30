@@ -3492,14 +3492,12 @@ Specify one of the following options:
 
 |[[mysql-property-event-converting-failure-handling-mode]]<<mysql-property-event-converting-failure-handling-mode, `event.converting.failure.handling.mode`>>
 |`warn`
-|Specifies how the connector should react to exceptions during converting of a column of a row by converter using debezium internal schema. +
- +
-`fail` throw an exception that the column of event conversion is failed with unmatched schema type, causing the connector to be stopped. it could need schema recovery to covert successfully. +
- +
-`warn` the value of column of event that conversion failed will be null and be logged with warn level. +
- +
-`skip` the value of column of event that conversion failed will be null and be logged with debug level.
+|Specifies how the connector responds when a mismatch between the data type of a column and the type specified by the {prodname} internal schema prevents successful conversion of a table record. +
+Set one of the following options:
 
+`fail`::  An exception reports that conversion failed because the data type of the field did not match the schema type, and indicates that it might be necessary to restart the connector in `schema _only_recovery` mode to enable a successful conversion.
+`warn`:: The connector writes a `null` value to the event field for the column that failed conversion, writes a message to the warning log . +
+`skip`::  The connector writes a `null` value to the event field for the column that failed conversion, and writes a message to the debug log.
 |===
 
 [id="debezium-mysql-connector-database-history-configuration-properties"]
