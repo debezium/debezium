@@ -339,10 +339,10 @@ The {prodname} connector for Oracle does not support schema changes while an inc
 include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-sql.adoc[leveloffset=+3]
 
 // Type: procedure
-
+// ModuleID: debezium-oracle-using-the-kafka-signaling-channel-to-trigger-an-incremental-snapshot
 [id="oracle-triggering-an-incremental-snapshot-kafka"]
 ==== Using the Kafka signaling channel to trigger an incremental snapshot
-// ModuleID: debezium-oracle-using-the-kafka-signaling-channel-to-trigger-an-incremental-snapshot
+
 include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-kafka.adoc[leveloffset=+1]
 
 // Type: procedure
