@@ -122,6 +122,59 @@ public class OracleReselectColumnsProcessorIT extends AbstractReselectProcessorT
     }
 
     @Test
+    @FixFor("DBZ-7729")
+    public void testColumnReselectionUsesPrimaryKeyColumnAndValuesDespiteMessageKeyColumnConfigs() throws Exception {
+        TestHelper.dropTable(connection, "dbz7729");
+        try {
+            connection.execute("CREATE TABLE dbz7729 (id numeric(9,0) primary key, data clob, data2 numeric(9,0), data3 varchar2(25))");
+            TestHelper.streamTable(connection, "dbz7729");
+
+            Configuration config = getConfigurationBuilder()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ7729")
+                    .with(OracleConnectorConfig.MSG_KEY_COLUMNS, "(.*).DEBEZIUM.DBZ7729:DATA3")
+                    .with(OracleConnectorConfig.LOB_ENABLED, "true")
+                    .with("reselector.reselect.columns.include.list", "DEBEZIUM.DBZ7729:DATA")
+                    .build();
+
+            start(getConnectorClass(), config);
+            assertConnectorIsRunning();
+
+            waitForStreamingStarted();
+
+            // Insert will always include the data
+            final String clobData = RandomStringUtils.randomAlphabetic(10000);
+            final Clob clob = connection.connection().createClob();
+            clob.setString(1, clobData);
+            connection.prepareQuery("INSERT INTO dbz7729 (id,data,data2,data3) values (1,?,1,'A')", ps -> ps.setClob(1, clob), null);
+            connection.commit();
+
+            // Update row without changing clob
+            connection.execute("UPDATE dbz7729 set data2=10 where id = 1");
+
+            final SourceRecords sourceRecords = consumeRecordsByTopic(2);
+
+            final List<SourceRecord> tableRecords = sourceRecords.recordsForTopic("server1.DEBEZIUM.DBZ7729");
+            assertThat(tableRecords).hasSize(2);
+
+            SourceRecord update = tableRecords.get(1);
+            VerifyRecord.isValidUpdate(update, true);
+
+            Struct key = ((Struct) update.key());
+            assertThat(key.schema().fields()).hasSize(1);
+            assertThat(key.get("DATA3")).isEqualTo("A");
+
+            Struct after = ((Struct) update.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertThat(after.get("DATA")).isEqualTo(clobData);
+            assertThat(after.get("DATA2")).isEqualTo(10);
+            assertThat(after.get("DATA3")).isEqualTo("A");
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz7729");
+        }
+    }
+
+    @Test
     @FixFor("DBZ-4321")
     public void testClobReselectedWhenValueIsUnavailable() throws Exception {
         TestHelper.dropTable(connection, "dbz4321");
