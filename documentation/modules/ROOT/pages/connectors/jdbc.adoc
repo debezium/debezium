@@ -647,6 +647,10 @@ Do not use this property in combination with the xref:jdbc-property-connection-t
 |===
 |Property |Default |Description
 
+|[[jdbc-property-connection-provider]]<<jdbc-property-connection-provider, `+connection.provider+`>>
+|`org.hibernate.c3p0.internal.C3P0ConnectionProvider`
+|The connection provider implementation to use.
+
 |[[jdbc-property-connection-url]]<<jdbc-property-connection-url, `+connection.url+`>>
 |No default
 |The JDBC connection URL used to connect to the database.
