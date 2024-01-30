@@ -43,6 +43,7 @@ public class JdbcSinkConnectorConfig {
     private static final String HIBERNATE_PREFIX = "hibernate.";
     private static final String DEFAULT_DATABASE_TIME_ZONE = "UTC";
 
+    public static final String CONNECTION_PROVIDER = "connection.provider";
     public static final String CONNECTION_URL = "connection.url";
     public static final String CONNECTION_USER = "connection.username";
     public static final String CONNECTION_PASSWORD = "connection.password";
@@ -70,6 +71,15 @@ public class JdbcSinkConnectorConfig {
     public static final String FIELD_EXCLUDE_LIST = "field.exclude.list";
 
     // todo add support for the ValueConverter contract
+
+    public static final Field CONNECTION_PROVIDER_FIELD = Field.create(CONNECTION_PROVIDER)
+            .withDisplayName("Connection provider")
+            .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 0))
+            .withWidth(ConfigDef.Width.LONG)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDefault(C3P0ConnectionProvider.class.getName())
+            .withDescription("Fully qualified class name of the connection provider, defaults to " + C3P0ConnectionProvider.class.getName());
 
     public static final Field CONNECTION_URL_FIELD = Field.create(CONNECTION_URL)
             .withDisplayName("Hostname")
@@ -619,7 +629,7 @@ public class JdbcSinkConnectorConfig {
      */
     public org.hibernate.cfg.Configuration getHibernateConfiguration() {
         org.hibernate.cfg.Configuration hibernateConfig = new org.hibernate.cfg.Configuration();
-        hibernateConfig.setProperty(AvailableSettings.CONNECTION_PROVIDER, C3P0ConnectionProvider.class.getName());
+        hibernateConfig.setProperty(AvailableSettings.CONNECTION_PROVIDER, config.getString(CONNECTION_PROVIDER_FIELD));
         hibernateConfig.setProperty(AvailableSettings.URL, config.getString(CONNECTION_URL_FIELD));
         hibernateConfig.setProperty(AvailableSettings.USER, config.getString(CONNECTION_USER_FIELD));
         hibernateConfig.setProperty(AvailableSettings.PASS, config.getString(CONNECTION_PASSWORD_FIELD));
