@@ -139,7 +139,7 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
         else {
             for (Column column : table.primaryKeyColumns()) {
                 keyColumns.add(column.name());
-                keyValues.add(key.get(key.schema().field(column.name())));
+                keyValues.add(after.get(after.schema().field(column.name())));
             }
         }
 
