@@ -222,8 +222,8 @@ To provide for the greatest control, run a separate Kafka Connect cluster for ea
 ifdef::product[]
 You can find more information about snapshots in the following sections:
 
-* xref:debezium-postgresql-ad-hoc-snapshots[]
-* xref:debezium-postgresql-incremental-snapshots[]
+* xref:debezium-mongodb-ad-hoc-snapshots[]
+* xref:debezium-mongodb-incremental-snapshots[]
 endif::product[]
 
 // Type: concept
