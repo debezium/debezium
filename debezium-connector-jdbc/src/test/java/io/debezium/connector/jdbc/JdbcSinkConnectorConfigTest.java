@@ -11,7 +11,9 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
+import org.hibernate.cfg.AvailableSettings;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -19,6 +21,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Field;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.PrimaryKeyMode;
+import io.debezium.doc.FixFor;
 
 /**
  * Unit tests for the {@link JdbcSinkConnectorConfig} class.
@@ -111,6 +114,24 @@ public class JdbcSinkConnectorConfigTest {
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
         assertThat(config.validateAndRecord(List.of(JdbcSinkConnectorConfig.SQLSERVER_IDENTITY_INSERT_FIELD), LOGGER::error)).isTrue();
         assertThat(config.isSqlServerIdentityInsert()).isTrue();
+    }
+
+    @Test
+    @FixFor("DBZ-7431")
+    public void testOverrideHibernateConfigurationProperties() {
+        final Map<String, String> properties = new HashMap<>();
+        properties.put(JdbcSinkConnectorConfig.CONNECTION_PROVIDER, "io.debezium.AcmeConnectionProvider");
+        properties.put(JdbcSinkConnectorConfig.CONNECTION_URL, "jdbc://url");
+        properties.put(JdbcSinkConnectorConfig.CONNECTION_USER, "user");
+        properties.put(JdbcSinkConnectorConfig.CONNECTION_PASSWORD, "pass");
+
+        final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        final Properties ormProperties = config.getHibernateConfiguration().getProperties();
+        assertThat(ormProperties).isNotNull();
+        assertThat(ormProperties.get(AvailableSettings.CONNECTION_PROVIDER)).isEqualTo("io.debezium.AcmeConnectionProvider");
+        assertThat(ormProperties.get(AvailableSettings.URL)).isEqualTo("jdbc://url");
+        assertThat(ormProperties.get(AvailableSettings.USER)).isEqualTo("user");
+        assertThat(ormProperties.get(AvailableSettings.PASS)).isEqualTo("pass");
     }
 
     // @Test
