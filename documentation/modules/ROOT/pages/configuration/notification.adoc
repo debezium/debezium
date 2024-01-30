@@ -178,7 +178,7 @@ a|[source, json]
       "data_collection":"table1, table2",
       "scanned_collection":"table1",
       "total_rows_scanned":"100",
-      "status":"SUCCEEDED" // <1>
+      "status":"SUCCEEDED"
    }
 }
 ----
