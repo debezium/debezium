@@ -481,17 +481,20 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
     @Override
     protected Optional<String> getSnapshotSelect(RelationalSnapshotContext<MySqlPartition, MySqlOffsetContext> snapshotContext,
                                                  TableId tableId, List<String> columns) {
-        return Optional.of(getSnapshotSelect(tableId, columns));
+        return getSnapshotSelect(tableId, columns);
     }
 
-    private String getSnapshotSelect(TableId tableId, List<String> columns) {
-        String snapshotSelectColumns = String.join(", ", columns);
-        return String.format("SELECT %s FROM `%s`.`%s`", snapshotSelectColumns, tableId.catalog(), tableId.table());
+    private Optional<String> getSnapshotSelect(TableId tableId, List<String> columns) {
+
+        return snapshotterService.getSnapshotQuery().snapshotQuery(tableId.toQuotedString('`'), columns);
     }
 
     @Override
     protected Optional<String> getSnapshotConnectionFirstSelect(RelationalSnapshotContext<MySqlPartition, MySqlOffsetContext> snapshotContext, TableId tableId) {
-        return Optional.of(getSnapshotSelect(tableId, List.of("*")) + " LIMIT 1");
+        if (getSnapshotSelect(tableId, List.of("*")).isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(getSnapshotSelect(tableId, List.of("*")).get() + " LIMIT 1");
     }
 
     private boolean isGloballyLocked() {
