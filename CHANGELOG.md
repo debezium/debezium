@@ -2,6 +2,46 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.5.1.Final
+January 30th 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12418394)
+
+### New features since 2.5.0.Final
+
+* MongoDb connector doesn't use post-images [DBZ-7299](https://issues.redhat.com/browse/DBZ-7299)
+* Replace additional rolebinding definition in kubernetes.yml with @RBACRule [DBZ-7381](https://issues.redhat.com/browse/DBZ-7381)
+
+
+### Breaking changes since 2.5.0.Final
+
+* Re-select columns should use the table's primary instead of the event's key [DBZ-7358](https://issues.redhat.com/browse/DBZ-7358)
+
+
+### Fixes since 2.5.0.Final
+
+* Connector is getting stopped while processing bulk update(50k) records in debezium server 2.0.1.Final [DBZ-6955](https://issues.redhat.com/browse/DBZ-6955)
+* Empty object sent to GCP Pub/Sub after DELETE event [DBZ-7098](https://issues.redhat.com/browse/DBZ-7098)
+* Debezium-ddl-parser crashes on parsing MySQL DDL statement (subquery with UNION) [DBZ-7259](https://issues.redhat.com/browse/DBZ-7259)
+* Oracle DDL parsing error in PARTITION REFERENCE [DBZ-7266](https://issues.redhat.com/browse/DBZ-7266)
+* PostgreSQL ad-hoc blocking snapshots fail when snapshot mode is "never" [DBZ-7311](https://issues.redhat.com/browse/DBZ-7311)
+* Ad-hoc blocking snapshot dies with "invalid snapshot identifier" immediately after connector creation [DBZ-7312](https://issues.redhat.com/browse/DBZ-7312)
+* Specifying a table include list with spaces between elements cause LogMiner queries to miss matches [DBZ-7315](https://issues.redhat.com/browse/DBZ-7315)
+* Debezium heartbeat.action.query does not start before writing to WAL: part 2 [DBZ-7316](https://issues.redhat.com/browse/DBZ-7316)
+* Oracle connector is ocasionally unable to find SCN [DBZ-7345](https://issues.redhat.com/browse/DBZ-7345)
+* Initial snapshot notifications should use full identifier. [DBZ-7347](https://issues.redhat.com/browse/DBZ-7347)
+* Debezium fails after table split operation [DBZ-7360](https://issues.redhat.com/browse/DBZ-7360)
+* MSSQL wrong default values in db schema for varchar, nvarchar, char columns [DBZ-7374](https://issues.redhat.com/browse/DBZ-7374)
+* Kinesis Sink Exception on PutRecord [DBZ-7417](https://issues.redhat.com/browse/DBZ-7417)
+* ParsingException (MariaDB Only): alterSpec drop foreign key with 'tablename.' prefix [DBZ-7420](https://issues.redhat.com/browse/DBZ-7420)
+
+
+### Other changes since 2.5.0.Final
+
+* Add service loader manifests for all Connect plugins [DBZ-7298](https://issues.redhat.com/browse/DBZ-7298)
+* Update Groovy version to 4.x [DBZ-7340](https://issues.redhat.com/browse/DBZ-7340)
+* Update QOSDK to the latest version [DBZ-7361](https://issues.redhat.com/browse/DBZ-7361)
+
+
+
 ## 2.5.0.Final
 December 21st 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12416251)
 
