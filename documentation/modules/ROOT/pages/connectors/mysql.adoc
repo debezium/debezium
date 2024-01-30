@@ -500,7 +500,7 @@ For the connector to perform a snapshot that uses table-level locks, the databas
 
 .Default workflow that the {prodname} MySQL connector uses to perform an initial snapshot with table-level locks
 The following workflow lists the steps that {prodname} takes to create a snapshot with table-level read locks.
-For information about the snapshot process in environments that do not permit global read locks, see the xref:default-snapshot-workflow-with-global-read-lock[snapshot workflow for global read locks].
+For information about the snapshot process in environments that do not permit global read locks, see the xref:initial-snapshot-workflow-with-global-read-lock[snapshot workflow for global read locks].
 
 [id="snapshot-workflow-with-table-level-locks"]
 [cols="1,9",options="header",subs="+attributes"]
@@ -589,7 +589,7 @@ This can be useful when you want to reduce the time required to complete a snaps
 Or when {prodname} connects to the database instance through a user account that has access to multiple logical databases, but you want the connector to capture changes only from tables in a specific logic database.
 
 .Additional information
-* xref:{context}-capturing-data-from-tables-not-captured-by-the-initial-snapshot[Capturing data from tables not captured by the initial snapshot (no schema change)]
+* xref:{context}-capturing-data-from-tables-not-captured-by-the-initial-snapshot-no-schema-change[Capturing data from tables not captured by the initial snapshot (no schema change)]
 * xref:{context}-capturing-data-from-new-tables-with-schema-changes[Capturing data from tables not captured by the initial snapshot (schema change)]
 * Setting the xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.store.only.captured.tables.ddl`] property to specify the tables from which to capture schema information.
 * Setting the xref:{context}-property-database-history-store-only-captured-databases-ddl[`schema.history.internal.store.only.captured.databases.ddl`] property to specify the logical databases from which to capture schema changes.

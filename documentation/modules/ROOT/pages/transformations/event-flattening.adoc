@@ -176,7 +176,7 @@ transforms.unwrap.add.fields=table,lsn
 
 .Customizing the configuration
 The connector might emit many types of event messages (heartbeat messages, tombstone messages, or metadata messages about transactions or schema changes).
-To apply the transformation to a subset of events, you can define xref:applying-the-transformation-selectively[an SMT predicate statement that selectively applies the transformation] to specific events only.
+To apply the transformation to a subset of events, you can define xref:applying-the-event-flattening-transformation-selectively[an SMT predicate statement that selectively applies the transformation] to specific events only.
 
 // Type: concept
 // ModuleID: example-of-adding-debezium-metadata-to-the-kafka-record
