@@ -348,7 +348,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
                 + Arrays.toString(maximumKey) + "]";
     }
 
-    public static class SnapshotDataCollection<T> extends LinkedList<DataCollection<T>> {
+    private static class SnapshotDataCollection<T> extends LinkedList<DataCollection<T>> {
 
         public static final String DATA_COLLECTIONS_TO_SNAPSHOT_KEY = INCREMENTAL_SNAPSHOT_KEY + "_collections";
 
@@ -365,15 +365,15 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
         private final Queue<DataCollection<T>> dataCollectionsToSnapshot = new LinkedList<>();
         private String dataCollectionsToSnapshotJson;
 
-        public SnapshotDataCollection() {
+        SnapshotDataCollection() {
         }
 
-        public void add(List<DataCollection<T>> dataCollectionIds) {
+        void add(List<DataCollection<T>> dataCollectionIds) {
             this.dataCollectionsToSnapshot.addAll(dataCollectionIds);
             this.dataCollectionsToSnapshotJson = jsonString();
         }
 
-        public DataCollection<T> getNext() {
+        DataCollection<T> getNext() {
             DataCollection<T> nextDataCollection = this.dataCollectionsToSnapshot.poll();
             this.dataCollectionsToSnapshotJson = jsonString();
             return nextDataCollection;
