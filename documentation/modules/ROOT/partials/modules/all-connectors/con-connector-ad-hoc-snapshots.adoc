@@ -66,7 +66,7 @@ The snapshot process reads the first and last primary key values and uses those 
 Based on the number of entries in the {data-collection}, and the configured chunk size, {prodname} divides the {data-collection} into chunks, and proceeds to snapshot each chunk, in succession, one at a time.
 
 Currently, the `execute-snapshot` action type triggers {link-prefix}:{link-signalling}#debezium-signaling-incremental-snapshots[incremental snapshots] only.
-For more information, see xref:{context}-incremental-snapshots[Incremental snapshots].
+For more information, see xref:debezium-{context}-incremental-snapshots[Incremental snapshots].
 ////
 .Prerequisites
 
