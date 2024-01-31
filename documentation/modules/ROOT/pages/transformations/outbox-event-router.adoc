@@ -206,13 +206,72 @@ You can use one of the following methods to configure the connector to apply the
 * Use the xref:outbox-event-router-property-route-topic-regex[`route.topic.regex`] configuration option for the SMT.
 
 // Type: concept
+// Title: Payload serialization
+// ModuleID: payload-serialization
+== Payload serialization
+
+The outbox event router SMT supports arbitrary payload formats. The `payload` column value in an outbox table is passed on transparently. However, the outbox event router SMT needs to be configured correctly to convert the data from the database column to a Kafka message. Common serialization formats are JSON and Avro.
+
+
+// Type: concept
+// Title: Using JSON as the serialization format
+// ModuleID: using-json-serialization-format
+[[using-json-serialization-format]]
+=== Using JSON as the serialization format
+
+JSON is the default serialization format for this SMT. In order to use this format the database column must be of JSON format (i.e. `jsonb` in PostgreSQL).
+
+// Type: concept
+// Title: Producing Expanding escaped JSON String as JSON
+// ModuleID: expanding-escaped-json-string-as-json
+[[expanding-escaped-json-string-as-json]]
+==== Expanding escaped JSON String as JSON
+
+You may have noticed that the Debezium outbox message contains the `payload` represented as a String.
+So when this string, is actually JSON, it appears as escaped in the result Kafka message like shown below:
+
+[source,javascript,indent=0]
+----
+# Kafka Topic: outbox.event.order
+# Kafka Message key: "1"
+# Kafka Message Headers: "id=4d47e190-0402-4048-bc2c-89dd54343cdc"
+# Kafka Message Timestamp: 1556890294484
+{
+  "{\"id\": 1, \"lineItems\": [{\"id\": 1, \"item\": \"Debezium in Action\", \"status\": \"ENTERED\", \"quantity\": 2, \"totalPrice\": 39.98}, {\"id\": 2, \"item\": \"Debezium for Dummies\", \"status\": \"ENTERED\", \"quantity\": 1, \"totalPrice\": 29.99}], \"orderDate\": \"2019-01-31T12:13:01\", \"customerId\": 123}"
+}
+----
+
+The outbox event router allows you to expand this message content to "real" JSON with the companion schema
+being deduced from the JSON document itself. That way the result in Kafka message looks like:
+
+[source,javascript,indent=0]
+----
+# Kafka Topic: outbox.event.order
+# Kafka Message key: "1"
+# Kafka Message Headers: "id=4d47e190-0402-4048-bc2c-89dd54343cdc"
+# Kafka Message Timestamp: 1556890294484
+{
+  "id": 1, "lineItems": [{"id": 1, "item": "Debezium in Action", "status": "ENTERED", "quantity": 2, "totalPrice": 39.98}, {"id": 2, "item": "Debezium for Dummies", "status": "ENTERED", "quantity": 1, "totalPrice": 29.99}], "orderDate": "2019-01-31T12:13:01", "customerId": 123
+}
+----
+
+To enable this transformation, you have to set the xref:outbox-event-router-property-table-expand-json-payload[`table.expand.json.payload`] to true and use the `JsonConverter` like below:
+
+[source]
+----
+transforms=outbox,...
+transforms.outbox.type=io.debezium.transforms.outbox.EventRouter
+transforms.outbox.table.expand.json.payload=true
+value.converter=org.apache.kafka.connect.json.JsonConverter
+----
+
+// Type: concept
 // Title: Using Avro as the payload format in {prodname} outbox messages
 // ModuleID: using-avro-as-the-payload-format-in-debezium-outbox-messages
 [[avro-as-payload-format]]
-== Using Avro as the payload format
+=== Using Avro as the payload format
 
-The outbox event router SMT supports arbitrary payload formats. The `payload` column value in an outbox table is passed on transparently. An alternative to working with JSON is to use Avro.
-This can be beneficial for message format governance and for ensuring that outbox event schemas evolve in a backwards-compatible way.
+A common practice is to serialize data as Avro. This can be beneficial for message format governance and for ensuring that outbox event schemas evolve in a backwards-compatible way.
 
 How a source application produces Avro formatted content for outbox message payloads is out of the scope of this documentation.
 One possibility is to leverage the `KafkaAvroSerializer` class to serialize `GenericRecord` instances.
@@ -226,8 +285,8 @@ transforms.outbox.type=io.debezium.transforms.outbox.EventRouter
 value.converter=io.debezium.converters.BinaryDataConverter
 ----
 
-By default, the `payload` column value (the Avro data) is the only message value.
-Configuration of `BinaryDataConverter` as the value converter propagates the `payload` column value as-is into the Kafka message value.
+By default, the `payload` column value (the Avro data) is the only message value. When storing data in Avro format the column must be of binary format (i.e. `bytea` in PostgreSQL),
+and value converter for the SMT must be `BinaryDataConverter`, which will propagate the `payload` column binary value as-is into the Kafka message value.
 
 The {prodname} connectors may be configured to emit heartbeat, transaction metadata, or schema change events (support varies by connector).
 These events cannot be serialized by the `BinaryDataConverter` so additional configuration must be provided so the converter knows how to serialize these events.
@@ -245,9 +304,22 @@ value.converter.delegate.converter.type.schemas.enable=false
 The delegate `Converter` implementation is specified by the `delegate.converter.type` option.
 If any extra configuration options are needed by the converter, they can also be specified, such as the disablement of schemas shown above using `schemas.enable=false`.
 
+Furthermore, the following example illustrates how to use a delegate converter in Avro format with Schema Registry:
+
+[source]
+----
+transforms=outbox,...
+transforms.outbox.type=io.debezium.transforms.outbox.EventRouter
+value.converter=io.debezium.converters.BinaryDataConverter
+value.converter.delegate.converter.type=io.confluent.connect.avro.AvroConverter
+value.converter.delegate.converter.type.basic.auth.credentials.source=USER_INFO
+value.converter.delegate.converter.type.basic.auth.user.info={CREDENTIALS}
+value.converter.delegate.converter.type.schema.registry.url={URL}
+----
+
 [NOTE]
 ====
-The converter `io.debezium.converters.ByteBufferConverter` has been deprecated since Debezium version 1.9, and has been removed in 2.0. Furthermore, when using Kafka Connect the connector's configuration must be updated before upgrading to Debezium 2.x
+The last example with an AvroConverter as the delegate converter requires third party libraries. Adding those libraries to the classpath out of the scope for this document.
 ====
 
 // Type: concept
@@ -293,50 +365,6 @@ transforms.outbox.table.fields.additional.placement=partitionColumn:partition
 ----
 
 Note that for the `partition` placement, adding an alias will have no effect.
-
-// Type: concept
-// Title: Expanding escaped JSON String as JSON
-// ModuleID: expanding-escaped-json-string-as-json
-[[expanding-escaped-json-string-as-json]]
-== Expanding escaped JSON String as JSON
-
-You may have noticed that the Debezium outbox message contains the `payload` represented as a String.
-So when this string, is actually JSON, it appears as escaped in the result Kafka message like shown below:
-
-[source,javascript,indent=0]
-----
-# Kafka Topic: outbox.event.order
-# Kafka Message key: "1"
-# Kafka Message Headers: "id=4d47e190-0402-4048-bc2c-89dd54343cdc"
-# Kafka Message Timestamp: 1556890294484
-{
-  "{\"id\": 1, \"lineItems\": [{\"id\": 1, \"item\": \"Debezium in Action\", \"status\": \"ENTERED\", \"quantity\": 2, \"totalPrice\": 39.98}, {\"id\": 2, \"item\": \"Debezium for Dummies\", \"status\": \"ENTERED\", \"quantity\": 1, \"totalPrice\": 29.99}], \"orderDate\": \"2019-01-31T12:13:01\", \"customerId\": 123}"
-}
-----
-
-The outbox event router allows you to expand this message content to "real" JSON with the companion schema
-being deduced from the JSON document itself. That way the result in Kafka message looks like:
-
-[source,javascript,indent=0]
-----
-# Kafka Topic: outbox.event.order
-# Kafka Message key: "1"
-# Kafka Message Headers: "id=4d47e190-0402-4048-bc2c-89dd54343cdc"
-# Kafka Message Timestamp: 1556890294484
-{
-  "id": 1, "lineItems": [{"id": 1, "item": "Debezium in Action", "status": "ENTERED", "quantity": 2, "totalPrice": 39.98}, {"id": 2, "item": "Debezium for Dummies", "status": "ENTERED", "quantity": 1, "totalPrice": 29.99}], "orderDate": "2019-01-31T12:13:01", "customerId": 123
-}
-----
-
-To enable this transformation, you have to set the xref:outbox-event-router-property-table-expand-json-payload[`table.expand.json.payload`] to true and use the `JsonConverter` like below:
-
-[source]
-----
-transforms=outbox,...
-transforms.outbox.type=io.debezium.transforms.outbox.EventRouter
-transforms.outbox.table.expand.json.payload=true
-value.converter=org.apache.kafka.connect.json.JsonConverter
-----
 
 // Type: reference
 // ModuleID: options-for-configuring-outbox-event-router-transformation
