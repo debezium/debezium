@@ -1,5 +1,6 @@
 // Category: debezium-using
 // Type: assembly
+// Title: {prodname} connector for JDBC (Developer Preview)
 [id="debezium-connector-for-jdbc"]
 = {prodname} connector for JDBC
 :context: JDBC
@@ -25,7 +26,20 @@ endif::community[]
 
 The {prodname} JDBC connector is a Kafka Connect sink connector implementation that can consume events from multiple source topics, and then write those events to a relational database by using a JDBC driver.
 This connector supports a wide variety of database dialects, including Db2, MySQL, Oracle, PostgreSQL, and SQL Server.
+ifdef::product[]
+[IMPORTANT]
+====
+The {prodname} JDBC connector is Developer Preview software only.
+Developer Preview software is not supported by Red{nbsp}Hat in any way and is not functionally complete or production-ready.
+Do not use Developer Preview software for production or business-critical workloads.
+Developer Preview software provides early access to upcoming product software in advance of its possible inclusion in a Red{nbsp}Hat product offering.
+Customers can use this software to test functionality and provide feedback during the development process.
+This software is subject to change or removal at any time, and has received limited testing.
+Red{nbsp}Hat might provide ways to submit feedback on Developer Preview software without an associated SLA.
 
+For more information about the support scope of Red{nbsp}Hat Developer Preview software, see link:https://access.redhat.com/support/offerings/devpreview/[Developer Preview Support Scope].
+====
+endif::product[]
 // Type: assembly
 // ModuleID: debezium-jdbc-connector-how-the-debezium-connector-works
 // Title: How the {prodname} JDBC connector works
