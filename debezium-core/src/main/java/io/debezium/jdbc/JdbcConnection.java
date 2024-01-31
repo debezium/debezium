@@ -44,6 +44,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.regex.Matcher;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Struct;
@@ -311,7 +312,7 @@ public class JdbcConnection implements AutoCloseable {
 
                 if (value != null) {
                     // And replace the variable ...
-                    url = url.replaceAll("\\$\\{" + name + "\\}", value);
+                    url = url.replaceAll("\\$\\{" + name + "\\}", Matcher.quoteReplacement(value));
                 }
             }
         }
