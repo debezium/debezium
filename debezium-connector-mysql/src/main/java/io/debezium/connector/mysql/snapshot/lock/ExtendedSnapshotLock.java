@@ -10,11 +10,11 @@ import java.util.Map;
 import io.debezium.connector.mysql.MySqlConnectorConfig;
 import io.debezium.snapshot.spi.SnapshotLock;
 
-public class MinimalSnapshotLock extends DefaultSnapshotLock implements SnapshotLock {
+public class ExtendedSnapshotLock extends DefaultSnapshotLock implements SnapshotLock {
 
     @Override
     public String name() {
-        return MySqlConnectorConfig.SnapshotLockingMode.MINIMAL.getValue();
+        return MySqlConnectorConfig.SnapshotLockingMode.EXTENDED.getValue();
     }
 
     @Override

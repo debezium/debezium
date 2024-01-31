@@ -22,6 +22,7 @@ import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.mysql.MySqlConnectorConfig.BigIntUnsignedHandlingMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
+import io.debezium.connector.mysql.snapshot.MySqlSnapshotLockProvider;
 import io.debezium.connector.mysql.snapshot.MySqlSnapshotQueryProvider;
 import io.debezium.connector.mysql.snapshot.MySqlSnapshotterServiceProvider;
 import io.debezium.connector.mysql.strategy.AbstractConnectorConnection;
@@ -247,7 +248,7 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
     protected void registerServiceProviders(ServiceRegistry serviceRegistry) {
 
         super.registerServiceProviders(serviceRegistry);
-        // serviceRegistry.registerServiceProvider(new SnapshotLockProvider());
+        serviceRegistry.registerServiceProvider(new MySqlSnapshotLockProvider());
         serviceRegistry.registerServiceProvider(new MySqlSnapshotQueryProvider());
         serviceRegistry.registerServiceProvider(new MySqlSnapshotterServiceProvider());
     }
