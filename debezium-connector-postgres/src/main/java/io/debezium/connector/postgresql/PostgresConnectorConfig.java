@@ -879,7 +879,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                 return 0;
             })
             .withDescription(
-                    "When 'snapshot.locking.mode' is set as custom, this setting must be set to specify a the name of the custom implementation provided in the 'name()' method. "
+                    "When 'snapshot.locking.mode' is set as custom, this setting must be set to specify the name of the custom implementation provided in the 'name()' method. "
                             + "The implementations must implement the 'SnapshotterLocking' interface and is called to determine how to lock tables during schema snapshot.");
 
     public static final Field SNAPSHOT_QUERY_MODE = Field.create("snapshot.query.mode")
@@ -904,7 +904,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                 return 0;
             })
             .withDescription(
-                    "When 'snapshot.query.mode' is set as custom, this setting must be set to specify a the name of the custom implementation provided in the 'name()' method. "
+                    "When 'snapshot.query.mode' is set as custom, this setting must be set to specify the name of the custom implementation provided in the 'name()' method. "
                             + "The implementations must implement the 'SnapshotterQuery' interface and is called to determine how to build queries during snapshot.");
 
     /**
@@ -1246,6 +1246,10 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     SOURCE_INFO_STRUCT_MAKER)
             .connector(
                     SNAPSHOT_MODE,
+                    SNAPSHOT_QUERY_MODE,
+                    SNAPSHOT_QUERY_MODE_CUSTOM_NAME,
+                    SNAPSHOT_LOCKING_MODE_CUSTOM_NAME,
+                    SNAPSHOT_LOCKING_MODE,
                     HSTORE_HANDLING_MODE,
                     BINARY_HANDLING_MODE,
                     SCHEMA_NAME_ADJUSTMENT_MODE,
