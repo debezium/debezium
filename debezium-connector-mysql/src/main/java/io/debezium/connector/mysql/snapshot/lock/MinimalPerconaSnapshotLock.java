@@ -5,20 +5,28 @@
  */
 package io.debezium.connector.mysql.snapshot.lock;
 
+import java.time.Duration;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 
 import io.debezium.connector.mysql.MySqlConnectorConfig;
 import io.debezium.snapshot.spi.SnapshotLock;
 
-public class MinimalSnapshotLock extends DefaultSnapshotLock implements SnapshotLock {
+public class MinimalPerconaSnapshotLock implements SnapshotLock {
 
     @Override
     public String name() {
-        return MySqlConnectorConfig.SnapshotLockingMode.MINIMAL.getValue();
+        return MySqlConnectorConfig.SnapshotLockingMode.MINIMAL_PERCONA.getValue();
     }
 
     @Override
     public void configure(Map<String, ?> properties) {
 
+    }
+
+    @Override
+    public Optional<String> tableLockingStatement(Duration lockTimeout, Set<String> tableIds) {
+        return Optional.of("LOCK TABLES FOR BACKUP");
     }
 }

@@ -223,6 +223,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
     @Override
     protected void releaseSchemaSnapshotLocks(RelationalSnapshotContext<MySqlPartition, MySqlOffsetContext> snapshotContext)
             throws SQLException {
+
         if (connectorConfig.getSnapshotLockingMode().usesMinimalLocking()) {
             if (isGloballyLocked()) {
                 globalUnlock();
@@ -507,8 +508,11 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
 
     private void globalLock() throws SQLException {
         LOGGER.info("Flush and obtain global read lock to prevent writes to database");
-        connection.executeWithoutCommitting(connectorConfig.getSnapshotLockingMode().getLockStatement());
-        globalLockAcquiredAt = clock.currentTimeInMillis();
+        Optional<String> lockingStatement = snapshotterService.getSnapshotLock().tableLockingStatement(null, Set.of());
+        if (lockingStatement.isPresent()) {
+            connection.executeWithoutCommitting(lockingStatement.get());
+            globalLockAcquiredAt = clock.currentTimeInMillis();
+        }
     }
 
     private void globalUnlock() throws SQLException {
