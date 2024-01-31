@@ -67,13 +67,13 @@ public class PostgresConnection extends JdbcConnection {
 
     private static final Pattern FUNCTION_DEFAULT_PATTERN = Pattern.compile("^[(]?[A-Za-z0-9_.]+\\((?:.+(?:, ?.+)*)?\\)");
     private static final Pattern EXPRESSION_DEFAULT_PATTERN = Pattern.compile("\\(+(?:.+(?:[+ - * / < > = ~ ! @ # % ^ & | ` ?] ?.+)+)+\\)");
+    public static final String DEFAULT_PROTOCOL = "postgresql";
+    public static final String DEFAULT_DRIVER_CLASS_NAME = org.postgresql.Driver.class.getName();
     private static Logger LOGGER = LoggerFactory.getLogger(PostgresConnection.class);
 
-    private static final String URL_PATTERN = "jdbc:postgresql://${" + JdbcConfiguration.HOSTNAME + "}:${"
+    private static final String URL_PATTERN_WITHOUT_PROTOCOL = "${" + JdbcConfiguration.HOSTNAME + "}:${"
             + JdbcConfiguration.PORT + "}/${" + JdbcConfiguration.DATABASE + "}";
-    protected static final ConnectionFactory FACTORY = JdbcConnection.patternBasedFactory(URL_PATTERN,
-            org.postgresql.Driver.class.getName(),
-            PostgresConnection.class.getClassLoader(), JdbcConfiguration.PORT.withDefault(PostgresConnectorConfig.PORT.defaultValueAsString()));
+    private final String protocol;
 
     /**
      * Obtaining a replication slot may fail if there's a pending transaction. We're retrying to get a slot for 30 min.
@@ -84,6 +84,12 @@ public class PostgresConnection extends JdbcConnection {
 
     private final TypeRegistry typeRegistry;
     private final PostgresDefaultValueConverter defaultValueConverter;
+
+    public static final ConnectionFactory buildConnectionFactory(String driverClassName, String protocol) {
+        return JdbcConnection.patternBasedFactory(getUrlPatternWithProtocol(protocol),
+                driverClassName,
+                PostgresConnection.class.getClassLoader(), JdbcConfiguration.PORT.withDefault(PostgresConnectorConfig.PORT.defaultValueAsString()));
+    }
 
     /**
      * Creates a Postgres connection using the supplied configuration.
@@ -96,7 +102,26 @@ public class PostgresConnection extends JdbcConnection {
      * @param connectionUsage a symbolic name of the connection to be tracked in monitoring tools
      */
     public PostgresConnection(JdbcConfiguration config, PostgresValueConverterBuilder valueConverterBuilder, String connectionUsage) {
-        super(addDefaultSettings(config, connectionUsage), FACTORY, PostgresConnection::validateServerVersion, "\"", "\"");
+        this(config, valueConverterBuilder, connectionUsage, DEFAULT_DRIVER_CLASS_NAME, DEFAULT_PROTOCOL);
+    }
+
+    /**
+     * Creates a Postgres connection using the supplied configuration.
+     * If necessary this connection is able to resolve data type mappings.
+     * Such a connection requires a {@link PostgresValueConverter}, and will provide its own {@link TypeRegistry}.
+     * Usually only one such connection per connector is needed.
+     *
+     * @param config {@link Configuration} instance, may not be null.
+     * @param valueConverterBuilder supplies a configured {@link PostgresValueConverter} for a given {@link TypeRegistry}
+     * @param connectionUsage a symbolic name of the connection to be tracked in monitoring tools
+     * @param driverClassName the jdbc driver class name to use
+     * @param protocol the jdbc protocol to use
+     */
+    public PostgresConnection(JdbcConfiguration config, PostgresValueConverterBuilder valueConverterBuilder, String connectionUsage, String driverClassName,
+                              String protocol) {
+        super(addDefaultSettings(config, connectionUsage), buildConnectionFactory(driverClassName, protocol), PostgresConnection::validateServerVersion, "\"", "\"");
+
+        this.protocol = protocol;
 
         if (Objects.isNull(valueConverterBuilder)) {
             this.typeRegistry = null;
@@ -115,9 +140,13 @@ public class PostgresConnection extends JdbcConnection {
      * @param config {@link Configuration} instance, may not be null.
      * @param typeRegistry an existing/already-primed {@link TypeRegistry} instance
      * @param connectionUsage a symbolic name of the connection to be tracked in monitoring tools
+     * @param driverClassName the jdbc driver class name to use
+     * @param protocol the jdbc protocol to use
      */
-    public PostgresConnection(PostgresConnectorConfig config, TypeRegistry typeRegistry, String connectionUsage) {
-        super(addDefaultSettings(config.getJdbcConfig(), connectionUsage), FACTORY, PostgresConnection::validateServerVersion, "\"", "\"");
+    public PostgresConnection(PostgresConnectorConfig config, TypeRegistry typeRegistry, String connectionUsage, String driverClassName, String protocol) {
+        super(addDefaultSettings(config.getJdbcConfig(), connectionUsage), buildConnectionFactory(driverClassName, protocol), PostgresConnection::validateServerVersion,
+                "\"", "\"");
+        this.protocol = protocol;
         if (Objects.isNull(typeRegistry)) {
             this.typeRegistry = null;
             this.defaultValueConverter = null;
@@ -137,7 +166,7 @@ public class PostgresConnection extends JdbcConnection {
      * @param connectionUsage a symbolic name of the connection to be tracked in monitoring tools
      */
     public PostgresConnection(JdbcConfiguration config, String connectionUsage) {
-        this(config, null, connectionUsage);
+        this(config, null, connectionUsage, DEFAULT_DRIVER_CLASS_NAME, DEFAULT_PROTOCOL);
     }
 
     static JdbcConfiguration addDefaultSettings(JdbcConfiguration configuration, String connectionUsage) {
@@ -154,7 +183,11 @@ public class PostgresConnection extends JdbcConnection {
      * @return a {@code String} where the variables in {@code urlPattern} are replaced with values from the configuration
      */
     public String connectionString() {
-        return connectionString(URL_PATTERN);
+        return connectionString(getUrlPatternWithProtocol(this.protocol));
+    }
+
+    public static String getUrlPatternWithProtocol(String protocol) {
+        return "jdbc:" + protocol + "://" + URL_PATTERN_WITHOUT_PROTOCOL;
     }
 
     /**

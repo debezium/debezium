@@ -903,6 +903,25 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withDefault(Boolean.TRUE)
             .withValidation(Field::isBoolean, PostgresConnectorConfig::validateFlushLsnSource);
 
+    public static final Field JDBC_DRIVER = Field.create(DATABASE_CONFIG_PREFIX + "jdbc.driver")
+            .withDisplayName("JDBC Driver Class Name")
+            .withType(Type.CLASS)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 41))
+            .withWidth(Width.MEDIUM)
+            .withDefault(org.postgresql.Driver.class.getName())
+            .withImportance(Importance.LOW)
+            .withValidation(Field::isClassName)
+            .withDescription("JDBC Driver class name used to connect to the PostgreSQL database server.");
+
+    public static final Field JDBC_PROTOCOL = Field.create(DATABASE_CONFIG_PREFIX + "protocol")
+            .withDisplayName("JDBC Protocol")
+            .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 42))
+            .withWidth(Width.MEDIUM)
+            .withDefault("postgresql")
+            .withImportance(Importance.LOW)
+            .withDescription("JDBC protocol to use with the driver.");
+
     public static final Field SOURCE_INFO_STRUCT_MAKER = CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER
             .withDefault(PostgresSourceInfoStructMaker.class.getName());
 
@@ -913,6 +932,10 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     private final SchemaRefreshMode schemaRefreshMode;
     private final boolean flushLsnOnSource;
     private final ReplicaIdentityMapper replicaIdentityMapper;
+
+    private final String protocol;
+
+    private final String driver;
 
     public PostgresConnectorConfig(Configuration config) {
         super(
@@ -933,6 +956,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         this.flushLsnOnSource = config.getBoolean(SHOULD_FLUSH_LSN_IN_SOURCE_DB);
         final var replicaIdentityMapping = config.getString(REPLICA_IDENTITY_AUTOSET_VALUES);
         this.replicaIdentityMapper = (replicaIdentityMapping != null) ? new ReplicaIdentityMapper(replicaIdentityMapping) : null;
+        this.protocol = config.getString(JDBC_PROTOCOL);
+        this.driver = config.getString(JDBC_DRIVER);
     }
 
     protected String hostname() {
@@ -1027,6 +1052,14 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return flushLsnOnSource;
     }
 
+    public String getProtocol() {
+        return protocol;
+    }
+
+    public String getDriver() {
+        return driver;
+    }
+
     @Override
     public byte[] getUnavailableValuePlaceholder() {
         String placeholder = getConfig().getString(UNAVAILABLE_VALUE_PLACEHOLDER);
@@ -1079,7 +1112,9 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     XMIN_FETCH_INTERVAL,
                     // Use this connector's implementation rather than common connector's flavor
                     SKIPPED_OPERATIONS,
-                    SHOULD_FLUSH_LSN_IN_SOURCE_DB)
+                    SHOULD_FLUSH_LSN_IN_SOURCE_DB,
+                    JDBC_DRIVER,
+                    JDBC_PROTOCOL)
             .events(
                     INCLUDE_UNKNOWN_DATATYPES,
                     SOURCE_INFO_STRUCT_MAKER)
