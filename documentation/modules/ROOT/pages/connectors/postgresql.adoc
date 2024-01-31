@@ -185,7 +185,7 @@ If the connector fails, is rebalanced, or stops after Step 1 begins but before S
 
 ifdef::community[]
 |`custom`
-|The `custom` snapshot mode lets you inject your own implementation of the `io.debezium.connector.postgresql.spi.Snapshotter` interface. Set the `snapshot.custom.class` configuration property to the class on the classpath of your Kafka Connect cluster or included in the JAR if using the `EmbeddedEngine`. For more details, see xref:postgresql-custom-snapshot[custom snapshotter SPI].
+|The `custom` snapshot mode lets you inject your own implementation of the `io.debezium.spi.snapshot.Snapshotter` interface. Set the `snapshot.mode.custom.name` configuration property to the name provided by the `name()` method of your implementation that is on the classpath of your Kafka Connect cluster or included in the JAR if using the `EmbeddedEngine`. For more details, see xref:postgresql-custom-snapshot[custom snapshotter SPI].
 endif::community[]
 
 |===
@@ -242,54 +242,121 @@ ifdef::community[]
 [[postgresql-custom-snapshot]]
 === Custom snapshotter SPI
 
-For more advanced uses, you can provide an implementation of the `io.debezium.connector.postgresql.spi.Snapshotter` interface. This interface allows control of most of the aspects of how the connector performs snapshots. This includes whether or not to take a snapshot, the options for opening the snapshot transaction, and whether to take locks.
+For more advanced uses, you can fine control the snapshot implementing the following interfaces:
 
-Following is the full API for the interface. All built-in snapshot modes implement this interface.
+* `io.debezium.snapshot.spi.Snapshotter`: allows control whether to take a snapshot
+* `io.debezium.snapshot.spi.SnapshotQuery`: allows control on how data is queried
+* `io.debezium.snapshot.spi.SnapshotLock`: allows control whether to take locks
+
 
 [source,java,indent=0,subs="+attributes"]
+.io.debezium.snapshot.spi.Snapshotter interface. All built-in snapshot modes implement this interface.
 ----
 /**
- * This interface is used to determine details about the snapshot process:
+ * {@link Snapshotter} is used to determine details about the snapshot process:
+ * <p>
+ * Namely: <br>
+ * - Should a snapshot occur at all <br>
+ * - Should streaming occur <br>
+ * - Should snapshot schema (if supported) <br>
+ * - Should snapshot data/schema on error
+ * <p>
+ * While many default snapshot modes are provided with debezium (see documentation for details)
+ * a custom implementation of this interface can be provided by the implementor which
+ * can provide more advanced functionality, such as partial snapshots
  *
- * Namely:
- * - Should a snapshot occur at all
- * - Should streaming occur
- * - What queries should be used to snapshot
  *
- * While many default snapshot modes are provided with {prodname},
- * a custom implementation of this interface can be provided by the implementor, which
- * can provide more advanced functionality, such as partial snapshots.
- *
- * Implementations must return true for either {@link #shouldSnapshot()} or {@link #shouldStream()}
- * or true for both.
+ * @author Mario Fiore Vitale
  */
 @Incubating
-public interface Snapshotter {
-
-    void init(PostgresConnectorConfig config, OffsetState sourceInfo,
-              SlotState slotState);
+public interface Snapshotter extends Configurable {
 
     /**
-     * @return true if the snapshotter should take a snapshot
+     * @return the name of the snapshotter.
+     *
+     *
+     */
+    String name();
+
+    /**
+     * Validate the snapshotter compatibility with the current connector configuration.
+     * Throws a {@link DebeziumException} in case it is not compatible.
+     *
+     * @param offsetContextExists is {@code true} when the connector has an offset context (i.e. restarted)
+     * @param isSnapshotInProgress is {@code true} when the connector is started but there was already a snapshot in progress
+     */
+    void validate(boolean offsetContextExists, boolean isSnapshotInProgress);
+
+    /**
+     * @return {@code true} if the snapshotter should take a snapshot
      */
     boolean shouldSnapshot();
 
     /**
-     * @return true if the snapshotter should stream after taking a snapshot
+     * @return {@code true} if the snapshotter should take a snapshot
+     */
+    boolean shouldSnapshotSchema();
+
+    /**
+     * @return {@code true} if the snapshotter should stream after taking a snapshot
      */
     boolean shouldStream();
 
     /**
+     * @return {@code true} whether the schema can be recovered if database schema history is corrupted.
+     */
+    boolean shouldSnapshotOnSchemaError();
+
+    /**
+     * @return {@code true} whether the snapshot should be re-executed when there is a gap in data stream.
+     */
+    boolean shouldSnapshotOnDataError();
+
+    /**
      *
-     * @return true if streaming should resume from the start of the snapshot
-     * transaction, or false for when a connector resumes and takes a snapshot,
+     * @return {@code true} if streaming should resume from the start of the snapshot
+     * transaction, or {@code false} for when a connector resumes and takes a snapshot,
      * streaming should resume from where streaming previously left off.
      */
     default boolean shouldStreamEventsStartingFromSnapshot() {
         return true;
     }
+
     /**
-     * Generate a valid postgres query string for the specified table, or an empty {@link Optional}
+     * Lifecycle hook called once the snapshot phase is successful.
+     */
+    default void snapshotCompleted() {
+        // no operation
+    }
+
+    /**
+     * Lifecycle hook called once the snapshot phase is aborted.
+     */
+    default void snapshotAborted() {
+        // no operation
+    }
+}
+----
+
+[source,java,indent=0,subs="+attributes"]
+.io.debezium.snapshot.spi.SnapshotQuery interface. All built-in snapshot query modes implement this interface.
+----
+/**
+ * {@link SnapshotQuery} is used to determine the query used during data snapshot
+ *
+ * @author Mario Fiore Vitale
+ */
+public interface SnapshotQuery extends Configurable, Service {
+
+    /**
+     * @return the name of the snapshot lock.
+     *
+     *
+     */
+    String name();
+
+    /**
+     * Generate a valid query string for the specified table, or an empty {@link Optional}
      * to skip snapshotting this table (but that table will still be streamed from)
      *
      * @param tableId the table to generate a query for
@@ -297,43 +364,34 @@ public interface Snapshotter {
      *                              include/exclude filters
      * @return a valid query string, or none to skip snapshotting this table
      */
-    Optional<String> buildSnapshotQuery(TableId tableId, List<String> snapshotSelectColumns);
+    Optional<String> snapshotQuery(String tableId, List<String> snapshotSelectColumns);
+
+}
+----
+
+[source,java,indent=0,subs="+attributes"]
+.io.debezium.snapshot.spi.SnapshotLock interface. All built-in snapshot lock modes implement this interface.
+----
+/**
+ * {@link SnapshotLock} is used to determine the table lock mode used during schema snapshot
+ *
+ * @author Mario Fiore Vitale
+ */
+public interface SnapshotLock extends Configurable, Service {
 
     /**
-     * Return a new string that set up the transaction for snapshotting
+     * @return the name of the snapshot lock.
      *
-     * @param newSlotInfo if a new slow was created for snapshotting, this contains information from
-     *                    the `create_replication_slot` command
+     *
      */
-    default String snapshotTransactionIsolationLevelStatement(SlotCreationResult newSlotInfo) {
-        // we're using the same isolation level that pg_backup uses
-        return "SET TRANSACTION ISOLATION LEVEL SERIALIZABLE, READ ONLY, DEFERRABLE;";
-    }
+    String name();
 
     /**
      * Returns a SQL statement for locking the given tables during snapshotting, if required by the specific snapshotter
      * implementation.
      */
-    default Optional<String> snapshotTableLockingStatement(Duration lockTimeout, Set<TableId> tableIds) {
-        String lineSeparator = System.lineSeparator();
-        StringBuilder statements = new StringBuilder();
-        statements.append("SET lock_timeout = ").append(lockTimeout.toMillis()).append(";").append(lineSeparator);
-        // we're locking in ACCESS SHARE MODE to avoid concurrent schema changes while we're taking the snapshot
-        // this does not prevent writes to the table, but prevents changes to the table's schema....
-        // DBZ-298 Quoting name in case it has been quoted originally; it doesn't do harm if it hasn't been quoted
-        tableIds.forEach(tableId -> statements.append("LOCK TABLE ")
-                .append(tableId.toDoubleQuotedString())
-                .append(" IN ACCESS SHARE MODE;")
-                .append(lineSeparator));
-        return Optional.of(statements.toString());
-    }
+    Optional<String> tableLockingStatement(Duration lockTimeout, Set<String> tableIds);
 
-    /**
-     * Lifecycle hook called once the snapshot phase is finished.
-     */
-    default void snapshotCompleted() {
-        // no operation
-    }
 }
 ----
 
@@ -341,7 +399,7 @@ endif::community[]
 
 // Type: concept
 [id="postgresql-blocking-snapshots"]
-==== Blocking snapshots
+=== Blocking snapshots
 
 include::{partialsdir}/modules/all-connectors/con-connector-blocking-snapshot.adoc[leveloffset=+3]
 
@@ -3284,15 +3342,55 @@ For example, +
 `exported` -  deprecated +
  +
 ifdef::community[]
-`custom` - The connector performs a snapshot according to the setting for the `snapshot.custom.class` property, which is a custom implementation of the `io.debezium.connector.postgresql.spi.Snapshotter` interface. +
+`custom` - The connector performs a snapshot according to the implementation provided via `snapshot.mode.custom.name` property, which is a custom implementation of the `io.debezium.spi.snapshot.Snapshotter` interface. +
 endif::community[]
  +
 For more information, see the xref:#postgresql-connector-snapshot-mode-options[table of `snapshot.mode` options].
 
 ifdef::community[]
-|[[postgresql-property-snapshot-custom-class]]<<postgresql-property-snapshot-custom-class, `+snapshot.custom.class+`>>
+|[[postgresql-property-snapshot-mode-custom-name]]<<postgresql-property-snapshot-mode-custom-name, `+snapshot.mode.custom.name+`>>
 |No default
-| A full Java class name that is an implementation of the `io.debezium.connector.postgresql.spi.Snapshotter` interface. Required when the `snapshot.mode` property is set to `custom`. See xref:postgresql-custom-snapshot[custom snapshotter SPI].
+| When `snapshot.mode` is set as `custom`, this setting must be set to specify the name of the custom implementation provided in the `name()` method defined by the 'io.debezium.spi.snapshot.Snapshotter' interface.
+The provided implementation is called on each app boot to determine whether to do a snapshot. See xref:postgresql-custom-snapshot[custom snapshotter SPI].
+endif::community[]
+
+|[[postgresql-property-snapshot-locking-mode]]<<postgresql-property-snapshot-locking-mode, `+snapshot.locking.mode+`>>
+|`none`
+|Controls how the connector holds locks on tables while performing the schema snapshot: +
+ +
+`shared` -  The connector will hold a table lock that prevents exclusive table access for just the initial portion of the snapshot while the database schemas and other metadata are being read. The remaining work in a snapshot involves selecting all rows from each table, and this is done using a flashback query that requires no locks. +
+ +
+`none` -  The connector avoids locks entirely. This mode is only safe to use if no schema changes are happening while the snapshot is taken. +
+ +
+ifdef::community[]
+`custom` - The connector performs a snapshot according to the implementation provided via `snapshot.locking.mode.custom.name` property, which is a custom implementation of the `io.debezium.spi.snapshot.SnapshotLock` interface. +
+endif::community[]
+
+ifdef::community[]
+|[[postgresql-property-snapshot-locking-mode-custom-name]]<<postgresql-property-snapshot-locking-mode-custom-name, `+snapshot.locking.mode.custom.name+`>>
+|No default
+| When `snapshot.locking.mode` is set as `custom`, this setting must be set to specify the name of the custom implementation provided in the `name()` method defined by the 'io.debezium.spi.snapshot.SnapshotLock' interface.
+See xref:postgresql-custom-snapshot[custom snapshotter SPI].
+endif::community[]
+
+|[[postgresql-property-snapshot-query-mode]]<<postgresql-property-snapshot-query-mode, `+snapshot.query.mode+`>>
+|`select_all`
+|Controls how the connector queries data while performing the snapshot: +
+ +
+
+`select_all` - The connector performs a select all query. +
+ +
+ifdef::community[]
+`custom` - The connector performs a snapshot query according to the implementation provided via `snapshot.query.mode.custom.name` property, which is a custom implementation of the `io.debezium.spi.snapshot.SnapshotQuery` interface. +
+endif::community[]
+ +
+This is a more flexible alternative to xref:{context}-property-snapshot-select-statement-overrides[`snapshot.select.statement.overrides`]
+
+ifdef::community[]
+|[[postgresql-property-snapshot-snapshot-query-mode-custom-name]]<<postgresql-property-snapshot-query-mode-custom-name, `+snapshot.query.mode.custom.name+`>>
+|No default
+| When `snapshot.query.mode` is set as `custom`, this setting must be set to specify the name of the custom implementation provided in the `name()` method defined by the 'io.debezium.spi.snapshot.SnapshotQuery' interface.
+See xref:postgresql-custom-snapshot[custom snapshotter SPI].
 endif::community[]
 
 |[[postgresql-property-snapshot-include-collection-list]]<<postgresql-property-snapshot-include-collection-list, `+snapshot.include.collection.list+`>>
