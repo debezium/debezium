@@ -5,8 +5,23 @@
  */
 package io.debezium.connector.mongodb.connection;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.security.KeyManagementException;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.UnrecoverableKeyException;
+import java.security.cert.CertificateException;
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
+
+import javax.net.ssl.KeyManager;
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.TrustManagerFactory;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,6 +29,7 @@ import org.slf4j.LoggerFactory;
 import com.mongodb.ConnectionString;
 import com.mongodb.client.MongoClient;
 
+import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.Filters;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig;
@@ -39,8 +55,6 @@ public class ConnectionContext {
         this.connectorConfig = new MongoDbConnectorConfig(config);
 
         final MongoDbAuthProvider authProvider = config.getInstance(MongoDbConnectorConfig.AUTH_PROVIDER_CLASS, MongoDbAuthProvider.class);
-        final boolean useSSL = config.getBoolean(MongoDbConnectorConfig.SSL_ENABLED);
-        final boolean sslAllowInvalidHostnames = config.getBoolean(MongoDbConnectorConfig.SSL_ALLOW_INVALID_HOSTNAMES);
 
         final int connectTimeoutMs = config.getInteger(MongoDbConnectorConfig.CONNECT_TIMEOUT_MS);
         final int heartbeatFrequencyMs = config.getInteger(MongoDbConnectorConfig.HEARTBEAT_FREQUENCY_MS);
@@ -51,25 +65,93 @@ public class ConnectionContext {
 
         // Set up the client pool so that it ...
         clientFactory = MongoDbClientFactory.create(settings -> {
-            settings.applyToSocketSettings(builder -> builder.connectTimeout(connectTimeoutMs, TimeUnit.MILLISECONDS)
-                    .readTimeout(socketTimeoutMs, TimeUnit.MILLISECONDS))
-                    .applyToClusterSettings(
-                            builder -> builder.serverSelectionTimeout(serverSelectionTimeoutMs, TimeUnit.MILLISECONDS))
-                    .applyToServerSettings(
-                            builder -> builder.heartbeatFrequency(heartbeatFrequencyMs, TimeUnit.MILLISECONDS));
-
+            settings
+                    .applyToSocketSettings(builder -> builder
+                            .connectTimeout(connectTimeoutMs, TimeUnit.MILLISECONDS)
+                            .readTimeout(socketTimeoutMs, TimeUnit.MILLISECONDS))
+                    .applyToClusterSettings(builder -> builder.serverSelectionTimeout(serverSelectionTimeoutMs, TimeUnit.MILLISECONDS))
+                    .applyToServerSettings(builder -> builder.heartbeatFrequency(heartbeatFrequencyMs, TimeUnit.MILLISECONDS))
+                    .applyToSocketSettings(builder -> builder
+                            .connectTimeout(connectTimeoutMs, TimeUnit.MILLISECONDS)
+                            .readTimeout(socketTimeoutMs, TimeUnit.MILLISECONDS))
+                    .applyToClusterSettings(builder -> builder
+                            .serverSelectionTimeout(serverSelectionTimeoutMs, TimeUnit.MILLISECONDS))
+                    .applyToSslSettings(builder -> builder
+                            .enabled(connectorConfig.isSslEnabled())
+                            .invalidHostNameAllowed(connectorConfig.isSslAllowInvalidHostnames())
+                            .context(createSSLContext(connectorConfig)));
             authProvider.addAuthConfig(settings);
+        });
+    }
 
-            if (useSSL) {
-                settings.applyToSslSettings(
-                        builder -> builder.enabled(true).invalidHostNameAllowed(sslAllowInvalidHostnames));
+    /**
+     * Creates keystore
+     *
+     * @param type     keyfile type
+     * @param path     keyfile path
+     * @param password keyfile password
+     * @return keystore with loaded keys
+     */
+    static KeyStore loadKeyStore(String type, Path path, char[] password) {
+        try (var keys = Files.newInputStream(path)) {
+            var ks = KeyStore.getInstance(type);
+            ks.load(keys, password);
+            return ks;
+        }
+        catch (IOException | KeyStoreException | NoSuchAlgorithmException | CertificateException e) {
+            LOGGER.error("Unable to read key file from '{}'", path);
+            throw new DebeziumException(e);
+        }
+    }
+
+    /**
+     * Creates SSL context initialized with custom
+     *
+     * @param connectorConfig connector configuration
+     * @return ssl context
+     */
+    static SSLContext createSSLContext(MongoDbConnectorConfig connectorConfig) {
+        try {
+            var ksPath = connectorConfig.getSslKeyStore();
+            var ksPass = connectorConfig.getSslKeyStorePassword();
+            var ksType = connectorConfig.getSslKeyStoreType();
+            KeyManager[] keyManagers = null;
+
+            // Create keystore when configured
+            if (ksPath.isPresent()) {
+                var ks = loadKeyStore(ksType, ksPath.get(), ksPass);
+                var kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+                kmf.init(ks, ksPass);
+                keyManagers = kmf.getKeyManagers();
             }
 
-            settings.applyToSocketSettings(builder -> builder.connectTimeout(connectTimeoutMs, TimeUnit.MILLISECONDS)
-                    .readTimeout(socketTimeoutMs, TimeUnit.MILLISECONDS))
-                    .applyToClusterSettings(
-                            builder -> builder.serverSelectionTimeout(serverSelectionTimeoutMs, TimeUnit.MILLISECONDS));
-        });
+            // Create truststore when configured
+            var tsPath = connectorConfig.getSslTrustStore();
+            var tsPass = connectorConfig.getSslTrustStorePassword();
+            var tsType = connectorConfig.getSslTrustStoreType();
+            TrustManager[] trustManagers = null;
+
+            if (tsPath.isPresent()) {
+                var ts = loadKeyStore(tsType, tsPath.get(), tsPass);
+                var tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+                tmf.init(ts);
+                trustManagers = tmf.getTrustManagers();
+            }
+
+            // Create and initialize SSL context
+            var context = SSLContext.getInstance("TLS");
+            context.init(keyManagers, trustManagers, null);
+
+            return context;
+        }
+        catch (NoSuchAlgorithmException | KeyStoreException | UnrecoverableKeyException e) {
+            LOGGER.error("Unable to crate KeyStore/TrustStore manager factory");
+            throw new DebeziumException(e);
+        }
+        catch (KeyManagementException e) {
+            LOGGER.error("Unable to initialize SSL context");
+            throw new DebeziumException(e);
+        }
     }
 
     public MongoDbConnectorConfig getConnectorConfig() {
