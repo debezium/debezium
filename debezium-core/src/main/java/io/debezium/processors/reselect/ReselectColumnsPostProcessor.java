@@ -297,7 +297,9 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
             if (columnNames == null || columnNames.trim().isEmpty()) {
                 reselectColumnInclusions = null;
             }
-            reselectColumnInclusions = Predicates.includes(columnNames, Pattern.CASE_INSENSITIVE);
+            else {
+                reselectColumnInclusions = Predicates.includes(columnNames, Pattern.CASE_INSENSITIVE);
+            }
             return this;
         }
 
@@ -305,13 +307,20 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
             if (columnNames == null || columnNames.trim().isEmpty()) {
                 reselectColumnExclusions = null;
             }
-            reselectColumnExclusions = Predicates.excludes(columnNames, Pattern.CASE_INSENSITIVE);
+            else {
+                reselectColumnExclusions = Predicates.excludes(columnNames, Pattern.CASE_INSENSITIVE);
+            }
             return this;
         }
 
         public Predicate<String> build() {
-            Predicate<String> filter = reselectColumnInclusions != null ? reselectColumnInclusions : reselectColumnExclusions;
-            return filter != null ? filter : (x) -> true;
+            if (reselectColumnInclusions != null) {
+                return reselectColumnInclusions;
+            }
+            if (reselectColumnExclusions != null) {
+                return reselectColumnExclusions;
+            }
+            return (x) -> true;
         }
     }
 
