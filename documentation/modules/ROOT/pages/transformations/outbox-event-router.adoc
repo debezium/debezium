@@ -206,18 +206,18 @@ You can use one of the following methods to configure the connector to apply the
 * Use the xref:outbox-event-router-property-route-topic-regex[`route.topic.regex`] configuration option for the SMT.
 
 // Type: concept
-// Title: Payload serialization
-// ModuleID: payload-serialization
-== Payload serialization
+// Title: Payload serialization format
+// ModuleID: payload-serialization-format
+== Payload serialization format
 
-The outbox event router SMT supports arbitrary payload formats. The `payload` column value in an outbox table is passed on transparently. However, the outbox event router SMT needs to be configured correctly to convert the data from the database column to a Kafka message. Common serialization formats are JSON and Avro.
+The outbox event router SMT supports arbitrary payload formats. The `payload` column value in an outbox table is passed on transparently. However, the outbox event router SMT needs to be configured correctly to convert the data from the database column to a Kafka message (in other words, to serialize the payload). Common payload formats are JSON and Avro.
 
 
 // Type: concept
 // Title: Using JSON as the serialization format
-// ModuleID: using-json-serialization-format
-[[using-json-serialization-format]]
-=== Using JSON as the serialization format
+// ModuleID: using-json-payload-format
+[[using-json-payload-format]]
+=== Using JSON as the payload format
 
 JSON is the default serialization format for this SMT. In order to use this format the database column must be of JSON format (i.e. `jsonb` in PostgreSQL).
 
