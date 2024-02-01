@@ -17,7 +17,7 @@ public interface AsyncEngineConfig extends EmbeddedEngineConfig {
     int AVAILABLE_CORES = Runtime.getRuntime().availableProcessors();
 
     /**
-     * An optional field that specifies the maximum amount of time to wait for task lifecycle operation, i.e. for starting and stopping the task.
+     * An optional field that specifies the maximum amount of time to wait for a task lifecycle operation, i.e. for starting and stopping the task.
      */
     Field TASK_MANAGEMENT_TIMEOUT_MS = Field.create("task.management.timeout.ms")
             .withDescription("Time to wait for task's lifecycle management operations (starting and stopping), given in milliseconds. "
@@ -47,9 +47,9 @@ public interface AsyncEngineConfig extends EmbeddedEngineConfig {
      * transformed and/or serialized.
      */
     Field RECORD_PROCESSING_SEQUENTIALLY = Field.create("record.processing.sequentially")
-            .withDescription("Determines how the records should be produce. Sequential processing means (setting to `true`, the default) that the records are "
-                    + "produced in the same order as they were obtained from the database. Non-sequential processing means that the records can be produced in a different order "
-                    + "order than the original one, but this approach given better throughput, as the records are produced immediately once the SMTs and serialization of "
+            .withDescription("Determines how the records should be produced. Sequential processing means (setting to `true`, the default) that the records are "
+                    + "produced in the same order as they were obtained from the database. Non-sequential processing means that the records can be produced in a different "
+                    + "order than the original one. Non-sequential approach gives better throughput, as the records are produced immediately once the SMTs and serialization of "
                     + "the message is done, without waiting of other records.")
             .withDefault(true)
             .withValidation(Field::isBoolean);
