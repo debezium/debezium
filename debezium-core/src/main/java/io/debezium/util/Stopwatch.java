@@ -496,6 +496,11 @@ public abstract class Stopwatch {
     private static final class SingleDuration extends BaseDurations {
         private final AtomicReference<Statistics> stats = new AtomicReference<>();
 
+        SingleDuration() {
+            LongSummaryStatistics stats = new LongSummaryStatistics();
+            this.stats.set(createStatistics(stats));
+        }
+
         @Override
         public Statistics statistics() {
             return stats.get();
