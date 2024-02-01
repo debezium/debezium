@@ -102,7 +102,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
                 .collect(Collectors.toMap(e -> e.getKey().identifier(), Map.Entry::getValue));
 
         // found a previous offset and the earlier snapshot has completed
-        if (previousOffset != null && !previousOffset.isSnapshotRunning()) {
+        if (previousOffset != null && !previousOffset.isSnapshotRunning()) { // TODO DBZ-7308 check if this should be removed fort example for AlwaysSnapshotter
 
             if (databaseSchema.isStorageInitializationExecuted()) {
                 LOGGER.info(
