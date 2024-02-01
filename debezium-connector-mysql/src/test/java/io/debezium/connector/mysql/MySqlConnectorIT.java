@@ -47,6 +47,7 @@ import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotNewTables;
 import io.debezium.connector.mysql.MySqlTestConnection.MySqlVersion;
 import io.debezium.converters.CloudEventsConverterTest;
 import io.debezium.data.Envelope;
+import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.embedded.EmbeddedEngine.CompletionResult;
@@ -73,6 +74,9 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-connect.txt").toAbsolutePath();
     private final UniqueDatabase DATABASE = new UniqueDatabase("myServer1", "connector_test")
             .withDbHistoryPath(SCHEMA_HISTORY_PATH);
+
+    private final UniqueDatabase DATABASE_CUSTOM_SNAPSHOT = new UniqueDatabase("myServer1", "custom_snapshot")
+            .withDbHistoryPath(SCHEMA_HISTORY_PATH);
     private final UniqueDatabase RO_DATABASE = new UniqueDatabase("myServer2", "connector_test_ro", DATABASE)
             .withDbHistoryPath(SCHEMA_HISTORY_PATH);
 
@@ -87,6 +91,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     public void beforeEach() {
         stopConnector();
         DATABASE.createAndInitialize();
+        DATABASE_CUSTOM_SNAPSHOT.createAndInitialize();
         RO_DATABASE.createAndInitialize();
         initializeConnectorTestFramework();
         Testing.Files.delete(SCHEMA_HISTORY_PATH);
@@ -2615,6 +2620,74 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertThat(changeEvents.size()).isEqualTo(2);
 
         stopConnector();
+    }
+
+    @Test
+    public void shouldAllowForCustomSnapshot() throws InterruptedException, SQLException {
+
+        final String pkField = "pk";
+
+        Configuration config = DATABASE_CUSTOM_SNAPSHOT.defaultConfig()
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.CUSTOM.getValue())
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE_CUSTOM_NAME, CustomTestSnapshot.class.getName())
+                .with(MySqlConnectorConfig.SNAPSHOT_QUERY_MODE, MySqlConnectorConfig.SnapshotQueryMode.CUSTOM)
+                .with(MySqlConnectorConfig.SNAPSHOT_QUERY_MODE_CUSTOM_NAME, CustomTestSnapshot.class.getName())
+                .build();
+
+        start(MySqlConnector.class, config);
+        assertConnectorIsRunning();
+
+        SourceRecords actualRecords = consumeRecordsByTopic(10);
+
+        List<SourceRecord> s1recs = actualRecords.recordsForTopic(DATABASE_CUSTOM_SNAPSHOT.topicForTable("a"));
+        List<SourceRecord> s2recs = actualRecords.recordsForTopic(DATABASE_CUSTOM_SNAPSHOT.topicForTable("b"));
+        assertThat(s1recs.size()).isEqualTo(1);
+        assertThat(s2recs).isNull();
+
+        SourceRecord record = s1recs.get(0);
+        VerifyRecord.isValidRead(record, pkField, 1);
+
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE_CUSTOM_SNAPSHOT.getDatabaseName());) {
+            try (JdbcConnection connection = db.connect()) {
+
+                connection.execute("INSERT INTO a (aa) VALUES (1);");
+                connection.execute("INSERT INTO b (aa) VALUES (1);");
+            }
+        }
+        actualRecords = consumeRecordsByTopic(2);
+
+        s1recs = actualRecords.recordsForTopic(DATABASE_CUSTOM_SNAPSHOT.topicForTable("a"));
+        s2recs = actualRecords.recordsForTopic(DATABASE_CUSTOM_SNAPSHOT.topicForTable("b"));
+        assertThat(s1recs.size()).isEqualTo(1);
+        assertThat(s2recs.size()).isEqualTo(1);
+        record = s1recs.get(0);
+        VerifyRecord.isValidInsert(record, pkField, 2);
+        record = s2recs.get(0);
+        VerifyRecord.isValidInsert(record, pkField, 2);
+        stopConnector();
+
+        // TODO Maybe it can be enabled when DBZ-7308 is done.
+        /*
+         * config = DATABASE_CUSTOM_SNAPSHOT.defaultConfig()
+         * .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.CUSTOM.getValue())
+         * .with(MySqlConnectorConfig.SNAPSHOT_MODE_CUSTOM_NAME, CustomTestSnapshot.class.getName())
+         * .with(MySqlConnectorConfig.SNAPSHOT_QUERY_MODE, MySqlConnectorConfig.SnapshotQueryMode.CUSTOM)
+         * .with(MySqlConnectorConfig.SNAPSHOT_QUERY_MODE_CUSTOM_NAME, CustomTestSnapshot.class.getName())
+         * .build();
+         *
+         * start(MySqlConnector.class, config);
+         * assertConnectorIsRunning();
+         * actualRecords = consumeRecordsByTopic(4);
+         *
+         * s1recs = actualRecords.recordsForTopic(DATABASE_CUSTOM_SNAPSHOT.topicForTable("a"));
+         * s2recs = actualRecords.recordsForTopic(DATABASE_CUSTOM_SNAPSHOT.topicForTable("b"));
+         * assertThat(s1recs.size()).isEqualTo(2);
+         * assertThat(s2recs.size()).isEqualTo(2);
+         * VerifyRecord.isValidRead(s1recs.get(0), pkField, 1);
+         * VerifyRecord.isValidRead(s1recs.get(1), pkField, 2);
+         * VerifyRecord.isValidRead(s2recs.get(0), pkField, 1);
+         * VerifyRecord.isValidRead(s2recs.get(1), pkField, 2);
+         */
     }
 
     private static class NoTombStonesHandler implements DebeziumEngine.ChangeConsumer<SourceRecord> {
