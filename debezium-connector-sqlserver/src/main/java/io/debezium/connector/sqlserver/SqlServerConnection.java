@@ -6,8 +6,12 @@
 
 package io.debezium.connector.sqlserver;
 
+import java.io.Reader;
+import java.io.StringReader;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
+import java.sql.NClob;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -570,6 +574,61 @@ public class SqlServerConnection extends JdbcConnection {
         }
         else {
             return super.getColumnValue(rs, columnIndex, column, table);
+        }
+    }
+
+    // NOTE: fix for DBZ-7359
+    // @Override
+    public void setQueryColumnValue(PreparedStatement statement, Column column, int pos, Object value) throws SQLException {
+        boolean isColumnValueSet = false;
+
+        if (column.typeUsesCharset()) {
+            // For mappings between sqlserver and JDBC types see -
+            // https://learn.microsoft.com/en-us/sql/connect/jdbc/using-basic-data-types?view=sql-server-ver16
+            // For details on the methods to use with respect to the `sendStringParametersAsUnicode` JDBC property, see -
+            // https://learn.microsoft.com/en-us/sql/connect/jdbc/setting-the-connection-properties?view=sql-server-ver16
+            // "An application should use the setNString, setNCharacterStream, and setNClob national character methods
+            // of the SQLServerPreparedStatement and SQLServerCallableStatement classes for the NCHAR, NVARCHAR, and
+            // LONGNVARCHAR JDBC data types."
+            switch (column.jdbcType()) {
+                case Types.NCHAR:
+                    if (value instanceof String) {
+                        statement.setNString(pos, (String) value);
+                        isColumnValueSet = true;
+                    }
+                    break;
+                case Types.NVARCHAR:
+                    if (value instanceof String) {
+                        statement.setNCharacterStream(pos, new StringReader((String) value));
+                        isColumnValueSet = true;
+                    }
+                    else if (value instanceof Reader) {
+                        statement.setNCharacterStream(pos, (Reader) value);
+                        isColumnValueSet = true;
+                    }
+                    break;
+                case Types.LONGNVARCHAR:
+                    if (value instanceof String) {
+                        // we'll fall back on nvarchar handling
+                        statement.setNCharacterStream(pos, new StringReader((String) value));
+                        isColumnValueSet = true;
+                    }
+                    else if (value instanceof Reader) {
+                        // we'll fall back on nvarchar handling
+                        statement.setNCharacterStream(pos, (Reader) value);
+                        isColumnValueSet = true;
+                    }
+                    else if (value instanceof NClob) {
+                        statement.setNClob(pos, (NClob) value);
+                        isColumnValueSet = true;
+                    }
+                    break;
+            }
+        }
+
+        // If not set, fall back on default implementation.
+        if (!isColumnValueSet) {
+            super.setQueryColumnValue(statement, column, pos, value);
         }
     }
 
