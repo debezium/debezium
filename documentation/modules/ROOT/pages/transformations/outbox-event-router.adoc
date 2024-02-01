@@ -207,28 +207,31 @@ You can use one of the following methods to configure the connector to apply the
 
 // Type: concept
 // Title: Payload serialization format
-// ModuleID: payload-serialization-format
+// ModuleID: outbox-event-router-payload-serialization-format
 == Payload serialization format
 
-The outbox event router SMT supports arbitrary payload formats. The `payload` column value in an outbox table is passed on transparently. However, the outbox event router SMT needs to be configured correctly to convert the data from the database column to a Kafka message (in other words, to serialize the payload). Common payload formats are JSON and Avro.
+The outbox event router SMT supports arbitrary payload formats. 
+The SMT passes on `payload` column values that it reads from the outbox table without modification. 
+The way that the SMT converts these column values into Kafka message fields depends on how you configure the SMT.
+Common payload formats for serializing data are JSON and Avro.
 
 
 // Type: concept
 // Title: Using JSON as the serialization format
-// ModuleID: using-json-payload-format
+// ModuleID: outbox-event-router-using-json-payload-format
 [[using-json-payload-format]]
 === Using JSON as the payload format
 
-JSON is the default serialization format for this SMT. In order to use this format the database column must be of JSON format (i.e. `jsonb` in PostgreSQL).
+The default serialization format for the outbox event router SMT is JSON. 
+To use this format, the data type of the source column must be JSON (for example, `jsonb` in PostgreSQL).
 
 // Type: concept
 // Title: Producing Expanding escaped JSON String as JSON
-// ModuleID: expanding-escaped-json-string-as-json
+// ModuleID: outbox-event-router-expanding-escaped-json-string-as-json
 [[expanding-escaped-json-string-as-json]]
 ==== Expanding escaped JSON String as JSON
 
-You may have noticed that the Debezium outbox message contains the `payload` represented as a String.
-So when this string, is actually JSON, it appears as escaped in the result Kafka message like shown below:
+When a {prodname} outbox message represents the `payload` as a JSON String, the resulting Kafka message  escapes the string as in the following example:
 
 [source,javascript,indent=0]
 ----
@@ -241,8 +244,8 @@ So when this string, is actually JSON, it appears as escaped in the result Kafka
 }
 ----
 
-The outbox event router allows you to expand this message content to "real" JSON with the companion schema
-being deduced from the JSON document itself. That way the result in Kafka message looks like:
+The outbox event router enables you to expand the message content to "real" JSON, deducing the companion schema from the JSON document. 
+The resulting Kafka message is formatted as in the following example:
 
 [source,javascript,indent=0]
 ----
@@ -255,7 +258,7 @@ being deduced from the JSON document itself. That way the result in Kafka messag
 }
 ----
 
-To enable this transformation, you have to set the xref:outbox-event-router-property-table-expand-json-payload[`table.expand.json.payload`] to true and use the `JsonConverter` like below:
+To enable use of the outbox event router transformation, set the xref:outbox-event-router-property-table-expand-json-payload[`table.expand.json.payload`] to true, and use the `JsonConverter` as shown in the following example:
 
 [source]
 ----
@@ -267,11 +270,12 @@ value.converter=org.apache.kafka.connect.json.JsonConverter
 
 // Type: concept
 // Title: Using Avro as the payload format in {prodname} outbox messages
-// ModuleID: using-avro-as-the-payload-format-in-debezium-outbox-messages
+// ModuleID: outbox-event-router-using-avro-as-the-payload-format-in-debezium-outbox-messages
 [[avro-as-payload-format]]
 === Using Avro as the payload format
 
-A common practice is to serialize data as Avro. This can be beneficial for message format governance and for ensuring that outbox event schemas evolve in a backwards-compatible way.
+A common practice is to serialize data as Avro. 
+Using Avro can be beneficial for message format governance and for ensuring that outbox event schemas evolve in a backwards-compatible way.
 
 How a source application produces Avro formatted content for outbox message payloads is out of the scope of this documentation.
 One possibility is to leverage the `KafkaAvroSerializer` class to serialize `GenericRecord` instances.
@@ -285,8 +289,9 @@ transforms.outbox.type=io.debezium.transforms.outbox.EventRouter
 value.converter=io.debezium.converters.BinaryDataConverter
 ----
 
-By default, the `payload` column value (the Avro data) is the only message value. When storing data in Avro format the column must be of binary format (i.e. `bytea` in PostgreSQL),
-and value converter for the SMT must be `BinaryDataConverter`, which will propagate the `payload` column binary value as-is into the Kafka message value.
+By default, the `payload` column value (the Avro data) is the only message value. 
+When data is stored in Avro format, the column format must be set to a binary data type, such as `bytea` in PostgreSQL.
+The value converter for the SMT must also be set to `BinaryDataConverter`, so that it propagates the binary value of the `payload` column as-is into the Kafka message value.
 
 The {prodname} connectors may be configured to emit heartbeat, transaction metadata, or schema change events (support varies by connector).
 These events cannot be serialized by the `BinaryDataConverter` so additional configuration must be provided so the converter knows how to serialize these events.
@@ -319,7 +324,8 @@ value.converter.delegate.converter.type.schema.registry.url={URL}
 
 [NOTE]
 ====
-The last example with an AvroConverter as the delegate converter requires third party libraries. Adding those libraries to the classpath out of the scope for this document.
+In the preceding configuration example, because the `AvroConverter` is configured as a delegate converter, third-party libraries are required. 
+Information about how to add third-party libraries to the classpath is beyond the scope of this document.
 ====
 
 // Type: concept
