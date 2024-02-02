@@ -605,8 +605,6 @@ public class SqlServerConnection extends JdbcConnection {
     // NOTE: fix for DBZ-7359
     @Override
     public void setQueryColumnValue(PreparedStatement statement, Column column, int pos, Object value) throws SQLException {
-        boolean isColumnValueSet = false;
-
         if (column.typeUsesCharset()) {
             // For mappings between sqlserver and JDBC types see -
             // https://learn.microsoft.com/en-us/sql/connect/jdbc/using-basic-data-types?view=sql-server-ver16
@@ -619,40 +617,49 @@ public class SqlServerConnection extends JdbcConnection {
                 case Types.NCHAR:
                     if (value instanceof String) {
                         statement.setNString(pos, (String) value);
-                        isColumnValueSet = true;
+                    }
+                    else {
+                        // not set, fall back on default implementation.
+                        super.setQueryColumnValue(statement, column, pos, value);
                     }
                     break;
                 case Types.NVARCHAR:
                     if (value instanceof String) {
                         statement.setNCharacterStream(pos, new StringReader((String) value));
-                        isColumnValueSet = true;
                     }
                     else if (value instanceof Reader) {
                         statement.setNCharacterStream(pos, (Reader) value);
-                        isColumnValueSet = true;
+                    }
+                    else {
+                        // not set, fall back on default implementation.
+                        super.setQueryColumnValue(statement, column, pos, value);
                     }
                     break;
                 case Types.LONGNVARCHAR:
                     if (value instanceof String) {
                         // we'll fall back on nvarchar handling
                         statement.setNCharacterStream(pos, new StringReader((String) value));
-                        isColumnValueSet = true;
                     }
                     else if (value instanceof Reader) {
                         // we'll fall back on nvarchar handling
                         statement.setNCharacterStream(pos, (Reader) value);
-                        isColumnValueSet = true;
                     }
                     else if (value instanceof NClob) {
                         statement.setNClob(pos, (NClob) value);
-                        isColumnValueSet = true;
                     }
+                    else {
+                        // not set, fall back on default implementation.
+                        super.setQueryColumnValue(statement, column, pos, value);
+                    }
+                    break;
+                default:
+                    // not set, fall back on default implementation.
+                    super.setQueryColumnValue(statement, column, pos, value);
                     break;
             }
         }
-
-        // If not set, fall back on default implementation.
-        if (!isColumnValueSet) {
+        else {
+            // not set, fall back on default implementation.
             super.setQueryColumnValue(statement, column, pos, value);
         }
     }

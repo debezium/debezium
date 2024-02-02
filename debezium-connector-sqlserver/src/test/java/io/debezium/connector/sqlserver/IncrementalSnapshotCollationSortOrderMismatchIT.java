@@ -7,15 +7,12 @@ package io.debezium.connector.sqlserver;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -32,6 +29,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractSnapshotTest;
+import io.debezium.util.IoUtil;
 import io.debezium.util.Testing;
 
 /**
@@ -52,17 +50,12 @@ public class IncrementalSnapshotCollationSortOrderMismatchIT extends AbstractSna
 
     @BeforeClass
     public static void beforeClass() throws IOException {
-        try (InputStreamReader isr = new InputStreamReader(
-                Objects.requireNonNull(IncrementalSnapshotCollationSortOrderMismatchIT.class.getClassLoader().getResourceAsStream("dbz-7359-ids.txt")))) {
-            try (BufferedReader reader = new BufferedReader(isr)) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    ALL_IDS.add(line);
-                }
-            }
-            // Of the IDS loaded, the 36 records with ids between Y-11-3-4 and Y1-01-1-1 exclusive, would be consistently skipped.
-            SKIPPED_IDS.addAll(ALL_IDS.subList(ALL_IDS.indexOf("Y-11-3-4") + 1, ALL_IDS.indexOf("Y1-01-1-1")));
-        }
+        IoUtil.readLines("dbz-7359-ids.txt",
+                IncrementalSnapshotCollationSortOrderMismatchIT.class.getClassLoader(),
+                IncrementalSnapshotCollationSortOrderMismatchIT.class,
+                ALL_IDS::add);
+        // Of the IDS loaded, the 36 records with ids between Y-11-3-4 and Y1-01-1-1 exclusive, would be consistently skipped.
+        SKIPPED_IDS.addAll(ALL_IDS.subList(ALL_IDS.indexOf("Y-11-3-4") + 1, ALL_IDS.indexOf("Y1-01-1-1")));
     }
 
     //
@@ -152,7 +145,7 @@ public class IncrementalSnapshotCollationSortOrderMismatchIT extends AbstractSna
                         var val = dbChanges.get(id);
                         if (val == null || val != i) {
                             result = false;
-                            System.err.println(ALL_IDS.get(i) + " value is not = " + i + ", is = " + val);
+                            Testing.printError(ALL_IDS.get(i) + " value is not = " + i + ", is = " + val);
                             break;
                         }
                     }
@@ -182,7 +175,7 @@ public class IncrementalSnapshotCollationSortOrderMismatchIT extends AbstractSna
                         var val = dbChanges.get(ALL_IDS.get(i));
                         if (!expectedVal.equals(val)) {
                             result = false;
-                            System.err.println(ALL_IDS.get(i) + " value is not = " + expectedVal + ", is = " + val);
+                            Testing.printError(ALL_IDS.get(i) + " value is not = " + expectedVal + ", is = " + val);
                             break;
                         }
                     }
