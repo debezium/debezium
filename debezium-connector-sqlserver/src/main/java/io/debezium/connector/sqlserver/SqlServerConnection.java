@@ -603,7 +603,7 @@ public class SqlServerConnection extends JdbcConnection {
     }
 
     // NOTE: fix for DBZ-7359
-    // @Override
+    @Override
     public void setQueryColumnValue(PreparedStatement statement, Column column, int pos, Object value) throws SQLException {
         boolean isColumnValueSet = false;
 
