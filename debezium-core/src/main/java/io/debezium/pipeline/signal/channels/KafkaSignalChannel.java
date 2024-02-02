@@ -205,6 +205,7 @@ public class KafkaSignalChannel implements SignalChannelReader {
 
     @Override
     public void close() {
+        signalsConsumer.commitSync();
         signalsConsumer.close();
     }
 }
