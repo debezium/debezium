@@ -247,6 +247,30 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
         }
     }
 
+    @FixFor("DBZ-7441")
+    @Test
+    public void aSignalAddedToFileWhenConnectorIsStoppedShouldBeProcessedWhenItStarts() throws Exception {
+        // Testing.Print.enable();
+
+        populate4PkTable();
+        sendExecuteSnapshotFileSignal(DATABASE.qualifiedTableName("a4"));
+
+        startConnector(c -> c.with(FileSignalChannel.SIGNAL_FILE, signalsFile.toString())
+                .with(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS, "file"), loggingCompletion(), false);
+
+        final int expectedRecordCount = ROW_COUNT;
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(
+                expectedRecordCount,
+                x -> true,
+                k -> k.getInt32("pk1") * 1_000 + k.getInt32("pk2") * 100 + k.getInt32("pk3") * 10 + k.getInt32("pk4"),
+                record -> ((Struct) record.value()).getStruct("after").getInt32(valueFieldName()),
+                DATABASE.topicForTable("a4"),
+                null);
+        for (int i = 0; i < expectedRecordCount; i++) {
+            assertThat(dbChanges).contains(entry(i + 1, i));
+        }
+    }
+
     @Test
     public void insertsWithoutPks() throws Exception {
         // Testing.Print.enable();
