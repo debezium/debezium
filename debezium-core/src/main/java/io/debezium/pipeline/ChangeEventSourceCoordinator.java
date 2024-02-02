@@ -147,9 +147,6 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
                     streamingConnected(false);
                 }
             });
-
-            getSignalProcessor(previousOffsets).ifPresent(signalProcessor -> registerSignalActionsAndStartProcessor(signalProcessor,
-                    eventDispatcher, this, connectorConfig));
         }
         finally {
             if (previousLogContext.get() != null) {
@@ -268,6 +265,8 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
 
     protected void streamEvents(ChangeEventSourceContext context, P partition, O offsetContext) throws InterruptedException {
         initStreamEvents(partition, offsetContext);
+        getSignalProcessor(previousOffsets).ifPresent(signalProcessor -> registerSignalActionsAndStartProcessor(signalProcessor,
+                eventDispatcher, this, connectorConfig));
         LOGGER.info("Starting streaming");
         streamingSource.execute(context, partition, offsetContext);
         LOGGER.info("Finished streaming");
