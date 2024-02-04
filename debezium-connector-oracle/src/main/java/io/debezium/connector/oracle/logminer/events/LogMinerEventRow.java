@@ -208,21 +208,18 @@ public class LogMinerEventRow {
     }
 
     private String getSqlRedo(ResultSet rs) throws SQLException {
-        String redoSql = rs.getString(SQL_REDO);
-        if (redoSql == null) {
-            return null;
-        }
-
-        StringBuilder result = new StringBuilder(redoSql);
         int csf = rs.getInt(CSF);
-        int operationCode = rs.getInt(OPERATION_CODE);
-
         // 0 - indicates SQL_REDO is contained within the same row
+        if (csf == 0) {
+            return rs.getString(SQL_REDO);
+        }
+        int operationCode = rs.getInt(OPERATION_CODE);
+        StringBuilder result = new StringBuilder(rs.getString(SQL_REDO));
+
+        long sqlLimitCounter = 0;
         // 1 - indicates that either SQL_REDO is greater than 4000 bytes in size and is continued in
         // the next row returned by the ResultSet
-        long sqlLimitCounter = 0;
         while (csf == 1) {
-
             rs.next();
             sqlLimitCounter++;
 
@@ -251,10 +248,9 @@ public class LogMinerEventRow {
                 throw new LogMinerEventRowTooLargeException(tableName, sqlLimitCounter * 4000, scn);
             }
 
-            redoSql = rs.getString(SQL_REDO);
-            result.append(redoSql);
             csf = rs.getInt(CSF);
             operationCode = rs.getInt(OPERATION_CODE);
+            result.append(rs.getString(SQL_REDO));
         }
 
         return result.toString();
