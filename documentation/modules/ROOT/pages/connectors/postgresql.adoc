@@ -2635,22 +2635,42 @@ apiVersion: {KafkaConnectorApiVersion}
 
       ...
 ----
-<1> The name of the connector.
-<2> Only one task should operate at any one time.
-Because the PostgreSQL connector reads the PostgreSQL server’s `binlog`,
-using a single connector task ensures proper order and event handling.
-The Kafka Connect service uses connectors to start one or more tasks that do the work,
+.Descriptions of settings in the PostgreSQL `inventory-connector.yaml` example
+[cols="1,7",options="header",subs="+attributes"]
+|===
+|Item |Description
+
+|1
+|The name that is used to register the connector with Kafka Connect.
+
+|2
+|The maximum number of tasks to create for this connector.
+Because the PostgreSQL connector uses a single connector task read the PostgreSQL server `binlog`, to ensure proper order and event handling, only one task should operate at a time.
+The Kafka Connect service uses connectors to start one or more tasks to perform the work,
 and it automatically distributes the running tasks across the cluster of Kafka Connect services.
-If any of the services stop or crash,
-those tasks will be redistributed to running services.
-<3> The connector’s configuration.
-<4> The name of the database host that is running the PostgreSQL server. In this example, the database host name is `192.168.99.100`.
-<5> A unique topic prefix.
-The server name is the logical identifier for the PostgreSQL server or cluster of servers.
-This name is used as the prefix for all Kafka topics that receive change event records.
-<6> The connector captures changes in only the `public` schema. It is possible to configure the connector to capture changes in only the tables that you choose.
+If any services stop or crash, tasks are redistributed to running services.
+
+|3
+|The connector’s configuration.
+
+|4
+|The name of the database host that runs the PostgreSQL server.
+In this example, the database host name is `192.168.99.100`.
+
+|5
+|A unique topic prefix.
+The topic prefix is the logical identifier for the PostgreSQL server or cluster of servers.
+This string is prefixed to the names of all Kafka topics that receive change event records from the connector.
+
+|6
+|The connector captures changes in only the `public` schema. It is possible to configure the connector to capture changes in only the tables that you choose.
 For more information, see xref:postgresql-property-table-include-list[`table.include.list`].
-<7> The name of the PostgreSQL xref:postgresql-output-plugin[logical decoding plug-in] installed on the PostgreSQL server. While the only supported value for PostgreSQL 10 and later is `pgoutput`, you must explicitly set `plugin.name` to `pgoutput`.
+
+|7
+|The name of the PostgreSQL xref:postgresql-output-plugin[logical decoding plug-in] installed on the PostgreSQL server.
+Although the connector only supports use of the `pgoutput` plugin, you must explicitly set `plugin.name` to `pgoutput`.
+
+|===
 
 . Create your connector instance with Kafka Connect. For example, if you saved your `KafkaConnector` resource in the `inventory-connector.yaml` file, you would run the following command:
 +
