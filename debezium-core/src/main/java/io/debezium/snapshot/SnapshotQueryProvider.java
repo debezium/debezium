@@ -3,9 +3,9 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.mysql.snapshot;
+package io.debezium.snapshot;
 
-import static io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotQueryMode.CUSTOM;
+import static io.debezium.config.CommonConnectorConfig.SnapshotQueryMode.CUSTOM;
 
 import java.util.Optional;
 import java.util.ServiceLoader;
@@ -15,9 +15,9 @@ import io.debezium.DebeziumException;
 import io.debezium.bean.StandardBeanNames;
 import io.debezium.bean.spi.BeanRegistry;
 import io.debezium.bean.spi.BeanRegistryAware;
+import io.debezium.config.CommonConnectorConfig;
+import io.debezium.config.CommonConnectorConfig.SnapshotQueryMode;
 import io.debezium.config.Configuration;
-import io.debezium.connector.mysql.MySqlConnectorConfig;
-import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotQueryMode;
 import io.debezium.service.spi.ServiceProvider;
 import io.debezium.service.spi.ServiceRegistry;
 import io.debezium.snapshot.spi.SnapshotQuery;
@@ -27,16 +27,16 @@ import io.debezium.snapshot.spi.SnapshotQuery;
  *
  * @author Mario Fiore Vitale
  */
-public class MySqlSnapshotQueryProvider implements ServiceProvider<SnapshotQuery> {
+public class SnapshotQueryProvider implements ServiceProvider<SnapshotQuery> {
 
     @Override
     public SnapshotQuery createService(Configuration configuration, ServiceRegistry serviceRegistry) {
 
         BeanRegistry beanRegistry = serviceRegistry.tryGetService(BeanRegistry.class);
-        MySqlConnectorConfig postgresConnectorConfig = beanRegistry.lookupByName(StandardBeanNames.CONNECTOR_CONFIG, MySqlConnectorConfig.class);
+        CommonConnectorConfig commonConnectorConfig = beanRegistry.lookupByName(StandardBeanNames.CONNECTOR_CONFIG, CommonConnectorConfig.class);
 
-        final SnapshotQueryMode configuredSnapshotQueryMode = postgresConnectorConfig.snapshotQueryMode();
-        final String snapshotQueryModeCustomName = postgresConnectorConfig.snapshotQueryModeCustomName();
+        final SnapshotQueryMode configuredSnapshotQueryMode = commonConnectorConfig.snapshotQueryMode();
+        final String snapshotQueryModeCustomName = commonConnectorConfig.snapshotQueryModeCustomName();
 
         String snapshotQueryMode;
         if (CUSTOM.equals(configuredSnapshotQueryMode) && !snapshotQueryModeCustomName.isEmpty()) {

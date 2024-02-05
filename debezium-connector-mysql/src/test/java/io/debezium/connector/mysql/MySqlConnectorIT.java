@@ -2630,8 +2630,8 @@ public class MySqlConnectorIT extends AbstractAsyncEngineConnectorTest {
         Configuration config = DATABASE_CUSTOM_SNAPSHOT.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.CUSTOM.getValue())
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE_CUSTOM_NAME, CustomTestSnapshot.class.getName())
-                .with(MySqlConnectorConfig.SNAPSHOT_QUERY_MODE, MySqlConnectorConfig.SnapshotQueryMode.CUSTOM)
-                .with(MySqlConnectorConfig.SNAPSHOT_QUERY_MODE_CUSTOM_NAME, CustomTestSnapshot.class.getName())
+                .with(CommonConnectorConfig.SNAPSHOT_QUERY_MODE, CommonConnectorConfig.SnapshotQueryMode.CUSTOM)
+                .with(CommonConnectorConfig.SNAPSHOT_QUERY_MODE_CUSTOM_NAME, CustomTestSnapshot.class.getName())
                 .build();
 
         start(MySqlConnector.class, config);
