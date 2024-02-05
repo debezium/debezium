@@ -1,0 +1,2 @@
+io.debezium.connector.oracle.snapshot.lock.NoSnapshotLock
+io.debezium.connector.oracle.snapshot.lock.SharedSnapshotLock
