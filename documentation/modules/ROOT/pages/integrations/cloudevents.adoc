@@ -69,7 +69,8 @@ For information about using Avro, see:
 // Title: Example {prodname} change event records in CloudEvents format
 == Example event format
 
-The following example shows what a CloudEvents change event record emitted by a PostgreSQL connector looks like. In this example, the PostgreSQL connector is configured to use JSON as the CloudEvents format envelope and also as the `data` format.
+The following example shows what a CloudEvents change event record emitted by a PostgreSQL connector looks like.
+In this example, the PostgreSQL connector is configured to use JSON as the CloudEvents format envelope and also as the `data` format.
 
 [source,json,indent=0,subs="+attributes"]
 ----
