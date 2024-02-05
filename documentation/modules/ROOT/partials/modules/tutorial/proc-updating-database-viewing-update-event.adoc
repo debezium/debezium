@@ -132,9 +132,14 @@ The `first_name` value is now `Anne Marie`.
 |The `source` field structure has many of the same values as before,
 except that the `ts_sec` and `pos` fields have changed
 (the `file` might have changed in other circumstances).
-<4> The `op` field value is now `u`,
-signifying that this row changed because of an update.
-<5> The `ts_ms` field shows the time stamp for when {prodname} processed this event.
+
+|4
+|The `op` field value is now `u`, signifying that this row changed because of an update.
+
+|5
+|The `ts_ms` field shows a timestamp that indicates when {prodname} processed this event.
+
+|===
 
 By viewing the `payload` section, you can learn several important things about the _update_ event:
 
