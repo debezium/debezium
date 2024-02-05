@@ -150,6 +150,11 @@ public class LogMinerAdapter extends AbstractStreamingAdapter<LogMinerStreamingC
         }
     }
 
+    @Override
+    public OracleOffsetContext copyOffset(OracleConnectorConfig connectorConfig, OracleOffsetContext offsetContext) {
+        return new LogMinerOracleOffsetContextLoader(connectorConfig).load(offsetContext.getOffset());
+    }
+
     private Optional<Scn> getCurrentScn(Scn latestTableDdlScn, OracleConnection connection) throws SQLException {
         final String query = "SELECT CURRENT_SCN FROM V$DATABASE";
 
