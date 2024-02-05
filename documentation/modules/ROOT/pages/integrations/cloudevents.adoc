@@ -60,7 +60,8 @@ For information about using Avro, see:
 // Title: Example {prodname} change event records in CloudEvents format
 == Example event format
 
-The following example shows what a CloudEvents change event record emitted by a PostgreSQL connector looks like. In this example, the PostgreSQL connector is configured to use JSON as the CloudEvents format envelope and also as the `data` format.
+The following example shows what a CloudEvents change event record emitted by a PostgreSQL connector looks like.
+In this example, the PostgreSQL connector is configured to use JSON as the CloudEvents format envelope and also as the `data` format.
 
 [source,json,indent=0,subs="+attributes"]
 ----
@@ -94,17 +95,47 @@ The following example shows what a CloudEvents change event record emitted by a 
   }
 }
 ----
-<1> Unique ID that the connector generates for the change event based on the change event's content.
-<2> The source of the event, which is the logical name of the database as specified by the `topic.prefix` property in the connector's configuration.
-<3> The CloudEvents specification version.
-<4> Connector type that generated the change event. The format of this field is `io.debezium._CONNECTOR_TYPE_.datachangeevent`. The value of `_CONNECTOR_TYPE_` is `mongodb`, `mysql`, `postgresql`, or `sqlserver`.
-<5> Time of the change in the source database.
-<6> Describes the content type of the `data` attribute, which is JSON in this example.
-The only alternative is Avro.
-<7> An operation identifier. Possible values are `r` for read, `c` for create, `u` for update, or `d` for delete.
-<8> All `source` attributes that are known from {prodname} change events are mapped to CloudEvents extension attributes by using the `iodebezium` prefix for the attribute name.
-<9> When enabled in the connector, each `transaction` attribute that is known from {prodname} change events is mapped to a CloudEvents extension attribute by using the `iodebeziumtx` prefix for the attribute name.
-<10> The actual data change itself. Depending on the operation and the connector, the data might contain `before`, `after` and/or `patch` fields.
+.Descriptions of fields in a CloudEvents change event record
+[cols="1,7",options="header",subs="+attributes"]
+|===
+|Item |Description
+
+|1
+|Unique ID that the connector generates for the change event based on the change event's content.
+
+|2
+|The source of the event, which is the logical name of the database as specified by the `topic.prefix` property in the connector's configuration.
+
+|3
+|The CloudEvents specification version.
+
+|4
+|Connector type that generated the change event.
+The format of this field is `io.debezium._CONNECTOR_TYPE_.datachangeevent`.
+The value of `_CONNECTOR_TYPE_` is `mongodb`, `mysql`, `postgresql`, or `sqlserver`.
+
+|5
+|Time of the change in the source database.
+
+|6
+|Describes the content type of the `data` attribute.
+Possible values are `json`, as in this example, or `avro`.
+
+|7
+|An operation identifier.
+Possible values are `r` for read, `c` for create, `u` for update, or `d` for delete.
+
+|8
+|All `source` attributes that are known from {prodname} change events are mapped to CloudEvents extension attributes by using the `iodebezium` prefix for the attribute name.
+
+|9
+|When enabled in the connector, each `transaction` attribute that is known from {prodname} change events is mapped to a CloudEvents extension attribute by using the `iodebeziumtx` prefix for the attribute name.
+
+|10
+|The actual data change.
+Depending on the operation and the connector, the data might contain `before`, `after`, or `patch` fields.
+
+|===
 
 The following example also shows what a CloudEvents change event record emitted by a PostgreSQL connector looks like. In this example, the PostgreSQL connector is again configured to use JSON as the CloudEvents format envelope, but this time the connector is configured to use Avro for the `data` format.
 
