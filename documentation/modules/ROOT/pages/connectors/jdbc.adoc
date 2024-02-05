@@ -572,20 +572,51 @@ The following example shows a JSON request for registering an instance of the {p
     }
 }
 ----
-<1> The name that is assigned to the connector when you register it with Kafka Connect service.
-<2> The name of the JDBC sink connector class.
-<3> The maximum number of tasks to create for this connector.
-<4> The JDBC URL that the connector uses to connect to the sink database that it writes to.
-<5> The name of the database user used for authentication.
-<6> The password of the database user used for authentication.
-<7> The xref:jdbc-property-insert-mode[insert.mode] that the connector uses.
-<8> Enables the deletion of records in the database.
+Descriptions of JDBC connector configuration settings
+[cols="1,7",options="header",subs="+attributes"]
+|===
+|Item |Description
+
+|1
+|The name that is assigned to the connector when you register it with Kafka Connect service.
+
+|2
+|The name of the JDBC sink connector class.
+
+|3
+|The maximum number of tasks to create for this connector.
+
+|4
+|The JDBC URL that the connector uses to connect to the sink database that it writes to.
+
+|5
+|The name of the database user that is used for authentication.
+
+|6
+|The password of the database user used for authentication.
+
+|7
+|The xref:jdbc-property-insert-mode[insert.mode] that the connector uses.
+
+|8
+|Enables the deletion of records in the database.
 For more information, see the xref:jdbc-property-delete-enabled[delete.enabled] configuration property.
-<9> Specifies the method used to resolve primary key columns.
+
+|9
+|Specifies the method used to resolve primary key columns.
 For more information, see the xref:jdbc-property-primary-key-mode[primary.key.mode] configuration property.
-<10> Enables the connector to evolve the destination database's schema.
+
+|10
+|Enables the connector to evolve the destination database's schema.
 For more information, see the xref:jdbc-property-schema-evolution[schema.evolution] configuration property.
-<11> Specifies the timezone used when writing temporal field types.
+
+|11
+|Specifies the timezone used when writing temporal field types.
+
+|12
+|List of topics to consume, separated by commas.
+
+|===
 
 For a complete list of configuration properties that you can set for the {prodname} JDBC connector, see xref:jdbc-connector-properties[JDBC connector properties].
 
