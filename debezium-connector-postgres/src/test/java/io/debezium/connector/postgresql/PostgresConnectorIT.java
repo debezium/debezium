@@ -66,12 +66,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.config.CommonConnectorConfig.SnapshotQueryMode;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.LogicalDecoder;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
-import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotQueryMode;
 import io.debezium.connector.postgresql.connection.AbstractMessageDecoder;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.PostgresReplicationConnection;

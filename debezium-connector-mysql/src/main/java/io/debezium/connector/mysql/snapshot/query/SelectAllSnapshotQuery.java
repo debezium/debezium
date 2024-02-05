@@ -10,14 +10,14 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import io.debezium.connector.mysql.MySqlConnectorConfig;
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.snapshot.spi.SnapshotQuery;
 
 public class SelectAllSnapshotQuery implements SnapshotQuery {
 
     @Override
     public String name() {
-        return MySqlConnectorConfig.SnapshotQueryMode.SELECT_ALL.getValue();
+        return CommonConnectorConfig.SnapshotQueryMode.SELECT_ALL.getValue();
     }
 
     @Override

@@ -3,11 +3,11 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.mysql.snapshot;
+package io.debezium.connector.postgresql.snapshot;
 
 import io.debezium.bean.StandardBeanNames;
 import io.debezium.bean.spi.BeanRegistry;
-import io.debezium.connector.mysql.MySqlConnectorConfig;
+import io.debezium.connector.postgresql.PostgresConnectorConfig;
 import io.debezium.service.spi.ServiceProvider;
 import io.debezium.snapshot.SnapshotLockProvider;
 import io.debezium.snapshot.spi.SnapshotLock;
@@ -17,14 +17,14 @@ import io.debezium.snapshot.spi.SnapshotLock;
  *
  * @author Mario Fiore Vitale
  */
-public class MySqlSnapshotLockProvider extends SnapshotLockProvider {
+public class PostgresSnapshotLockProvider extends SnapshotLockProvider {
 
     @Override
     public String snapshotLockingMode(BeanRegistry beanRegistry) {
 
-        MySqlConnectorConfig mySqlConnectorConfig = beanRegistry.lookupByName(StandardBeanNames.CONNECTOR_CONFIG, MySqlConnectorConfig.class);
+        PostgresConnectorConfig postgresConnectorConfig = beanRegistry.lookupByName(StandardBeanNames.CONNECTOR_CONFIG, PostgresConnectorConfig.class);
 
-        return mySqlConnectorConfig.getSnapshotLockingMode().getValue();
+        return postgresConnectorConfig.snapshotLockingMode().getValue();
     }
 
 }

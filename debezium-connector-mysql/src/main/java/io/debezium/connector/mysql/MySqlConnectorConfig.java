@@ -539,60 +539,6 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
         }
     }
 
-    public enum SnapshotQueryMode implements EnumeratedValue {
-        /**
-         * This mode will do a select based on {@code column.include.list} and {@code column.exclude.list} configurations.
-         */
-        SELECT_ALL("select_all"),
-
-        CUSTOM("custom");
-
-        private final String value;
-
-        SnapshotQueryMode(String value) {
-            this.value = value;
-        }
-
-        @Override
-        public String getValue() {
-            return value;
-        }
-
-        /**
-         * Determine if the supplied value is one of the predefined options.
-         *
-         * @param value the configuration property value; may not be {@code null}
-         * @return the matching option, or null if no match is found
-         */
-        public static SnapshotQueryMode parse(String value) {
-            if (value == null) {
-                return null;
-            }
-            value = value.trim();
-            for (SnapshotQueryMode option : SnapshotQueryMode.values()) {
-                if (option.getValue().equalsIgnoreCase(value)) {
-                    return option;
-                }
-            }
-            return null;
-        }
-
-        /**
-         * Determine if the supplied value is one of the predefined options.
-         *
-         * @param value the configuration property value; may not be {@code null}
-         * @param defaultValue the default value; may be {@code null}
-         * @return the matching option, or null if no match is found and the non-null default is invalid
-         */
-        public static SnapshotQueryMode parse(String value, String defaultValue) {
-            SnapshotQueryMode mode = parse(value);
-            if (mode == null && defaultValue != null) {
-                mode = parse(defaultValue);
-            }
-            return mode;
-        }
-    }
-
     /**
      * {@link Integer#MIN_VALUE Minimum value} used for fetch size hint.
      * See <a href="https://issues.jboss.org/browse/DBZ-94">DBZ-94</a> for details.
@@ -886,48 +832,6 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
                     + "'schema_only_recovery' and is only safe to use if no schema changes are happening while the snapshot is taken.")
             .withValidation(MySqlConnectorConfig::validateSnapshotLockingMode);
 
-    public static final Field SNAPSHOT_QUERY_MODE = Field.create("snapshot.query.mode")
-            .withDisplayName("Snapshot query mode")
-            .withEnum(SnapshotQueryMode.class, SnapshotQueryMode.SELECT_ALL)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.LOW)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 13))
-            .withDescription("Controls query used during the snapshot");
-
-    public static final Field SNAPSHOT_QUERY_MODE_CUSTOM_NAME = Field.create("snapshot.query.mode.custom.name")
-            .withDisplayName("Snapshot Query Mode Custom Name")
-            .withType(Type.STRING)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 14))
-            .withWidth(Width.MEDIUM)
-            .withImportance(Importance.MEDIUM)
-            .withValidation((config, field, output) -> {
-                if (config.getString(SNAPSHOT_QUERY_MODE).equalsIgnoreCase("custom") && config.getString(field, "").isEmpty()) {
-                    output.accept(field, "", "snapshot.query.mode.custom.name cannot be empty when snapshot.query.mode 'custom' is defined");
-                    return 1;
-                }
-                return 0;
-            })
-            .withDescription(
-                    "When 'snapshot.query.mode' is set as custom, this setting must be set to specify a the name of the custom implementation provided in the 'name()' method. "
-                            + "The implementations must implement the 'SnapshotterQuery' interface and is called to determine how to build queries during snapshot.");
-
-    public static final Field SNAPSHOT_LOCKING_MODE_CUSTOM_NAME = Field.create("snapshot.locking.mode.custom.name")
-            .withDisplayName("Snapshot Locking Mode Custom Name")
-            .withType(Type.STRING)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 15))
-            .withWidth(Width.MEDIUM)
-            .withImportance(Importance.MEDIUM)
-            .withValidation((config, field, output) -> {
-                if (config.getString(SNAPSHOT_LOCKING_MODE).equalsIgnoreCase("custom") && config.getString(field, "").isEmpty()) {
-                    output.accept(field, "", "snapshot.locking.mode.custom.name cannot be empty when snapshot.locking.mode 'custom' is defined");
-                    return 1;
-                }
-                return 0;
-            })
-            .withDescription(
-                    "When 'snapshot.locking.mode' is set as custom, this setting must be set to specify a the name of the custom implementation provided in the 'name()' method. "
-                            + "The implementations must implement the 'SnapshotterLocking' interface and is called to determine how to build queries during snapshot.");
-
     public static final Field SNAPSHOT_NEW_TABLES = Field.create("snapshot.new.tables")
             .withDisplayName("Snapshot newly added tables")
             .withEnum(SnapshotNewTables.class, SnapshotNewTables.OFF)
@@ -1100,9 +1004,6 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     private final Configuration config;
     private final SnapshotMode snapshotMode;
     private final SnapshotLockingMode snapshotLockingMode;
-    private final SnapshotQueryMode snapshotQueryMode;
-    private final String snapshotQueryModeCustomName;
-    private final String snapshotLockingModeCustomName;
     private final SnapshotNewTables snapshotNewTables;
     private final TemporalPrecisionMode temporalPrecisionMode;
     private final Duration connectionTimeout;
@@ -1125,9 +1026,6 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
         this.temporalPrecisionMode = TemporalPrecisionMode.parse(config.getString(TIME_PRECISION_MODE));
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE), SNAPSHOT_MODE.defaultValueAsString());
         this.snapshotLockingMode = SnapshotLockingMode.parse(config.getString(SNAPSHOT_LOCKING_MODE), SNAPSHOT_LOCKING_MODE.defaultValueAsString());
-        this.snapshotQueryMode = SnapshotQueryMode.parse(config.getString(SNAPSHOT_QUERY_MODE), SNAPSHOT_QUERY_MODE.defaultValueAsString());
-        this.snapshotQueryModeCustomName = config.getString(SNAPSHOT_QUERY_MODE_CUSTOM_NAME, "");
-        this.snapshotLockingModeCustomName = config.getString(SNAPSHOT_LOCKING_MODE_CUSTOM_NAME, "");
         this.readOnlyConnection = config.getBoolean(READ_ONLY_CONNECTION);
 
         final String snapshotNewTables = config.getString(MySqlConnectorConfig.SNAPSHOT_NEW_TABLES);
@@ -1156,18 +1054,6 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
 
     public SnapshotLockingMode getSnapshotLockingMode() {
         return this.snapshotLockingMode;
-    }
-
-    public SnapshotQueryMode snapshotQueryMode() {
-        return this.snapshotQueryMode;
-    }
-
-    public String snapshotQueryModeCustomName() {
-        return this.snapshotQueryModeCustomName;
-    }
-
-    public String snapshotLockingModeCustomName() {
-        return this.snapshotLockingModeCustomName;
     }
 
     private static int validateEventDeserializationFailureHandlingModeNotSet(Configuration config, Field field, ValidationOutput problems) {

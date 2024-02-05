@@ -67,7 +67,11 @@ public abstract class CommonConnectorConfig {
     public static final String TASK_ID = "task.id";
     public static final Pattern TOPIC_NAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_.\\-]+$");
     public static final String MULTI_PARTITION_MODE = "multi.partition.mode";
+
     private static final Logger LOGGER = LoggerFactory.getLogger(CommonConnectorConfig.class);
+    protected SnapshotQueryMode snapshotQueryMode;
+    protected String snapshotQueryModeCustomName;
+    protected String snapshotLockingModeCustomName;
 
     /**
      * The set of predefined versions e.g. for source struct maker version
@@ -120,6 +124,7 @@ public abstract class CommonConnectorConfig {
             }
             return mode;
         }
+
     }
 
     /**
@@ -179,6 +184,7 @@ public abstract class CommonConnectorConfig {
 
             return null;
         }
+
     }
 
     /**
@@ -256,6 +262,7 @@ public abstract class CommonConnectorConfig {
             }
             return mode;
         }
+
     }
 
     /**
@@ -318,6 +325,7 @@ public abstract class CommonConnectorConfig {
             }
             return null;
         }
+
     }
 
     /**
@@ -380,6 +388,7 @@ public abstract class CommonConnectorConfig {
             }
             return null;
         }
+
     }
 
     /**
@@ -433,6 +442,7 @@ public abstract class CommonConnectorConfig {
             }
             return mode;
         }
+
     }
 
     public enum EventConvertingFailureHandlingMode implements EnumeratedValue {
@@ -483,6 +493,62 @@ public abstract class CommonConnectorConfig {
 
             return null;
         }
+
+    }
+
+    public enum SnapshotQueryMode implements EnumeratedValue {
+        /**
+         * This mode will do a select based on {@code column.include.list} and {@code column.exclude.list} configurations.
+         */
+        SELECT_ALL("select_all"),
+
+        CUSTOM("custom");
+
+        private final String value;
+
+        SnapshotQueryMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be {@code null}
+         * @return the matching option, or null if no match is found
+         */
+        public static SnapshotQueryMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (SnapshotQueryMode option : SnapshotQueryMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be {@code null}
+         * @param defaultValue the default value; may be {@code null}
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static SnapshotQueryMode parse(String value, String defaultValue) {
+            SnapshotQueryMode mode = parse(value);
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+            return mode;
+        }
+
     }
 
     private static final String CONFLUENT_AVRO_CONVERTER = "io.confluent.connect.avro.AvroConverter";
@@ -873,6 +939,48 @@ public abstract class CommonConnectorConfig {
                     + "'warn' (the default) the value of column of event that conversion failed will be null and be logged with warn level; "
                     + "'skip' the value of column of event that conversion failed will be null and be logged with debug level.");
 
+    public static final Field SNAPSHOT_LOCKING_MODE_CUSTOM_NAME = Field.create("snapshot.locking.mode.custom.name")
+            .withDisplayName("Snapshot Locking Mode Custom Name")
+            .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 14))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withValidation((config, field, output) -> {
+                if (config.getString("snapshot.locking.mode").equalsIgnoreCase("custom") && config.getString(field, "").isEmpty()) {
+                    output.accept(field, "", "snapshot.locking.mode.custom.name cannot be empty when snapshot.locking.mode 'custom' is defined");
+                    return 1;
+                }
+                return 0;
+            })
+            .withDescription(
+                    "When 'snapshot.locking.mode' is set as custom, this setting must be set to specify a the name of the custom implementation provided in the 'name()' method. "
+                            + "The implementations must implement the 'SnapshotterLocking' interface and is called to determine how to lock tables during schema snapshot.");
+
+    public static final Field SNAPSHOT_QUERY_MODE = Field.create("snapshot.query.mode")
+            .withDisplayName("Snapshot query mode")
+            .withEnum(SnapshotQueryMode.class, SnapshotQueryMode.SELECT_ALL)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 15))
+            .withDescription("Controls query used during the snapshot");
+
+    public static final Field SNAPSHOT_QUERY_MODE_CUSTOM_NAME = Field.create("snapshot.query.mode.custom.name")
+            .withDisplayName("Snapshot Query Mode Custom Name")
+            .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 16))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withValidation((config, field, output) -> {
+                if (config.getString(SNAPSHOT_QUERY_MODE).equalsIgnoreCase("custom") && config.getString(field, "").isEmpty()) {
+                    output.accept(field, "", "snapshot.query.mode.custom.name cannot be empty when snapshot.query.mode 'custom' is defined");
+                    return 1;
+                }
+                return 0;
+            })
+            .withDescription(
+                    "When 'snapshot.query.mode' is set as custom, this setting must be set to specify a the name of the custom implementation provided in the 'name()' method. "
+                            + "The implementations must implement the 'SnapshotterQuery' interface and is called to determine how to build queries during snapshot.");
+
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
             .connector(
                     EVENT_PROCESSING_FAILURE_HANDLING_MODE,
@@ -989,6 +1097,9 @@ public abstract class CommonConnectorConfig {
         this.maxRetriesOnError = config.getInteger(MAX_RETRIES_ON_ERROR);
         this.customMetricTags = createCustomMetricTags(config);
         this.incrementalSnapshotWatermarkingStrategy = WatermarkStrategy.parse(config.getString(INCREMENTAL_SNAPSHOT_WATERMARKING_STRATEGY));
+        this.snapshotLockingModeCustomName = config.getString(SNAPSHOT_LOCKING_MODE_CUSTOM_NAME, "");
+        this.snapshotQueryMode = SnapshotQueryMode.parse(config.getString(SNAPSHOT_QUERY_MODE), SNAPSHOT_QUERY_MODE.defaultValueAsString());
+        this.snapshotQueryModeCustomName = config.getString(SNAPSHOT_QUERY_MODE_CUSTOM_NAME, "");
     }
 
     private static List<String> getSignalEnabledChannels(Configuration config) {
@@ -1314,6 +1425,18 @@ public abstract class CommonConnectorConfig {
 
         return CONFLUENT_AVRO_CONVERTER.equals(keyConverter) || CONFLUENT_AVRO_CONVERTER.equals(valueConverter)
                 || APICURIO_AVRO_CONVERTER.equals(keyConverter) || APICURIO_AVRO_CONVERTER.equals(valueConverter);
+    }
+
+    public String snapshotLockingModeCustomName() {
+        return this.snapshotLockingModeCustomName;
+    }
+
+    public SnapshotQueryMode snapshotQueryMode() {
+        return this.snapshotQueryMode;
+    }
+
+    public String snapshotQueryModeCustomName() {
+        return this.snapshotQueryModeCustomName;
     }
 
     /**

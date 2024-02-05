@@ -3,9 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.postgresql.snapshot;
-
-import static io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotLockingMode.CUSTOM;
+package io.debezium.snapshot;
 
 import java.util.Optional;
 import java.util.ServiceLoader;
@@ -15,9 +13,8 @@ import io.debezium.DebeziumException;
 import io.debezium.bean.StandardBeanNames;
 import io.debezium.bean.spi.BeanRegistry;
 import io.debezium.bean.spi.BeanRegistryAware;
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
-import io.debezium.connector.postgresql.PostgresConnectorConfig;
-import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotLockingMode;
 import io.debezium.service.spi.ServiceProvider;
 import io.debezium.service.spi.ServiceRegistry;
 import io.debezium.snapshot.spi.SnapshotLock;
@@ -27,27 +24,27 @@ import io.debezium.snapshot.spi.SnapshotLock;
  *
  * @author Mario Fiore Vitale
  */
-public class SnapshotLockProvider implements ServiceProvider<SnapshotLock> {
+public abstract class SnapshotLockProvider implements ServiceProvider<SnapshotLock> {
 
     @Override
     public SnapshotLock createService(Configuration configuration, ServiceRegistry serviceRegistry) {
 
         BeanRegistry beanRegistry = serviceRegistry.tryGetService(BeanRegistry.class);
-        PostgresConnectorConfig postgresConnectorConfig = beanRegistry.lookupByName(StandardBeanNames.CONNECTOR_CONFIG, PostgresConnectorConfig.class);
 
-        final SnapshotLockingMode configuredSnapshotLockingMode = postgresConnectorConfig.snapshotLockingMode();
-        final String snapshotLockingModeCustomName = postgresConnectorConfig.snapshotLockingModeCustomName();
+        final CommonConnectorConfig commonConnectorConfig = beanRegistry.lookupByName(StandardBeanNames.CONNECTOR_CONFIG, CommonConnectorConfig.class);
+        final String configuredSnapshotQueryMode = snapshotLockingMode(beanRegistry);
+        final String snapshotLockingModeCustomName = commonConnectorConfig.snapshotLockingModeCustomName();
 
-        String snapshotLockingMode;
-        if (CUSTOM.equals(configuredSnapshotLockingMode) && !snapshotLockingModeCustomName.isEmpty()) {
-            snapshotLockingMode = snapshotLockingModeCustomName;
+        String snapshotQueryMode;
+        if ("custom".equals(configuredSnapshotQueryMode) && !snapshotLockingModeCustomName.isEmpty()) {
+            snapshotQueryMode = snapshotLockingModeCustomName;
         }
         else {
-            snapshotLockingMode = configuredSnapshotLockingMode.getValue();
+            snapshotQueryMode = configuredSnapshotQueryMode;
         }
 
         Optional<SnapshotLock> snapshotLock = StreamSupport.stream(ServiceLoader.load(SnapshotLock.class).spliterator(), false)
-                .filter(s -> s.name().equals(snapshotLockingMode))
+                .filter(s -> s.name().equals(snapshotQueryMode))
                 .findAny();
 
         return snapshotLock.map(s -> {
@@ -57,8 +54,7 @@ public class SnapshotLockProvider implements ServiceProvider<SnapshotLock> {
             }
             return s;
         })
-                .orElseThrow(
-                        () -> new DebeziumException(String.format("Unable to find %s snapshot locking mode. Please check your configuration.", snapshotLockingMode)));
+                .orElseThrow(() -> new DebeziumException(String.format("Unable to find %s snapshot query mode. Please check your configuration.", snapshotQueryMode)));
 
     }
 
@@ -66,5 +62,9 @@ public class SnapshotLockProvider implements ServiceProvider<SnapshotLock> {
     public Class<SnapshotLock> getServiceClass() {
         return SnapshotLock.class;
     }
+
+    // TODO this could be delete after DBZ-7308 if all modes will be effectively available to all connectors and
+    // SnapshotLockingMode enum moved into CommonConnectorConfig
+    public abstract String snapshotLockingMode(BeanRegistry beanRegistry);
 
 }

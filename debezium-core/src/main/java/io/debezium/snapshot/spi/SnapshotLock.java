@@ -30,6 +30,6 @@ public interface SnapshotLock extends Configurable, Service {
      * Returns a SQL statement for locking the given tables during snapshotting, if required by the specific snapshotter
      * implementation.
      */
-    Optional<String> tableLockingStatement(Duration lockTimeout, Set<String> tableIds);
+    Optional<String> tableLockingStatement(Duration lockTimeout, Set<String> tableIds); // TODO Evaluate with DBZ-7308 if this method should receive only the single table
 
 }
