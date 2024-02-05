@@ -133,8 +133,11 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
                         throw new InterruptedException("Interrupted while locking table " + tableId);
                     }
 
-                    LOGGER.debug("Locking table {}", tableId);
-                    statement.execute("LOCK TABLE " + quote(tableId) + " IN ROW SHARE MODE");
+                    Optional<String> lockingStatement = snapshotterService.getSnapshotLock().tableLockingStatement(null, Set.of(quote(tableId)));
+                    if (lockingStatement.isPresent()) {
+                        LOGGER.debug("Locking table {}", tableId);
+                        statement.execute(lockingStatement.get());
+                    }
                 }
             }
         }
@@ -265,12 +268,8 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     @Override
     protected Optional<String> getSnapshotSelect(RelationalSnapshotContext<OraclePartition, OracleOffsetContext> snapshotContext,
                                                  TableId tableId, List<String> columns) {
-        final OracleOffsetContext offset = snapshotContext.offset;
-        final String snapshotOffset = offset.getScn().toString();
-        String snapshotSelectColumns = columns.stream()
-                .collect(Collectors.joining(", "));
-        assert snapshotOffset != null;
-        return Optional.of(String.format("SELECT %s FROM %s AS OF SCN %s", snapshotSelectColumns, quote(tableId), snapshotOffset));
+
+        return snapshotterService.getSnapshotQuery().snapshotQuery(quote(tableId), columns);
     }
 
     @Override

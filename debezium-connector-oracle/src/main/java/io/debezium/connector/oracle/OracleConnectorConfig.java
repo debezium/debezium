@@ -1024,7 +1024,12 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
          * This mode will avoid using ANY table locks during the snapshot process.
          * This mode should be used carefully only when no schema changes are to occur.
          */
-        NONE("none");
+        NONE("none"),
+
+        /**
+         * Inject a custom mode, which allows for more control over snapshot locking.
+         */
+        CUSTOM("custom");
 
         private final String value;
 
