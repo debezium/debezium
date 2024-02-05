@@ -142,4 +142,10 @@ public class XStreamAdapter extends AbstractStreamingAdapter<XStreamStreamingCha
                 .incrementalSnapshotContext(new SignalBasedIncrementalSnapshotContext<>())
                 .build();
     }
+
+    @Override
+    public OracleOffsetContext copyOffset(OracleConnectorConfig connectorConfig, OracleOffsetContext offsetContext) {
+        return new XStreamOracleOffsetContextLoader(connectorConfig).load(offsetContext.getOffset());
+    }
+
 }

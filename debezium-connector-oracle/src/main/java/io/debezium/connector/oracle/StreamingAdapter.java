@@ -105,4 +105,12 @@ public interface StreamingAdapter<T extends AbstractOracleStreamingChangeEventSo
         return new OracleValueConverters(connectorConfig, connection);
     }
 
+    /**
+     * Creates a copy of the existing offsets.
+     *
+     * @param connectorConfig the connector configuration, should never be {@code null}
+     * @param offsetContext the current offset context, should never be {@code null}
+     * @return a copy of the offset context for this adapter
+     */
+    OracleOffsetContext copyOffset(OracleConnectorConfig connectorConfig, OracleOffsetContext offsetContext);
 }

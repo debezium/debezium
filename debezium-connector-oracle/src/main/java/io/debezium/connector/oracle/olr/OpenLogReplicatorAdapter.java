@@ -129,4 +129,8 @@ public class OpenLogReplicatorAdapter extends AbstractStreamingAdapter<OpenLogRe
         return new OpenLogReplicatorValueConverter(connectorConfig, connection);
     }
 
+    @Override
+    public OracleOffsetContext copyOffset(OracleConnectorConfig connectorConfig, OracleOffsetContext offsetContext) {
+        return new OpenLogReplicatorOracleOffsetContextLoader(connectorConfig).load(offsetContext.getOffset());
+    }
 }

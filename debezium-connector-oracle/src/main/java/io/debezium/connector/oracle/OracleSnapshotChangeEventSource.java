@@ -21,7 +21,6 @@ import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.connector.oracle.logminer.LogMinerOracleOffsetContextLoader;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.EventDispatcher;
@@ -307,6 +306,6 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
 
     @Override
     protected OracleOffsetContext copyOffset(RelationalSnapshotContext<OraclePartition, OracleOffsetContext> snapshotContext) {
-        return new LogMinerOracleOffsetContextLoader(connectorConfig).load(snapshotContext.offset.getOffset());
+        return connectorConfig.getAdapter().copyOffset(connectorConfig, snapshotContext.offset);
     }
 }
