@@ -595,12 +595,22 @@ The following example shows a JSON request for registering an instance of the {p
 |8
 |Enables the deletion of records in the database.
 For more information, see the xref:jdbc-property-delete-enabled[delete.enabled] configuration property.
-<9> Specifies the method used to resolve primary key columns.
+
+|9
+|Specifies the method used to resolve primary key columns.
 For more information, see the xref:jdbc-property-primary-key-mode[primary.key.mode] configuration property.
-<10> Enables the connector to evolve the destination database's schema.
+
+|10
+|Enables the connector to evolve the destination database's schema.
 For more information, see the xref:jdbc-property-schema-evolution[schema.evolution] configuration property.
-<11> Specifies the timezone used when writing temporal field types.
-<12> List of topics to consume, separated by commas.
+
+|11
+|Specifies the timezone used when writing temporal field types.
+
+|12
+|List of topics to consume, separated by commas.
+
+|===
 
 For a complete list of configuration properties that you can set for the {prodname} JDBC connector, see xref:jdbc-connector-properties[JDBC connector properties].
 
