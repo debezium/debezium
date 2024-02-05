@@ -2312,9 +2312,21 @@ local   replication     <youruser>                          trust   // <1>
 host    replication     <youruser>  127.0.0.1/32            trust   // <2>
 host    replication     <youruser>  ::1/128                 trust   // <3>
 ----
-<1> Instructs the server to allow replication for `<youruser>` locally, that is, on the server machine.
-<2> Instructs the server to allow `<youruser>` on `localhost` to receive replication changes using `IPV4`.
-<3> Instructs the server to allow `<youruser>` on `localhost` to receive replication changes using `IPV6`.
+.Descriptions of `pg_hba.conf` settings
+[cols="1,7",options="header",subs="+attributes"]
+|===
+|Item |Description
+
+|1
+|Instructs the server to allow replication for `<youruser>` locally, that is, on the server machine.
+
+|2
+|Instructs the server to allow `<youruser>` on `localhost` to receive replication changes using `IPV4`.
+
+|3
+|Instructs the server to allow `<youruser>` on `localhost` to receive replication changes using `IPV6`.
+
+|===
 
 [NOTE]
 ====
