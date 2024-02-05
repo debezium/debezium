@@ -60,7 +60,8 @@ For information about using Avro, see:
 // Title: Example {prodname} change event records in CloudEvents format
 == Example event format
 
-The following example shows what a CloudEvents change event record emitted by a PostgreSQL connector looks like. In this example, the PostgreSQL connector is configured to use JSON as the CloudEvents format envelope and also as the `data` format.
+The following example shows what a CloudEvents change event record emitted by a PostgreSQL connector looks like.
+In this example, the PostgreSQL connector is configured to use JSON as the CloudEvents format envelope and also as the `data` format.
 
 [source,json,indent=0,subs="+attributes"]
 ----
@@ -94,6 +95,50 @@ The following example shows what a CloudEvents change event record emitted by a 
   }
 }
 ----
+.Descriptions of fields in a CloudEvents change event record
+[cols="1,7",options="header",subs="+attributes"]
+|===
+|Item |Description
+
+|1
+|Unique ID that the connector generates for the change event based on the change event's content.
+
+|2
+|The source of the event, which is the logical name of the database as specified by the `topic.prefix` property in the connector's configuration.
+
+|3
+|The CloudEvents specification version.
+
+|4
+|Connector type that generated the change event.
+The format of this field is `io.debezium._CONNECTOR_TYPE_.datachangeevent`.
+The value of `_CONNECTOR_TYPE_` is `mongodb`, `mysql`, `postgresql`, or `sqlserver`.
+
+|5
+|Time of the change in the source database.
+
+|6
+|Describes the content type of the `data` attribute.
+Possible values are `json`, as in this example, or `avro`.
+
+|7
+|An operation identifier.
+Possible values are `r` for read, `c` for create, `u` for update, or `d` for delete.
+
+|8
+|All `source` attributes that are known from {prodname} change events are mapped to CloudEvents extension attributes by using the `iodebezium` prefix for the attribute name.
+
+|9
+|When enabled in the connector, each `transaction` attribute that is known from {prodname} change events is mapped to a CloudEvents extension attribute by using the `iodebeziumtx` prefix for the attribute name.
+
+|10
+|The actual data change.
+Depending on the operation and the connector, the data might contain `before`, `after`, or `patch` fields.
+
+|===
+
+
+
 <1> Unique ID that the connector generates for the change event based on the change event's content.
 <2> The source of the event, which is the logical name of the database as specified by the `topic.prefix` property in the connector's configuration.
 <3> The CloudEvents specification version.
@@ -180,12 +225,12 @@ By default, the `metadata.source` property consists of three parts, as seen in t
 "value,id:generate,type:generate,dataSchemaName:generate"
 ----
 
-The first part specifies the source for retrieving a record's metadata; the permitted values are `value` and `header`. 
-The next parts specify how the converter populates values for the following metadata fields: 
+The first part specifies the source for retrieving a record's metadata; the permitted values are `value` and `header`.
+The next parts specify how the converter populates values for the following metadata fields:
 
 * `id`
 * `type`
-* `dataSchemaName` (the name under which the schema is registered in the Schema Registry)  
+* `dataSchemaName` (the name under which the schema is registered in the Schema Registry)
 
 The converter can use one of the following methods to populate each field:
 
@@ -195,7 +240,7 @@ The converter can use one of the following methods to populate each field:
 === Obtaining record metadata
 
 To construct a CloudEvent, the converter requires source, operation, and transaction metadata.
-Generally, the converter can retrieve the metadata from a record's value. 
+Generally, the converter can retrieve the metadata from a record's value.
 But in some cases, before the converter receives a record, the record might be processed in such a way that metadata is not present in its value, for example, after the record is processed by the Outbox Event Router SMT.
 To preserve the required metadata, you can use the following approach to pass the metadata in the record headers.
 
@@ -304,25 +349,25 @@ The value can be `json` or `avro`.
 |[[cloud-events-converter-schema-cloudevents-name]]xref:cloud-events-converter-schema-cloudevents-name[`schema.cloudevents.name`]
 |none
 |Specifies CloudEvents schema name under which the schema is registered in a Schema Registry. The setting is ignored when `serializer.type` is `json` in
-which case a record's value is schemaless. 
+which case a record's value is schemaless.
 If this property is not specified, the default algorithm is used to generate the
 schema name: `pass:[${serverName}.${databaseName}].CloudEvents.Envelope`.
 
 |[[cloud-events-converter-schema-data-name-source-header-enable]]xref:cloud-events-converter-schema-data-name-source-header-enable[`schema.data.name.source.header.enable`]
 |false
-|Specifies whether the converter can retrieve the schema name of the CloudEvents `data` field from a header. 
+|Specifies whether the converter can retrieve the schema name of the CloudEvents `data` field from a header.
 The schema name is obtained from the `dataSchemaName` parameter that is specified in the xref:cloud-events-converter-metadata-source[`metadata.source`] property.
 
 |[[cloud-events-converter-extension-attributes-enable]]xref:cloud-events-converter-extension-attributes-enable[`extension.attributes.enable`]
 |`true`
-|Specifies whether the converter includes extension attributes when it generates a cloud event. 
+|Specifies whether the converter includes extension attributes when it generates a cloud event.
 The value can be `true` or `false`.
 
 |[[cloud-events-converter-metadata-source]]xref:cloud-events-converter-metadata-source[`metadata.source`]
 |`value,id:generate,type:generate,dataSchemaName:generate`
 |A comma-separated list that specifies the sources from which the converter retrieves metadata values (source, operation, transaction) for CloudEvent `id` and `type` fields,
 and for the `dataSchemaName` parameter, which specifies the name under which the schema is registered in a Schema Registry.
-The first element in the list is a global setting that specifies the source of the metadata.  
+The first element in the list is a global setting that specifies the source of the metadata.
 The source of metadata can be `value` or `header`.
 The global setting is followed by a set of pairs.
 The first element in each pair specifies the name of a CloudEvent field (`id` or `type`), or the name of a data schema (`dataSchemaName`).
