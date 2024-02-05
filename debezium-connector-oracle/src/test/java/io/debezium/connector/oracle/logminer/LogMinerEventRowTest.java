@@ -195,7 +195,7 @@ public class LogMinerEventRowTest {
 
         row = LogMinerEventRow.fromResultSet(resultSet, CATALOG_NAME, true);
         assertThat(row.getRedoSql()).isNull();
-        verify(resultSet, times(13)).getInt(6);
+        verify(resultSet, times(14)).getInt(6);
         verify(resultSet, times(14)).getString(2);
 
         when(resultSet.getInt(6)).thenReturn(0);
@@ -203,7 +203,7 @@ public class LogMinerEventRowTest {
 
         assertThrows(resultSet, SQLException.class);
 
-        verify(resultSet, times(13)).getInt(6);
+        verify(resultSet, times(15)).getInt(6);
         verify(resultSet, times(15)).getString(2);
     }
 
