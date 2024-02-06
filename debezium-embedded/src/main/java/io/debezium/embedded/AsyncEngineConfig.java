@@ -45,13 +45,28 @@ public interface AsyncEngineConfig extends EmbeddedEngineConfig {
      * An optional field that specifies how the records will be produced. Sequential processing (the default) means that the records will be produced in the same order
      * as the engine obtained them from the connector. Non-sequential processing means that the records can be produced in arbitrary order, typically once the record is
      * transformed and/or serialized.
+     * This option doesn't have any effect when {@link io.debezium.engine.DebeziumEngine.ChangeConsumer} is provided to the engine. In such case the records are always
+     * processed sequentially.
      */
     Field RECORD_PROCESSING_SEQUENTIALLY = Field.create("record.processing.sequentially")
             .withDescription("Determines how the records should be produced. Sequential processing means (setting to `true`, the default) that the records are "
                     + "produced in the same order as they were obtained from the database. Non-sequential processing means that the records can be produced in a different "
                     + "order than the original one. Non-sequential approach gives better throughput, as the records are produced immediately once the SMTs and serialization of "
-                    + "the message is done, without waiting of other records.")
+                    + "the message is done, without waiting of other records. This option doesn't have any effect when ChangeConsumer is provided to the engine.")
             .withDefault(true)
+            .withValidation(Field::isBoolean);
+
+    /**
+     * An optional field that specifies if default {@link io.debezium.engine.DebeziumEngine.ChangeConsumer} should be created for consuming records or not.
+     * The main effect of this option is that it when default {@link io.debezium.engine.DebeziumEngine.ChangeConsumer} is created, engine will select different
+     * {@link io.debezium.embedded.AsyncEmbeddedEngine.RecordProcessor} and provided {@link java.util.function.Consumer} will always process records serially.
+     * will process the records sequentially. Only SMTs will be run in parallel in this case.
+     * This option doesn't have any effect when {@link io.debezium.engine.DebeziumEngine.ChangeConsumer} is provided to the engine in the configuration.
+     */
+    Field RECORD_PROCESSING_WITH_SERIAL_CONSUMER = Field.create("record.processing.with.serial.consumer")
+            .withDescription("Specifies whether the default ChangeConsumer should be created from provided Consumer, resulting in serial Consumer processing. "
+                    + "This option has no effect if the ChangeConsumer is already provided to the engine via configuration.")
+            .withDefault(false)
             .withValidation(Field::isBoolean);
 
     /**
@@ -61,5 +76,6 @@ public interface AsyncEngineConfig extends EmbeddedEngineConfig {
             TASK_MANAGEMENT_TIMEOUT_MS,
             RECORD_PROCESSING_SHUTDOWN_TIMEOUT_MS,
             RECORD_PROCESSING_THREADS,
-            RECORD_PROCESSING_SEQUENTIALLY);
+            RECORD_PROCESSING_SEQUENTIALLY,
+            RECORD_PROCESSING_WITH_SERIAL_CONSUMER);
 }
