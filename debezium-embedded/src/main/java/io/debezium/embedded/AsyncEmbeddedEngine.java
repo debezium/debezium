@@ -414,24 +414,30 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
     private RecordProcessor selectRecordProcessor() {
         // If the change consumer is provided, it has precedence over the consumer.
         if (handler != null && recordConverter == null) {
+            LOGGER.debug("Using {} processor", ParallelSmtBatchProcessor.class.getName());
             return new ParallelSmtBatchProcessor((DebeziumEngine.ChangeConsumer<SourceRecord>) handler);
         }
         if (handler != null && recordConverter != null) {
+            LOGGER.debug("Using {} processor", ParallelSmtAndConvertBatchProcessor.class.getName());
             return new ParallelSmtAndConvertBatchProcessor(handler, recordConverter);
         }
 
         // Only Consumer is used, records may be processed non-sequentially.
         final boolean processSequentially = config.getBoolean(AsyncEngineConfig.RECORD_PROCESSING_SEQUENTIALLY);
         if (processSequentially && recordConverter == null) {
+            LOGGER.debug("Using {} processor", ParallelSmtConsumerProcessor.class.getName());
             return new ParallelSmtConsumerProcessor((Consumer<SourceRecord>) consumer);
         }
         if (processSequentially && recordConverter != null) {
+            LOGGER.debug("Using {} processor", ParallelSmtAndConvertConsumerProcessor.class.getName());
             return new ParallelSmtAndConvertConsumerProcessor(consumer, recordConverter);
         }
         if (!processSequentially && recordConverter == null) {
+            LOGGER.debug("Using {} processor", ParallelSmtAsyncConsumerProcessor.class.getName());
             return new ParallelSmtAsyncConsumerProcessor((Consumer<SourceRecord>) consumer);
         }
         if (!processSequentially && recordConverter != null) {
+            LOGGER.debug("Using {} processor", ParallelSmtAndConvertAsyncConsumerProcessor.class.getName());
             return new ParallelSmtAndConvertAsyncConsumerProcessor(consumer, recordConverter);
         }
 
