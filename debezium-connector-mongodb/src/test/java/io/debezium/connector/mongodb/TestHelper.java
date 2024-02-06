@@ -18,12 +18,15 @@ import java.util.stream.Stream;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.connect.data.Struct;
 import org.bson.Document;
+import org.bson.UuidRepresentation;
 import org.bson.types.ObjectId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mongodb.ConnectionString;
+import com.mongodb.MongoClientSettings;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoDatabase;
@@ -94,7 +97,11 @@ public class TestHelper {
     }
 
     public static MongoClient connect(MongoDbDeployment mongo) {
-        return MongoClients.create(mongo.getConnectionString());
+        var settings = MongoClientSettings.builder()
+                .applyConnectionString(new ConnectionString(mongo.getConnectionString()))
+                .uuidRepresentation(UuidRepresentation.STANDARD)
+                .build();
+        return MongoClients.create(settings);
     }
 
     public static void cleanDatabase(MongoDbDeployment mongo, String dbName) {

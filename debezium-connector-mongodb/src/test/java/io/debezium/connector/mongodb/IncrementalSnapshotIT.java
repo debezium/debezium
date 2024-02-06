@@ -17,6 +17,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -31,6 +32,7 @@ import java.util.stream.Collectors;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
+import org.bson.BsonDocument;
 import org.bson.Document;
 import org.bson.types.ObjectId;
 import org.junit.After;
@@ -354,14 +356,20 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
 
         var serialization = new JsonSerialization();
 
-        var expected = documents.values()
-                .stream()
-                .map(d -> d.toBsonDocument())
-                .collect(toMap(
-                        d -> serialization.getDocumentId(d),
-                        d -> d.getInt32(valueFieldName()).getValue()));
+        try (var connection = connect()) {
+            var codecs = connection.getDatabase(DATABASE_NAME)
+                    .getCollection(COLLECTION_NAME)
+                    .getCodecRegistry();
 
-        assertThat(dbChanges).containsAllEntriesOf(expected);
+            var expected = documents.values()
+                    .stream()
+                    .map(d -> d.toBsonDocument(BsonDocument.class, codecs))
+                    .collect(toMap(
+                            serialization::getDocumentId,
+                            d -> d.getInt32(valueFieldName()).getValue()));
+
+            assertThat(dbChanges).containsAllEntriesOf(expected);
+        }
     }
 
     @Test
@@ -408,6 +416,11 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
     public void snapshotOnlyObjectId() throws Exception {
         ObjectId firstKey = new ObjectId();
         snapshotOnly(firstKey, k -> new ObjectId());
+    }
+
+    @Test
+    public void snapshotOnlyUUID() throws Exception {
+        snapshotOnly(UUID.randomUUID(), k -> UUID.randomUUID());
     }
 
     @Test
