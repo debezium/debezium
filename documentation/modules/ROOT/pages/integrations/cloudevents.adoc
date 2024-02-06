@@ -13,7 +13,13 @@
 
 toc::[]
 
-link:https://cloudevents.io/[CloudEvents] is a specification for describing event data in a common way. Its aim is to provide interoperability across services, platforms and systems. {prodname} enables you to configure a MongoDB, MySQL, PostgreSQL, or SQL Server connector to emit change event records that conform to the CloudEvents specification.
+link:https://cloudevents.io/[CloudEvents] is a specification for describing event data in a common way.
+Its aim is to provide interoperability across services, platforms and systems.
+{prodname} enables you to configure a Db2,
+ifdef::community[]
+Informix,
+endif::community[]
+MongoDB, MySQL, Oracle, PostgreSQL, or SQL Server connector to emit change event records that conform to the CloudEvents specification.
 
 ifdef::community[]
 [NOTE]
@@ -110,9 +116,13 @@ In this example, the PostgreSQL connector is configured to use JSON as the Cloud
 |The CloudEvents specification version.
 
 |4
-|Connector type that generated the change event.
-The format of this field is `io.debezium._CONNECTOR_TYPE_.datachangeevent`.
-The value of `_CONNECTOR_TYPE_` is `mongodb`, `mysql`, `postgresql`, or `sqlserver`.
+a|Connector type that generated the change event.
+The format of this field is `io.debezium._<CONNECTOR_TYPE>_.datachangeevent`.
+Valid values for `_CONNECTOR_TYPE_` are `db2`,
+ifdef::community[]
+`informix`,
+endif::community[]
+`mongodb`, `mysql`, `oracle`, `postgresql`, or `sqlserver`.
 
 |5
 |Time of the change in the source database.
