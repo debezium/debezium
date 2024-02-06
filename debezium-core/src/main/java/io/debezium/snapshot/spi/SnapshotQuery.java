@@ -12,7 +12,7 @@ import io.debezium.service.Service;
 import io.debezium.spi.common.Configurable;
 
 /**
- * {@link SnapshotQuery} is used to determine the query used during data snapshot
+ * {@link SnapshotQuery} is used to determine the query used during a data snapshot
  *
  * @author Mario Fiore Vitale
  */
