@@ -14,6 +14,7 @@ import java.util.List;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -102,6 +103,7 @@ public class DebeziumResourceIT {
     }
 
     @Test
+    @Disabled("See DBZ-7416 https://issues.redhat.com/browse/DBZ-7416")
     public void testTransformsEndpoint() {
         RestExtensionTestInfrastructure.startContainers(DATABASE.NONE);
         given()
