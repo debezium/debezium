@@ -10,17 +10,17 @@ import io.debezium.common.annotation.Incubating;
 import io.debezium.spi.common.Configurable;
 
 /**
- * {@link Snapshotter} is used to determine details about the snapshot process:
+ * {@link Snapshotter} is used to determine the following details about the snapshot process:
  * <p>
- * Namely: <br>
- * - Should a snapshot occur at all <br>
- * - Should streaming occur <br>
- * - Should snapshot schema (if supported) <br>
- * - Should snapshot data/schema on error
+ * - Whether a snapshot occurs. <br>
+ * - Whether streaming continues during the snapshot. <br>
+ * - Whether the snapshot includes schema (if supported). <br>
+ * - Whether to snapshot data or schema following an error.
  * <p>
- * While many default snapshot modes are provided with debezium (see documentation for details)
- * a custom implementation of this interface can be provided by the implementor which
- * can provide more advanced functionality, such as partial snapshots
+ * Although Debezium provides many default snapshot modes,
+ * to provide more advanced functionality, such as partial snapshots,
+ * you can customize implementation of the interface.
+ * For more information, see the documentation.
  *
  *
  * @author Mario Fiore Vitale
@@ -40,7 +40,7 @@ public interface Snapshotter extends Configurable {
      * Throws a {@link DebeziumException} in case it is not compatible.
      *
      * @param offsetContextExists is {@code true} when the connector has an offset context (i.e. restarted)
-     * @param isSnapshotInProgress is {@code true} when the connector is started but there was already a snapshot in progress
+     * @param isSnapshotInProgress is {@code true} when the connector is started, but a snapshot is already in progress
      */
     void validate(boolean offsetContextExists, boolean isSnapshotInProgress);
 
@@ -80,14 +80,14 @@ public interface Snapshotter extends Configurable {
     }
 
     /**
-     * Lifecycle hook called once the snapshot phase is successful.
+     * Lifecycle hook called after the snapshot phase is successful.
      */
     default void snapshotCompleted() {
         // no operation
     }
 
     /**
-     * Lifecycle hook called once the snapshot phase is aborted.
+     * Lifecycle hook called after the snapshot phase is aborted.
      */
     default void snapshotAborted() {
         // no operation
