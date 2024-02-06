@@ -13,7 +13,13 @@
 
 toc::[]
 
-link:https://cloudevents.io/[CloudEvents] is a specification for describing event data in a common way. Its aim is to provide interoperability across services, platforms and systems. {prodname} enables you to configure a MongoDB, MySQL, PostgreSQL, or SQL Server connector to emit change event records that conform to the CloudEvents specification.
+link:https://cloudevents.io/[CloudEvents] is a specification for describing event data in a common way.
+Its aim is to provide interoperability across services, platforms and systems.
+{prodname} enables you to configure a Db2,
+ifdef::community[]
+Informix,
+endif::community[]
+MongoDB, MySQL, Oracle, PostgreSQL, or SQL Server connector to emit change event records that conform to the CloudEvents specification.
 
 ifdef::community[]
 [NOTE]
@@ -94,17 +100,51 @@ The following example shows what a CloudEvents change event record emitted by a 
   }
 }
 ----
-<1> Unique ID that the connector generates for the change event based on the change event's content.
-<2> The source of the event, which is the logical name of the database as specified by the `topic.prefix` property in the connector's configuration.
-<3> The CloudEvents specification version.
-<4> Connector type that generated the change event. The format of this field is `io.debezium._CONNECTOR_TYPE_.datachangeevent`. The value of `_CONNECTOR_TYPE_` is `mongodb`, `mysql`, `postgresql`, or `sqlserver`.
-<5> Time of the change in the source database.
-<6> Describes the content type of the `data` attribute, which is JSON in this example.
-The only alternative is Avro.
-<7> An operation identifier. Possible values are `r` for read, `c` for create, `u` for update, or `d` for delete.
-<8> All `source` attributes that are known from {prodname} change events are mapped to CloudEvents extension attributes by using the `iodebezium` prefix for the attribute name.
-<9> When enabled in the connector, each `transaction` attribute that is known from {prodname} change events is mapped to a CloudEvents extension attribute by using the `iodebeziumtx` prefix for the attribute name.
-<10> The actual data change itself. Depending on the operation and the connector, the data might contain `before`, `after` and/or `patch` fields.
+.Descriptions of fields in a CloudEvents change event record
+[cols="1,7",options="header",subs="+attributes"]
+|===
+|Item |Description
+
+|1
+|Unique ID that the connector generates for the change event based on the change event's content.
+
+|2
+|The source of the event, which is the logical name of the database as specified by the `topic.prefix` property in the connector's configuration.
+
+|3
+|The CloudEvents specification version.
+
+|4
+|Connector type that generated the change event.
+The format of this field is `io.debezium._CONNECTOR_TYPE_.datachangeevent`.
+Valid values for `_CONNECTOR_TYPE_` are `db2`,
+ifdef::community[]
+`informix`,
+endif::community[]
+`mongodb`, `mysql`, `oracle`, `postgresql`, or `sqlserver`.
+
+|5
+|Time of the change in the source database.
+
+|6
+|Describes the content type of the `data` attribute.
+Possible values are `json`, as in this example, or `avro`.
+
+|7
+|An operation identifier.
+Possible values are `r` for read, `c` for create, `u` for update, or `d` for delete.
+
+|8
+|All `source` attributes that are known from {prodname} change events are mapped to CloudEvents extension attributes by using the `iodebezium` prefix for the attribute name.
+
+|9
+|When enabled in the connector, each `transaction` attribute that is known from {prodname} change events is mapped to a CloudEvents extension attribute by using the `iodebeziumtx` prefix for the attribute name.
+
+|10
+|The actual data change.
+Depending on the operation and the connector, the data might contain `before`, `after`, or `patch` fields.
+
+|===
 
 The following example also shows what a CloudEvents change event record emitted by a PostgreSQL connector looks like. In this example, the PostgreSQL connector is again configured to use JSON as the CloudEvents format envelope, but this time the connector is configured to use Avro for the `data` format.
 
@@ -180,13 +220,13 @@ By default, the `metadata.source` property consists of three parts, as seen in t
 "value,id:generate,type:generate"
 ----
 
-The first part specifies the source for retrieving a record's metadata; the permitted values are `value` and `header`. 
+The first part specifies the source for retrieving a record's metadata; the permitted values are `value` and `header`.
 The next parts specify how to obtain the `id` and `type` fields of a CloudEvent; the permitted values are `generate` and `header`.
 
 === Obtaining record metadata
 
 To construct a CloudEvent, the converter requires source, operation, and transaction metadata.
-Generally, the converter can retrieve the metadata from a record's value. 
+Generally, the converter can retrieve the metadata from a record's value.
 But in some cases, before the converter receives a record, the record might be processed in such a way that metadata is not present in its value, for example, after the record is processed by the Outbox Event Router SMT.
 To preserve the required metadata, you can use the following approach to pass the metadata in the record headers.
 
@@ -298,15 +338,15 @@ schema name: `pass:[${serverName}.${databaseName}].CloudEvents.Envelope`.
 
 |[[cloud-events-converter-extension-attributes-enable]]xref:cloud-events-converter-extension-attributes-enable[`extension.attributes.enable`]
 |`true`
-|Specifies whether the converter includes extension attributes when it generates a cloud event. 
+|Specifies whether the converter includes extension attributes when it generates a cloud event.
 The value can be `true` or `false`.
 
 |[[cloud-events-converter-metadata-source]]xref:cloud-events-converter-metadata-source[`metadata.source`]
 |`value,id:generate,type:generate`
 |A comma-separated list that specifies the sources from which the converter retrieves metadata (source, operation, transaction), along with the names of the CloudEvent `id`, and `type` fields.
-The first element in the list is a global setting that specifies the source of the metadata.  
+The first element in the list is a global setting that specifies the source of the metadata.
 The source of metadata can be `value` or `header`.
-This first element is followed by a set of pairs that specify the name of a CloudEvent field (`id` or `type`), and the source for obtaining the field's value: `generate` or `header`. 
+This first element is followed by a set of pairs that specify the name of a CloudEvent field (`id` or `type`), and the source for obtaining the field's value: `generate` or `header`.
 Separate the values in each pair with a colon, for example:
 
 `value,id:header,type:generate`
