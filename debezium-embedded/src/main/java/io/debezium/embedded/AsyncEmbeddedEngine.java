@@ -702,7 +702,6 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         @Override
         public Builder<SourceRecord> notifying(final Consumer<SourceRecord> consumer) {
             this.consumer = consumer;
-            this.handler = buildDefaultChangeConsumer(consumer);
             return this;
         }
 
