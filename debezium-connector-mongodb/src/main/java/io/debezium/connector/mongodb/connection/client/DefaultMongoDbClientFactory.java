@@ -7,6 +7,8 @@ package io.debezium.connector.mongodb.connection.client;
 
 import java.util.concurrent.TimeUnit;
 
+import org.bson.UuidRepresentation;
+
 import com.mongodb.MongoClientSettings;
 
 import io.debezium.config.Configuration;
@@ -36,6 +38,7 @@ public class DefaultMongoDbClientFactory implements MongoDbClientFactory {
 
         // 1. apply property configuration
         var settings = MongoClientSettings.builder()
+                .uuidRepresentation(UuidRepresentation.STANDARD)
                 .applyToSocketSettings(builder -> builder
                         .connectTimeout(connectorConfig.getConnectTimeoutMs(), TimeUnit.MILLISECONDS)
                         .readTimeout(connectorConfig.getSocketTimeoutMs(), TimeUnit.MILLISECONDS))

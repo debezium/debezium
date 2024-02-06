@@ -23,8 +23,10 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Struct;
+import org.bson.BsonBinarySubType;
 import org.bson.BsonDocument;
 import org.bson.Document;
+import org.bson.UuidRepresentation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -637,6 +639,19 @@ public class MongoDbIncrementalSnapshotChangeEventSource
                 break;
             case STRING:
                 key = documentId.asString().getValue();
+                break;
+            case BINARY:
+                var subtype = documentId.asBinary().getType();
+                if (!BsonBinarySubType.isUuid(subtype)) {
+                    throw new IllegalStateException("Unsupported type of document id");
+                }
+
+                if (BsonBinarySubType.UUID_STANDARD.getValue() == subtype) {
+                    key = documentId.asBinary().asUuid(UuidRepresentation.STANDARD);
+                }
+                else {
+                    throw new IllegalStateException("Unsupported subtype of UUID document id");
+                }
                 break;
             default:
                 throw new IllegalStateException("Unsupported type of document id");

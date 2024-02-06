@@ -12,7 +12,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
@@ -46,7 +45,7 @@ public abstract class AbstractMongoIT {
     }
 
     protected MongoClient connect() {
-        return MongoClients.create(mongo.getConnectionString());
+        return TestHelper.connect(mongo);
     }
 
     @Before
