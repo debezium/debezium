@@ -10,8 +10,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.Properties;
 
 import org.apache.kafka.connect.data.SchemaBuilder;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.spi.converter.ConvertedField;
 import io.debezium.spi.converter.CustomConverter;
@@ -84,7 +84,7 @@ public class ValueConverterTest {
 
     private TestRegistration testRegistration;
 
-    @Before
+    @BeforeEach
     public void before() {
         testRegistration = new TestRegistration();
     }

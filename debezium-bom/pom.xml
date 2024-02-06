@@ -50,8 +50,9 @@
         <version.azure.blob>12.21.0</version.azure.blob>
 
         <!-- Testing -->
-        <version.junit>4.13.1</version.junit>
+        <version.junit.vintage>5.9.1</version.junit.vintage>
         <version.junit5>5.9.1</version.junit5>
+        <version.jupiter.api>5.9.1</version.jupiter.api>
         <version.junit.platform.launcher>1.9.3</version.junit.platform.launcher>
         <version.fest>1.4</version.fest>
         <version.assertj>3.11.1</version.assertj>
@@ -509,14 +510,19 @@
 
             <!-- Test dependencies -->
             <dependency>
-                <groupId>junit</groupId>
-                <artifactId>junit</artifactId>
-                <version>${version.junit}</version>
+                <groupId>org.junit.vintage</groupId>
+                <artifactId>junit-vintage-engine</artifactId>
+                <version>${version.junit.vintage}</version>
             </dependency>
             <dependency>
                 <groupId>org.junit.jupiter</groupId>
                 <artifactId>junit-jupiter</artifactId>
                 <version>${version.junit5}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.junit.jupiter</groupId>
+                <artifactId>junit-jupiter-api</artifactId>
+                <version>${version.jupiter.api}</version>
             </dependency>
             <dependency>
                 <groupId>org.junit.platform</groupId>
