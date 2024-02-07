@@ -50,6 +50,7 @@ import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
+import io.debezium.snapshot.SnapshotterService;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
 import io.debezium.util.Stopwatch;
@@ -92,11 +93,13 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     private OracleOffsetContext effectiveOffset;
     private int currentBatchSize;
     private long currentSleepTime;
+    private final SnapshotterService snapshotterService;
 
     public LogMinerStreamingChangeEventSource(OracleConnectorConfig connectorConfig,
                                               OracleConnection jdbcConnection, EventDispatcher<OraclePartition, TableId> dispatcher,
                                               ErrorHandler errorHandler, Clock clock, OracleDatabaseSchema schema,
-                                              Configuration jdbcConfig, LogMinerStreamingChangeEventSourceMetrics streamingMetrics) {
+                                              Configuration jdbcConfig, LogMinerStreamingChangeEventSourceMetrics streamingMetrics,
+                                              SnapshotterService snapshotterService) {
         this.jdbcConnection = jdbcConnection;
         this.dispatcher = dispatcher;
         this.clock = clock;
@@ -115,6 +118,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
         this.maxDelay = connectorConfig.getLogMiningMaxDelay();
         this.currentBatchSize = connectorConfig.getLogMiningBatchSizeDefault();
         this.currentSleepTime = connectorConfig.getLogMiningSleepTimeDefault().toMillis();
+        this.snapshotterService = snapshotterService;
 
         this.streamingMetrics.setBatchSize(this.currentBatchSize);
         this.streamingMetrics.setSleepTime(this.currentSleepTime);
@@ -140,7 +144,8 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
      */
     @Override
     public void execute(ChangeEventSourceContext context, OraclePartition partition, OracleOffsetContext offsetContext) {
-        if (!connectorConfig.getSnapshotMode().shouldStream()) {
+
+        if (!snapshotterService.getSnapshotter().shouldStream()) { // TODO check with DBZ-7308 if this can be moved up
             LOGGER.info("Streaming is not enabled in current configuration");
             return;
         }

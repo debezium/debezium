@@ -945,7 +945,7 @@ public abstract class CommonConnectorConfig {
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
             .withValidation((config, field, output) -> {
-                if (config.getString("snapshot.locking.mode").equalsIgnoreCase("custom") && config.getString(field, "").isEmpty()) {
+                if ("custom".equalsIgnoreCase(config.getString("snapshot.locking.mode")) && config.getString(field, "").isEmpty()) {
                     output.accept(field, "", "snapshot.locking.mode.custom.name cannot be empty when snapshot.locking.mode 'custom' is defined");
                     return 1;
                 }
@@ -970,7 +970,7 @@ public abstract class CommonConnectorConfig {
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
             .withValidation((config, field, output) -> {
-                if (config.getString(SNAPSHOT_QUERY_MODE).equalsIgnoreCase("custom") && config.getString(field, "").isEmpty()) {
+                if ("custom".equalsIgnoreCase(config.getString(SNAPSHOT_QUERY_MODE)) && config.getString(field, "").isEmpty()) {
                     output.accept(field, "", "snapshot.query.mode.custom.name cannot be empty when snapshot.query.mode 'custom' is defined");
                     return 1;
                 }
