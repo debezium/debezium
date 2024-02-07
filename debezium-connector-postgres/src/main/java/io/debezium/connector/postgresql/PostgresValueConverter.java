@@ -436,7 +436,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.TIME:
                 return data -> convertTime(column, fieldDefn, data);
             case PgOid.TIMESTAMP:
-                return ((ValueConverter) (data -> convertTimestampToLocalDateTime(column, fieldDefn, data))).and(super.converter(column, fieldDefn));
+                return super.converter(column, fieldDefn);
             case PgOid.TIMESTAMPTZ:
                 return data -> convertTimestampWithZone(column, fieldDefn, data);
             case PgOid.TIMETZ:
@@ -860,8 +860,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
         if (POSITIVE_INFINITY_OFFSET_DATE_TIME.equals(data)) {
             return "infinity";
-        }
-        else if (NEGATIVE_INFINITY_OFFSET_DATE_TIME.equals(data)) {
+        } else if (NEGATIVE_INFINITY_OFFSET_DATE_TIME.equals(data)) {
             return "-infinity";
         }
 
@@ -1045,29 +1044,6 @@ public class PostgresValueConverter extends JdbcValueConverters {
         }
 
         return Optional.empty();
-    }
-
-    protected Object convertTimestampToLocalDateTime(Column column, Field fieldDefn, Object data) {
-        if (data == null) {
-            return null;
-        }
-        if (!(data instanceof Timestamp)) {
-            return data;
-        }
-        final Timestamp timestamp = (Timestamp) data;
-
-        if (POSITIVE_INFINITY_TIMESTAMP.equals(timestamp)) {
-            return POSITIVE_INFINITY_LOCAL_DATE_TIME;
-        }
-        else if (NEGATIVE_INFINITY_TIMESTAMP.equals(timestamp)) {
-            return NEGATIVE_INFINITY_LOCAL_DATE_TIME;
-        }
-
-        final Instant instant = timestamp.toInstant();
-        final LocalDateTime utcTime = LocalDateTime
-                .ofInstant(instant, ZoneOffset.systemDefault());
-
-        return utcTime;
     }
 
     @Override
