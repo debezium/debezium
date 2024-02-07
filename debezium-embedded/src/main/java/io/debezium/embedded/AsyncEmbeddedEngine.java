@@ -390,8 +390,9 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
             throws ExecutionException {
         LOGGER.debug("Starting tasks polling.");
         final ExecutorCompletionService<Void> taskCompletionService = new ExecutorCompletionService(taskService);
+        final String processorClassName = selectRecordProcessor();
         for (EngineSourceTask task : tasks) {
-            final RecordProcessor processor = selectRecordProcessor();
+            final RecordProcessor processor = createRecordProcessor(processorClassName);
             processor.initialize(recordService, transformations, new SourceRecordCommitter(task));
             pollingFutures.add(taskCompletionService.submit(new PollRecords(task, processor, state)));
         }
@@ -408,41 +409,68 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
     }
 
     /**
-     * Select and instantiate {@link RecordProcessor} based on the user configuration.
+     * Select {@link RecordProcessor} class based on the user configuration.
      *
-     * @return {@link RecordProcessor} instance which will be used for processing the records.
+     * @return Name of the class which should be used for creating {@link RecordProcessor} instances.
      */
-    private RecordProcessor selectRecordProcessor() {
+    private String selectRecordProcessor() {
         // If the change consumer is provided, it has precedence over the consumer.
         if (handler != null && recordConverter == null) {
-            LOGGER.debug("Using {} processor", ParallelSmtBatchProcessor.class.getName());
-            return new ParallelSmtBatchProcessor((DebeziumEngine.ChangeConsumer<SourceRecord>) handler);
+            LOGGER.info("Using {} processor", ParallelSmtBatchProcessor.class.getName());
+            return ParallelSmtBatchProcessor.class.getName();
         }
         if (handler != null && recordConverter != null) {
-            LOGGER.debug("Using {} processor", ParallelSmtAndConvertBatchProcessor.class.getName());
-            return new ParallelSmtAndConvertBatchProcessor(handler, recordConverter);
+            LOGGER.info("Using {} processor", ParallelSmtAndConvertBatchProcessor.class.getName());
+            return ParallelSmtAndConvertBatchProcessor.class.getName();
         }
 
         // Only Consumer is used, records may be processed non-sequentially.
         final RecordProcessingOrder processingOrder = RecordProcessingOrder.parse(this.config.getString(AsyncEngineConfig.RECORD_PROCESSING_ORDER));
         if (processingOrder == RecordProcessingOrder.ORDERED && recordConverter == null) {
-            LOGGER.debug("Using {} processor", ParallelSmtConsumerProcessor.class.getName());
-            return new ParallelSmtConsumerProcessor((Consumer<SourceRecord>) consumer);
+            LOGGER.info("Using {} processor", ParallelSmtConsumerProcessor.class.getName());
+            return ParallelSmtConsumerProcessor.class.getName();
         }
         if (processingOrder == RecordProcessingOrder.ORDERED && recordConverter != null) {
-            LOGGER.debug("Using {} processor", ParallelSmtAndConvertConsumerProcessor.class.getName());
-            return new ParallelSmtAndConvertConsumerProcessor(consumer, recordConverter);
+            LOGGER.info("Using {} processor", ParallelSmtAndConvertConsumerProcessor.class.getName());
+            return ParallelSmtAndConvertConsumerProcessor.class.getName();
         }
         if (processingOrder == RecordProcessingOrder.UNORDERED && recordConverter == null) {
-            LOGGER.debug("Using {} processor", ParallelSmtAsyncConsumerProcessor.class.getName());
-            return new ParallelSmtAsyncConsumerProcessor((Consumer<SourceRecord>) consumer);
+            LOGGER.info("Using {} processor", ParallelSmtAsyncConsumerProcessor.class.getName());
+            return ParallelSmtAsyncConsumerProcessor.class.getName();
         }
         if (processingOrder == RecordProcessingOrder.UNORDERED && recordConverter != null) {
-            LOGGER.debug("Using {} processor", ParallelSmtAndConvertAsyncConsumerProcessor.class.getName());
-            return new ParallelSmtAndConvertAsyncConsumerProcessor(consumer, recordConverter);
+            LOGGER.info("Using {} processor", ParallelSmtAndConvertAsyncConsumerProcessor.class.getName());
+            return ParallelSmtAndConvertAsyncConsumerProcessor.class.getName();
         }
 
         throw new IllegalStateException("Unable to select RecordProcessor, this should never happen.");
+    }
+
+    /**
+     * Instantiate {@link RecordProcessor} based on the class name deremined in {@link AsyncEmbeddedEngine#selectRecordProcessor()} method.
+     *
+     * @return {@link RecordProcessor} instance which will be used for processing the records.
+     */
+    private RecordProcessor createRecordProcessor(String processorClassName) {
+        if (ParallelSmtBatchProcessor.class.getName().equals(processorClassName)) {
+            return new ParallelSmtBatchProcessor((DebeziumEngine.ChangeConsumer<SourceRecord>) handler);
+        }
+        if (ParallelSmtAndConvertBatchProcessor.class.getName().equals(processorClassName)) {
+            return new ParallelSmtAndConvertBatchProcessor(handler, recordConverter);
+        }
+        if (ParallelSmtConsumerProcessor.class.getName().equals(processorClassName)) {
+            return new ParallelSmtConsumerProcessor((Consumer<SourceRecord>) consumer);
+        }
+        if (ParallelSmtAndConvertConsumerProcessor.class.getName().equals(processorClassName)) {
+            return new ParallelSmtAndConvertConsumerProcessor(consumer, recordConverter);
+        }
+        if (ParallelSmtAsyncConsumerProcessor.class.getName().equals(processorClassName)) {
+            return new ParallelSmtAsyncConsumerProcessor((Consumer<SourceRecord>) consumer);
+        }
+        if (ParallelSmtAndConvertAsyncConsumerProcessor.class.getName().equals(processorClassName)) {
+            return new ParallelSmtAndConvertAsyncConsumerProcessor(consumer, recordConverter);
+        }
+        throw new IllegalStateException("Unable to create RecordProcessor instance, this should never happen.");
     }
 
     /**
