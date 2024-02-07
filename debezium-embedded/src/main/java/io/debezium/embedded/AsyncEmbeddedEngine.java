@@ -68,7 +68,7 @@ import io.debezium.util.DelayStrategy;
 
 /**
  * Implementation of {@link DebeziumEngine} which allows to run multiple tasks in parallel and also
- * allows to process part of whole record processing pipeline in parallel.
+ * allows to process part or whole record processing pipeline in parallel.
  * For more detail see DDD-7 (TODO link).
  *
  * @author vjuranek
@@ -815,10 +815,11 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
     }
 
     /**
-     * Generalization of {@link DebeziumEngine.ChangeConsumer}, giving complete control over the records processing.
+     * Generalization of {@link DebeziumEngine.ChangeConsumer}, giving the user complete control over the whole records processing chain.
      * Processor is initialized with all the required engine internals, like chain of transformations, to be able to implement whole record processing chain.
-     * Implementations can provide e.g. serial or parallel processing of the change records.
-     * Any exception thrown during processing the records it propagated to the caller.
+     * Implementations can provide serial or parallel processing of the change records or anything in between, eventually also add any other kind of manipulation
+     * with the records.
+     * Any exception thrown during the processing of the records it propagated to the caller.
      */
     @Incubating
     public interface RecordProcessor<R> {
@@ -876,7 +877,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
 
     /**
      * {@link Callable} which in the loop polls the connector for the records.
-     * If there are any records, they are passed to provided processor.
+     * If there are any records, they are passed to the provided processor.
      * The {@link Callable} is {@link RetryingCallable} - if the {@link org.apache.kafka.connect.errors.RetriableException}
      * is thrown, the {@link Callable} is executed again according to configured {@link DelayStrategy} and number of retries.
      */
