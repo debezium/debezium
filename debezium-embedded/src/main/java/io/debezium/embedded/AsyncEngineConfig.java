@@ -17,15 +17,6 @@ public interface AsyncEngineConfig extends EmbeddedEngineConfig {
     int AVAILABLE_CORES = Runtime.getRuntime().availableProcessors();
 
     /**
-     * An optional field that specifies the maximum amount of time to wait for a task lifecycle operation, i.e. for starting and stopping the task.
-     */
-    Field TASK_MANAGEMENT_TIMEOUT_MS = Field.create("task.management.timeout.ms")
-            .withDescription("Time to wait for task's lifecycle management operations (starting and stopping), given in milliseconds. "
-                    + "Defaults to 5 seconds (5000 ms).")
-            .withDefault(5_000L)
-            .withValidation(Field::isPositiveInteger);
-
-    /**
      * An optional field that specifies the number of threads to be used for processing CDC records.
      */
     Field RECORD_PROCESSING_THREADS = Field.create("record.processing.threads")
@@ -71,12 +62,22 @@ public interface AsyncEngineConfig extends EmbeddedEngineConfig {
             .withValidation(Field::isBoolean);
 
     /**
+     * An internal field that specifies the maximum amount of time to wait for a task lifecycle operation, i.e. for starting and stopping the task.
+     */
+    Field TASK_MANAGEMENT_TIMEOUT_MS = Field.createInternal("task.management.timeout.ms")
+            .withDescription("Time to wait for task's lifecycle management operations (starting and stopping), given in milliseconds. "
+                    + "Defaults to 2 minutes (120_000 ms).")
+            .withDefault(120_000L)
+            .withValidation(Field::isPositiveInteger);
+
+    /**
      * The array of all exposed fields.
      */
     Field.Set ALL_FIELDS = EmbeddedEngineConfig.ALL_FIELDS.with(
-            TASK_MANAGEMENT_TIMEOUT_MS,
             RECORD_PROCESSING_SHUTDOWN_TIMEOUT_MS,
             RECORD_PROCESSING_THREADS,
             RECORD_PROCESSING_SEQUENTIALLY,
-            RECORD_PROCESSING_WITH_SERIAL_CONSUMER);
+            RECORD_PROCESSING_WITH_SERIAL_CONSUMER,
+            // internal fields
+            TASK_MANAGEMENT_TIMEOUT_MS);
 }
