@@ -16,6 +16,7 @@ import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.logminer.events.EventType;
+import io.debezium.connector.oracle.logminer.parser.LogMinerColumnResolverDmlParser;
 import io.debezium.connector.oracle.logminer.parser.LogMinerDmlEntry;
 import io.debezium.connector.oracle.logminer.parser.LogMinerDmlParser;
 import io.debezium.doc.FixFor;
@@ -35,11 +36,12 @@ public class LogMinerDmlParserTest {
     public TestRule skipRule = new SkipTestDependingOnAdapterNameRule();
 
     private LogMinerDmlParser fastDmlParser;
+    private LogMinerColumnResolverDmlParser columnResolverDmlParser;
 
     @Before
     public void beforeEach() throws Exception {
-        // Create LogMinerDmlParser
         fastDmlParser = new LogMinerDmlParser();
+        columnResolverDmlParser = new LogMinerColumnResolverDmlParser();
     }
 
     // Oracle's generated SQL avoids common spacing patterns such as spaces between column values or values
@@ -530,6 +532,94 @@ public class LogMinerDmlParserTest {
         assertThat(entry.getOldValues()).hasSize(2);
         assertThat(entry.getOldValues()[0]).isEqualTo("I||am");
         assertThat(entry.getOldValues()[1]).isEqualTo("test||case");
+        assertThat(entry.getNewValues()).isEmpty();
+    }
+
+    @Test
+    @FixFor("DBZ-3401")
+    public void shouldParseInsertOnSchemaVersionMismatch() throws Exception {
+        final Table table = Table.editor()
+                .tableId(TableId.parse("DEBEZIUM.DBZ3401"))
+                .addColumn(Column.editor().name("ID").create())
+                .addColumn(Column.editor().name("DATA").create())
+                .create();
+
+        // Test columns in forward order
+        String sql = "insert into \"DEBEZIUM\".\"DBZ3401\" (\"COL 1\",\"COL 2\") values (HEXTORAW('a'),HEXTORAW('b'));";
+        LogMinerDmlEntry entry = columnResolverDmlParser.parse(sql, table);
+        assertThat(entry.getEventType()).isEqualTo(EventType.INSERT);
+        assertThat(entry.getOldValues()).isEmpty();
+        assertThat(entry.getNewValues()).hasSize(2);
+        assertThat(entry.getNewValues()[0]).isEqualTo("HEXTORAW('a')");
+        assertThat(entry.getNewValues()[1]).isEqualTo("HEXTORAW('b')");
+
+        // Test columns in reverse order
+        sql = "insert into \"DEBEZIUM\".\"DBZ3401\" (\"COL 2\",\"COL 1\") values (HEXTORAW('b'),HEXTORAW('a'));";
+        entry = columnResolverDmlParser.parse(sql, table);
+        assertThat(entry.getEventType()).isEqualTo(EventType.INSERT);
+        assertThat(entry.getOldValues()).isEmpty();
+        assertThat(entry.getNewValues()).hasSize(2);
+        assertThat(entry.getNewValues()[0]).isEqualTo("HEXTORAW('a')");
+        assertThat(entry.getNewValues()[1]).isEqualTo("HEXTORAW('b')");
+    }
+
+    @Test
+    @FixFor("DBZ-3401")
+    public void shouldParseUpdateOnSchemaVersionMismatch() throws Exception {
+        final Table table = Table.editor()
+                .tableId(TableId.parse("DEBEZIUM.DBZ3401"))
+                .addColumn(Column.editor().name("ID").create())
+                .addColumn(Column.editor().name("DATA").create())
+                .create();
+
+        // Test columns in forward order
+        String sql = "update \"DEBEZIUM\".\"DBZ3401\" set \"COL 1\" = HEXTORAW('c'), \"COL 2\" = HEXTORAW('d') where \"COL 1\" = HEXTORAW('a') and \"COL 2\" = HEXTORAW('b');";
+        LogMinerDmlEntry entry = columnResolverDmlParser.parse(sql, table);
+        assertThat(entry.getEventType()).isEqualTo(EventType.UPDATE);
+        assertThat(entry.getOldValues()).hasSize(2);
+        assertThat(entry.getOldValues()[0]).isEqualTo("HEXTORAW('a')");
+        assertThat(entry.getOldValues()[1]).isEqualTo("HEXTORAW('b')");
+        assertThat(entry.getNewValues()).hasSize(2);
+        assertThat(entry.getNewValues()[0]).isEqualTo("HEXTORAW('c')");
+        assertThat(entry.getNewValues()[1]).isEqualTo("HEXTORAW('d')");
+
+        // Test columns in reverse order
+        sql = "update \"DEBEZIUM\".\"DBZ3401\" set \"COL 2\" = HEXTORAW('d'), \"COL 1\" = HEXTORAW('c') where \"COL 2\" = HEXTORAW('b') and \"COL 1\" = HEXTORAW('a');";
+        entry = columnResolverDmlParser.parse(sql, table);
+        assertThat(entry.getEventType()).isEqualTo(EventType.UPDATE);
+        assertThat(entry.getOldValues()).hasSize(2);
+        assertThat(entry.getOldValues()[0]).isEqualTo("HEXTORAW('a')");
+        assertThat(entry.getOldValues()[1]).isEqualTo("HEXTORAW('b')");
+        assertThat(entry.getNewValues()).hasSize(2);
+        assertThat(entry.getNewValues()[0]).isEqualTo("HEXTORAW('c')");
+        assertThat(entry.getNewValues()[1]).isEqualTo("HEXTORAW('d')");
+    }
+
+    @Test
+    @FixFor("DBZ-3401")
+    public void shouldParseDeleteOnSchemaVersionMismatch() throws Exception {
+        final Table table = Table.editor()
+                .tableId(TableId.parse("DEBEZIUM.DBZ3401"))
+                .addColumn(Column.editor().name("ID").create())
+                .addColumn(Column.editor().name("DATA").create())
+                .create();
+
+        // Test where columns in forward order
+        String sql = "delete from \"DEBEZIUM\".\"DBZ3401\" where \"COL 1\" = HEXTORAW('a') and \"COL 2\" = HEXTORAW('b');";
+        LogMinerDmlEntry entry = columnResolverDmlParser.parse(sql, table);
+        assertThat(entry.getEventType()).isEqualTo(EventType.DELETE);
+        assertThat(entry.getOldValues()).hasSize(2);
+        assertThat(entry.getOldValues()[0]).isEqualTo("HEXTORAW('a')");
+        assertThat(entry.getOldValues()[1]).isEqualTo("HEXTORAW('b')");
+        assertThat(entry.getNewValues()).isEmpty();
+
+        // Test where columns in reverse order
+        sql = "delete from \"DEBEZIUM\".\"DBZ3401\" where \"COL 2\" = HEXTORAW('b') and \"COL 1\" = HEXTORAW('a');";
+        entry = columnResolverDmlParser.parse(sql, table);
+        assertThat(entry.getEventType()).isEqualTo(EventType.DELETE);
+        assertThat(entry.getOldValues()).hasSize(2);
+        assertThat(entry.getOldValues()[0]).isEqualTo("HEXTORAW('a')");
+        assertThat(entry.getOldValues()[1]).isEqualTo("HEXTORAW('b')");
         assertThat(entry.getNewValues()).isEmpty();
     }
 }

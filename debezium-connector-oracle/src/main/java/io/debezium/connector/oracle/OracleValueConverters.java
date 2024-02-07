@@ -9,6 +9,7 @@ import static io.debezium.util.NumberConversions.BYTE_FALSE;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
 import java.sql.Blob;
 import java.sql.Clob;
 import java.sql.SQLException;
@@ -48,6 +49,7 @@ import oracle.jdbc.OracleTypes;
 import oracle.sql.BINARY_DOUBLE;
 import oracle.sql.BINARY_FLOAT;
 import oracle.sql.CHAR;
+import oracle.sql.CharacterSet;
 import oracle.sql.DATE;
 import oracle.sql.INTERVALDS;
 import oracle.sql.INTERVALYM;
@@ -114,6 +116,7 @@ public class OracleValueConverters extends JdbcValueConverters {
     private final OracleConnectorConfig.IntervalHandlingMode intervalHandlingMode;
     private final byte[] unavailableValuePlaceholderBinary;
     private final String unavailableValuePlaceholderString;
+    private final CharacterSet nationalCharacterSet;
 
     public OracleValueConverters(OracleConnectorConfig config, OracleConnection connection) {
         super(config.getDecimalMode(), config.getTemporalPrecisionMode(), ZoneOffset.UTC, null, null, config.binaryHandlingMode());
@@ -122,6 +125,7 @@ public class OracleValueConverters extends JdbcValueConverters {
         this.intervalHandlingMode = config.getIntervalHandlingMode();
         this.unavailableValuePlaceholderBinary = config.getUnavailableValuePlaceholder();
         this.unavailableValuePlaceholderString = new String(config.getUnavailableValuePlaceholder());
+        this.nationalCharacterSet = connection.getNationalCharacterSet();
     }
 
     public byte[] getUnavailableValuePlaceholderBinary() {
@@ -309,6 +313,9 @@ public class OracleValueConverters extends JdbcValueConverters {
             else if (UnistrHelper.isUnistrFunction(s)) {
                 return UnistrHelper.convert(s);
             }
+            else if (isHexToRawFunctionCall(s)) {
+                data = convertHexToRawFunctionToString(column, s);
+            }
         }
 
         if (data == UNAVAILABLE_VALUE) {
@@ -391,6 +398,10 @@ public class OracleValueConverters extends JdbcValueConverters {
             return ((Double) data).floatValue();
         }
         else if (data instanceof String) {
+            final String s = (String) data;
+            if (isHexToRawFunctionCall(s)) {
+                data = String.valueOf(convertHexToRawFunctionToNumber(column, s));
+            }
             return Float.parseFloat((String) data);
         }
 
@@ -408,6 +419,10 @@ public class OracleValueConverters extends JdbcValueConverters {
             }
         }
         else if (data instanceof String) {
+            final String s = (String) data;
+            if (isHexToRawFunctionCall(s)) {
+                data = String.valueOf(convertHexToRawFunctionToNumber(column, s));
+            }
             return Double.parseDouble((String) data);
         }
 
@@ -430,6 +445,10 @@ public class OracleValueConverters extends JdbcValueConverters {
         }
         else if (data instanceof String) {
             // LogMiner
+            final String s = (String) data;
+            if (isHexToRawFunctionCall(s)) {
+                data = convertHexToRawFunctionToNumber(column, s);
+            }
             data = toBigDecimal(column, fieldDefn, data);
         }
 
@@ -456,6 +475,12 @@ public class OracleValueConverters extends JdbcValueConverters {
                 throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
             }
         }
+        else if (data instanceof String) {
+            final String s = (String) data;
+            if (isHexToRawFunctionCall(s)) {
+                data = convertHexToRawFunctionToNumber(column, s);
+            }
+        }
 
         return convertTinyInt(column, fieldDefn, data);
     }
@@ -467,6 +492,12 @@ public class OracleValueConverters extends JdbcValueConverters {
             }
             catch (SQLException e) {
                 throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
+            }
+        }
+        else if (data instanceof String) {
+            final String s = (String) data;
+            if (isHexToRawFunctionCall(s)) {
+                data = convertHexToRawFunctionToNumber(column, s);
             }
         }
 
@@ -482,6 +513,12 @@ public class OracleValueConverters extends JdbcValueConverters {
                 throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
             }
         }
+        else if (data instanceof String) {
+            final String s = (String) data;
+            if (isHexToRawFunctionCall(s)) {
+                data = convertHexToRawFunctionToNumber(column, s);
+            }
+        }
 
         return super.convertInteger(column, fieldDefn, data);
     }
@@ -493,6 +530,12 @@ public class OracleValueConverters extends JdbcValueConverters {
             }
             catch (SQLException e) {
                 throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
+            }
+        }
+        else if (data instanceof String) {
+            final String s = (String) data;
+            if (isHexToRawFunctionCall(s)) {
+                data = convertHexToRawFunctionToNumber(column, s);
             }
         }
 
@@ -514,6 +557,10 @@ public class OracleValueConverters extends JdbcValueConverters {
             return ((BigDecimal) data).byteValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
         }
         if (data instanceof String) {
+            final String s = (String) data;
+            if (isHexToRawFunctionCall(s)) {
+                data = convertHexToRawFunctionToString(column, s);
+            }
             return Byte.parseByte((String) data) == 0 ? Boolean.FALSE : Boolean.TRUE;
         }
         if (data instanceof NUMBER) {
@@ -541,7 +588,13 @@ public class OracleValueConverters extends JdbcValueConverters {
                 r.deliver(NumberConversions.getByte((boolean) data));
             }
             else if (data instanceof String) {
-                r.deliver(Byte.parseByte((String) data));
+                final String s = (String) data;
+                if (isHexToRawFunctionCall(s)) {
+                    r.deliver(Byte.parseByte(String.valueOf(convertHexToRawFunctionToNumber(column, s))));
+                }
+                else {
+                    r.deliver(Byte.parseByte(s));
+                }
             }
         });
     }
@@ -591,6 +644,26 @@ public class OracleValueConverters extends JdbcValueConverters {
     }
 
     @Override
+    protected Object convertDateToEpochDays(Column column, Field fieldDefn, Object data) {
+        if (data instanceof String) {
+            if (isHexToRawFunctionCall((String) data)) {
+                data = convertHexToRawFunctionToString(column, (String) data);
+            }
+        }
+        return super.convertDateToEpochDays(column, fieldDefn, data);
+    }
+
+    @Override
+    protected Object convertDateToEpochDaysAsDate(Column column, Field fieldDefn, Object data) {
+        if (data instanceof String) {
+            if (isHexToRawFunctionCall((String) data)) {
+                data = convertHexToRawFunctionToString(column, (String) data);
+            }
+        }
+        return super.convertDateToEpochDaysAsDate(column, fieldDefn, data);
+    }
+
+    @Override
     protected Object convertTimestampToEpochMillisAsDate(Column column, Field fieldDefn, Object data) {
         if (data instanceof String) {
             data = resolveTimestampStringAsInstant((String) data);
@@ -630,8 +703,11 @@ public class OracleValueConverters extends JdbcValueConverters {
     }
 
     private Instant resolveTimestampStringAsInstant(String data) {
-        LocalDateTime dateTime;
+        if (isHexToRawFunctionCall(data)) {
+            return convertHexToRawFunctionToTimestamp(data).toInstant();
+        }
 
+        LocalDateTime dateTime;
         final Matcher toTimestampMatcher = TO_TIMESTAMP.matcher(data);
         if (toTimestampMatcher.matches()) {
             String dateText = toTimestampMatcher.group(1);
@@ -657,10 +733,16 @@ public class OracleValueConverters extends JdbcValueConverters {
     @Override
     protected Object convertTimestampWithZone(Column column, Field fieldDefn, Object data) {
         if (data instanceof String) {
-            final Matcher toTimestampTzMatcher = TO_TIMESTAMP_TZ.matcher((String) data);
-            if (toTimestampTzMatcher.matches()) {
-                String dateText = toTimestampTzMatcher.group(1);
-                data = ZonedDateTime.from(TIMESTAMP_TZ_FORMATTER.parse(dateText.trim()));
+            String s = (String) data;
+            if (isHexToRawFunctionCall(s)) {
+                data = convertHexToRawFunctionToTimestamp(s);
+            }
+            else {
+                final Matcher toTimestampTzMatcher = TO_TIMESTAMP_TZ.matcher((String) data);
+                if (toTimestampTzMatcher.matches()) {
+                    String dateText = toTimestampTzMatcher.group(1);
+                    data = ZonedDateTime.from(TIMESTAMP_TZ_FORMATTER.parse(dateText.trim()));
+                }
             }
         }
         final Object javaData = fromOracleTimeClasses(column, data);
@@ -697,8 +779,14 @@ public class OracleValueConverters extends JdbcValueConverters {
             }
             else if (data instanceof String) {
                 String value = (String) data;
-                // Example: TO_YMINTERVAL('-03-06')
-                INTERVALYM interval = new INTERVALYM(value.substring(15, value.length() - 2));
+                final INTERVALYM interval;
+                if (isHexToRawFunctionCall(value)) {
+                    interval = new INTERVALYM(convertHexToRawFunctionToByteArray(value));
+                }
+                else {
+                    // Example: TO_YMINTERVAL('-03-06')
+                    interval = new INTERVALYM(value.substring(15, value.length() - 2));
+                }
                 convertOracleIntervalYearMonth(interval, r);
             }
         });
@@ -744,8 +832,14 @@ public class OracleValueConverters extends JdbcValueConverters {
             }
             else if (data instanceof String) {
                 String value = (String) data;
-                // Exmaple: TO_DSINTERVAL('-001 02:03:04.56')
-                INTERVALDS interval = new INTERVALDS(value.substring(15, value.length() - 2));
+                INTERVALDS interval;
+                if (isHexToRawFunctionCall(value)) {
+                    interval = new INTERVALDS(convertHexToRawFunctionToByteArray(value));
+                }
+                else {
+                    // Example: TO_DSINTERVAL('-001 02:03:04.56')
+                    interval = new INTERVALDS(value.substring(15, value.length() - 2));
+                }
                 convertOracleIntervalDaySecond(interval, r);
             }
         });
@@ -803,4 +897,102 @@ public class OracleValueConverters extends JdbcValueConverters {
     private boolean isHexToRawFunctionCall(String value) {
         return value != null && value.startsWith(HEXTORAW_FUNCTION_START) && value.endsWith(HEXTORAW_FUNCTION_END);
     }
+
+    /**
+     * Takes the {@code HEXTORAW} function call and argument and returns a byte array.
+     *
+     * @param value the {@code HEXTORAW} function with argument, should not be {@code null}
+     * @return a byte array of the hex-to-raw function argument
+     */
+    private byte[] convertHexToRawFunctionToByteArray(String value) {
+        final String rawValue = getHexToRawHexString(value);
+        int len = rawValue.length();
+        byte[] data = new byte[len / 2];
+        for (int i = 0; i < len; i += 2) {
+            data[i / 2] = (byte) ((Character.digit(rawValue.charAt(i), 16) << 4)
+                    + Character.digit(rawValue.charAt(i + 1), 16));
+        }
+        return data;
+    }
+
+    /**
+     * Converts the supplied {@code HEXTORAW} function and argument to a string literal. This method supports
+     * all character data types, including the nationalized character set data types.
+     *
+     * @param column the column
+     * @param function the {@code HEXTORAW} function and argument
+     * @return the converted string value
+     */
+    private String convertHexToRawFunctionToString(Column column, String function) {
+        try {
+            switch (column.jdbcType()) {
+                case OracleTypes.NVARCHAR:
+                case OracleTypes.NCHAR:
+                    return new CHAR(convertHexToRawFunctionToByteArray(function), nationalCharacterSet).toString();
+                default:
+                    return new String(RAW.hexString2Bytes(getHexToRawHexString(function)), StandardCharsets.UTF_8);
+            }
+        }
+        catch (Exception e) {
+            throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
+        }
+    }
+
+    /**
+     * Converts the supplied {@code HEXTORAW} function and argument to a specific Oracle numeric data type.
+     *
+     * @param column the column
+     * @param data the {@code HEXTORAW} function and argument
+     * @return the converted numeric data type
+     */
+    private Object convertHexToRawFunctionToNumber(Column column, String data) {
+        try {
+            switch (column.jdbcType()) {
+                case OracleTypes.BINARY_FLOAT:
+                    return new BINARY_FLOAT(convertHexToRawFunctionToByteArray(data)).stringValue();
+                case OracleTypes.BINARY_DOUBLE:
+                    return new BINARY_DOUBLE(convertHexToRawFunctionToByteArray(data)).stringValue();
+                default:
+                    return new NUMBER(convertHexToRawFunctionToByteArray(data)).stringValue();
+            }
+        }
+        catch (Exception e) {
+            throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
+        }
+    }
+
+    /**
+     * Convert the {@code HEXTORAW} timestamp function to a {@link ZonedDateTime}.
+     *
+     * @param value the hex-to-raw function and argument
+     * @return a zoned date time
+     * @throws DebeziumException if the conversion failed
+     */
+    private ZonedDateTime convertHexToRawFunctionToTimestamp(String value) {
+        try {
+            // Convert the HEXTORAW function into a byte array
+            final byte[] data = convertHexToRawFunctionToByteArray(value);
+
+            // Calculate the raw value and its length
+            if (data.length == 7 || data.length == 11) {
+                // 7 bytes (14 character) values represent dates, with optional hours/minute/second values
+                // 11 bytes (22 characters) values represent timestamps, no explicit timezone data
+                return new TIMESTAMP(data).toLocalDateTime().atOffset(ZoneOffset.UTC).toZonedDateTime();
+            }
+            else if (data.length == 13) {
+                // 13 bytes (26 characters) values represent timestamps with timezone information
+                // data[11] - offset hours, offset by 20, i.e. subtract 20
+                // data[12] - offset minutes, offset by 60, i.e. subtract 60
+                final ZoneOffset offset = ZoneOffset.ofHoursMinutes(data[11] - 20, data[12] - 60);
+                return new TIMESTAMPTZ(data).toLocalDateTime().atOffset(offset).toZonedDateTime();
+            }
+            else {
+                throw new DebeziumException("The HEXTORAW value '" + value + "' cannot be converted.");
+            }
+        }
+        catch (SQLException e) {
+            throw new DebeziumException("Failed to convert HEXTORAW value '" + value + "' to timestamp.");
+        }
+    }
+
 }

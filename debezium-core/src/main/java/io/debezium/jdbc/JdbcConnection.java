@@ -1184,13 +1184,13 @@ public class JdbcConnection implements AutoCloseable {
                     TableId tableId = new TableId(catalogName, schemaName, tableName);
                     if (tableFilter == null || tableFilter.isIncluded(tableId)) {
                         tableIds.add(tableId);
-                        attributesByTable.putAll(getAttributeDetails(tableId));
+                        attributesByTable.putAll(getAttributeDetails(tableId, tableType));
                     }
                 }
                 else {
                     TableId tableId = new TableId(catalogName, schemaName, tableName);
                     viewIds.add(tableId);
-                    attributesByTable.putAll(getAttributeDetails(tableId));
+                    attributesByTable.putAll(getAttributeDetails(tableId, tableType));
                 }
             }
         }
@@ -1279,7 +1279,7 @@ public class JdbcConnection implements AutoCloseable {
         return columnsByTable;
     }
 
-    protected Map<TableId, List<Attribute>> getAttributeDetails(TableId tableId) {
+    protected Map<TableId, List<Attribute>> getAttributeDetails(TableId tableId, String tableType) {
         // no-op, allows connectors to populate table attributes during relational table creation
         return Collections.emptyMap();
     }
