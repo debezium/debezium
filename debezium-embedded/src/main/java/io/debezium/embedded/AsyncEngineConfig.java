@@ -41,13 +41,13 @@ public interface AsyncEngineConfig extends EmbeddedEngineConfig {
      * This option doesn't have any effect when {@link io.debezium.engine.DebeziumEngine.ChangeConsumer} is provided to the engine. In such case the records are always
      * processed sequentially.
      */
-    Field RECORD_PROCESSING_SEQUENTIALLY = Field.create("record.processing.sequentially")
-            .withDescription("Determines how the records should be produced. Sequential processing means (setting to `true`, the default) that the records are "
-                    + "produced in the same order as they were obtained from the database. Non-sequential processing means that the records can be produced in a different "
-                    + "order than the original one. Non-sequential approach gives better throughput, as the records are produced immediately once the SMTs and serialization of "
+    Field RECORD_PROCESSING_ORDER = Field.create("record.processing.order")
+            .withDescription("Determines how the records should be produced. "
+                    + "'ORDERED' (the default) means sequential processing, i.e. that the records are produced in the same order as they were obtained from the database. "
+                    + "'UNORDERED' means non-sequential processing, i.e. the records can be produced in a different order than the original one. "
+                    + "Non-sequential approach gives better throughput, as the records are produced immediately once the SMTs and serialization of "
                     + "the message is done, without waiting of other records. This option doesn't have any effect when ChangeConsumer is provided to the engine.")
-            .withDefault(true)
-            .withValidation(Field::isBoolean);
+            .withDefault("ORDERED");
 
     /**
      * An optional field that specifies if the default {@link io.debezium.engine.DebeziumEngine.ChangeConsumer} should be created for consuming records or not.
@@ -78,7 +78,7 @@ public interface AsyncEngineConfig extends EmbeddedEngineConfig {
     Field.Set ALL_FIELDS = EmbeddedEngineConfig.ALL_FIELDS.with(
             RECORD_PROCESSING_SHUTDOWN_TIMEOUT_MS,
             RECORD_PROCESSING_THREADS,
-            RECORD_PROCESSING_SEQUENTIALLY,
+            RECORD_PROCESSING_ORDER,
             RECORD_PROCESSING_WITH_SERIAL_CONSUMER,
             // internal fields
             TASK_MANAGEMENT_TIMEOUT_MS);

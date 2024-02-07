@@ -537,7 +537,7 @@ public class AsyncEmbeddedEngineTest {
         props.setProperty(WorkerConfig.OFFSET_COMMIT_INTERVAL_MS_CONFIG, "0");
         props.setProperty(FileStreamSourceConnector.FILE_CONFIG, TEST_FILE_PATH.toAbsolutePath().toString());
         props.setProperty(FileStreamSourceConnector.TOPIC_CONFIG, "testTopic");
-        props.setProperty(AsyncEngineConfig.RECORD_PROCESSING_SEQUENTIALLY.name(), "true");
+        props.setProperty(AsyncEngineConfig.RECORD_PROCESSING_ORDER.name(), "ORDERED");
 
         runEngineBasicLifecycleWithConsumer(props);
     }
@@ -552,7 +552,7 @@ public class AsyncEmbeddedEngineTest {
         props.setProperty(WorkerConfig.OFFSET_COMMIT_INTERVAL_MS_CONFIG, "0");
         props.setProperty(FileStreamSourceConnector.FILE_CONFIG, TEST_FILE_PATH.toAbsolutePath().toString());
         props.setProperty(FileStreamSourceConnector.TOPIC_CONFIG, "testTopic");
-        props.setProperty(AsyncEngineConfig.RECORD_PROCESSING_SEQUENTIALLY.name(), "false");
+        props.setProperty(AsyncEngineConfig.RECORD_PROCESSING_ORDER.name(), "UNORDERED");
 
         runEngineBasicLifecycleWithConsumer(props);
     }

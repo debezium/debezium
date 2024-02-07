@@ -117,9 +117,13 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         this.connectorCallback = Optional.ofNullable(connectorCallback);
         this.recordConverter = recordConverter;
 
-        // Ensure either user ChangeConsumer or Consumer is provided.
+        // Ensure either user ChangeConsumer or Consumer is provided and validate supported records ordering is provided when relevant.
         if (this.handler == null & this.consumer == null) {
             throw new DebeziumException("Either java.util.function.Consumer or DebeziumEngine.ChangeConsumer must be specified.");
+        }
+        if (this.handler == null && RecordProcessingOrder.parse(this.config.getString(AsyncEngineConfig.RECORD_PROCESSING_ORDER)) == null) {
+            throw new DebeziumException(
+                    String.format("'%s' is not a valid 'record.processing.order' options", this.config.getString(AsyncEngineConfig.RECORD_PROCESSING_ORDER)));
         }
 
         // Create thread pools for executing tasks and record pipelines.
@@ -423,20 +427,20 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         }
 
         // Only Consumer is used, records may be processed non-sequentially.
-        final boolean processSequentially = config.getBoolean(AsyncEngineConfig.RECORD_PROCESSING_SEQUENTIALLY);
-        if (processSequentially && recordConverter == null) {
+        final RecordProcessingOrder processingOrder = RecordProcessingOrder.parse(this.config.getString(AsyncEngineConfig.RECORD_PROCESSING_ORDER));
+        if (processingOrder == RecordProcessingOrder.ORDERED && recordConverter == null) {
             LOGGER.debug("Using {} processor", ParallelSmtConsumerProcessor.class.getName());
             return new ParallelSmtConsumerProcessor((Consumer<SourceRecord>) consumer);
         }
-        if (processSequentially && recordConverter != null) {
+        if (processingOrder == RecordProcessingOrder.ORDERED && recordConverter != null) {
             LOGGER.debug("Using {} processor", ParallelSmtAndConvertConsumerProcessor.class.getName());
             return new ParallelSmtAndConvertConsumerProcessor(consumer, recordConverter);
         }
-        if (!processSequentially && recordConverter == null) {
+        if (processingOrder == RecordProcessingOrder.UNORDERED && recordConverter == null) {
             LOGGER.debug("Using {} processor", ParallelSmtAsyncConsumerProcessor.class.getName());
             return new ParallelSmtAsyncConsumerProcessor((Consumer<SourceRecord>) consumer);
         }
-        if (!processSequentially && recordConverter != null) {
+        if (processingOrder == RecordProcessingOrder.UNORDERED && recordConverter != null) {
             LOGGER.debug("Using {} processor", ParallelSmtAndConvertAsyncConsumerProcessor.class.getName());
             return new ParallelSmtAndConvertAsyncConsumerProcessor(consumer, recordConverter);
         }
@@ -865,6 +869,40 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
             for (ProcessingCores processingCores : ProcessingCores.values()) {
                 if (processingCores.coresPlaceholder.equalsIgnoreCase(trimmedValue)) {
                     return processingCores;
+                }
+            }
+            return null;
+        }
+    }
+
+    /**
+     * Determines how the records will be processed.
+     * Currently only sequential processing ("ORDERED") and non-sequential processing ("UNORDERED") modes are supported.
+     */
+    private enum RecordProcessingOrder {
+        // All records will be processed in the same order in which were obtained from the database.
+        ORDERED("ORDERED"),
+        // Records will be processed in completely arbitrary order.
+        UNORDERED("UNORDERED");
+        // TODO
+        // Records with the same key will be processed in the same order in which they were obtained from the database, but records with different keys may be processed
+        // out of order.
+        // ORDERED_PER_KEY
+
+        private final String orderingPlaceholder;
+
+        RecordProcessingOrder(final String orderingPlaceholder) {
+            this.orderingPlaceholder = orderingPlaceholder;
+        }
+
+        public static RecordProcessingOrder parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            final String trimmedValue = value.trim();
+            for (RecordProcessingOrder processingOrder : RecordProcessingOrder.values()) {
+                if (processingOrder.orderingPlaceholder.equalsIgnoreCase(trimmedValue)) {
+                    return processingOrder;
                 }
             }
             return null;
