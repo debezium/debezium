@@ -702,7 +702,8 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         @Override
         public Builder<SourceRecord> notifying(final Consumer<SourceRecord> consumer) {
             this.consumer = consumer;
-            if (config.contains(AsyncEngineConfig.RECORD_PROCESSING_WITH_SERIAL_CONSUMER.name())) {
+            if (config.contains(AsyncEngineConfig.RECORD_PROCESSING_WITH_SERIAL_CONSUMER.name())
+                    && config.getProperty(AsyncEngineConfig.RECORD_PROCESSING_WITH_SERIAL_CONSUMER.name()).equalsIgnoreCase("true")) {
                 this.handler = buildDefaultChangeConsumer(consumer);
             }
             return this;
