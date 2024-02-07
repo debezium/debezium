@@ -94,6 +94,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
 
     private final AtomicReference<State> state = new AtomicReference<>(State.CREATING); // state must be changed only via setEngineState() method
     private final List<EngineSourceTask> tasks = new ArrayList<>();
+    private final List<Future<Void>> pollingFutures = new ArrayList<>();
     private final ExecutorService taskService;
     private final ExecutorService recordService;
 
@@ -391,7 +392,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         for (EngineSourceTask task : tasks) {
             final RecordProcessor processor = selectRecordProcessor();
             processor.initialize(recordService, transformations, new SourceRecordCommitter(task));
-            taskCompletionService.submit(new PollRecords(task, processor, state));
+            pollingFutures.add(taskCompletionService.submit(new PollRecords(task, processor, state)));
         }
 
         for (int i = 0; i < tasks.size(); i++) {
@@ -399,8 +400,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
                 taskCompletionService.take().get();
             }
             catch (InterruptedException e) {
-                LOGGER.debug("Task interrupted while polling.");
-                Thread.currentThread().interrupt();
+                LOGGER.info("Task interrupted while polling.");
             }
             LOGGER.debug("Task #{} out of {} tasks has stopped polling.", i, tasks.size());
         }
@@ -458,6 +458,17 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         catch (InterruptedException e) {
             LOGGER.info("Timed out while waiting for record service shutdown. Shutting it down immediately.");
             recordService.shutdownNow();
+        }
+    }
+
+    /**
+     * Stops task polling if they haven't stopped yet. Some tasks may be stuck in the polling, we should interrupt such tasks.
+     */
+    private void stopPollingIfNeeded() {
+        for (Future<Void> pollingFuture : pollingFutures) {
+            if (!pollingFuture.isDone()) {
+                pollingFuture.cancel(true);
+            }
         }
     }
 
@@ -526,6 +537,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         if (State.STARING_TASKS.compareTo(engineState) <= 0) {
             LOGGER.debug("Tasks were already started, stopping record service and tasks.");
             stopRecordService();
+            stopPollingIfNeeded();
             stopSourceTasks(tasks);
         }
         LOGGER.debug("Stopping the connector.");
