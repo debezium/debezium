@@ -207,6 +207,22 @@ public class LogMinerEventRowTest {
         verify(resultSet, times(15)).getString(2);
     }
 
+    @Test
+    @FixFor("DBZ-3401")
+    public void testObjectIdAndVersionDetails() throws Exception {
+        when(resultSet.getLong(18)).thenReturn(1234567890L);
+        when(resultSet.getLong(19)).thenReturn(20L);
+        when(resultSet.getLong(20)).thenReturn(2345678901L);
+
+        LogMinerEventRow row = LogMinerEventRow.fromResultSet(resultSet, CATALOG_NAME, true);
+        assertThat(row.getObjectId()).isEqualTo(1234567890L);
+        assertThat(row.getObjectVersion()).isEqualTo(20L);
+        assertThat(row.getDataObjectId()).isEqualTo(2345678901L);
+        verify(resultSet).getLong(18);
+        verify(resultSet).getLong(19);
+        verify(resultSet).getLong(20);
+    }
+
     private static <T extends Throwable, R> void assertThrows(ResultSet rs, Class<T> throwAs) {
         try {
             LogMinerEventRow.fromResultSet(rs, CATALOG_NAME, true);

@@ -57,6 +57,8 @@ import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.schema.SchemaTopicNamingStrategy;
 import io.debezium.spi.topic.TopicNamingStrategy;
 
+import oracle.sql.CharacterSet;
+
 /**
  * Abstract class implementation for all unit tests for {@link LogMinerEventProcessor} implementations.
  *
@@ -281,7 +283,7 @@ public abstract class AbstractProcessorUnitTest<T extends AbstractLogMinerEventP
             T processorMock = Mockito.spy(processor);
             Mockito.doReturn("CREATE TABLE DEBEZIUM.ABC (ID primary key(9,0), data varchar2(50))")
                     .when(processorMock)
-                    .getTableMetadataDdl(Mockito.any(TableId.class));
+                    .getTableMetadataDdl(Mockito.any(OracleConnection.class), Mockito.any(TableId.class));
 
             Scn nextStartScn = processorMock.process(Scn.valueOf(100), Scn.valueOf(200));
             assertThat(nextStartScn).isEqualTo(Scn.valueOf(101));
@@ -405,6 +407,7 @@ public abstract class AbstractProcessorUnitTest<T extends AbstractLogMinerEventP
         OracleConnection connection = Mockito.mock(OracleConnection.class);
         Mockito.when(connection.connection(Mockito.anyBoolean())).thenReturn(conn);
         Mockito.when(connection.connection()).thenReturn(conn);
+        Mockito.when(connection.getNationalCharacterSet()).thenReturn(CharacterSet.make(CharacterSet.UTF8_CHARSET));
         if (!singleOptionalValueThrowException) {
             Mockito.when(connection.singleOptionalValue(anyString(), any())).thenReturn(BigInteger.TWO);
         }
