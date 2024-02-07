@@ -38,8 +38,9 @@ public abstract class RetryingCallable<V> implements Callable<V> {
         final DelayStrategy delayStrategy = delayStrategy();
         // 0 retries means retries are disabled,
         // -1 means infinite retries; int range is not infinite, but in this case probably a sufficient approximation.
-        // We start from retries-1 as the last call attempt is done out of the retry loop and this last call either
-        // succeeds or throws an exception which is propagated further.
+        // We start from `retries` as the last call attempt is done out of the retry loop and this last call either
+        // succeeds or throws an exception which is propagated further. I.e. the actual number of calls is `retries+1`,
+        // meaning one ordinary call and #`retries` is it fails.
         int attempts = retries;
         while (attempts != 0) {
             try {
