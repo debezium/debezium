@@ -373,7 +373,7 @@ public class OracleJSONDataTypeIT extends AbstractConnectorTest {
     }
 
     @JsonAutoDetect
-    class Person {
+    public static class Person {
         public String _id;
         public Integer index;
         public String guid;
@@ -403,13 +403,13 @@ public class OracleJSONDataTypeIT extends AbstractConnectorTest {
         public String favoriteFruit;
 
         @JsonAutoDetect
-        public class Name {
+        public static class Name {
             public String first;
             public String last;
         }
 
         @JsonAutoDetect
-        public class Friend {
+        public static class Friend {
             public Integer id;
             public String name;
         }
