@@ -178,11 +178,11 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
             createSourceTasks(connector, tasks);
 
             LOGGER.debug("Starting source tasks.");
-            setEngineState(State.CREATING_TASKS, State.STARING_TASKS);
+            setEngineState(State.CREATING_TASKS, State.STARTING_TASKS);
             startSourceTasks(tasks);
 
             LOGGER.debug("Starting tasks polling.");
-            setEngineState(State.STARING_TASKS, State.POLLING_TASKS);
+            setEngineState(State.STARTING_TASKS, State.POLLING_TASKS);
             runTasksPolling(tasks);
             // Tasks run infinite polling loop until close() is called or exception is thrown.
         }
@@ -192,7 +192,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
 
             final State stateBeforeStop = getEngineState();
             // Skip shutting down the engine if it's already being stopped.
-            if (State.STOPPING.compareTo(stateBeforeStop) > 0) {
+            if (State.canBeStopped(stateBeforeStop)) {
                 LOGGER.debug("Stopping " + AsyncEmbeddedEngine.class.getName());
                 setEngineState(stateBeforeStop, State.STOPPING);
                 try {
@@ -224,7 +224,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         // Vice versa, if the state is State.STARTING_CONNECTOR, and we succeeded with setting the state to State.STOPPING, we eventually fail to set state before
         // calling startSourceTasks() as the state is not State.STARTING_CONNECTOR anymore.
         // See https://issues.redhat.com/browse/DBZ-2534 for more details.
-        if (engineState == State.STARING_TASKS) {
+        if (engineState == State.STARTING_TASKS) {
             throw new IllegalStateException("Cannot stop engine while tasks are starting, this may lead to leaked resource. Wait for the tasks to be fully started.");
         }
 
@@ -538,7 +538,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
      * @param tasks {@link List<EngineSourceTask>} of source task should be stopped now.
      */
     private void stopConnector(final List<EngineSourceTask> tasks, final State engineState) {
-        if (State.STARING_TASKS.compareTo(engineState) <= 0) {
+        if (State.shouldStopTasks(engineState)) {
             LOGGER.debug("Tasks were already started, stopping record service and tasks.");
             stopRecordService();
             stopPollingIfNeeded();
@@ -918,10 +918,30 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         CREATING, // the engine is being started, which mostly means engine object is being created or was already created, but run() method wasn't called yet
         INITIALIZING, // initializing the connector
         CREATING_TASKS, // creating connector tasks
-        STARING_TASKS, // starting connector tasks
+        STARTING_TASKS, // starting connector tasks
         POLLING_TASKS, // running tasks polling, this is the main phase when the data are produced
         STOPPING, // the engine is being stopped
         STOPPED; // engine has been stopped, final state, cannot move any further from this state and any call on engine in this state should fail
+
+        /**
+         * Given the engine state, determines if the connector tasks were already started and should be stopped.
+         *
+         * @param state Engine {@link State} when the shutdown was called.
+         * @return {@code true} if connector tasks were already started, {@code false otherwise}.
+         */
+        public static boolean shouldStopTasks(State state) {
+            return State.STARTING_TASKS.compareTo(state) <= 0;
+        }
+
+        /**
+         * Given engine state, determines if engine can be stopped when it's in this state.
+         *
+         * @param state Engine {@link State} from which engine shutdown is intended to be called.
+         * @return {@code true} if engine can be stopped, {@code false} otherwise.
+         */
+        public static boolean canBeStopped(State state) {
+            return State.STOPPING.compareTo(state) > 0;
+        }
     }
 
     /**
