@@ -372,6 +372,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
                 continue;
             }
             LOGGER.debug("Calling connector callback after task is started.");
+            // TODO improve Debezium API and provide more info to the callback like id and config
             connectorCallback.ifPresent(DebeziumEngine.ConnectorCallback::taskStarted);
         }
 
@@ -535,6 +536,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
                 }
                 LOGGER.debug("Stopped task #{} out of {} tasks.", i + 1, nTasks);
                 LOGGER.debug("Calling connector callback after task is stopped.");
+                // TODO improve Debezium API and provide more info to the callback like id and config
                 connectorCallback.ifPresent(DebeziumEngine.ConnectorCallback::taskStopped);
             }
 
