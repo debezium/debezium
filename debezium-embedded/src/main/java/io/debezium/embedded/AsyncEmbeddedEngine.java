@@ -124,7 +124,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
 
         // Create thread pools for executing tasks and record pipelines.
         taskService = Executors.newFixedThreadPool(this.config.getInteger(ConnectorConfig.TASKS_MAX_CONFIG, () -> 1));
-        recordService = Executors.newFixedThreadPool(this.config.getInteger(AsyncEmbeddedEngine.RECORD_PROCESSING_THREADS));
+        recordService = Executors.newFixedThreadPool(computeRecordThreads(this.config.getString(AsyncEmbeddedEngine.RECORD_PROCESSING_THREADS)));
 
         // Validate provided config and prepare Kafka worker config needed for Kafka stuff, like e.g. OffsetStore.
         if (!this.config.validateAndRecord(AsyncEngineConfig.CONNECTOR_FIELDS, LOGGER::error)) {
@@ -809,6 +809,66 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
                 committer.markBatchFinished();
             }
         };
+    }
+
+    /**
+     * Determines the size of the thread pool which will be used for processing records. The value can be either number (provided as a {@code String} value) or
+     * a predefined placeholder from {@link ProcessingCores} enumeration. If the number of threads is provided as a number, it will be eventually limited to
+     * {@code AsyncEngineConfig.RECORD_PROCESSING_THREADS_CAP} to avoid possible overhead with too many context switches on a beefy machines with many cores, but
+     * running many other tasks.
+     *
+     * @param recordProcessingThreads Requested number of processing threads as a {@code String}. It can be a number or predefined placeholder.
+     * @return Either requested number of threads or minimum of {@code AsyncEngineConfig.RECORD_PROCESSING_THREADS_CAP} and {@code AsyncEngineConfig.AVAILABLE_CORES}.
+     */
+    private int computeRecordThreads(final String recordProcessingThreads) {
+        // First check if it's some our placeholder constant.
+        final ProcessingCores pc = ProcessingCores.parse(recordProcessingThreads);
+        if (pc != null) {
+            return pc.getCores();
+        }
+
+        // If it's not a placeholder, assume it's a number and eventually throw an exception is it's not.
+        final int cores = Integer.valueOf(recordProcessingThreads);
+        if (cores <= 0) {
+            throw new IllegalArgumentException("Number of cores cannot be negative or zero!");
+        }
+
+        // Now we apply processor cap. As we provide all available cores as the default value, we eventually reduce the value now.
+        return Math.min(cores, AsyncEngineConfig.RECORD_PROCESSING_THREADS_CAP);
+    }
+
+    /**
+     * Enum with possible placeholders for number of cores to be used record processing.
+     * Currently only {@code AVAILABLE_CORES} for using all available cores is supported.
+     */
+    private enum ProcessingCores {
+        // Use all available cores of the machine.
+        AVAILABLE_CORES("AVAILABLE_CORES", AsyncEngineConfig.AVAILABLE_CORES);
+
+        private final String coresPlaceholder;
+        private final int cores;
+
+        ProcessingCores(final String coresPlaceholder, final int cores) {
+            this.coresPlaceholder = coresPlaceholder;
+            this.cores = cores;
+        }
+
+        public int getCores() {
+            return cores;
+        }
+
+        public static ProcessingCores parse(final String value) {
+            if (value == null) {
+                return null;
+            }
+            final String trimmedValue = value.trim();
+            for (ProcessingCores processingCores : ProcessingCores.values()) {
+                if (processingCores.coresPlaceholder.equalsIgnoreCase(trimmedValue)) {
+                    return processingCores;
+                }
+            }
+            return null;
+        }
     }
 
     /**
