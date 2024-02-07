@@ -55,6 +55,8 @@ public class AsyncEmbeddedEngineTest {
     private static final int NUMBER_OF_LINES = 10;
     protected static final Path OFFSET_STORE_PATH = Testing.Files.createTestingPath("file-connector-offsets.txt").toAbsolutePath();
     private static final Path TEST_FILE_PATH = Testing.Files.createTestingPath("file-connector-input.txt").toAbsolutePath();
+    // As the default TASK_MANAGEMENT_TIMEOUT_MS is too large and test would run too long, use shorter tim for tests.
+    private static final long TEST_TASK_MANAGEMENT_TIMEOUT_MS = 1_000;
 
     protected static final AtomicBoolean isEngineRunning = new AtomicBoolean(false);
     protected static final AtomicInteger runningTasks = new AtomicInteger(0);
@@ -295,7 +297,7 @@ public class AsyncEmbeddedEngineTest {
             engine.run();
         });
 
-        callbackLatch.await((Long) AsyncEngineConfig.TASK_MANAGEMENT_TIMEOUT_MS.defaultValue() + 1_000, TimeUnit.MILLISECONDS);
+        callbackLatch.await(TEST_TASK_MANAGEMENT_TIMEOUT_MS + 1000, TimeUnit.MILLISECONDS);
         assertThat(callbackLatch.getCount()).isEqualTo(0);
     }
 
@@ -607,7 +609,7 @@ public class AsyncEmbeddedEngineTest {
     protected void waitForEngineToStart() {
         Awaitility.await()
                 .alias("Engine haven't started on time")
-                .pollInterval((Long) AsyncEngineConfig.TASK_MANAGEMENT_TIMEOUT_MS.defaultValue() + 1_000, TimeUnit.MILLISECONDS)
+                .pollInterval(TEST_TASK_MANAGEMENT_TIMEOUT_MS, TimeUnit.MILLISECONDS)
                 .atMost(1, TimeUnit.SECONDS)
                 .until(() -> isEngineRunning.get());
     }
@@ -615,7 +617,7 @@ public class AsyncEmbeddedEngineTest {
     protected void waitForEngineToStop() {
         Awaitility.await()
                 .alias("Engine haven't stopped on time")
-                .pollInterval((Long) AsyncEngineConfig.TASK_MANAGEMENT_TIMEOUT_MS.defaultValue() + 1_000, TimeUnit.MILLISECONDS)
+                .pollInterval(TEST_TASK_MANAGEMENT_TIMEOUT_MS, TimeUnit.MILLISECONDS)
                 .atMost(10, TimeUnit.SECONDS)
                 .until(() -> !isEngineRunning.get());
     }
@@ -624,7 +626,7 @@ public class AsyncEmbeddedEngineTest {
         Awaitility.await()
                 .alias("Engine haven't started on time")
                 .pollInterval(10, TimeUnit.MILLISECONDS)
-                .atMost((Long) AsyncEngineConfig.TASK_MANAGEMENT_TIMEOUT_MS.defaultValue() + 1_000, TimeUnit.MILLISECONDS)
+                .atMost(TEST_TASK_MANAGEMENT_TIMEOUT_MS, TimeUnit.MILLISECONDS)
                 .until(() -> runningTasks.get() >= minRunningTasks);
     }
 
