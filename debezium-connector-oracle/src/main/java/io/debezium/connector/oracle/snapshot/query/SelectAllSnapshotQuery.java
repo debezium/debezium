@@ -14,8 +14,7 @@ import io.debezium.bean.spi.BeanRegistry;
 import io.debezium.bean.spi.BeanRegistryAware;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.oracle.OracleOffsetContext;
-import io.debezium.connector.oracle.OraclePartition;
-import io.debezium.pipeline.spi.Offsets;
+import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.snapshot.spi.SnapshotQuery;
 
 public class SelectAllSnapshotQuery implements SnapshotQuery, BeanRegistryAware {
@@ -40,8 +39,9 @@ public class SelectAllSnapshotQuery implements SnapshotQuery, BeanRegistryAware 
     @Override
     public Optional<String> snapshotQuery(String tableId, List<String> snapshotSelectColumns) {
 
-        final Offsets<OraclePartition, OracleOffsetContext> mySqloffsets = beanRegistry.lookupByName(StandardBeanNames.OFFSETS, Offsets.class);
-        final OracleOffsetContext offset = mySqloffsets.getTheOnlyOffset();
+        final RelationalSnapshotChangeEventSource.RelationalSnapshotContext snapshotContext = beanRegistry.lookupByName(StandardBeanNames.SNAPSHOT_CONTEXT,
+                RelationalSnapshotChangeEventSource.RelationalSnapshotContext.class);
+        final OracleOffsetContext offset = (OracleOffsetContext) snapshotContext.offset;
 
         final String snapshotOffset = offset.getScn().toString();
         String columns = String.join(", ", snapshotSelectColumns);

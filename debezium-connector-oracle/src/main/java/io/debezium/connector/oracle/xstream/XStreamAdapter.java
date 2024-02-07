@@ -34,6 +34,7 @@ import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.RelationalSnapshotChangeEventSource.RelationalSnapshotContext;
 import io.debezium.relational.TableId;
 import io.debezium.relational.history.HistoryRecordComparator;
+import io.debezium.snapshot.SnapshotterService;
 import io.debezium.util.Clock;
 
 /**
@@ -86,7 +87,8 @@ public class XStreamAdapter extends AbstractStreamingAdapter<XStreamStreamingCha
                                                                                       OracleDatabaseSchema schema,
                                                                                       OracleTaskContext taskContext,
                                                                                       Configuration jdbcConfig,
-                                                                                      XStreamStreamingChangeEventSourceMetrics streamingMetrics) {
+                                                                                      XStreamStreamingChangeEventSourceMetrics streamingMetrics,
+                                                                                      SnapshotterService snapshotterService) {
         return new XstreamStreamingChangeEventSource(
                 connectorConfig,
                 connection,

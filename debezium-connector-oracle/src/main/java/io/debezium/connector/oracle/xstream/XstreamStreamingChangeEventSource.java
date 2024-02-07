@@ -6,7 +6,6 @@
 package io.debezium.connector.oracle.xstream;
 
 import java.sql.SQLException;
-import java.time.Duration;
 import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
@@ -31,7 +30,6 @@ import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
-import io.debezium.util.DelayStrategy;
 
 import oracle.sql.NUMBER;
 import oracle.streams.StreamsException;
@@ -69,7 +67,6 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
      * internal Oracle code locking.
      */
     private final AtomicReference<PositionAndScn> lcrMessage = new AtomicReference<>();
-    private final DelayStrategy attachRetryStrategy;
     private OracleOffsetContext effectiveOffset;
 
     public XstreamStreamingChangeEventSource(OracleConnectorConfig connectorConfig, OracleConnection jdbcConnection,
@@ -85,7 +82,6 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
         this.streamingMetrics = streamingMetrics;
         this.xStreamServerName = connectorConfig.getXoutServerName();
         this.posVersion = resolvePosVersion(jdbcConnection, connectorConfig);
-        this.attachRetryStrategy = DelayStrategy.constant(Duration.ofSeconds(DEFAULT_MAX_ATTACH_RETRY_DELAY_SECONDS));
     }
 
     @Override

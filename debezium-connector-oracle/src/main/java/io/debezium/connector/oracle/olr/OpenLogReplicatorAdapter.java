@@ -34,6 +34,7 @@ import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.RelationalSnapshotChangeEventSource.RelationalSnapshotContext;
 import io.debezium.relational.TableId;
 import io.debezium.relational.history.HistoryRecordComparator;
+import io.debezium.snapshot.SnapshotterService;
 import io.debezium.util.Clock;
 
 /**
@@ -78,7 +79,8 @@ public class OpenLogReplicatorAdapter extends AbstractStreamingAdapter<OpenLogRe
                                                                                       OracleDatabaseSchema schema,
                                                                                       OracleTaskContext taskContext,
                                                                                       Configuration jdbcConfig,
-                                                                                      OpenLogReplicatorStreamingChangeEventSourceMetrics streamingMetrics) {
+                                                                                      OpenLogReplicatorStreamingChangeEventSourceMetrics streamingMetrics,
+                                                                                      SnapshotterService snapshotterService) {
         return new OpenLogReplicatorStreamingChangeEventSource(
                 connectorConfig,
                 connection,
@@ -86,7 +88,8 @@ public class OpenLogReplicatorAdapter extends AbstractStreamingAdapter<OpenLogRe
                 errorHandler,
                 clock,
                 schema,
-                streamingMetrics);
+                streamingMetrics,
+                snapshotterService);
     }
 
     @Override

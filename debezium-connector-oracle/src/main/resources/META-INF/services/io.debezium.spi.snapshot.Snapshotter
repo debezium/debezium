@@ -1,0 +1,5 @@
+io.debezium.connector.oracle.snapshot.mode.AlwaysSnapshotter
+io.debezium.connector.oracle.snapshot.mode.InitialSnapshotter
+io.debezium.connector.oracle.snapshot.mode.InitialOnlySnapshotter
+io.debezium.connector.oracle.snapshot.mode.SchemaOnlySnapshotter
+io.debezium.connector.oracle.snapshot.mode.SchemaRecoveryOnlySnapshotter

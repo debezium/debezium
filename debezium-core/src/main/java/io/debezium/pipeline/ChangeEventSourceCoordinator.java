@@ -73,6 +73,7 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
     protected final ErrorHandler errorHandler;
     protected final ChangeEventSourceFactory<P, O> changeEventSourceFactory;
     protected final ChangeEventSourceMetricsFactory<P> changeEventSourceMetricsFactory;
+    protected final SnapshotterService snapshotterService;
     protected final ExecutorService executor;
     private final ExecutorService blockingSnapshotExecutor;
     protected final EventDispatcher<P, ?> eventDispatcher;
@@ -104,6 +105,7 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
         this.errorHandler = errorHandler;
         this.changeEventSourceFactory = changeEventSourceFactory;
         this.changeEventSourceMetricsFactory = changeEventSourceMetricsFactory;
+        this.snapshotterService = snapshotterService;
         this.executor = Threads.newSingleThreadExecutor(connectorType, connectorConfig.getLogicalName(), "change-event-source-coordinator");
         this.blockingSnapshotExecutor = Threads.newSingleThreadExecutor(connectorType, connectorConfig.getLogicalName(), "blocking-snapshot");
         this.eventDispatcher = eventDispatcher;

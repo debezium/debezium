@@ -923,22 +923,22 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         /**
          * Performs a snapshot of data and schema upon each connector start.
          */
-        ALWAYS("always", true, true, true),
+        ALWAYS("always"),
 
         /**
          * Perform a snapshot of data and schema upon initial startup of a connector.
          */
-        INITIAL("initial", true, true, false),
+        INITIAL("initial"),
 
         /**
          * Perform a snapshot of data and schema upon initial startup of a connector and stop after initial consistent snapshot.
          */
-        INITIAL_ONLY("initial_only", true, false, false),
+        INITIAL_ONLY("initial_only"),
 
         /**
          * Perform a snapshot of the schema but no data upon initial startup of a connector.
          */
-        SCHEMA_ONLY("schema_only", false, true, false),
+        SCHEMA_ONLY("schema_only"),
 
         /**
          * Perform a snapshot of only the database schemas (without data) and then begin reading the redo log at the current redo log position.
@@ -946,45 +946,22 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
          * This recovery option should be used with care as it assumes there have been no schema changes since the connector last stopped,
          * otherwise some events during the gap may be processed with an incorrect schema and corrupted.
          */
-        SCHEMA_ONLY_RECOVERY("schema_only_recovery", false, true, true);
+        SCHEMA_ONLY_RECOVERY("schema_only_recovery"),
+
+        /**
+         * Inject a custom snapshotter, which allows for more control over snapshots.
+         */
+        CUSTOM("custom");
 
         private final String value;
-        private final boolean includeData;
-        private final boolean shouldStream;
-        private final boolean shouldSnapshotOnSchemaError;
 
-        SnapshotMode(String value, boolean includeData, boolean shouldStream, boolean shouldSnapshotOnSchemaError) {
+        SnapshotMode(String value) {
             this.value = value;
-            this.includeData = includeData;
-            this.shouldStream = shouldStream;
-            this.shouldSnapshotOnSchemaError = shouldSnapshotOnSchemaError;
         }
 
         @Override
         public String getValue() {
             return value;
-        }
-
-        /**
-         * Whether this snapshotting mode should include the actual data or just the
-         * schema of captured tables.
-         */
-        public boolean includeData() {
-            return includeData;
-        }
-
-        /**
-         * Whether the snapshot mode is followed by streaming.
-         */
-        public boolean shouldStream() {
-            return shouldStream;
-        }
-
-        /**
-         * Whether the schema can be recovered if database schema history is corrupted.
-         */
-        public boolean shouldSnapshotOnSchemaError() {
-            return shouldSnapshotOnSchemaError;
         }
 
         /**
