@@ -39,7 +39,7 @@ public class DebeziumEngineCommon {
          *
          * @return HashMap of the offsets
          */
-        protected HashMap<String, Object> getOffsets() {
+        public HashMap<String, Object> getOffsets() {
             return offsets;
         }
     }

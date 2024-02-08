@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.embedded;
+package io.debezium.embedded.async;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -18,6 +18,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.embedded.EmbeddedEngineConfig;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.util.DelayStrategy;
 import io.debezium.util.LoggingContext;

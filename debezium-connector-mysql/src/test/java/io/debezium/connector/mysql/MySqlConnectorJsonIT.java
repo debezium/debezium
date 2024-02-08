@@ -29,7 +29,7 @@ import io.debezium.connector.mysql.junit.SkipWhenDatabaseIs;
 import io.debezium.connector.mysql.junit.SkipWhenDatabaseIs.Type;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractAsyncEngineConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.util.Testing;
 

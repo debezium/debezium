@@ -3,8 +3,10 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.embedded;
+package io.debezium.embedded.async;
 
+import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.TestingDebeziumEngine;
 import io.debezium.engine.DebeziumEngine;
 
 /**

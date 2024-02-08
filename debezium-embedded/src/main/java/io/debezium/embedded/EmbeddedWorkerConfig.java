@@ -18,7 +18,7 @@ import io.debezium.config.Field;
  * and required {@link WorkerConfig} fields which are not used by {@link io.debezium.engine.DebeziumEngine}.
  * Should be removed once {@link io.debezium.engine.DebeziumEngine} is independent on Kafka model (DBZ-6234).
  */
-class EmbeddedWorkerConfig extends WorkerConfig {
+public class EmbeddedWorkerConfig extends WorkerConfig {
     private static final ConfigDef CONFIG;
 
     static {
@@ -30,7 +30,7 @@ class EmbeddedWorkerConfig extends WorkerConfig {
         CONFIG = config;
     }
 
-    protected EmbeddedWorkerConfig(Map<String, String> props) {
+    public EmbeddedWorkerConfig(Map<String, String> props) {
         super(CONFIG, addRequiredWorkerConfig(props));
     }
 

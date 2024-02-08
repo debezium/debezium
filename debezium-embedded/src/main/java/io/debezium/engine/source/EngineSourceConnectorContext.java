@@ -9,7 +9,7 @@ import org.apache.kafka.connect.source.SourceConnectorContext;
 import org.apache.kafka.connect.storage.OffsetStorageReader;
 import org.apache.kafka.connect.storage.OffsetStorageWriter;
 
-import io.debezium.embedded.AsyncEmbeddedEngine;
+import io.debezium.embedded.async.AsyncEmbeddedEngine;
 
 /**
  * Implementation of {@link DebeziumSourceConnectorContext} which holds references to objects which spans whole connector life-cycle.
