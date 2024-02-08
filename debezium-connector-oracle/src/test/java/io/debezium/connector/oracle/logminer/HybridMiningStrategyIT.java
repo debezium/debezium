@@ -70,141 +70,265 @@ public class HybridMiningStrategyIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-3401")
     public void shouldStreamOfflineSchemaChangesCharacterDataTypes() throws Exception {
-        streamOfflineSchemaChanges("varchar(50)", "ABC", "XYZ", "ABC", "XYZ");
-        streamOfflineSchemaChanges("varchar2(50)", "ABC", "XYZ", "ABC", "XYZ");
-        streamOfflineSchemaChanges("nvarchar2(50)", "AêñüC", "XYZ", "AêñüC", "XYZ");
-        streamOfflineSchemaChanges("char(3)", "NO", "YES", "NO ", "YES");
-        streamOfflineSchemaChanges("nchar(3)", "NO", "YES", "NO ", "YES");
+        streamOfflineSchemaChanges("varchar(50)",
+                QueryValue.ofBind("ABC"), QueryValue.ofBind("XYZ"),
+                "ABC", "XYZ");
+        streamOfflineSchemaChanges("varchar2(50)",
+                QueryValue.ofBind("ABC"), QueryValue.ofBind("XYZ"),
+                "ABC", "XYZ");
+        streamOfflineSchemaChanges("nvarchar2(50)",
+                QueryValue.ofBind("AêñüC"), QueryValue.ofBind("XYZ"),
+                "AêñüC", "XYZ");
+        streamOfflineSchemaChanges("char(3)",
+                QueryValue.ofBind("NO"), QueryValue.ofBind("YES"),
+                "NO ", "YES");
+        streamOfflineSchemaChanges("nchar(3)",
+                QueryValue.ofBind("NO"), QueryValue.ofBind("YES"),
+                "NO ", "YES");
     }
 
     @Test
     @FixFor("DBZ-3401")
     public void shouldStreamSchemaChangeWithDataChangeCharacterDataTypes() throws Exception {
-        streamSchemaChangeMixedWithDataChange("varchar(50)", "ABC", "XYZ", "ABC", "XYZ");
-        streamSchemaChangeMixedWithDataChange("varchar2(50)", "ABC", "XYZ", "ABC", "XYZ");
-        streamSchemaChangeMixedWithDataChange("nvarchar2(50)", "AêñüC", "XYZ", "AêñüC", "XYZ");
-        streamSchemaChangeMixedWithDataChange("char(3)", "NO", "YES", "NO ", "YES");
-        streamSchemaChangeMixedWithDataChange("nchar(3)", "NO", "YES", "NO ", "YES");
+        streamSchemaChangeMixedWithDataChange("varchar(50)",
+                QueryValue.ofBind("ABC"), QueryValue.ofBind("XYZ"),
+                "ABC", "XYZ");
+        streamSchemaChangeMixedWithDataChange("varchar2(50)",
+                QueryValue.ofBind("ABC"), QueryValue.ofBind("XYZ"),
+                "ABC", "XYZ");
+        streamSchemaChangeMixedWithDataChange("nvarchar2(50)",
+                QueryValue.ofBind("AêñüC"), QueryValue.ofBind("XYZ"),
+                "AêñüC", "XYZ");
+        streamSchemaChangeMixedWithDataChange("char(3)",
+                QueryValue.ofBind("NO"), QueryValue.ofBind("YES"),
+                "NO ", "YES");
+        streamSchemaChangeMixedWithDataChange("nchar(3)",
+                QueryValue.ofBind("NO"), QueryValue.ofBind("YES"),
+                "NO ", "YES");
     }
 
     @Test
     @FixFor("DBZ-3401")
     public void shouldStreamOfflineSchemaChangesFloatingPointDataTypes() throws Exception {
-        streamOfflineSchemaChanges("binary_float", 3.14f, 4.14f, 3.14f, 4.14f);
-        streamOfflineSchemaChanges("binary_double", 3.14, 4.14, 3.14, 4.14);
-        streamOfflineSchemaChanges("float", 3.33, 4.33, varScaleDecimal("3.33"), varScaleDecimal("4.33"));
-        streamOfflineSchemaChanges("float(10)", 8.888, 9.999, varScaleDecimal("8.888"), varScaleDecimal("9.999"));
-        streamOfflineSchemaChanges("number(10,6)", 4.4444, 5.5555, new BigDecimal("4.444400"), new BigDecimal("5.555500"));
-        streamOfflineSchemaChanges("double precision", 5.555, 6.666, varScaleDecimal("5.555"), varScaleDecimal("6.666"));
-        streamOfflineSchemaChanges("real", 6.66, 7.77, varScaleDecimal("6.66"), varScaleDecimal("7.77"));
-        streamOfflineSchemaChanges("decimal(10,6)", 1234.567891, 2345.678912, new BigDecimal("1234.567891"), new BigDecimal("2345.678912"));
-        streamOfflineSchemaChanges("numeric(10,6)", 1234.567891, 2345.678912, new BigDecimal("1234.567891"), new BigDecimal("2345.678912"));
-        streamOfflineSchemaChanges("number", 77.323, 88.434, varScaleDecimal("77.323"), varScaleDecimal("88.434"));
+        streamOfflineSchemaChanges("binary_float",
+                QueryValue.ofBind(3.14f), QueryValue.ofBind(4.14f),
+                3.14f, 4.14f);
+        streamOfflineSchemaChanges("binary_double",
+                QueryValue.ofBind(3.14), QueryValue.ofBind(4.14),
+                3.14, 4.14);
+        streamOfflineSchemaChanges("float",
+                QueryValue.ofBind(3.33), QueryValue.ofBind(4.33),
+                varScaleDecimal("3.33"), varScaleDecimal("4.33"));
+        streamOfflineSchemaChanges("float(10)",
+                QueryValue.ofBind(8.888), QueryValue.ofBind(9.999),
+                varScaleDecimal("8.888"), varScaleDecimal("9.999"));
+        streamOfflineSchemaChanges("number(10,6)",
+                QueryValue.ofBind(4.4444), QueryValue.ofBind(5.5555),
+                new BigDecimal("4.444400"), new BigDecimal("5.555500"));
+        streamOfflineSchemaChanges("double precision",
+                QueryValue.ofBind(5.555), QueryValue.ofBind(6.666),
+                varScaleDecimal("5.555"), varScaleDecimal("6.666"));
+        streamOfflineSchemaChanges("real",
+                QueryValue.ofBind(6.66), QueryValue.ofBind(7.77),
+                varScaleDecimal("6.66"), varScaleDecimal("7.77"));
+        streamOfflineSchemaChanges("decimal(10,6)",
+                QueryValue.ofBind(1234.567891), QueryValue.ofBind(2345.678912),
+                new BigDecimal("1234.567891"), new BigDecimal("2345.678912"));
+        streamOfflineSchemaChanges("numeric(10,6)",
+                QueryValue.ofBind(1234.567891), QueryValue.ofBind(2345.678912),
+                new BigDecimal("1234.567891"), new BigDecimal("2345.678912"));
+        streamOfflineSchemaChanges("number",
+                QueryValue.ofBind(77.323), QueryValue.ofBind(88.434),
+                varScaleDecimal("77.323"), varScaleDecimal("88.434"));
     }
 
     @Test
     @FixFor("DBZ-3401")
     public void shouldStreamSchemaChangeWithDataChangeFloatingPointDataTypes() throws Exception {
-        streamSchemaChangeMixedWithDataChange("binary_float", 3.14f, 4.14f, 3.14f, 4.14f);
-        streamSchemaChangeMixedWithDataChange("binary_double", 3.14, 4.14, 3.14, 4.14);
-        streamSchemaChangeMixedWithDataChange("float", 3.33, 4.33, varScaleDecimal("3.33"), varScaleDecimal("4.33"));
-        streamSchemaChangeMixedWithDataChange("float(10)", 8.888, 9.999, varScaleDecimal("8.888"), varScaleDecimal("9.999"));
-        streamSchemaChangeMixedWithDataChange("number(10,6)", 4.4444, 5.5555, new BigDecimal("4.444400"), new BigDecimal("5.555500"));
-        streamSchemaChangeMixedWithDataChange("double precision", 5.555, 6.666, varScaleDecimal("5.555"), varScaleDecimal("6.666"));
-        streamSchemaChangeMixedWithDataChange("real", 6.66, 7.77, varScaleDecimal("6.66"), varScaleDecimal("7.77"));
-        streamSchemaChangeMixedWithDataChange("decimal(10,6)", 1234.567891, 2345.678912, new BigDecimal("1234.567891"), new BigDecimal("2345.678912"));
-        streamSchemaChangeMixedWithDataChange("numeric(10,6)", 1234.567891, 2345.678912, new BigDecimal("1234.567891"), new BigDecimal("2345.678912"));
-        streamSchemaChangeMixedWithDataChange("number", 77.323, 88.434, varScaleDecimal("77.323"), varScaleDecimal("88.434"));
+        streamSchemaChangeMixedWithDataChange("binary_float",
+                QueryValue.ofBind(3.14f), QueryValue.ofBind(4.14f),
+                3.14f, 4.14f);
+        streamSchemaChangeMixedWithDataChange("binary_double",
+                QueryValue.ofBind(3.14), QueryValue.ofBind(4.14),
+                3.14, 4.14);
+        streamSchemaChangeMixedWithDataChange("float",
+                QueryValue.ofBind(3.33), QueryValue.ofBind(4.33),
+                varScaleDecimal("3.33"), varScaleDecimal("4.33"));
+        streamSchemaChangeMixedWithDataChange("float(10)",
+                QueryValue.ofBind(8.888), QueryValue.ofBind(9.999),
+                varScaleDecimal("8.888"), varScaleDecimal("9.999"));
+        streamSchemaChangeMixedWithDataChange("number(10,6)",
+                QueryValue.ofBind(4.4444), QueryValue.ofBind(5.5555),
+                new BigDecimal("4.444400"), new BigDecimal("5.555500"));
+        streamSchemaChangeMixedWithDataChange("double precision",
+                QueryValue.ofBind(5.555), QueryValue.ofBind(6.666),
+                varScaleDecimal("5.555"), varScaleDecimal("6.666"));
+        streamSchemaChangeMixedWithDataChange("real",
+                QueryValue.ofBind(6.66), QueryValue.ofBind(7.77),
+                varScaleDecimal("6.66"), varScaleDecimal("7.77"));
+        streamSchemaChangeMixedWithDataChange("decimal(10,6)",
+                QueryValue.ofBind(1234.567891), QueryValue.ofBind(2345.678912),
+                new BigDecimal("1234.567891"), new BigDecimal("2345.678912"));
+        streamSchemaChangeMixedWithDataChange("numeric(10,6)",
+                QueryValue.ofBind(1234.567891), QueryValue.ofBind(2345.678912),
+                new BigDecimal("1234.567891"), new BigDecimal("2345.678912"));
+        streamSchemaChangeMixedWithDataChange("number",
+                QueryValue.ofBind(77.323), QueryValue.ofBind(88.434),
+                varScaleDecimal("77.323"), varScaleDecimal("88.434"));
     }
 
     @Test
     @FixFor("DBZ-3401")
     public void shouldStreamOfflineSchemaChangesIntegerDataTypes() throws Exception {
-        streamOfflineSchemaChanges("int", 1, 2, new BigDecimal("1"), new BigDecimal("2"));
-        streamOfflineSchemaChanges("integer", 1, 2, new BigDecimal("1"), new BigDecimal("2"));
-        streamOfflineSchemaChanges("smallint", 33, 44, new BigDecimal("33"), new BigDecimal("44"));
-        streamOfflineSchemaChanges("number(38)", 4444, 5555, new BigDecimal("4444"), new BigDecimal("5555"));
-        streamOfflineSchemaChanges("number(38,0)", 4444, 5555, new BigDecimal("4444"), new BigDecimal("5555"));
-        streamOfflineSchemaChanges("number(2)", 88, 99, (byte) 88, (byte) 99);
-        streamOfflineSchemaChanges("number(4)", 8888, 9999, (short) 8888, (short) 9999);
-        streamOfflineSchemaChanges("number(9)", 888888888, 999999999, 888888888, 999999999);
-        streamOfflineSchemaChanges("number(18)", 888888888888888888L, 999999999999999999L, 888888888888888888L, 999999999999999999L);
-        streamOfflineSchemaChanges("number(1,-1)", 93, 94, (byte) 90, (byte) 90);
-        streamOfflineSchemaChanges("number(2,-2)", 9349, 9449, (short) 9300, (short) 9400);
-        streamOfflineSchemaChanges("number(8,-1)", 989999994, 999999994, 989999990, 999999990);
-        streamOfflineSchemaChanges("number(16,-2)", 989999999999999949L, 999999999999999949L, 989999999999999900L, 999999999999999900L);
-        streamOfflineSchemaChanges("decimal(10)", 9899999999L, 9999999999L, 9899999999L, 9999999999L);
-        streamOfflineSchemaChanges("numeric(10)", 9899999999L, 9999999999L, 9899999999L, 9999999999L);
-        streamOfflineSchemaChanges("number(1)", 1, 2, (byte) 1, (byte) 2);
+        streamOfflineSchemaChanges("int",
+                QueryValue.ofBind(1), QueryValue.ofBind(2),
+                new BigDecimal("1"), new BigDecimal("2"));
+        streamOfflineSchemaChanges("integer",
+                QueryValue.ofBind(1), QueryValue.ofBind(2),
+                new BigDecimal("1"), new BigDecimal("2"));
+        streamOfflineSchemaChanges("smallint",
+                QueryValue.ofBind(33), QueryValue.ofBind(44),
+                new BigDecimal("33"), new BigDecimal("44"));
+        streamOfflineSchemaChanges("number(38)",
+                QueryValue.ofBind(4444), QueryValue.ofBind(5555),
+                new BigDecimal("4444"), new BigDecimal("5555"));
+        streamOfflineSchemaChanges("number(38,0)",
+                QueryValue.ofBind(4444), QueryValue.ofBind(5555),
+                new BigDecimal("4444"), new BigDecimal("5555"));
+        streamOfflineSchemaChanges("number(2)",
+                QueryValue.ofBind(88), QueryValue.ofBind(99),
+                (byte) 88, (byte) 99);
+        streamOfflineSchemaChanges("number(4)",
+                QueryValue.ofBind(8888), QueryValue.ofBind(9999),
+                (short) 8888, (short) 9999);
+        streamOfflineSchemaChanges("number(9)",
+                QueryValue.ofBind(888888888), QueryValue.ofBind(999999999),
+                888888888, 999999999);
+        streamOfflineSchemaChanges("number(18)",
+                QueryValue.ofBind(888888888888888888L), QueryValue.ofBind(999999999999999999L),
+                888888888888888888L, 999999999999999999L);
+        streamOfflineSchemaChanges("number(1,-1)",
+                QueryValue.ofBind(93), QueryValue.ofBind(94),
+                (byte) 90, (byte) 90);
+        streamOfflineSchemaChanges("number(2,-2)",
+                QueryValue.ofBind(9349), QueryValue.ofBind(9449),
+                (short) 9300, (short) 9400);
+        streamOfflineSchemaChanges("number(8,-1)",
+                QueryValue.ofBind(989999994), QueryValue.ofBind(999999994),
+                989999990, 999999990);
+        streamOfflineSchemaChanges("number(16,-2)",
+                QueryValue.ofBind(989999999999999949L), QueryValue.ofBind(999999999999999949L),
+                989999999999999900L, 999999999999999900L);
+        streamOfflineSchemaChanges("decimal(10)",
+                QueryValue.ofBind(9899999999L), QueryValue.ofBind(9999999999L),
+                9899999999L, 9999999999L);
+        streamOfflineSchemaChanges("numeric(10)",
+                QueryValue.ofBind(9899999999L), QueryValue.ofBind(9999999999L),
+                9899999999L, 9999999999L);
+        streamOfflineSchemaChanges("number(1)",
+                QueryValue.ofBind(1), QueryValue.ofBind(2),
+                (byte) 1, (byte) 2);
     }
 
     @Test
     @FixFor("DBZ-3401")
     public void shouldStreamSchemaChangeWithDataChangeIntegerDataTypes() throws Exception {
-        streamSchemaChangeMixedWithDataChange("int", 1, 2, new BigDecimal("1"), new BigDecimal("2"));
-        streamSchemaChangeMixedWithDataChange("integer", 1, 2, new BigDecimal("1"), new BigDecimal("2"));
-        streamSchemaChangeMixedWithDataChange("smallint", 33, 44, new BigDecimal("33"), new BigDecimal("44"));
-        streamSchemaChangeMixedWithDataChange("number(38)", 4444, 5555, new BigDecimal("4444"), new BigDecimal("5555"));
-        streamSchemaChangeMixedWithDataChange("number(38,0)", 4444, 5555, new BigDecimal("4444"), new BigDecimal("5555"));
-        streamSchemaChangeMixedWithDataChange("number(2)", 88, 99, (byte) 88, (byte) 99);
-        streamSchemaChangeMixedWithDataChange("number(4)", 8888, 9999, (short) 8888, (short) 9999);
-        streamSchemaChangeMixedWithDataChange("number(9)", 888888888, 999999999, 888888888, 999999999);
-        streamSchemaChangeMixedWithDataChange("number(18)", 888888888888888888L, 999999999999999999L, 888888888888888888L, 999999999999999999L);
-        streamSchemaChangeMixedWithDataChange("number(1,-1)", 93, 94, (byte) 90, (byte) 90);
-        streamSchemaChangeMixedWithDataChange("number(2,-2)", 9349, 9449, (short) 9300, (short) 9400);
-        streamSchemaChangeMixedWithDataChange("number(8,-1)", 989999994, 999999994, 989999990, 999999990);
-        streamSchemaChangeMixedWithDataChange("number(16,-2)", 989999999999999949L, 999999999999999949L, 989999999999999900L, 999999999999999900L);
-        streamSchemaChangeMixedWithDataChange("decimal(10)", 9899999999L, 9999999999L, 9899999999L, 9999999999L);
-        streamSchemaChangeMixedWithDataChange("numeric(10)", 9899999999L, 9999999999L, 9899999999L, 9999999999L);
-        streamSchemaChangeMixedWithDataChange("number(1)", 1, 2, (byte) 1, (byte) 2);
+        streamSchemaChangeMixedWithDataChange("int",
+                QueryValue.ofBind(1), QueryValue.ofBind(2),
+                new BigDecimal("1"), new BigDecimal("2"));
+        streamSchemaChangeMixedWithDataChange("integer",
+                QueryValue.ofBind(1), QueryValue.ofBind(2),
+                new BigDecimal("1"), new BigDecimal("2"));
+        streamSchemaChangeMixedWithDataChange("smallint",
+                QueryValue.ofBind(33), QueryValue.ofBind(44),
+                new BigDecimal("33"), new BigDecimal("44"));
+        streamSchemaChangeMixedWithDataChange("number(38)",
+                QueryValue.ofBind(4444), QueryValue.ofBind(5555),
+                new BigDecimal("4444"), new BigDecimal("5555"));
+        streamSchemaChangeMixedWithDataChange("number(38,0)",
+                QueryValue.ofBind(4444), QueryValue.ofBind(5555),
+                new BigDecimal("4444"), new BigDecimal("5555"));
+        streamSchemaChangeMixedWithDataChange("number(2)",
+                QueryValue.ofBind(88), QueryValue.ofBind(99),
+                (byte) 88, (byte) 99);
+        streamSchemaChangeMixedWithDataChange("number(4)",
+                QueryValue.ofBind(8888), QueryValue.ofBind(9999),
+                (short) 8888, (short) 9999);
+        streamSchemaChangeMixedWithDataChange("number(9)",
+                QueryValue.ofBind(888888888), QueryValue.ofBind(999999999),
+                888888888, 999999999);
+        streamSchemaChangeMixedWithDataChange("number(18)",
+                QueryValue.ofBind(888888888888888888L), QueryValue.ofBind(999999999999999999L),
+                888888888888888888L, 999999999999999999L);
+        streamSchemaChangeMixedWithDataChange("number(1,-1)",
+                QueryValue.ofBind(93), QueryValue.ofBind(94),
+                (byte) 90, (byte) 90);
+        streamSchemaChangeMixedWithDataChange("number(2,-2)",
+                QueryValue.ofBind(9349), QueryValue.ofBind(9449),
+                (short) 9300, (short) 9400);
+        streamSchemaChangeMixedWithDataChange("number(8,-1)",
+                QueryValue.ofBind(989999994), QueryValue.ofBind(999999994),
+                989999990, 999999990);
+        streamSchemaChangeMixedWithDataChange("number(16,-2)",
+                QueryValue.ofBind(989999999999999949L), QueryValue.ofBind(999999999999999949L),
+                989999999999999900L, 999999999999999900L);
+        streamSchemaChangeMixedWithDataChange("decimal(10)",
+                QueryValue.ofBind(9899999999L), QueryValue.ofBind(9999999999L),
+                9899999999L, 9999999999L);
+        streamSchemaChangeMixedWithDataChange("numeric(10)",
+                QueryValue.ofBind(9899999999L), QueryValue.ofBind(9999999999L),
+                9899999999L, 9999999999L);
+        streamSchemaChangeMixedWithDataChange("number(1)",
+                QueryValue.ofBind(1), QueryValue.ofBind(2),
+                (byte) 1, (byte) 2);
     }
 
     @Test
     @FixFor("DBZ-3401")
     public void shouldStreamOfflineSchemaChangesTemporalDataTypes() throws Exception {
         streamOfflineSchemaChanges("date",
-                "TO_DATE('2018-03-27','yyyy-mm-dd')",
-                "TO_DATE('2018-10-15','yyyy-mm-dd')",
+                QueryValue.ofSql("TO_DATE('2018-03-27','yyyy-mm-dd')"),
+                QueryValue.ofSql("TO_DATE('2018-10-15','yyyy-mm-dd')"),
                 1_522_108_800_000L,
                 1_539_561_600_000L);
         streamOfflineSchemaChanges("timestamp",
-                toTimestamp(2018, 3, 27, 12, 34, 56, 789, 5),
-                toTimestamp(2018, 10, 15, 12, 34, 56, 789, 5),
+                QueryValue.ofSql(toTimestamp(2018, 3, 27, 12, 34, 56, 789, 5)),
+                QueryValue.ofSql(toTimestamp(2018, 10, 15, 12, 34, 56, 789, 5)),
                 LocalDateTime.of(2018, 3, 27, 12, 34, 56).toEpochSecond(ZoneOffset.UTC) * 1_000_000 + 7890,
                 LocalDateTime.of(2018, 10, 15, 12, 34, 56).toEpochSecond(ZoneOffset.UTC) * 1_000_000 + 7890);
         streamOfflineSchemaChanges("timestamp(2)",
-                toTimestamp(2018, 3, 27, 12, 34, 56, 12545, 5),
-                toTimestamp(2018, 10, 15, 12, 34, 56, 12545, 5),
+                QueryValue.ofSql(toTimestamp(2018, 3, 27, 12, 34, 56, 12545, 5)),
+                QueryValue.ofSql(toTimestamp(2018, 10, 15, 12, 34, 56, 12545, 5)),
                 LocalDateTime.of(2018, 3, 27, 12, 34, 56).toEpochSecond(ZoneOffset.UTC) * 1_000 + 130,
                 LocalDateTime.of(2018, 10, 15, 12, 34, 56).toEpochSecond(ZoneOffset.UTC) * 1_000 + 130);
         streamOfflineSchemaChanges("timestamp(4)",
-                toTimestamp(2018, 3, 27, 12, 34, 56, 12545, 5),
-                toTimestamp(2018, 10, 15, 12, 34, 56, 12545, 5),
+                QueryValue.ofSql(toTimestamp(2018, 3, 27, 12, 34, 56, 12545, 5)),
+                QueryValue.ofSql(toTimestamp(2018, 10, 15, 12, 34, 56, 12545, 5)),
                 LocalDateTime.of(2018, 3, 27, 12, 34, 56).toEpochSecond(ZoneOffset.UTC) * 1_000_000 + 125500,
                 LocalDateTime.of(2018, 10, 15, 12, 34, 56).toEpochSecond(ZoneOffset.UTC) * 1_000_000 + 125500);
         streamOfflineSchemaChanges("timestamp(9)",
-                toTimestamp(2018, 3, 27, 12, 34, 56, 123456789, 9),
-                toTimestamp(2018, 10, 15, 12, 34, 56, 123456789, 9),
+                QueryValue.ofSql(toTimestamp(2018, 3, 27, 12, 34, 56, 123456789, 9)),
+                QueryValue.ofSql(toTimestamp(2018, 10, 15, 12, 34, 56, 123456789, 9)),
                 LocalDateTime.of(2018, 3, 27, 12, 34, 56).toEpochSecond(ZoneOffset.UTC) * 1_000_000_000 + 123456789,
                 LocalDateTime.of(2018, 10, 15, 12, 34, 56).toEpochSecond(ZoneOffset.UTC) * 1_000_000_000 + 123456789);
         streamOfflineSchemaChanges("timestamp with time zone",
-                toTimestampTz(2018, 3, 27, 1, 34, 56, 7890, 6, "-11:00"),
-                toTimestampTz(2018, 10, 15, 1, 34, 56, 7890, 6, "-11:00"),
+                QueryValue.ofSql(toTimestampTz(2018, 3, 27, 1, 34, 56, 7890, 6, "-11:00")),
+                QueryValue.ofSql(toTimestampTz(2018, 10, 15, 1, 34, 56, 7890, 6, "-11:00")),
                 "2018-03-27T01:34:56.007890-11:00",
                 "2018-10-15T01:34:56.007890-11:00");
         streamOfflineSchemaChanges("timestamp with local time zone",
-                toTimestampTz(2018, 3, 27, 1, 34, 56, 7890, 6, "-06:00"),
-                toTimestampTz(2018, 10, 15, 1, 34, 56, 7890, 6, "-06:00"),
+                QueryValue.ofSql(toTimestampTz(2018, 3, 27, 1, 34, 56, 7890, 6, "-06:00")),
+                QueryValue.ofSql(toTimestampTz(2018, 10, 15, 1, 34, 56, 7890, 6, "-06:00")),
                 "2018-03-27T07:34:56.007890Z",
                 "2018-10-15T07:34:56.007890Z");
         streamOfflineSchemaChanges("interval year to month",
-                "INTERVAL '-3-6' YEAR TO MONTH",
-                "INTERVAL '-2-5' YEAR TO MONTH",
+                QueryValue.ofSql("INTERVAL '-3-6' YEAR TO MONTH"),
+                QueryValue.ofSql("INTERVAL '-2-5' YEAR TO MONTH"),
                 -110_451_600_000_000L,
                 -76_264_200_000_000L);
         streamOfflineSchemaChanges("interval day(3) to second(2)",
-                "INTERVAL '-1 2:3:4.56' DAY TO SECOND",
-                "INTERVAL '-2 4:5:6.21' DAY TO SECOND",
+                QueryValue.ofSql("INTERVAL '-1 2:3:4.56' DAY TO SECOND"),
+                QueryValue.ofSql("INTERVAL '-2 4:5:6.21' DAY TO SECOND"),
                 -93_784_560_000L,
                 -187_506_210_000L);
     }
@@ -213,48 +337,48 @@ public class HybridMiningStrategyIT extends AbstractConnectorTest {
     @FixFor("DBZ-3401")
     public void shouldStreamSchemaChangeWithDataChangeTemporalDataTypes() throws Exception {
         streamSchemaChangeMixedWithDataChange("date",
-                "TO_DATE('2018-03-27','yyyy-mm-dd')",
-                "TO_DATE('2018-10-15','yyyy-mm-dd')",
+                QueryValue.ofSql("TO_DATE('2018-03-27','yyyy-mm-dd')"),
+                QueryValue.ofSql("TO_DATE('2018-10-15','yyyy-mm-dd')"),
                 1_522_108_800_000L,
                 1_539_561_600_000L);
         streamSchemaChangeMixedWithDataChange("timestamp",
-                toTimestamp(2018, 3, 27, 12, 34, 56, 789, 5),
-                toTimestamp(2018, 10, 15, 12, 34, 56, 789, 5),
+                QueryValue.ofSql(toTimestamp(2018, 3, 27, 12, 34, 56, 789, 5)),
+                QueryValue.ofSql(toTimestamp(2018, 10, 15, 12, 34, 56, 789, 5)),
                 LocalDateTime.of(2018, 3, 27, 12, 34, 56).toEpochSecond(ZoneOffset.UTC) * 1_000_000 + 7890,
                 LocalDateTime.of(2018, 10, 15, 12, 34, 56).toEpochSecond(ZoneOffset.UTC) * 1_000_000 + 7890);
         streamSchemaChangeMixedWithDataChange("timestamp(2)",
-                toTimestamp(2018, 3, 27, 12, 34, 56, 12545, 5),
-                toTimestamp(2018, 10, 15, 12, 34, 56, 12545, 5),
+                QueryValue.ofSql(toTimestamp(2018, 3, 27, 12, 34, 56, 12545, 5)),
+                QueryValue.ofSql(toTimestamp(2018, 10, 15, 12, 34, 56, 12545, 5)),
                 LocalDateTime.of(2018, 3, 27, 12, 34, 56).toEpochSecond(ZoneOffset.UTC) * 1_000 + 130,
                 LocalDateTime.of(2018, 10, 15, 12, 34, 56).toEpochSecond(ZoneOffset.UTC) * 1_000 + 130);
         streamSchemaChangeMixedWithDataChange("timestamp(4)",
-                toTimestamp(2018, 3, 27, 12, 34, 56, 12545, 5),
-                toTimestamp(2018, 10, 15, 12, 34, 56, 12545, 5),
+                QueryValue.ofSql(toTimestamp(2018, 3, 27, 12, 34, 56, 12545, 5)),
+                QueryValue.ofSql(toTimestamp(2018, 10, 15, 12, 34, 56, 12545, 5)),
                 LocalDateTime.of(2018, 3, 27, 12, 34, 56).toEpochSecond(ZoneOffset.UTC) * 1_000_000 + 125500,
                 LocalDateTime.of(2018, 10, 15, 12, 34, 56).toEpochSecond(ZoneOffset.UTC) * 1_000_000 + 125500);
         streamSchemaChangeMixedWithDataChange("timestamp(9)",
-                toTimestamp(2018, 3, 27, 12, 34, 56, 123456789, 9),
-                toTimestamp(2018, 10, 15, 12, 34, 56, 123456789, 9),
+                QueryValue.ofSql(toTimestamp(2018, 3, 27, 12, 34, 56, 123456789, 9)),
+                QueryValue.ofSql(toTimestamp(2018, 10, 15, 12, 34, 56, 123456789, 9)),
                 LocalDateTime.of(2018, 3, 27, 12, 34, 56).toEpochSecond(ZoneOffset.UTC) * 1_000_000_000 + 123456789,
                 LocalDateTime.of(2018, 10, 15, 12, 34, 56).toEpochSecond(ZoneOffset.UTC) * 1_000_000_000 + 123456789);
         streamSchemaChangeMixedWithDataChange("timestamp with time zone",
-                toTimestampTz(2018, 3, 27, 1, 34, 56, 7890, 6, "-11:00"),
-                toTimestampTz(2018, 10, 15, 1, 34, 56, 7890, 6, "-11:00"),
+                QueryValue.ofSql(toTimestampTz(2018, 3, 27, 1, 34, 56, 7890, 6, "-11:00")),
+                QueryValue.ofSql(toTimestampTz(2018, 10, 15, 1, 34, 56, 7890, 6, "-11:00")),
                 "2018-03-27T01:34:56.007890-11:00",
                 "2018-10-15T01:34:56.007890-11:00");
         streamSchemaChangeMixedWithDataChange("timestamp with local time zone",
-                toTimestampTz(2018, 3, 27, 1, 34, 56, 7890, 6, "-06:00"),
-                toTimestampTz(2018, 10, 15, 1, 34, 56, 7890, 6, "-06:00"),
+                QueryValue.ofSql(toTimestampTz(2018, 3, 27, 1, 34, 56, 7890, 6, "-06:00")),
+                QueryValue.ofSql(toTimestampTz(2018, 10, 15, 1, 34, 56, 7890, 6, "-06:00")),
                 "2018-03-27T07:34:56.007890Z",
                 "2018-10-15T07:34:56.007890Z");
         streamSchemaChangeMixedWithDataChange("interval year to month",
-                "INTERVAL '-3-6' YEAR TO MONTH",
-                "INTERVAL '-2-5' YEAR TO MONTH",
+                QueryValue.ofSql("INTERVAL '-3-6' YEAR TO MONTH"),
+                QueryValue.ofSql("INTERVAL '-2-5' YEAR TO MONTH"),
                 -110_451_600_000_000L,
                 -76_264_200_000_000L);
         streamSchemaChangeMixedWithDataChange("interval day(3) to second(2)",
-                "INTERVAL '-1 2:3:4.56' DAY TO SECOND",
-                "INTERVAL '-2 4:5:6.21' DAY TO SECOND",
+                QueryValue.ofSql("INTERVAL '-1 2:3:4.56' DAY TO SECOND"),
+                QueryValue.ofSql("INTERVAL '-2 4:5:6.21' DAY TO SECOND"),
                 -93_784_560_000L,
                 -187_506_210_000L);
     }
@@ -273,7 +397,7 @@ public class HybridMiningStrategyIT extends AbstractConnectorTest {
         return String.format("TO_TIMESTAMP_TZ(" + format + ")", year, month, day, hour, min, sec, nanoSeconds, tz);
     }
 
-    private void streamOfflineSchemaChanges(String columnType, Object insertValue, Object updateValue,
+    private void streamOfflineSchemaChanges(String columnType, QueryValue insertValue, QueryValue updateValue,
                                             Object expectedInsert, Object expectedUpdate)
             throws Exception {
         streamOfflineSchemaChanges(columnType, insertValue, updateValue, expectedInsert, expectedUpdate, false, false);
@@ -282,7 +406,7 @@ public class HybridMiningStrategyIT extends AbstractConnectorTest {
     }
 
     @SuppressWarnings("SameParameterValue")
-    private void streamSchemaChangeMixedWithDataChange(String columnType, Object insertValue, Object updateValue,
+    private void streamSchemaChangeMixedWithDataChange(String columnType, QueryValue insertValue, QueryValue updateValue,
                                                        Object expectedInsert, Object expectedUpdate)
             throws Exception {
         final String columnName = "C1";
@@ -388,7 +512,7 @@ public class HybridMiningStrategyIT extends AbstractConnectorTest {
         }
     }
 
-    private void streamOfflineSchemaChanges(String columnType, Object insertValue, Object updateValue,
+    private void streamOfflineSchemaChanges(String columnType, QueryValue insertValue, QueryValue updateValue,
                                             Object expectedInsert, Object expectedUpdate,
                                             boolean dropTable, boolean dropTableWithPurge)
             throws Exception {
@@ -507,35 +631,132 @@ public class HybridMiningStrategyIT extends AbstractConnectorTest {
     }
 
     @SuppressWarnings("SameParameterValue")
-    private void insertRowWithoutCommit(String columnName, Object insertValue, Integer id) throws SQLException {
-        connection.prepareUpdate(
-                String.format("INSERT INTO dbz3401 (id,%s) values (%d,?)", columnName, id),
-                p -> p.setObject(1, insertValue));
+    private void insertRowWithoutCommit(String columnName, QueryValue insertValue, Integer id) throws SQLException {
+        if (insertValue.isSqlFragment()) {
+            connection.executeWithoutCommitting(String.format("INSERT INTO dbz3401 (id,%s) values (%d,%s)",
+                    columnName, id, insertValue.getValue()));
+        }
+        else {
+            connection.prepareUpdate(
+                    String.format("INSERT INTO dbz3401 (id,%s) values (%d,?)", columnName, id),
+                    p -> p.setObject(1, insertValue.getValue()));
+        }
     }
 
     @SuppressWarnings("SameParameterValue")
-    private void updateRowWithoutCommit(String columnName, Object updateValue, Integer id) throws SQLException {
-        connection.prepareUpdate(
-                String.format("UPDATE dbz3401 set %s=? where id=%d", columnName, id),
-                p -> p.setObject(1, updateValue));
+    private void updateRowWithoutCommit(String columnName, QueryValue updateValue, Integer id) throws SQLException {
+        if (updateValue.isSqlFragment()) {
+            connection.execute(String.format("UPDATE dbz3401 set %s=%s WHERE id=%d", columnName, updateValue.getValue(), id));
+        }
+        else {
+            connection.prepareUpdate(
+                    String.format("UPDATE dbz3401 set %s=? where id=%d", columnName, id),
+                    p -> p.setObject(1, updateValue.getValue()));
+        }
     }
 
     @SuppressWarnings("SameParameterValue")
-    private void insertRowOffline(String columnName, Object insertValue, Integer id) throws SQLException {
-        connection.prepareUpdate(
-                String.format("INSERT INTO dbz3401 (id,%s,%s2) values (%d,?,?)", columnName, columnName, id),
-                p -> {
-                    p.setObject(1, insertValue);
-                    p.setObject(2, insertValue);
-                });
-        connection.commit();
+    private void insertRowOffline(String columnName, QueryValue insertValue, Integer id) throws SQLException {
+        if (insertValue.isSqlFragment()) {
+            connection.execute(String.format("INSERT INTO dbz3401 (id,%s,%s2) values (%d,%s,%s)",
+                    columnName, columnName, id, insertValue.getValue(), insertValue.getValue()));
+        }
+        else {
+            connection.prepareUpdate(
+                    String.format("INSERT INTO dbz3401 (id,%s,%s2) values (%d,?,?)", columnName, columnName, id),
+                    p -> {
+                        p.setObject(1, insertValue.getValue());
+                        p.setObject(2, insertValue.getValue());
+                    });
+            connection.commit();
+        }
     }
 
     @SuppressWarnings("SameParameterValue")
-    private void updateRowOffline(String columnName, Object updateValue, Integer id) throws SQLException {
-        connection.prepareUpdate(
-                String.format("UPDATE dbz3401 SET %s=? where id=%d", columnName, id),
-                p -> p.setObject(1, updateValue));
-        connection.commit();
+    private void updateRowOffline(String columnName, QueryValue updateValue, Integer id) throws SQLException {
+        if (updateValue.isSqlFragment()) {
+            connection.execute(String.format("UPDATE dbz3401 SET %s=%s WHERE id=%d", columnName, updateValue.getValue(), id));
+        }
+        else {
+            connection.prepareUpdate(
+                    String.format("UPDATE dbz3401 SET %s=? where id=%d", columnName, id),
+                    p -> p.setObject(1, updateValue.getValue()));
+            connection.commit();
+        }
+    }
+
+    /**
+     * Contract for passing different types of values that require different query bindings.
+     */
+    private interface QueryValue {
+        /**
+         * Return {@code true} if the value should be bound as a SQL fragment
+         */
+        boolean isSqlFragment();
+
+        /**
+         * Return the value of the binding, can be {@code null}
+         */
+        Object getValue();
+
+        /**
+         * Creates a {@link SqlFragmentQueryValue} that binds the value as an inline SQL fragment
+         * @param value the value to be inlined
+         * @return the query value
+         */
+        static QueryValue ofSql(String value) {
+            return new SqlFragmentQueryValue(value);
+        }
+
+        /**
+         * Creates a {@link BindQueryValue} that binds the value using JDBC bind variables
+         * @param value the value to be bound
+         * @return the query value
+         */
+        static QueryValue ofBind(Object value) {
+            return new BindQueryValue(value);
+        }
+    }
+
+    /**
+     * Binds the supplied value as line SQL fragment in the query
+     */
+    private static class SqlFragmentQueryValue implements QueryValue {
+        private final String value;
+
+        SqlFragmentQueryValue(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public boolean isSqlFragment() {
+            return true;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+    }
+
+    /**
+     * Binds the provided value as a JDBC bind variable
+     */
+    private static class BindQueryValue implements QueryValue {
+        private final Object value;
+
+        BindQueryValue(Object value) {
+            this.value = value;
+        }
+
+        @Override
+        public boolean isSqlFragment() {
+            return false;
+        }
+
+        @Override
+        public Object getValue() {
+            return value;
+        }
     }
 }
