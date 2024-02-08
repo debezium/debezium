@@ -349,7 +349,8 @@ public class SqlServerConnection extends JdbcConnection {
 
         int idx = 0;
         for (SqlServerChangeTable changeTable : changeTables) {
-            String capturedColumns = String.join(", ", changeTable.getCapturedColumns());
+            String capturedColumns = changeTable.getCapturedColumns().stream().map(c -> "[" + c + "]")
+                    .collect(Collectors.joining(", "));
             String source = changeTable.getCaptureInstance();
             if (config.getDataQueryMode() == SqlServerConnectorConfig.DataQueryMode.DIRECT) {
                 source = changeTable.getChangeTableId().table();
