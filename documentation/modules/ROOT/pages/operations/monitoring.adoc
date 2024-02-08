@@ -141,7 +141,7 @@ If you are using {prodname} on OpenShift, you can obtain JMX metrics by opening 
 For more information, see link:{LinkStreamsOpenShift}#assembly-jmx-options-deployment-configuration-kafka[JMX Options] in {NameStreamsOpenShift}.
 
 In addition, you can use Prometheus and Grafana to monitor the JMX metrics.
-For more information, see link:{LinkDeployStreamsOpenShift}/#assembly-metrics-str[Introducing Metrics to Kafka], in {NameDeployStreamsOpenShift}.
+For more information, see _Monitoring_ in link:{LinkStreamsOpenShiftOverview}#metrics-overview_str[{NameDeployStreamsOpenShift}] and _Setting up metrics and dashboards_ in link:{LinkDeployManageStreamsOpenShift}#assembly-metrics-str[{NameDeployManageStreamsOpenShift}] .
 
 endif::product[]
 
