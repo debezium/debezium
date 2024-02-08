@@ -134,6 +134,11 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     public enum SnapshotMode implements EnumeratedValue {
 
         /**
+         * Performs a snapshot of data and schema upon each connector start.
+         */
+        ALWAYS("always"),
+
+        /**
          * Perform a snapshot when it is needed.
          */
         WHEN_NEEDED("when_needed"),

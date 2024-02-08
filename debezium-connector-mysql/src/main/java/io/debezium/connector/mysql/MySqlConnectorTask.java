@@ -364,7 +364,7 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
                 }
                 LOGGER.info("The db-history topic is missing but we are in {} snapshot mode. " +
                         "Attempting to snapshot the current schema and then begin reading the binlog from the last recorded offset.",
-                        SnapshotMode.SCHEMA_ONLY_RECOVERY);
+                        SnapshotMode.SCHEMA_ONLY_RECOVERY); // TODO 7308 this should be the name of current snapshot mode
             }
             else {
                 throw new DebeziumException("The db history topic is missing. You may attempt to recover it by reconfiguring the connector to "

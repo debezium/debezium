@@ -16,7 +16,11 @@ import io.debezium.connector.mysql.MySqlConnectorConfig;
 import io.debezium.connector.mysql.MySqlOffsetContext;
 import io.debezium.connector.mysql.MySqlPartition;
 import io.debezium.connector.mysql.strategy.AbstractConnectorConnection;
+import io.debezium.connector.mysql.strategy.mariadb.MariaDbConnection;
+import io.debezium.connector.mysql.strategy.mariadb.MariaDbConnectorAdapter;
+import io.debezium.connector.mysql.strategy.mysql.MySqlConnection;
 import io.debezium.pipeline.spi.Offsets;
+import io.debezium.snapshot.mode.BeanAwareSnapshotter;
 import io.debezium.spi.snapshot.Snapshotter;
 
 public class NeverSnapshotter extends BeanAwareSnapshotter implements Snapshotter {
@@ -91,5 +95,15 @@ public class NeverSnapshotter extends BeanAwareSnapshotter implements Snapshotte
     @Override
     public boolean shouldSnapshotOnDataError() {
         return false;
+    }
+
+    private Class<? extends AbstractConnectorConnection> getConnectionClass(MySqlConnectorConfig config) {
+        // TODO review this when MariaDB becomes a first class connector
+        if (config.getConnectorAdapter() instanceof MariaDbConnectorAdapter) {
+            return MariaDbConnection.class;
+        }
+        else {
+            return MySqlConnection.class;
+        }
     }
 }

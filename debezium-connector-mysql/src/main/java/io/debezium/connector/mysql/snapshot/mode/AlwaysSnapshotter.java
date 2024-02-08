@@ -3,24 +3,23 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.oracle.snapshot.mode;
+package io.debezium.connector.mysql.snapshot.mode;
 
 import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.connector.oracle.OracleConnectorConfig;
-import io.debezium.snapshot.mode.BeanAwareSnapshotter;
+import io.debezium.connector.mysql.MySqlConnectorConfig;
 import io.debezium.spi.snapshot.Snapshotter;
 
-public class AlwaysSnapshotter extends BeanAwareSnapshotter implements Snapshotter {
+public class AlwaysSnapshotter implements Snapshotter {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(AlwaysSnapshotter.class);
+    private final static Logger LOGGER = LoggerFactory.getLogger(AlwaysSnapshotter.class);
 
     @Override
     public String name() {
-        return OracleConnectorConfig.SnapshotMode.ALWAYS.getValue();
+        return MySqlConnectorConfig.SnapshotMode.ALWAYS.getValue();
     }
 
     @Override

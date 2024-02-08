@@ -95,26 +95,13 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
     @Override
     public SnapshottingTask getSnapshottingTask(MySqlPartition partition, MySqlOffsetContext previousOffset) {
 
+        // TODO DBZ-7308 evaluate is this can be shared
         final Snapshotter snapshotter = snapshotterService.getSnapshotter();
 
         List<String> dataCollectionsToBeSnapshotted = connectorConfig.getDataCollectionsToBeSnapshotted();
         Map<String, String> snapshotSelectOverridesByTable = connectorConfig.getSnapshotSelectOverridesByTable().entrySet().stream()
                 .collect(Collectors.toMap(e -> e.getKey().identifier(), Map.Entry::getValue));
 
-        // found a previous offset and the earlier snapshot has completed
-        if (previousOffset != null && !previousOffset.isSnapshotRunning()) { // TODO DBZ-7308 check if this should be removed fort example for AlwaysSnapshotter
-
-            if (databaseSchema.isStorageInitializationExecuted()) {
-                LOGGER.info(
-                        "A previous offset indicating a completed snapshot has been found, schema will still be snapshotted since we are in schema_only_recovery mode.");
-            }
-            else {
-                LOGGER.info("A previous offset indicating a completed snapshot has been found. Neither schema nor data will be snapshotted.");
-            }
-            return new SnapshottingTask(databaseSchema.isStorageInitializationExecuted(), false, dataCollectionsToBeSnapshotted, snapshotSelectOverridesByTable, false);
-        }
-
-        LOGGER.info("No previous offset has been found");
         if (snapshotter.shouldSnapshotSchema() && snapshotter.shouldSnapshot()) {
             LOGGER.info("According to the connector configuration both schema and data will be snapshotted");
         }

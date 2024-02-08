@@ -6,6 +6,7 @@
 package io.debezium.connector.mysql;
 
 import static io.debezium.connector.mysql.MySqlConnectorConfig.isBuiltInDatabase;
+import static io.debezium.data.Envelope.FieldName.AFTER;
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static junit.framework.TestCase.assertEquals;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -2497,6 +2498,75 @@ public class MySqlConnectorIT extends AbstractAsyncEngineConnectorTest {
         waitForAvailableRecords(100, TimeUnit.MILLISECONDS);
 
         stopConnector(value -> assertThat(logInterceptor.containsWarnMessage(DatabaseSchema.NO_CAPTURED_DATA_COLLECTIONS_WARNING)).isFalse());
+    }
+
+    @Test
+    public void shouldNotUseOffsetWhenSnapshotIsAlways() throws Exception {
+
+        try {
+            config = DATABASE.defaultConfig()
+                    .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.ALWAYS)
+                    .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("always_snapshot"))
+                    .with(MySqlConnectorConfig.SNAPSHOT_MODE_TABLES, DATABASE.qualifiedTableName("always_snapshot"))
+                    .with(MySqlConnectorConfig.STORE_ONLY_CAPTURED_TABLES_DDL, true)
+                    .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                    .build();
+
+            try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+                try (JdbcConnection connection = db.connect()) {
+                    connection.execute(String.format("CREATE TABLE %s.`always_snapshot` ("
+                            + " id INT(11) PRIMARY KEY NOT NULL AUTO_INCREMENT,"
+                            + " `data` VARCHAR(50) NOT NULL);", DATABASE.getDatabaseName()));
+
+                    connection.execute(String.format("INSERT INTO %s.`always_snapshot` VALUES (1,'Test1');", DATABASE.getDatabaseName()));
+                    connection.execute(String.format("INSERT INTO %s.`always_snapshot` VALUES (2,'Test2');", DATABASE.getDatabaseName()));
+                }
+            }
+
+            start(MySqlConnector.class, config);
+            waitForStreamingRunning(DATABASE.getServerName());
+
+            int expectedRecordCount = 2;
+            SourceRecords sourceRecords = consumeRecordsByTopic(expectedRecordCount);
+            assertThat(sourceRecords.recordsForTopic(DATABASE.topicForTable("always_snapshot"))).hasSize(expectedRecordCount);
+            Struct struct = (Struct) ((Struct) sourceRecords.allRecordsInOrder().get(0).value()).get(AFTER);
+            assertEquals(1, struct.get("id"));
+            assertEquals("Test1", struct.get("data"));
+            struct = (Struct) ((Struct) sourceRecords.allRecordsInOrder().get(1).value()).get(AFTER);
+            assertEquals(2, struct.get("id"));
+            assertEquals("Test2", struct.get("data"));
+
+            stopConnector();
+
+            try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+                try (JdbcConnection connection = db.connect()) {
+
+                    connection.execute(String.format("DELETE FROM %s.`always_snapshot` WHERE id=1;", DATABASE.getDatabaseName()));
+                    connection.execute(String.format("INSERT INTO %s.`always_snapshot` VALUES (3,'Test3');", DATABASE.getDatabaseName()));
+                }
+            }
+
+            start(MySqlConnector.class, config);
+            waitForStreamingRunning(DATABASE.getServerName());
+            sourceRecords = consumeRecordsByTopic(expectedRecordCount);
+
+            // Check we get up-to-date data in the snapshot.
+            assertThat(sourceRecords.recordsForTopic(DATABASE.topicForTable("always_snapshot"))).hasSize(expectedRecordCount);
+            struct = (Struct) ((Struct) sourceRecords.allRecordsInOrder().get(0).value()).get(AFTER);
+            assertEquals(2, struct.get("id"));
+            assertEquals("Test2", struct.get("data"));
+            struct = (Struct) ((Struct) sourceRecords.allRecordsInOrder().get(1).value()).get(AFTER);
+            assertEquals(3, struct.get("id"));
+            assertEquals("Test3", struct.get("data"));
+        }
+        finally {
+            try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+                try (JdbcConnection connection = db.connect()) {
+
+                    connection.execute(String.format("DROP TABLE %s.`always_snapshot` ", DATABASE.getDatabaseName()));
+                }
+            }
+        }
     }
 
     @Test

@@ -108,16 +108,6 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
         }
     }
 
-    @Override
-    public void initializeStorage() {
-        super.initializeStorage();
-        storageInitializationExecuted = true;
-    }
-
-    public boolean isStorageInitializationExecuted() {
-        return storageInitializationExecuted;
-    }
-
     /**
      * Return true if the database schema history entity exists
      */
