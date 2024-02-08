@@ -222,10 +222,16 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
             if (OracleConnectorConfig.LogMiningStrategy.HYBRID.equals(connectorConfig.getLogMiningStrategy())) {
                 // todo: centralize this with other attribute set locations
                 final Table table = schema.tableFor(tableId);
-                final TableEditor editor = table.edit();
-                editor.addAttribute(Attribute.editor().name("OBJECT_ID").value(objectId).create());
-                editor.addAttribute(Attribute.editor().name("DATA_OBJECT_ID").value(dataObjectId).create());
-                schema.getTables().overwriteTable(editor.create());
+                if (table != null) {
+                    // If the table has not yet been registered, there is nothing to apply
+                    final TableEditor editor = table.edit();
+                    editor.addAttribute(Attribute.editor().name("OBJECT_ID").value(objectId).create());
+                    editor.addAttribute(Attribute.editor().name("DATA_OBJECT_ID").value(dataObjectId).create());
+                    schema.getTables().overwriteTable(editor.create());
+                }
+                else {
+                    LOGGER.debug("Cannot apply table attributes to table '{}', schema is not yet registered.", tableId);
+                }
             }
         }
     }
