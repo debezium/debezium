@@ -44,7 +44,7 @@ public class StreamingDatatypesIT extends AbstractOracleDatatypesTest {
 
         Configuration config = connectorConfig()
                 .with(OracleConnectorConfig.TIME_PRECISION_MODE, temporalPrecisionMode)
-                .with(OracleConnectorConfig.LOB_ENABLED, true)
+                .with(OracleConnectorConfig.LOB_ENABLED, !isHybridMiningStrategy())
                 .build();
 
         createTables();
