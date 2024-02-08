@@ -8,7 +8,7 @@ package io.debezium.connector.oracle;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -117,14 +117,20 @@ public abstract class BaseChangeRecordEmitter<T> extends RelationalChangeRecordE
      * @return list of columns that should be reselected, which can be empty
      */
     private List<Column> getReselectColumns(Struct newValue) {
-        final List<Column> reselectColumns = new ArrayList<>();
-        for (Column column : schema.getLobColumnsForTable(table.id())) {
-            final Object value = newValue.get(column.name());
-            if (schema.isColumnUnavailableValuePlaceholder(column, value)) {
-                reselectColumns.add(column);
-            }
+        List<Column> lobColumns = schema.getLobColumnsForTable(table.id());
+        if (lobColumns.isEmpty()) {
+            return Collections.emptyList();
         }
-        return reselectColumns;
+        else {
+            return lobColumns
+                    .stream()
+                    .filter(column -> newValue.schema().field(column.name()) != null)
+                    .filter(column -> {
+                        final Object value = newValue.get(column.name());
+                        return schema.isColumnUnavailableValuePlaceholder(column, value);
+                    })
+                    .collect(Collectors.toList());
+        }
     }
 
     /**
