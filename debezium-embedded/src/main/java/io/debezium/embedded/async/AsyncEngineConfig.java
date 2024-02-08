@@ -3,9 +3,11 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.embedded;
+package io.debezium.embedded.async;
 
 import io.debezium.config.Field;
+import io.debezium.embedded.EmbeddedEngine;
+import io.debezium.embedded.EmbeddedEngineConfig;
 
 /**
  * Configuration options specific to {@link AsyncEmbeddedEngine}.

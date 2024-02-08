@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.embedded;
+package io.debezium.embedded.async;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
@@ -57,6 +57,11 @@ import io.debezium.common.annotation.Incubating;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Instantiator;
+import io.debezium.embedded.DebeziumEngineCommon;
+import io.debezium.embedded.EmbeddedEngineConfig;
+import io.debezium.embedded.EmbeddedWorkerConfig;
+import io.debezium.embedded.KafkaConnectUtil;
+import io.debezium.embedded.Transformations;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.StopEngineException;
 import io.debezium.engine.source.EngineSourceConnector;

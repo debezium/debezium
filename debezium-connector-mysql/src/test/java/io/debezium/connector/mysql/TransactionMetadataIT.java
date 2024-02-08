@@ -25,7 +25,7 @@ import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractAsyncEngineConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.schema.AbstractTopicNamingStrategy;
 import io.debezium.util.Collect;

@@ -16,7 +16,7 @@ import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.antlr.listener.RenameTableParserListener;
-import io.debezium.embedded.AbstractAsyncEngineConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.util.Testing;

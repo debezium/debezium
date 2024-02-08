@@ -30,7 +30,7 @@ import org.junit.Test;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
 import io.debezium.data.VerifyRecord;
-import io.debezium.embedded.AbstractAsyncEngineConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.storage.file.history.FileSchemaHistory;
 import io.debezium.util.Testing;

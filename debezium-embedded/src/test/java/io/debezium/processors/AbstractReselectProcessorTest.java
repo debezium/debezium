@@ -20,7 +20,7 @@ import io.debezium.config.Configuration;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractAsyncEngineConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.processors.reselect.ReselectColumnsPostProcessor;

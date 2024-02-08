@@ -22,7 +22,7 @@ import io.debezium.config.CommonConnectorConfig.SchemaNameAdjustmentMode;
 import io.debezium.config.Configuration;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractAsyncEngineConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.util.Testing;
 
 /**

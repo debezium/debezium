@@ -22,7 +22,7 @@ import org.junit.Test;
 import io.debezium.config.Configuration;
 import io.debezium.data.Envelope.FieldName;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractAsyncEngineConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.util.Testing;
 

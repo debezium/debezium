@@ -46,7 +46,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
-import io.debezium.embedded.AbstractAsyncEngineConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.notification.channels.SinkNotificationChannel;
 import io.debezium.pipeline.notification.channels.jmx.JmxNotificationChannelMXBean;

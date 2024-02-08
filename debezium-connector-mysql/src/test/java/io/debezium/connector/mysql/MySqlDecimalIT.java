@@ -21,7 +21,7 @@ import org.junit.Test;
 import io.debezium.config.Configuration;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractAsyncEngineConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.EqualityCheck;
 import io.debezium.junit.SkipWhenKafkaVersion;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;

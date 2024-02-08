@@ -3,10 +3,12 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.embedded;
+package io.debezium.embedded.async;
 
 import java.io.IOException;
 import java.util.function.Consumer;
+
+import io.debezium.embedded.TestingDebeziumEngine;
 
 /**
  * Implementation of {@link TestingDebeziumEngine} for {@link AsyncEngineConfig}.

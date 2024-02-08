@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.embedded;
+package io.debezium.embedded.async;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -37,6 +37,8 @@ import org.slf4j.LoggerFactory;
 import io.debezium.DebeziumException;
 import io.debezium.connector.simple.SimpleSourceConnector;
 import io.debezium.doc.FixFor;
+import io.debezium.embedded.DebeziumEngineTestUtils;
+import io.debezium.embedded.EmbeddedEngineConfig;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.util.LoggingContext;
@@ -137,7 +139,7 @@ public class AsyncEmbeddedEngineTest {
         final Properties props = new Properties();
         props.put(EmbeddedEngineConfig.ENGINE_NAME.name(), "testing-connector");
         props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, String.valueOf(NUMBER_OF_TASKS));
-        props.put(EmbeddedEngineConfig.CONNECTOR_CLASS.name(), MultiTaskSimpleSourceConnector.class.getName());
+        props.put(EmbeddedEngineConfig.CONNECTOR_CLASS.name(), DebeziumAsyncEngineTestUtils.MultiTaskSimpleSourceConnector.class.getName());
         props.put(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
         props.put(SimpleSourceConnector.BATCH_COUNT, 1);
 
@@ -175,7 +177,7 @@ public class AsyncEmbeddedEngineTest {
         final Properties props = new Properties();
         props.put(EmbeddedEngineConfig.ENGINE_NAME.name(), "testing-connector");
         props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, String.valueOf(NUMBER_OF_TASKS));
-        props.put(EmbeddedEngineConfig.CONNECTOR_CLASS.name(), RandomlyFailingDuringStartConnector.class.getName());
+        props.put(EmbeddedEngineConfig.CONNECTOR_CLASS.name(), DebeziumAsyncEngineTestUtils.RandomlyFailingDuringStartConnector.class.getName());
         props.put(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
         props.put(SimpleSourceConnector.BATCH_COUNT, 1);
         props.put(AsyncEngineConfig.TASK_MANAGEMENT_TIMEOUT_MS, "10");
@@ -271,7 +273,7 @@ public class AsyncEmbeddedEngineTest {
         final Properties props = new Properties();
         props.put(EmbeddedEngineConfig.ENGINE_NAME.name(), "testing-connector");
         props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
-        props.put(EmbeddedEngineConfig.CONNECTOR_CLASS.name(), InterruptedConnector.class.getName());
+        props.put(EmbeddedEngineConfig.CONNECTOR_CLASS.name(), DebeziumAsyncEngineTestUtils.InterruptedConnector.class.getName());
         props.put(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
         props.put(SimpleSourceConnector.BATCH_COUNT, 1);
         props.put(AsyncEngineConfig.TASK_MANAGEMENT_TIMEOUT_MS, "10");
@@ -351,7 +353,7 @@ public class AsyncEmbeddedEngineTest {
         final Properties props = new Properties();
         props.put(EmbeddedEngineConfig.ENGINE_NAME.name(), "testing-connector");
         props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
-        props.put(EmbeddedEngineConfig.CONNECTOR_CLASS.name(), NoOpConnector.class.getName());
+        props.put(EmbeddedEngineConfig.CONNECTOR_CLASS.name(), DebeziumAsyncEngineTestUtils.NoOpConnector.class.getName());
         props.put(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
         props.put(SimpleSourceConnector.BATCH_COUNT, 1);
         props.put(AsyncEngineConfig.TASK_MANAGEMENT_TIMEOUT_MS, "10");
@@ -586,7 +588,7 @@ public class AsyncEmbeddedEngineTest {
         allLatch.await(1, TimeUnit.SECONDS);
         assertThat(allLatch.getCount()).isEqualTo(0);
 
-        assertThat(interceptor.containsMessage("Using io.debezium.embedded.AsyncEmbeddedEngine$ParallelSmtConsumerProcessor processor"));
+        assertThat(interceptor.containsMessage("Using io.debezium.embedded.async.AsyncEmbeddedEngine$ParallelSmtConsumerProcessor processor"));
 
         stopEngine();
     }
