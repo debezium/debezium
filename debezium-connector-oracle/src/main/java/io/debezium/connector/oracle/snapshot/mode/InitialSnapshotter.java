@@ -8,8 +8,9 @@ package io.debezium.connector.oracle.snapshot.mode;
 import java.util.Map;
 
 import io.debezium.connector.oracle.OracleConnectorConfig;
+import io.debezium.snapshot.mode.HistorizedSnapshotter;
 
-public class InitialSnapshotter extends OffsetAwareSnapshotter {
+public class InitialSnapshotter extends HistorizedSnapshotter {
 
     @Override
     public String name() {

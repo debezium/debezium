@@ -69,7 +69,6 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
     private final DdlChanges ddlChanges;
     private final Map<Long, TableId> tableIdsByTableNumber = new ConcurrentHashMap<>();
     private final Map<Long, TableId> excludeTableIdsByTableNumber = new ConcurrentHashMap<>();
-    private boolean storageInitializationExecuted = false;
     private final MySqlConnectorConfig connectorConfig;
 
     /**
@@ -414,16 +413,6 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
         LOGGER.debug("Clearing table number mappings");
         tableIdsByTableNumber.clear();
         excludeTableIdsByTableNumber.clear();
-    }
-
-    @Override
-    public void initializeStorage() {
-        super.initializeStorage();
-        storageInitializationExecuted = true;
-    }
-
-    public boolean isStorageInitializationExecuted() {
-        return storageInitializationExecuted;
     }
 
     @Override

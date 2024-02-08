@@ -15,10 +15,13 @@ import io.debezium.connector.mysql.MySqlConnectorConfig;
 import io.debezium.connector.mysql.MySqlOffsetContext;
 import io.debezium.connector.mysql.MySqlPartition;
 import io.debezium.connector.mysql.strategy.AbstractConnectorConnection;
+import io.debezium.connector.mysql.strategy.mariadb.MariaDbConnection;
+import io.debezium.connector.mysql.strategy.mariadb.MariaDbConnectorAdapter;
+import io.debezium.connector.mysql.strategy.mysql.MySqlConnection;
 import io.debezium.pipeline.spi.Offsets;
-import io.debezium.spi.snapshot.Snapshotter;
+import io.debezium.snapshot.mode.HistorizedSnapshotter;
 
-public class WhenNeededSnapshotter extends BeanAwareSnapshotter implements Snapshotter {
+public class WhenNeededSnapshotter extends HistorizedSnapshotter {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(WhenNeededSnapshotter.class);
 
@@ -40,7 +43,7 @@ public class WhenNeededSnapshotter extends BeanAwareSnapshotter implements Snaps
         final Offsets<MySqlPartition, MySqlOffsetContext> mySqloffsets = beanRegistry.lookupByName(StandardBeanNames.OFFSETS, Offsets.class);
         final MySqlOffsetContext offset = mySqloffsets.getTheOnlyOffset();
 
-        if (offset != null && !offset.isSnapshotRunning()) {
+        if (offsetContextExists && !isSnapshotInProgress) {
             // Check to see if the server still has those binlog coordinates ...
             if (!connection.isBinlogPositionAvailable(config, offset.gtidSet(), offset.getSource().binlogFilename())) {
                 LOGGER.warn(
@@ -53,17 +56,17 @@ public class WhenNeededSnapshotter extends BeanAwareSnapshotter implements Snaps
     }
 
     @Override
-    public boolean shouldSnapshot() {
+    protected boolean shouldSnapshotWhenNoOffset() {
+        return true;
+    }
+
+    @Override
+    protected boolean shouldSnapshotSchemaWhenNoOffset() {
         return true;
     }
 
     @Override
     public boolean shouldStream() {
-        return true;
-    }
-
-    @Override
-    public boolean shouldSnapshotSchema() {
         return true;
     }
 
@@ -75,5 +78,15 @@ public class WhenNeededSnapshotter extends BeanAwareSnapshotter implements Snaps
     @Override
     public boolean shouldSnapshotOnDataError() {
         return true;
+    }
+
+    private Class<? extends AbstractConnectorConnection> getConnectionClass(MySqlConnectorConfig config) {
+        // TODO review this when MariaDB becomes a first class connector
+        if (config.getConnectorAdapter() instanceof MariaDbConnectorAdapter) {
+            return MariaDbConnection.class;
+        }
+        else {
+            return MySqlConnection.class;
+        }
     }
 }
