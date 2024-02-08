@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -92,20 +93,20 @@ public class DebeziumResource {
         throw new IllegalArgumentException("Invalid version string: \"" + version + "\"");
     }
 
-    private static <T> void addConnectorPlugins(List<ConnectorDescriptor> connectorPlugins, Collection<PluginDesc<T>> plugins) {
+    private static <T> void addConnectorPlugins(Map<String, ConnectorDescriptor> connectorPlugins, Collection<PluginDesc<T>> plugins) {
         plugins.stream()
                 .filter(p -> SUPPORTED_CONNECTORS.contains(p.pluginClass().getName()))
-                .forEach(p -> connectorPlugins.add(new ConnectorDescriptor(p.pluginClass().getName(), p.version())));
+                .forEach(p -> connectorPlugins.put(p.pluginClass().getName() + "#" + p.version(), new ConnectorDescriptor(p.pluginClass().getName(), p.version())));
     }
 
     private synchronized void initConnectorPlugins() {
         if (null == this.availableConnectorPlugins || this.availableConnectorPlugins.isEmpty()) {
             // TODO: improve once plugins are allowed to be added/removed during runtime by Kafka Connect, @see org.apache.kafka.connect.runtime.rest.resources.ConnectorPluginsResource
-            final List<ConnectorDescriptor> connectorPlugins = new ArrayList<>();
+            final Map<String, ConnectorDescriptor> connectorPlugins = new HashMap<>();
             Herder herder = getHerder();
             addConnectorPlugins(connectorPlugins, herder.plugins().sinkConnectors());
             addConnectorPlugins(connectorPlugins, herder.plugins().sourceConnectors());
-            this.availableConnectorPlugins = Collections.unmodifiableList(connectorPlugins);
+            this.availableConnectorPlugins = Collections.unmodifiableList(new ArrayList<>(connectorPlugins.values()));
         }
     }
 
