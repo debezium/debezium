@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -27,10 +28,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Field;
 import io.debezium.connector.oracle.OracleConnectorConfig.ConnectorAdapter;
+import io.debezium.connector.oracle.logminer.SqlUtils;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.TableId;
@@ -87,6 +91,7 @@ public class OracleConnection extends JdbcConnection {
     public OracleConnection(JdbcConfiguration config, ConnectionFactory connectionFactory, boolean showVersion) {
         super(config, connectionFactory, QUOTED_CHARACTER, QUOTED_CHARACTER);
         LOGGER.trace("JDBC connection string: " + connectionString(config));
+        this.logPositionValidator = this::validateLogPosition;
         this.databaseVersion = resolveOracleDatabaseVersion();
         if (showVersion) {
             LOGGER.info("Database Version: {}", databaseVersion.getBanner());
@@ -96,6 +101,7 @@ public class OracleConnection extends JdbcConnection {
     public OracleConnection(JdbcConfiguration config, boolean showVersion) {
         super(config, resolveConnectionFactory(config), QUOTED_CHARACTER, QUOTED_CHARACTER);
         LOGGER.trace("JDBC connection string: " + connectionString(config));
+        this.logPositionValidator = this::validateLogPosition;
         this.databaseVersion = resolveOracleDatabaseVersion();
         if (showVersion) {
             LOGGER.info("Database Version: {}", databaseVersion.getBanner());
@@ -385,6 +391,43 @@ public class OracleConnection extends JdbcConnection {
 
     public <T> T singleOptionalValue(String query, ResultSetExtractor<T> extractor) throws SQLException {
         return queryAndMap(query, rs -> rs.next() ? extractor.apply(rs) : null);
+    }
+
+    /**
+     * Gets the first system change number in both archive and redo logs.
+     *
+     * @param archiveLogRetention retention of the archive log
+     * @param archiveDestinationName name of the archive log destination to be used for reading archive logs
+     * @return the oldest system change number
+     * @throws SQLException      if a database exception occurred
+     * @throws DebeziumException if the oldest system change number cannot be found due to no logs available
+     */
+    public Optional<Scn> getFirstScnInLogs(Duration archiveLogRetention, String archiveDestinationName) throws SQLException {
+
+        final String oldestFirstChangeQuery = SqlUtils.oldestFirstChangeQuery(archiveLogRetention, archiveDestinationName);
+        final String oldestScn = singleOptionalValue(oldestFirstChangeQuery, rs -> rs.getString(1));
+
+        if (oldestScn == null) {
+            return Optional.empty();
+        }
+
+        LOGGER.trace("Oldest SCN in logs is '{}'", oldestScn);
+        return Optional.of(Scn.valueOf(oldestScn));
+    }
+
+    public boolean validateLogPosition(OffsetContext offset, CommonConnectorConfig config) throws SQLException {
+
+        final Duration archiveLogRetention = ((OracleConnectorConfig) config).getLogMiningArchiveLogRetention(); // TODO generify this as suggested by Chris
+        final String archiveDestinationName = ((OracleConnectorConfig) config).getLogMiningArchiveDestinationName();
+        final Scn storedOffset = ((OracleConnectorConfig) config).getAdapter().getOffsetScn((OracleOffsetContext) offset);
+
+        Optional<Scn> firstAvailableScn = getFirstScnInLogs(archiveLogRetention, archiveDestinationName);
+
+        return firstAvailableScn.filter(isLessThan(storedOffset)).isPresent();
+    }
+
+    private static Predicate<Scn> isLessThan(Scn storedOffset) {
+        return scn -> scn.compareTo(storedOffset) < 0;
     }
 
     @Override

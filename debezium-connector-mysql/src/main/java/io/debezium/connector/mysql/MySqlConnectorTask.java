@@ -148,7 +148,6 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
         // If the binlog position is not available it is necessary to re-execute snapshot
         if (previousOffset == null) {
             LOGGER.info("No previous offset found");
-            // if we have no initial offset, indicate that to Snapshotter by passing null
             snapshotter.validate(false, false);
         }
         else {

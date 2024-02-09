@@ -113,7 +113,7 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
             this.offsetContext = offsetContext;
             this.jdbcConnection.setAutoCommit(false);
 
-            final Scn startScn = offsetContext.getScn();
+            final Scn startScn = connectorConfig.getAdapter().getOffsetScn(offsetContext);
             final Long startScnIndex = offsetContext.getScnIndex();
 
             this.client = new OlrNetworkClient(connectorConfig);

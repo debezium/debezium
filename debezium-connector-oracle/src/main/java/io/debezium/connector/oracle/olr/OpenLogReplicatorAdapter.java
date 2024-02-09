@@ -133,6 +133,11 @@ public class OpenLogReplicatorAdapter extends AbstractStreamingAdapter<OpenLogRe
     }
 
     @Override
+    public Scn getOffsetScn(OracleOffsetContext offsetContext) {
+        return offsetContext.getScn();
+    }
+
+    @Override
     public OracleOffsetContext copyOffset(OracleConnectorConfig connectorConfig, OracleOffsetContext offsetContext) {
         return new OpenLogReplicatorOracleOffsetContextLoader(connectorConfig).load(offsetContext.getOffset());
     }

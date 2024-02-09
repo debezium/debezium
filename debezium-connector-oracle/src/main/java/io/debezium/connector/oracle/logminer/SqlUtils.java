@@ -72,7 +72,7 @@ public class SqlUtils {
         return String.format("SELECT 'KEY', LOG_GROUP_TYPE FROM %s WHERE OWNER = '%s' AND TABLE_NAME = '%s'", ALL_LOG_GROUPS, tableId.schema(), tableId.table());
     }
 
-    static String oldestFirstChangeQuery(Duration archiveLogRetention, String archiveDestinationName) {
+    public static String oldestFirstChangeQuery(Duration archiveLogRetention, String archiveDestinationName) {
         final StringBuilder sb = new StringBuilder();
         sb.append("SELECT MIN(FIRST_CHANGE#) FROM (SELECT MIN(FIRST_CHANGE#) AS FIRST_CHANGE# ");
         sb.append("FROM ").append(LOG_VIEW).append(" ");
