@@ -116,10 +116,13 @@ jobs:
           -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
           -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
 
+  # A GitHub worker only has so much space and currently when this stage of the job runs concurrently with the
+  # "test-connector" stage, we are facing a worker out of space problem. To attempt to combat this issue, the
+  # REST extension tests will run sequentially after the "test-connector" stage has concluded.
   test-rest-extension:
     name: Oracle Connect REST Extension
     runs-on: ubuntu-latest
-    needs: [check]
+    needs: [check, test-connector]
     if: ${{ needs.check.outputs.HAS_QUAY_IO == 'true' }}
     steps:
       - name: Checkout Action
