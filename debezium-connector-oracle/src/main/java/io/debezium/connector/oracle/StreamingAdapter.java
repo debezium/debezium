@@ -107,6 +107,15 @@ public interface StreamingAdapter<T extends AbstractOracleStreamingChangeEventSo
     }
 
     /**
+     * Returns the Scn stored in the offset.
+     *
+     * @param offsetContext the connector offset context
+     *
+     * @return the {@code Scn} stored in the offset
+     */
+    Scn getOffsetScn(OracleOffsetContext offsetContext);
+
+    /**
      * Creates a copy of the existing offsets.
      *
      * @param connectorConfig the connector configuration, should never be {@code null}

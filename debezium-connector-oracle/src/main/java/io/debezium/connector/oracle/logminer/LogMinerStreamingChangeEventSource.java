@@ -154,9 +154,11 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
             prepareConnection(false);
 
             this.effectiveOffset = offsetContext;
-            startScn = offsetContext.getScn();
+            startScn = connectorConfig.getAdapter().getOffsetScn(this.effectiveOffset);
             snapshotScn = offsetContext.getSnapshotScn();
-            Scn firstScn = getFirstScnInLogs(jdbcConnection);
+            Scn firstScn = jdbcConnection.getFirstScnInLogs(archiveLogRetention, archiveDestinationName)
+                    .orElseThrow(() -> new DebeziumException("Failed to calculate oldest SCN available in logs"));
+
             if (startScn.compareTo(snapshotScn) == 0) {
                 // This is the initial run of the streaming change event source.
                 // We need to compute the correct start offset for mining. That is not the snapshot offset,
@@ -402,13 +404,15 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
      * @throws SQLException if a database exception occurred
      * @throws DebeziumException if the oldest system change number cannot be found due to no logs available
      */
-    private Scn getFirstScnInLogs(OracleConnection connection) throws SQLException {
-        String oldestScn = connection.singleOptionalValue(SqlUtils.oldestFirstChangeQuery(archiveLogRetention, archiveDestinationName), rs -> rs.getString(1));
+    private Optional<Scn> getFirstScnInLogs(OracleConnection connection) throws SQLException {
+
+        final String oldestFirstChangeQuery = SqlUtils.oldestFirstChangeQuery(archiveLogRetention, archiveDestinationName);
+        final String oldestScn = connection.singleOptionalValue(oldestFirstChangeQuery, rs -> rs.getString(1));
         if (oldestScn == null) {
-            throw new DebeziumException("Failed to calculate oldest SCN available in logs");
+            return Optional.empty();
         }
         LOGGER.trace("Oldest SCN in logs is '{}'", oldestScn);
-        return Scn.valueOf(oldestScn);
+        return Optional.of(Scn.valueOf(oldestScn));
     }
 
     private void initializeRedoLogsForMining(OracleConnection connection, boolean postEndMiningSession, Scn startScn)

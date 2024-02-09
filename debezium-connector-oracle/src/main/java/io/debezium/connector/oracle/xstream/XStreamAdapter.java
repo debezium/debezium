@@ -37,6 +37,9 @@ import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.snapshot.SnapshotterService;
 import io.debezium.util.Clock;
 
+import oracle.streams.StreamsException;
+import oracle.streams.XStreamUtility;
+
 /**
  * The streaming adapter implementation for Oracle XStream.
  *
@@ -143,6 +146,27 @@ public class XStreamAdapter extends AbstractStreamingAdapter<XStreamStreamingCha
                 .transactionContext(new TransactionContext())
                 .incrementalSnapshotContext(new SignalBasedIncrementalSnapshotContext<>())
                 .build();
+    }
+
+    @Override
+    public Scn getOffsetScn(OracleOffsetContext offsetContext) {
+
+        final byte[] startPosition;
+        String lcrPosition = offsetContext.getLcrPosition();
+        if (lcrPosition != null) {
+            startPosition = LcrPosition.valueOf(lcrPosition).getRawPosition();
+            getScn(startPosition);
+        }
+        return offsetContext.getScn();
+    }
+
+    private static void getScn(byte[] startPosition) {
+        try {
+            XStreamUtility.getSCNFromPosition(startPosition);
+        }
+        catch (StreamsException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override

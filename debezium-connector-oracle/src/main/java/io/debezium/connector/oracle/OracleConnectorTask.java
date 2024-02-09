@@ -40,6 +40,7 @@ import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.service.spi.ServiceRegistry;
 import io.debezium.snapshot.SnapshotterService;
+import io.debezium.spi.snapshot.Snapshotter;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Clock;
 import io.debezium.util.Strings;
@@ -94,6 +95,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         registerServiceProviders(connectorConfig.getServiceRegistry());
 
         final SnapshotterService snapshotterService = connectorConfig.getServiceRegistry().tryGetService(SnapshotterService.class);
+        final Snapshotter snapshotter = snapshotterService.getSnapshotter();
 
         validateRedoLogConfiguration(connectorConfig, snapshotterService);
 
@@ -103,6 +105,16 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         validateAndLoadSchemaHistory(connectorConfig, partition, previousOffset, schema, snapshotterService);
 
         taskContext = new OracleTaskContext(connectorConfig, schema);
+
+        // If the binlog position is not available it is necessary to re-execute snapshot
+        if (previousOffset == null) {
+            LOGGER.info("No previous offset found");
+            snapshotter.validate(false, false);
+        }
+        else {
+            LOGGER.info("Found previous offset {}", previousOffset);
+            snapshotter.validate(true, previousOffset.isSnapshotRunning());
+        }
 
         Clock clock = Clock.system();
 

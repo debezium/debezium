@@ -965,6 +965,11 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         SCHEMA_ONLY_RECOVERY("schema_only_recovery"),
 
         /**
+         * Perform a snapshot when it is needed.
+         */
+        WHEN_NEEDED("when_needed"),
+
+        /**
          * Inject a custom snapshotter, which allows for more control over snapshots.
          */
         CUSTOM("custom");

@@ -110,14 +110,7 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
         try (OracleConnection xsConnection = new OracleConnection(jdbcConnection.config())) {
             try {
                 // 1. connect
-                final byte[] startPosition;
-                String lcrPosition = offsetContext.getLcrPosition();
-                if (lcrPosition != null) {
-                    startPosition = LcrPosition.valueOf(lcrPosition).getRawPosition();
-                }
-                else {
-                    startPosition = convertScnToPosition(offsetContext.getScn());
-                }
+                final byte[] startPosition = convertScnToPosition(connectorConfig.getAdapter().getOffsetScn(offsetContext));
 
                 xsOut = performAttachWithRetries(xsConnection, startPosition);
                 if (xsOut == null) {

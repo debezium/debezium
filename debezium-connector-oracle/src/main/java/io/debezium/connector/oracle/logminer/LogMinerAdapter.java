@@ -154,6 +154,11 @@ public class LogMinerAdapter extends AbstractStreamingAdapter<LogMinerStreamingC
     }
 
     @Override
+    public Scn getOffsetScn(OracleOffsetContext offsetContext) {
+        return offsetContext.getScn();
+    }
+
+    @Override
     public OracleOffsetContext copyOffset(OracleConnectorConfig connectorConfig, OracleOffsetContext offsetContext) {
         return new LogMinerOracleOffsetContextLoader(connectorConfig).load(offsetContext.getOffset());
     }
