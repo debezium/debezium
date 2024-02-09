@@ -98,6 +98,9 @@ public class SqlServerChangeEventSourceCoordinator extends ChangeEventSourceCoor
             initStreamEvents(entry.getKey(), entry.getValue());
         }
 
+        getSignalProcessor(previousOffsets).ifPresent(signalProcessor -> registerSignalActionsAndStartProcessor(signalProcessor,
+                eventDispatcher, this, connectorConfig));
+
         final Metronome metronome = Metronome.sleeper(pollInterval, clock);
 
         LOGGER.info("Starting streaming");
