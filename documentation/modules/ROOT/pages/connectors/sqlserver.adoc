@@ -2095,7 +2095,7 @@ You then need to create the following custom resources (CRs):
 * SQL Server is running and you completed the steps to {LinkDebeziumUserGuide}#setting-up-sql-server-for-use-with-the-debezium-sql-server-connector[set up SQL Server to work with a {prodname} connector].
 
 * {StreamsName} is deployed on OpenShift and is running Apache Kafka and Kafka Connect.
-  For more information, see link:{LinkDeployStreamsOpenShift}[{NameDeployStreamsOpenShift}]
+  For more information, see link:{LinkDeployManageStreamsOpenShift}[{NameDeployManageStreamsOpenShift}]
 
 * Podman or Docker is installed.
 
