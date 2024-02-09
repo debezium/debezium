@@ -185,8 +185,8 @@ If the connector fails, is rebalanced, or stops after Step 1 begins but before S
 
 ifdef::community[]
 |`custom`
-|The `custom` snapshot mode lets you inject your own implementation of the `io.debezium.spi.snapshot.Snapshotter` interface. 
-Set the `snapshot.mode.custom.name` configuration property to the name provided by the `name()` method of your implementation, as specified on the classpath of your Kafka Connect cluster, or included in the connector JAR file, if using the `EmbeddedEngine`. 
+|The `custom` snapshot mode lets you inject your own implementation of the `io.debezium.spi.snapshot.Snapshotter` interface.
+Set the `snapshot.mode.custom.name` configuration property to the name provided by the `name()` method of your implementation, as specified on the classpath of your Kafka Connect cluster, or included in the connector JAR file, if using the `EmbeddedEngine`.
 For more information, see xref:postgresql-custom-snapshot[custom snapshotter SPI].
 endif::community[]
 
@@ -263,10 +263,10 @@ For more advanced uses, you can fine-tune control the snapshot by implementing o
  * - Whether to snapshot data or schema following an error.
  * <p>
  * Although {prodname} provides many default snapshot modes,
- * to provide more advanced functionality, such as partial snapshots, 
+ * to provide more advanced functionality, such as partial snapshots,
  * you can customize implementation of the interface.
  * For more information, see the documentation.
- 
+
  *
  *
  * @author Mario Fiore Vitale
@@ -318,7 +318,7 @@ public interface Snapshotter extends Configurable {
     /**
      *
      * @return {@code true} if streaming should resume from the start of the snapshot
-     * transaction, or {@code false} if following a restart, the connector  
+     * transaction, or {@code false} if following a restart, the connector
      * should take a snapshot, and then resume streaming from the last offset.
      */
     default boolean shouldStreamEventsStartingFromSnapshot() {
@@ -2554,7 +2554,7 @@ Apply this CR to the same OpenShift instance where you applied the `KafkaConnect
 * PostgreSQL is running and you performed the steps to {LinkDebeziumUserGuide}#setting-up-postgresql-to-run-a-debezium-connector[set up PostgreSQL to run a {prodname} connector].
 
 * {StreamsName} is deployed on OpenShift and is running Apache Kafka and Kafka Connect.
-  For more information, see link:{LinkDeployStreamsOpenShift}[{NameDeployStreamsOpenShift}].
+  For more information, see link:{LinkDeployManageStreamsOpenShift}[{NameDeployManageStreamsOpenShift}].
 
 * Podman or Docker is installed.
 
@@ -3354,7 +3354,7 @@ ifdef::community[]
 |[[postgresql-property-snapshot-mode-custom-name]]<<postgresql-property-snapshot-mode-custom-name, `+snapshot.mode.custom.name+`>>
 |No default
 | When `snapshot.mode` is set as `custom`, use this setting to specify the name of the custom implementation provided in the `name()` method that is defined by the 'io.debezium.spi.snapshot.Snapshotter' interface.
-The provided implementation is called after a connector restart to determine whether to perform a snapshot. 
+The provided implementation is called after a connector restart to determine whether to perform a snapshot.
 For more information, see xref:postgresql-custom-snapshot[custom snapshotter SPI].
 endif::community[]
 
@@ -3363,16 +3363,16 @@ endif::community[]
 |Specifies how the connector holds locks on tables while performing a schema snapshot: +
 Set one of the following options:
  +
-`shared`:: The connector holds a table lock that prevents exclusive table access during the initial portion phase of the snapshot in which database schemas and other metadata are read. 
-After the initial phase, the snapshot no longer requires table locks. 
+`shared`:: The connector holds a table lock that prevents exclusive table access during the initial portion phase of the snapshot in which database schemas and other metadata are read.
+After the initial phase, the snapshot no longer requires table locks.
  +
 `none`:: The connector avoids locks entirely. +
 +
 [WARNING]
 ====
-Do not use this mode if schema changes might occur during the snapshot. 
+Do not use this mode if schema changes might occur during the snapshot.
 ====
- 
+
 ifdef::community[]
 `custom`:: The connector performs a snapshot according to the implementation specified by the xref:postgresql-property-snapshot-locking-mode-custom-name[`snapshot.locking.mode.custom.name`] property, which is a custom implementation of the `io.debezium.spi.snapshot.SnapshotLock` interface.
 endif::community[]
@@ -3389,7 +3389,7 @@ endif::community[]
 |Specifies how the connector queries data while performing a snapshot. +
 Set one of the following options:
 
-`select_all`:: The connector performs a `select all` query. 
+`select_all`:: The connector performs a `select all` query.
 
 ifdef::community[]
 `custom`:: The connector performs a snapshot query according to the implementation specified by the xref:postgresql-property-snapshot-snapshot-query-mode-custom-name[`snapshot.query.mode.custom.name`] property, which defines a custom implementation of the `io.debezium.spi.snapshot.SnapshotQuery` interface. +
