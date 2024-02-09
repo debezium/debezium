@@ -2400,7 +2400,7 @@ You then need to create the following custom resources (CRs):
 * MySQL is running and you completed the steps to {LinkDebeziumUserGuide}#setting-up-mysql-to-run-a-debezium-connector[set up MySQL to work with a {prodname} connector].
 
 * {StreamsName} is deployed on OpenShift and is running Apache Kafka and Kafka Connect.
-For more information, see link:{LinkDeployStreamsOpenShift}[{NameDeployStreamsOpenShift}].
+For more information, see link:{LinkDeployManageStreamsOpenShift}[{NameDeployManageStreamsOpenShift}].
 
 * Podman or Docker is installed.
 

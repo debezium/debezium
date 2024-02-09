@@ -1959,7 +1959,7 @@ Apply this CR to the same OpenShift instance where you applied the `KafkaConnect
 * Db2 is running and you completed the steps to {LinkDebeziumUserGuide}#setting-up-db2-to-run-a-debezium-connector[set up Db2 to work with a {prodname} connector].
 
 * {StreamsName} is deployed on OpenShift and is running Apache Kafka and Kafka Connect.
-For more information, see link:{LinkDeployStreamsOpenShift}[{NameDeployStreamsOpenShift}].
+For more information, see link:{LinkDeployManageStreamsOpenShift}[{NameDeployManageStreamsOpenShift}].
 
 * Podman or Docker is installed.
 

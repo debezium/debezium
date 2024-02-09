@@ -2421,10 +2421,10 @@ You then need to create the following custom resources (CRs):
 
 .Prerequisites
 
-* Oracle Database is running and you completed the steps to {LinkDebeziumUserGuide}#setting-up-oracle-for-use-with-the-debezium-oracle-connector[set up Oracle to work with a {prodname} connector].
+* Oracle Database is running and you completed the steps to {LinkDebeziumUserGuide}#setting-up-oracle-to-work-with-debezium[set up Oracle to work with a {prodname} connector].
 
 * {StreamsName} is deployed on OpenShift and is running Apache Kafka and Kafka Connect.
-  For more information, see link:{LinkDeployStreamsOpenShift}[{NameDeployStreamsOpenShift}]
+  For more information, see link:{LinkDeployManageStreamsOpenShift}[{NameDeployManageStreamsOpenShift}]
 
 * Podman or Docker is installed.
 
