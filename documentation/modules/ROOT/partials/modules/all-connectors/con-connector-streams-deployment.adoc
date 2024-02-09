@@ -23,4 +23,4 @@ You can still use the REST API to retrieve information.
 .Additional resources
 
 * link:{LinkDeployManageStreamsOpenShift}#con-kafka-connect-config-str[Configuring Kafka Connect] in {NameDeployManageStreamsOpenShift}.
-* link:{LinkDeployManageStreamsOpenShift}#creating-new-image-using-kafka-connect-build-str[Building a new container image automatically in {NameDeployManageStreamsOpenShift}.
+* link:{LinkDeployManageStreamsOpenShift}#creating-new-image-using-kafka-connect-build-str[Building a new container image automatically] in {NameDeployManageStreamsOpenShift}.
