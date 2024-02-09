@@ -53,6 +53,7 @@ ARRAY:                               'ARRAY';
 AS:                                  'AS';
 ASC:                                 'ASC';
 ATTRIBUTE:                           'ATTRIBUTE';
+AUTO:                                'AUTO'; // MariaDB-specific
 BEFORE:                              'BEFORE';
 BETWEEN:                             'BETWEEN';
 BOTH:                                'BOTH';
@@ -211,6 +212,7 @@ STACKED:                             'STACKED';
 STARTING:                            'STARTING';
 STATEMENT:                           'STATEMENT';
 STRAIGHT_JOIN:                       'STRAIGHT_JOIN';
+SYSTEM_TIME:                         'SYSTEM_TIME'; // MariaDB-specific
 TABLE:                               'TABLE';
 TERMINATED:                          'TERMINATED';
 THEN:                                'THEN';
