@@ -25,10 +25,13 @@ import io.debezium.engine.DebeziumEngine;
 public class ParallelSmtAndConvertBatchProcessor<R> extends AbstractRecordProcessor<R> {
     private static final Logger LOGGER = LoggerFactory.getLogger(ParallelSmtAndConvertBatchProcessor.class);
 
+    final DebeziumEngine.RecordCommitter committer;
     final DebeziumEngine.ChangeConsumer<R> userHandler;
     final Function<SourceRecord, R> convertor;
 
-    ParallelSmtAndConvertBatchProcessor(final DebeziumEngine.ChangeConsumer<R> userHandler, final Function<SourceRecord, R> convertor) {
+    ParallelSmtAndConvertBatchProcessor(final DebeziumEngine.RecordCommitter committer, final DebeziumEngine.ChangeConsumer<R> userHandler,
+                                        final Function<SourceRecord, R> convertor) {
+        this.committer = committer;
         this.userHandler = userHandler;
         this.convertor = convertor;
     }

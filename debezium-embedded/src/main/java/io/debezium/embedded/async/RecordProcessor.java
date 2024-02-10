@@ -29,9 +29,8 @@ public interface RecordProcessor<R> {
      *
      * @param recordService {@link ExecutorService} which allows to run processing of individual records in parallel.
      * @param transformations chain of transformations to be applied on every individual record.
-     * @param committer implementation of {@link DebeziumEngine.RecordCommitter} responsible for committing individual records as well as batches.
      */
-    void initialize(ExecutorService recordService, Transformations transformations, DebeziumEngine.RecordCommitter committer);
+    void initialize(ExecutorService recordService, Transformations transformations);
 
     /**
      * Processes a batch of records provided by the source connector.

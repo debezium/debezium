@@ -11,7 +11,6 @@ import java.util.concurrent.ExecutorService;
 import org.apache.kafka.connect.source.SourceRecord;
 
 import io.debezium.embedded.Transformations;
-import io.debezium.engine.DebeziumEngine;
 
 /**
  * Abstract implementation of {@link RecordProcessor}, which provides implementation of processor initialization, while the record processing implementation
@@ -20,13 +19,11 @@ import io.debezium.engine.DebeziumEngine;
 public abstract class AbstractRecordProcessor<R> implements RecordProcessor<R> {
     protected ExecutorService recordService;
     protected Transformations transformations;
-    protected DebeziumEngine.RecordCommitter committer;
 
     @Override
-    public void initialize(final ExecutorService recordService, final Transformations transformations, final DebeziumEngine.RecordCommitter committer) {
+    public void initialize(final ExecutorService recordService, final Transformations transformations) {
         this.recordService = recordService;
         this.transformations = transformations;
-        this.committer = committer;
     }
 
     @Override
