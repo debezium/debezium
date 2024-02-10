@@ -300,6 +300,13 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
         return create(KeyValueHeaderChangeEventFormat.of(keyFormat, valueFormat, headerFormat));
     }
 
+    static <K, V, H> Builder<ChangeEvent<K, V>> create(Class<? extends SerializationFormat<K>> keyFormat,
+                                                       Class<? extends SerializationFormat<V>> valueFormat,
+                                                       Class<? extends SerializationFormat<H>> headerFormat,
+                                                       String builderFactory) {
+        return create(KeyValueHeaderChangeEventFormat.of(keyFormat, valueFormat, headerFormat), builderFactory);
+    }
+
     static <S, T, K extends SerializationFormat<S>, V extends SerializationFormat<T>> Builder<ChangeEvent<S, T>> create(KeyValueChangeEventFormat<K, V> format) {
         final BuilderFactory builder = determineBuilderFactory();
         return builder.builder(format);
@@ -307,6 +314,12 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
 
     static <S, T, U, K extends SerializationFormat<S>, V extends SerializationFormat<T>, H extends SerializationFormat<U>> Builder<ChangeEvent<S, T>> create(KeyValueHeaderChangeEventFormat<K, V, H> format) {
         final BuilderFactory builder = determineBuilderFactory();
+        return builder.builder(format);
+    }
+
+    static <S, T, U, K extends SerializationFormat<S>, V extends SerializationFormat<T>, H extends SerializationFormat<U>> Builder<ChangeEvent<S, T>> create(KeyValueHeaderChangeEventFormat<K, V, H> format,
+                                                                                                                                                             String builderFactory) {
+        final BuilderFactory builder = determineBuilderFactory(builderFactory);
         return builder.builder(format);
     }
 
@@ -329,9 +342,30 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
         }
         final BuilderFactory builder = iterator.next();
         if (iterator.hasNext()) {
-            LoggerFactory.getLogger(Builder.class).warn("More than one Debezium engine builder implementation was found, using {}", builder.getClass());
+            LoggerFactory.getLogger(Builder.class)
+                    .warn("More than one Debezium engine builder implementation was found, using {} (in Debezium 2.6 you can ignore this warning)", builder.getClass());
         }
         return builder;
+    }
+
+    private static BuilderFactory determineBuilderFactory(String builderFactory) {
+        if (builderFactory == null || builderFactory.isBlank()) {
+            return determineBuilderFactory();
+        }
+
+        final ServiceLoader<BuilderFactory> loader = ServiceLoader.load(BuilderFactory.class);
+        final Iterator<BuilderFactory> iterator = loader.iterator();
+        if (!iterator.hasNext()) {
+            throw new DebeziumException("No implementation of Debezium engine builder was found");
+        }
+        BuilderFactory builder;
+        while (iterator.hasNext()) {
+            builder = iterator.next();
+            if (builder.getClass().getName().equalsIgnoreCase(builderFactory)) {
+                return builder;
+            }
+        }
+        throw new DebeziumException(String.format("No builder factory '%s' found.", builderFactory));
     }
 
     /**
