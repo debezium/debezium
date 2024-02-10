@@ -15,6 +15,8 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.engine.DebeziumEngine;
+
 /**
  * {@link RecordProcessor} which transforms and converts the records in parallel. Converted records are passed to the user-provided {@link Consumer}.
  * This processor should be used when user provides only custom {@link Consumer}, records should be converted and passed to the consumer in the same order as they
@@ -25,10 +27,12 @@ import org.slf4j.LoggerFactory;
 public class ParallelSmtAndConvertConsumerProcessor<R> extends AbstractRecordProcessor<R> {
     private static final Logger LOGGER = LoggerFactory.getLogger(ParallelSmtAndConvertConsumerProcessor.class);
 
+    final DebeziumEngine.RecordCommitter committer;
     final Consumer<R> consumer;
     final Function<SourceRecord, R> convertor;
 
-    ParallelSmtAndConvertConsumerProcessor(final Consumer<R> consumer, final Function<SourceRecord, R> convertor) {
+    ParallelSmtAndConvertConsumerProcessor(final DebeziumEngine.RecordCommitter committer, final Consumer<R> consumer, final Function<SourceRecord, R> convertor) {
+        this.committer = committer;
         this.consumer = consumer;
         this.convertor = convertor;
     }

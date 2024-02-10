@@ -21,12 +21,14 @@ import io.debezium.engine.DebeziumEngine;
  *
  * @author vjuranek
  */
-public class ParallelSmtBatchProcessor<R> extends AbstractRecordProcessor<R> {
+public class ParallelSmtBatchProcessor extends AbstractRecordProcessor<SourceRecord> {
     private static final Logger LOGGER = LoggerFactory.getLogger(ParallelSmtBatchProcessor.class);
 
+    final DebeziumEngine.RecordCommitter committer;
     final DebeziumEngine.ChangeConsumer<SourceRecord> userHandler;
 
-    ParallelSmtBatchProcessor(final DebeziumEngine.ChangeConsumer<SourceRecord> userHandler) {
+    ParallelSmtBatchProcessor(final DebeziumEngine.RecordCommitter committer, final DebeziumEngine.ChangeConsumer<SourceRecord> userHandler) {
+        this.committer = committer;
         this.userHandler = userHandler;
     }
 

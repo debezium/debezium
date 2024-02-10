@@ -14,6 +14,8 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.engine.DebeziumEngine;
+
 /**
  * {@link RecordProcessor} which transforms the records in parallel. Records are passed to the user-provided {@link Consumer} in arbitrary order, once they are
  * processed. This processor should be used when user provides only custom {@link Consumer} and records should be passed without converting to the consumer in the same
@@ -21,12 +23,14 @@ import org.slf4j.LoggerFactory;
  *
  * @author vjuranek
  */
-public class ParallelSmtAsyncConsumerProcessor<R> extends AbstractRecordProcessor<R> {
+public class ParallelSmtAsyncConsumerProcessor extends AbstractRecordProcessor<SourceRecord> {
     private static final Logger LOGGER = LoggerFactory.getLogger(ParallelSmtAsyncConsumerProcessor.class);
 
+    final DebeziumEngine.RecordCommitter committer;
     final Consumer<SourceRecord> consumer;
 
-    ParallelSmtAsyncConsumerProcessor(final Consumer<SourceRecord> consumer) {
+    ParallelSmtAsyncConsumerProcessor(final DebeziumEngine.RecordCommitter committer, final Consumer<SourceRecord> consumer) {
+        this.committer = committer;
         this.consumer = consumer;
     }
 
