@@ -231,7 +231,7 @@ To use this format, the data type of the source column must be JSON (for example
 [[expanding-escaped-json-string-as-json]]
 ==== Expanding escaped JSON String as JSON
 
-When a {prodname} outbox message represents the `payload` as a JSON String, the resulting Kafka message  escapes the string as in the following example:
+When a {prodname} outbox message represents the `payload` as a JSON String, the resulting Kafka message escapes the string as in the following example:
 
 [source,javascript,indent=0]
 ----
