@@ -151,7 +151,13 @@ public class LogMinerQueryBuilder {
             operationInClause.withValues(OPERATION_CODES_LOB);
         }
         else {
-            operationInClause.withValues(OPERATION_CODES_NO_LOB);
+            final List<Integer> operationCodes = new ArrayList<>(OPERATION_CODES_NO_LOB);
+            // The transaction start event needs to be handled when a persistent buffer (Infinispan) is used
+            // because it is needed to reset the event id counter when re-mining transaction events.
+            if (connectorConfig.getLogMiningBufferType() == OracleConnectorConfig.LogMiningBufferType.MEMORY) {
+                operationCodes.removeIf(operationCode -> operationCode == 6);
+            }
+            operationInClause.withValues(operationCodes);
         }
         predicate.append("(").append(operationInClause.build());
 

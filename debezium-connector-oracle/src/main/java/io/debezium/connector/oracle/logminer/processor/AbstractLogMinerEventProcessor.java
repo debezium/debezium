@@ -475,50 +475,45 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
 
         final T transaction = getAndRemoveTransactionFromCache(transactionId);
         if (transaction == null) {
+            LOGGER.debug("Transaction {} not found in cache, no events to commit.", transactionId);
             handleCommitNotFoundInBuffer(row);
-            LOGGER.debug("Transaction {} not found, commit skipped.", transactionId);
-            return;
         }
 
-        // Calculate the smallest SCN that remains in the transaction cache
-        final Optional<T> oldestTransaction = getOldestTransactionInCache();
-        final Scn smallestScn;
-        if (oldestTransaction.isPresent()) {
-            smallestScn = oldestTransaction.get().getStartScn();
-            metrics.setOldestScnDetails(smallestScn, oldestTransaction.get().getChangeTime());
-        }
-        else {
-            smallestScn = Scn.NULL;
-            metrics.setOldestScnDetails(Scn.valueOf(-1), null);
-        }
-
+        final Scn smallestScn = calculateSmallestScn();
         final Scn commitScn = row.getScn();
         if (offsetContext.getCommitScn().hasCommitAlreadyBeenHandled(row)) {
-            if (transaction.getNumberOfEvents() > 0) {
-                final Scn lastCommittedScn = offsetContext.getCommitScn().getCommitScnForRedoThread(row.getThread());
-                LOGGER.debug("Transaction {} has already been processed. "
-                        + "Offset Commit SCN {}, Transaction Commit SCN {}, Last Seen Commit SCN {}.",
-                        transactionId, offsetContext.getCommitScn(), commitScn, lastCommittedScn);
+            if (transaction != null) {
+                if (transaction.getNumberOfEvents() > 0) {
+                    final Scn lastCommittedScn = offsetContext.getCommitScn().getCommitScnForRedoThread(row.getThread());
+                    LOGGER.debug("Transaction {} has already been processed. "
+                            + "Offset Commit SCN {}, Transaction Commit SCN {}, Last Seen Commit SCN {}.",
+                            transactionId, offsetContext.getCommitScn(), commitScn, lastCommittedScn);
+                }
+                cleanupAfterTransactionRemovedFromCache(transaction, false);
+                metrics.setActiveTransactionCount(getTransactionCache().size());
             }
-            cleanupAfterTransactionRemovedFromCache(transaction, false);
-            metrics.setActiveTransactionCount(getTransactionCache().size());
             return;
         }
 
         counters.commitCount++;
 
-        int numEvents = getTransactionEventCount(transaction);
+        int numEvents = (transaction == null) ? 0 : getTransactionEventCount(transaction);
         LOGGER.debug("Committing transaction {} with {} events (scn: {}, oldest buffer scn: {}): {}",
                 transactionId, numEvents, row.getScn(), smallestScn, row);
 
-        final ZoneOffset databaseOffset = metrics.getDatabaseOffset();
+        // When a COMMIT is received, regardless of the number of events it has, it still
+        // must be recorded in the commit scn for the node to guarantee updates to the
+        // offsets. This must be done prior to dispatching the transaction-commit or the
+        // heartbeat event that follows commit dispatch.
+        offsetContext.getCommitScn().recordCommit(row);
 
-        final boolean skipExcludedUserName = isTransactionUserExcluded(transaction);
-        TransactionCommitConsumer.Handler<LogMinerEvent> delegate = new TransactionCommitConsumer.Handler<>() {
-            private int numEvents = getTransactionEventCount(transaction);
-
-            @Override
-            public void accept(LogMinerEvent event, long eventsProcessed) throws InterruptedException {
+        Instant start = Instant.now();
+        boolean dispatchTransactionCommittedEvent = false;
+        if (numEvents > 0) {
+            final boolean skipExcludedUserName = isTransactionUserExcluded(transaction);
+            dispatchTransactionCommittedEvent = !skipExcludedUserName;
+            final ZoneOffset databaseOffset = metrics.getDatabaseOffset();
+            TransactionCommitConsumer.Handler<LogMinerEvent> delegate = (event, eventsProcessed) -> {
                 // Update SCN in offset context only if processed SCN less than SCN of other transactions
                 if (smallestScn.isNull() || commitScn.compareTo(smallestScn) < 0) {
                     offsetContext.setScn(event.getScn());
@@ -571,20 +566,9 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
 
                 // Clear redo SQL
                 offsetContext.setRedoSql(null);
-
-            }
-        };
-
-        // When a COMMIT is received, regardless of the number of events it has, it still
-        // must be recorded in the commit scn for the node to guarantee updates to the
-        // offsets. This must be done prior to dispatching the transaction-commit or the
-        // heartbeat event that follows commit dispatch.
-        offsetContext.getCommitScn().recordCommit(row);
-
-        Instant start = Instant.now();
-        int dispatchedEventCount = 0;
-        if (numEvents > 0) {
+            };
             try (TransactionCommitConsumer commitConsumer = new TransactionCommitConsumer(delegate, connectorConfig, schema)) {
+                int dispatchedEventCount = 0;
                 final Iterator<LogMinerEvent> iterator = getTransactionEventIterator(transaction);
                 while (iterator.hasNext()) {
                     if (!context.isRunning()) {
@@ -601,7 +585,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         offsetContext.setEventScn(commitScn);
         offsetContext.setRsId(row.getRsId());
 
-        if (getTransactionEventCount(transaction) > 0 && !skipExcludedUserName) {
+        if (dispatchTransactionCommittedEvent) {
             dispatcher.dispatchTransactionCommittedEvent(partition, offsetContext, transaction.getChangeTime());
         }
         else {
@@ -610,14 +594,35 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
 
         metrics.calculateLagFromSource(row.getChangeTime());
 
-        finalizeTransactionCommit(transactionId, commitScn);
-        cleanupAfterTransactionRemovedFromCache(transaction, false);
+        if (transaction != null) {
+            finalizeTransactionCommit(transactionId, commitScn);
+            cleanupAfterTransactionRemovedFromCache(transaction, false);
+            metrics.setActiveTransactionCount(getTransactionCache().size());
+        }
 
         metrics.incrementCommittedTransactionCount();
-        metrics.setActiveTransactionCount(getTransactionCache().size());
         metrics.setCommitScn(commitScn);
         metrics.setOffsetScn(offsetContext.getScn());
         metrics.setLastCommitDuration(Duration.between(start, Instant.now()));
+    }
+
+    /**
+     * Calculate the smallest SCN that remains in the transaction cache.
+     *
+     * @return the smallest SCN
+     */
+    private Scn calculateSmallestScn() {
+        final Optional<T> oldestTransaction = getOldestTransactionInCache();
+        final Scn smallestScn;
+        if (oldestTransaction.isPresent()) {
+            smallestScn = oldestTransaction.get().getStartScn();
+            metrics.setOldestScnDetails(smallestScn, oldestTransaction.get().getChangeTime());
+        }
+        else {
+            smallestScn = Scn.NULL;
+            metrics.setOldestScnDetails(Scn.valueOf(-1), null);
+        }
+        return smallestScn;
     }
 
     /**
@@ -722,14 +727,14 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
             LOGGER.debug("Transaction {} was rolled back.", row.getTransactionId());
             finalizeTransactionRollback(row.getTransactionId(), row.getScn());
             metrics.setActiveTransactionCount(getTransactionCache().size());
-            metrics.incrementRolledBackTransactionCount();
-            metrics.addRolledBackTransactionId(row.getTransactionId());
-            counters.rollbackCount++;
         }
         else {
-            LOGGER.debug("Could not rollback transaction {}, was not found in cache.", row.getTransactionId());
+            LOGGER.debug("Transaction {} not found in cache, no events to rollback.", row.getTransactionId());
             handleRollbackNotFoundInBuffer(row);
         }
+        metrics.incrementRolledBackTransactionCount();
+        metrics.addRolledBackTransactionId(row.getTransactionId());
+        counters.rollbackCount++;
     }
 
     /**
