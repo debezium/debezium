@@ -20,6 +20,7 @@
 
         <!--Skip long running tests by default-->
         <skipLongRunningTests>true</skipLongRunningTests>
+        <failFlakyTests>true</failFlakyTests>
 
         <!-- Don't skip integration tests by default -->
         <skipITs>false</skipITs>
@@ -207,6 +208,7 @@
                     <systemPropertyVariables combine.children="append">
                         <java.io.tmpdir>${project.build.directory}</java.io.tmpdir>
                         <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
+                        <failFlakyTests>${failFlakyTests}</failFlakyTests>
                         <dbz.test.data.dir>${project.build.directory}/data</dbz.test.data.dir>
                     </systemPropertyVariables>
                     <argLine>-Djava.awt.headless=true ${debug.argline} ${modules.argline}</argLine>
