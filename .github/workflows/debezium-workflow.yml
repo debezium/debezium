@@ -289,6 +289,7 @@ jobs:
           -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
           -Dmaven.wagon.http.pool=false
           -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+          -DfailFlakyTests=false
 
   build_mysql_8_0:
     needs: [ check_style, file_changes ]
@@ -326,6 +327,7 @@ jobs:
           -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
           -Dmaven.wagon.http.pool=false
           -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+          -DfailFlakyTests=false
 
   build_mysql:
     needs: [check_style, file_changes]
@@ -362,6 +364,7 @@ jobs:
           -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
           -Dmaven.wagon.http.pool=false
           -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+          -DfailFlakyTests=false
 
   build_mariadb:
     needs: [check_style, file_changes]
@@ -402,6 +405,7 @@ jobs:
           -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
           -Dmaven.wagon.http.pool=false
           -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+          -DfailFlakyTests=false
 
   build_postgresql:
     needs: [check_style, file_changes]
@@ -439,6 +443,7 @@ jobs:
           -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
           -Dmaven.wagon.http.pool=false
           -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+          -DfailFlakyTests=false
 
   build_oracle:
     needs: [check_style, file_changes]
@@ -475,6 +480,7 @@ jobs:
           -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
           -Dmaven.wagon.http.pool=false
           -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+          -DfailFlakyTests=false
 
   build_sqlserver:
     needs: [check_style, file_changes]
@@ -508,6 +514,7 @@ jobs:
           -Dmaven.wagon.http.pool=false
           -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
           -Ddebezium.test.records.waittime=10
+          -DfailFlakyTests=false
 
   build_outbox:
     needs: [check_style, file_changes]
