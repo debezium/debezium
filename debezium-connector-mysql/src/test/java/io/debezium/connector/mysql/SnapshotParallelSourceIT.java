@@ -14,9 +14,13 @@ import java.util.stream.Collectors;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.Ignore;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
+import io.debezium.junit.ConditionalFail;
+import io.debezium.junit.Flaky;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.util.Collect;
@@ -25,6 +29,9 @@ import ch.qos.logback.classic.Level;
 
 @SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 6, reason = "DDL uses fractional second data types, not supported until MySQL 5.6")
 public class SnapshotParallelSourceIT extends SnapshotSourceIT {
+
+    @Rule
+    public TestRule conditionalFail = new ConditionalFail();
 
     @Override
     protected Configuration.Builder simpleConfig() {
@@ -64,6 +71,12 @@ public class SnapshotParallelSourceIT extends SnapshotSourceIT {
     @Override
     public void shouldSnapshotTablesInOrderSpecifiedInTableIncludeListWithConflictingNames() {
 
+    }
+
+    @Test
+    @Flaky("DBZ-7472")
+    public void shouldCreateSnapshotOfSingleDatabaseWithoutGlobalLock() throws Exception {
+        super.shouldCreateSnapshotOfSingleDatabaseWithoutGlobalLock();
     }
 
     @Test
