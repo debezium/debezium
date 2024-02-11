@@ -987,7 +987,14 @@ public abstract class AbstractConnectorTest implements Testing {
      * Assert that there are no records to consume.
      */
     protected void assertNoRecordsToConsume() {
-        assertThat(consumedLines.isEmpty()).isTrue();
+        try {
+            assertThat(consumedLines.isEmpty()).isTrue();
+        }
+        catch (org.junit.ComparisonFailure e) {
+            System.out.println("---Assert Expected No Records, Found These---");
+            consumedLines.forEach(System.out::println);
+            throw e;
+        }
     }
 
     /**
