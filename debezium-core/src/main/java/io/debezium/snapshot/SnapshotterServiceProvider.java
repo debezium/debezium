@@ -7,6 +7,7 @@ package io.debezium.snapshot;
 
 import java.util.Optional;
 import java.util.ServiceLoader;
+import java.util.function.Predicate;
 import java.util.stream.StreamSupport;
 
 import io.debezium.DebeziumException;
@@ -38,15 +39,19 @@ public abstract class SnapshotterServiceProvider implements ServiceProvider<Snap
         final String snapshotModeCustomName = commonConnectorConfig.getSnapshotModeCustomName();
 
         String snapshotMode;
+        Predicate<Snapshotter> implementationFilter;
         if ("custom".equals(configuredSnapshotMode) && !snapshotModeCustomName.isEmpty()) {
             snapshotMode = snapshotModeCustomName;
+            implementationFilter = s -> s.name().equals(snapshotMode);
         }
         else {
             snapshotMode = configuredSnapshotMode;
+            implementationFilter = s -> s.name().equals(snapshotMode) &&
+                    isForCurrentConnector(configuration, s);
         }
 
         Optional<Snapshotter> snapshotter = StreamSupport.stream(ServiceLoader.load(Snapshotter.class).spliterator(), false)
-                .filter(s -> s.name().equals(snapshotMode))
+                .filter(implementationFilter)
                 .findAny();
 
         final SnapshotQuery snapshotQueryService = serviceRegistry.tryGetService(SnapshotQuery.class);
@@ -55,6 +60,22 @@ public abstract class SnapshotterServiceProvider implements ServiceProvider<Snap
         return snapshotter.map(s -> getSnapshotterService(configuration, s, beanRegistry, snapshotQueryService, snapshotLockService))
                 .orElseThrow(() -> new DebeziumException(String.format("Unable to find %s snapshotter. Please check your configuration.", snapshotMode)));
 
+    }
+
+    // This is required for DebeziumServer since it loads all connectors and until all modes will be moved into the core (if possible)
+    private boolean isForCurrentConnector(Configuration configuration, Snapshotter s) {
+
+        return s.getClass().getCanonicalName().contains(getConnectorClassPackage(configuration));
+    }
+
+    private String getConnectorClassPackage(Configuration config) {
+
+        try {
+            return Class.forName(config.getString("connector.class")).getPackageName();
+        }
+        catch (ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private static SnapshotterService getSnapshotterService(Configuration configuration, Snapshotter s, BeanRegistry beanRegistry, SnapshotQuery snapshotQueryService,
