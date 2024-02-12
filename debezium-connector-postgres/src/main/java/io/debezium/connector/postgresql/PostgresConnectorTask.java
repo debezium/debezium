@@ -154,7 +154,6 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
 
             if (previousOffset == null) {
                 LOGGER.info("No previous offset found");
-                // if we have no initial offset, indicate that to Snapshotter by passing null
                 snapshotter.validate(false, false);
             }
             else {
@@ -378,7 +377,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                 "SHOW wal_level",
                 connection.singleResultMapper(rs -> rs.getString("wal_level"), "Could not fetch wal_level"));
         if (!"logical".equals(walLevel)) {
-            // TODO here I don't have the snapshotter, it is not yet injected
+
             if (snapshotterService.getSnapshotter() != null && snapshotterService.getSnapshotter().shouldStream()) {
                 // Logical WAL_LEVEL is only necessary for CDC snapshotting
                 throw new SQLException("Postgres server wal_level property must be 'logical' but is: '" + walLevel + "'");

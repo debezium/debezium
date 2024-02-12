@@ -29,6 +29,7 @@ public class MySqlConnection extends AbstractConnectorConnection {
 
     public MySqlConnection(MySqlConnectionConfiguration connectionConfig, MySqlFieldReader fieldReader) {
         super(connectionConfig, fieldReader);
+
     }
 
     @Override
