@@ -35,7 +35,7 @@ public class OcpMongoSharded extends OcpDatabaseFixture<OcpMongoShardedControlle
                 .withShardCount(OcpMongoShardedConstants.SHARD_COUNT)
                 .withReplicaCount(OcpMongoShardedConstants.REPLICAS_IN_SHARD)
                 .withShardKeys(getTestShardKeys())
-                .withUseInternalAuth(ConfigProperties.DATABASE_MONGO_ENABLE_INTERNAL_AUTH)
+                .withUseInternalAuth(ConfigProperties.DATABASE_MONGO_USE_KEYFILE)
                 .withRootUser(ConfigProperties.DATABASE_MONGO_USERNAME, ConfigProperties.DATABASE_MONGO_SA_PASSWORD)
                 .build();
         controller = deployer.deploy();

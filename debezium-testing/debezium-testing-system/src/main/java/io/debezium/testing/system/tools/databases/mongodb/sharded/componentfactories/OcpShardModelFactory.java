@@ -82,7 +82,6 @@ public class OcpShardModelFactory {
                                                 .withImage(ConfigProperties.DOCKER_IMAGE_MONGO_SHARDED)
                                                 .withCommand("mongod",
                                                         "--shardsvr",
-                                                        "--auth",
                                                         "--replSet",
                                                         getShardReplicaSetName(shardNum),
                                                         "--dbpath",
