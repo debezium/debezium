@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.postgresql;
+package io.debezium.custom.snapshotter;
 
 import java.util.List;
 import java.util.Optional;
@@ -12,6 +12,8 @@ import java.util.stream.Collectors;
 import io.debezium.bean.StandardBeanNames;
 import io.debezium.bean.spi.BeanRegistry;
 import io.debezium.bean.spi.BeanRegistryAware;
+import io.debezium.connector.postgresql.PostgresOffsetContext;
+import io.debezium.connector.postgresql.PostgresPartition;
 import io.debezium.connector.postgresql.snapshot.query.SelectAllSnapshotQuery;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.spi.snapshot.Snapshotter;
