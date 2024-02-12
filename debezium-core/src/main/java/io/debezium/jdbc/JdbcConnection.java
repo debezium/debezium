@@ -1605,7 +1605,7 @@ public class JdbcConnection implements AutoCloseable {
                 keyColumns.stream().map(key -> key + "=?").collect(Collectors.joining(" AND ")));
     }
 
-    public Map<String, Object> reselectColumns(String query, TableId tableId, List<String> columns, List<Object> bindValues) throws SQLException {
+    public Map<String, Object> reselectColumns(String query, TableId tableId, List<String> columns, List<Object> bindValues, Struct source) throws SQLException {
         final Map<String, Object> results = new HashMap<>();
         prepareQuery(query, bindValues, (params, rs) -> {
             if (!rs.next()) {

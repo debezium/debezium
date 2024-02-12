@@ -12,6 +12,7 @@ import java.sql.SQLRecoverableException;
 import java.sql.Statement;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -577,16 +578,25 @@ public class OracleConnection extends JdbcConnection {
             return super.buildReselectColumnQuery(oracleTableId, columns, keyColumns, source);
         }
 
-        return String.format("SELECT %s FROM (SELECT * FROM %s AS OF SCN %s) WHERE %s",
+        return String.format("SELECT %s FROM (SELECT * FROM %s AS OF SCN ?) WHERE %s",
                 columns.stream().map(this::quotedColumnIdString).collect(Collectors.joining(",")),
                 quotedTableIdString(oracleTableId),
-                commitScn,
                 keyColumns.stream().map(key -> key + "=?").collect(Collectors.joining(" AND ")));
     }
 
     @Override
-    public Map<String, Object> reselectColumns(String query, TableId tableId, List<String> columns, List<Object> bindValues) throws SQLException {
-        return optionallyDoInContainer(() -> super.reselectColumns(query, tableId, columns, bindValues));
+    public Map<String, Object> reselectColumns(String query, TableId tableId, List<String> columns, List<Object> bindValues, Struct source) throws SQLException {
+        final String commitScn = source.getString(SourceInfo.COMMIT_SCN_KEY);
+        final List<Object> values;
+        if (Strings.isNullOrEmpty(commitScn)) {
+            values = bindValues;
+        }
+        else {
+            values = new ArrayList<>(bindValues.size() + 1);
+            values.add(commitScn);
+            values.addAll(bindValues);
+        }
+        return optionallyDoInContainer(() -> super.reselectColumns(query, tableId, columns, values, source));
     }
 
     private <T> T optionallyDoInContainer(ContainerWork<T> work) throws SQLException {
