@@ -33,9 +33,11 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.annotation.VisibleForTesting;
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PgOid;
 import io.debezium.connector.postgresql.PostgresConnectorConfig;
+import io.debezium.connector.postgresql.PostgresOffsetContext;
 import io.debezium.connector.postgresql.PostgresType;
 import io.debezium.connector.postgresql.PostgresValueConverter;
 import io.debezium.connector.postgresql.TypeRegistry;
@@ -43,6 +45,7 @@ import io.debezium.connector.postgresql.spi.SlotState;
 import io.debezium.data.SpecialValueDecimal;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.source.snapshot.incremental.ChunkQueryBuilder;
 import io.debezium.pipeline.source.snapshot.incremental.RowValueConstructorChunkQueryBuilder;
 import io.debezium.relational.Column;
@@ -102,6 +105,8 @@ public class PostgresConnection extends JdbcConnection {
     public PostgresConnection(JdbcConfiguration config, PostgresValueConverterBuilder valueConverterBuilder, String connectionUsage) {
         super(addDefaultSettings(config, connectionUsage), FACTORY, PostgresConnection::validateServerVersion, "\"", "\"");
 
+        this.logPositionValidator = this::validateLogPosition;
+
         if (Objects.isNull(valueConverterBuilder)) {
             this.typeRegistry = null;
             this.defaultValueConverter = null;
@@ -121,7 +126,12 @@ public class PostgresConnection extends JdbcConnection {
      * @param connectionUsage a symbolic name of the connection to be tracked in monitoring tools
      */
     public PostgresConnection(PostgresConnectorConfig config, TypeRegistry typeRegistry, String connectionUsage) {
-        super(addDefaultSettings(config.getJdbcConfig(), connectionUsage), FACTORY, PostgresConnection::validateServerVersion, "\"", "\"");
+        super(addDefaultSettings(config.getJdbcConfig(), connectionUsage),
+                FACTORY,
+                PostgresConnection::validateServerVersion,
+                "\"", "\"");
+
+        this.logPositionValidator = this::validateLogPosition;
         if (Objects.isNull(typeRegistry)) {
             this.typeRegistry = null;
             this.defaultValueConverter = null;
@@ -817,6 +827,19 @@ public class PostgresConnection extends JdbcConnection {
     @Override
     public TableId createTableId(String databaseName, String schemaName, String tableName) {
         return new TableId(null, schemaName, tableName);
+    }
+
+    public boolean validateLogPosition(OffsetContext offset, CommonConnectorConfig config) throws SQLException {
+
+        final Lsn storedLsn = ((PostgresOffsetContext) offset).lastCommitLsn();
+        final String slotName = ((PostgresConnectorConfig) config).slotName();
+        final String postgresPluginName = ((PostgresConnectorConfig) config).plugin().getPostgresPluginName();
+
+        SlotState slotState = getReplicationSlotState(slotName, postgresPluginName);
+        if (slotState == null) {
+            return false;
+        }
+        return slotState.slotRestartLsn().compareTo(storedLsn) < 0;
     }
 
     @FunctionalInterface

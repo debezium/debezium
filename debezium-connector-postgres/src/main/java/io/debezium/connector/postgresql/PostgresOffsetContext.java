@@ -154,7 +154,7 @@ public class PostgresOffsetContext extends CommonOffsetContext<SourceInfo> {
         return lastCompletelyProcessedLsn;
     }
 
-    Lsn lastCommitLsn() {
+    public Lsn lastCommitLsn() {
         return lastCommitLsn;
     }
 

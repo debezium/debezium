@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.mysql.snapshot.mode;
+package io.debezium.connector.postgresql.snapshot.mode;
 
 import java.sql.SQLException;
 import java.util.Map;
@@ -14,25 +14,22 @@ import org.slf4j.LoggerFactory;
 import io.debezium.DebeziumException;
 import io.debezium.bean.StandardBeanNames;
 import io.debezium.config.CommonConnectorConfig;
-import io.debezium.connector.mysql.MySqlConnectorConfig;
-import io.debezium.connector.mysql.MySqlOffsetContext;
-import io.debezium.connector.mysql.strategy.AbstractConnectorConnection;
-import io.debezium.connector.mysql.strategy.mariadb.MariaDbConnection;
-import io.debezium.connector.mysql.strategy.mariadb.MariaDbConnectorAdapter;
-import io.debezium.connector.mysql.strategy.mysql.MySqlConnection;
+import io.debezium.connector.postgresql.PostgresConnectorConfig;
+import io.debezium.connector.postgresql.PostgresOffsetContext;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.spi.Partition;
-import io.debezium.snapshot.mode.HistorizedSnapshotter;
+import io.debezium.snapshot.mode.BeanAwareSnapshotter;
+import io.debezium.spi.snapshot.Snapshotter;
 
-public class WhenNeededSnapshotter extends HistorizedSnapshotter {
+public class WhenNeededSnapshotter extends BeanAwareSnapshotter implements Snapshotter {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(WhenNeededSnapshotter.class);
 
     @Override
     public String name() {
-        return MySqlConnectorConfig.SnapshotMode.WHEN_NEEDED.getValue();
+        return PostgresConnectorConfig.SnapshotMode.WHEN_NEEDED.getValue();
     }
 
     @Override
@@ -50,13 +47,12 @@ public class WhenNeededSnapshotter extends HistorizedSnapshotter {
 
         try {
             if (offsetContextExists && !isSnapshotInProgress) {
-                // Check to see if the server still has those binlog coordinates ...
+                // Check to see if the server still has those log coordinates ...
                 if (!connection.isLogPositionAvailable(offset, config)) {
                     LOGGER.warn(
                             "The connector is trying to read log starting at '{}', but this is no longer available on the server. Forcing the snapshot execution as it is allowed by the configuration.",
                             getStoredLogPosition(offset));
-                    offsets.resetOffset(offsets.getTheOnlyPartition());
-
+                    offsets.resetOffset(offsets.getTheOnlyPartition()); // TODO DBZ-7308 evaluate if side effect can be extracted
                 }
             }
         }
@@ -66,21 +62,21 @@ public class WhenNeededSnapshotter extends HistorizedSnapshotter {
     }
 
     private Object getStoredLogPosition(OffsetContext offset) {
-        return ((MySqlOffsetContext) offset).getSource().binlogPosition();
+        return ((PostgresOffsetContext) offset).lastCommitLsn();
     }
 
     @Override
-    protected boolean shouldSnapshotWhenNoOffset() {
-        return true;
-    }
-
-    @Override
-    protected boolean shouldSnapshotSchemaWhenNoOffset() {
+    public boolean shouldSnapshot() {
         return true;
     }
 
     @Override
     public boolean shouldStream() {
+        return true;
+    }
+
+    @Override
+    public boolean shouldSnapshotSchema() {
         return true;
     }
 
@@ -94,13 +90,4 @@ public class WhenNeededSnapshotter extends HistorizedSnapshotter {
         return true;
     }
 
-    private Class<? extends AbstractConnectorConnection> getConnectionClass(MySqlConnectorConfig config) {
-        // TODO review this when MariaDB becomes a first class connector
-        if (config.getConnectorAdapter() instanceof MariaDbConnectorAdapter) {
-            return MariaDbConnection.class;
-        }
-        else {
-            return MySqlConnection.class;
-        }
-    }
 }

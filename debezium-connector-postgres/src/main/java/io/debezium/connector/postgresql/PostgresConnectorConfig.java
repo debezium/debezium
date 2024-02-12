@@ -197,6 +197,11 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         INITIAL_ONLY("initial_only"),
 
         /**
+         * Perform a snapshot when it is needed.
+         */
+        WHEN_NEEDED("when_needed"),
+
+        /**
          * Inject a custom snapshotter, which allows for more control over snapshots.
          */
         CUSTOM("custom");
@@ -992,11 +997,11 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return getConfig().getString(DATABASE_NAME);
     }
 
-    protected LogicalDecoder plugin() {
+    public LogicalDecoder plugin() {
         return LogicalDecoder.parse(getConfig().getString(PLUGIN_NAME));
     }
 
-    protected String slotName() {
+    public String slotName() {
         return getConfig().getString(SLOT_NAME);
     }
 
