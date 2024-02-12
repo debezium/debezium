@@ -3,7 +3,7 @@ rs.initiate({ _id: "${rsId}", configsvr: ${configServer?c}, members: [${members}
 let isPrimary = false;
 let count = 0;
 // wait for primary node election
-while(isPrimary == false && count < 30) {
+while(isPrimary == false && count < 60) {
   const rplStatus = db.adminCommand({ replSetGetStatus : 1 });
   isPrimary = rplStatus.members[0].stateStr === "PRIMARY";
   print("is primary result: ", isPrimary);

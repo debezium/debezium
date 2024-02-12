@@ -23,8 +23,7 @@ db.createUser({
         { role: "listDatabases", db: "admin" },
         { role: "readChangeStream", db: "admin" },
         { role: "readAnyDatabase", db: "admin" },
-        { role: "readWriteAnyDatabase", db: "admin" },
-        { role: "read", db: "config" },
-        {role: "read", db: "local"}
+        { role: "read", db: "config", collection: "shards" },
+        { role: "read", db: "local"}
     ]
 });

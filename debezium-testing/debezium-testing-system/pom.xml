@@ -109,7 +109,7 @@
     <database.mongo.docker.replica.size>1</database.mongo.docker.replica.size>
 
     <!--Mongodb sharded configuration-->
-    <database.mongo.sharded.enable.internal.auth>true</database.mongo.sharded.enable.internal.auth>
+    <database.mongo.use.keyfile>true</database.mongo.use.keyfile>
 
 
     <!--DB2 configuration -->
@@ -561,7 +561,7 @@
                 <test.database.mongo.docker.replica.size>${database.mongo.docker.replica.size}</test.database.mongo.docker.replica.size>
 
                 <!--Mongo sharded configuration-->
-                <test.database.mongo.sharded.enable.internal.auth>${database.mongo.sharded.enable.internal.auth}</test.database.mongo.sharded.enable.internal.auth>
+                <test.database.mongo.use.keyfile>${database.mongo.use.keyfile}</test.database.mongo.use.keyfile>
 
                 <!--DB2 configuration-->
                 <test.database.db2.host>${database.db2.host}</test.database.db2.host>

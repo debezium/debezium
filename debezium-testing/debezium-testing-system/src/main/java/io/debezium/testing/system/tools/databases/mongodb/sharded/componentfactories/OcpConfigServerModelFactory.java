@@ -83,7 +83,6 @@ public class OcpConfigServerModelFactory {
                                                 .withImage(ConfigProperties.DOCKER_IMAGE_MONGO_SHARDED)
                                                 .withCommand("mongod",
                                                         "--configsvr",
-                                                        "--auth",
                                                         "--replSet",
                                                         OcpMongoShardedConstants.MONGO_CONFIG_REPLICASET_NAME,
                                                         "--dbpath",

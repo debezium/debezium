@@ -41,8 +41,6 @@ public class OcpMongoShardedNode implements Startable {
     @Override
     public void stop() {
         ocpUtils.scaleDeploymentToZero(deployment);
-        // ocp.apps().deployments().inNamespace(project).delete(deployment);
-        // ocp.services().inNamespace(project).delete(service);
     }
 
     public void waitForStopped() {
