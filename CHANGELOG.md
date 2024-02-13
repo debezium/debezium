@@ -2,6 +2,91 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.6.0.Alpha2
+February 13rd 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12419774)
+
+### New features since 2.6.0.Alpha1
+
+* Add  Number of records captured and processed as metrics for Debezium MongoDB Connector [DBZ-6432](https://issues.redhat.com/browse/DBZ-6432)
+* Add timezone conversion to metadata in Timezone Converter SMT [DBZ-7022](https://issues.redhat.com/browse/DBZ-7022)
+* Create new implementation of DebeziumEngine [DBZ-7024](https://issues.redhat.com/browse/DBZ-7024)
+* Error when fail converting value with internal schema [DBZ-7143](https://issues.redhat.com/browse/DBZ-7143)
+* Provide alternative direct query for faster execution [DBZ-7273](https://issues.redhat.com/browse/DBZ-7273)
+* MongoDb connector doesn't use post-images [DBZ-7299](https://issues.redhat.com/browse/DBZ-7299)
+* Support DECFLOAT in Db2 connector [DBZ-7362](https://issues.redhat.com/browse/DBZ-7362)
+* Create PubSub example for DS deployed via operator [DBZ-7370](https://issues.redhat.com/browse/DBZ-7370)
+* Support connector scoped trustore/keystore for MongoDB [DBZ-7379](https://issues.redhat.com/browse/DBZ-7379)
+* Put transaction id in offsets only when it's present [DBZ-7380](https://issues.redhat.com/browse/DBZ-7380)
+* Replace additional rolebinding definition in kubernetes.yml with @RBACRule [DBZ-7381](https://issues.redhat.com/browse/DBZ-7381)
+* Reduce size of docker image for Debezium 2.6 and up [DBZ-7385](https://issues.redhat.com/browse/DBZ-7385)
+* Allow the C3P0ConnectionProvider to be customized via configuration [DBZ-7431](https://issues.redhat.com/browse/DBZ-7431)
+* Need to be able to set an ordering key value [DBZ-7435](https://issues.redhat.com/browse/DBZ-7435)
+* Evaluate container image size for Debezium UI served by nginx [DBZ-7447](https://issues.redhat.com/browse/DBZ-7447)
+* Support UUID as document key for incremental snapshotting [DBZ-7451](https://issues.redhat.com/browse/DBZ-7451)
+* Consolidate version management  [DBZ-7455](https://issues.redhat.com/browse/DBZ-7455)
+
+
+### Breaking changes since 2.6.0.Alpha1
+
+* Vitess-connector should not store GTID set in status topic [DBZ-7250](https://issues.redhat.com/browse/DBZ-7250)
+
+
+### Fixes since 2.6.0.Alpha1
+
+* Connector is getting stopped while processing bulk update(50k) records in debezium server 2.0.1.Final [DBZ-6955](https://issues.redhat.com/browse/DBZ-6955)
+* Debezium fails after table split operation [DBZ-7360](https://issues.redhat.com/browse/DBZ-7360)
+* Informix-Connector breaks on table with numerical default value [DBZ-7372](https://issues.redhat.com/browse/DBZ-7372)
+* MSSQL wrong default values in db schema for varchar, nvarchar, char columns [DBZ-7374](https://issues.redhat.com/browse/DBZ-7374)
+* Fix mysql version in mysql-replication container images [DBZ-7384](https://issues.redhat.com/browse/DBZ-7384)
+* Duplicate Debezium SMT transform [DBZ-7416](https://issues.redhat.com/browse/DBZ-7416)
+* Kinesis Sink Exception on PutRecord [DBZ-7417](https://issues.redhat.com/browse/DBZ-7417)
+* ParsingException (MariaDB Only): alterSpec drop foreign key with 'tablename.' prefix [DBZ-7420](https://issues.redhat.com/browse/DBZ-7420)
+* Poor performance with incremental snapshot with long list of tables [DBZ-7421](https://issues.redhat.com/browse/DBZ-7421)
+* Oracle Snapshot mistakenly uses LogMiner Offset Loader by default [DBZ-7425](https://issues.redhat.com/browse/DBZ-7425)
+* Reselect columns should source key values from after Struct when not using event-key sources [DBZ-7429](https://issues.redhat.com/browse/DBZ-7429)
+* Stopwatch throw NPE when toString is called without having statistics [DBZ-7436](https://issues.redhat.com/browse/DBZ-7436)
+* ReselectColumnsPostProcessor filter not use exclude predicate [DBZ-7437](https://issues.redhat.com/browse/DBZ-7437)
+* Adhoc snapshots are not triggered via File channel signal when submitted before the start of the application [DBZ-7441](https://issues.redhat.com/browse/DBZ-7441)
+* LogMiner batch size does not increase automatically [DBZ-7445](https://issues.redhat.com/browse/DBZ-7445)
+* Reduce string creation during SQL_REDO column read [DBZ-7446](https://issues.redhat.com/browse/DBZ-7446)
+* Oracle connector does not ignore reselection for excluded clob/blob columns [DBZ-7456](https://issues.redhat.com/browse/DBZ-7456)
+* The expected value pattern for table.include.list does not align with the documentation [DBZ-7460](https://issues.redhat.com/browse/DBZ-7460)
+* SQL Server queries with special characters fail after applying DBZ-7273 [DBZ-7463](https://issues.redhat.com/browse/DBZ-7463)
+* Signals actions are not loaded for SQLServer [DBZ-7467](https://issues.redhat.com/browse/DBZ-7467)
+* MySQL connector cannot parse table with WITH SYSTEM VERSIONING PARTITION BY SYSTEM_TIME [DBZ-7468](https://issues.redhat.com/browse/DBZ-7468)
+* Postgres images require clang-11 [DBZ-7475](https://issues.redhat.com/browse/DBZ-7475)
+* Make readiness and liveness proble timouts configurable [DBZ-7476](https://issues.redhat.com/browse/DBZ-7476)
+* Snapshotter SPI wrongly loaded on Debezium Server [DBZ-7481](https://issues.redhat.com/browse/DBZ-7481)
+
+
+### Other changes since 2.6.0.Alpha1
+
+* Remove obsolete MySQL version from TF [DBZ-7173](https://issues.redhat.com/browse/DBZ-7173)
+* Correctly handle METADATA records [DBZ-7176](https://issues.redhat.com/browse/DBZ-7176)
+* Move Snapshotter interface to core module as SPI [DBZ-7300](https://issues.redhat.com/browse/DBZ-7300)
+* Implement Snapshotter SPI MySQL/MariaDB [DBZ-7301](https://issues.redhat.com/browse/DBZ-7301)
+* Update the Debezium UI repo with local development infra and readme file. [DBZ-7353](https://issues.redhat.com/browse/DBZ-7353)
+* Update QOSDK to the latest version [DBZ-7361](https://issues.redhat.com/browse/DBZ-7361)
+* Upstream artefact server image preparation job failing [DBZ-7371](https://issues.redhat.com/browse/DBZ-7371)
+* Tests in RHEL system testsuite fail to initialize Kafka containers [DBZ-7373](https://issues.redhat.com/browse/DBZ-7373)
+* Fix logging for schema only recovery mode in mysql connector [DBZ-7376](https://issues.redhat.com/browse/DBZ-7376)
+* Records from snapshot delivered out of order [DBZ-7382](https://issues.redhat.com/browse/DBZ-7382)
+* Upgrade json-path to 2.9.0 [DBZ-7383](https://issues.redhat.com/browse/DBZ-7383)
+* Remove the use of Lombok in Debezium testsuite [DBZ-7386](https://issues.redhat.com/browse/DBZ-7386)
+* Use Java 17 as compile-time dependency [DBZ-7387](https://issues.redhat.com/browse/DBZ-7387)
+* Upgrade Outbox Extension to Quarkus 3.7.0 [DBZ-7388](https://issues.redhat.com/browse/DBZ-7388)
+* Add dependancy update bot to the UI Repo [DBZ-7392](https://issues.redhat.com/browse/DBZ-7392)
+* Fix the unit test cases [DBZ-7423](https://issues.redhat.com/browse/DBZ-7423)
+* Adopt Oracle 23 to Testing Farm [DBZ-7439](https://issues.redhat.com/browse/DBZ-7439)
+* Upgrade protobuf to 3.25.2 [DBZ-7442](https://issues.redhat.com/browse/DBZ-7442)
+* Correct debezium.sink.pubsub.flowcontrol.* variable names in Debezium Server docs site [DBZ-7443](https://issues.redhat.com/browse/DBZ-7443)
+* Upgrade Quarkus for Debezium Server to 3.2.9.Final [DBZ-7449](https://issues.redhat.com/browse/DBZ-7449)
+* Fix TimescaleDbDatabaseTest to run into test container [DBZ-7452](https://issues.redhat.com/browse/DBZ-7452)
+* Upgrade example-mongo image version to 6.0 [DBZ-7457](https://issues.redhat.com/browse/DBZ-7457)
+* Test Db2ReselectColumnsProcessorIT randomly fails [DBZ-7471](https://issues.redhat.com/browse/DBZ-7471)
+
+
+
 ## 2.6.0.Alpha1
 January 18th 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12416463)
 
