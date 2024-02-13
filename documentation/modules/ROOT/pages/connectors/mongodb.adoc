@@ -1348,8 +1348,9 @@ Optionally, you can set properties that filter out collections that are not need
 +
 The following example configures a {prodname} connector that connects to a MongoDB replica set `rs0` at port `27017` on `192.168.99.100`,
 and captures changes that occur in the `inventory` collection.
-`inventory-connector-{context}` is the logical name of the replica set.
+`inventory-connector-{context}` is the logical name of the replica set. +
 +
+=====================================================================
 .MongoDB `inventory-connector.yaml`
 [source,yaml,options="nowrap",subs="+attributes"]
 ----
@@ -1365,11 +1366,30 @@ apiVersion: {KafkaConnectApiVersion}
      topic.prefix: inventory-connector-{context} // <4>
      collection.include.list: inventory[.]* // <5>
 ----
-<1> The name that is used to register the connector with Kafka Connect.
-<2> The name of the MongoDB connector class.
-<3> The host addresses to use to connect to the MongoDB replica set.
-<4> The _logical name_ of the MongoDB replica set, which forms a namespace for generated events and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the Avro converter is used.
-<5> An optional list of regular expressions that match the collection namespaces (for example, <dbName>.<collectionName>) of all collections to be monitored.
+=====================================================================
++
+.Descriptions of settings in the MongoDB `inventory-connector.yaml` example
+[cols="1,7",options="header",subs="+attributes"]
+|===
+|Item |Description
+
+|1
+|The name that is used to register the connector with Kafka Connect.
+
+|2
+|The name of the MongoDB connector class.
+
+|3
+|The host addresses to use to connect to the MongoDB replica set.
+
+|4
+|The _logical name_ of the MongoDB replica set.
+The logical name forms a namespace for generated events, and is used in the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the Avro converter is used.
+
+|5
+|An optional list of regular expressions that match the collection namespaces (for example, __<dbName>.<collectionName>__) of all collections to be monitored.
+
+|===
 
 . Create your connector instance with Kafka Connect.
 For example, if you saved your `KafkaConnector` resource in the `inventory-connector.yaml` file, you would run the following command:
