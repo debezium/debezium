@@ -45,6 +45,8 @@ public class OracleJSONDataTypeIT extends AbstractConnectorTest {
 
     private static final String JSON_DATA_RAW = Files.readResourceAsString("data/test_lob_data.json");
 
+    private static final ObjectMapper objectMapper = new ObjectMapper();
+
     @Rule
     public final TestRule skipAdapterRule = new SkipTestDependingOnAdapterNameRule();
 
@@ -68,292 +70,285 @@ public class OracleJSONDataTypeIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-6993")
     public void shouldSnapshotTableWithJsonColumnType() throws Exception {
+        stopConnector();
         TestHelper.dropTable(connection, "dbz6993");
-        try {
-            connection.execute("CREATE TABLE DBZ6993 (ID numeric(9,0), DATA JSON, primary key(ID))");
-            TestHelper.streamTable(connection, "dbz6993");
 
-            connection.prepareQuery("insert into dbz6993 values (1, ?)", ps -> ps.setString(1, JSON_DATA_RAW), null);
-            connection.commit();
+        connection.execute("CREATE TABLE DBZ6993 (ID numeric(9,0), DATA JSON, primary key(ID))");
+        TestHelper.streamTable(connection, "dbz6993");
 
-            Configuration config = getDefaultConfig()
-                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ6993")
-                    .build();
+        connection.prepareQuery("insert into dbz6993 values (1, ?)", ps -> ps.setString(1, JSON_DATA_RAW), null);
+        connection.commit();
 
-            start(OracleConnector.class, config);
-            assertConnectorIsRunning();
+        Configuration config = getDefaultConfig()
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ6993")
+                .build();
 
-            waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
 
-            SourceRecords records = consumeRecordsByTopic(1);
-            List<SourceRecord> topicRecords = records.recordsForTopic(topicName("DBZ6993"));
-            assertThat(topicRecords).hasSize(1);
+        waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
-            SourceRecord record = topicRecords.get(0);
-            VerifyRecord.isValidRead(record, "ID", 1);
+        SourceRecords records = consumeRecordsByTopic(1);
+        List<SourceRecord> topicRecords = records.recordsForTopic(topicName("DBZ6993"));
+        assertThat(topicRecords).hasSize(1);
 
-            Struct after = after(record);
-            assertThat(after.get("ID")).isEqualTo(1);
-            assertThat(after.get("DATA")).isEqualTo(JSON_DATA_RAW);
-        }
-        finally {
-            TestHelper.dropTable(connection, "dbz6993");
-        }
+        SourceRecord record = topicRecords.get(0);
+        VerifyRecord.isValidRead(record, "ID", 1);
+
+        Struct after = after(record);
+        assertThat(after.get("ID")).isEqualTo(1);
+
+        // JSON data can not be correctly and consistently compared as strings
+        assertThat(objectMapper.readTree((String) after.get("DATA"))).isEqualTo(objectMapper.readTree(JSON_DATA_RAW));
     }
 
     @Test
     @FixFor("DBZ-6993")
     public void shouldStreamTableWithJsonColumnType() throws Exception {
+        stopConnector();
         TestHelper.dropTable(connection, "dbz6993");
-        try {
-            connection.execute("CREATE TABLE DBZ6993 (ID numeric(9,0), DATA JSON, primary key(ID))");
-            TestHelper.streamTable(connection, "dbz6993");
 
-            Configuration config = getDefaultConfig()
-                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ6993")
-                    .build();
+        connection.execute("CREATE TABLE DBZ6993 (ID numeric(9,0), DATA JSON, primary key(ID))");
+        TestHelper.streamTable(connection, "dbz6993");
 
-            start(OracleConnector.class, config);
-            assertConnectorIsRunning();
+        Configuration config = getDefaultConfig()
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ6993")
+                .build();
 
-            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
 
-            final List<Person> jsonRecords = Arrays.asList(new ObjectMapper().readValue(JSON_DATA_RAW, Person[].class));
-            final List<Person> page1 = jsonRecords.stream().limit(20).collect(Collectors.toList());
-            final String page1Raw = new ObjectMapper().writeValueAsString(page1);
+        waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+        waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
-            connection.prepareQuery("insert into dbz6993 values (1, ?)", ps -> ps.setString(1, page1Raw), null);
-            connection.commit();
+        final List<Person> jsonRecords = Arrays.asList(objectMapper.readValue(JSON_DATA_RAW, Person[].class));
+        final List<Person> page1 = jsonRecords.stream().limit(20).collect(Collectors.toList());
+        final String page1Raw = objectMapper.writeValueAsString(page1);
 
-            SourceRecords records = consumeRecordsByTopic(1);
-            List<SourceRecord> topicRecords = records.recordsForTopic(topicName("DBZ6993"));
-            assertThat(topicRecords).hasSize(1);
+        connection.prepareQuery("insert into dbz6993 values (1, ?)", ps -> ps.setString(1, page1Raw), null);
+        connection.commit();
 
-            SourceRecord record = topicRecords.get(0);
-            VerifyRecord.isValidInsert(record, "ID", 1);
+        SourceRecords records = consumeRecordsByTopic(1);
+        List<SourceRecord> topicRecords = records.recordsForTopic(topicName("DBZ6993"));
+        assertThat(topicRecords).hasSize(1);
 
-            Struct after = after(record);
-            assertThat(after.get("ID")).isEqualTo(1);
-            assertThat(after.get("DATA")).isEqualTo(page1Raw);
+        SourceRecord record = topicRecords.get(0);
+        VerifyRecord.isValidInsert(record, "ID", 1);
 
-            final List<Person> page2 = jsonRecords.stream().skip(20).limit(20).collect(Collectors.toList());
-            final String page2Raw = new ObjectMapper().writeValueAsString(page2);
+        Struct after = after(record);
+        assertThat(after.get("ID")).isEqualTo(1);
+        assertThat(objectMapper.readTree((String) after.get("DATA"))).isEqualTo(objectMapper.readTree(page1Raw));
 
-            connection.prepareQuery("UPDATE dbz6993 SET data = ? WHERE id = 1", ps -> ps.setString(1, page2Raw), null);
-            connection.commit();
+        final List<Person> page2 = jsonRecords.stream().skip(20).limit(20).collect(Collectors.toList());
+        final String page2Raw = objectMapper.writeValueAsString(page2);
 
-            records = consumeRecordsByTopic(1);
-            topicRecords = records.recordsForTopic(topicName("DBZ6993"));
-            assertThat(topicRecords).hasSize(1);
+        connection.prepareQuery("UPDATE dbz6993 SET data = ? WHERE id = 1", ps -> ps.setString(1, page2Raw), null);
+        connection.commit();
 
-            record = topicRecords.get(0);
-            VerifyRecord.isValidUpdate(record, "ID", 1);
+        records = consumeRecordsByTopic(1);
+        topicRecords = records.recordsForTopic(topicName("DBZ6993"));
+        assertThat(topicRecords).hasSize(1);
 
-            after = after(record);
-            assertThat(after.get("ID")).isEqualTo(1);
-            assertThat(after.get("DATA")).isEqualTo(page2Raw);
+        record = topicRecords.get(0);
+        VerifyRecord.isValidUpdate(record, "ID", 1);
 
-            connection.execute("DELETE FROM dbz6993 WHERE id = 1");
+        after = after(record);
+        assertThat(after.get("ID")).isEqualTo(1);
+        assertThat(objectMapper.readTree((String) after.get("DATA"))).isEqualTo(objectMapper.readTree(page2Raw));
 
-            records = consumeRecordsByTopic(1);
-            topicRecords = records.recordsForTopic(topicName("DBZ6993"));
-            assertThat(topicRecords).hasSize(1);
+        connection.execute("DELETE FROM dbz6993 WHERE id = 1");
 
-            record = topicRecords.get(0);
-            VerifyRecord.isValidDelete(record, "ID", 1);
+        records = consumeRecordsByTopic(1);
+        topicRecords = records.recordsForTopic(topicName("DBZ6993"));
+        assertThat(topicRecords).hasSize(1);
 
-            after = before(record);
-            assertThat(after.get("ID")).isEqualTo(1);
-            assertThat(after.get("DATA")).isEqualTo(page2Raw);
+        record = topicRecords.get(0);
+        VerifyRecord.isValidDelete(record, "ID", 1);
 
-            assertThat(after(record)).isNull();
-        }
-        finally {
-            TestHelper.dropTable(connection, "dbz6993");
-        }
+        after = before(record);
+        assertThat(after.get("ID")).isEqualTo(1);
+        assertThat(objectMapper.readTree((String) after.get("DATA"))).isEqualTo(objectMapper.readTree(page2Raw));
+
+        assertThat(after(record)).isNull();
     }
 
     @Test
     @FixFor("DBZ-6993")
     public void shouldStreamTableWithJsonTypeColumnAndOtherNonJsonColumns() throws Exception {
+        stopConnector();
+
         // This tests makes sure there are no special requirements when a table is keyless
         TestHelper.dropTable(connection, "dbz6993");
-        try {
-            // Explicitly no key.
-            connection.execute("CREATE TABLE DBZ6993 (ID numeric(9,0), DATA JSON, DATA2 varchar2(50))");
-            TestHelper.streamTable(connection, "dbz6993");
 
-            Configuration config = getDefaultConfig()
-                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ6993")
-                    .build();
+        // Explicitly no key.
+        connection.execute("CREATE TABLE DBZ6993 (ID numeric(9,0), DATA JSON, DATA2 varchar2(50))");
+        TestHelper.streamTable(connection, "dbz6993");
 
-            start(OracleConnector.class, config);
-            assertConnectorIsRunning();
+        Configuration config = getDefaultConfig()
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ6993")
+                .build();
 
-            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
 
-            final List<Person> jsonRecords = Arrays.asList(new ObjectMapper().readValue(JSON_DATA_RAW, Person[].class));
-            final List<Person> page1 = jsonRecords.stream().limit(20).collect(Collectors.toList());
-            final String page1Raw = new ObjectMapper().writeValueAsString(page1);
+        waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
-            connection.prepareQuery("insert into dbz6993 values (1, ?, 'Acme')", ps -> ps.setString(1, page1Raw), null);
-            connection.commit();
+        final List<Person> jsonRecords = Arrays.asList(objectMapper.readValue(JSON_DATA_RAW, Person[].class));
+        final List<Person> page1 = jsonRecords.stream().limit(20).collect(Collectors.toList());
+        final String page1Raw = objectMapper.writeValueAsString(page1);
 
-            SourceRecords records = consumeRecordsByTopic(1);
-            List<SourceRecord> topicRecords = records.recordsForTopic(topicName("DBZ6993"));
-            assertThat(topicRecords).hasSize(1);
+        connection.prepareQuery("insert into dbz6993 values (1, ?, 'Acme')", ps -> ps.setString(1, page1Raw), null);
+        connection.commit();
 
-            SourceRecord record = topicRecords.get(0);
-            VerifyRecord.isValidInsert(record, false);
+        SourceRecords records = consumeRecordsByTopic(1);
+        List<SourceRecord> topicRecords = records.recordsForTopic(topicName("DBZ6993"));
+        assertThat(topicRecords).hasSize(1);
 
-            Struct after = after(record);
-            assertThat(after.get("ID")).isEqualTo(1);
-            assertThat(after.get("DATA")).isEqualTo(JSON_DATA_RAW);
-            assertThat(after.get("DATA2")).isEqualTo("Acme");
+        SourceRecord record = topicRecords.get(0);
+        VerifyRecord.isValidInsert(record, false);
 
-            // Update only RAW
-            final List<Person> page2 = jsonRecords.stream().skip(20).limit(20).collect(Collectors.toList());
-            final String page2Raw = new ObjectMapper().writeValueAsString(page2);
+        Struct after = after(record);
+        assertThat(after.get("ID")).isEqualTo(1);
+        assertThat(objectMapper.readTree((String) after.get("DATA"))).isEqualTo(objectMapper.readTree(JSON_DATA_RAW));
+        assertThat(after.get("DATA2")).isEqualTo("Acme");
 
-            connection.prepareQuery("UPDATE dbz6993 SET data = ? WHERE id=1", ps -> ps.setString(1, page2Raw), null);
-            connection.commit();
+        // Update only RAW
+        final List<Person> page2 = jsonRecords.stream().skip(20).limit(20).collect(Collectors.toList());
+        final String page2Raw = objectMapper.writeValueAsString(page2);
 
-            records = consumeRecordsByTopic(1);
-            topicRecords = records.recordsForTopic(topicName("DBZ6993"));
-            assertThat(topicRecords).hasSize(1);
+        connection.prepareQuery("UPDATE dbz6993 SET data = ? WHERE id=1", ps -> ps.setString(1, page2Raw), null);
+        connection.commit();
 
-            record = topicRecords.get(0);
-            VerifyRecord.isValidUpdate(record, false);
+        records = consumeRecordsByTopic(1);
+        topicRecords = records.recordsForTopic(topicName("DBZ6993"));
+        assertThat(topicRecords).hasSize(1);
 
-            after = after(record);
-            assertThat(after.get("ID")).isEqualTo(1);
-            assertThat(after.get("DATA")).isEqualTo(page2Raw);
-            assertThat(after.get("DATA2")).isEqualTo("Acme");
+        record = topicRecords.get(0);
+        VerifyRecord.isValidUpdate(record, false);
 
-            // Update RAW and non-RAW
-            connection.prepareQuery("UPDATE dbz6993 SET data = ?, DATA2 = 'Data' WHERE id=1", ps -> ps.setString(1, page1Raw), null);
-            connection.commit();
+        after = after(record);
+        assertThat(after.get("ID")).isEqualTo(1);
+        assertThat(objectMapper.readTree((String) after.get("DATA"))).isEqualTo(objectMapper.readTree(page2Raw));
+        assertThat(after.get("DATA2")).isEqualTo("Acme");
 
-            records = consumeRecordsByTopic(1);
-            topicRecords = records.recordsForTopic(topicName("DBZ6993"));
-            assertThat(topicRecords).hasSize(1);
+        // Update RAW and non-RAW
+        connection.prepareQuery("UPDATE dbz6993 SET data = ?, DATA2 = 'Data' WHERE id=1", ps -> ps.setString(1, page1Raw), null);
+        connection.commit();
 
-            record = topicRecords.get(0);
-            VerifyRecord.isValidUpdate(record, false);
+        records = consumeRecordsByTopic(1);
+        topicRecords = records.recordsForTopic(topicName("DBZ6993"));
+        assertThat(topicRecords).hasSize(1);
 
-            after = after(record);
-            assertThat(after.get("ID")).isEqualTo(1);
-            assertThat(after.get("DATA")).isEqualTo(page1Raw);
-            assertThat(after.get("DATA2")).isEqualTo("Data");
+        record = topicRecords.get(0);
+        VerifyRecord.isValidUpdate(record, false);
 
-            // Update only non-RAW
-            connection.execute("UPDATE dbz6993 SET DATA2 = 'Acme' WHERE id=1");
+        after = after(record);
+        assertThat(after.get("ID")).isEqualTo(1);
+        assertThat(objectMapper.readTree((String) after.get("DATA"))).isEqualTo(objectMapper.readTree(page1Raw));
+        assertThat(after.get("DATA2")).isEqualTo("Data");
 
-            records = consumeRecordsByTopic(1);
-            topicRecords = records.recordsForTopic(topicName("DBZ6993"));
-            assertThat(topicRecords).hasSize(1);
+        // Update only non-RAW
+        connection.execute("UPDATE dbz6993 SET DATA2 = 'Acme' WHERE id=1");
 
-            record = topicRecords.get(0);
-            VerifyRecord.isValidUpdate(record, false);
+        records = consumeRecordsByTopic(1);
+        topicRecords = records.recordsForTopic(topicName("DBZ6993"));
+        assertThat(topicRecords).hasSize(1);
 
-            after = after(record);
-            assertThat(after.get("ID")).isEqualTo(1);
-            assertThat(after.get("DATA")).isEqualTo(page1Raw);
-            assertThat(after.get("DATA2")).isEqualTo("Acme");
+        record = topicRecords.get(0);
+        VerifyRecord.isValidUpdate(record, false);
 
-            connection.execute("DELETE FROM dbz6993 WHERE id = 1");
+        after = after(record);
+        assertThat(after.get("ID")).isEqualTo(1);
+        assertThat(objectMapper.readTree((String) after.get("DATA"))).isEqualTo(objectMapper.readTree(page1Raw));
+        assertThat(after.get("DATA2")).isEqualTo("Acme");
 
-            records = consumeRecordsByTopic(1);
-            topicRecords = records.recordsForTopic(topicName("DBZ6993"));
-            assertThat(topicRecords).hasSize(1);
+        connection.execute("DELETE FROM dbz6993 WHERE id = 1");
 
-            record = topicRecords.get(0);
-            VerifyRecord.isValidDelete(record, false);
+        records = consumeRecordsByTopic(1);
+        topicRecords = records.recordsForTopic(topicName("DBZ6993"));
+        assertThat(topicRecords).hasSize(1);
 
-            after = before(record);
-            assertThat(after.get("ID")).isEqualTo(1);
-            assertThat(after.get("DATA")).isEqualTo(page1Raw);
-            assertThat(after.get("DATA2")).isEqualTo("Acme");
+        record = topicRecords.get(0);
+        VerifyRecord.isValidDelete(record, false);
 
-            assertThat(after(record)).isNull();
-        }
-        finally {
-            TestHelper.dropTable(connection, "dbz6993");
-        }
+        after = before(record);
+        assertThat(after.get("ID")).isEqualTo(1);
+        assertThat(objectMapper.readTree((String) after.get("DATA"))).isEqualTo(objectMapper.readTree(page1Raw));
+        assertThat(after.get("DATA2")).isEqualTo("Acme");
+
+        assertThat(after(record)).isNull();
     }
 
     @Test
     @FixFor("DBZ-6993")
     public void shouldStreamTableWithNoPrimaryKeyWithJsonTypeColumn() throws Exception {
+        stopConnector();
+
         // This tests makes sure there are no special requirements when a table is keyless
         TestHelper.dropTable(connection, "dbz6993");
-        try {
-            // Explicitly no key.
-            connection.execute("CREATE TABLE DBZ6993 (ID numeric(9,0), DATA JSON)");
-            TestHelper.streamTable(connection, "dbz6993");
 
-            Configuration config = getDefaultConfig()
-                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ6993")
-                    .build();
+        // Explicitly no key.
+        connection.execute("CREATE TABLE DBZ6993 (ID numeric(9,0), DATA JSON)");
+        TestHelper.streamTable(connection, "dbz6993");
 
-            start(OracleConnector.class, config);
-            assertConnectorIsRunning();
+        Configuration config = getDefaultConfig()
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ6993")
+                .build();
 
-            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
 
-            final List<Person> jsonRecords = Arrays.asList(new ObjectMapper().readValue(JSON_DATA_RAW, Person[].class));
-            final List<Person> page1 = jsonRecords.stream().limit(20).collect(Collectors.toList());
-            final String page1Raw = new ObjectMapper().writeValueAsString(page1);
+        waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
-            connection.prepareQuery("insert into dbz6993 values (1,?)", ps -> ps.setString(1, page1Raw), null);
-            connection.commit();
+        final List<Person> jsonRecords = Arrays.asList(objectMapper.readValue(JSON_DATA_RAW, Person[].class));
+        final List<Person> page1 = jsonRecords.stream().limit(20).collect(Collectors.toList());
+        final String page1Raw = objectMapper.writeValueAsString(page1);
 
-            SourceRecords records = consumeRecordsByTopic(1);
-            List<SourceRecord> topicRecords = records.recordsForTopic(topicName("DBZ6993"));
-            assertThat(topicRecords).hasSize(1);
+        connection.prepareQuery("insert into dbz6993 values (1,?)", ps -> ps.setString(1, page1Raw), null);
+        connection.commit();
 
-            SourceRecord record = topicRecords.get(0);
-            VerifyRecord.isValidInsert(record, false);
+        SourceRecords records = consumeRecordsByTopic(1);
+        List<SourceRecord> topicRecords = records.recordsForTopic(topicName("DBZ6993"));
+        assertThat(topicRecords).hasSize(1);
 
-            Struct after = after(record);
-            assertThat(after.get("ID")).isEqualTo(1);
-            assertThat(after.get("DATA")).isEqualTo(page1Raw);
+        SourceRecord record = topicRecords.get(0);
+        VerifyRecord.isValidInsert(record, false);
 
-            final List<Person> page2 = jsonRecords.stream().skip(20).limit(20).collect(Collectors.toList());
-            final String page2Raw = new ObjectMapper().writeValueAsString(page2);
+        Struct after = after(record);
+        assertThat(after.get("ID")).isEqualTo(1);
+        assertThat(objectMapper.readTree((String) after.get("DATA"))).isEqualTo(objectMapper.readTree(page1Raw));
 
-            connection.prepareQuery("UPDATE dbz6993 SET data = ? WHERE id=1", ps -> ps.setObject(1, page2Raw), null);
-            connection.commit();
+        final List<Person> page2 = jsonRecords.stream().skip(20).limit(20).collect(Collectors.toList());
+        final String page2Raw = objectMapper.writeValueAsString(page2);
 
-            records = consumeRecordsByTopic(1);
-            topicRecords = records.recordsForTopic(topicName("DBZ6993"));
-            assertThat(topicRecords).hasSize(1);
+        connection.prepareQuery("UPDATE dbz6993 SET data = ? WHERE id=1", ps -> ps.setObject(1, page2Raw), null);
+        connection.commit();
 
-            record = topicRecords.get(0);
-            VerifyRecord.isValidUpdate(record, false);
+        records = consumeRecordsByTopic(1);
+        topicRecords = records.recordsForTopic(topicName("DBZ6993"));
+        assertThat(topicRecords).hasSize(1);
 
-            after = after(record);
-            assertThat(after.get("ID")).isEqualTo(1);
-            assertThat(after.get("DATA")).isEqualTo(page2Raw);
+        record = topicRecords.get(0);
+        VerifyRecord.isValidUpdate(record, false);
 
-            connection.execute("DELETE FROM dbz6993 WHERE id = 1");
+        after = after(record);
+        assertThat(after.get("ID")).isEqualTo(1);
+        assertThat(objectMapper.readTree((String) after.get("DATA"))).isEqualTo(objectMapper.readTree(page2Raw));
 
-            records = consumeRecordsByTopic(1);
-            topicRecords = records.recordsForTopic(topicName("DBZ6993"));
-            assertThat(topicRecords).hasSize(1);
+        connection.execute("DELETE FROM dbz6993 WHERE id = 1");
 
-            record = topicRecords.get(0);
-            VerifyRecord.isValidDelete(record, false);
+        records = consumeRecordsByTopic(1);
+        topicRecords = records.recordsForTopic(topicName("DBZ6993"));
+        assertThat(topicRecords).hasSize(1);
 
-            after = before(record);
-            assertThat(after.get("ID")).isEqualTo(1);
-            assertThat(after.get("DATA")).isEqualTo(page2Raw);
+        record = topicRecords.get(0);
+        VerifyRecord.isValidDelete(record, false);
 
-            assertThat(after(record)).isNull();
-        }
-        finally {
-            TestHelper.dropTable(connection, "dbz6993");
-        }
+        after = before(record);
+        assertThat(after.get("ID")).isEqualTo(1);
+        assertThat(objectMapper.readTree((String) after.get("DATA"))).isEqualTo(objectMapper.readTree(page2Raw));
+
+        assertThat(after(record)).isNull();
     }
 
     private Configuration.Builder getDefaultConfig() {
