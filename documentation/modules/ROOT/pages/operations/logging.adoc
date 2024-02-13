@@ -83,12 +83,26 @@ log4j.appender.stdout.layout=org.apache.log4j.PatternLayout  // <3>
 log4j.appender.stdout.layout.ConversionPattern=[%d] %p %m (%c)%n  // <4>
 ...
 ----
-<1> The root logger, which defines the default logger configuration.
+.Descriptions of `connect-log4j.properties` settings
+[cols="1,7",options="header",subs="+attributes"]
+|===
+|Property |Description
+
+|1
+|The root logger, which defines the default logger configuration.
 By default, loggers include `INFO`, `WARN`, and `ERROR` messages.
 These log messages are written to the `stdout` appender.
-<2> The `stdout` appender writes log messages to the console (as opposed to a file).
-<3> The `stdout` appender uses a pattern matching algorithm to format the log messages.
-<4> The pattern for the `stdout` appender (see the https://logging.apache.org/log4j/1.2/apidocs/org/apache/log4j/PatternLayout.html[Log4j documentation] for details).
+
+|2
+|Directs the `stdout` appender to write log messages to the console, as opposed to a file.
+
+|3
+|Specifies that the `stdout` appender uses a pattern matching algorithm to format log messages.
+
+|4
+|The pattern that the `stdout` appender uses (see the https://logging.apache.org/log4j/1.2/apidocs/org/apache/log4j/PatternLayout.html[Log4j documentation] for details).
+
+|===
 
 Unless you configure other loggers,
 all of the loggers that {prodname} uses inherit the `rootLogger` configuration.
