@@ -2241,6 +2241,7 @@ local   replication     <youruser>                          trust   // <1>
 host    replication     <youruser>  127.0.0.1/32            trust   // <2>
 host    replication     <youruser>  ::1/128                 trust   // <3>
 ----
++
 .Descriptions of `pg_hba.conf` settings
 [cols="1,7",options="header",subs="+attributes"]
 |===
