@@ -2629,9 +2629,10 @@ The connector configuration might instruct {prodname} to produce events for a su
 For the complete list of the configuration properties that you can set for the {prodname} PostgreSQL connector, see xref:descriptions-of-debezium-postgresql-connector-configuration-properties[PostgreSQL connector properties].
 +
 The following example shows an excerpt from a custom resource that configures a {prodname} connector that connects to a PostgreSQL server host, `192.168.99.100`, on port `5432`.
-This host has a database named `sampledb`, a schema named `public`, and `inventory-connector-{context}` is the server's logical name.
+This host has a database named `sampledb`, a schema named `public`, and `inventory-connector-{context}` is the server's logical name. +
 +
-.`inventory-connector.yaml`
+=====================================================================
+.PostgreSQL `inventory-connector.yaml`
 [source,yaml,options="nowrap",subs="+attributes"]
 ----
 apiVersion: {KafkaConnectorApiVersion}
@@ -2655,6 +2656,8 @@ apiVersion: {KafkaConnectorApiVersion}
 
       ...
 ----
+=====================================================================
++
 .Descriptions of settings in the PostgreSQL `inventory-connector.yaml` example
 [cols="1,7",options="header",subs="+attributes"]
 |===
