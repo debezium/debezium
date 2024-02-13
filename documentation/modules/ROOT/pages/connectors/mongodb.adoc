@@ -1348,8 +1348,9 @@ Optionally, you can set properties that filter out collections that are not need
 +
 The following example configures a {prodname} connector that connects to a MongoDB replica set `rs0` at port `27017` on `192.168.99.100`,
 and captures changes that occur in the `inventory` collection.
-`inventory-connector-{context}` is the logical name of the replica set.
+`inventory-connector-{context}` is the logical name of the replica set. +
 +
+=====================================================================
 .MongoDB `inventory-connector.yaml`
 [source,yaml,options="nowrap",subs="+attributes"]
 ----
@@ -1365,6 +1366,8 @@ apiVersion: {KafkaConnectApiVersion}
      topic.prefix: inventory-connector-{context} // <4>
      collection.include.list: inventory[.]* // <5>
 ----
+=====================================================================
++
 .Descriptions of settings in the MongoDB `inventory-connector.yaml` example
 [cols="1,7",options="header",subs="+attributes"]
 |===
