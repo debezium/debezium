@@ -83,7 +83,7 @@ log4j.appender.stdout.layout=org.apache.log4j.PatternLayout  // <3>
 log4j.appender.stdout.layout.ConversionPattern=[%d] %p %m (%c)%n  // <4>
 ...
 ----
-.Descriptions of `.connect-log4j.properties` settings
+.Descriptions of `connect-log4j.properties` settings
 [cols="1,7",options="header",subs="+attributes"]
 |===
 |Property |Description
