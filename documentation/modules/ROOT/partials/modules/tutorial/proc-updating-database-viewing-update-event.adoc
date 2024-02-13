@@ -115,7 +115,7 @@ There are no changes in the `schema` section, so only the `payload` section is s
   }
 }
 ----
-.Descriptions of fields in the payload of a change event value
+.Descriptions of fields in the payload of an `update` event value
 [cols="1,7",options="header",subs="+attributes"]
 |===
 |Item |Description
