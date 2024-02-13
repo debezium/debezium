@@ -45,8 +45,11 @@ The CloudEvents specification defines:
 
 To configure a {prodname} connector to emit change event records that conform to the CloudEvents specification, {prodname} provides the `io.debezium.converters.CloudEventsConverter`, which is a Kafka Connect message converter.
 
-Currently, only structured mapping mode is supported. The CloudEvents change event envelope can be JSON or Avro and each envelope type supports JSON or Avro as the `data` format. It is expected that a future {prodname} release will support binary mapping mode.
-
+Currently, only structured mapping mode can be used.
+The CloudEvents change event envelope can be JSON or Avro, and you can use JSON or Avro as the `data` format for each envelope type.
+ifdef::community[]
+It is expected that a future {prodname} release will support binary mapping mode.
+endif::community[]
 ifdef::product[]
 Information about emitting change events in CloudEvents format is organized as follows:
 
