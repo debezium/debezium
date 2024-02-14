@@ -110,8 +110,8 @@
     <database.mongo.docker.replica.size>1</database.mongo.docker.replica.size>
 
     <!--Mongodb sharded configuration-->
-    <database.mongo.use.keyfile>true</database.mongo.use.keyfile>
-
+    <database.mongo.use.keyfile>false</database.mongo.use.keyfile>
+    <database.mongo.use.tls>false</database.mongo.use.tls>
 
     <!--DB2 configuration -->
     <database.db2.port>50000</database.db2.port>
@@ -408,6 +408,7 @@
     </dependency>
 
     <dependency>
+
       <groupId>org.postgresql</groupId>
       <artifactId>postgresql</artifactId>
     </dependency>
@@ -476,26 +477,30 @@
       <artifactId>freemarker</artifactId>
       <version>2.3.32</version>
     </dependency>
+
+    <dependency>
+      <groupId>org.bouncycastle</groupId>
+      <artifactId>bcpkix-jdk15on</artifactId>
+      <version>1.70</version>
+    </dependency>
   </dependencies>
 
   <profiles>
     <profile>
       <!-- Required to run tests against downstream -->
       <id>product</id>
-
       <properties>
         <as.apicurio.url>${as.url}/service-registry-${as.apicurio.version}-distro-connect-converter.zip</as.apicurio.url>
         <product.build>true</product.build>
       </properties>
     </profile>
+
     <profile>
       <!-- Required to run Oracle tests -->
       <id>oracleITs</id>
-
       <properties>
         <database.oracle>true</database.oracle>
       </properties>
-
       <dependencies>
         <dependency>
           <groupId>com.oracle.database.jdbc</groupId>
@@ -507,7 +512,6 @@
     <profile>
       <!-- Required to run build images with Oracle connector -->
       <id>oracle-image</id>
-
       <dependencies>
         <dependency>
           <groupId>io.debezium</groupId>
@@ -618,6 +622,7 @@
 
                 <!--Mongo sharded configuration-->
                 <test.database.mongo.use.keyfile>${database.mongo.use.keyfile}</test.database.mongo.use.keyfile>
+                <test.database.mongo.use.tls>${database.mongo.use.tls}</test.database.mongo.use.tls>
 
                 <!--DB2 configuration-->
                 <test.database.db2.host>${database.db2.host}</test.database.db2.host>

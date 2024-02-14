@@ -74,7 +74,6 @@ public class OcpKafkaConnectDeployer extends AbstractOcpDeployer<OcpKafkaConnect
                 ocp,
                 http);
         controller.waitForCluster();
-
         return controller;
 
     }
