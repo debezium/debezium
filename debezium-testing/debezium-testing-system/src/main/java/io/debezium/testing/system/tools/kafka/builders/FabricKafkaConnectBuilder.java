@@ -5,7 +5,27 @@
  */
 package io.debezium.testing.system.tools.kafka.builders;
 
-import static io.debezium.testing.system.tools.kafka.builders.FabricKafkaBuilder.DEFAULT_KAFKA_NAME;
+import io.debezium.testing.system.tools.ConfigProperties;
+import io.debezium.testing.system.tools.artifacts.OcpArtifactServerController;
+import io.debezium.testing.system.tools.databases.mongodb.sharded.OcpMongoCertGenerator;
+import io.debezium.testing.system.tools.fabric8.FabricBuilderWrapper;
+import io.fabric8.kubernetes.api.model.ConfigMap;
+import io.fabric8.kubernetes.api.model.ConfigMapKeySelector;
+import io.fabric8.kubernetes.api.model.ConfigMapKeySelectorBuilder;
+import io.fabric8.kubernetes.api.model.ConfigMapVolumeSourceBuilder;
+import io.fabric8.kubernetes.api.model.Secret;
+import io.strimzi.api.kafka.model.common.CertSecretSourceBuilder;
+import io.strimzi.api.kafka.model.common.ClientTls;
+import io.strimzi.api.kafka.model.common.ClientTlsBuilder;
+import io.strimzi.api.kafka.model.common.ContainerEnvVarBuilder;
+import io.strimzi.api.kafka.model.common.template.ContainerTemplateBuilder;
+import io.strimzi.api.kafka.model.connect.ExternalConfigurationBuilder;
+import io.strimzi.api.kafka.model.connect.ExternalConfigurationVolumeSourceBuilder;
+import io.strimzi.api.kafka.model.connect.KafkaConnect;
+import io.strimzi.api.kafka.model.connect.KafkaConnectBuilder;
+import io.strimzi.api.kafka.model.connect.KafkaConnectTemplate;
+import io.strimzi.api.kafka.model.connect.KafkaConnectTemplateBuilder;
+import io.strimzi.api.kafka.model.connect.build.Plugin;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -13,23 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import io.debezium.testing.system.tools.ConfigProperties;
-import io.debezium.testing.system.tools.artifacts.OcpArtifactServerController;
-import io.debezium.testing.system.tools.fabric8.FabricBuilderWrapper;
-import io.fabric8.kubernetes.api.model.ConfigMap;
-import io.fabric8.kubernetes.api.model.ConfigMapKeySelector;
-import io.fabric8.kubernetes.api.model.ConfigMapKeySelectorBuilder;
-import io.fabric8.kubernetes.api.model.Secret;
-import io.strimzi.api.kafka.model.common.CertSecretSourceBuilder;
-import io.strimzi.api.kafka.model.common.ClientTls;
-import io.strimzi.api.kafka.model.common.ClientTlsBuilder;
-import io.strimzi.api.kafka.model.common.ContainerEnvVarBuilder;
-import io.strimzi.api.kafka.model.common.template.ContainerTemplateBuilder;
-import io.strimzi.api.kafka.model.connect.KafkaConnect;
-import io.strimzi.api.kafka.model.connect.KafkaConnectBuilder;
-import io.strimzi.api.kafka.model.connect.KafkaConnectTemplate;
-import io.strimzi.api.kafka.model.connect.KafkaConnectTemplateBuilder;
-import io.strimzi.api.kafka.model.connect.build.Plugin;
+import static io.debezium.testing.system.tools.kafka.builders.FabricKafkaBuilder.DEFAULT_KAFKA_NAME;
 
 /**
  * This class simplifies building of kafkaConnect by providing pre-made configurations for whole kafkaConnect or parts of its definition
@@ -178,6 +182,33 @@ public class FabricKafkaConnectBuilder extends
 
         return self();
 
+    }
+
+    /**
+     * Mount truststore and keystore configmaps to external configuration path with same folder names as configmap names
+     * @return
+     */
+    public FabricKafkaConnectBuilder withMongoCerts() {
+        builder
+                .editSpec()
+                .withExternalConfiguration(new ExternalConfigurationBuilder()
+                        .withVolumes(new ExternalConfigurationVolumeSourceBuilder()
+                                        .withName(OcpMongoCertGenerator.KEYSTORE_CONFIGMAP)
+                                        .withConfigMap(new ConfigMapVolumeSourceBuilder()
+                                                .withName(OcpMongoCertGenerator.KEYSTORE_CONFIGMAP)
+                                                .withDefaultMode(0420)
+                                                .build())
+                                        .build(),
+                                new ExternalConfigurationVolumeSourceBuilder()
+                                        .withName(OcpMongoCertGenerator.TRUSTSTORE_CONFIGMAP)
+                                        .withConfigMap(new ConfigMapVolumeSourceBuilder()
+                                                .withName(OcpMongoCertGenerator.TRUSTSTORE_CONFIGMAP)
+                                                .withDefaultMode(0420)
+                                                .build())
+                                        .build())
+                        .build())
+                .endSpec();
+        return self();
     }
 
     public FabricKafkaConnectBuilder withMetricsFromConfigMap(ConfigMap configMap) {

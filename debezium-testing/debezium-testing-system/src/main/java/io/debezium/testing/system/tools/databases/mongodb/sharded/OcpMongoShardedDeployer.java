@@ -24,13 +24,13 @@ public class OcpMongoShardedDeployer implements Deployer<OcpMongoShardedControll
     private final String rootUserName;
     private final String rootPassword;
     private final boolean useInternalAuth;
+    private final boolean useTls;
     private List<MongoShardKey> shardKeys;
-
     private OcpMongoShardedCluster mongo;
 
     public OcpMongoShardedDeployer(int shardCount, int replicaCount, int configServerCount, String rootUserName, String rootPassword, boolean useInternalAuth,
                                    OpenShiftClient ocp,
-                                   String project, List<MongoShardKey> shardKeys) {
+                                   String project, boolean useTls, List<MongoShardKey> shardKeys) {
         this.shardCount = shardCount;
         this.replicaCount = replicaCount;
         this.configServerCount = configServerCount;
@@ -39,6 +39,7 @@ public class OcpMongoShardedDeployer implements Deployer<OcpMongoShardedControll
         this.useInternalAuth = useInternalAuth;
         this.ocp = ocp;
         this.project = project;
+        this.useTls = useTls;
         this.shardKeys = shardKeys;
     }
 
@@ -57,6 +58,7 @@ public class OcpMongoShardedDeployer implements Deployer<OcpMongoShardedControll
                 .withReplicaCount(replicaCount)
                 .withShardKeys(shardKeys)
                 .withUseInternalAuth(useInternalAuth)
+                .withUseTsl(useTls)
                 .withRootUser(rootUserName, rootPassword)
                 .withShardKeys(shardKeys)
                 .build();
@@ -78,6 +80,7 @@ public class OcpMongoShardedDeployer implements Deployer<OcpMongoShardedControll
         private String rootPassword;
         private boolean useInternalAuth;
         private List<MongoShardKey> shardKeys;
+        private boolean useTls;
 
         private OcpMongoShardedDeployerBuilder() {
         }
@@ -118,13 +121,18 @@ public class OcpMongoShardedDeployer implements Deployer<OcpMongoShardedControll
             return this;
         }
 
+        public OcpMongoShardedDeployerBuilder withUseTls(boolean useTls) {
+            this.useTls = useTls;
+            return this;
+        }
+
         public OcpMongoShardedDeployerBuilder withShardKeys(List<MongoShardKey> shardKeys) {
             this.shardKeys = shardKeys;
             return this;
         }
 
         public OcpMongoShardedDeployer build() {
-            return new OcpMongoShardedDeployer(shardCount, replicaCount, configServerCount, rootUserName, rootPassword, useInternalAuth, ocp, project, shardKeys);
+            return new OcpMongoShardedDeployer(shardCount, replicaCount, configServerCount, rootUserName, rootPassword, useInternalAuth, ocp, project, useTls, shardKeys);
         }
     }
 }

@@ -109,6 +109,9 @@ public class OcpMongoReplicaSet implements Startable {
         if (useInternalAuth) {
             members.forEach(m -> MongoShardedUtil.addKeyFileToDeployment(m.getDeployment()));
         }
+        if (ConfigProperties.DATABASE_MONGO_USE_TLS) {
+            members.forEach(m -> MongoShardedUtil.addCertificatesToDeployment(m.getDeployment()));
+        }
 
         // Deploy all members in parallel
         LOGGER.info("[{}] Starting {} node replica set...", name, memberCount);
@@ -120,7 +123,7 @@ public class OcpMongoReplicaSet implements Startable {
         // Initialize the configured replica set to contain all the cluster's members
         LOGGER.info("[{}] Initializing replica set...", name);
         try {
-            var output = executeMongosh(getInitRsCommand(), false);
+            var output = executeMongosh(getInitRsCommand(), true);
             if (!output.getStdOut().contains("is primary result:  true")) {
                 throw new IllegalStateException("Replicaset initialization failed" + output);
             }

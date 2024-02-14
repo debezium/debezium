@@ -5,6 +5,7 @@
  */
 package io.debezium.testing.system.fixtures.connectors;
 
+import io.debezium.testing.system.tools.ConfigProperties;
 import org.junit.jupiter.api.extension.ExtensionContext;
 
 import io.debezium.testing.system.resources.ConnectorFactories;
@@ -25,6 +26,11 @@ public class ShardedMongoConnector extends ConnectorFixture<OcpMongoShardedContr
 
     @Override
     public ConnectorConfigBuilder connectorConfig(String connectorName) {
-        return new ConnectorFactories(kafkaController).shardedMongo(dbController, connectorName);
+        if (ConfigProperties.DATABASE_MONGO_USE_TLS) {
+            return new ConnectorFactories(kafkaController).shardedMongoWithTls(dbController, connectorName);
+        } else {
+            return new ConnectorFactories(kafkaController).shardedMongo(dbController, connectorName);
+
+        }
     }
 }
