@@ -149,7 +149,6 @@ This means that you can control all of the log messages for a specific class or 
 The following example configures loggers for the MySQL connector and for the database schema history implementation used by the connector,
 and sets them to log `DEBUG` level messages: +
 +
-============================================================================
 .log4j.properties
 [source,properties,options="nowrap"]
 ----
@@ -161,7 +160,6 @@ log4j.additivity.io.debezium.connector.mysql=false  // <3>
 log4j.additivity.io.debezium.storage.kafka.history=false  // <3>
 ...
 ----
-============================================================================
 +
 .Descriptions of `log4j.properties` settings
 [cols="1,7",options="header",subs="+attributes"]
@@ -201,7 +199,7 @@ The end of each log message shows the name of the Java class that produced the m
 For example, consider a scenario in which you are unsure why the MySQL connector is skipping some events when it is processing the binlog.
 Rather than turn on `DEBUG` or `TRACE` logging for the entire connector,
 you can keep the connector's logging level at `INFO` and then configure `DEBUG` or `TRACE` on just the class that is reading the binlog:
-
++
 .log4j.properties
 [source,properties,options="nowrap"]
 ----
@@ -215,7 +213,6 @@ log4j.additivity.io.debezium.storage.kafka.history=false
 log4j.additivity.io.debezium.connector.mysql.BinlogReader=false
 ...
 ----
---
 
 // Type: procedure
 // ModuleID: setting-the-debezium-logging-level-with-the-kafka-connect-rest-api
