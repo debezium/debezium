@@ -247,7 +247,7 @@ public final class Envelope {
         if (timestamp != null) {
             struct.put(FieldName.TIMESTAMP, timestamp.toEpochMilli());
             struct.put(FieldName.TIMESTAMP_US, (timestamp.getEpochSecond() * 1_000_000) + (timestamp.getNano() / 1_000));
-            struct.put(FieldName.TIMESTAMP_NS, (timestamp.getEpochSecond() * 1_000_000) + timestamp.getNano());
+            struct.put(FieldName.TIMESTAMP_NS, (timestamp.getEpochSecond() * 1_000_000_000L) + timestamp.getNano());
         }
         return struct;
     }
@@ -270,7 +270,7 @@ public final class Envelope {
         if (timestamp != null) {
             struct.put(FieldName.TIMESTAMP, timestamp.toEpochMilli());
             struct.put(FieldName.TIMESTAMP_US, (timestamp.getEpochSecond() * 1_000_000) + (timestamp.getNano() / 1_000));
-            struct.put(FieldName.TIMESTAMP_NS, (timestamp.getEpochSecond() * 1_000_000) + timestamp.getNano());
+            struct.put(FieldName.TIMESTAMP_NS, (timestamp.getEpochSecond() * 1_000_000_000L) + timestamp.getNano());
         }
         return struct;
     }
@@ -297,7 +297,7 @@ public final class Envelope {
         if (timestamp != null) {
             struct.put(FieldName.TIMESTAMP, timestamp.toEpochMilli());
             struct.put(FieldName.TIMESTAMP_US, (timestamp.getEpochSecond() * 1_000_000) + (timestamp.getNano() / 1_000));
-            struct.put(FieldName.TIMESTAMP_NS, (timestamp.getEpochSecond() * 1_000_000) + timestamp.getNano());
+            struct.put(FieldName.TIMESTAMP_NS, (timestamp.getEpochSecond() * 1_000_000_000L) + timestamp.getNano());
         }
         return struct;
     }
@@ -322,7 +322,7 @@ public final class Envelope {
         if (timestamp != null) {
             struct.put(FieldName.TIMESTAMP, timestamp.toEpochMilli());
             struct.put(FieldName.TIMESTAMP_US, (timestamp.getEpochSecond() * 1_000_000) + (timestamp.getNano() / 1_000));
-            struct.put(FieldName.TIMESTAMP_NS, (timestamp.getEpochSecond() * 1_000_000) + timestamp.getNano());
+            struct.put(FieldName.TIMESTAMP_NS, (timestamp.getEpochSecond() * 1_000_000_000L) + timestamp.getNano());
         }
         return struct;
     }
@@ -340,7 +340,7 @@ public final class Envelope {
         struct.put(FieldName.SOURCE, source);
         struct.put(FieldName.TIMESTAMP, timestamp.toEpochMilli());
         struct.put(FieldName.TIMESTAMP_US, (timestamp.getEpochSecond() * 1_000_000) + (timestamp.getNano() / 1_000));
-        struct.put(FieldName.TIMESTAMP_NS, (timestamp.getEpochSecond() * 1_000_000) + timestamp.getNano());
+        struct.put(FieldName.TIMESTAMP_NS, (timestamp.getEpochSecond() * 1_000_000_000L) + timestamp.getNano());
         return struct;
     }
 
