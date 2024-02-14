@@ -146,6 +146,16 @@
         "type": "int64",
         "optional": true,
         "field": "ts_ms"
+      },
+      {
+        "type": "int64",
+        "optional": true,
+        "field": "ts_us"
+      },
+      {
+        "type": "int64",
+        "optional": true,
+        "field": "ts_ns"
       }
     ],
     "optional": false,
@@ -154,6 +164,8 @@
   "payload": {
     "op": "c",
     "ts_ms": 1465491411815,
+    "ts_us": 1465491411815000,
+    "ts_ns": 1465491411815000000,
     "before": null,
     "after": {
       "id": 1004,
