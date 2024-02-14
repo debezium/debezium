@@ -5,18 +5,17 @@
  */
 package io.debezium.connector.mysql.snapshot.mode;
 
+import java.sql.SQLException;
 import java.util.Map;
 
 import io.debezium.DebeziumException;
 import io.debezium.bean.StandardBeanNames;
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.mysql.MySqlConnectorConfig;
-import io.debezium.connector.mysql.MySqlOffsetContext;
-import io.debezium.connector.mysql.MySqlPartition;
-import io.debezium.connector.mysql.strategy.AbstractConnectorConnection;
-import io.debezium.connector.mysql.strategy.mariadb.MariaDbConnection;
-import io.debezium.connector.mysql.strategy.mariadb.MariaDbConnectorAdapter;
-import io.debezium.connector.mysql.strategy.mysql.MySqlConnection;
+import io.debezium.jdbc.JdbcConnection;
+import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Offsets;
+import io.debezium.pipeline.spi.Partition;
 import io.debezium.snapshot.mode.HistorizedSnapshotter;
 
 public class SchemaOnlySnapshotter extends HistorizedSnapshotter {
@@ -34,18 +33,23 @@ public class SchemaOnlySnapshotter extends HistorizedSnapshotter {
     @Override
     public void validate(boolean offsetContextExists, boolean isSnapshotInProgress) {
 
-        final MySqlConnectorConfig config = beanRegistry.lookupByName(StandardBeanNames.CONNECTOR_CONFIG, MySqlConnectorConfig.class);
-        final AbstractConnectorConnection connection = beanRegistry.lookupByName(StandardBeanNames.JDBC_CONNECTION, getConnectionClass(config));
-        final Offsets<MySqlPartition, MySqlOffsetContext> mySqloffsets = beanRegistry.lookupByName(StandardBeanNames.OFFSETS, Offsets.class);
-        final MySqlOffsetContext offset = mySqloffsets.getTheOnlyOffset();
+        final CommonConnectorConfig config = beanRegistry.lookupByName(StandardBeanNames.CONNECTOR_CONFIG, CommonConnectorConfig.class);
+        final JdbcConnection connection = beanRegistry.lookupByName(StandardBeanNames.JDBC_CONNECTION, JdbcConnection.class);
+        final Offsets<Partition, OffsetContext> offsets = beanRegistry.lookupByName(StandardBeanNames.OFFSETS, Offsets.class);
+        final OffsetContext offset = offsets.getTheOnlyOffset();
 
-        if (offset != null && !offset.isSnapshotRunning()) {
-            // Check to see if the server still has those binlog coordinates ...
-            if (!connection.isBinlogPositionAvailable(config, offset.gtidSet(), offset.getSource().binlogFilename())) {
-                throw new DebeziumException("The connector is trying to read binlog starting at " + offset.getSource() + ", but this is no longer "
-                        + "available on the server. Reconfigure the connector to use a snapshot when needed.");
+        try {
+            if (offset != null && !offset.isSnapshotRunning()) {
+                // Check to see if the server still has those binlog coordinates ...
+                if (!connection.isLogPositionAvailable(offset, config)) {
+                    throw new DebeziumException("The connector is trying to read binlog starting at " + offset + ", but this is no longer "
+                            + "available on the server. Reconfigure the connector to use a snapshot when needed.");
 
+                }
             }
+        }
+        catch (SQLException e) {
+            throw new DebeziumException("Unable to get last available log position", e);
         }
 
     }
@@ -75,13 +79,4 @@ public class SchemaOnlySnapshotter extends HistorizedSnapshotter {
         return false;
     }
 
-    private Class<? extends AbstractConnectorConnection> getConnectionClass(MySqlConnectorConfig config) {
-        // TODO review this when MariaDB becomes a first class connector
-        if (config.getConnectorAdapter() instanceof MariaDbConnectorAdapter) {
-            return MariaDbConnection.class;
-        }
-        else {
-            return MySqlConnection.class;
-        }
-    }
 }

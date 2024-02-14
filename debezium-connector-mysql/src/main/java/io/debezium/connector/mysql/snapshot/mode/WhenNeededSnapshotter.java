@@ -15,11 +15,6 @@ import io.debezium.DebeziumException;
 import io.debezium.bean.StandardBeanNames;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.mysql.MySqlConnectorConfig;
-import io.debezium.connector.mysql.MySqlOffsetContext;
-import io.debezium.connector.mysql.strategy.AbstractConnectorConnection;
-import io.debezium.connector.mysql.strategy.mariadb.MariaDbConnection;
-import io.debezium.connector.mysql.strategy.mariadb.MariaDbConnectorAdapter;
-import io.debezium.connector.mysql.strategy.mysql.MySqlConnection;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Offsets;
@@ -54,7 +49,7 @@ public class WhenNeededSnapshotter extends HistorizedSnapshotter {
                 if (!connection.isLogPositionAvailable(offset, config)) {
                     LOGGER.warn(
                             "The connector is trying to read log starting at '{}', but this is no longer available on the server. Forcing the snapshot execution as it is allowed by the configuration.",
-                            getStoredLogPosition(offset));
+                            offset);
                     offsets.resetOffset(offsets.getTheOnlyPartition());
 
                 }
@@ -63,10 +58,6 @@ public class WhenNeededSnapshotter extends HistorizedSnapshotter {
         catch (SQLException e) {
             throw new DebeziumException("Unable to get last available log position", e);
         }
-    }
-
-    private Object getStoredLogPosition(OffsetContext offset) {
-        return ((MySqlOffsetContext) offset).getSource().binlogPosition();
     }
 
     @Override
@@ -94,13 +85,4 @@ public class WhenNeededSnapshotter extends HistorizedSnapshotter {
         return true;
     }
 
-    private Class<? extends AbstractConnectorConnection> getConnectionClass(MySqlConnectorConfig config) {
-        // TODO review this when MariaDB becomes a first class connector
-        if (config.getConnectorAdapter() instanceof MariaDbConnectorAdapter) {
-            return MariaDbConnection.class;
-        }
-        else {
-            return MySqlConnection.class;
-        }
-    }
 }
