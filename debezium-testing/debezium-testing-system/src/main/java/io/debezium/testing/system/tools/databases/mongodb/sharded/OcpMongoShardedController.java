@@ -10,7 +10,6 @@ import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -89,7 +88,7 @@ public class OcpMongoShardedController implements MongoDatabaseController {
         try {
             // fill test data, create debezium user
             mongo.executeMongoSh(String.join("\n", Files.readAllLines(insertDataScript)));
-            mongo.executeMongoSh(MongoShardedUtil.createDebeziumUserCommand(ConfigProperties.DATABASE_MONGO_DBZ_USERNAME, ConfigProperties.DATABASE_MONGO_DBZ_PASSWORD));
+            mongo.executeMongoSh(createDbzUserCommand());
         }
         catch (IOException | TemplateException e) {
             throw new RuntimeException(e);
@@ -98,8 +97,7 @@ public class OcpMongoShardedController implements MongoDatabaseController {
         // each shard has to have debezium user created for replica_set connection type
         mongo.getShardReplicaSets().forEach(rs -> {
             try {
-                rs.executeMongosh(MongoShardedUtil.createDebeziumUserCommand(ConfigProperties.DATABASE_MONGO_DBZ_USERNAME, ConfigProperties.DATABASE_MONGO_DBZ_PASSWORD),
-                        true);
+                rs.executeMongosh(createDbzUserCommand(), false);
             }
             catch (IOException | TemplateException e) {
                 throw new RuntimeException(e);
@@ -107,15 +105,10 @@ public class OcpMongoShardedController implements MongoDatabaseController {
         });
     }
 
-    public void addShard(Map<MongoShardKey, ShardKeyRange> rangeMap) {
-        mongo.addShard(rangeMap);
-    }
-
-    /**
-     * removes last shard
-     */
-    public void removeShard() {
-        mongo.removeShard();
+    public String createDbzUserCommand() throws TemplateException, IOException {
+        return mongo.getUseTls()
+                ? MongoShardedUtil.createCertUserCommand(OcpMongoCertGenerator.CLIENT_CERT_SUBJECT)
+                : MongoShardedUtil.createPasswordUserCommand(ConfigProperties.DATABASE_MONGO_DBZ_USERNAME, ConfigProperties.DATABASE_MONGO_DBZ_PASSWORD);
     }
 
     public OcpMongoShardedCluster getMongo() {

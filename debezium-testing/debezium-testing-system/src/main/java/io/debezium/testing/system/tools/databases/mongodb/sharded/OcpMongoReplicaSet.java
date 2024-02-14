@@ -48,21 +48,23 @@ public class OcpMongoReplicaSet implements Startable {
     private final OpenShiftClient ocp;
     private final OpenShiftUtils ocpUtil;
     private final String project;
-    private final boolean useInternalAuth;
+    private final boolean useKeyfile;
+    private final boolean useTsl;
     private final int shardNum;
     private final List<OcpMongoReplicaSetMember> members;
 
     public OcpMongoReplicaSet(String name, boolean configServer, int memberCount, String rootUserName, String rootPassword, OpenShiftClient ocp, String project,
-                              boolean useInternalAuth, int shardNum) {
+                              boolean useKeyfile, boolean useTsl, int shardNum) {
         this.name = name;
         this.configServer = configServer;
         this.memberCount = memberCount;
+        this.useTsl = useTsl;
         this.authRequired = false;
         this.rootUserName = rootUserName;
         this.rootPassword = rootPassword;
         this.ocp = ocp;
         this.project = project;
-        this.useInternalAuth = useInternalAuth;
+        this.useKeyfile = useKeyfile;
         this.shardNum = shardNum;
         this.ocpUtil = new OpenShiftUtils(ocp);
 
@@ -106,8 +108,11 @@ public class OcpMongoReplicaSet implements Startable {
             return;
         }
         // Add keyfile to deployment
-        if (useInternalAuth) {
+        if (useKeyfile) {
             members.forEach(m -> MongoShardedUtil.addKeyFileToDeployment(m.getDeployment()));
+        }
+        if (ConfigProperties.DATABASE_MONGO_USE_TLS) {
+            members.forEach(m -> MongoShardedUtil.addCertificatesToDeployment(m.getDeployment()));
         }
 
         // Deploy all members in parallel
@@ -222,8 +227,9 @@ public class OcpMongoReplicaSet implements Startable {
         private String rootPassword;
         private OpenShiftClient ocp;
         private String project;
-        private boolean useInternalAuth;
+        private boolean useKeyfile;
         private int shardNum;
+        private boolean useTsl;
 
         private OcpMongoReplicaSetBuilder() {
         }
@@ -263,8 +269,13 @@ public class OcpMongoReplicaSet implements Startable {
             return this;
         }
 
-        public OcpMongoReplicaSetBuilder withUseInternalAuth(boolean useInternalAuth) {
-            this.useInternalAuth = useInternalAuth;
+        public OcpMongoReplicaSetBuilder withUseKeyfile(boolean useKeyfile) {
+            this.useKeyfile = useKeyfile;
+            return this;
+        }
+
+        public OcpMongoReplicaSetBuilder withUseTsl(boolean useTsl) {
+            this.useTsl = useTsl;
             return this;
         }
 
@@ -274,7 +285,7 @@ public class OcpMongoReplicaSet implements Startable {
         }
 
         public OcpMongoReplicaSet build() {
-            return new OcpMongoReplicaSet(name, configServer, memberCount, rootUserName, rootPassword, ocp, project, useInternalAuth, shardNum);
+            return new OcpMongoReplicaSet(name, configServer, memberCount, rootUserName, rootPassword, ocp, project, useKeyfile, useTsl , shardNum);
         }
     }
 }

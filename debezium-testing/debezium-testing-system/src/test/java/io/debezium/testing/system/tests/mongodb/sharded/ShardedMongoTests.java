@@ -20,10 +20,8 @@ import org.bson.conversions.Bson;
 
 import io.debezium.testing.system.assertions.KafkaAssertions;
 import io.debezium.testing.system.tests.ConnectorTest;
-import io.debezium.testing.system.tools.ConfigProperties;
 import io.debezium.testing.system.tools.databases.mongodb.MongoDatabaseClient;
 import io.debezium.testing.system.tools.databases.mongodb.MongoDatabaseController;
-import io.debezium.testing.system.tools.databases.mongodb.sharded.MongoShardedUtil;
 import io.debezium.testing.system.tools.databases.mongodb.sharded.OcpMongoShardedController;
 import io.debezium.testing.system.tools.databases.mongodb.sharded.ShardKeyRange;
 import io.debezium.testing.system.tools.databases.mongodb.sharded.componentproviders.OcpShardModelProvider;
@@ -94,10 +92,9 @@ public abstract class ShardedMongoTests extends ConnectorTest {
         // add shard, restart connector, insert to that shard and verify that insert was captured by debezium
         var key = dbController.getMongo().getShardKey("inventory.customers");
         var keyRange = new ShardKeyRange(OcpShardModelProvider.getShardReplicaSetName(3), "1100", "1105");
-        dbController.addShard(Map.of(key, keyRange));
+        dbController.getMongo().addShard(Map.of(key, keyRange));
         var sets = dbController.getMongo().getShardReplicaSets();
-        sets.get(sets.size() - 1).executeMongosh(
-                MongoShardedUtil.createDebeziumUserCommand(ConfigProperties.DATABASE_MONGO_DBZ_USERNAME, ConfigProperties.DATABASE_MONGO_DBZ_PASSWORD), true);
+        sets.get(sets.size() - 1).executeMongosh(dbController.createDbzUserCommand(), true);
 
         connectController.undeployConnector(connectorName);
         connectController.deployConnector(connectorConfig);
@@ -108,7 +105,7 @@ public abstract class ShardedMongoTests extends ConnectorTest {
 
         // remove shard, restart connector and verify debezium is still streaming
         removeCustomer(dbController, "ffoo@test.com");
-        dbController.removeShard();
+        dbController.getMongo().removeShard();
 
         connectController.undeployConnector(connectorName);
         connectController.deployConnector(connectorConfig);

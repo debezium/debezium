@@ -8,8 +8,10 @@ package io.debezium.testing.system.resources;
 import java.util.Random;
 
 import io.debezium.testing.system.tools.ConfigProperties;
+import io.debezium.testing.system.tools.certificateutil.CertUtil;
 import io.debezium.testing.system.tools.databases.SqlDatabaseController;
 import io.debezium.testing.system.tools.databases.mongodb.MongoDatabaseController;
+import io.debezium.testing.system.tools.databases.mongodb.sharded.OcpMongoCertGenerator;
 import io.debezium.testing.system.tools.kafka.ConnectorConfigBuilder;
 import io.debezium.testing.system.tools.kafka.KafkaController;
 
@@ -104,10 +106,29 @@ public class ConnectorFactories {
                 .put("topic.prefix", connectorName)
                 .put("connector.class", "io.debezium.connector.mongodb.MongoDbConnector")
                 .put("task.max", 1)
-                .put("mongodb.user", ConfigProperties.DATABASE_MONGO_DBZ_USERNAME)
-                .put("mongodb.password", ConfigProperties.DATABASE_MONGO_DBZ_PASSWORD)
                 .put("mongodb.connection.string", controller.getPublicDatabaseUrl())
                 .put("mongodb.connection.mode", "sharded")
+                .put("mongodb.user", ConfigProperties.DATABASE_MONGO_DBZ_USERNAME)
+                .put("mongodb.password", ConfigProperties.DATABASE_MONGO_DBZ_PASSWORD)
+                .addOperationRouterForTable("u", "customers");
+        return cb;
+    }
+
+    public ConnectorConfigBuilder shardedMongoWithTls(MongoDatabaseController controller, String connectorName) {
+        ConnectorConfigBuilder cb = new ConnectorConfigBuilder(connectorName);
+        cb
+                .put("topic.prefix", connectorName)
+                .put("connector.class", "io.debezium.connector.mongodb.MongoDbConnector")
+                .put("task.max", 1)
+                .put("mongodb.connection.string", controller.getPublicDatabaseUrl())
+                .put("mongodb.connection.mode", "sharded")
+                .put("mongodb.ssl.enabled", true)
+                .put("mongodb.ssl.keystore",
+                        "/opt/kafka/external-configuration/" + OcpMongoCertGenerator.KEYSTORE_CONFIGMAP + "/" + OcpMongoCertGenerator.KEYSTORE_SUBPATH)
+                .put("mongodb.ssl.keystore.password", CertUtil.KEYSTORE_PASSWORD)
+                .put("mongodb.ssl.truststore",
+                        "/opt/kafka/external-configuration/" + OcpMongoCertGenerator.TRUSTSTORE_CONFIGMAP + "/" + OcpMongoCertGenerator.TRUSTSTORE_SUBPATH)
+                .put("mongodb.ssl.truststore.password", CertUtil.KEYSTORE_PASSWORD)
                 .addOperationRouterForTable("u", "customers");
         return cb;
     }
