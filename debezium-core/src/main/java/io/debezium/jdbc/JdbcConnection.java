@@ -169,7 +169,7 @@ public class JdbcConnection implements AutoCloseable {
          * @param offsetContext The current stored offset.
          * @param config Connector configuration.
          */
-        boolean validate(OffsetContext offsetContext, CommonConnectorConfig config) throws SQLException;
+        boolean validate(OffsetContext offsetContext, CommonConnectorConfig config);
     }
 
     /**
@@ -1654,7 +1654,7 @@ public class JdbcConnection implements AutoCloseable {
         return results;
     }
 
-    public boolean isLogPositionAvailable(OffsetContext offsetContext, CommonConnectorConfig config) throws SQLException {
+    public boolean isLogPositionAvailable(OffsetContext offsetContext, CommonConnectorConfig config) {
 
         if (logPositionValidator == null) {
             LOGGER.warn("Current JDBC connection implementation is not providing a log position validator implementation. The check will always be 'true'");

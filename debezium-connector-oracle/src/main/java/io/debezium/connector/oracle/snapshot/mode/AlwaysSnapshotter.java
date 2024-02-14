@@ -10,17 +10,15 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.connector.oracle.OracleConnectorConfig;
-import io.debezium.snapshot.mode.BeanAwareSnapshotter;
 import io.debezium.spi.snapshot.Snapshotter;
 
-public class AlwaysSnapshotter extends BeanAwareSnapshotter implements Snapshotter {
+public class AlwaysSnapshotter implements Snapshotter {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AlwaysSnapshotter.class);
 
     @Override
     public String name() {
-        return OracleConnectorConfig.SnapshotMode.ALWAYS.getValue();
+        return "always";
     }
 
     @Override
@@ -29,19 +27,14 @@ public class AlwaysSnapshotter extends BeanAwareSnapshotter implements Snapshott
     }
 
     @Override
-    public void validate(boolean offsetContextExists, boolean isSnapshotInProgress) {
-
-    }
-
-    @Override
-    public boolean shouldSnapshot() {
+    public boolean shouldSnapshot(boolean offsetExists, boolean snapshotInProgress) {
         // for ALWAYS snapshot mode don't use exiting offset to have up-to-date SCN
         LOGGER.info("Snapshot mode is set to ALWAYS, not checking exiting offset.");
         return true;
     }
 
     @Override
-    public boolean shouldSnapshotSchema() {
+    public boolean shouldSnapshotSchema(boolean offsetExists, boolean snapshotInProgress) {
         return true;
     }
 
@@ -56,7 +49,7 @@ public class AlwaysSnapshotter extends BeanAwareSnapshotter implements Snapshott
     }
 
     @Override
-    public boolean shouldSnapshotOnDataError() { // TODO check with DBZ-7308
+    public boolean shouldSnapshotOnDataError() {
         return false;
     }
 }

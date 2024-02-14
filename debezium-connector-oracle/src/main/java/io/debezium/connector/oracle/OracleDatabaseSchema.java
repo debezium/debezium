@@ -108,13 +108,6 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
         }
     }
 
-    /**
-     * Return true if the database schema history entity exists
-     */
-    public boolean historyExists() {
-        return schemaHistory.exists();
-    }
-
     @Override
     protected void removeSchema(TableId id) {
         super.removeSchema(id);

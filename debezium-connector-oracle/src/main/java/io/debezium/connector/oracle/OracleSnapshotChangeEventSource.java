@@ -73,14 +73,30 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
         Map<String, String> snapshotSelectOverridesByTable = connectorConfig.getSnapshotSelectOverridesByTable().entrySet().stream()
                 .collect(Collectors.toMap(e -> e.getKey().identifier(), Map.Entry::getValue));
 
-        if (snapshotter.shouldSnapshot() && snapshotter.shouldSnapshotSchema()) {
+        boolean offsetExists = previousOffset != null;
+        boolean snapshotInProgress = false;
+
+        if (!offsetExists) {
+            LOGGER.info("No previous offset found");
+        }
+
+        if (offsetExists && !previousOffset.isSnapshotRunning()) {
+            LOGGER.info("A previous offset indicating a completed snapshot has been found. Neither schema nor data will be snapshotted.");
+            snapshotInProgress = true;
+        }
+
+        boolean shouldSnapshotSchema = snapshotter.shouldSnapshotSchema(offsetExists, snapshotInProgress);
+        boolean shouldSnapshotData = snapshotter.shouldSnapshot(offsetExists, snapshotInProgress);
+
+        if (shouldSnapshotData && shouldSnapshotSchema) {
             LOGGER.info("According to the connector configuration both schema and data will be snapshot.");
         }
-        else if (snapshotter.shouldSnapshotSchema()) {
+        else if (shouldSnapshotSchema) {
             LOGGER.info("According to the connector configuration only schema will be snapshot.");
         }
 
-        return new SnapshottingTask(snapshotter.shouldSnapshotSchema(), snapshotter.shouldSnapshot(), dataCollectionsToBeSnapshotted, snapshotSelectOverridesByTable,
+        return new SnapshottingTask(shouldSnapshotSchema, shouldSnapshotData,
+                dataCollectionsToBeSnapshotted, snapshotSelectOverridesByTable,
                 false);
     }
 

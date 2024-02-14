@@ -17,9 +17,6 @@ public class InitialSnapshotter implements Snapshotter {
 
     private final static Logger LOGGER = LoggerFactory.getLogger(InitialSnapshotter.class);
 
-    protected boolean offsetContextExists;
-    protected boolean isSnapshotInProgress;
-
     @Override
     public String name() {
         return PostgresConnectorConfig.SnapshotMode.INITIAL.getValue();
@@ -31,24 +28,18 @@ public class InitialSnapshotter implements Snapshotter {
     }
 
     @Override
-    public void validate(boolean offsetContextExists, boolean isSnapshotInProgress) {
-
-        this.offsetContextExists = offsetContextExists;
-        this.isSnapshotInProgress = isSnapshotInProgress;
-    }
-
-    @Override
     public boolean shouldStream() {
         return true;
     }
 
     @Override
-    public boolean shouldSnapshot() {
-        if (!offsetContextExists) {
+    public boolean shouldSnapshot(boolean offsetExists, boolean snapshotInProgress) {
+
+        if (!offsetExists) {
             LOGGER.info("Taking initial snapshot for new datasource");
             return true;
         }
-        else if (isSnapshotInProgress) {
+        else if (snapshotInProgress) {
             LOGGER.info("Found previous incomplete snapshot");
             return true;
         }
@@ -70,7 +61,7 @@ public class InitialSnapshotter implements Snapshotter {
     }
 
     @Override
-    public boolean shouldSnapshotSchema() {
+    public boolean shouldSnapshotSchema(boolean offsetExists, boolean snapshotInProgress) {
         return false;
     }
 }

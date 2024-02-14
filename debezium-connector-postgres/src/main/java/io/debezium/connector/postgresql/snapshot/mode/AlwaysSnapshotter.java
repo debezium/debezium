@@ -10,16 +10,15 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.connector.postgresql.PostgresConnectorConfig;
 import io.debezium.spi.snapshot.Snapshotter;
 
 public class AlwaysSnapshotter implements Snapshotter {
 
-    private final static Logger LOGGER = LoggerFactory.getLogger(AlwaysSnapshotter.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(AlwaysSnapshotter.class);
 
     @Override
     public String name() {
-        return PostgresConnectorConfig.SnapshotMode.ALWAYS.getValue();
+        return "always";
     }
 
     @Override
@@ -28,18 +27,19 @@ public class AlwaysSnapshotter implements Snapshotter {
     }
 
     @Override
-    public void validate(boolean offsetContextExists, boolean isSnapshotInProgress) {
-
-    }
-
-    @Override
-    public boolean shouldStream() {
+    public boolean shouldSnapshot(boolean offsetExists, boolean snapshotInProgress) {
+        // for ALWAYS snapshot mode don't use exiting offset to have up-to-date SCN
+        LOGGER.info("Snapshot mode is set to ALWAYS, not checking exiting offset.");
         return true;
     }
 
     @Override
-    public boolean shouldSnapshot() {
-        LOGGER.info("Taking a new snapshot as per configuration");
+    public boolean shouldSnapshotSchema(boolean offsetExists, boolean snapshotInProgress) {
+        return false;
+    }
+
+    @Override
+    public boolean shouldStream() {
         return true;
     }
 
@@ -50,11 +50,6 @@ public class AlwaysSnapshotter implements Snapshotter {
 
     @Override
     public boolean shouldSnapshotOnDataError() {
-        return false;
-    }
-
-    @Override
-    public boolean shouldSnapshotSchema() {
         return false;
     }
 }

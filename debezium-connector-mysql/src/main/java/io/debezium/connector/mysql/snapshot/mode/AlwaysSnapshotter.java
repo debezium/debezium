@@ -10,16 +10,15 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.connector.mysql.MySqlConnectorConfig;
 import io.debezium.spi.snapshot.Snapshotter;
 
 public class AlwaysSnapshotter implements Snapshotter {
 
-    private final static Logger LOGGER = LoggerFactory.getLogger(AlwaysSnapshotter.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(AlwaysSnapshotter.class);
 
     @Override
     public String name() {
-        return MySqlConnectorConfig.SnapshotMode.ALWAYS.getValue();
+        return "always";
     }
 
     @Override
@@ -28,20 +27,15 @@ public class AlwaysSnapshotter implements Snapshotter {
     }
 
     @Override
-    public void validate(boolean offsetContextExists, boolean isSnapshotInProgress) {
-
-    }
-
-    @Override
-    public boolean shouldSnapshot() {
+    public boolean shouldSnapshot(boolean offsetExists, boolean snapshotInProgress) {
         // for ALWAYS snapshot mode don't use exiting offset to have up-to-date SCN
         LOGGER.info("Snapshot mode is set to ALWAYS, not checking exiting offset.");
         return true;
     }
 
     @Override
-    public boolean shouldSnapshotSchema() {
-        return true;
+    public boolean shouldSnapshotSchema(boolean offsetExists, boolean snapshotInProgress) {
+        return true; // TODO use schema to determine behavior based on historized or not
     }
 
     @Override
@@ -55,7 +49,7 @@ public class AlwaysSnapshotter implements Snapshotter {
     }
 
     @Override
-    public boolean shouldSnapshotOnDataError() { // TODO check with DBZ-7308
+    public boolean shouldSnapshotOnDataError() {
         return false;
     }
 }

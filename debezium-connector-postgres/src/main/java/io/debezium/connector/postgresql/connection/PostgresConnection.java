@@ -829,17 +829,22 @@ public class PostgresConnection extends JdbcConnection {
         return new TableId(null, schemaName, tableName);
     }
 
-    public boolean validateLogPosition(OffsetContext offset, CommonConnectorConfig config) throws SQLException {
+    public boolean validateLogPosition(OffsetContext offset, CommonConnectorConfig config) {
 
         final Lsn storedLsn = ((PostgresOffsetContext) offset).lastCommitLsn();
         final String slotName = ((PostgresConnectorConfig) config).slotName();
         final String postgresPluginName = ((PostgresConnectorConfig) config).plugin().getPostgresPluginName();
 
-        SlotState slotState = getReplicationSlotState(slotName, postgresPluginName);
-        if (slotState == null) {
-            return false;
+        try {
+            SlotState slotState = getReplicationSlotState(slotName, postgresPluginName);
+            if (slotState == null) {
+                return false;
+            }
+            return storedLsn == null || slotState.slotRestartLsn().compareTo(storedLsn) < 0;
         }
-        return slotState.slotRestartLsn().compareTo(storedLsn) < 0;
+        catch (SQLException e) {
+            throw new DebeziumException("Unable to get last available log position", e);
+        }
     }
 
     @FunctionalInterface
