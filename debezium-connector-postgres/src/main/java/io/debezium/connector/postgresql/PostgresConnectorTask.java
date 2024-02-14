@@ -138,6 +138,8 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                     beanRegistryJdbcConnection.username(), e);
         }
 
+        validateAndLoadSchemaHistory(connectorConfig, jdbcConnection, previousOffsets, schema, snapshotter);
+
         LoggingContext.PreviousContext previousContext = taskContext.configureLoggingContext(CONTEXT_NAME);
         try {
             // Print out the server information

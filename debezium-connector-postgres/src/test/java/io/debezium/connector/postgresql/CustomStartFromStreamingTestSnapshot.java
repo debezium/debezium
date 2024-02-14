@@ -17,17 +17,12 @@ public class CustomStartFromStreamingTestSnapshot extends SelectAllSnapshotQuery
     }
 
     @Override
-    public void validate(boolean offsetContextExists, boolean isSnapshotInProgress) {
-
-    }
-
-    @Override
     public boolean shouldStream() {
         return true;
     }
 
     @Override
-    public boolean shouldSnapshot() {
+    public boolean shouldSnapshot(boolean offsetExists, boolean snapshotInProgress) {
         return true;
     }
 
@@ -42,7 +37,7 @@ public class CustomStartFromStreamingTestSnapshot extends SelectAllSnapshotQuery
     }
 
     @Override
-    public boolean shouldSnapshotSchema() {
+    public boolean shouldSnapshotSchema(boolean offsetExists, boolean snapshotInProgress) {
         return false;
     }
 

@@ -40,7 +40,6 @@ import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.service.spi.ServiceRegistry;
 import io.debezium.snapshot.SnapshotterService;
-import io.debezium.spi.snapshot.Snapshotter;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Clock;
 import io.debezium.util.Strings;
@@ -95,25 +94,21 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         registerServiceProviders(connectorConfig.getServiceRegistry());
 
         final SnapshotterService snapshotterService = connectorConfig.getServiceRegistry().tryGetService(SnapshotterService.class);
-        final Snapshotter snapshotter = snapshotterService.getSnapshotter();
 
         validateRedoLogConfiguration(connectorConfig, snapshotterService);
 
-        OraclePartition partition = previousOffsets.getTheOnlyPartition();
         OracleOffsetContext previousOffset = previousOffsets.getTheOnlyOffset();
 
-        validateAndLoadSchemaHistory(connectorConfig, partition, previousOffset, schema, snapshotterService);
+        validateAndLoadSchemaHistory(connectorConfig, jdbcConnection, previousOffsets, schema, snapshotterService.getSnapshotter());
 
         taskContext = new OracleTaskContext(connectorConfig, schema);
 
         // If the binlog position is not available it is necessary to re-execute snapshot
         if (previousOffset == null) {
             LOGGER.info("No previous offset found");
-            snapshotter.validate(false, false);
         }
         else {
             LOGGER.info("Found previous offset {}", previousOffset);
-            snapshotter.validate(true, previousOffset.isSnapshotRunning());
         }
 
         Clock clock = Clock.system();
@@ -257,32 +252,4 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
                 config.getLogMiningTransactionSnapshotBoundaryMode() == OracleConnectorConfig.TransactionSnapshotBoundaryMode.ALL;
     }
 
-    private void validateAndLoadSchemaHistory(OracleConnectorConfig config, OraclePartition partition, OracleOffsetContext offset, OracleDatabaseSchema schema,
-                                              SnapshotterService snapshotterService) {
-        if (offset == null) { // TODO move this into snapshotter validate
-            if (snapshotterService.getSnapshotter().shouldSnapshotOnSchemaError() && config.getSnapshotMode() != OracleConnectorConfig.SnapshotMode.ALWAYS) {
-                // We are in schema only recovery mode, use the existing redo log position
-                // would like to also verify redo log position exists, but it defaults to 0 which is technically valid
-                throw new DebeziumException("Could not find existing redo log information while attempting schema only recovery snapshot");
-            }
-            LOGGER.info("Connector started for the first time, database schema history recovery will not be executed");
-            schema.initializeStorage();
-            return;
-        }
-        if (!schema.historyExists()) {
-            LOGGER.warn("Database schema history was not found but was expected");
-            if (snapshotterService.getSnapshotter().shouldSnapshotOnSchemaError()) {
-                LOGGER.info("The db-history topic is missing but we are in {} snapshot mode. " +
-                        "Attempting to snapshot the current schema and then begin reading the redo log from the last recorded offset.",
-                        OracleConnectorConfig.SnapshotMode.SCHEMA_ONLY_RECOVERY);
-            }
-            else {
-                throw new DebeziumException("The db history topic is missing. You may attempt to recover it by reconfiguring the connector to "
-                        + OracleConnectorConfig.SnapshotMode.SCHEMA_ONLY_RECOVERY);
-            }
-            schema.initializeStorage();
-            return;
-        }
-        schema.recover(Offsets.of(partition, offset));
-    }
 }

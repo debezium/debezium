@@ -5,7 +5,6 @@
  */
 package io.debezium.spi.snapshot;
 
-import io.debezium.DebeziumException;
 import io.debezium.common.annotation.Incubating;
 import io.debezium.spi.common.Configurable;
 
@@ -36,23 +35,18 @@ public interface Snapshotter extends Configurable {
     String name();
 
     /**
-     * Validate the snapshotter compatibility with the current connector configuration.
-     * Throws a {@link DebeziumException} in case it is not compatible.
+     * @param offsetExists is {@code true} when the connector has an offset context (i.e. restarted)
+     * @param snapshotInProgress is {@code true} when the connector is started, but a snapshot is already in progress
      *
-     * @param offsetContextExists is {@code true} when the connector has an offset context (i.e. restarted)
-     * @param isSnapshotInProgress is {@code true} when the connector is started, but a snapshot is already in progress
-     */
-    void validate(boolean offsetContextExists, boolean isSnapshotInProgress);
-
-    /**
      * @return {@code true} if the snapshotter should take a snapshot
      */
-    boolean shouldSnapshot();
+    boolean shouldSnapshot(boolean offsetExists, boolean snapshotInProgress);
 
     /**
-     * @return {@code true} if the snapshotter should take a snapshot
+     * @param offsetExists is {@code true} when the connector has an offset context (i.e. restarted)
+     * @param snapshotInProgress is {@code true} when the connector is started, but a snapshot is already in progress
      */
-    boolean shouldSnapshotSchema();
+    boolean shouldSnapshotSchema(boolean offsetExists, boolean snapshotInProgress);
 
     /**
      * @return {@code true} if the snapshotter should stream after taking a snapshot

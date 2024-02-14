@@ -149,6 +149,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
             LOGGER.info("Streaming is not enabled in current configuration");
             return;
         }
+
         try {
 
             prepareConnection(false);

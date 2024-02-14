@@ -22,7 +22,7 @@ public abstract class HistorizedSnapshotter extends BeanAwareSnapshotter impleme
             "Schema will %s if shouldSnapshotOnSchemaError is true for the current snapshot mode.";
 
     @Override
-    public boolean shouldSnapshot() {
+    public boolean shouldSnapshot(boolean offsetExists, boolean snapshotInProgress) {
 
         final Offsets offsets = beanRegistry.lookupByName(StandardBeanNames.OFFSETS, Offsets.class);
         OffsetContext previousOffset = offsets.getTheOnlyOffset();
@@ -42,7 +42,7 @@ public abstract class HistorizedSnapshotter extends BeanAwareSnapshotter impleme
     protected abstract boolean shouldSnapshotSchemaWhenNoOffset();
 
     @Override
-    public boolean shouldSnapshotSchema() {
+    public boolean shouldSnapshotSchema(boolean offsetExists, boolean snapshotInProgress) {
 
         final Offsets offsets = beanRegistry.lookupByName(StandardBeanNames.OFFSETS, Offsets.class);
         final HistorizedRelationalDatabaseSchema databaseSchema = beanRegistry.lookupByName(StandardBeanNames.DATABASE_SCHEMA, HistorizedRelationalDatabaseSchema.class);

@@ -415,15 +415,19 @@ public class OracleConnection extends JdbcConnection {
         return Optional.of(Scn.valueOf(oldestScn));
     }
 
-    public boolean validateLogPosition(OffsetContext offset, CommonConnectorConfig config) throws SQLException {
+    public boolean validateLogPosition(OffsetContext offset, CommonConnectorConfig config) {
 
         final Duration archiveLogRetention = ((OracleConnectorConfig) config).getLogMiningArchiveLogRetention(); // TODO generify this a generic properties valid for the different Oracle flavors
         final String archiveDestinationName = ((OracleConnectorConfig) config).getLogMiningArchiveDestinationName();
         final Scn storedOffset = ((OracleConnectorConfig) config).getAdapter().getOffsetScn((OracleOffsetContext) offset);
 
-        Optional<Scn> firstAvailableScn = getFirstScnInLogs(archiveLogRetention, archiveDestinationName);
-
-        return firstAvailableScn.filter(isLessThan(storedOffset)).isPresent();
+        try {
+            Optional<Scn> firstAvailableScn = getFirstScnInLogs(archiveLogRetention, archiveDestinationName);
+            return firstAvailableScn.filter(isLessThan(storedOffset)).isPresent();
+        }
+        catch (SQLException e) {
+            throw new DebeziumException("Unable to get last available log position", e);
+        }
     }
 
     private static Predicate<Scn> isLessThan(Scn storedOffset) {

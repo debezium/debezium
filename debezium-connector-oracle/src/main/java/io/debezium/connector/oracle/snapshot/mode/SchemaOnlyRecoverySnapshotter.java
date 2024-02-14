@@ -7,7 +7,7 @@ package io.debezium.connector.oracle.snapshot.mode;
 
 import io.debezium.connector.oracle.OracleConnectorConfig;
 
-public class SchemaRecoveryOnlySnapshotter extends SchemaOnlySnapshotter {
+public class SchemaOnlyRecoverySnapshotter extends SchemaOnlySnapshotter {
 
     @Override
     public String name() {

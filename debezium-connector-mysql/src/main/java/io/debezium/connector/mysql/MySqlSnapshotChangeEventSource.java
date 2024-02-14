@@ -95,21 +95,37 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
     @Override
     public SnapshottingTask getSnapshottingTask(MySqlPartition partition, MySqlOffsetContext previousOffset) {
 
-        // TODO DBZ-7308 evaluate is this can be shared
+        // TODO DBZ-7308 evaluate getSnapshottingTask can be shared
+
         final Snapshotter snapshotter = snapshotterService.getSnapshotter();
 
         List<String> dataCollectionsToBeSnapshotted = connectorConfig.getDataCollectionsToBeSnapshotted();
         Map<String, String> snapshotSelectOverridesByTable = connectorConfig.getSnapshotSelectOverridesByTable().entrySet().stream()
                 .collect(Collectors.toMap(e -> e.getKey().identifier(), Map.Entry::getValue));
 
-        if (snapshotter.shouldSnapshotSchema() && snapshotter.shouldSnapshot()) {
+        boolean offsetExists = previousOffset != null;
+        boolean snapshotInProgress = false;
+
+        if (!offsetExists) {
+            LOGGER.info("No previous offset found");
+        }
+
+        if (offsetExists && !previousOffset.isSnapshotRunning()) {
+            LOGGER.info("A previous offset indicating a completed snapshot has been found. Neither schema nor data will be snapshotted.");
+            snapshotInProgress = true;
+        }
+
+        boolean shouldSnapshotSchema = snapshotter.shouldSnapshotSchema(offsetExists, snapshotInProgress);
+        boolean shouldSnapshotData = snapshotter.shouldSnapshot(offsetExists, snapshotInProgress);
+
+        if (shouldSnapshotSchema && shouldSnapshotData) {
             LOGGER.info("According to the connector configuration both schema and data will be snapshotted");
         }
         else {
             LOGGER.info("According to the connector configuration only schema will be snapshotted");
         }
 
-        return new SnapshottingTask(snapshotter.shouldSnapshotSchema(), snapshotter.shouldSnapshot(),
+        return new SnapshottingTask(shouldSnapshotSchema, shouldSnapshotData,
                 dataCollectionsToBeSnapshotted,
                 snapshotSelectOverridesByTable, false);
     }

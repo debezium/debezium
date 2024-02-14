@@ -5,14 +5,9 @@
  */
 package io.debezium.connector.postgresql.snapshot.mode;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import io.debezium.connector.postgresql.PostgresConnectorConfig;
 
 public class InitialOnlySnapshotter extends InitialSnapshotter {
-
-    private final static Logger LOGGER = LoggerFactory.getLogger(InitialOnlySnapshotter.class);
 
     @Override
     public String name() {
@@ -24,20 +19,4 @@ public class InitialOnlySnapshotter extends InitialSnapshotter {
         return false;
     }
 
-    @Override
-    public boolean shouldSnapshot() {
-
-        if (!offsetContextExists) {
-            LOGGER.info("Taking initial snapshot for new datasource");
-            return true;
-        }
-        else if (isSnapshotInProgress) {
-            LOGGER.info("Found previous incomplete snapshot");
-            return true;
-        }
-        else {
-            LOGGER.info("Previous initial snapshot completed, no snapshot will be performed");
-            return false;
-        }
-    }
 }
