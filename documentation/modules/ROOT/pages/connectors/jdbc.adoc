@@ -572,7 +572,7 @@ The following example shows a JSON request for registering an instance of the {p
     }
 }
 ----
-Descriptions of JDBC connector configuration settings
+.Descriptions of JDBC connector configuration settings
 [cols="1,7",options="header",subs="+attributes"]
 |===
 |Item |Description
