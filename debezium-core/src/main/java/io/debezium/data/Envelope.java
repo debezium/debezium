@@ -26,7 +26,7 @@ import io.debezium.schema.SchemaFactory;
  */
 public final class Envelope {
 
-    public static final int SCHEMA_VERSION = 1;
+    public static final int SCHEMA_VERSION = 2;
 
     /**
      * The constants for the values for the {@link FieldName#OPERATION operation} field in the message envelope.

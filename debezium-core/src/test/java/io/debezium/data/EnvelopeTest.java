@@ -29,7 +29,7 @@ public class EnvelopeTest {
         assertThat(env.schema()).isNotNull();
         assertThat(env.schema().name()).isEqualTo("someName");
         assertThat(env.schema().doc()).isNull();
-        assertThat(env.schema().version()).isEqualTo(1);
+        assertThat(env.schema().version()).isEqualTo(2);
         assertOptionalField(env, Envelope.FieldName.AFTER, Schema.OPTIONAL_STRING_SCHEMA);
         assertOptionalField(env, Envelope.FieldName.BEFORE, Schema.OPTIONAL_STRING_SCHEMA);
         assertOptionalField(env, Envelope.FieldName.SOURCE, Schema.OPTIONAL_INT64_SCHEMA);
