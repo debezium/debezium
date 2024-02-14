@@ -24,12 +24,14 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.engine.Header;
 import io.debezium.engine.format.Avro;
+import io.debezium.engine.format.Binary;
 import io.debezium.engine.format.CloudEvents;
 import io.debezium.engine.format.Json;
 import io.debezium.engine.format.JsonByteArray;
 import io.debezium.engine.format.KeyValueHeaderChangeEventFormat;
 import io.debezium.engine.format.Protobuf;
 import io.debezium.engine.format.SerializationFormat;
+import io.debezium.engine.format.SimpleString;
 
 /**
  * A builder which creates converter functions for requested format.
@@ -111,14 +113,15 @@ public class ConverterBuilder<R> {
                                 .collect(Collectors.toList());
                     }
                 }
-
-                return shouldConvertKeyAndValueToString()
-                        ? (R) new EmbeddedEngineChangeEvent<>(
-                                key != null ? new String(key, StandardCharsets.UTF_8) : null,
-                                value != null ? new String(value, StandardCharsets.UTF_8) : null,
-                                (List) headers,
-                                record)
-                        : (R) new EmbeddedEngineChangeEvent<>(key, value, (List) headers, record);
+                Object convertedKey = key;
+                Object convertedValue = value;
+                if (key != null && shouldConvertKeyToString()) {
+                    convertedKey = new String(key, StandardCharsets.UTF_8);
+                }
+                if (value != null && shouldConvertValueToString()) {
+                    convertedValue = new String(value, StandardCharsets.UTF_8);
+                }
+                return (R) new EmbeddedEngineChangeEvent<>(convertedKey, convertedValue, (List) headers, record);
             };
         }
 
@@ -133,9 +136,12 @@ public class ConverterBuilder<R> {
         return format1 == format2;
     }
 
-    private boolean shouldConvertKeyAndValueToString() {
-        return isFormat(formatKey, Json.class) && isFormat(formatValue, Json.class)
-                || isFormat(formatValue, CloudEvents.class);
+    private boolean shouldConvertKeyToString() {
+        return isFormat(formatKey, Json.class) || isFormat(formatKey, SimpleString.class);
+    }
+
+    private boolean shouldConvertValueToString() {
+        return isFormat(formatValue, Json.class) || isFormat(formatValue, SimpleString.class) || isFormat(formatValue, CloudEvents.class);
     }
 
     private boolean shouldConvertHeadersToString() {
@@ -205,6 +211,12 @@ public class ConverterBuilder<R> {
         }
         else if (isFormat(format, Protobuf.class)) {
             converterConfig = converterConfig.edit().withDefault(FIELD_CLASS, "io.confluent.connect.protobuf.ProtobufConverter").build();
+        }
+        else if (isFormat(format, Binary.class)) {
+            converterConfig = converterConfig.edit().withDefault(FIELD_CLASS, "io.debezium.converters.BinaryDataConverter").build();
+        }
+        else if (isFormat(format, SimpleString.class)) {
+            converterConfig = converterConfig.edit().withDefault(FIELD_CLASS, "org.apache.kafka.connect.storage.StringConverter").build();
         }
         else {
             throw new DebeziumException("Converter '" + format.getSimpleName() + "' is not supported");
