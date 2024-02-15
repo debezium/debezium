@@ -3,16 +3,19 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.oracle.snapshot.mode;
+package io.debezium.snapshot.mode;
 
 import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.bean.StandardBeanNames;
+import io.debezium.relational.HistorizedRelationalDatabaseSchema;
+import io.debezium.schema.DatabaseSchema;
 import io.debezium.spi.snapshot.Snapshotter;
 
-public class AlwaysSnapshotter implements Snapshotter {
+public class AlwaysSnapshotter extends BeanAwareSnapshotter implements Snapshotter {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AlwaysSnapshotter.class);
 
@@ -35,6 +38,18 @@ public class AlwaysSnapshotter implements Snapshotter {
 
     @Override
     public boolean shouldSnapshotSchema(boolean offsetExists, boolean snapshotInProgress) {
+
+        final DatabaseSchema databaseSchema = beanRegistry.lookupByName(StandardBeanNames.DATABASE_SCHEMA, DatabaseSchema.class);
+
+        if (!databaseSchema.isHistorized()) {
+            return false;
+        }
+
+        final HistorizedRelationalDatabaseSchema historizedRelationalDatabaseSchema = (HistorizedRelationalDatabaseSchema) databaseSchema;
+        if (offsetExists && !snapshotInProgress) {
+            return historizedRelationalDatabaseSchema.isStorageInitializationExecuted();
+        }
+
         return true;
     }
 

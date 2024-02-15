@@ -60,7 +60,7 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     @Override
     public SnapshottingTask getSnapshottingTask(PostgresPartition partition, PostgresOffsetContext previousOffset) {
 
-        //TODO review log messages
+        // TODO review log messages
         boolean snapshotSchema = true;
 
         List<String> dataCollectionsToBeSnapshotted = connectorConfig.getDataCollectionsToBeSnapshotted();
@@ -73,10 +73,12 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
         if (!offsetExists) {
             LOGGER.info("No previous offset found");
         }
+        else {
+            snapshotInProgress = previousOffset.isSnapshotRunning();
+        }
 
         if (offsetExists && !previousOffset.isSnapshotRunning()) {
             LOGGER.info("A previous offset indicating a completed snapshot has been found. Neither schema nor data will be snapshotted.");
-            snapshotInProgress = true;
         }
 
         boolean snapshotData = snapshotterService.getSnapshotter().shouldSnapshot(offsetExists, snapshotInProgress);
