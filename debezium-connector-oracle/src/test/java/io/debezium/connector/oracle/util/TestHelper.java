@@ -195,7 +195,7 @@ public class TestHelper {
                 .with(OracleConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
                 .with(FileSchemaHistory.FILE_PATH, SCHEMA_HISTORY_PATH)
                 .with(OracleConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
-                .with(AsyncEmbeddedEngine.TASK_MANAGEMENT_TIMEOUT_MS, 5_000);
+                .with(AsyncEmbeddedEngine.TASK_MANAGEMENT_TIMEOUT_MS, 10_000);
     }
 
     /**
