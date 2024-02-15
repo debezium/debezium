@@ -157,7 +157,7 @@ log4j.logger.io.debezium.connector.mysql=DEBUG, stdout  // <1>
 log4j.logger.io.debezium.relational.history=DEBUG, stdout  // <2>
 
 log4j.additivity.io.debezium.connector.mysql=false  // <3>
-log4j.additivity.io.debezium.storage.kafka.history=false  // <3>
+log4j.additivity.io.debezium.storage.kafka.history=false
 ...
 ----
 +
@@ -173,8 +173,8 @@ log4j.additivity.io.debezium.storage.kafka.history=false  // <3>
 |Configures the logger named `io.debezium.relational.history` to send `DEBUG`, `INFO`, `WARN`, and `ERROR` messages to the `stdout` appender.
 
 |3
-|Turns off _additivity_, which results in log messages not being sent to the appenders of parent loggers.
-If you use multiple appenders, set `additivity` values to `false` to prevent duplicate log messages.
+|This pair of `log4j.additivity.io` entries disable https://logging.apache.org/log4j/2.x/manual/configuration.html#additivity[additivity].
+If you use multiple appenders, set `additivity` values to `false` to prevent duplicate log messages from being sent to the appenders of the parent loggers.
 
 |===
 
