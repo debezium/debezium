@@ -82,6 +82,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractLogMinerEventProcessor.class);
     private static final String NO_SEQUENCE_TRX_ID_SUFFIX = "ffffffff";
     private static final String XML_WRITE_PREAMBLE = "XML_REDO := ";
+    private static final String XML_WRITE_PREAMBLE_NULL = XML_WRITE_PREAMBLE + "NULL";
     protected final OracleConnection jdbcConnection;
 
     private final ChangeEventSourceContext context;
@@ -937,7 +938,11 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
 
         try {
             final String xml;
-            if (sql.charAt(XML_WRITE_PREAMBLE.length()) == '\'') {
+            if (XML_WRITE_PREAMBLE_NULL.equals(sql)) {
+                // The XML field is being explicitly set to NULL
+                return new XmlWriteEvent(row, null, 0);
+            }
+            else if (sql.charAt(XML_WRITE_PREAMBLE.length()) == '\'') {
                 // The XML is not provided as HEXTORAW, which means it was likely stored inline as a
                 // VARCHAR column data type because the text is relatively short, i.e. short CLOB.
                 int lastQuoteIndex = sql.lastIndexOf('\'');
