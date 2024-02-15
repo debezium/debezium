@@ -105,6 +105,13 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
             return;
         }
 
+        // Skip read events as these are generated from raw JDBC selects which should have the current
+        // state of the row and there is no reason to logically re-select the column state.
+        final String operation = value.getString(Envelope.FieldName.OPERATION);
+        if (Envelope.Operation.READ.code().equals(operation)) {
+            return;
+        }
+
         final Struct source = value.getStruct(Envelope.FieldName.SOURCE);
         if (source == null) {
             LOGGER.debug("Value has no source field, no re-selection possible.");

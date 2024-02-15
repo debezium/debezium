@@ -106,9 +106,6 @@ public abstract class AbstractReselectProcessorTest<T extends SourceConnector> e
     @FixFor("DBZ-4321")
     @SuppressWarnings("resource")
     public void testNoColumnsReselectedWhenNotNullSnapshot() throws Exception {
-        LogInterceptor interceptor = new LogInterceptor(ReselectColumnsPostProcessor.class);
-        interceptor.setLoggerLevel(ReselectColumnsPostProcessor.class, Level.DEBUG);
-
         databaseConnection().execute(getInsertWithValue());
 
         Configuration config = getConfigurationBuilder()
@@ -130,8 +127,6 @@ public abstract class AbstractReselectProcessorTest<T extends SourceConnector> e
         assertThat(after.get(fieldName("id"))).isEqualTo(1);
         assertThat(after.get(fieldName("data"))).isEqualTo("one");
         assertThat(after.get(fieldName("data2"))).isEqualTo(1);
-
-        assertThat(interceptor.containsMessage("No columns require re-selection.")).isTrue();
     }
 
     @Test
