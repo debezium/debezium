@@ -1598,14 +1598,16 @@ public class JdbcConnection implements AutoCloseable {
         return tableId.schema() + "." + tableId.table();
     }
 
-    public String buildReselectColumnQuery(TableId tableId, List<String> columns, List<String> keyColumns, Struct source) {
-        return String.format("SELECT %s FROM %s WHERE %s",
+    public Map<String, Object> reselectColumns(TableId tableId, List<String> columns, List<String> keyColumns, List<Object> keyValues, Struct source)
+            throws SQLException {
+        final String query = String.format("SELECT %s FROM %s WHERE %s",
                 columns.stream().map(this::quotedColumnIdString).collect(Collectors.joining(",")),
                 quotedTableIdString(tableId),
                 keyColumns.stream().map(key -> key + "=?").collect(Collectors.joining(" AND ")));
+        return reselectColumns(query, tableId, columns, keyValues);
     }
 
-    public Map<String, Object> reselectColumns(String query, TableId tableId, List<String> columns, List<Object> bindValues, Struct source) throws SQLException {
+    protected Map<String, Object> reselectColumns(String query, TableId tableId, List<String> columns, List<Object> bindValues) throws SQLException {
         final Map<String, Object> results = new HashMap<>();
         prepareQuery(query, bindValues, (params, rs) -> {
             if (!rs.next()) {

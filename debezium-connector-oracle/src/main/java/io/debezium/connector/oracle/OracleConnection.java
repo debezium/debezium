@@ -573,32 +573,34 @@ public class OracleConnection extends JdbcConnection {
     }
 
     @Override
-    public String buildReselectColumnQuery(TableId tableId, List<String> columns, List<String> keyColumns, Struct source) {
-        final String commitScn = source.getString(SourceInfo.COMMIT_SCN_KEY);
+    public Map<String, Object> reselectColumns(TableId tableId, List<String> columns, List<String> keyColumns, List<Object> keyValues, Struct source)
+            throws SQLException {
         final TableId oracleTableId = new TableId(null, tableId.schema(), tableId.table());
+        final String commitScn = source.getString(SourceInfo.COMMIT_SCN_KEY);
         if (Strings.isNullOrEmpty(commitScn)) {
-            return super.buildReselectColumnQuery(oracleTableId, columns, keyColumns, source);
+            return optionallyDoInContainer(() -> super.reselectColumns(oracleTableId, columns, keyColumns, keyValues, source));
         }
 
-        return String.format("SELECT %s FROM (SELECT * FROM %s AS OF SCN ?) WHERE %s",
+        final String query = String.format("SELECT %s FROM (SELECT * FROM %s AS OF SCN ?) WHERE %s",
                 columns.stream().map(this::quotedColumnIdString).collect(Collectors.joining(",")),
                 quotedTableIdString(oracleTableId),
                 keyColumns.stream().map(key -> key + "=?").collect(Collectors.joining(" AND ")));
-    }
-
-    @Override
-    public Map<String, Object> reselectColumns(String query, TableId tableId, List<String> columns, List<Object> bindValues, Struct source) throws SQLException {
-        final String commitScn = source.getString(SourceInfo.COMMIT_SCN_KEY);
-        final List<Object> values;
-        if (Strings.isNullOrEmpty(commitScn)) {
-            values = bindValues;
-        }
-        else {
-            values = new ArrayList<>(bindValues.size() + 1);
-            values.add(commitScn);
-            values.addAll(bindValues);
-        }
-        return optionallyDoInContainer(() -> super.reselectColumns(query, tableId, columns, values, source));
+        final List<Object> bindValues = new ArrayList<>(keyValues.size() + 1);
+        bindValues.add(commitScn);
+        bindValues.addAll(keyValues);
+        return optionallyDoInContainer(() -> {
+            try {
+                return reselectColumns(query, oracleTableId, columns, bindValues);
+            }
+            catch (SQLException e) {
+                if (e.getErrorCode() == 1555 || e.getMessage().startsWith("ORA-01555")) {
+                    LOGGER.warn("Failed to re-select row for table {} and key columns {} with values {}. " +
+                            "Trying to perform re-selection without flashback.", tableId, keyColumns, keyValues);
+                    return super.reselectColumns(oracleTableId, columns, keyColumns, keyValues, source);
+                }
+                throw e;
+            }
+        });
     }
 
     private <T> T optionallyDoInContainer(ContainerWork<T> work) throws SQLException {
