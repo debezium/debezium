@@ -6,7 +6,7 @@
 
 package io.debezium.connector.postgresql;
 
-import io.debezium.connector.postgresql.snapshot.mode.AlwaysSnapshotter;
+import io.debezium.snapshot.mode.AlwaysSnapshotter;
 
 public class CustomLifecycleHookTestSnapshot extends AlwaysSnapshotter {
 

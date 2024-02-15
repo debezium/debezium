@@ -81,7 +81,6 @@ import io.debezium.connector.postgresql.connection.pgoutput.PgOutputMessageDecod
 import io.debezium.connector.postgresql.junit.SkipTestDependingOnDecoderPluginNameRule;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIs;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot;
-import io.debezium.connector.postgresql.snapshot.mode.InitialOnlySnapshotter;
 import io.debezium.connector.postgresql.spi.SlotState;
 import io.debezium.converters.CloudEventsConverterTest;
 import io.debezium.data.Envelope;
@@ -102,6 +101,7 @@ import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.TableId;
 import io.debezium.schema.DatabaseSchema;
+import io.debezium.snapshot.mode.InitialOnlySnapshotter;
 import io.debezium.util.Strings;
 import io.debezium.util.Testing;
 

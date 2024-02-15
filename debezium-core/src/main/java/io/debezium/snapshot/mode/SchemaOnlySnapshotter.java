@@ -3,22 +3,19 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.postgresql.snapshot.mode;
+package io.debezium.snapshot.mode;
 
 import java.util.Map;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import io.debezium.bean.StandardBeanNames;
+import io.debezium.relational.HistorizedRelationalDatabaseSchema;
 import io.debezium.spi.snapshot.Snapshotter;
 
-public class AlwaysSnapshotter implements Snapshotter {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(AlwaysSnapshotter.class);
+public class SchemaOnlySnapshotter extends BeanAwareSnapshotter implements Snapshotter {
 
     @Override
     public String name() {
-        return "always";
+        return "schema_only";
     }
 
     @Override
@@ -28,14 +25,20 @@ public class AlwaysSnapshotter implements Snapshotter {
 
     @Override
     public boolean shouldSnapshot(boolean offsetExists, boolean snapshotInProgress) {
-        // for ALWAYS snapshot mode don't use exiting offset to have up-to-date SCN
-        LOGGER.info("Snapshot mode is set to ALWAYS, not checking exiting offset.");
-        return true;
+
+        return false;
     }
 
     @Override
     public boolean shouldSnapshotSchema(boolean offsetExists, boolean snapshotInProgress) {
-        return false;
+
+        final HistorizedRelationalDatabaseSchema databaseSchema = beanRegistry.lookupByName(StandardBeanNames.DATABASE_SCHEMA, HistorizedRelationalDatabaseSchema.class);
+
+        if (offsetExists && !snapshotInProgress) {
+            return databaseSchema.isStorageInitializationExecuted();
+        }
+
+        return true;
     }
 
     @Override

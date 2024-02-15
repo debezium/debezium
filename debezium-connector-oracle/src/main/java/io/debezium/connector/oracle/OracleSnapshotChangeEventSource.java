@@ -79,10 +79,12 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
         if (!offsetExists) {
             LOGGER.info("No previous offset found");
         }
+        else {
+            snapshotInProgress = previousOffset.isSnapshotRunning();
+        }
 
         if (offsetExists && !previousOffset.isSnapshotRunning()) {
             LOGGER.info("A previous offset indicating a completed snapshot has been found. Neither schema nor data will be snapshotted.");
-            snapshotInProgress = true;
         }
 
         boolean shouldSnapshotSchema = snapshotter.shouldSnapshotSchema(offsetExists, snapshotInProgress);

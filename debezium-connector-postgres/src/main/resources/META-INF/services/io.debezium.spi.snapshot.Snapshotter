@@ -1,5 +1,0 @@
-io.debezium.connector.postgresql.snapshot.mode.AlwaysSnapshotter
-io.debezium.connector.postgresql.snapshot.mode.InitialOnlySnapshotter
-io.debezium.connector.postgresql.snapshot.mode.InitialSnapshotter
-io.debezium.connector.postgresql.snapshot.mode.NeverSnapshotter
-io.debezium.connector.postgresql.snapshot.mode.WhenNeededSnapshotter

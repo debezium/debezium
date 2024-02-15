@@ -156,11 +156,9 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
 
             if (previousOffset == null) {
                 LOGGER.info("No previous offset found");
-                snapshotter.validate(false, false);
             }
             else {
                 LOGGER.info("Found previous offset {}", previousOffset);
-                snapshotter.validate(true, previousOffset.isSnapshotRunning());
             }
 
             SlotCreationResult slotCreatedInfo = null;
