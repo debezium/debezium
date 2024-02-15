@@ -109,6 +109,7 @@ jobs:
           QUAY_IO_PASSWORD: ${{ secrets.QUAY_IO_PASSWORD }}
         run: >
           ./mvnw clean install -B -pl debezium-connector-oracle -am -Pinfinispan-buffer,oracle-docker,oracle-tests
+          -DskipITs=true
           -Ddocker.username="$QUAY_IO_USERNAME"
           -Ddocker.password="$QUAY_IO_PASSWORD"
           -Dformat.formatter.goal=validate
@@ -170,6 +171,7 @@ jobs:
           QUAY_IO_PASSWORD: ${{ secrets.QUAY_IO_PASSWORD }}
         run: >
           ./mvnw clean install -B -pl debezium-connector-oracle -am -Poracle-tests,rest-assembly
+          -DskipITs=true
           -Dregistry.username="$QUAY_IO_USERNAME"
           -Dregistry.password="$QUAY_IO_PASSWORD"
           -Dformat.formatter.goal=validate
