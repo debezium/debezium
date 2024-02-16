@@ -220,11 +220,13 @@ The message contains a logical representation of the table schema.
 {
   "schema": { },
   "payload": {
-      "source": {  <1>
+      "source": {  // <1>
         "version": "{debezium-version}",
         "connector": "mysql",
         "name": "mysql",
-        "ts_ms": 1651535750218, <2>
+        "ts_ms": 1651535750218, // <2>
+        "ts_us": 1651535750218000, // <2>
+        "ts_ns": 1651535750218000000, // <2>
         "snapshot": "false",
         "db": "inventory",
         "sequence": null,
@@ -345,8 +347,9 @@ The message contains a logical representation of the table schema.
 This field is useful to correlate events on different topics.
 
 |2
-|`ts_ms`
-|Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.
+|`ts_ms`, `ts_us`, `ts_ns`
+|Optional field that displays the time at which the connector processed the event.
+The time is based on the system clock in the JVM running the Kafka Connect task.
 
 In the source object, ts_ms indicates the time that the change was made in the database. By comparing the value for payload.source.ts_ms with the value for payload.ts_ms, you can determine the lag between the source database update and Debezium.
 
@@ -930,6 +933,8 @@ Following is an example of a message:
   },
   "op": "c",
   "ts_ms": "1580390884335",
+  "ts_us": "1580390884335472",
+  "ts_ns": "1580390884335472987",
   "transaction": {
     "id": "0e4d5dcd-a33b-11ea-80f1-02010a22a99e:10",
     "total_order": "1",
@@ -1206,6 +1211,16 @@ The following example shows the value portion of a change event that the connect
             "field": "ts_ms"
           },
           {
+            "type": "int64",
+            "optional": false,
+            "field": "ts_us"
+          },
+          {
+            "type": "int64",
+            "optional": false,
+            "field": "ts_ns"
+          },
+          {
             "type": "boolean",
             "optional": true,
             "default": false,
@@ -1270,6 +1285,16 @@ The following example shows the value portion of a change event that the connect
         "type": "int64",
         "optional": true,
         "field": "ts_ms"
+      },
+      {
+        "type": "int64",
+        "optional": true,
+        "field": "ts_us"
+      },
+      {
+        "type": "int64",
+        "optional": true,
+        "field": "ts_ns"
       }
     ],
     "optional": false,
@@ -1278,6 +1303,8 @@ The following example shows the value portion of a change event that the connect
   "payload": { // <5>
     "op": "c", // <6>
     "ts_ms": 1465491411815, // <7>
+    "ts_us": 1465491411815437, // <7>
+    "ts_ns": 1465491411815437158, // <7>
     "before": null, // <8>
     "after": { // <9>
       "id": 1004,
@@ -1290,6 +1317,8 @@ The following example shows the value portion of a change event that the connect
       "connector": "mysql",
       "name": "mysql-server-1",
       "ts_ms": 0,
+      "ts_us": 0,
+      "ts_ns": 0,
       "snapshot": false,
       "db": "inventory",
       "table": "customers",
@@ -1348,8 +1377,9 @@ a| Mandatory string that describes the type of operation that caused the connect
 * `r` = read (applies to only snapshots)
 
 |7
-|`ts_ms`
-a| Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.  +
+|`ts_ms`, `ts_us`, `ts_ns`
+a| Optional field that displays the time at which the connector processed the event.
+The time is based on the system clock in the JVM running the Kafka Connect task.  +
  +
 In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
 
@@ -1410,6 +1440,8 @@ The value of a change event for an update in the sample `customers` table has th
       "connector": "mysql",
       "name": "mysql-server-1",
       "ts_ms": 1465581029100,
+      "ts_ms": 1465581029100000,
+      "ts_ms": 1465581029100000000,
       "snapshot": false,
       "db": "inventory",
       "table": "customers",
@@ -1422,7 +1454,9 @@ The value of a change event for an update in the sample `customers` table has th
       "query": "UPDATE customers SET first_name='Anne Marie' WHERE id=1004"
     },
     "op": "u", // <4>
-    "ts_ms": 1465581029523 // <5>
+    "ts_ms": 1465581029523, // <5>
+    "ts_ms": 1465581029523758, // <6>
+    "ts_ms": 1465581029523758914 // <7>
   }
 }
 ----
@@ -1464,9 +1498,20 @@ a|Mandatory string that describes the type of operation. In an _update_ event va
 
 |5
 |`ts_ms`
-a| Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.  +
+a| Optional field that displays the time at which the connector processed the event.
+The time is based on the system clock in the JVM running the Kafka Connect task.  +
  +
 In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
+
+|6
+|`ts_us`
+a|Optional field that displays the time at which the connector processed the event, in microseconds.
+The time is based on the system clock in the JVM running the Kafka Connect task.
+
+|7
+|`ts_ns`
+a|Optional field that displays the time at which the connector processed the event, in nanoseconds.
+The time is based on the system clock in the JVM running the Kafka Connect task.
 
 |===
 
@@ -1509,6 +1554,8 @@ The value in a _delete_ change event has the same `schema` portion as _create_ a
       "connector": "mysql",
       "name": "mysql-server-1",
       "ts_ms": 1465581902300,
+      "ts_us": 1465581902300000,
+      "ts_ns": 1465581902300000000,
       "snapshot": false,
       "db": "inventory",
       "table": "customers",
@@ -1521,7 +1568,9 @@ The value in a _delete_ change event has the same `schema` portion as _create_ a
       "query": "DELETE FROM customers WHERE id=1004"
     },
     "op": "d", // <4>
-    "ts_ms": 1465581902461 // <5>
+    "ts_ms": 1465581902461, // <5>
+    "ts_us": 1465581902461842, // <6>
+    "ts_ns": 1465581902461842579 // <7>
   }
 }
 ----
@@ -1563,9 +1612,20 @@ a|Mandatory string that describes the type of operation. The `op` field value is
 
 |5
 |`ts_ms`
-a|Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.  +
+a|Optional field that displays the time at which the connector processed the event.
+The time is based on the system clock in the JVM running the Kafka Connect task.  +
  +
 In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
+
+|6
+|`ts_us`
+a|Optional field that displays the time at which the connector processed the event, in microseconds.
+The time is based on the system clock in the JVM running the Kafka Connect task.
+
+|7
+|`ts_ns`
+a|Optional field that displays the time at which the connector processed the event, in nanoseconds.
+The time is based on the system clock in the JVM running the Kafka Connect task.
 
 |===
 
@@ -1595,6 +1655,8 @@ The message key is `null` in this case, the message value looks like this:
             "connector": "mysql",
             "name": "mysql-server-1",
             "ts_ms": 1465581029100,
+            "ts_us": 1465581029100000,
+            "ts_ns": 1465581029100000000,
             "snapshot": false,
             "db": "inventory",
             "table": "customers",
@@ -1607,7 +1669,9 @@ The message key is `null` in this case, the message value looks like this:
             "query": "UPDATE customers SET first_name='Anne Marie' WHERE id=1004"
         },
         "op": "t", // <2>
-        "ts_ms": 1465581029523 // <3>
+        "ts_ms": 1465581029523, // <3>
+        "ts_us": 1465581029523468, // <4>
+        "ts_ns": 1465581029523468471 // <5>
     }
 }
 ----
@@ -1638,9 +1702,18 @@ a|Mandatory string that describes the type of operation. The `op` field value is
 
 |3
 |`ts_ms`
-a|Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.  +
+a|Optional field that displays the time at which the connector processed the event.
+The time is based on the system clock in the JVM running the Kafka Connect task.  +
 +
 In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
+
+|4
+|`ts_us`
+a|Optional field that displays the time at which the connector processed the event, in microseconds. The time is based on the system clock in the JVM running the Kafka Connect task.
+
+|5
+|`ts_ns`
+a|Optional field that displays the time at which the connector processed the event, in nanoseconds. The time is based on the system clock in the JVM running the Kafka Connect task.
 
 |===
 
