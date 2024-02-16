@@ -1050,6 +1050,16 @@ The following example shows the value portion of a change event that the connect
             "field": "ts_ms"
           },
           {
+            "type": "int64",
+            "optional": false,
+            "field": "ts_us"
+          },
+          {
+            "type": "int64",
+            "optional": false,
+            "field": "ts_ns"
+          },
+          {
             "type": "boolean",
             "optional": true,
             "default": false,
@@ -1099,6 +1109,16 @@ The following example shows the value portion of a change event that the connect
         "type": "int64",
         "optional": true,
         "field": "ts_ms"
+      },
+      {
+        "type": "int64",
+        "optional": true,
+        "field": "ts_us"
+      },
+      {
+        "type": "int64",
+        "optional": true,
+        "field": "ts_ns"
       }
     ],
     "optional": false,
@@ -1117,6 +1137,8 @@ The following example shows the value portion of a change event that the connect
       "connector": "sqlserver",
       "name": "server1",
       "ts_ms": 1559729468470,
+      "ts_us": 1559729468470000,
+      "ts_ns": 1559729468470000000,
       "snapshot": false,
       "db": "testDB",
       "schema": "dbo",
@@ -1126,7 +1148,9 @@ The following example shows the value portion of a change event that the connect
       "event_serial_no": "1"
     },
     "op": "c", // <9>
-    "ts_ms": 1559729471739 // <10>
+    "ts_ms": 1559729471739, // <10>
+    "ts_ms": 1559729471739876, // <10>
+    "ts_ms": 1559729471739876149 // <10>
   }
 }
 ----
@@ -1195,7 +1219,7 @@ a|Mandatory string that describes the type of operation that caused the connecto
 * `r` = read (applies to only snapshots)
 
 |10
-|`ts_ms`
+|`ts_ms`, `ts_us`, `ts_ns`
 a| Optional field that displays the time at which the connector processed the event.
 In the event message envelope, the time is based on the system clock in the JVM running the Kafka Connect task. +
  +
@@ -1231,6 +1255,8 @@ The value of a change event for an update in the sample `customers` table has th
       "connector": "sqlserver",
       "name": "server1",
       "ts_ms": 1559729995937,
+      "ts_us": 1559729995937000,
+      "ts_ns": 1559729995937000000,
       "snapshot": false,
       "db": "testDB",
       "schema": "dbo",
@@ -1240,7 +1266,9 @@ The value of a change event for an update in the sample `customers` table has th
       "event_serial_no": "2"
     },
     "op": "u", // <4>
-    "ts_ms": 1559729998706  // <5>
+    "ts_ms": 1559729998706,  // <5>
+    "ts_us": 1559729998706318,  // <5>
+    "ts_ns": 1559729998706318547  // <5>
   }
 }
 ----
@@ -1283,7 +1311,7 @@ Both operations share the same commit and change LSN and their event numbers are
 a|Mandatory string that describes the type of operation. In an _update_ event value, the `op` field value is `u`, signifying that this row changed because of an update.
 
 |5
-|`ts_ms`
+|`ts_ms`, `ts_us`, `ts_ns`
 a| Optional field that displays the time at which the connector processed the event.
 In the event message envelope, the time is based on the system clock in the JVM running the Kafka Connect task. +
  +
@@ -1320,6 +1348,8 @@ The value in a _delete_ change event has the same `schema` portion as _create_ a
       "connector": "sqlserver",
       "name": "server1",
       "ts_ms": 1559730445243,
+      "ts_us": 1559730445243000,
+      "ts_ns": 1559730445243000000,
       "snapshot": false,
       "db": "testDB",
       "schema": "dbo",
@@ -1329,7 +1359,9 @@ The value in a _delete_ change event has the same `schema` portion as _create_ a
       "event_serial_no": "1"
     },
     "op": "d", <4>
-    "ts_ms": 1559730450205 <5>
+    "ts_ms": 1559730450205, <5>
+    "ts_us": 1559730450205387, <5>
+    "ts_ns": 1559730450205387492  <5>
   }
 }
 ----
@@ -1364,7 +1396,7 @@ a|Mandatory field that describes the source metadata for the event. In a _delete
 a|Mandatory string that describes the type of operation. The `op` field value is `d`, signifying that this row was deleted.
 
 |5
-|`ts_ms`
+|`ts_ms`, `ts_us`, `ts_ns`
 a| Optional field that displays the time at which the connector processed the event.
 In the event message envelope, the time is based on the system clock in the JVM running the Kafka Connect task. +
  +
@@ -1472,6 +1504,8 @@ The following example shows what a typical message looks like:
   },
   "op": "c",
   "ts_ms": "1580390884335",
+  "ts_us": "1580390884335172",
+  "ts_ns": "1580390884335172574",
   "transaction": {
     "id": "00000025:00000d08:0025",
     "total_order": "1",
