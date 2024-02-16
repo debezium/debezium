@@ -63,7 +63,7 @@ public class EventProcessingFailureHandlingIT extends AbstractConnectorTest {
         final int RECORDS_PER_TABLE = 5;
         final int ID_START_1 = 10;
         final Configuration config = TestHelper.defaultConfig()
-                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with(SqlServerConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE, EventProcessingFailureHandlingMode.WARN)
                 .build();
         final LogInterceptor logInterceptor = new LogInterceptor(EventDispatcher.class);
@@ -106,7 +106,7 @@ public class EventProcessingFailureHandlingIT extends AbstractConnectorTest {
         final int RECORDS_PER_TABLE = 5;
         final int ID_START_1 = 10;
         final Configuration config = TestHelper.defaultConfig()
-                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with(SqlServerConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE, EventProcessingFailureHandlingMode.SKIP)
                 .build();
 
@@ -142,7 +142,7 @@ public class EventProcessingFailureHandlingIT extends AbstractConnectorTest {
         final int RECORDS_PER_TABLE = 5;
         final int ID_START_1 = 10;
         final Configuration config = TestHelper.defaultConfig()
-                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .build();
         final LogInterceptor logInterceptor = new LogInterceptor(ErrorHandler.class);
 

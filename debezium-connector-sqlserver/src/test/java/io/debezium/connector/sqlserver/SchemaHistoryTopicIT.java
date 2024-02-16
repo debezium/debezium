@@ -71,7 +71,7 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
         final int ID_START_2 = 100;
         final int ID_START_3 = 1000;
         final Configuration config = TestHelper.defaultConfig()
-                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with(RelationalDatabaseConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                 .build();
 

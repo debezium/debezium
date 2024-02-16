@@ -68,7 +68,7 @@ public class MySqlConnectorSchemaValidateIT extends AbstractAsyncEngineConnector
     public void shouldRecoverToSyncSchemaWhenAddColumnToEndWithSqlLogBinIsOff() throws Exception {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .build();
 
         AtomicReference<Throwable> exception = new AtomicReference<>();
@@ -106,7 +106,7 @@ public class MySqlConnectorSchemaValidateIT extends AbstractAsyncEngineConnector
 
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY_RECOVERY)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.RECOVERY)
                 .build();
 
         start(MySqlConnector.class, config, (success, message, error) -> exception.set(error));
@@ -152,7 +152,7 @@ public class MySqlConnectorSchemaValidateIT extends AbstractAsyncEngineConnector
     public void shouldRecoverToSyncSchemaWhenAddColumnInMiddleWithSqlLogBinIsOff() throws Exception {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .build();
 
         AtomicReference<Throwable> exception = new AtomicReference<>();
@@ -190,7 +190,7 @@ public class MySqlConnectorSchemaValidateIT extends AbstractAsyncEngineConnector
 
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY_RECOVERY)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.RECOVERY)
                 .build();
 
         start(MySqlConnector.class, config, (success, message, error) -> exception.set(error));
@@ -236,7 +236,7 @@ public class MySqlConnectorSchemaValidateIT extends AbstractAsyncEngineConnector
     public void shouldRecoverToSyncSchemaWhenDropColumnWithSqlLogBinIsOff() throws Exception {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .build();
 
         AtomicReference<Throwable> exception = new AtomicReference<>();
@@ -274,7 +274,7 @@ public class MySqlConnectorSchemaValidateIT extends AbstractAsyncEngineConnector
 
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY_RECOVERY)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.RECOVERY)
                 .build();
 
         start(MySqlConnector.class, config, (success, message, error) -> exception.set(error));
@@ -313,7 +313,7 @@ public class MySqlConnectorSchemaValidateIT extends AbstractAsyncEngineConnector
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                 .with(MySqlConnectorConfig.COLUMN_INCLUDE_LIST, "dbz7093.id" + "," + "dbz7093.newcol")
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .build();
 
         AtomicReference<Throwable> exception = new AtomicReference<>();
@@ -351,7 +351,7 @@ public class MySqlConnectorSchemaValidateIT extends AbstractAsyncEngineConnector
 
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY_RECOVERY)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.RECOVERY)
                 .build();
 
         start(MySqlConnector.class, config, (success, message, error) -> exception.set(error));

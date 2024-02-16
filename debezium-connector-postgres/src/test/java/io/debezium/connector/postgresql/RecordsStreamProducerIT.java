@@ -153,7 +153,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         start(PostgresConnector.class, new PostgresConnectorConfig(customConfig.apply(TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, false)
                 .with(PostgresConnectorConfig.SCHEMA_EXCLUDE_LIST, "postgis")
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, waitForSnapshot ? SnapshotMode.INITIAL : SnapshotMode.NEVER))
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, waitForSnapshot ? SnapshotMode.INITIAL : SnapshotMode.NO_DATA))
                 .build()).getConfig(), isStopRecord);
         assertConnectorIsRunning();
         waitForStreamingToStart();
@@ -1391,7 +1391,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 .with(Heartbeat.HEARTBEAT_INTERVAL, "100")
                 .with(PostgresConnectorConfig.POLL_INTERVAL_MS, "50")
                 .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1\\.b")
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER),
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA),
                 false);
         waitForStreamingToStart();
 
@@ -1451,7 +1451,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         startConnector(config -> config
                 .with(PostgresConnectorConfig.POLL_INTERVAL_MS, "50")
                 .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1\\.b")
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER),
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA),
                 false);
         waitForStreamingToStart();
 
@@ -2714,7 +2714,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 "INSERT INTO test_table (text) VALUES ('insert4')");
         startConnector(config -> config
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, true)
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.NEVER)
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.NO_DATA)
                 .with(EmbeddedEngineConfig.OFFSET_STORAGE, MemoryOffsetBackingStore.class), false);
 
         consumer.expects(3);
@@ -2886,7 +2886,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         startConnector(config -> config
                 .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DOUBLE)
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.alias_table")
                 .with("column.propagate.source.type", "public.alias_table.salary3"),
                 false);
@@ -2928,7 +2928,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         startConnector(config -> config
                 .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DOUBLE)
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.alias_table"),
                 false);
 
@@ -2960,7 +2960,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         startConnector(config -> config
                 .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DOUBLE)
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.alias_table")
                 .with("column.propagate.source.type", "public.alias_table.value"), false);
 
@@ -2993,7 +2993,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         startConnector(config -> config
                 .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DOUBLE)
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.alias_table"),
                 false);
 
@@ -3151,7 +3151,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         TestHelper.execute("CREATE TABLE enum_table (pk SERIAL, PRIMARY KEY (pk));");
         startConnector(config -> config
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with("column.propagate.source.type", "public.enum_table.value")
                 .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.enum_table"), false);
 
@@ -3188,7 +3188,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         TestHelper.execute("CREATE TABLE enum_table (pk SERIAL, PRIMARY KEY (pk));");
         startConnector(config -> config
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with("column.propagate.source.type", "public.enum_table.value")
                 .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.enum_table"), false);
 
@@ -3227,7 +3227,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         TestHelper.execute("CREATE TABLE enum_array_table (pk SERIAL, PRIMARY KEY (pk));");
         startConnector(config -> config
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, false)
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with("column.propagate.source.type", "public.enum_array_table.value")
                 .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.enum_array_table"), false);
 
@@ -3290,7 +3290,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 + "timestamptza timestamptz[] NOT NULL, primary key(pk));");
         startConnector(config -> config
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, false)
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.time_array_table"), false);
 
         waitForStreamingToStart();
@@ -3355,7 +3355,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         TestHelper.execute("CREATE TABLE enum_table (pk SERIAL, data varchar(25) NOT NULL, value test_type NOT NULL DEFAULT 'V1', PRIMARY KEY (pk));");
         startConnector(config -> config
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, false)
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with("column.propagate.source.type", "public.enum_table.value")
                 .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.enum_table"), false);
 
@@ -3547,7 +3547,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         TestHelper.execute("CREATE TABLE test_table (id SERIAL, c1 INT, c2 INT, c3a NUMERIC(5,2), c3b VARCHAR(128), f1 float(10), f2 decimal(8,4), primary key (id));");
 
         startConnector(config -> config
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with("datatype.propagate.source.type", ".+\\.NUMERIC,.+\\.VARCHAR,.+\\.FLOAT4"), false);
 
         waitForStreamingToStart();
@@ -3761,7 +3761,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @FixFor({ "DBZ-6635", "DBZ-7316" })
     public void testSendingHeartbeatsWithoutWalUpdates() throws Exception {
         Function<Configuration.Builder, Configuration.Builder> configMapper = config -> config
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with(Heartbeat.HEARTBEAT_INTERVAL, "100")
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, false);
 

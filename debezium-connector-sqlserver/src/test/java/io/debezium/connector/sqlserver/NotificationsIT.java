@@ -97,7 +97,7 @@ public class NotificationsIT extends AbstractNotificationsIT<SqlServerConnector>
     @Test
     public void completeReadingFromACaptureInstanceNotificationEmitted() throws SQLException {
         startConnector(config -> config
-                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SqlServerConnectorConfig.SnapshotMode.SCHEMA_ONLY)
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SqlServerConnectorConfig.SnapshotMode.NO_DATA)
                 .with(SinkNotificationChannel.NOTIFICATION_TOPIC, "io.debezium.notification")
                 .with(CommonConnectorConfig.NOTIFICATION_ENABLED_CHANNELS, "sink"));
 

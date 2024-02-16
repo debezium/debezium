@@ -132,7 +132,8 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
         List<String> dataCollectionsToBeSnapshotted = connectorConfig.getDataCollectionsToBeSnapshotted();
 
         // If no snapshot should occur, return task with no replica sets
-        if (this.connectorConfig.getSnapshotMode().equals(MongoDbConnectorConfig.SnapshotMode.NEVER)) {
+        if (this.connectorConfig.getSnapshotMode().equals(MongoDbConnectorConfig.SnapshotMode.NEVER) ||
+                this.connectorConfig.getSnapshotMode().equals(MongoDbConnectorConfig.SnapshotMode.NO_DATA)) {
             LOGGER.info("According to the connector configuration, no snapshot will occur.");
             return new SnapshottingTask(false, false, dataCollectionsToBeSnapshotted, Map.of(), false);
         }

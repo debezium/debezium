@@ -576,7 +576,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         final var dbName = "dbit";
 
         config = TestHelper.getConfiguration(mongo).edit()
-                .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.NEVER)
+                .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.NO_DATA)
                 .with(MongoDbConnectorConfig.CAPTURE_MODE, MongoDbConnectorConfig.CaptureMode.CHANGE_STREAMS_UPDATE_FULL_WITH_PRE_IMAGE)
                 .with(MongoDbConnectorConfig.CURSOR_OVERSIZE_HANDLING_MODE, MongoDbConnectorConfig.OversizeHandlingMode.SPLIT)
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
@@ -2488,7 +2488,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         config = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbA.contacts")
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
-                .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.NEVER)
+                .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.NO_DATA)
                 .build();
 
         context = new MongoDbTaskContext(config);

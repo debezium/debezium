@@ -66,7 +66,7 @@ public class TransactionMetadataIT extends AbstractAsyncEngineConnectorTest {
     @Test
     public void transactionMetadataEnabled() throws InterruptedException, SQLException {
         config = DATABASE.defaultConfig()
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NO_DATA)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                 .with(MySqlConnectorConfig.PROVIDE_TRANSACTION_METADATA, true)
                 .build();
@@ -113,7 +113,7 @@ public class TransactionMetadataIT extends AbstractAsyncEngineConnectorTest {
     @FixFor("DBZ-4077")
     public void shouldUseConfiguredTransactionTopicName() throws InterruptedException, SQLException {
         config = DATABASE.defaultConfig()
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NO_DATA)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                 .with(MySqlConnectorConfig.PROVIDE_TRANSACTION_METADATA, true)
                 .with(AbstractTopicNamingStrategy.TOPIC_TRANSACTION, "tx.of.server")
@@ -143,7 +143,7 @@ public class TransactionMetadataIT extends AbstractAsyncEngineConnectorTest {
     @FixFor("DBZ-4077")
     public void shouldUseConfiguredTransactionTopicNameWithoutServerName() throws InterruptedException, SQLException {
         config = DATABASE.defaultConfig()
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NO_DATA)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                 .with(MySqlConnectorConfig.PROVIDE_TRANSACTION_METADATA, true)
                 .with(AbstractTopicNamingStrategy.TOPIC_TRANSACTION, "mytransactions")

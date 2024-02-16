@@ -114,7 +114,7 @@ public class MongoMetricsIT extends AbstractMongoConnectorIT {
         // Setup
         this.config = TestHelper.getConfiguration(mongo)
                 .edit()
-                .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.NEVER)
+                .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.NO_DATA)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
                 .build();
         this.context = new MongoDbTaskContext(config);
@@ -156,7 +156,7 @@ public class MongoMetricsIT extends AbstractMongoConnectorIT {
 
         this.config = TestHelper.getConfiguration(mongo)
                 .edit()
-                .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.NEVER)
+                .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.NO_DATA)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
                 .with(MongoDbConnectorConfig.SIGNAL_DATA_COLLECTION, "dbit.debezium_signal")
                 .with(MongoDbConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 1)

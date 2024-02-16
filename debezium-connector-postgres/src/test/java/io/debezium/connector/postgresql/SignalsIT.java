@@ -77,7 +77,7 @@ public class SignalsIT extends AbstractConnectorTest {
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.execute(includingEscapedCharacter ? SETUP_TABLES_STMT.replace(signalTable, signalTableWithEscapedCharacter) : SETUP_TABLES_STMT);
         Configuration config = TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA.getValue())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                 .with(PostgresConnectorConfig.SIGNAL_DATA_COLLECTION, includingEscapedCharacter ? signalTableWithEscapedCharacter : signalTable)
                 .with(CommonConnectorConfig.SIGNAL_POLL_INTERVAL_MS, "500")
@@ -113,7 +113,7 @@ public class SignalsIT extends AbstractConnectorTest {
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.execute(SETUP_TABLES_STMT);
         Configuration config = TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA.getValue())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                 .with(PostgresConnectorConfig.SIGNAL_DATA_COLLECTION, "s1.debezium_signal")
                 .with(CommonConnectorConfig.SIGNAL_POLL_INTERVAL_MS, "500")
@@ -147,7 +147,7 @@ public class SignalsIT extends AbstractConnectorTest {
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.execute(SETUP_TABLES_STMT);
         Configuration config = TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA.getValue())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                 .with(PostgresConnectorConfig.SIGNAL_DATA_COLLECTION, "s1.debezium_signal")
                 .with(CommonConnectorConfig.SIGNAL_POLL_INTERVAL_MS, "500")
@@ -227,7 +227,7 @@ public class SignalsIT extends AbstractConnectorTest {
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.execute(SETUP_TABLES_STMT);
         Configuration config = TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA.getValue())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                 .with(CommonConnectorConfig.SIGNAL_POLL_INTERVAL_MS, "500")
                 .with(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS, "jmx")
@@ -253,7 +253,7 @@ public class SignalsIT extends AbstractConnectorTest {
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.execute(SETUP_TABLES_STMT);
         Configuration config = TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA.getValue())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                 .with(CommonConnectorConfig.SIGNAL_POLL_INTERVAL_MS, "500")
                 .with(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS, "jmx")

@@ -145,7 +145,7 @@ public class SnapshotSourceIT extends AbstractAsyncEngineConnectorTest {
                     .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, storeOnlyCapturedTables);
         }
         if (!data) {
-            builder.with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY);
+            builder.with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA);
         }
         config = builder.build();
 
@@ -618,7 +618,7 @@ public class SnapshotSourceIT extends AbstractAsyncEngineConnectorTest {
 
     @Test(expected = DebeziumException.class)
     public void shouldCreateSnapshotSchemaOnlyRecovery_exception() throws Exception {
-        config = simpleConfig().with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY_RECOVERY).build();
+        config = simpleConfig().with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.RECOVERY).build();
 
         // Start the connector ...
         AtomicReference<Throwable> exception = new AtomicReference<>();
@@ -649,7 +649,7 @@ public class SnapshotSourceIT extends AbstractAsyncEngineConnectorTest {
         assertThat(sourceRecords.allRecordsInOrder()).hasSize(recordCount);
         stopConnector();
 
-        builder.with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY_RECOVERY);
+        builder.with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.RECOVERY);
         config = builder.build();
         start(MySqlConnector.class, config);
 
@@ -823,7 +823,7 @@ public class SnapshotSourceIT extends AbstractAsyncEngineConnectorTest {
     @Test
     public void shouldCreateSnapshotSchemaOnly() throws Exception {
         config = simpleConfig()
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NO_DATA)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                 .with(Heartbeat.HEARTBEAT_INTERVAL, 300_000)
                 .build();

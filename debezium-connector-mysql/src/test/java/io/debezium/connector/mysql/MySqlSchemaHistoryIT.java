@@ -64,7 +64,7 @@ public class MySqlSchemaHistoryIT extends AbstractAsyncEngineConnectorTest {
     @FixFor("DBZ-3485")
     public void shouldUseQuotedNameInDrop() throws SQLException, InterruptedException {
         config = DATABASE.defaultConfig()
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NO_DATA)
                 .build();
 
         // Start the connector ...
@@ -85,7 +85,7 @@ public class MySqlSchemaHistoryIT extends AbstractAsyncEngineConnectorTest {
     @FixFor("DBZ-3399")
     public void shouldStoreSingleRename() throws SQLException, InterruptedException {
         config = DATABASE.defaultConfig()
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NO_DATA)
                 .build();
 
         // Start the connector ...
@@ -113,7 +113,7 @@ public class MySqlSchemaHistoryIT extends AbstractAsyncEngineConnectorTest {
     @FixFor("DBZ-3399")
     public void shouldStoreMultipleRenames() throws SQLException, InterruptedException {
         config = DATABASE.defaultConfig()
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NO_DATA)
                 .build();
 
         // Start the connector ...
@@ -141,7 +141,7 @@ public class MySqlSchemaHistoryIT extends AbstractAsyncEngineConnectorTest {
     @FixFor("DBZ-3399")
     public void shouldStoreAlterRename() throws SQLException, InterruptedException {
         config = DATABASE.defaultConfig()
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NO_DATA)
                 .build();
 
         // Start the connector ...
