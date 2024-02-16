@@ -206,32 +206,10 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         }
         catch (Throwable t) {
             exitError = t;
-            LOGGER.error("Engine has failed with ", exitError);
-
-            final State stateBeforeStop = getEngineState();
-            // Skip shutting down the engine if it's already being stopped.
-            if (State.canBeStopped(stateBeforeStop)) {
-                LOGGER.debug("Stopping " + AsyncEmbeddedEngine.class.getName());
-                setEngineState(stateBeforeStop, State.STOPPING);
-                try {
-                    close(stateBeforeStop);
-                }
-                catch (Throwable ct) {
-                    LOGGER.error("Failed to close the engine: ", ct);
-                }
-            }
+            closeEngineWithException(exitError);
         }
         finally {
-            try {
-                shutDownLatch.await();
-            }
-            catch (InterruptedException e) {
-                LOGGER.warn("Interrupted while waiting for shutdown to finish.");
-            }
-            LOGGER.info("Engine is stopped.");
-            setEngineState(State.STOPPING, State.STOPPED);
-            LOGGER.debug("Calling completion handler.");
-            callCompletionHandler(exitError);
+            finishShutDown(exitError);
         }
     }
 
@@ -298,6 +276,46 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         }
         stopConnector(tasks, stateBeforeStop);
         shutDownLatch.countDown();
+    }
+
+    /**
+     * Stops engine if needed upon the failure. The engine is stopped if it's not already stopped, or it's being stopped in right now.
+     *
+     * @param exitError {@link Throwable} which was thrown during the engine run and propagated to the main thread.
+     */
+    private void closeEngineWithException(Throwable exitError) {
+        LOGGER.error("Engine has failed with ", exitError);
+
+        final State stateBeforeStop = getEngineState();
+        // Skip shutting down the engine if it's already being stopped.
+        if (State.canBeStopped(stateBeforeStop)) {
+            LOGGER.debug("Stopping " + AsyncEmbeddedEngine.class.getName());
+            setEngineState(stateBeforeStop, State.STOPPING);
+            try {
+                close(stateBeforeStop);
+            }
+            catch (Throwable ct) {
+                LOGGER.error("Failed to close the engine: ", ct);
+            }
+        }
+    }
+
+    /**
+     * Finish engine shut down - move it into {@code STOPPED} state and call the completion callback.
+     *
+     * @param exitError {@link Throwable} which was thrown during engine run, {@code null} is engine finished without any issue.
+     */
+    private void finishShutDown(Throwable exitError) {
+        try {
+            shutDownLatch.await();
+        }
+        catch (InterruptedException e) {
+            LOGGER.warn("Interrupted while waiting for shutdown to finish.");
+        }
+        LOGGER.info("Engine is stopped.");
+        setEngineState(State.STOPPING, State.STOPPED);
+        LOGGER.debug("Calling completion handler.");
+        callCompletionHandler(exitError);
     }
 
     /**
