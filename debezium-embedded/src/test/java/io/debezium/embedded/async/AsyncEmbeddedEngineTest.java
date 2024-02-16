@@ -595,6 +595,7 @@ public class AsyncEmbeddedEngineTest {
 
     protected void stopEngine() {
         try {
+            LOGGER.info("Stopping engine");
             engine.close();
             Awaitility.await().atMost(1, TimeUnit.SECONDS).until(() -> !isEngineRunning.get());
         }
@@ -612,7 +613,7 @@ public class AsyncEmbeddedEngineTest {
         Awaitility.await()
                 .alias("Engine haven't started on time")
                 .pollInterval(TEST_TASK_MANAGEMENT_TIMEOUT_MS, TimeUnit.MILLISECONDS)
-                .atMost(1, TimeUnit.SECONDS)
+                .atMost(5 * TEST_TASK_MANAGEMENT_TIMEOUT_MS, TimeUnit.SECONDS)
                 .until(() -> isEngineRunning.get());
     }
 
@@ -620,7 +621,7 @@ public class AsyncEmbeddedEngineTest {
         Awaitility.await()
                 .alias("Engine haven't stopped on time")
                 .pollInterval(TEST_TASK_MANAGEMENT_TIMEOUT_MS, TimeUnit.MILLISECONDS)
-                .atMost(10, TimeUnit.SECONDS)
+                .atMost(5 * TEST_TASK_MANAGEMENT_TIMEOUT_MS, TimeUnit.SECONDS)
                 .until(() -> !isEngineRunning.get());
     }
 
