@@ -215,14 +215,14 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
             return;
         }
 
-        eventTimestamp = getEventTimestamp(event, eventTs);
+        setEventTimestamp(event, eventTs);
 
         ts = clock.currentTimeInMillis() - eventTimestamp.toEpochMilli();
         LOGGER.trace("Current milliseconds behind source: {} ms", ts);
         metrics.setMilliSecondsBehindSource(ts);
     }
 
-    private Instant getEventTimestamp(Event event, long eventTs) {
+    private void setEventTimestamp(Event event, long eventTs) {
         // Prefer higher resolution replication timestamps from MySQL 8 GTID events, if possible
         if (isGtidModeEnabled) {
             if (event.getHeader().getEventType() == EventType.GTID) {
@@ -230,13 +230,18 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
                 final long gtidEventTs = gtidEvent.getOriginalCommitTimestamp();
                 if (gtidEventTs != 0) {
                     // >= MySQL 8.0.1, prefer the higher resolution replication timestamp
-                    return Instant.EPOCH.plus(gtidEventTs, ChronoUnit.MICROS);
+                    eventTimestamp = Instant.EPOCH.plus(gtidEventTs, ChronoUnit.MICROS);
+                }
+                else {
+                    // Fallback to second resolution event timestamps
+                    eventTimestamp = Instant.ofEpochMilli(eventTs);
                 }
             }
         }
-
-        // Fallback to second resolution event timestamps
-        return Instant.ofEpochMilli(eventTs);
+        else {
+            // Fallback to second resolution event timestamps
+            eventTimestamp = Instant.ofEpochMilli(eventTs);
+        }
     }
 
     protected void ignoreEvent(MySqlOffsetContext offsetContext, Event event) {
