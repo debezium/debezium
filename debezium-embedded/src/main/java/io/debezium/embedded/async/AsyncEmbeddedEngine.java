@@ -17,6 +17,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
@@ -109,6 +110,8 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
     private final List<Future<Void>> pollingFutures = new ArrayList<>();
     private final ExecutorService taskService;
     private final ExecutorService recordService;
+    // A latch to make sure close() method finishes before we call completion callback, see also DBZ-7496.
+    private final CountDownLatch shutDownLatch = new CountDownLatch(1);
 
     private AsyncEmbeddedEngine(Properties config,
                                 Consumer<R> consumer,
@@ -219,6 +222,12 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
             }
         }
         finally {
+            try {
+                shutDownLatch.await();
+            }
+            catch (InterruptedException e) {
+                LOGGER.warn("Interrupted while waiting for shutdown to finish.");
+            }
             LOGGER.info("Engine is stopped.");
             setEngineState(State.STOPPING, State.STOPPED);
             LOGGER.debug("Calling completion handler.");
@@ -288,6 +297,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
             }
         }
         stopConnector(tasks, stateBeforeStop);
+        shutDownLatch.countDown();
     }
 
     /**
