@@ -70,7 +70,6 @@ import org.slf4j.LoggerFactory;
 import io.debezium.config.Configuration;
 import io.debezium.config.Instantiator;
 import io.debezium.data.VerifyRecord;
-import io.debezium.embedded.async.AsyncEmbeddedEngine;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.function.BooleanConsumer;
 import io.debezium.junit.SkipTestRule;
@@ -367,7 +366,6 @@ public abstract class AbstractConnectorTest implements Testing {
                 .with(EmbeddedEngineConfig.CONNECTOR_CLASS, connectorClass.getName())
                 .with(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH)
                 .with(EmbeddedEngineConfig.OFFSET_FLUSH_INTERVAL_MS, 0)
-                .with(AsyncEmbeddedEngine.TASK_MANAGEMENT_TIMEOUT_MS, 1_000) // speed up shutdown of the AsyncEmbeddedEngine, for EmbeddedEngine is ignored
                 .build();
         latch = new CountDownLatch(1);
         DebeziumEngine.CompletionCallback wrapperCallback = (success, msg, error) -> {
