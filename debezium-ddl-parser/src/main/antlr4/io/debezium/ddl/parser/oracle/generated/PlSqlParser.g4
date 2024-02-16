@@ -592,6 +592,7 @@ sequence_start_clause
 
 create_index
     : CREATE (UNIQUE | BITMAP)? INDEX index_name
+       (IF NOT EXISTS)?
        ON (cluster_index_clause | table_index_clause | bitmap_join_index_clause)
        UNUSABLE?
     ;
@@ -863,6 +864,7 @@ new_index_name
 create_user
     : CREATE USER
       user_object_name
+      (IF NOT EXISTS)?
         ( identified_by
           | identified_other_clause
           | user_tablespace_clause
@@ -872,7 +874,7 @@ create_user
           | user_lock_clause
           | user_editions_clause
           | container_clause
-        )+ ';'
+        )+
     ;
 
 // The standard clauses only permit one user per statement.
@@ -897,7 +899,7 @@ alter_user
     ;
 
 drop_user
-    : DROP USER user_object_name CASCADE?
+    : DROP USER user_object_name (IF EXISTS)? CASCADE?
     ;
 
 alter_identified_by
@@ -1256,7 +1258,7 @@ sql_statement_shortcut
     ;
 
 drop_index
-    : DROP INDEX index_name ';'
+    : DROP INDEX index_name (IF EXISTS)? ';'
     ;
 
 rename_object
@@ -1516,11 +1518,10 @@ create_tablespace
         | temporary_tablespace_clause
         | undo_tablespace_clause
         )
-      ';'
     ;
 
 permanent_tablespace_clause
-    : TABLESPACE id_expression datafile_specification?
+    : TABLESPACE id_expression (IF NOT EXISTS)? datafile_specification?
         ( MINIMUM EXTENT size_clause
         | BLOCKSIZE size_clause
         | logging_clause
@@ -1557,12 +1558,14 @@ segment_management_clause
 
 temporary_tablespace_clause
     : TEMPORARY TABLESPACE tablespace_name=id_expression
+        (IF NOT EXISTS)?
         tempfile_specification?
         tablespace_group_clause? extent_management_clause?
     ;
 
 undo_tablespace_clause
     : UNDO TABLESPACE tablespace_name=id_expression
+        (IF NOT EXISTS)?
         datafile_specification?
         extent_management_clause? tablespace_retention_clause?
     ;
@@ -1828,7 +1831,7 @@ create_table
         | DUPLICATED
         | IMMUTABLE? BLOCKCHAIN
         | IMMUTABLE
-    )? TABLE tableview_name
+    )? TABLE tableview_name (IF NOT EXISTS)?
         (SHARING '=' (NONE | METADATA | DATA | EXTENDED DATA))?
         (relational_table | object_table | xmltype_table) (USAGE QUEUE)? (AS select_only_statement)? memoptimize_read_write_clause?
     ;
@@ -2558,11 +2561,11 @@ truncate_cluster
     ;
 
 drop_table
-    : DROP TABLE tableview_name (AS tableview_name)? (CASCADE CONSTRAINTS)? PURGE? (AS quoted_string)? FORCE?
+    : DROP TABLE tableview_name (IF EXISTS)? (AS tableview_name)? (CASCADE CONSTRAINTS)? PURGE? (AS quoted_string)? FORCE?
     ;
 
 drop_tablespace
-    : DROP TABLESPACE ts = id_expression ((DROP | KEEP) QUOTA?)? including_contents_clause?
+    : DROP TABLESPACE ts = id_expression (IF EXISTS)? ((DROP | KEEP) QUOTA?)? including_contents_clause?
     ;
 
 drop_tablespace_set
@@ -2570,7 +2573,7 @@ drop_tablespace_set
     ;
 
 drop_view
-    : DROP VIEW tableview_name (CASCADE CONSTRAINT)? SEMICOLON
+    : DROP VIEW tableview_name (IF EXISTS)? (CASCADE CONSTRAINT)? SEMICOLON
     ;
 
 including_contents_clause
