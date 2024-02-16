@@ -40,7 +40,7 @@ The CloudEvents specification defines:
 
 * A set of standardized event attributes
 * Rules for defining custom attributes
-* Encoding rules for mapping event formats to serialized representations such as JSON or Avro
+* Encoding rules for mapping event formats to serialized representations such as JSON or Apache Avro
 * Protocol bindings for transport layers such as Apache Kafka, HTTP or AMQP
 
 To configure a {prodname} connector to emit change event records that conform to the CloudEvents specification, {prodname} provides the `io.debezium.converters.CloudEventsConverter`, which is a Kafka Connect message converter.
@@ -180,7 +180,7 @@ The following example also shows what a CloudEvents change event record emitted 
   "data" : "AAAAAAEAAgICAg=="                        <3>
 }
 ----
-.Descriptions of fields in a CloudEvents change event record
+.Descriptions of fields in a CloudEvents event record for a connector that uses Avro to format data
 [cols="1,7",options="header",subs="+attributes"]
 |===
 |Item |Description
