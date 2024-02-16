@@ -8,6 +8,7 @@ package io.debezium.pipeline.source.snapshot.incremental;
 import static io.debezium.config.CommonConnectorConfig.WatermarkStrategy.INSERT_DELETE;
 
 import java.sql.SQLException;
+import java.time.Instant;
 import java.util.Objects;
 
 import org.slf4j.Logger;
@@ -44,8 +45,8 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
                                                            DataChangeEventListener<P> dataChangeEventListener,
                                                            NotificationService<P, ? extends OffsetContext> notificationService) {
         super(config, jdbcConnection, dispatcher, databaseSchema, clock, progressListener, dataChangeEventListener, notificationService);
-        signalWindowStatement = "INSERT INTO " + getSignalTableName(config.getSignalingDataCollectionId())
-                + " VALUES (?, ?, null)";
+        signalWindowStatement = "INSERT INTO " + getSignalTableName(config.getSignalingDataCollectionId()) + "," + Instant.now()
+                + " VALUES (?, ?, ?)";
         signalWindowDeleteStatement = "DELETE FROM " + getSignalTableName(config.getSignalingDataCollectionId()) + " WHERE id = ?";
     }
 
@@ -69,6 +70,7 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
             LOGGER.trace("Emitting open window for chunk = '{}'", context.currentChunkId());
             x.setString(1, context.currentChunkId() + "-open");
             x.setString(2, OpenIncrementalSnapshotWindow.NAME);
+            x.setString(3, Instant.now().toString());
         });
         jdbcConnection.commit();
     }
@@ -89,6 +91,6 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
             return new DeleteWindowCloser<>(jdbcConnection, signalTable, this);
         }
 
-        return new InsertWindowCloser(jdbcConnection, signalTable);
+        return new InsertWindowCloser(jdbcConnection, signalTable, Instant.now().toString());
     }
 }
