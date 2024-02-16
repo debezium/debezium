@@ -180,9 +180,21 @@ The following example also shows what a CloudEvents change event record emitted 
   "data" : "AAAAAAEAAgICAg=="                        <3>
 }
 ----
-<1> Indicates that the `data` attribute contains Avro binary data.
-<2> URI of the schema to which the Avro data adheres.
-<3> The `data` attribute contains base64-encoded Avro binary data.
+.Descriptions of fields in a CloudEvents change event record
+[cols="1,7",options="header",subs="+attributes"]
+|===
+|Item |Description
+
+|1
+|Indicates that the `data` attribute contains Avro binary data.
+
+|2
+|URI of the schema to which the Avro data adheres.
+
+|3
+|The `data` attribute contains base64-encoded Avro binary data.
+
+|===
 
 It is also possible to use Avro for the envelope as well as the `data` attribute.
 
