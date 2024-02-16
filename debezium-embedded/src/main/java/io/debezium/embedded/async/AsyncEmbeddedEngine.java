@@ -577,6 +577,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
             final long taskStopTimeout = config.getLong(AsyncEngineConfig.TASK_MANAGEMENT_TIMEOUT_MS);
             LOGGER.debug("Waiting max. for {} ms for individual source tasks to stop.", taskStopTimeout);
             final int nTasks = tasks.size();
+            final long startTime = System.nanoTime();
             for (int i = 0; i < nTasks; i++) {
                 final Future<Void> taskFuture = taskCompletionService.poll(taskStopTimeout, TimeUnit.MILLISECONDS);
                 if (taskFuture != null) {
@@ -585,7 +586,8 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
                 else {
                     throw new InterruptedException("Time out while waiting for source task to stop.");
                 }
-                LOGGER.debug("Stopped task #{} out of {} tasks.", i + 1, nTasks);
+                // TODO move back to debug level once we stabilize the testsuite (or add similar log on info level for starting the tasks)
+                LOGGER.info("Stopped task #{} out of {} tasks (it took {} ms to stop the task).", i + 1, nTasks, (System.nanoTime() - startTime) / 1_000_000);
                 LOGGER.debug("Calling connector callback after task is stopped.");
                 // TODO improve Debezium API and provide more info to the callback like id and config
                 connectorCallback.ifPresent(DebeziumEngine.ConnectorCallback::taskStopped);
