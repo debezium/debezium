@@ -101,7 +101,6 @@ import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.TableId;
 import io.debezium.schema.DatabaseSchema;
-import io.debezium.snapshot.mode.InitialOnlySnapshotter;
 import io.debezium.util.Strings;
 import io.debezium.util.Testing;
 
@@ -1863,7 +1862,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     @FixFor("DBZ-1437")
     public void shouldPerformSnapshotOnceForInitialOnlySnapshotMode() throws Exception {
         // This captures all logged messages, allowing us to verify log message was written.
-        final LogInterceptor logInterceptor = new LogInterceptor(InitialOnlySnapshotter.class);
+        final LogInterceptor logInterceptor = new LogInterceptor(PostgresSnapshotChangeEventSource.class);
 
         TestHelper.dropDefaultReplicationSlot();
 
@@ -1909,7 +1908,8 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         waitForConnectorShutdown("postgres", TestHelper.TEST_SERVER);
 
         // Stop the connector, verify that no snapshot was performed
-        assertThat(logInterceptor.containsMessage("Previous initial snapshot completed, no snapshot will be performed")).isTrue();
+        assertThat(logInterceptor.containsMessage("A previous offset indicating a completed snapshot has been found. Neither schema nor data will be snapshotted."))
+                .isTrue();
     }
 
     @Test

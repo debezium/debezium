@@ -39,7 +39,7 @@ public class CustomTestSnapshot extends SelectAllSnapshotQuery implements Snapsh
     }
 
     @Override
-    public boolean shouldSnapshot(boolean offsetExists, boolean snapshotInProgress) {
+    public boolean shouldSnapshotData(boolean offsetExists, boolean snapshotInProgress) {
         return true;
     }
 

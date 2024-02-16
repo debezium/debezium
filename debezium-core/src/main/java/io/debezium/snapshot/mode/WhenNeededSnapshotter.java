@@ -25,7 +25,7 @@ public class WhenNeededSnapshotter extends BeanAwareSnapshotter implements Snaps
     }
 
     @Override
-    public boolean shouldSnapshot(boolean offsetExists, boolean snapshotInProgress) {
+    public boolean shouldSnapshotData(boolean offsetExists, boolean snapshotInProgress) {
 
         return !offsetExists || snapshotInProgress;
     }

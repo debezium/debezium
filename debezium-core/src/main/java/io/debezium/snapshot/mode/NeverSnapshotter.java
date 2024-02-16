@@ -22,7 +22,7 @@ public class NeverSnapshotter implements Snapshotter {
     }
 
     @Override
-    public boolean shouldSnapshot(boolean offsetExists, boolean snapshotInProgress) {
+    public boolean shouldSnapshotData(boolean offsetExists, boolean snapshotInProgress) {
         return false;
     }
 

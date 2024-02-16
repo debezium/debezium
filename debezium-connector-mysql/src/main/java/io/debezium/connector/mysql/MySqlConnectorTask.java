@@ -256,7 +256,7 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
     private boolean validateSnapshotFeasibility(Snapshotter snapshotter, OffsetContext offset) {
 
         if (offset == null) {
-            if (!snapshotter.shouldSnapshot(false, false)) {
+            if (!snapshotter.shouldSnapshotData(false, false)) {
                 // Look to see what the first available binlog file is called, and whether it looks like binlog files have
                 // been purged. If so, then output a warning ...
                 String earliestBinlogFilename = connection.earliestBinlogFilename();
