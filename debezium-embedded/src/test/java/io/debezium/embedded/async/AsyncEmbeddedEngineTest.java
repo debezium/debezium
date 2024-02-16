@@ -559,6 +559,74 @@ public class AsyncEmbeddedEngineTest {
         runEngineBasicLifecycleWithConsumer(props);
     }
 
+    @Test
+    @FixFor("DBZ-7496")
+    public void testCompletionCallbackCalledAfterConnectorStop() throws Exception {
+        final Properties props = new Properties();
+        props.setProperty(ConnectorConfig.NAME_CONFIG, "debezium-engine");
+        props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
+        props.setProperty(ConnectorConfig.CONNECTOR_CLASS_CONFIG, FileStreamSourceConnector.class.getName());
+        props.setProperty(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
+        props.setProperty(WorkerConfig.OFFSET_COMMIT_INTERVAL_MS_CONFIG, "0");
+        props.setProperty(FileStreamSourceConnector.FILE_CONFIG, TEST_FILE_PATH.toAbsolutePath().toString());
+        props.setProperty(FileStreamSourceConnector.TOPIC_CONFIG, "testTopic");
+
+        appendLinesToSource(NUMBER_OF_LINES);
+
+        CountDownLatch recordsLatch = new CountDownLatch(2); // 2 count down - one for snapshot batch, one for streaming batch
+        CountDownLatch completionCallbackLatch = new CountDownLatch(1);
+        AtomicInteger recordsSent = new AtomicInteger();
+        AtomicBoolean connectorCallbackCalled = new AtomicBoolean(false);
+
+        DebeziumEngine.Builder<SourceRecord> builder = new AsyncEmbeddedEngine.AsyncEngineBuilder();
+        engine = builder
+                .using(props)
+                .using((success, message, error) -> {
+                    if (success && error == null) {
+                        assertThat(connectorCallbackCalled.get()).isTrue();
+                        completionCallbackLatch.countDown();
+                    }
+                })
+                .notifying((records, committer) -> {
+                    for (SourceRecord r : records) {
+                        committer.markProcessed(r);
+                        recordsSent.getAndIncrement();
+                    }
+                    committer.markBatchFinished();
+                    recordsLatch.countDown();
+                })
+                .using(new DebeziumEngine.ConnectorCallback() {
+                    @Override
+                    public void connectorStarted() {
+                        isEngineRunning.compareAndExchange(false, true);
+                    }
+
+                    @Override
+                    public void connectorStopped() {
+                        try {
+                            Thread.sleep(1_000); // sleep 1 second to make sure we don't return too early
+                        }
+                        catch (InterruptedException e) {
+                            LOGGER.warn("Connector callback was interrupted.");
+                        }
+                        connectorCallbackCalled.set(true);
+                        isEngineRunning.set(false);
+                    }
+                }).build();
+
+        engineExecSrv.submit(() -> {
+            LoggingContext.forConnector(getClass().getSimpleName(), "", "engine");
+            engine.run();
+        });
+        waitForEngineToStart();
+        LOGGER.info("Stopping engine");
+        engine.close();
+        // If assertThat(connectorCallbackCalled.get()).isTrue() in completion callback throws, we will time out here.
+        completionCallbackLatch.await(100, TimeUnit.MILLISECONDS);
+        assertThat(completionCallbackLatch.getCount()).isEqualTo(0);
+        assertThat(connectorCallbackCalled.get()).isTrue();
+    }
+
     private void runEngineBasicLifecycleWithConsumer(final Properties props) throws IOException, InterruptedException {
 
         final LogInterceptor interceptor = new LogInterceptor(AsyncEmbeddedEngine.class);
