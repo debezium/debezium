@@ -46,7 +46,7 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
     /**
      * Waiting period for the polling loop to finish. Will be applied twice, once gracefully, once forcefully.
      */
-    public static final Duration SHUTDOWN_WAIT_TIMEOUT = Duration.ofSeconds(90);
+    public static final Duration SHUTDOWN_WAIT_TIMEOUT = Duration.ofSeconds(CommonConnectorConfig.EXECUTOR_SHUTDOWN_TIMEOUT_SEC);
     public static final int SEMAPHORE_WAIT_TIME = 10;
 
     private final Map<String, SignalAction<P>> signalActions = new HashMap<>();

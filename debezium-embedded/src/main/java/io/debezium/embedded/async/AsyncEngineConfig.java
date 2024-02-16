@@ -5,6 +5,7 @@
  */
 package io.debezium.embedded.async;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Field;
 import io.debezium.embedded.EmbeddedEngine;
 import io.debezium.embedded.EmbeddedEngineConfig;
@@ -70,8 +71,10 @@ public interface AsyncEngineConfig extends EmbeddedEngineConfig {
      */
     Field TASK_MANAGEMENT_TIMEOUT_MS = Field.createInternal("task.management.timeout.ms")
             .withDescription("Time to wait for task's lifecycle management operations (starting and stopping), given in milliseconds. "
-                    + "Defaults to 2 minutes (120_000 ms).")
-            .withDefault(120_000L)
+                    + "Defaults to 3 minutes (180_000 ms).")
+            // We may wait up to CommonConnectorConfig.EXECUTOR_SHUTDOWN_TIMEOUT_SEC during shutdown in e.g. ChangeEventSourceCoordinator, so for the whole task
+            // shutdown we have to use bigger timeout. Let's double this timeout (and convert it to ms).
+            .withDefault(2 * CommonConnectorConfig.EXECUTOR_SHUTDOWN_TIMEOUT_SEC * 1_000)
             .withValidation(Field::isPositiveInteger);
 
     /**

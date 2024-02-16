@@ -487,6 +487,7 @@ public abstract class CommonConnectorConfig {
     private static final String CONFLUENT_AVRO_CONVERTER = "io.confluent.connect.avro.AvroConverter";
     private static final String APICURIO_AVRO_CONVERTER = "io.apicurio.registry.utils.converter.AvroConverter";
 
+    public static final long EXECUTOR_SHUTDOWN_TIMEOUT_SEC = 90;
     public static final int DEFAULT_MAX_QUEUE_SIZE = 8192;
     public static final int DEFAULT_MAX_BATCH_SIZE = 2048;
     public static final int DEFAULT_QUERY_FETCH_SIZE = 0;
