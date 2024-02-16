@@ -269,12 +269,12 @@ value.converter=org.apache.kafka.connect.json.JsonConverter
 ----
 
 // Type: concept
-// Title: Using Avro as the payload format in {prodname} outbox messages
+// Title: Using Apache Avro as the payload format in {prodname} outbox messages
 // ModuleID: outbox-event-router-using-avro-as-the-payload-format-in-debezium-outbox-messages
 [[avro-as-payload-format]]
-=== Using Avro as the payload format
+=== Using Apache Avro as the payload format
 
-A common practice is to serialize data as Avro. 
+Apache Avro is a common framework for serializing data. 
 Using Avro can be beneficial for message format governance and for ensuring that outbox event schemas evolve in a backwards-compatible way.
 
 How a source application produces Avro formatted content for outbox message payloads is out of the scope of this documentation.
