@@ -97,7 +97,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
                 .with(MongoDbConnectorConfig.SIGNAL_DATA_COLLECTION, SIGNAL_COLLECTION_NAME)
                 .with(MongoDbConnectorConfig.SIGNAL_POLL_INTERVAL_MS, 5)
                 .with(MongoDbConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 10)
-                .with(MongoDbConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER);
+                .with(MongoDbConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA);
     }
 
     protected String dataCollectionName() {

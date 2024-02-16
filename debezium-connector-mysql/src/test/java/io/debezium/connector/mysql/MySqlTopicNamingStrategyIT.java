@@ -101,7 +101,7 @@ public class MySqlTopicNamingStrategyIT extends AbstractAsyncEngineConnectorTest
     public void testSpecifyByLogicalTableStrategy() throws SQLException, InterruptedException {
         String tables = DATABASE.qualifiedTableName("dbz_4180_00") + "," + DATABASE.qualifiedTableName("dbz_4180_01");
         config = DATABASE.defaultConfig()
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NO_DATA)
                 .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, tables)
                 .with(RelationalDatabaseConnectorConfig.INCLUDE_SCHEMA_CHANGES, "false")
                 .with(DefaultRegexTopicNamingStrategy.TOPIC_REGEX, "(.*)(dbz_4180)(.*)")
@@ -142,7 +142,7 @@ public class MySqlTopicNamingStrategyIT extends AbstractAsyncEngineConnectorTest
     @FixFor("DBZ-4180")
     public void testSpecifyTransactionStrategy() throws SQLException, InterruptedException {
         config = DATABASE.defaultConfig()
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NO_DATA)
                 .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName(TABLE_NAME))
                 .with(RelationalDatabaseConnectorConfig.INCLUDE_SCHEMA_CHANGES, "false")
                 .with(CommonConnectorConfig.PROVIDE_TRANSACTION_METADATA, "true")

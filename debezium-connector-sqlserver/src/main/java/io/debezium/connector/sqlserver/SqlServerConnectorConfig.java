@@ -68,8 +68,14 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
 
         /**
          * Perform a snapshot of the schema but no data upon initial startup of a connector.
+         * @deprecated to be removed in Debezium 3.0, replaced by {{@link #NO_DATA}}
          */
-        SCHEMA_ONLY("schema_only", false);
+        SCHEMA_ONLY("schema_only", false),
+
+        /**
+         * Perform a snapshot of the schema but no data upon initial startup of a connector.
+         */
+        NO_DATA("no_data", false);
 
         private final String value;
         private final boolean includeData;

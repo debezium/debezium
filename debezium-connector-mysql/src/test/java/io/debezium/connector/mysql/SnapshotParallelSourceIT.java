@@ -83,7 +83,7 @@ public class SnapshotParallelSourceIT extends SnapshotSourceIT {
     public void shouldParallelCreateSnapshotSchema() throws Exception {
         List<String> includeDatabases = Collect.arrayListOf(DATABASE.getDatabaseName(), OTHER_DATABASE.getDatabaseName());
         config = simpleConfig()
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NO_DATA)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                 .with(MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE, MySqlConnectorConfig.SnapshotLockingMode.NONE)
                 .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, String.join(",", includeDatabases))

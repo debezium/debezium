@@ -74,8 +74,14 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
         /**
          * Never perform a snapshot and only receive new data changes.
+         * @deprecated to be removed in Debezium 3.0, replaced by {{@link #NO_DATA}}
          */
-        NEVER("never", false);
+        NEVER("never", false),
+
+        /**
+         * Never perform a snapshot and only receive new data changes.
+         */
+        NO_DATA("no_data", false);
 
         private final String value;
         private final boolean includeData;

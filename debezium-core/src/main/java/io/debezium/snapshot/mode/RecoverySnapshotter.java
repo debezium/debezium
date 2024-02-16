@@ -5,14 +5,16 @@
  */
 package io.debezium.snapshot.mode;
 
-/**
- *  @deprecated to be removed in Debezium 3.0, replaced by {{@link NoDataSnapshotter}}
- */
-@Deprecated
-public class SchemaOnlySnapshotter extends NoDataSnapshotter {
+public class RecoverySnapshotter extends NoDataSnapshotter {
 
     @Override
     public String name() {
-        return "schema_only";
+        return "recovery";
     }
+
+    @Override
+    public boolean shouldSnapshotOnSchemaError() {
+        return true;
+    }
+
 }

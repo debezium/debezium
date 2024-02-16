@@ -7,16 +7,16 @@ package io.debezium.snapshot.mode;
 
 import java.util.Map;
 
+import io.debezium.bean.StandardBeanNames;
+import io.debezium.relational.HistorizedRelationalDatabaseSchema;
+import io.debezium.schema.DatabaseSchema;
 import io.debezium.spi.snapshot.Snapshotter;
 
-/**
- * Currently only valid for MySQL. Deprecation is in evaluation for Debezium 3.0
- */
-public class NeverSnapshotter implements Snapshotter {
+public class NoDataSnapshotter extends BeanAwareSnapshotter implements Snapshotter {
 
     @Override
     public String name() {
-        return "never";
+        return "no_data";
     }
 
     @Override
@@ -31,7 +31,19 @@ public class NeverSnapshotter implements Snapshotter {
 
     @Override
     public boolean shouldSnapshotSchema(boolean offsetExists, boolean snapshotInProgress) {
-        return false;
+
+        final DatabaseSchema databaseSchema = beanRegistry.lookupByName(StandardBeanNames.DATABASE_SCHEMA, DatabaseSchema.class);
+
+        if (!databaseSchema.isHistorized()) {
+            return false;
+        }
+
+        final HistorizedRelationalDatabaseSchema historizedRelationalDatabaseSchema = (HistorizedRelationalDatabaseSchema) databaseSchema;
+        if (offsetExists && !snapshotInProgress) {
+            return historizedRelationalDatabaseSchema.isStorageInitializationExecuted();
+        }
+
+        return true;
     }
 
     @Override

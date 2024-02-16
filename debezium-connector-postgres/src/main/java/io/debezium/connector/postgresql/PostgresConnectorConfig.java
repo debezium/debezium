@@ -188,8 +188,14 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
         /**
          * Never perform a snapshot and only receive logical changes.
+         * @deprecated to be removed in Debezium 3.0, replaced by {{@link #NO_DATA}}
          */
         NEVER("never"),
+
+        /**
+         * Never perform a snapshot and only receive logical changes.
+         */
+        NO_DATA("no_data"),
 
         /**
          * Perform a snapshot and then stop before attempting to receive any logical changes.

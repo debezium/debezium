@@ -70,7 +70,7 @@ public class TimescaleDbDatabaseTest extends AbstractConnectorTest {
         config = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.HOSTNAME, timescaleDbContainer.getHost())
                 .with(PostgresConnectorConfig.PORT, timescaleDbContainer.getMappedPort(5432))
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with(PostgresConnectorConfig.PLUGIN_NAME, PostgresConnectorConfig.LogicalDecoder.PGOUTPUT)
                 .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "_timescaledb_internal")
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)

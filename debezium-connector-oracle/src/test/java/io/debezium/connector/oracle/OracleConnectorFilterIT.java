@@ -286,7 +286,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
         Configuration config = TestHelper.defaultConfig()
                 .with(OracleConnectorConfig.SCHEMA_INCLUDE_LIST, "DEBEZIUM")
                 .with(option, "DEBEZIUM2\\.TABLE2,DEBEZIUM\\.TABLE1,DEBEZIUM\\.TABLE3")
-                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .build();
 
         start(OracleConnector.class, config);
@@ -348,7 +348,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
         Configuration config = TestHelper.defaultConfig()
                 .with(OracleConnectorConfig.SCHEMA_INCLUDE_LIST, "DEBEZIUM,DEBEZIUM2")
                 .with(option, "DEBEZIUM2\\.TABLE2,DEBEZIUM\\.TABLE1,DEBEZIUM\\.TABLE3")
-                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .build();
 
         start(OracleConnector.class, config);
@@ -428,7 +428,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
         Configuration config = TestHelper.defaultConfig()
                 .with(OracleConnectorConfig.SCHEMA_INCLUDE_LIST, "DEBEZIUM")
                 .with(option, "DEBEZIUM\\.TABLE2,DEBEZIUM\\.CUSTOMER.*")
-                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .build();
 
         start(OracleConnector.class, config);
@@ -496,7 +496,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
         Configuration config = TestHelper.defaultConfig()
                 .with(OracleConnectorConfig.SCHEMA_EXCLUDE_LIST, "DEBEZIUM,SYS")
                 .with(option, "DEBEZIUM\\.TABLE2,DEBEZIUM\\.CUSTOMER.*,DEBEZIUM2\\.NOPK")
-                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .build();
 
         start(OracleConnector.class, config);

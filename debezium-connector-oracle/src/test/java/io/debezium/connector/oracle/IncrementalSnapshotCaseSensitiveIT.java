@@ -163,7 +163,7 @@ public class IncrementalSnapshotCaseSensitiveIT extends AbstractIncrementalSnaps
     @Override
     protected Configuration.Builder config() {
         return TestHelper.defaultConfig()
-                .with(OracleConnectorConfig.SNAPSHOT_MODE, OracleConnectorConfig.SnapshotMode.SCHEMA_ONLY)
+                .with(OracleConnectorConfig.SNAPSHOT_MODE, OracleConnectorConfig.SnapshotMode.NO_DATA)
                 .with(OracleConnectorConfig.SIGNAL_DATA_COLLECTION, TestHelper.getDatabaseName() + ".DEBEZIUM.DEBEZIUM_SIGNAL")
                 .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.A,DEBEZIUM\\.B,DEBEZIUM\\.A42")
                 .with(RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS, "DEBEZIUM\\.A42:pk1,pk2,pk3,pk4")
