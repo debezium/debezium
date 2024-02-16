@@ -707,7 +707,6 @@ public class OracleConnection extends JdbcConnection {
     }
 
     public Long getTableObjectId(TableId tableId) throws SQLException {
-        // todo: this assumes table type, but this won't work for materialized views or views
         return prepareQueryAndMap(
                 "SELECT OBJECT_ID FROM ALL_OBJECTS WHERE OBJECT_TYPE='TABLE' AND OWNER=? AND OBJECT_NAME=?",
                 ps -> {
@@ -717,7 +716,6 @@ public class OracleConnection extends JdbcConnection {
     }
 
     public Long getTableDataObjectId(TableId tableId) throws SQLException {
-        // todo: this assumes table type, but this won't work for materialized views or views
         return prepareQueryAndMap(
                 "SELECT DATA_OBJECT_ID FROM ALL_OBJECTS WHERE OBJECT_TYPE='TABLE' AND OWNER=? AND OBJECT_NAME=?",
                 ps -> {
