@@ -10,9 +10,6 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.bean.StandardBeanNames;
-import io.debezium.relational.HistorizedRelationalDatabaseSchema;
-import io.debezium.schema.DatabaseSchema;
 import io.debezium.spi.snapshot.Snapshotter;
 
 public class AlwaysSnapshotter extends BeanAwareSnapshotter implements Snapshotter {
@@ -30,7 +27,7 @@ public class AlwaysSnapshotter extends BeanAwareSnapshotter implements Snapshott
     }
 
     @Override
-    public boolean shouldSnapshot(boolean offsetExists, boolean snapshotInProgress) {
+    public boolean shouldSnapshotData(boolean offsetExists, boolean snapshotInProgress) {
         // for ALWAYS snapshot mode don't use exiting offset to have up-to-date SCN
         LOGGER.info("Snapshot mode is set to ALWAYS, not checking exiting offset.");
         return true;
@@ -38,17 +35,6 @@ public class AlwaysSnapshotter extends BeanAwareSnapshotter implements Snapshott
 
     @Override
     public boolean shouldSnapshotSchema(boolean offsetExists, boolean snapshotInProgress) {
-
-        final DatabaseSchema databaseSchema = beanRegistry.lookupByName(StandardBeanNames.DATABASE_SCHEMA, DatabaseSchema.class);
-
-        if (!databaseSchema.isHistorized()) {
-            return false;
-        }
-
-        final HistorizedRelationalDatabaseSchema historizedRelationalDatabaseSchema = (HistorizedRelationalDatabaseSchema) databaseSchema;
-        if (offsetExists && !snapshotInProgress) {
-            return historizedRelationalDatabaseSchema.isStorageInitializationExecuted();
-        }
 
         return true;
     }

@@ -88,7 +88,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
         }
 
         boolean shouldSnapshotSchema = snapshotter.shouldSnapshotSchema(offsetExists, snapshotInProgress);
-        boolean shouldSnapshotData = snapshotter.shouldSnapshot(offsetExists, snapshotInProgress);
+        boolean shouldSnapshotData = snapshotter.shouldSnapshotData(offsetExists, snapshotInProgress);
 
         if (shouldSnapshotData && shouldSnapshotSchema) {
             LOGGER.info("According to the connector configuration both schema and data will be snapshot.");

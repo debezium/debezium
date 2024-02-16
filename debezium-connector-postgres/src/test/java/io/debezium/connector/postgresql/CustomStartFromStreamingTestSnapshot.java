@@ -22,7 +22,7 @@ public class CustomStartFromStreamingTestSnapshot extends SelectAllSnapshotQuery
     }
 
     @Override
-    public boolean shouldSnapshot(boolean offsetExists, boolean snapshotInProgress) {
+    public boolean shouldSnapshotData(boolean offsetExists, boolean snapshotInProgress) {
         return true;
     }
 

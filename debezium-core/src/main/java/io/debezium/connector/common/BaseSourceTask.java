@@ -87,7 +87,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
 
         if (offset.isSnapshotRunning()) {
             // The last offset was an incomplete snapshot and now the snapshot was disabled
-            if (!snapshotter.shouldSnapshot(true, true)) {
+            if (!snapshotter.shouldSnapshotData(true, true)) {
                 // No snapshots are allowed
                 throw new DebeziumException("The connector previously stopped while taking a snapshot, but now the connector is configured "
                         + "to never allow snapshots. Reconfigure the connector to use snapshots initially or when needed.");

@@ -118,7 +118,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
         }
 
         boolean shouldSnapshotSchema = snapshotter.shouldSnapshotSchema(offsetExists, snapshotInProgress);
-        boolean shouldSnapshotData = snapshotter.shouldSnapshot(offsetExists, snapshotInProgress);
+        boolean shouldSnapshotData = snapshotter.shouldSnapshotData(offsetExists, snapshotInProgress);
 
         if (shouldSnapshotSchema && shouldSnapshotData) {
             LOGGER.info("According to the connector configuration both schema and data will be snapshotted");

@@ -395,7 +395,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         }
 
         final long taskStartupTimeout = config.getLong(AsyncEngineConfig.TASK_MANAGEMENT_TIMEOUT_MS);
-        LOGGER.debug("Waiting max. for {} ms for individual source tasks to start.", taskStartupTimeout);
+        LOGGER.info("Waiting max. for {} ms for individual source tasks to start.", taskStartupTimeout);
         final int nTasks = tasks.size();
         Exception error = null;
         int failedTasks = 0;

@@ -38,13 +38,15 @@ public interface Snapshotter extends Configurable {
      * @param offsetExists is {@code true} when the connector has an offset context (i.e. restarted)
      * @param snapshotInProgress is {@code true} when the connector is started, but a snapshot is already in progress
      *
-     * @return {@code true} if the snapshotter should take a snapshot
+     * @return {@code true} if the snapshotter should take a data snapshot
      */
-    boolean shouldSnapshot(boolean offsetExists, boolean snapshotInProgress);
+    boolean shouldSnapshotData(boolean offsetExists, boolean snapshotInProgress);
 
     /**
      * @param offsetExists is {@code true} when the connector has an offset context (i.e. restarted)
      * @param snapshotInProgress is {@code true} when the connector is started, but a snapshot is already in progress
+     *
+     * @return {@code true} if the snapshotter should take a schema snapshot
      */
     boolean shouldSnapshotSchema(boolean offsetExists, boolean snapshotInProgress);
 

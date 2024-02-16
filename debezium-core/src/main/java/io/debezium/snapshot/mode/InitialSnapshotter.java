@@ -30,7 +30,7 @@ public class InitialSnapshotter extends BeanAwareSnapshotter implements Snapshot
     }
 
     @Override
-    public boolean shouldSnapshot(boolean offsetExists, boolean snapshotInProgress) {
+    public boolean shouldSnapshotData(boolean offsetExists, boolean snapshotInProgress) {
 
         return !offsetExists || snapshotInProgress;
     }
