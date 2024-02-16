@@ -1210,9 +1210,8 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
             }
             else if (tableId.table().equalsIgnoreCase("UNKNOWN")) {
                 // Object has been dropped and purged.
-                // todo: only option is to resolve the lookup by table using object id
                 for (TableId schemaTableId : schema.tableIds()) {
-                    final Table table = schema.tableFor(tableId);
+                    final Table table = schema.tableFor(schemaTableId);
                     final Attribute objectId = table.attributeWithName("OBJECT_ID");
                     final Attribute dataObjectId = table.attributeWithName("DATA_OBJECT_ID");
                     if (objectId != null && dataObjectId != null) {
