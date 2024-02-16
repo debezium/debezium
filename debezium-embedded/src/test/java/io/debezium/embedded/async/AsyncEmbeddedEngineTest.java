@@ -37,6 +37,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.DebeziumException;
 import io.debezium.connector.simple.SimpleSourceConnector;
 import io.debezium.doc.FixFor;
+import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.embedded.DebeziumEngineTestUtils;
 import io.debezium.embedded.EmbeddedEngineConfig;
 import io.debezium.engine.DebeziumEngine;
@@ -57,8 +58,6 @@ public class AsyncEmbeddedEngineTest {
     private static final int NUMBER_OF_LINES = 10;
     protected static final Path OFFSET_STORE_PATH = Testing.Files.createTestingPath("file-connector-offsets.txt").toAbsolutePath();
     private static final Path TEST_FILE_PATH = Testing.Files.createTestingPath("file-connector-input.txt").toAbsolutePath();
-    // As the default TASK_MANAGEMENT_TIMEOUT_MS is too large and test would run too long, use shorter tim for tests.
-    private static final long TEST_TASK_MANAGEMENT_TIMEOUT_MS = 1_000;
 
     protected static final AtomicBoolean isEngineRunning = new AtomicBoolean(false);
     protected static final AtomicInteger runningTasks = new AtomicInteger(0);
@@ -299,7 +298,7 @@ public class AsyncEmbeddedEngineTest {
             engine.run();
         });
 
-        callbackLatch.await(TEST_TASK_MANAGEMENT_TIMEOUT_MS + 1000, TimeUnit.MILLISECONDS);
+        callbackLatch.await(2 * AbstractConnectorTest.waitTimeForEngine(), TimeUnit.MILLISECONDS);
         assertThat(callbackLatch.getCount()).isEqualTo(0);
     }
 
@@ -680,16 +679,16 @@ public class AsyncEmbeddedEngineTest {
     protected void waitForEngineToStart() {
         Awaitility.await()
                 .alias("Engine haven't started on time")
-                .pollInterval(TEST_TASK_MANAGEMENT_TIMEOUT_MS, TimeUnit.MILLISECONDS)
-                .atMost(5 * TEST_TASK_MANAGEMENT_TIMEOUT_MS, TimeUnit.SECONDS)
+                .pollInterval(10, TimeUnit.MILLISECONDS)
+                .atMost(AbstractConnectorTest.waitTimeForEngine(), TimeUnit.SECONDS)
                 .until(() -> isEngineRunning.get());
     }
 
     protected void waitForEngineToStop() {
         Awaitility.await()
                 .alias("Engine haven't stopped on time")
-                .pollInterval(TEST_TASK_MANAGEMENT_TIMEOUT_MS, TimeUnit.MILLISECONDS)
-                .atMost(5 * TEST_TASK_MANAGEMENT_TIMEOUT_MS, TimeUnit.SECONDS)
+                .pollInterval(10, TimeUnit.MILLISECONDS)
+                .atMost(AbstractConnectorTest.waitTimeForEngine(), TimeUnit.SECONDS)
                 .until(() -> !isEngineRunning.get());
     }
 
@@ -697,7 +696,7 @@ public class AsyncEmbeddedEngineTest {
         Awaitility.await()
                 .alias("Engine haven't started on time")
                 .pollInterval(10, TimeUnit.MILLISECONDS)
-                .atMost(TEST_TASK_MANAGEMENT_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+                .atMost(AbstractConnectorTest.waitTimeForEngine(), TimeUnit.MILLISECONDS)
                 .until(() -> runningTasks.get() >= minRunningTasks);
     }
 

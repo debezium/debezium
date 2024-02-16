@@ -1220,7 +1220,7 @@ public abstract class AbstractConnectorTest implements Testing {
     public void waitForEngineShutdown() {
         Awaitility.await()
                 .pollInterval(200, TimeUnit.MILLISECONDS)
-                .atMost(waitTimeForRecords() * 10L, TimeUnit.SECONDS)
+                .atMost(waitTimeForEngine() * 3, TimeUnit.MILLISECONDS)
                 .until(() -> !isEngineRunning.get());
     }
 
@@ -1265,6 +1265,10 @@ public abstract class AbstractConnectorTest implements Testing {
         assertThat(change.getInt64("total_order")).isEqualTo(expectedTotalOrder);
         assertThat(change.getInt64("data_collection_order")).isEqualTo(expectedCollectionOrder);
         assertThat(offset.get("transaction_id")).isEqualTo(expectedTxId);
+    }
+
+    public static int waitTimeForEngine() {
+        return Integer.parseInt(System.getProperty(TEST_PROPERTY_PREFIX + "engine.waittime", "1000"));
     }
 
     public static int waitTimeForRecords() {
