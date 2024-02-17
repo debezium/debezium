@@ -664,5 +664,7 @@ create index hr.name IF NOT EXISTS on hr.table (id,data) tablespace ts;
 CREATE USER debezium IF NOT EXISTS IDENTIFIED BY abc;
 -- Create tablespace (Oracle 23+)
 CREATE TABLESPACE LOGMINER_TBS IF NOT EXISTS DATAFILE '/opt/oracle/oradata/ORCLCDB/logminer_tbs.dbf' SIZE 25M REUSE AUTOEXTEND ON MAXSIZE UNLIMITED;
+-- Create view (Oracle 23+)
+CREATE VIEW THE_VIEW IF NOT EXISTS AS SELECT ID, NAME FROM THE_TABLE WHERE ID > 10;
 
 CREATE OR REPLACE NONEDITIONABLE PACKAGE BODY tidy_html_snippet_pkg AS FUNCTION tidy(i_html_snippet IN CLOB) RETURN CLOB; FUNCTION tidy(i_html_snippet IN VARCHAR2) RETURN CLOB; END tidy_html_snippet_pkg;
