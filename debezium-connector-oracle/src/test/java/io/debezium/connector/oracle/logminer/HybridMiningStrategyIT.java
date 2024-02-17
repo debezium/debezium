@@ -11,8 +11,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.Date;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -35,6 +37,7 @@ import io.debezium.data.Envelope;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingMode;
 import io.debezium.util.Strings;
 import io.debezium.util.Testing;
@@ -50,11 +53,13 @@ public class HybridMiningStrategyIT extends AbstractConnectorTest {
 
     private OracleConnection connection;
     private DecimalHandlingMode decimalHandlingMode;
+    private TemporalPrecisionMode temporalPrecisionMode;
 
     @Before
     public void beforeEach() throws Exception {
         connection = TestHelper.testConnection();
         decimalHandlingMode = DecimalHandlingMode.PRECISE; // default
+        temporalPrecisionMode = TemporalPrecisionMode.ADAPTIVE; // default
 
         setConsumeTimeout(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS);
         initializeConnectorTestFramework();
@@ -73,7 +78,6 @@ public class HybridMiningStrategyIT extends AbstractConnectorTest {
 
     // todo:
     // add test for having old non-attribute populated schema history and status=2 triggered
-    // do we need tests for connect precision or other handling modes, doubtful but should check?
     // add clob, blob, and xml support
 
     @Test
@@ -506,6 +510,59 @@ public class HybridMiningStrategyIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-3401")
+    public void shouldStreamOfflineSchemaChangesTemporalDataTypesAsConnect() throws Exception {
+        // Override TemporalPrecisionMode default
+        temporalPrecisionMode = TemporalPrecisionMode.CONNECT;
+
+        streamOfflineSchemaChanges("date",
+                QueryValue.ofSql("TO_DATE('2018-03-27','yyyy-mm-dd')"),
+                QueryValue.ofSql("TO_DATE('2018-10-15','yyyy-mm-dd')"),
+                Date.from(LocalDate.of(2018, 3, 27).atStartOfDay().atOffset(ZoneOffset.UTC).toInstant()),
+                Date.from(LocalDate.of(2018, 10, 15).atStartOfDay().atOffset(ZoneOffset.UTC).toInstant()));
+        streamOfflineSchemaChanges("timestamp",
+                QueryValue.ofSql(toTimestamp(2018, 3, 27, 12, 34, 56, 789, 5)),
+                QueryValue.ofSql(toTimestamp(2018, 10, 15, 12, 34, 56, 789, 5)),
+                Date.from(LocalDateTime.of(2018, 3, 27, 12, 34, 56, 7890 * 1_000).atOffset(ZoneOffset.UTC).toInstant()),
+                Date.from(LocalDateTime.of(2018, 10, 15, 12, 34, 56, 7890 * 1_000).atOffset(ZoneOffset.UTC).toInstant()));
+        streamOfflineSchemaChanges("timestamp(2)",
+                QueryValue.ofSql(toTimestamp(2018, 3, 27, 12, 34, 56, 12545, 5)),
+                QueryValue.ofSql(toTimestamp(2018, 10, 15, 12, 34, 56, 12545, 5)),
+                Date.from(LocalDateTime.of(2018, 3, 27, 12, 34, 56, 130 * 1_000_000).atOffset(ZoneOffset.UTC).toInstant()),
+                Date.from(LocalDateTime.of(2018, 10, 15, 12, 34, 56, 130 * 1_000_000).atOffset(ZoneOffset.UTC).toInstant()));
+        streamOfflineSchemaChanges("timestamp(4)",
+                QueryValue.ofSql(toTimestamp(2018, 3, 27, 12, 34, 56, 12545, 5)),
+                QueryValue.ofSql(toTimestamp(2018, 10, 15, 12, 34, 56, 12545, 5)),
+                Date.from(LocalDateTime.of(2018, 3, 27, 12, 34, 56, 125_500 * 1_000).atOffset(ZoneOffset.UTC).toInstant()),
+                Date.from(LocalDateTime.of(2018, 10, 15, 12, 34, 56, 125_500 * 1_000).atOffset(ZoneOffset.UTC).toInstant()));
+        streamOfflineSchemaChanges("timestamp(9)",
+                QueryValue.ofSql(toTimestamp(2018, 3, 27, 12, 34, 56, 123456789, 9)),
+                QueryValue.ofSql(toTimestamp(2018, 10, 15, 12, 34, 56, 123456789, 9)),
+                Date.from(LocalDateTime.of(2018, 3, 27, 12, 34, 56, 123456789).atOffset(ZoneOffset.UTC).toInstant()),
+                Date.from(LocalDateTime.of(2018, 10, 15, 12, 34, 56, 123456789).atOffset(ZoneOffset.UTC).toInstant()));
+        streamOfflineSchemaChanges("timestamp with time zone",
+                QueryValue.ofSql(toTimestampTz(2018, 3, 27, 1, 34, 56, 7890, 6, "-11:00")),
+                QueryValue.ofSql(toTimestampTz(2018, 10, 15, 1, 34, 56, 7890, 6, "-11:00")),
+                "2018-03-27T01:34:56.007890-11:00",
+                "2018-10-15T01:34:56.007890-11:00");
+        streamOfflineSchemaChanges("timestamp with local time zone",
+                QueryValue.ofSql(toTimestampTz(2018, 3, 27, 1, 34, 56, 7890, 6, "-06:00")),
+                QueryValue.ofSql(toTimestampTz(2018, 10, 15, 1, 34, 56, 7890, 6, "-06:00")),
+                "2018-03-27T07:34:56.007890Z",
+                "2018-10-15T07:34:56.007890Z");
+        streamOfflineSchemaChanges("interval year to month",
+                QueryValue.ofSql("INTERVAL '-3-6' YEAR TO MONTH"),
+                QueryValue.ofSql("INTERVAL '-2-5' YEAR TO MONTH"),
+                -110_451_600_000_000L,
+                -76_264_200_000_000L);
+        streamOfflineSchemaChanges("interval day(3) to second(2)",
+                QueryValue.ofSql("INTERVAL '-1 2:3:4.56' DAY TO SECOND"),
+                QueryValue.ofSql("INTERVAL '-2 4:5:6.21' DAY TO SECOND"),
+                -93_784_560_000L,
+                -187_506_210_000L);
+    }
+
+    @Test
+    @FixFor("DBZ-3401")
     public void shouldStreamSchemaChangeWithDataChangeTemporalDataTypes() throws Exception {
         streamSchemaChangeMixedWithDataChange("date",
                 QueryValue.ofSql("TO_DATE('2018-03-27','yyyy-mm-dd')"),
@@ -532,6 +589,59 @@ public class HybridMiningStrategyIT extends AbstractConnectorTest {
                 QueryValue.ofSql(toTimestamp(2018, 10, 15, 12, 34, 56, 123456789, 9)),
                 LocalDateTime.of(2018, 3, 27, 12, 34, 56).toEpochSecond(ZoneOffset.UTC) * 1_000_000_000 + 123456789,
                 LocalDateTime.of(2018, 10, 15, 12, 34, 56).toEpochSecond(ZoneOffset.UTC) * 1_000_000_000 + 123456789);
+        streamSchemaChangeMixedWithDataChange("timestamp with time zone",
+                QueryValue.ofSql(toTimestampTz(2018, 3, 27, 1, 34, 56, 7890, 6, "-11:00")),
+                QueryValue.ofSql(toTimestampTz(2018, 10, 15, 1, 34, 56, 7890, 6, "-11:00")),
+                "2018-03-27T01:34:56.007890-11:00",
+                "2018-10-15T01:34:56.007890-11:00");
+        streamSchemaChangeMixedWithDataChange("timestamp with local time zone",
+                QueryValue.ofSql(toTimestampTz(2018, 3, 27, 1, 34, 56, 7890, 6, "-06:00")),
+                QueryValue.ofSql(toTimestampTz(2018, 10, 15, 1, 34, 56, 7890, 6, "-06:00")),
+                "2018-03-27T07:34:56.007890Z",
+                "2018-10-15T07:34:56.007890Z");
+        streamSchemaChangeMixedWithDataChange("interval year to month",
+                QueryValue.ofSql("INTERVAL '-3-6' YEAR TO MONTH"),
+                QueryValue.ofSql("INTERVAL '-2-5' YEAR TO MONTH"),
+                -110_451_600_000_000L,
+                -76_264_200_000_000L);
+        streamSchemaChangeMixedWithDataChange("interval day(3) to second(2)",
+                QueryValue.ofSql("INTERVAL '-1 2:3:4.56' DAY TO SECOND"),
+                QueryValue.ofSql("INTERVAL '-2 4:5:6.21' DAY TO SECOND"),
+                -93_784_560_000L,
+                -187_506_210_000L);
+    }
+
+    @Test
+    @FixFor("DBZ-3401")
+    public void shouldStreamSchemaChangeWithDataChangeTemporalDataTypesAsConnect() throws Exception {
+        // Override TemporalPrecisionMode default
+        temporalPrecisionMode = TemporalPrecisionMode.CONNECT;
+
+        streamSchemaChangeMixedWithDataChange("date",
+                QueryValue.ofSql("TO_DATE('2018-03-27','yyyy-mm-dd')"),
+                QueryValue.ofSql("TO_DATE('2018-10-15','yyyy-mm-dd')"),
+                Date.from(LocalDate.of(2018, 3, 27).atStartOfDay().atOffset(ZoneOffset.UTC).toInstant()),
+                Date.from(LocalDate.of(2018, 10, 15).atStartOfDay().atOffset(ZoneOffset.UTC).toInstant()));
+        streamSchemaChangeMixedWithDataChange("timestamp",
+                QueryValue.ofSql(toTimestamp(2018, 3, 27, 12, 34, 56, 789, 5)),
+                QueryValue.ofSql(toTimestamp(2018, 10, 15, 12, 34, 56, 789, 5)),
+                Date.from(LocalDateTime.of(2018, 3, 27, 12, 34, 56, 7890 * 1_000).atOffset(ZoneOffset.UTC).toInstant()),
+                Date.from(LocalDateTime.of(2018, 10, 15, 12, 34, 56, 7890 * 1_000).atOffset(ZoneOffset.UTC).toInstant()));
+        streamSchemaChangeMixedWithDataChange("timestamp(2)",
+                QueryValue.ofSql(toTimestamp(2018, 3, 27, 12, 34, 56, 12545, 5)),
+                QueryValue.ofSql(toTimestamp(2018, 10, 15, 12, 34, 56, 12545, 5)),
+                Date.from(LocalDateTime.of(2018, 3, 27, 12, 34, 56, 130 * 1_000_000).atOffset(ZoneOffset.UTC).toInstant()),
+                Date.from(LocalDateTime.of(2018, 10, 15, 12, 34, 56, 130 * 1_000_000).atOffset(ZoneOffset.UTC).toInstant()));
+        streamSchemaChangeMixedWithDataChange("timestamp(4)",
+                QueryValue.ofSql(toTimestamp(2018, 3, 27, 12, 34, 56, 12545, 5)),
+                QueryValue.ofSql(toTimestamp(2018, 10, 15, 12, 34, 56, 12545, 5)),
+                Date.from(LocalDateTime.of(2018, 3, 27, 12, 34, 56, 125_500 * 1_000).atOffset(ZoneOffset.UTC).toInstant()),
+                Date.from(LocalDateTime.of(2018, 10, 15, 12, 34, 56, 125_500 * 1_000).atOffset(ZoneOffset.UTC).toInstant()));
+        streamSchemaChangeMixedWithDataChange("timestamp(9)",
+                QueryValue.ofSql(toTimestamp(2018, 3, 27, 12, 34, 56, 123456789, 9)),
+                QueryValue.ofSql(toTimestamp(2018, 10, 15, 12, 34, 56, 123456789, 9)),
+                Date.from(LocalDateTime.of(2018, 3, 27, 12, 34, 56, 123456789).atOffset(ZoneOffset.UTC).toInstant()),
+                Date.from(LocalDateTime.of(2018, 10, 15, 12, 34, 56, 123456789).atOffset(ZoneOffset.UTC).toInstant()));
         streamSchemaChangeMixedWithDataChange("timestamp with time zone",
                 QueryValue.ofSql(toTimestampTz(2018, 3, 27, 1, 34, 56, 7890, 6, "-11:00")),
                 QueryValue.ofSql(toTimestampTz(2018, 10, 15, 1, 34, 56, 7890, 6, "-11:00")),
@@ -794,6 +904,7 @@ public class HybridMiningStrategyIT extends AbstractConnectorTest {
                 .with(OracleConnectorConfig.LOG_MINING_STRATEGY, "hybrid")
                 .with(OracleConnectorConfig.TOMBSTONES_ON_DELETE, false)
                 .with(OracleConnectorConfig.DECIMAL_HANDLING_MODE, decimalHandlingMode.getValue())
+                .with(OracleConnectorConfig.TIME_PRECISION_MODE, temporalPrecisionMode.getValue())
                 .build();
 
         start(OracleConnector.class, config);
