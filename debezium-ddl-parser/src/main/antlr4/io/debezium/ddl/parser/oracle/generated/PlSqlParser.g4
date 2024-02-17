@@ -1389,7 +1389,7 @@ alter_view_editionable
 
 create_view
     : CREATE (OR REPLACE)? (OR? FORCE)? EDITIONABLE? EDITIONING? VIEW
-      tableview_name view_options?
+      tableview_name (IF NOT EXISTS)? view_options?
       AS select_only_statement subquery_restriction_clause?
     ;
 
