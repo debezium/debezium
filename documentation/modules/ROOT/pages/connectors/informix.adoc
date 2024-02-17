@@ -807,6 +807,8 @@ Following is an example of a message:
   },
   "op": "c",
   "ts_ms": "1580390884335",
+  "ts_us": "1580390884335641",
+  "ts_ns": "1580390884335641387",
   "transaction": {
     "id": "157",
     "total_order": "1",
@@ -1124,6 +1126,16 @@ The following example shows the value portion of a change event that the connect
             "field": "ts_ms"
           },
           {
+            "type": "int64",
+            "optional": false,
+            "field": "ts_us"
+          },
+          {
+            "type": "int64",
+            "optional": false,
+            "field": "ts_ns"
+          },
+          {
             "type": "boolean",
             "optional": true,
             "default": false,
@@ -1178,6 +1190,16 @@ The following example shows the value portion of a change event that the connect
         "type": "int64",
         "optional": true,
         "field": "ts_ms"
+      },
+      {
+        "type": "int64",
+        "optional": true,
+        "field": "ts_us"
+      },
+      {
+        "type": "int64",
+        "optional": true,
+        "field": "ts_ns"
       }
     ],
     "optional": false,
@@ -1196,6 +1218,8 @@ The following example shows the value portion of a change event that the connect
       "connector": "informix",
       "name": "myconnector",
       "ts_ms": 1559729468470,
+      "ts_us": 1559729468470000,
+      "ts_ns": 1559729468470000000,
       "snapshot": false,
       "db": "mydatabase",
       "schema": "myschema",
@@ -1206,7 +1230,9 @@ The following example shows the value portion of a change event that the connect
       "begin_lsn": "627404540372400"
     },
     "op": "c",  // <9>
-    "ts_ms": 1559729471739  // <10>
+    "ts_ms": 1559729471739,  // <10>
+    "ts_us": 1559729471739241,  // <10>
+    "ts_ns": 1559729471739241367 // <10>
   }
 }
 ----
@@ -1290,7 +1316,7 @@ In the preceding example, `c` indicates that the operation created a row.
 `r`:: read (applies to only snapshots)
 
 |10
-|`ts_ms`
+|`ts_ms`, `ts_us`, `ts_ns`
 a|Optional field that displays the time at which the connector processed the event.
 The time is based on the system clock in the JVM that runs the Kafka Connect task. +
  +
@@ -1328,6 +1354,8 @@ The following example shows the change event value for an event record that the 
       "connector": "informix",
       "name": "myconnector",
       "ts_ms": 1559729995937,
+      "ts_us": 1559729995937000,
+      "ts_ns": 1559729995937000000,
       "snapshot": false,
       "db": "mydatabase",
       "schema": "myschema",
@@ -1338,7 +1366,9 @@ The following example shows the change event value for an event record that the 
       "begin_lsn": "627404540372400"
     },
     "op": "u",  // <4>
-    "ts_ms": 1559729998706  // <5>
+    "ts_ms": 1559729998706,  // <5>
+    "ts_us": 1559729998706742,  // <5>
+    "ts_ns": 1559729998706742877  // <5>
   }
 }
 ----
@@ -1384,7 +1414,7 @@ a|Mandatory string that describes the type of operation.
 In an _update_ event value, the `op` field value is `u`, signifying that this row changed because of an update.
 
 |5
-|`ts_ms`
+|`ts_ms`, `ts_us`, `ts_ns`
 a|Optional field that displays the time at which the connector processed the event.
 The time is based on the system clock in the JVM that runs the Kafka Connect task. +
  +
@@ -1427,6 +1457,8 @@ After a user performs a _delete_ operation in the sample `customers` table, {pro
       "connector": "informix",
       "name": "myconnector",
       "ts_ms": 1559730445243,
+      "ts_us": 1559730445243000,
+      "ts_ns": 1559730445243000000,
       "snapshot": false,
       "db": "mydatabase",
       "schema": "myschema",
@@ -1437,7 +1469,9 @@ After a user performs a _delete_ operation in the sample `customers` table, {pro
       "begin_lsn": "627404540372400"
     },
     "op": "d",  // <4>
-    "ts_ms": 1559730450205  // <5>
+    "ts_ms": 1559730450205,  // <5>
+    "ts_us": 1559730450205104,  // <5>
+    "ts_ns": 1559730450205104870  // <5>
   }
 }
 ----
@@ -1481,7 +1515,7 @@ a|Mandatory string that describes the type of operation.
 The value of the `op` field value is `d`, signifying that this row was deleted.
 
 |5
-|`ts_ms`
+|`ts_ms`, `ts_us`, `ts_ns`
 a|Optional field that displays the time at which the connector processed the event.
 The time is based on the system clock in the JVM running the Kafka Connect task. +
  +
