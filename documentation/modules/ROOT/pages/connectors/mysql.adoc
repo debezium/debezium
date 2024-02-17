@@ -58,8 +58,8 @@ An overview of the MySQL topologies that the connector supports is useful for pl
 ifdef::community[]
 [NOTE]
 ====
-The {prodname} MySQL connector has yet to be tested with MariaDB, but multiple reports from the community indicate successful usage of the connector with this database.
-Official support for MariaDB is planned for a future {prodname} version.
+The {prodname} MySQL connector has been tested and officially supports MariaDB 11.1.2+.
+Please see the xref:mysql-mariadb-support[MariaDB support] section for details on how to enable the official MariaDB support mode.
 ====
 endif::community[]
 
@@ -105,6 +105,35 @@ Hosted::
 There is support for the {prodname} MySQL connector to use hosted options such as Amazon RDS and Amazon Aurora.
 +
 Because these hosted options do not allow a global read lock, table-level locks are used to create the _consistent snapshot_.
+
+ifdef::community[]
+[[mysql-mariadb-support]]
+=== MariaDB support
+
+While it is possible to use the MySQL driver to connect and stream changes from MariaDB, we recommend configuring the {prodname} MySQL connector to use the MariaDB adapter mode, allowing you to take advantage of the MariaDB driver, and it's unique feature stack.
+To toggle the MariaDB support mode, the xref:#mysql-property-connector-adapter[`connector.adapter`] configuration property must be specified with a value of `mariadb`.
+This mode utilizes the MariaDB driver instead of the MySQL driver, meaning that you must also provide the database protocol and JDBC driver strings that are compliant with MariaDB, see the example below.
+
+.MariaDB supplemental configuration
+[source,json]
+----
+{
+  ...
+  "connector.adapter": "mariadb",
+  "database.protocol": "jdbc:mariadb",
+  "database.jdbc.driver": "org.mariadb.jdbc.Driver"
+}
+----
+
+[NOTE]
+====
+When the new {prodname} MariaDB connector is available in a future release, these supplemental configurations will no longer be necessary.
+As the connector currently includes both the MySQL and MariaDB drivers, the MariaDB mode is _opt-in_ until {prodname} introduces the new MariaDB-specific connector.
+====
+
+With this configuration, the {prodname} MySQL connector will use the new MariaDB adapter connector, which natively streams changes from MariaDB binary transaction logs.
+All other MySQL xref:mysql-connector-properties[connector properties] can be used in conjunction with the above supplemental configuration.
+endif::community[]
 
 // Type: concept
 // ModuleID: how-debezium-mysql-connectors-handle-database-schema-changes
@@ -2775,14 +2804,26 @@ The following configuration properties are _required_ unless a default value is 
 |`1`
 |The maximum number of tasks that should be created for this connector. The MySQL connector always uses a single task and therefore does not use this value, so the default is always acceptable.
 
+ifdef::community[]
+|[[mysql-property-connector-adapter]]<<mysql-property-connector-adapter, `+connector.adapter+`>>
+|mysql
+|The connector adapter mode to be used.
+Please see the xref:mysql-mariadb-support[MariaDB support] section on how to connect to MariaDB.
+endif::community[]
+
 |[[mysql-property-database-protocol]]<<mysql-property-database-protocol, `+database.protocol+`>>
 |jdbc:mysql
 |JDBC protocol used by the driver connection string for connecting to the database.
+ifdef::community[]
+Please see the xref:mysql-mariadb-support[MariaDB support] section on how to connect to MariaDB.
+endif::community[]
 
 |[[mysql-property-database-jdbc-driver]]<<mysql-property-database-jdbc-driver, `+database.jdbc.driver+`>>
 |com.mysql.cj.jdbc.Driver
 |The driver class name to use. This can be useful when using an alternative driver to the one packaged with the connector.
-
+ifdef::community[]
+Please see the xref:mysql-mariadb-support[MariaDB support] section on how to connect to MariaDB.
+endif::community[]
 
 |[[mysql-property-database-hostname]]<<mysql-property-database-hostname, `+database.hostname+`>>
 |No default
