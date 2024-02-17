@@ -35,6 +35,7 @@ import io.debezium.data.Envelope;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingMode;
 import io.debezium.util.Strings;
 import io.debezium.util.Testing;
 
@@ -48,10 +49,12 @@ public class HybridMiningStrategyIT extends AbstractConnectorTest {
     public final TestRule skipAdapterRule = new SkipTestDependingOnAdapterNameRule();
 
     private OracleConnection connection;
+    private DecimalHandlingMode decimalHandlingMode;
 
     @Before
     public void beforeEach() throws Exception {
         connection = TestHelper.testConnection();
+        decimalHandlingMode = DecimalHandlingMode.PRECISE; // default
 
         setConsumeTimeout(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS);
         initializeConnectorTestFramework();
@@ -150,6 +153,82 @@ public class HybridMiningStrategyIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-3401")
+    public void shouldStreamOfflineSchemaChangesFloatingPointDataTypesAsString() throws Exception {
+        // Override DecimalHandlingMode default
+        decimalHandlingMode = DecimalHandlingMode.STRING;
+
+        streamOfflineSchemaChanges("binary_float",
+                QueryValue.ofBind(3.14f), QueryValue.ofBind(4.14f),
+                3.14f, 4.14f);
+        streamOfflineSchemaChanges("binary_double",
+                QueryValue.ofBind(3.14), QueryValue.ofBind(4.14),
+                3.14, 4.14);
+        streamOfflineSchemaChanges("float",
+                QueryValue.ofBind(3.33), QueryValue.ofBind(4.33),
+                "3.33", "4.33");
+        streamOfflineSchemaChanges("float(10)",
+                QueryValue.ofBind(8.888), QueryValue.ofBind(9.999),
+                "8.888", "9.999");
+        streamOfflineSchemaChanges("number(10,6)",
+                QueryValue.ofBind(4.4444), QueryValue.ofBind(5.5555),
+                "4.444400", "5.555500");
+        streamOfflineSchemaChanges("double precision",
+                QueryValue.ofBind(5.555), QueryValue.ofBind(6.666),
+                "5.555", "6.666");
+        streamOfflineSchemaChanges("real",
+                QueryValue.ofBind(6.66), QueryValue.ofBind(7.77),
+                "6.66", "7.77");
+        streamOfflineSchemaChanges("decimal(10,6)",
+                QueryValue.ofBind(1234.567891), QueryValue.ofBind(2345.678912),
+                "1234.567891", "2345.678912");
+        streamOfflineSchemaChanges("numeric(10,6)",
+                QueryValue.ofBind(1234.567891), QueryValue.ofBind(2345.678912),
+                "1234.567891", "2345.678912");
+        streamOfflineSchemaChanges("number",
+                QueryValue.ofBind(77.323), QueryValue.ofBind(88.434),
+                "77.323", "88.434");
+    }
+
+    @Test
+    @FixFor("DBZ-3401")
+    public void shouldStreamOfflineSchemaChangesFloatingPointDataTypesAsDouble() throws Exception {
+        // Override DecimalHandlingMode default
+        decimalHandlingMode = DecimalHandlingMode.DOUBLE;
+
+        streamOfflineSchemaChanges("binary_float",
+                QueryValue.ofBind(3.14f), QueryValue.ofBind(4.14f),
+                3.14f, 4.14f);
+        streamOfflineSchemaChanges("binary_double",
+                QueryValue.ofBind(3.14), QueryValue.ofBind(4.14),
+                3.14, 4.14);
+        streamOfflineSchemaChanges("float",
+                QueryValue.ofBind(3.33), QueryValue.ofBind(4.33),
+                3.33d, 4.33d);
+        streamOfflineSchemaChanges("float(10)",
+                QueryValue.ofBind(8.888), QueryValue.ofBind(9.999),
+                8.888d, 9.999d);
+        streamOfflineSchemaChanges("number(10,6)",
+                QueryValue.ofBind(4.4444), QueryValue.ofBind(5.5555),
+                4.4444, 5.5555);
+        streamOfflineSchemaChanges("double precision",
+                QueryValue.ofBind(5.555), QueryValue.ofBind(6.666),
+                5.555, 6.666);
+        streamOfflineSchemaChanges("real",
+                QueryValue.ofBind(6.66), QueryValue.ofBind(7.77),
+                6.66, 7.77);
+        streamOfflineSchemaChanges("decimal(10,6)",
+                QueryValue.ofBind(1234.567891), QueryValue.ofBind(2345.678912),
+                1234.567891, 2345.678912);
+        streamOfflineSchemaChanges("numeric(10,6)",
+                QueryValue.ofBind(1234.567891), QueryValue.ofBind(2345.678912),
+                1234.567891, 2345.678912);
+        streamOfflineSchemaChanges("number",
+                QueryValue.ofBind(77.323), QueryValue.ofBind(88.434),
+                77.323, 88.434);
+    }
+
+    @Test
+    @FixFor("DBZ-3401")
     public void shouldStreamSchemaChangeWithDataChangeFloatingPointDataTypes() throws Exception {
         streamSchemaChangeMixedWithDataChange("binary_float",
                 QueryValue.ofBind(3.14f), QueryValue.ofBind(4.14f),
@@ -181,6 +260,82 @@ public class HybridMiningStrategyIT extends AbstractConnectorTest {
         streamSchemaChangeMixedWithDataChange("number",
                 QueryValue.ofBind(77.323), QueryValue.ofBind(88.434),
                 varScaleDecimal("77.323"), varScaleDecimal("88.434"));
+    }
+
+    @Test
+    @FixFor("DBZ-3401")
+    public void shouldStreamSchemaChangeWithDataChangeFloatingPointDataTypesAsString() throws Exception {
+        // Override DecimalHandlingMode default
+        decimalHandlingMode = DecimalHandlingMode.STRING;
+
+        streamSchemaChangeMixedWithDataChange("binary_float",
+                QueryValue.ofBind(3.14f), QueryValue.ofBind(4.14f),
+                3.14f, 4.14f);
+        streamSchemaChangeMixedWithDataChange("binary_double",
+                QueryValue.ofBind(3.14), QueryValue.ofBind(4.14),
+                3.14, 4.14);
+        streamSchemaChangeMixedWithDataChange("float",
+                QueryValue.ofBind(3.33), QueryValue.ofBind(4.33),
+                "3.33", "4.33");
+        streamSchemaChangeMixedWithDataChange("float(10)",
+                QueryValue.ofBind(8.888), QueryValue.ofBind(9.999),
+                "8.888", "9.999");
+        streamSchemaChangeMixedWithDataChange("number(10,6)",
+                QueryValue.ofBind(4.4444), QueryValue.ofBind(5.5555),
+                "4.444400", "5.555500");
+        streamSchemaChangeMixedWithDataChange("double precision",
+                QueryValue.ofBind(5.555), QueryValue.ofBind(6.666),
+                "5.555", "6.666");
+        streamSchemaChangeMixedWithDataChange("real",
+                QueryValue.ofBind(6.66), QueryValue.ofBind(7.77),
+                "6.66", "7.77");
+        streamSchemaChangeMixedWithDataChange("decimal(10,6)",
+                QueryValue.ofBind(1234.567891), QueryValue.ofBind(2345.678912),
+                "1234.567891", "2345.678912");
+        streamSchemaChangeMixedWithDataChange("numeric(10,6)",
+                QueryValue.ofBind(1234.567891), QueryValue.ofBind(2345.678912),
+                "1234.567891", "2345.678912");
+        streamSchemaChangeMixedWithDataChange("number",
+                QueryValue.ofBind(77.323), QueryValue.ofBind(88.434),
+                "77.323", "88.434");
+    }
+
+    @Test
+    @FixFor("DBZ-3401")
+    public void shouldStreamSchemaChangeWithDataChangeFloatingPointDataTypesAsDouble() throws Exception {
+        // Override DecimalHandlingMode default
+        decimalHandlingMode = DecimalHandlingMode.DOUBLE;
+
+        streamSchemaChangeMixedWithDataChange("binary_float",
+                QueryValue.ofBind(3.14f), QueryValue.ofBind(4.14f),
+                3.14f, 4.14f);
+        streamSchemaChangeMixedWithDataChange("binary_double",
+                QueryValue.ofBind(3.14), QueryValue.ofBind(4.14),
+                3.14, 4.14);
+        streamSchemaChangeMixedWithDataChange("float",
+                QueryValue.ofBind(3.33), QueryValue.ofBind(4.33),
+                3.33, 4.33);
+        streamSchemaChangeMixedWithDataChange("float(10)",
+                QueryValue.ofBind(8.888), QueryValue.ofBind(9.999),
+                8.888, 9.999);
+        streamSchemaChangeMixedWithDataChange("number(10,6)",
+                QueryValue.ofBind(4.4444), QueryValue.ofBind(5.5555),
+                4.4444, 5.5555);
+        streamSchemaChangeMixedWithDataChange("double precision",
+                QueryValue.ofBind(5.555), QueryValue.ofBind(6.666),
+                5.555, 6.666);
+        streamSchemaChangeMixedWithDataChange("real",
+                QueryValue.ofBind(6.66), QueryValue.ofBind(7.77),
+                6.66, 7.77);
+        streamSchemaChangeMixedWithDataChange("decimal(10,6)",
+                QueryValue.ofBind(1234.567891), QueryValue.ofBind(2345.678912),
+                1234.567891, 2345.678912);
+        streamSchemaChangeMixedWithDataChange("numeric(10,6)",
+                QueryValue.ofBind(1234.567891), QueryValue.ofBind(2345.678912),
+                1234.567891, 2345.678912);
+        streamSchemaChangeMixedWithDataChange("number",
+                QueryValue.ofBind(77.323), QueryValue.ofBind(88.434),
+                77.323, 88.434);
     }
 
     @Test
@@ -638,6 +793,7 @@ public class HybridMiningStrategyIT extends AbstractConnectorTest {
                 .with(OracleConnectorConfig.LOB_ENABLED, Boolean.toString(lobEnabled))
                 .with(OracleConnectorConfig.LOG_MINING_STRATEGY, "hybrid")
                 .with(OracleConnectorConfig.TOMBSTONES_ON_DELETE, false)
+                .with(OracleConnectorConfig.DECIMAL_HANDLING_MODE, decimalHandlingMode.getValue())
                 .build();
 
         start(OracleConnector.class, config);
