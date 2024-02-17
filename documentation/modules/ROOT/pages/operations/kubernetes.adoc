@@ -431,6 +431,8 @@ You now should be able to observe the change events on the Kafka topic:
       "connector": "mysql",
       "name": "mysql",
       "ts_ms": 1646300467000,
+      "ts_us": 1646300467000000,
+      "ts_ns": 1646300467000000000,
       "snapshot": "false",
       "db": "inventory",
       "sequence": null,
@@ -445,6 +447,8 @@ You now should be able to observe the change events on the Kafka topic:
     },
     "op": "u",
     "ts_ms": 1646300467746,
+    "ts_us": 1646300467746041,
+    "ts_ns": 1646300467746041975,
     "transaction": null
   }
 }

@@ -103,7 +103,9 @@ A {prodname} connector that is configured to apply the outbox event router SMT g
     "xmin": null
   },
   "op": "c",
-  "ts_ms": 1556890294484
+  "ts_ms": 1556890294484,
+  "ts_us": 1556890294484651,
+  "ts_ns": 1556890294484651402
 }
 ----
 

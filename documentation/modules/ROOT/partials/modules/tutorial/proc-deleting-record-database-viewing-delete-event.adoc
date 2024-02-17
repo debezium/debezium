@@ -96,7 +96,9 @@ Here is the _value_ of the first new event (formatted for readability):
       "table": "customers"
     },
     "op": "d",  // <4>
-    "ts_ms": 1486501558315  // <5>
+    "ts_ms": 1486501558315,  // <5>
+    "ts_us": 1486501558315901,  // <5>
+    "ts_ns": 1486501558315901687  // <5>
   }
 }
 ----
@@ -107,7 +109,7 @@ except the `ts_sec` and `pos` fields have changed
 (the `file` might have changed in other circumstances).
 <4> The `op` field value is now `d`,
 signifying that this row was deleted.
-<5> The `ts_ms` field shows the time stamp for when {prodname} processes this event.
+<5> The `ts_ms`, `ts_us`, `ts_ns` field shows the time stamp for when {prodname} processes this event.
 
 Thus, this event provides a consumer with the information that it needs to process the removal of the row.
 The old values are also provided, because some consumers might require them to properly handle the removal.
