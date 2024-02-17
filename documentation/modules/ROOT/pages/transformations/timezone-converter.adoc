@@ -81,6 +81,8 @@ The value of the `created_at` field shows the UTC time.
             "connector": "postgresql",
             "name": "PostgreSQL_server",
             "ts_ms": 1559033904863,
+            "ts_us": 1559033904863000,
+            "ts_ns": 1559033904863000000,
             "snapshot": true,
             "db": "postgres",
             "sequence": "[\"24023119\",\"24023128\"]",
@@ -91,7 +93,9 @@ The value of the `created_at` field shows the UTC time.
             "xmin": null
         },
         "op": "c",
-        "ts_ms": 1559033904863
+        "ts_ms": 1559033904863,
+        "ts_us": 1559033904863875,
+        "ts_ns": 1559033904863875124
     }
 ----
 
@@ -117,6 +121,8 @@ The SMT also adds an `event_timestamp` field.
             "connector": "postgresql",
             "name": "PostgreSQL_server",
             "ts_ms": 1559033904863,
+            "ts_us": 1559033904863752,
+            "ts_ns": 1559033904863752000,
             "snapshot": true,
             "db": "postgres",
             "sequence": "[\"24023119\",\"24023128\"]",
@@ -129,6 +135,8 @@ The SMT also adds an `event_timestamp` field.
         },
         "op": "c",
         "ts_ms": 1559033904863,
+        "ts_us": 1559033904863971,
+        "ts_ns": 1559033904863971541,
         "event_timestamp": 1626102708861
     }
 ----

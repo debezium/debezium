@@ -338,6 +338,8 @@ The following example shows part of an update message for an operation that resu
 "payload": {
   "op": "u",
   "ts_ms": "...",
+  "ts_us" : "...",
+  "ts_ns" : "...",
   "before": "{ ... }",
   "after": "{ ... }",
   "updateDescription": {

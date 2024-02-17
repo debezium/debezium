@@ -238,6 +238,8 @@ The following example, shows the JSON for an incremental snapshot event that is 
     },
     "op":"r", <2>
     "ts_ms":"1620393591654",
+    "ts_us":"1620393591654014",
+    "ts_ns":"1620393591654014325",
     "transaction":null
 }
 ----
