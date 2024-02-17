@@ -24,11 +24,13 @@ import java.util.regex.Pattern;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.bson.BsonDocument;
+import org.bson.BsonInt32;
 import org.bson.BsonString;
 import org.bson.BsonTimestamp;
 import org.bson.BsonValue;
 import org.bson.Document;
 import org.bson.RawBsonDocument;
+import org.bson.codecs.BsonDocumentCodec;
 import org.bson.conversions.Bson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -70,6 +72,8 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
     private static final String OBJECT_FIELD = "o";
     private static final String OPERATION_CONTROL = "c";
     private static final String TX_OPS = "applyOps";
+
+    private static final BsonDocumentCodec BSON_DOCUMENT_CODEC = new BsonDocumentCodec();
 
     private final Pattern pattern;
 
@@ -615,6 +619,13 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             oplogContext.getOffset().getOffset();
 
             CollectionId collectionId = new CollectionId(oplogContext.getReplicaSetName(), dbName, collectionName);
+            if (masterEvent != event && !event.containsKey(MongoDbFieldName.TIMESTAMP)) {
+                BsonDocument eventCp = ((RawBsonDocument) event).decode(BSON_DOCUMENT_CODEC);
+                eventCp = eventCp.append(MongoDbFieldName.TIMESTAMP, SourceInfo.extractEventTimestamp(masterEvent));
+                eventCp = eventCp.append(MongoDbFieldName.TXN_INDEX, new BsonInt32((int) txOrder));
+                event = new RawBsonDocument(eventCp, BSON_DOCUMENT_CODEC);
+            }
+
             if (taskContext.filters().collectionFilter().test(collectionId)) {
                 try {
                     return dispatcher.dispatchDataChangeEvent(

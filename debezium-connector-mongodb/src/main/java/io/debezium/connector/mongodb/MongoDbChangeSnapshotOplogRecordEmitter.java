@@ -120,6 +120,7 @@ public class MongoDbChangeSnapshotOplogRecordEmitter extends AbstractChangeRecor
                 LOGGER.error("Expecting RawBsonDocument when RawOplogEnabled is true");
             }
             else {
+                LOGGER.debug("Emitting raw oplog: {}", oplogEvent);
                 value.put(MongoDbFieldName.RAW_OPLOG_FIELD, documentToBytes((RawBsonDocument) oplogEvent));
             }
         }

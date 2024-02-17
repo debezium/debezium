@@ -263,7 +263,7 @@ public abstract class AbstractMongoConnectorIT extends AbstractConnectorTest {
         return TestHelper.primary(context);
     }
 
-    private static boolean collectionExists(MongoDatabase database, String collectionName) {
+    protected static boolean collectionExists(MongoDatabase database, String collectionName) {
         final MongoIterable<String> collections = database.listCollectionNames();
         final MongoCursor<String> cursor = collections.cursor();
         while (cursor.hasNext()) {
