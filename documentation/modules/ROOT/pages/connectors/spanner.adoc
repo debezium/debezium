@@ -12,11 +12,6 @@
 
 toc::[]
 
-[NOTE]
-====
-This connector is currently in incubating state, i.e. exact semantics, configuration options etc. may change in future revisions, based on the feedback we receive. Please let us know if you encounter any problems.
-====
-
 {prodname}'s Cloud Spanner connector consumes and outputs Spanner change streams data into a Kafka topic.
 
 A Spanner link:https://cloud.google.com/spanner/docs/change-streams[change stream] watches and streams out a Spanner database's data changes - inserts, updates, deletes - in near-real-time. The Spanner connector abstracts away the details of querying the Spanner change streams. With this connector, you don't have to manage the change streams partition lifecycle, which is necessary when you link:https://cloud.devsite.corp.google.com/spanner/docs/change-streams/details#query[use the Spanner API directly].

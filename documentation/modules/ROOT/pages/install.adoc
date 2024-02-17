@@ -36,7 +36,7 @@ ifeval::['{page-version}' == 'master']
 * {link-cassandra-3-plugin-snapshot}[Cassandra 3.x plugin archive]
 * {link-cassandra-4-plugin-snapshot}[Cassandra 4.x plugin archive]
 * {link-vitess-plugin-snapshot}[Vitess plugin archive] (incubating)
-* {link-spanner-plugin-snapshot}[Spanner plugin archive] (incubating)
+* {link-spanner-plugin-snapshot}[Spanner plugin archive]
 * {link-jdbc-plugin-snapshot}[JDBC sink plugin archive] (incubating)
 * {link-informix-plugin-snapshot}[Informix plugin archive] (incubating)
 
