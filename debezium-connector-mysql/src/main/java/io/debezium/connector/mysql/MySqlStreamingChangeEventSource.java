@@ -223,30 +223,22 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
     }
 
     private void setEventTimestamp(Event event, long eventTs) {
-        // Prefer higher resolution replication timestamps from MySQL 8 GTID events, if possible
-        if (isGtidModeEnabled) {
-            if (connection.isMariaDb()) {
+        if (connection.isMariaDb() || !isGtidModeEnabled) {
+            // Fallback to second resolution event timestamps
+            eventTimestamp = Instant.ofEpochMilli(eventTs);
+        }
+        else if (event.getHeader().getEventType() == EventType.GTID) {
+            // Prefer higher resolution replication timestamps from MySQL 8 GTID events, if possible
+            GtidEventData gtidEvent = unwrapData(event);
+            final long gtidEventTs = gtidEvent.getOriginalCommitTimestamp();
+            if (gtidEventTs != 0) {
+                // >= MySQL 8.0.1, prefer the higher resolution replication timestamp
+                eventTimestamp = Instant.EPOCH.plus(gtidEventTs, ChronoUnit.MICROS);
+            }
+            else {
                 // Fallback to second resolution event timestamps
                 eventTimestamp = Instant.ofEpochMilli(eventTs);
             }
-            else {
-                if (event.getHeader().getEventType() == EventType.GTID) {
-                    GtidEventData gtidEvent = unwrapData(event);
-                    final long gtidEventTs = gtidEvent.getOriginalCommitTimestamp();
-                    if (gtidEventTs != 0) {
-                        // >= MySQL 8.0.1, prefer the higher resolution replication timestamp
-                        eventTimestamp = Instant.EPOCH.plus(gtidEventTs, ChronoUnit.MICROS);
-                    }
-                    else {
-                        // Fallback to second resolution event timestamps
-                        eventTimestamp = Instant.ofEpochMilli(eventTs);
-                    }
-                }
-            }
-        }
-        else {
-            // Fallback to second resolution event timestamps
-            eventTimestamp = Instant.ofEpochMilli(eventTs);
         }
     }
 
