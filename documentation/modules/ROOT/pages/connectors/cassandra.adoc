@@ -520,6 +520,8 @@ The value payload in JSON representation would look like this:
 {
   "op": "c",
   "ts_ms": 1562202942832,
+  "ts_us": 1562202942832014,
+  "ts_ns": 1562202942832014962,
   "after": {
     "id": {
     "value": 1001,
@@ -556,7 +558,9 @@ The value payload in JSON representation would look like this:
     "table": "customers",
     "file": "commitlog-6-123456.log",
     "pos": 54,
-    "ts_ms": 1562202942666382
+    "ts_ms": 1562202942666382,
+    "ts_us": 1562202942666382000,
+    "ts_ns": 1562202942666382000000
   }
 }
 ----
@@ -577,6 +581,8 @@ The value payload in JSON representation would look like this:
 {
   "op": "u",
   "ts_ms": 1562202942912,
+  "ts_us": 1562202942912014,
+  "ts_ns": 1562202942912014982,
   "after": {
     "id": {
     "value": 1001,
@@ -605,7 +611,9 @@ The value payload in JSON representation would look like this:
     "table": "customers",
     "file": "commitlog-6-123456.log",
     "pos": 102,
-    "ts_ms": 1562202942666490
+    "ts_ms": 1562202942666490,
+    "ts_us": 1562202942666490000,
+    "ts_ns": 1562202942666490000000
   }
 }
 ----
@@ -634,6 +642,8 @@ The value payload in JSON representation would look like this:
 {
   "op": "d",
   "ts_ms": 1562202942912,
+  "ts_us": 1562202942912047,
+  "ts_ns": 1562202942912047921,
   "after": {
     "id": {
     "value": 1001,
@@ -658,7 +668,9 @@ The value payload in JSON representation would look like this:
     "table": "customers",
     "file": "commitlog-6-123456.log",
     "pos": 102,
-    "ts_ms": 1562202942666490
+    "ts_ms": 1562202942666490,
+    "ts_us": 1562202942666490000,
+    "ts_ns": 1562202942666490000000
   }
 }
 ----
