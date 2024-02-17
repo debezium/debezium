@@ -9,6 +9,7 @@ import static io.debezium.data.VariableScaleDecimal.fromLogical;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -69,7 +70,6 @@ public class HybridMiningStrategyIT extends AbstractConnectorTest {
 
     // todo:
     // add test for having old non-attribute populated schema history and status=2 triggered
-    // add integer for 36_negative_scale using (36,-2)
     // do we need tests for connect precision or other handling modes, doubtful but should check?
     // add clob, blob, and xml support
 
@@ -225,6 +225,11 @@ public class HybridMiningStrategyIT extends AbstractConnectorTest {
         streamOfflineSchemaChanges("number(16,-2)",
                 QueryValue.ofBind(989999999999999949L), QueryValue.ofBind(999999999999999949L),
                 989999999999999900L, 999999999999999900L);
+        streamOfflineSchemaChanges("number(36,-2)",
+                QueryValue.ofBind(new BigDecimal(new BigInteger("999999999999999999999999999999999999"), -2)),
+                QueryValue.ofBind(new BigDecimal(new BigInteger("999999999999999999999999999999999949"), -2)),
+                new BigDecimal(new BigInteger("999999999999999999999999999999999999"), -2),
+                new BigDecimal(new BigInteger("999999999999999999999999999999999949"), -2));
         streamOfflineSchemaChanges("decimal(10)",
                 QueryValue.ofBind(9899999999L), QueryValue.ofBind(9999999999L),
                 9899999999L, 9999999999L);
@@ -278,6 +283,11 @@ public class HybridMiningStrategyIT extends AbstractConnectorTest {
         streamSchemaChangeMixedWithDataChange("number(16,-2)",
                 QueryValue.ofBind(989999999999999949L), QueryValue.ofBind(999999999999999949L),
                 989999999999999900L, 999999999999999900L);
+        streamSchemaChangeMixedWithDataChange("number(36,-2)",
+                QueryValue.ofBind(new BigDecimal(new BigInteger("999999999999999999999999999999999999"), -2)),
+                QueryValue.ofBind(new BigDecimal(new BigInteger("999999999999999999999999999999999949"), -2)),
+                new BigDecimal(new BigInteger("999999999999999999999999999999999999"), -2),
+                new BigDecimal(new BigInteger("999999999999999999999999999999999949"), -2));
         streamSchemaChangeMixedWithDataChange("decimal(10)",
                 QueryValue.ofBind(9899999999L), QueryValue.ofBind(9999999999L),
                 9899999999L, 9999999999L);
