@@ -7,13 +7,16 @@ package io.debezium.connector.oracle;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.math.BigInteger;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -73,17 +76,41 @@ public class LogMinerHelperIT extends AbstractConnectorTest {
 
         // case 1 : oldest scn = current scn
         Scn currentScn = conn.getCurrentScn();
-        List<LogFile> files = LogMinerHelper.getLogFilesForOffsetScn(conn, currentScn, Duration.ofHours(0L), false, null);
-        assertThat(files).hasSize(instances); // just the current redo log
+        List<LogFile> redoFiles = LogMinerHelper.getLogFilesForOffsetScn(conn, currentScn, Duration.ofHours(0L), false, null);
+        assertThat(redoFiles).hasSize(instances); // just the current redo log
 
         // case 2 : oldest scn = oldest in not cleared archive
         List<Scn> oneDayArchivedNextScn = getOneDayArchivedLogNextScn(conn);
         Scn oldestArchivedScn = getOldestArchivedScn(oneDayArchivedNextScn);
-        files = LogMinerHelper.getLogFilesForOffsetScn(conn, oldestArchivedScn, Duration.ofHours(0L), false, null);
-        assertThat(files.size()).isEqualTo(oneDayArchivedNextScn.size() + instances - 1);
+        List<LogFile> files = LogMinerHelper.getLogFilesForOffsetScn(conn, oldestArchivedScn, Duration.ofHours(0L), false, null);
+        assertLogFilesHaveNoGaps(instances, files, oneDayArchivedNextScn);
 
         files = LogMinerHelper.getLogFilesForOffsetScn(conn, oldestArchivedScn.subtract(Scn.valueOf(1L)), Duration.ofHours(0L), false, null);
-        assertThat(files.size()).isEqualTo(oneDayArchivedNextScn.size() + instances);
+        assertLogFilesHaveNoGaps(instances, files, oneDayArchivedNextScn);
+    }
+
+    private void assertLogFilesHaveNoGaps(int instances, List<LogFile> logFiles, List<Scn> scnList) {
+        final Set<Integer> threads = logFiles.stream().map(LogFile::getThread).collect(Collectors.toSet());
+        assertThat(threads).hasSize(instances);
+
+        int totalThreadLogs = 0;
+        for (Integer thread : threads) {
+            List<LogFile> threadLogs = logFiles.stream().filter(l -> l.getThread() == thread).collect(Collectors.toList());
+            BigInteger min = threadLogs.stream().map(LogFile::getSequence).min(BigInteger::compareTo).orElse(BigInteger.ZERO);
+            BigInteger max = threadLogs.stream().map(LogFile::getSequence).max(BigInteger::compareTo).orElse(BigInteger.ZERO);
+            assertThat(threadLogs).hasSize(max.subtract(min).intValue() + 1);
+            totalThreadLogs += threadLogs.size();
+            for (int i = min.intValue(); i <= max.intValue(); i++) {
+                final int sequence = i;
+                long hits = threadLogs.stream().filter(l -> l.getSequence().intValue() == sequence).count();
+                assertThat(hits).isEqualTo(1);
+            }
+        }
+        assertThat(totalThreadLogs).isEqualTo(logFiles.size());
+
+        for (Scn scn : scnList) {
+            assertThat(logFiles.stream().anyMatch(l -> l.isScnInLogFileRange(scn))).isTrue();
+        }
     }
 
     @Test
