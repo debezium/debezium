@@ -47,6 +47,7 @@ import io.debezium.heartbeat.HeartbeatImpl;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.notification.channels.SinkNotificationChannel;
 import io.debezium.relational.CustomConverterRegistry;
+import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.schema.SchemaTopicNamingStrategy;
 import io.debezium.service.DefaultServiceRegistry;
@@ -1365,7 +1366,7 @@ public abstract class CommonConnectorConfig {
     }
 
     public boolean isSignalDataCollection(DataCollectionId dataCollectionId) {
-        return signalingDataCollection != null && signalingDataCollection.equals(dataCollectionId.identifier());
+        return signalingDataCollection != null && TableId.parse(signalingDataCollection).equals(dataCollectionId);
     }
 
     public Optional<String> customRetriableException() {

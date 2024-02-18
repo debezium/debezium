@@ -11,6 +11,7 @@ import java.nio.file.Path;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
@@ -1447,6 +1448,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     public boolean isSignalDataCollection(DataCollectionId dataCollectionId) {
         final CollectionId id = (CollectionId) dataCollectionId;
         return getSignalingDataCollectionId() != null
-                && getSignalingDataCollectionId().equals(id.dbName() + "." + id.name());
+                && Objects.equals(CollectionId.parse(getSignalingDataCollectionId()), id);
     }
 }
