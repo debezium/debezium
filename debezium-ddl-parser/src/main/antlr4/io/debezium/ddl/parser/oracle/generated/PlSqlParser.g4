@@ -1843,7 +1843,7 @@ xmltype_table
          physical_properties? column_properties? table_partitioning_clauses?
          (CACHE | NOCACHE)? (RESULT_CACHE '(' MODE (DEFAULT | FORCE) ')')?
          parallel_clause? (ROWDEPENDENCIES | NOROWDEPENDENCIES)?
-	 (enable_disable_clause+)? row_movement_clause? logical_replication_clause? flashback_archive_clause?
+	 (enable_disable_clause+)? row_movement_clause? logical_replication_clause? flashback_archive_clause? annotations_clause?
     ;
 
 xmltype_virtual_columns
@@ -1874,7 +1874,7 @@ object_table
       physical_properties? column_properties? table_partitioning_clauses?
       (CACHE | NOCACHE)? (RESULT_CACHE '(' MODE (DEFAULT | FORCE) ')')?
       parallel_clause? (ROWDEPENDENCIES | NOROWDEPENDENCIES)?
-      (enable_disable_clause+)? row_movement_clause? logical_replication_clause? flashback_archive_clause?
+      (enable_disable_clause+)? row_movement_clause? logical_replication_clause? flashback_archive_clause? annotations_clause?
     ;
 
 oid_index_clause
@@ -1906,7 +1906,7 @@ relational_table
           (CACHE | NOCACHE)? (RESULT_CACHE '(' MODE (DEFAULT | FORCE) ')')?
           parallel_clause?
           (ROWDEPENDENCIES | NOROWDEPENDENCIES)?
-          (enable_disable_clause+)? row_movement_clause? logical_replication_clause? flashback_archive_clause?
+          (enable_disable_clause+)? row_movement_clause? logical_replication_clause? flashback_archive_clause? annotations_clause?
         ;
 
 relational_property
@@ -2946,6 +2946,7 @@ alter_table_properties
     | READ ONLY
     | READ WRITE
     | REKEY CHAR_STRING
+    | annotations_clause?
     ;
 
 alter_table_properties_1
@@ -3193,7 +3194,7 @@ modify_column_clauses
     ;
 
 modify_col_properties
-    : column_name datatype? (DEFAULT column_default_value)? (ENCRYPT encryption_spec | DECRYPT)? inline_constraint* lob_storage_clause? //TODO alter_xmlschema_clause
+    : column_name datatype? (DEFAULT column_default_value)? (ENCRYPT encryption_spec | DECRYPT)? inline_constraint* lob_storage_clause? annotations_clause? //TODO alter_xmlschema_clause
     ;
 
 modify_col_visibility
@@ -3340,6 +3341,7 @@ column_definition
          (VISIBLE | INVISIBLE)?
          (DEFAULT (ON NULL_)? column_default_value | identity_clause)?
          (ENCRYPT (USING  CHAR_STRING)? (IDENTIFIED BY regular_id)? CHAR_STRING? (NO? SALT)? )?  (inline_constraint* | inline_ref_constraint)
+         annotations_clause?
     ;
 
 column_default_value
@@ -3352,6 +3354,29 @@ virtual_column_definition
         (GENERATED ALWAYS)?
         AS '(' expression ')'
         VIRTUAL? evaluation_edition_clause? unusable_editions_clause? inline_constraint*
+    ;
+
+annotations_clause
+    : ANNOTATIONS '(' annotations_list ')'
+    ;
+
+annotations_list
+    : ADD (IF NOT EXISTS | OR REPLACE)? annotation (',' annotations_list)*
+    | DROP (IF EXISTS)? annotation (',' annotations_list)*
+    | REPLACE annotation (',' annotations_list)*
+    | annotation (',' annotations_list)*
+    ;
+
+annotation
+    : annotation_name annotation_value?
+    ;
+
+annotation_name
+    : identifier
+    ;
+
+annotation_value
+    : CHAR_STRING
     ;
 
 identity_clause
