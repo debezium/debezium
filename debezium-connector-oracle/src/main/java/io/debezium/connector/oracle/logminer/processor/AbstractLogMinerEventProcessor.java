@@ -29,6 +29,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.annotation.VisibleForTesting;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnection.NonRelationalTableException;
 import io.debezium.connector.oracle.OracleConnectorConfig;
@@ -261,7 +262,14 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                 }
 
                 metrics.setLastProcessedRowsCount(counters.rows);
-                return calculateNewStartScn(endScn, offsetContext.getCommitScn().getMaxCommittedScn());
+
+                if (counters.rows == 0) {
+                    // When no rows are processed, don't advance the SCN
+                    return startScn;
+                }
+                else {
+                    return calculateNewStartScn(endScn, offsetContext.getCommitScn().getMaxCommittedScn());
+                }
             }
         }
     }
@@ -1259,7 +1267,8 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
      * @throws SQLException if an exception occurred obtaining the DDL statement
      * @throws NonRelationalTableException if the table is not a relational table
      */
-    private String getTableMetadataDdl(TableId tableId) throws SQLException, NonRelationalTableException {
+    @VisibleForTesting
+    public String getTableMetadataDdl(TableId tableId) throws SQLException, NonRelationalTableException {
         counters.tableMetadataCount++;
         LOGGER.info("Getting database metadata for table '{}'", tableId);
         // A separate connection must be used for this out-of-bands query while processing LogMiner results.
