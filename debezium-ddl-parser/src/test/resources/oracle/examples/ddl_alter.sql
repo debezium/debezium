@@ -77,3 +77,11 @@ ALTER TABLE TABLE_NAME
 SPLIT PARTITION TABLE_NAME_CURRENT AT (TO_DATE('20240116040241', 'YYYYMMDDHH24MISS'))
 INTO (PARTITION TABLE_NAME_20240116040241, PARTITION TABLE_NAME_CURRENT)
 UPDATE INDEXES (COST_IX (PARTITION C_P1 TABLESPACE TBS_02, PARTITION C_P2 TABLESPACE TBS_03));
+
+-- alter table (Oracle 23+)
+alter table fruit annotations (Visibility 'Everyone');
+alter table fruit annotations (drop Visibility);
+alter table fruit annotations (add Visibility 'Everyone');
+alter table fruit modify (id annotations (Visibility 'Hidden'));
+alter table fruit modify (id annotations (drop Visibility));
+alter table fruit modify (id annotations (add Visibility 'Hidden'));
