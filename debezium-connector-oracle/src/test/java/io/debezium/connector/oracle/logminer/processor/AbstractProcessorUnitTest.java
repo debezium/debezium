@@ -90,6 +90,7 @@ public abstract class AbstractProcessorUnitTest<T extends AbstractLogMinerEventP
         this.offsetContext = Mockito.mock(OracleOffsetContext.class);
         final CommitScn commitScn = CommitScn.valueOf((String) null);
         Mockito.when(this.offsetContext.getCommitScn()).thenReturn(commitScn);
+        Mockito.when(this.offsetContext.getSnapshotScn()).thenReturn(Scn.valueOf("1"));
         this.connection = createOracleConnection(false);
         this.schema = createOracleDatabaseSchema();
         this.metrics = createMetrics(schema);
@@ -236,6 +237,58 @@ public abstract class AbstractProcessorUnitTest<T extends AbstractLogMinerEventP
     }
 
     @Test
+    @FixFor("DBZ-6679")
+    public void testEmptyResultSetWithMineRangeAdvancesCorrectly() throws Exception {
+        if (!isTransactionAbandonmentSupported()) {
+            return;
+        }
+
+        final OracleConnectorConfig config = new OracleConnectorConfig(getConfig().build());
+        try (T processor = getProcessor(config)) {
+            final ResultSet rs = Mockito.mock(ResultSet.class);
+            Mockito.when(rs.next()).thenReturn(false);
+
+            final PreparedStatement ps = Mockito.mock(PreparedStatement.class);
+            Mockito.when(processor.createQueryStatement()).thenReturn(ps);
+            Mockito.when(ps.executeQuery()).thenReturn(rs);
+
+            Scn nextStartScn = processor.process(Scn.valueOf(100), Scn.valueOf(200));
+            assertThat(nextStartScn).isEqualTo(Scn.valueOf(100));
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-6679")
+    public void testNonEmptyResultSetWithMineRangeAdvancesCorrectly() throws Exception {
+        if (!isTransactionAbandonmentSupported()) {
+            return;
+        }
+
+        final OracleConnectorConfig config = new OracleConnectorConfig(getConfig().build());
+        try (T processor = getProcessor(config)) {
+            final ResultSet rs = Mockito.mock(ResultSet.class);
+            Mockito.when(rs.next()).thenReturn(true, false);
+            Mockito.when(rs.getString(1)).thenReturn("101");
+            Mockito.when(rs.getString(2)).thenReturn("insert into \"DEBEZIUM\".\"ABC\"(\"ID\",\"DATA\") values ('1','test');");
+            Mockito.when(rs.getInt(3)).thenReturn(EventType.INSERT.getValue());
+            Mockito.when(rs.getString(7)).thenReturn("ABC");
+            Mockito.when(rs.getString(8)).thenReturn("DEBEZIUM");
+
+            final PreparedStatement ps = Mockito.mock(PreparedStatement.class);
+            Mockito.when(processor.createQueryStatement()).thenReturn(ps);
+            Mockito.when(ps.executeQuery()).thenReturn(rs);
+
+            T processorMock = Mockito.spy(processor);
+            Mockito.doReturn("CREATE TABLE DEBEZIUM.ABC (ID primary key(9,0), data varchar2(50))")
+                    .when(processorMock)
+                    .getTableMetadataDdl(Mockito.any(TableId.class));
+
+            Scn nextStartScn = processorMock.process(Scn.valueOf(100), Scn.valueOf(200));
+            assertThat(nextStartScn).isEqualTo(Scn.valueOf(101));
+        }
+    }
+
+    @Test
     public void testAbandonOneTransaction() throws Exception {
         if (!isTransactionAbandonmentSupported()) {
             return;
@@ -351,6 +404,7 @@ public abstract class AbstractProcessorUnitTest<T extends AbstractLogMinerEventP
 
         OracleConnection connection = Mockito.mock(OracleConnection.class);
         Mockito.when(connection.connection(Mockito.anyBoolean())).thenReturn(conn);
+        Mockito.when(connection.connection()).thenReturn(conn);
         if (!singleOptionalValueThrowException) {
             Mockito.when(connection.singleOptionalValue(anyString(), any())).thenReturn(BigInteger.TWO);
         }
