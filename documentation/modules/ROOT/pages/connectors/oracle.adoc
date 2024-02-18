@@ -3718,6 +3718,13 @@ If the difference between the timestamps is less than the specified value, and t
 Typically, multiple connectors can use the same flush table.
 However, if connectors encounter table lock contention errors, use this property to specify a dedicated table for each connector deployment.
 
+|[[oracle-property-log-mining-include-redo-sql]]<<oracle-property-log-mining-include-redo-sql, `+log.mining.include.redo.sql+`>>
+|`false`
+|Specifies whether the redo log constructed SQL statement is included in `source.redo_sql` field.
+ifdef::community[]
+This configuration is ignored when using XStream or OpenLogReplicator adapters.
+endif::community[]
+
 |[[oracle-property-lob-enabled]]<<oracle-property-lob-enabled, `+lob.enabled+`>>
 |`false`
 |Controls whether or not large object (CLOB or BLOB) column values are emitted in change events. +

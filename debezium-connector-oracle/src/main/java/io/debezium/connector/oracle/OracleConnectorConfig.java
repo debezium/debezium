@@ -592,6 +592,15 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withDescription("A comma-separated list of usernames that schema changes will be skipped for. Defaults to 'SYS,SYSTEM'.")
             .withDefault("SYS,SYSTEM");
 
+    public static final Field LOG_MINING_INCLUDE_REDO_SQL = Field.create("log.mining.include.redo.sql")
+            .withDisplayName("Include the transaction log SQL")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("When enabled, the transaction log REDO SQL will be included in the source information block.")
+            .withDefault(false)
+            .withValidation(OracleConnectorConfig::validateLogMiningIncludeRedoSql);
+
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("Oracle")
             .excluding(
@@ -657,6 +666,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_RESTART_CONNECTION,
                     LOG_MINING_MAX_SCN_DEVIATION_MS,
                     LOG_MINING_SCHEMA_CHANGES_USERNAME_EXCLUDE_LIST,
+                    LOG_MINING_INCLUDE_REDO_SQL,
                     OLR_SOURCE,
                     OLR_HOST,
                     OLR_PORT)
@@ -726,6 +736,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final Duration logMiningMaxScnDeviation;
     private final String logMiningInifispanGlobalConfiguration;
     private final Set<String> logMiningSchemaChangesUsernameExcludes;
+    private final Boolean logMiningIncludeRedoSql;
+
     private final String openLogReplicatorSource;
     private final String openLogReplicatorHostname;
     private final Integer openLogReplicatorPort;
@@ -792,6 +804,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningMaxScnDeviation = Duration.ofMillis(config.getLong(LOG_MINING_MAX_SCN_DEVIATION_MS));
         this.logMiningInifispanGlobalConfiguration = config.getString(LOG_MINING_BUFFER_INFINISPAN_CACHE_GLOBAL);
         this.logMiningSchemaChangesUsernameExcludes = Strings.setOf(config.getString(LOG_MINING_SCHEMA_CHANGES_USERNAME_EXCLUDE_LIST), String::new);
+        this.logMiningIncludeRedoSql = config.getBoolean(LOG_MINING_INCLUDE_REDO_SQL);
 
         // OpenLogReplicator
         this.openLogReplicatorSource = config.getString(OLR_SOURCE);
@@ -1795,6 +1808,15 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     }
 
     /**
+     * Returns whether to include the redo SQL in the source information block.
+     *
+     * @return if redo SQL is included in change events
+     */
+    public boolean isLogMiningIncludeRedoSql() {
+        return logMiningIncludeRedoSql;
+    }
+
+    /**
      * Returns the logical source to stream changes from when connecting to OpenLogReplicator.
      *
      * @return the logical source name
@@ -1964,6 +1986,22 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     public static int validateRequiredWhenUsingOpenLogReplicator(Configuration config, Field field, ValidationOutput problems) {
         if (ConnectorAdapter.OLR.equals(ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER)))) {
             return Field.isRequired(config, field, problems);
+        }
+        return 0;
+    }
+
+    public static int validateLogMiningIncludeRedoSql(Configuration config, Field field, ValidationOutput problems) {
+        if (ConnectorAdapter.LOG_MINER.equals(ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER)))) {
+            boolean lobEnabled = config.getBoolean(LOB_ENABLED);
+            if (lobEnabled && config.getBoolean(field)) {
+                problems.accept(field, config.getBoolean(field), String.format(
+                        "The configuration property '%s' cannot be enabled when '%s' is set to true.",
+                        field.name(), LOB_ENABLED.name()));
+                return 1;
+            }
+        }
+        else {
+            LOGGER.warn("The configuration property '{}' only applies to LogMiner and will be ignored.", field.name());
         }
         return 0;
     }

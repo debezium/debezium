@@ -49,6 +49,7 @@ import io.debezium.connector.oracle.logminer.events.LobEraseEvent;
 import io.debezium.connector.oracle.logminer.events.LobWriteEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
+import io.debezium.connector.oracle.logminer.events.RedoSqlDmlEvent;
 import io.debezium.connector.oracle.logminer.events.SelectLobLocatorEvent;
 import io.debezium.connector.oracle.logminer.events.TruncateEvent;
 import io.debezium.connector.oracle.logminer.events.XmlBeginEvent;
@@ -501,6 +502,10 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                 offsetContext.setRedoThread(row.getThread());
                 offsetContext.setRsId(event.getRsId());
 
+                if (event instanceof RedoSqlDmlEvent) {
+                    offsetContext.setRedoSql(((RedoSqlDmlEvent) event).getRedoSql());
+                }
+
                 final DmlEvent dmlEvent = (DmlEvent) event;
                 if (!skipExcludedUserName) {
                     LogMinerChangeRecordEmitter logMinerChangeRecordEmitter;
@@ -531,8 +536,11 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                                 Clock.system());
                     }
                     dispatcher.dispatchDataChangeEvent(partition, event.getTableId(), logMinerChangeRecordEmitter);
-
                 }
+
+                // Clear redo SQL
+                offsetContext.setRedoSql(null);
+
             }
         };
 
@@ -1089,6 +1097,9 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
             final LogMinerDmlEntry dmlEntry = parseDmlStatement(row.getRedoSql(), table);
             dmlEntry.setObjectName(row.getTableName());
             dmlEntry.setObjectOwner(row.getTablespaceName());
+            if (connectorConfig.isLogMiningIncludeRedoSql()) {
+                return new RedoSqlDmlEvent(row, dmlEntry, row.getRedoSql());
+            }
             return new DmlEvent(row, dmlEntry);
         });
 

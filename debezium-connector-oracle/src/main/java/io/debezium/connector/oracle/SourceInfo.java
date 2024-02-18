@@ -26,6 +26,7 @@ public class SourceInfo extends BaseSourceInfo {
     public static final String SNAPSHOT_KEY = "snapshot";
     public static final String USERNAME_KEY = "user_name";
     public static final String SCN_INDEX_KEY = "scn_idx";
+    public static final String REDO_SQL = "redo_sql";
 
     private Scn scn;
     private CommitScn commitScn;
@@ -39,6 +40,7 @@ public class SourceInfo extends BaseSourceInfo {
     private String rsId;
     private long ssn;
     private Long scnIndex;
+    private String redoSql;
 
     protected SourceInfo(OracleConnectorConfig connectorConfig) {
         super(connectorConfig);
@@ -114,6 +116,14 @@ public class SourceInfo extends BaseSourceInfo {
 
     public void setSourceTime(Instant sourceTime) {
         this.sourceTime = sourceTime;
+    }
+
+    public String getRedoSql() {
+        return redoSql;
+    }
+
+    public void setRedoSql(String redoSql) {
+        this.redoSql = redoSql;
     }
 
     public String tableSchema() {

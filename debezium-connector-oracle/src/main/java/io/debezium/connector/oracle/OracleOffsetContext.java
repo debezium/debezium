@@ -297,6 +297,14 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
         sourceInfo.setSsn(ssn);
     }
 
+    public String getRedoSql() {
+        return sourceInfo.getRedoSql();
+    }
+
+    public void setRedoSql(String redoSql) {
+        sourceInfo.setRedoSql(redoSql);
+    }
+
     @Override
     public boolean isSnapshotRunning() {
         return sourceInfo.isSnapshot() && !snapshotCompleted;
