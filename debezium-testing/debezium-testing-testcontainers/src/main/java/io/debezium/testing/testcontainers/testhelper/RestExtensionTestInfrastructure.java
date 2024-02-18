@@ -79,6 +79,7 @@ public class RestExtensionTestInfrastructure {
             .memberCount(1)
             .network(NETWORK)
             .imageName(DockerImageName.parse("mongo:5.0"))
+            .startupTimeout(Duration.ofSeconds(CI_CONTAINER_STARTUP_TIME))
             .build();
 
     private static final MSSQLServerContainer<?> SQL_SERVER_CONTAINER = new MSSQLServerContainer<>(DockerImageName.parse("mcr.microsoft.com/mssql/server:2019-latest"))
@@ -148,9 +149,6 @@ public class RestExtensionTestInfrastructure {
             containers.get().forEach(container -> {
                 if (container instanceof GenericContainer<?> && !(container instanceof OracleContainer)) {
                     ((GenericContainer<?>) container).withStartupTimeout(Duration.ofSeconds(CI_CONTAINER_STARTUP_TIME));
-                }
-                if (container instanceof MongoDbReplicaSet) {
-                    ((MongoDbReplicaSet) container).withStartupTimeout(Duration.ofSeconds(CI_CONTAINER_STARTUP_TIME));
                 }
             });
         }
