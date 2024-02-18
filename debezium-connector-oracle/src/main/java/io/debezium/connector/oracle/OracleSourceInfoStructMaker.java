@@ -10,6 +10,7 @@ import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.AbstractSourceInfoStructMaker;
+import io.debezium.util.Strings;
 
 public class OracleSourceInfoStructMaker extends AbstractSourceInfoStructMaker<SourceInfo> {
 
@@ -28,7 +29,8 @@ public class OracleSourceInfoStructMaker extends AbstractSourceInfoStructMaker<S
                 .field(SourceInfo.LCR_POSITION_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(CommitScn.ROLLBACK_SEGMENT_ID_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(CommitScn.SQL_SEQUENCE_NUMBER_KEY, Schema.OPTIONAL_INT64_SCHEMA))
-                .field(SourceInfo.USERNAME_KEY, Schema.OPTIONAL_STRING_SCHEMA).build();
+                .field(SourceInfo.USERNAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
+                .field(SourceInfo.REDO_SQL, Schema.OPTIONAL_STRING_SCHEMA).build();
     }
 
     @Override
@@ -54,6 +56,9 @@ public class OracleSourceInfoStructMaker extends AbstractSourceInfoStructMaker<S
         }
         if (sourceInfo.getRsId() != null) {
             ret.put(CommitScn.ROLLBACK_SEGMENT_ID_KEY, sourceInfo.getRsId());
+        }
+        if (!Strings.isNullOrBlank(sourceInfo.getRedoSql())) {
+            ret.put(SourceInfo.REDO_SQL, sourceInfo.getRedoSql());
         }
 
         ret.put(CommitScn.SQL_SEQUENCE_NUMBER_KEY, sourceInfo.getSsn());
