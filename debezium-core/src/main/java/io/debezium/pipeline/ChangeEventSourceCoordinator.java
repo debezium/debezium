@@ -166,7 +166,7 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
         actionProviders.stream()
                 .map(provider -> provider.createActions(dispatcher, changeEventSourceCoordinator, connectorConfig))
                 .flatMap(e -> e.entrySet().stream())
-                .collect(Collectors.toMap(e -> e.getKey(), e -> e.getValue()))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue))
                 .forEach(signalProcessor::registerSignalAction);
 
         signalProcessor.start(); // this will run on a separate thread
