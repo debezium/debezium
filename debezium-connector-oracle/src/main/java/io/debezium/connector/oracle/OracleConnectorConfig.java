@@ -1991,17 +1991,21 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     }
 
     public static int validateLogMiningIncludeRedoSql(Configuration config, Field field, ValidationOutput problems) {
-        if (ConnectorAdapter.LOG_MINER.equals(ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER)))) {
-            boolean lobEnabled = config.getBoolean(LOB_ENABLED);
-            if (lobEnabled && config.getBoolean(field)) {
+        if (config.getBoolean(field)) {
+            if (ConnectorAdapter.LOG_MINER.equals(ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER)))) {
+                if (config.getBoolean(LOB_ENABLED)) {
+                    problems.accept(field, config.getBoolean(field), String.format(
+                            "The configuration property '%s' cannot be enabled when '%s' is set to true.",
+                            field.name(), LOB_ENABLED.name()));
+                    return 1;
+                }
+            }
+            else {
                 problems.accept(field, config.getBoolean(field), String.format(
-                        "The configuration property '%s' cannot be enabled when '%s' is set to true.",
-                        field.name(), LOB_ENABLED.name()));
+                        "The configuration property '%s' requires '%s' set to '%s' and without '%s' enabled.",
+                        field.name(), CONNECTOR_ADAPTER.name(), ConnectorAdapter.LOG_MINER.getValue(), LOB_ENABLED.name()));
                 return 1;
             }
-        }
-        else {
-            LOGGER.warn("The configuration property '{}' only applies to LogMiner and will be ignored.", field.name());
         }
         return 0;
     }
