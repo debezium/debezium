@@ -9,7 +9,6 @@ import static io.debezium.testing.testcontainers.MongoDbReplicaSet.replicaSet;
 
 import java.util.ArrayList;
 
-import io.debezium.junit.Flaky;
 import org.assertj.core.api.Assertions;
 import org.bson.Document;
 import org.junit.jupiter.api.AfterAll;

@@ -134,6 +134,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
                         + "available on the server. Reconfigure the connector to use a snapshot when needed if you want to recover. " +
                         "If not the connector will streaming from the last available position in the log");
             }
+
             if (schema.isHistorized()) {
                 ((HistorizedDatabaseSchema) schema).recover(partition, offset);
             }

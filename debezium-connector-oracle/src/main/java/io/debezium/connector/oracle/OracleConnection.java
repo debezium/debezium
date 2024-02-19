@@ -417,8 +417,8 @@ public class OracleConnection extends JdbcConnection {
 
     public boolean validateLogPosition(OffsetContext offset, CommonConnectorConfig config) {
 
-        final Duration archiveLogRetention = ((OracleConnectorConfig) config).getLogMiningArchiveLogRetention(); // TODO generify this a generic properties valid for the different Oracle flavors
-        final String archiveDestinationName = ((OracleConnectorConfig) config).getLogMiningArchiveDestinationName();
+        final Duration archiveLogRetention = ((OracleConnectorConfig) config).getArchiveLogRetention();
+        final String archiveDestinationName = ((OracleConnectorConfig) config).getArchiveLogDestinationName();
         final Scn storedOffset = ((OracleConnectorConfig) config).getAdapter().getOffsetScn((OracleOffsetContext) offset);
 
         try {
