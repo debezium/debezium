@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true' }, { release: ea, args: '' } ]
+        feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true', extra: '' }, { release: ea, args: '', extra: '-Dnet.bytebuddy.experimental=true' } ]
       fail-fast: false
     name: SQL Server - Java ${{ matrix.feature.release }}
     steps:
@@ -27,12 +27,12 @@ jobs:
           website: jdk.java.net
           release: ${{ matrix.feature.release }}
       - name: Maven Build
-        run: ./mvnw clean install -B -pl debezium-bom,debezium-connector-sqlserver -am -Passembly ${{ matrix.feature.args }} -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        run: ./mvnw clean install -B -pl debezium-bom,debezium-connector-sqlserver -am -Passembly ${{ matrix.feature.args }} -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120 ${{ matrix.feature.extra }}
   mysql:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true' }, { release: ea, args: '' } ]
+        feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true', extra: '' }, { release: ea, args: '', extra: '-Dnet.bytebuddy.experimental=true' } ]
       fail-fast: false
     name: MySQL - Java ${{ matrix.feature.release }}
     steps:
@@ -45,12 +45,12 @@ jobs:
           website: jdk.java.net
           release: ${{ matrix.feature.release }}
       - name: Maven Build
-        run: ./mvnw clean install -B -pl debezium-bom,debezium-connector-mysql -am -Passembly ${{ matrix.feature.args }} -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        run: ./mvnw clean install -B -pl debezium-bom,debezium-connector-mysql -am -Passembly ${{ matrix.feature.args }} -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120 ${{ matrix.feature.extra }}
   postgres-pgoutput:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true' }, { release: ea, args: '' } ]
+        feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true', extra: '' }, { release: ea, args: '', extra: '-Dnet.bytebuddy.experimental=true' } ]
       fail-fast: false
     name: PostgreSQL Pgoutput - Java ${{ matrix.feature.release }}
     steps:
@@ -63,12 +63,12 @@ jobs:
           website: jdk.java.net
           release: ${{ matrix.feature.release }}
       - name: Maven Build
-        run: ./mvnw clean install -B -pl debezium-bom,debezium-connector-postgres -am -Passembly,pgoutput-decoder,postgres-16 ${{ matrix.feature.args }} -Ddebezium.test.records.waittime=5 -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        run: ./mvnw clean install -B -pl debezium-bom,debezium-connector-postgres -am -Passembly,pgoutput-decoder,postgres-16 ${{ matrix.feature.args }} -Ddebezium.test.records.waittime=5 -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120 ${{ matrix.feature.extra }}
   mongodb-40:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true' }, { release: ea, args: '' } ]
+        feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true', extra: '' }, { release: ea, args: '', extra: '-Dnet.bytebuddy.experimental=true' } ]
       fail-fast: false
     name: MongoDB 7.0 - Java ${{ matrix.feature.release }}
     steps:
@@ -81,12 +81,12 @@ jobs:
           website: jdk.java.net
           release: ${{ matrix.feature.release }}
       - name: Maven Build
-        run: ./mvnw clean install -B -pl debezium-bom,debezium-connector-mongodb -am -Passembly ${{ matrix.feature.args }} -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dversion.mongo.server=7.0 -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        run: ./mvnw clean install -B -pl debezium-bom,debezium-connector-mongodb -am -Passembly ${{ matrix.feature.args }} -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dversion.mongo.server=7.0 -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120 ${{ matrix.feature.extra }}
   oracle:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true' }, { release: ea, args: '' } ]
+        feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true', extra: '' }, { release: ea, args: '', extra: '-Dnet.bytebuddy.experimental=true' } ]
       fail-fast: false
     name: Oracle - Java ${{ matrix.feature.release }}
     steps:
@@ -99,12 +99,12 @@ jobs:
           website: jdk.java.net
           release: ${{ matrix.feature.release }}
       - name: Maven Build
-        run: ./mvnw clean install -B -pl debezium-bom,debezium-connector-oracle -am -DskipITs=true -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        run: ./mvnw clean install -B -pl debezium-bom,debezium-connector-oracle -am -DskipITs=true -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120 ${{ matrix.feature.extra }}
   cassandra:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true' }, { release: ea, args: '' } ]
+        feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true', extra: '' }, { release: ea, args: '', extra: '-Dnet.bytebuddy.experimental=true' } ]
       fail-fast: false
     name: Cassandra - Java ${{ matrix.feature.release }}
     steps:
@@ -123,17 +123,17 @@ jobs:
           website: jdk.java.net
           release: ${{ matrix.feature.release }}
       - name: Build Debezium Core
-        run: ./core/mvnw clean install -f core/pom.xml -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        run: ./core/mvnw clean install -f core/pom.xml -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120 ${{ matrix.feature.extra }}
       - name: Install dse dependency artifacts (for Debezium Connector Cassandra)
         working-directory: cassandra
         run: sh ./install-artifacts.sh
       - name: Build Debezium Connectors Cassandra
-        run: ./core/mvnw clean install -f cassandra/pom.xml -Passembly ${{ matrix.feature.args }} -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        run: ./core/mvnw clean install -f cassandra/pom.xml -Passembly ${{ matrix.feature.args }} -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120 ${{ matrix.feature.extra }}
   db2:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true' }, { release: ea, args: '' } ]
+        feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true', extra: '' }, { release: ea, args: '', extra: '-Dnet.bytebuddy.experimental=true' } ]
       fail-fast: false
     name: Db2 - Java ${{ matrix.feature.release }}
     steps:
@@ -152,14 +152,14 @@ jobs:
           website: jdk.java.net
           release: ${{ matrix.feature.release }}
       - name: Build Debezium Core
-        run: ./core/mvnw clean install -f core/pom.xml -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        run: ./core/mvnw clean install -f core/pom.xml -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120 ${{ matrix.feature.extra }}
       - name: Build Debezium Connector Db2
-        run: ./core/mvnw clean install -f db2/pom.xml -Passembly ${{ matrix.feature.args }} -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        run: ./core/mvnw clean install -f db2/pom.xml -Passembly ${{ matrix.feature.args }} -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120 ${{ matrix.feature.extra }}
   spanner:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true' }, { release: ea, args: '' } ]
+        feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true', extra: '' }, { release: ea, args: '', extra: '-Dnet.bytebuddy.experimental=true' } ]
       fail-fast: false
     name: Spanner - Java ${{ matrix.feature.release }}
     steps:
@@ -178,14 +178,14 @@ jobs:
           website: jdk.java.net
           release: ${{ matrix.feature.release }}
       - name: Build Debezium Core
-        run: ./core/mvnw clean install -f core/pom.xml -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        run: ./core/mvnw clean install -f core/pom.xml -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120 ${{ matrix.feature.extra }}
       - name: Build Debezium Connector Spanner
-        run: ./core/mvnw clean install -f spanner/pom.xml -Passembly ${{ matrix.feature.args }} -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        run: ./core/mvnw clean install -f spanner/pom.xml -Passembly ${{ matrix.feature.args }} -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120 ${{ matrix.feature.extra }}
   vitess:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true' }, { release: ea, args: '' } ]
+        feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true', extra: '' }, { release: ea, args: '', extra: '-Dnet.bytebuddy.experimental=true' } ]
       fail-fast: false
     name: Vitess - Java ${{ matrix.feature.release }}
     steps:
@@ -204,14 +204,14 @@ jobs:
           website: jdk.java.net
           release: ${{ matrix.feature.release }}
       - name: Build Debezium Core
-        run: ./core/mvnw clean install -f core/pom.xml -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        run: ./core/mvnw clean install -f core/pom.xml -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120 ${{ matrix.feature.extra }}
       - name: Build Debezium Connector Vitess
-        run: ./core/mvnw clean install -f vitess/pom.xml -Passembly ${{ matrix.feature.args }} -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        run: ./core/mvnw clean install -f vitess/pom.xml -Passembly ${{ matrix.feature.args }} -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120 ${{ matrix.feature.extra }}
   informix:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true' }, { release: ea, args: '' } ]
+        feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true', extra: '' }, { release: ea, args: '', extra: '-Dnet.bytebuddy.experimental=true' } ]
       fail-fast: false
     name: Informix - Java ${{ matrix.feature.release }}
     steps:
@@ -230,14 +230,14 @@ jobs:
           website: jdk.java.net
           release: ${{ matrix.feature.release }}
       - name: Build Debezium Core
-        run: ./core/mvnw clean install -f core/pom.xml -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        run: ./core/mvnw clean install -f core/pom.xml -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120 ${{ matrix.feature.extra }}
       - name: Build Debezium Connector Informix
-        run: ./core/mvnw clean install -f informix/pom.xml -Passembly,informix14 ${{ matrix.feature.args }} -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120 -Ddebezium.test.records.waittime=5 -Ddebezium.test.records.waittime.after.nulls=5
+        run: ./core/mvnw clean install -f informix/pom.xml -Passembly,informix14 ${{ matrix.feature.args }} -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120 -Ddebezium.test.records.waittime=5 -Ddebezium.test.records.waittime.after.nulls=5 ${{ matrix.feature.extra }}
   quarkus-outbox:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true' }, { release: ea, args: '' } ]
+        feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true', extra: '' }, { release: ea, args: '', extra: '-Dnet.bytebuddy.experimental=true' } ]
       fail-fast: false
     name: Quarkus Outbox Extension - Java ${{ matrix.feature.release }}
     steps:
@@ -250,12 +250,12 @@ jobs:
           website: jdk.java.net
           release: ${{ matrix.feature.release }}
       - name: Maven Build
-        run: ./mvnw clean install -B -pl debezium-bom,:debezium-quarkus-outbox -U -am -amd -Passembly ${{ matrix.feature.args }} -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        run: ./mvnw clean install -B -pl debezium-bom,:debezium-quarkus-outbox -U -am -amd -Passembly ${{ matrix.feature.args }} -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120 ${{ matrix.feature.extra }}
   rest-extension:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true' }, { release: ea, args: '' } ]
+        feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true', extra: '' }, { release: ea, args: '', extra: '-Dnet.bytebuddy.experimental=true' } ]
       fail-fast: false
     name: Rest Extension - Java ${{ matrix.feature.release }}
     steps:
@@ -268,12 +268,12 @@ jobs:
           website: jdk.java.net
           release: ${{ matrix.feature.release }}
       - name: Maven Build
-        run: ./mvnw clean install -B -pl debezium-bom,debezium-connect-rest-extension -am -Passembly ${{ matrix.feature.args }} -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        run: ./mvnw clean install -B -pl debezium-bom,debezium-connect-rest-extension -am -Passembly ${{ matrix.feature.args }} -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120 ${{ matrix.feature.extra }}
   testing:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true' }, { release: ea, args: '' } ]
+        feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true', extra: '' }, { release: ea, args: '', extra: '-Dnet.bytebuddy.experimental=true' } ]
       fail-fast: false
     name: Testing - Java ${{ matrix.feature.release }}
     steps:
@@ -286,12 +286,12 @@ jobs:
           website: jdk.java.net
           release: ${{ matrix.feature.release }}
       - name: Maven Build
-        run: ./mvnw clean install -B -pl debezium-bom,debezium-testing -am -Passembly ${{ matrix.feature.args }} -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        run: ./mvnw clean install -B -pl debezium-bom,debezium-testing -am -Passembly ${{ matrix.feature.args }} -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120 ${{ matrix.feature.extra }}
   server:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true' }, { release: ea, args: '' } ]
+        feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true', extra: '' }, { release: ea, args: '', extra: '-Dnet.bytebuddy.experimental=true' } ]
       fail-fast: false
     name: Server - Java ${{ matrix.feature.release }}
     steps:
@@ -310,6 +310,6 @@ jobs:
           website: jdk.java.net
           release: ${{ matrix.feature.release }}
       - name: Build Debezium Core
-        run: ./core/mvnw clean install -f core/pom.xml -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        run: ./core/mvnw clean install -f core/pom.xml -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120 ${{ matrix.feature.extra }}
       - name: Build Debezium Server
-        run: ./core/mvnw clean install -fae -f server/pom.xml -Passembly ${{ matrix.feature.args }} -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120 -DskipNonCore
+        run: ./core/mvnw clean install -fae -f server/pom.xml -Passembly ${{ matrix.feature.args }} -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120 -DskipNonCore ${{ matrix.feature.extra }}
