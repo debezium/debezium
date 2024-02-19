@@ -2952,7 +2952,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     public void shouldCreateSnapshotSchemaOnlyRecoveryExceptionWithoutOffset() {
         final Path path = Testing.Files.createTestingPath("missing-history.txt").toAbsolutePath();
         Configuration config = defaultConfig()
-                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA_RECOVERY)
+                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.RECOVERY)
                 .with(FileSchemaHistory.FILE_PATH, path)
                 .build();
 
@@ -2977,7 +2977,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
             // Insert a row of data in advance
             connection.execute("INSERT INTO DBZ3986 (ID, DATA) values (3, 'asuka')");
-            builder.with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA_RECOVERY);
+            builder.with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.RECOVERY);
             config = builder.build();
 
             start(OracleConnector.class, config);

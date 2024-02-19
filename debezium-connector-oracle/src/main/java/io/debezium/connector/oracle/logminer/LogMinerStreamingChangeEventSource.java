@@ -110,9 +110,9 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
         this.errorHandler = errorHandler;
         this.streamingMetrics = streamingMetrics;
         this.jdbcConfiguration = JdbcConfiguration.adapt(jdbcConfig);
-        this.archiveLogRetention = connectorConfig.getLogMiningArchiveLogRetention();
+        this.archiveLogRetention = connectorConfig.getArchiveLogRetention();
         this.archiveLogOnlyMode = connectorConfig.isArchiveLogOnlyMode();
-        this.archiveDestinationName = connectorConfig.getLogMiningArchiveDestinationName();
+        this.archiveDestinationName = connectorConfig.getArchiveLogDestinationName();
         this.logFileQueryMaxRetries = connectorConfig.getMaximumNumberOfLogQueryRetries();
         this.initialDelay = connectorConfig.getLogMiningInitialDelay();
         this.maxDelay = connectorConfig.getLogMiningMaxDelay();
@@ -176,7 +176,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                 }
 
                 checkDatabaseAndTableState(jdbcConnection, connectorConfig.getPdbName(), schema);
-                checkArchiveLogDestination(jdbcConnection, connectorConfig.getLogMiningArchiveDestinationName());
+                checkArchiveLogDestination(jdbcConnection, connectorConfig.getArchiveLogDestinationName());
                 logOnlineRedoLogSizes(connectorConfig);
 
                 try (LogMinerEventProcessor processor = createProcessor(context, partition, offsetContext)) {
@@ -944,7 +944,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
             if (!connection.isOnlyOneArchiveLogDestinationValid()) {
                 LOGGER.warn("There are multiple valid archive log destinations. " +
                         "Please add '{}' to the connector configuration to avoid log availability problems.",
-                        OracleConnectorConfig.LOG_MINING_ARCHIVE_DESTINATION_NAME.name());
+                        OracleConnectorConfig.ARCHIVE_DESTINATION_NAME.name());
             }
         }
     }

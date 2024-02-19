@@ -169,7 +169,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
     }
 
     private boolean isSnapshotExpected(MongoDbPartition partition, MongoDbOffsetContext offsetContext) {
-        // todo: Right now we implement when needed snapshot by default. In the future we should provide the same options as other connectors.
+        // todo DBZ-7304 : Right now we implement when needed snapshot by default. In the future we should provide the same options as other connectors.
         if (!offsetContext.hasOffset()) {
             LOGGER.info("No existing offset found, starting snapshot");
             return true;
