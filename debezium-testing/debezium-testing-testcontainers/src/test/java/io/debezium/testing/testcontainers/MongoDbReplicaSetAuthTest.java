@@ -9,6 +9,7 @@ import static io.debezium.testing.testcontainers.MongoDbReplicaSet.replicaSet;
 
 import java.util.ArrayList;
 
+import io.debezium.junit.Flaky;
 import org.assertj.core.api.Assertions;
 import org.bson.Document;
 import org.junit.jupiter.api.AfterAll;
@@ -27,6 +28,7 @@ import io.debezium.testing.testcontainers.util.DockerUtils;
 /**
  * @see <a href="https://issues.redhat.com/browse/DBZ-5857">DBZ-5857</a>
  */
+@Flaky("DBZ-7507")
 public class MongoDbReplicaSetAuthTest {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbReplicaSetAuthTest.class);
