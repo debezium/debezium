@@ -72,7 +72,7 @@ public class SignalsIT extends AbstractConnectorTest {
         final LogInterceptor logInterceptor = new LogInterceptor(Log.class);
 
         String signalTable = "s1.debezium_signal";
-        String signalTableWithEscapedCharacter = "s1.\"debezium_signal\\\"";
+        String signalTableWithEscapedCharacter = "s1.\"debezium_signal\"";
 
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.execute(includingEscapedCharacter ? SETUP_TABLES_STMT.replace(signalTable, signalTableWithEscapedCharacter) : SETUP_TABLES_STMT);
