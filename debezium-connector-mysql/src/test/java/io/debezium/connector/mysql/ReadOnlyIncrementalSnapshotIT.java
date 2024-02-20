@@ -342,7 +342,6 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
                     return logInterceptor.containsMessage(tableRemoveMessage);
                 });
 
-        stopConnector();
     }
 
     @Test
