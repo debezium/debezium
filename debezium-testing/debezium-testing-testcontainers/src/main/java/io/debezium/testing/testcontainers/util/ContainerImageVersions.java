@@ -21,7 +21,8 @@ import javax.net.ssl.HttpsURLConnection;
 public class ContainerImageVersions {
 
     private static final String QUAY_IO_REGISTRY = "quay.io/";
-    private static final String BASE_URL = "https://quay.io/api/v1/repository/%s/tag/?onlyActiveTags=true";
+    private static final String QUAY_URL = "https://quay.io/api/v1/repository/%s/tag/?onlyActiveTags=true";
+    private static final String DOCKER_HUB_URL = "https://hub.docker.com/v2/repositories/%s/tags/";
 
     private static final String VERSION_PROPERTY_PREFIX = "debezium.testcontainers.version";
 
@@ -34,12 +35,20 @@ public class ContainerImageVersions {
             image = image.substring(QUAY_IO_REGISTRY.length());
         }
 
-        return getStableVersionFromProperty(image).orElse(getStableVersionFromQuay(image));
+        return getStableVersionFromProperty(image).orElse(getStableVersionFromAnyRegistry(image));
     }
 
-    public static String getStableVersionFromQuay(String image) {
+    public static String getStableVersionFromQuay(String name) {
+        return getStableVersionFromRegistry(QUAY_URL, name);
+    }
+
+    public static String getStableVersionFromDockerHub(String name) {
+        return getStableVersionFromRegistry(DOCKER_HUB_URL, name);
+    }
+
+    public static String getStableVersionFromRegistry(String baseUrl, String image) {
         try {
-            URL url = new URL(String.format(BASE_URL, image));
+            URL url = new URL(String.format(baseUrl, image));
             HttpsURLConnection httpsURLConnection = (HttpsURLConnection) url.openConnection();
             httpsURLConnection.setRequestMethod("GET");
 
@@ -80,5 +89,14 @@ public class ContainerImageVersions {
         var version = System.getProperty(VERSION_PROPERTY_PREFIX + "." + propImageName);
 
         return Optional.ofNullable(version);
+    }
+
+    private static String getStableVersionFromAnyRegistry(String name) {
+        try {
+            return getStableVersionFromQuay(name);
+        }
+        catch (Exception e) {
+            return getStableVersionFromDockerHub(name);
+        }
     }
 }
