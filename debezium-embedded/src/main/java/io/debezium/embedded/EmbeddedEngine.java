@@ -441,7 +441,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord>, Embed
                     // Create source connector task
                     final List<Map<String, String>> taskConfigs = connector.taskConfigs(1);
                     final Class<? extends Task> taskClass = connector.taskClass();
-                    task = createSourceTask(connector, taskConfigs, taskClass);
+                    task = createSourceTask(taskConfigs, taskClass);
 
                     try {
                         // start source task
@@ -594,7 +594,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord>, Embed
         connector.initialize(context);
     }
 
-    private SourceTask createSourceTask(final SourceConnector connector, final List<Map<String, String>> taskConfigs, final Class<? extends Task> taskClass)
+    private SourceTask createSourceTask(final List<Map<String, String>> taskConfigs, final Class<? extends Task> taskClass)
             throws EmbeddedEngineRuntimeException, NoSuchMethodException, InvocationTargetException {
         if (taskConfigs.isEmpty()) {
             String msg = "Unable to start connector's task class '" + taskClass.getName() + "' with no task configuration";
