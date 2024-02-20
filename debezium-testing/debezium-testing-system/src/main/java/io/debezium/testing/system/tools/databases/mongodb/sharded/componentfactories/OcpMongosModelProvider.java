@@ -11,7 +11,6 @@ import io.debezium.testing.system.tools.ConfigProperties;
 import io.debezium.testing.system.tools.databases.mongodb.sharded.OcpMongoShardedConstants;
 import io.fabric8.kubernetes.api.model.ContainerBuilder;
 import io.fabric8.kubernetes.api.model.ContainerPortBuilder;
-import io.fabric8.kubernetes.api.model.EmptyDirVolumeSource;
 import io.fabric8.kubernetes.api.model.ExecActionBuilder;
 import io.fabric8.kubernetes.api.model.IntOrString;
 import io.fabric8.kubernetes.api.model.LabelSelectorBuilder;
@@ -24,25 +23,20 @@ import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.ServiceBuilder;
 import io.fabric8.kubernetes.api.model.ServicePortBuilder;
 import io.fabric8.kubernetes.api.model.ServiceSpecBuilder;
-import io.fabric8.kubernetes.api.model.VolumeBuilder;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.api.model.apps.DeploymentBuilder;
 import io.fabric8.kubernetes.api.model.apps.DeploymentSpecBuilder;
 import io.fabric8.kubernetes.api.model.apps.DeploymentStrategyBuilder;
 
-public class OcpConfigServerModelFactory {
+public class OcpMongosModelProvider {
+    public static final String DEPLOYMENT_NAME = "mongo-mongos";
 
-    public static String getConfigServerName(int num) {
-        return OcpMongoShardedConstants.MONGO_CONFIG_DEPLOYMENT_NAME + num;
-    }
-
-    public static Deployment configServerDeployment(int num) {
-        String name = getConfigServerName(num);
+    public static Deployment mongosDeployment(String configServersRs) {
         ObjectMeta metaData = new ObjectMetaBuilder()
-                .withName(name)
+                .withName(DEPLOYMENT_NAME)
                 .withLabels(Map.of("app", "mongo",
-                        "deployment", name,
-                        "role", OcpMongoShardedConstants.MONGO_CONFIG_ROLE))
+                        "deployment", DEPLOYMENT_NAME,
+                        "role", OcpMongoShardedConstants.MONGO_MONGOS_ROLE))
                 .build();
         return new DeploymentBuilder()
                 .withKind("Deployment")
@@ -61,32 +55,25 @@ public class OcpConfigServerModelFactory {
                                         .withLabels(metaData.getLabels())
                                         .build())
                                 .withSpec(new PodSpecBuilder()
-                                        .withVolumes(new VolumeBuilder()
-                                                .withName("volume-" + name)
-                                                .withEmptyDir(new EmptyDirVolumeSource())
-                                                .build())
                                         .withContainers(new ContainerBuilder()
                                                 .withName("mongo")
                                                 .withReadinessProbe(new ProbeBuilder()
                                                         .withExec(new ExecActionBuilder()
-                                                                .withCommand("mongosh", "localhost:" + OcpMongoShardedConstants.MONGO_CONFIG_PORT)
+                                                                .withCommand("mongosh")
                                                                 .build())
                                                         .withInitialDelaySeconds(5)
                                                         .build())
                                                 .withPorts(new ContainerPortBuilder()
                                                         .withProtocol("TCP")
-                                                        .withContainerPort(OcpMongoShardedConstants.MONGO_CONFIG_PORT)
+                                                        .withContainerPort(OcpMongoShardedConstants.MONGO_MONGOS_PORT)
                                                         .build())
                                                 .withImagePullPolicy("Always")
                                                 .withTerminationMessagePolicy("File")
                                                 .withTerminationMessagePath("/dev/termination-log")
                                                 .withImage(ConfigProperties.DOCKER_IMAGE_MONGO_SHARDED)
-                                                .withCommand("mongod",
-                                                        "--configsvr",
-                                                        "--replSet",
-                                                        OcpMongoShardedConstants.MONGO_CONFIG_REPLICASET_NAME,
-                                                        "--dbpath",
-                                                        "/data/db",
+                                                .withCommand("mongos",
+                                                        "--configdb",
+                                                        configServersRs,
                                                         "--bind_ip_all")
                                                 .build())
                                         .build())
@@ -95,22 +82,21 @@ public class OcpConfigServerModelFactory {
                 .build();
     }
 
-    public static Service configServerService(int num) {
-        String name = getConfigServerName(num);
+    public static Service mongosService() {
         return new ServiceBuilder()
                 .withKind("Service")
                 .withApiVersion("v1")
                 .withMetadata(new ObjectMetaBuilder()
-                        .withName(name)
+                        .withName(DEPLOYMENT_NAME)
                         .build())
                 .withSpec(new ServiceSpecBuilder()
                         .withSelector(Map.of("app", "mongo",
-                                "deployment", name,
-                                "role", OcpMongoShardedConstants.MONGO_CONFIG_ROLE))
+                                "deployment", DEPLOYMENT_NAME,
+                                "role", OcpMongoShardedConstants.MONGO_MONGOS_ROLE))
                         .withPorts(new ServicePortBuilder()
                                 .withName("db")
-                                .withPort(OcpMongoShardedConstants.MONGO_CONFIG_PORT)
-                                .withTargetPort(new IntOrString(OcpMongoShardedConstants.MONGO_CONFIG_PORT))
+                                .withPort(OcpMongoShardedConstants.MONGO_MONGOS_PORT)
+                                .withTargetPort(new IntOrString(OcpMongoShardedConstants.MONGO_MONGOS_PORT))
                                 .build())
                         .build())
                 .build();

@@ -7,7 +7,6 @@ package io.debezium.testing.system.tools.databases.mongodb.sharded;
 
 import static io.debezium.testing.system.tools.databases.mongodb.sharded.MongoShardedUtil.createRootUserCommand;
 import static io.debezium.testing.system.tools.databases.mongodb.sharded.MongoShardedUtil.executeMongoShOnPod;
-import static io.debezium.testing.system.tools.databases.mongodb.sharded.MongoShardedUtil.getFreemarkerConfiguration;
 import static io.debezium.testing.system.tools.databases.mongodb.sharded.MongoShardedUtil.intRange;
 
 import java.io.IOException;
@@ -24,8 +23,9 @@ import org.testcontainers.lifecycle.Startable;
 
 import io.debezium.testing.system.tools.ConfigProperties;
 import io.debezium.testing.system.tools.OpenShiftUtils;
-import io.debezium.testing.system.tools.databases.mongodb.sharded.componentfactories.OcpConfigServerModelFactory;
-import io.debezium.testing.system.tools.databases.mongodb.sharded.componentfactories.OcpShardModelFactory;
+import io.debezium.testing.system.tools.databases.mongodb.sharded.componentfactories.OcpConfigServerModelProvider;
+import io.debezium.testing.system.tools.databases.mongodb.sharded.componentfactories.OcpShardModelProvider;
+import io.debezium.testing.system.tools.databases.mongodb.sharded.freemarkermodels.FreemarkerConfiguration;
 import io.debezium.testing.system.tools.databases.mongodb.sharded.freemarkermodels.InitReplicaSetModel;
 import io.fabric8.openshift.client.OpenShiftClient;
 
@@ -70,11 +70,28 @@ public class OcpMongoShardedReplicaSet implements Startable {
 
         this.members = intRange(memberCount)
                 .stream()
-                .map(i -> configServer
-                        ? new OcpShardedMongoReplica(OcpConfigServerModelFactory.configServerDeployment(i), OcpConfigServerModelFactory.configServerService(i),
-                                getConfigServerServiceName(i), ocp, project, i)
-                        : new OcpShardedMongoReplica(OcpShardModelFactory.shardDeployment(shardNum, i), OcpShardModelFactory.shardService(shardNum, i),
-                                getShardReplicaServiceName(i), ocp, project, i))
+                .map(i -> {
+                    if (configServer) {
+                        return OcpShardedMongoReplica.builder()
+                                .withDeployment(OcpConfigServerModelProvider.configServerDeployment(i))
+                                .withService(OcpConfigServerModelProvider.configServerService(i))
+                                .withServiceUrl(getConfigServerServiceName(i))
+                                .withOcp(ocp)
+                                .withProject(project)
+                                .withReplicaNum(i)
+                                .build();
+                    }
+                    else {
+                        return OcpShardedMongoReplica.builder()
+                                .withDeployment(OcpShardModelProvider.shardDeployment(shardNum, i))
+                                .withService(OcpShardModelProvider.shardService(shardNum, i))
+                                .withServiceUrl(getShardReplicaServiceName(i))
+                                .withOcp(ocp)
+                                .withProject(project)
+                                .withReplicaNum(i)
+                                .build();
+                    }
+                })
                 .collect(Collectors.toList());
     }
 
@@ -166,7 +183,7 @@ public class OcpMongoShardedReplicaSet implements Startable {
 
     private String getInitRsCommand() throws IOException, TemplateException {
         var writer = new StringWriter();
-        Template template = getFreemarkerConfiguration().getTemplate(OcpMongoShardedConstants.INIT_RS_TEMPLATE);
+        Template template = new FreemarkerConfiguration().getFreemarkerConfiguration().getTemplate(OcpMongoShardedConstants.INIT_RS_TEMPLATE);
         template.process(new InitReplicaSetModel(members, name, configServer), writer);
         return writer.toString();
     }
@@ -177,7 +194,7 @@ public class OcpMongoShardedReplicaSet implements Startable {
     }
 
     private String getConfigServerServiceName(int replicaNum) {
-        return String.format("%s.%s.svc.cluster.local:%d", OcpConfigServerModelFactory.getConfigServerName(replicaNum), ConfigProperties.OCP_PROJECT_MONGO,
+        return String.format("%s.%s.svc.cluster.local:%d", OcpConfigServerModelProvider.getConfigServerName(replicaNum), ConfigProperties.OCP_PROJECT_MONGO,
                 OcpMongoShardedConstants.MONGO_CONFIG_PORT);
     }
 

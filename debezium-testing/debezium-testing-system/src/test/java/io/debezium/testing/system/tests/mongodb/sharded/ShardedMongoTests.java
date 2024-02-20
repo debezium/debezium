@@ -26,7 +26,7 @@ import io.debezium.testing.system.tools.databases.mongodb.MongoDatabaseControlle
 import io.debezium.testing.system.tools.databases.mongodb.sharded.MongoShardedUtil;
 import io.debezium.testing.system.tools.databases.mongodb.sharded.OcpMongoShardedController;
 import io.debezium.testing.system.tools.databases.mongodb.sharded.ShardKeyRange;
-import io.debezium.testing.system.tools.databases.mongodb.sharded.componentfactories.OcpShardModelFactory;
+import io.debezium.testing.system.tools.databases.mongodb.sharded.componentfactories.OcpShardModelProvider;
 import io.debezium.testing.system.tools.kafka.ConnectorConfigBuilder;
 import io.debezium.testing.system.tools.kafka.KafkaConnectController;
 import io.debezium.testing.system.tools.kafka.KafkaController;
@@ -93,7 +93,7 @@ public abstract class ShardedMongoTests extends ConnectorTest {
 
         // add shard, restart connector, insert to that shard and verify that insert was captured by debezium
         var key = dbController.getMongo().getShardKey("inventory.customers");
-        var keyRange = new ShardKeyRange(OcpShardModelFactory.getShardReplicaSetName(3), "1100", "1105");
+        var keyRange = new ShardKeyRange(OcpShardModelProvider.getShardReplicaSetName(3), "1100", "1105");
         dbController.addShard(Map.of(key, keyRange));
         var sets = dbController.getMongo().getShardReplicaSets();
         sets.get(sets.size() - 1).executeMongosh(

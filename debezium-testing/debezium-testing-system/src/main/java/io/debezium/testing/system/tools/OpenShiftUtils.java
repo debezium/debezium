@@ -11,8 +11,6 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.awaitility.Awaitility.await;
 
 import java.io.ByteArrayOutputStream;
-import java.io.OutputStream;
-import java.io.PipedInputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -31,7 +29,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.testing.system.tools.databases.DatabaseExecListener;
-import io.debezium.testing.system.tools.databases.DatabaseInitListener;
 import io.debezium.testing.system.tools.operatorutil.OpenshiftOperatorEnum;
 import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.EnvVar;
@@ -50,9 +47,7 @@ import io.fabric8.kubernetes.api.model.networking.v1.NetworkPolicy;
 import io.fabric8.kubernetes.api.model.networking.v1.NetworkPolicyBuilder;
 import io.fabric8.kubernetes.api.model.networking.v1.NetworkPolicyPort;
 import io.fabric8.kubernetes.client.ConfigBuilder;
-import io.fabric8.kubernetes.client.dsl.ExecWatch;
 import io.fabric8.kubernetes.client.dsl.PodResource;
-import io.fabric8.kubernetes.client.dsl.TtyExecErrorChannelable;
 import io.fabric8.openshift.api.model.Route;
 import io.fabric8.openshift.api.model.RouteBuilder;
 import io.fabric8.openshift.api.model.operatorhub.v1.OperatorGroup;
@@ -346,19 +341,6 @@ public class OpenShiftUtils {
         return new DefaultOpenShiftClient(configBuilder.build());
     }
 
-    public TtyExecErrorChannelable<String, OutputStream, PipedInputStream, ExecWatch> prepareExec(Deployment deployment, String project, PrintStream commandOutput,
-                                                                                                  PrintStream errorOutput) {
-        var pods = podsForDeployment(deployment);
-        if (pods.size() > 1) {
-            throw new IllegalArgumentException("Executing command on deployment scaled to more than 1");
-        }
-        Pod pod = pods.get(0);
-        return getPodResource(pod, project)
-                .inContainer(pod.getMetadata().getLabels().get("app"))
-                .writingOutput(commandOutput)
-                .writingError(errorOutput);
-    }
-
     private PodResource<Pod> getPodResource(Pod pod, String project) {
         return client.pods().inNamespace(project).withName(pod.getMetadata().getName());
     }
@@ -370,7 +352,15 @@ public class OpenShiftUtils {
         PrintStream pse = new PrintStream(captureErr);
 
         CountDownLatch latch = new CountDownLatch(1);
-        try (var ignored = prepareExec(deployment, project, pso, pse)
+        var pods = podsForDeployment(deployment);
+        if (pods.size() > 1) {
+            throw new IllegalArgumentException("Executing command on deployment scaled to more than 1");
+        }
+        Pod pod = pods.get(0);
+        try (var ignored = getPodResource(pod, project)
+                .inContainer(pod.getMetadata().getLabels().get("app"))
+                .writingOutput(pso)
+                .writingError(pse)
                 .usingListener(new DatabaseExecListener(deployment.getMetadata().getName(), latch))
                 .exec(commands)) {
             if (debugLogs) {
@@ -402,17 +392,6 @@ public class OpenShiftUtils {
                     "stdOut='" + stdOut + '\'' +
                     ", stdErr='" + stdErr + '\'' +
                     '}';
-        }
-    }
-
-    public void executeInitCommand(Deployment deployment, String project, String... commands) throws InterruptedException {
-        CountDownLatch latch = new CountDownLatch(1);
-        String containerName = deployment.getMetadata().getLabels().get("app");
-        try (var ignored = prepareExec(deployment, project, null, null)
-                .usingListener(new DatabaseInitListener(containerName, latch))
-                .exec(commands)) {
-            LOGGER.info("Waiting until database is initialized");
-            latch.await(scaled(1), MINUTES);
         }
     }
 }
