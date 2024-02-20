@@ -77,6 +77,8 @@ public abstract class AbstractReselectProcessorTest<T extends SourceConnector> e
 
         databaseConnection().execute(getInsertWithNullValue());
 
+        enableTableForCdc();
+
         Configuration config = getConfigurationBuilder()
                 .with("snapshot.mode", "initial")
                 .with("reselector.reselect.null.values", "false")
@@ -111,6 +113,8 @@ public abstract class AbstractReselectProcessorTest<T extends SourceConnector> e
 
         databaseConnection().execute(getInsertWithValue());
 
+        enableTableForCdc();
+
         Configuration config = getConfigurationBuilder()
                 .with("snapshot.mode", "initial")
                 .with("reselector.reselect.columns.include.list", reselectColumnsList()).build();
@@ -138,6 +142,8 @@ public abstract class AbstractReselectProcessorTest<T extends SourceConnector> e
     @FixFor("DBZ-4321")
     @SuppressWarnings("resource")
     public void testNoColumnsReselectedWhenNotNullStreaming() throws Exception {
+        enableTableForCdc();
+
         LogInterceptor interceptor = new LogInterceptor(ReselectColumnsPostProcessor.class);
         interceptor.setLoggerLevel(ReselectColumnsPostProcessor.class, Level.DEBUG);
 
@@ -194,6 +200,8 @@ public abstract class AbstractReselectProcessorTest<T extends SourceConnector> e
         databaseConnection().execute(getInsertWithNullValue());
         databaseConnection().execute(String.format("UPDATE %s SET data = 'two' where id = 1", tableName()));
 
+        enableTableForCdc();
+
         Configuration config = getConfigurationBuilder()
                 .with("snapshot.mode", "initial")
                 .with("reselector.reselect.columns.include.list", reselectColumnsList())
@@ -220,6 +228,8 @@ public abstract class AbstractReselectProcessorTest<T extends SourceConnector> e
     @FixFor("DBZ-4321")
     @SuppressWarnings("resource")
     public void testColumnsReselectedWhenValueIsNullStreaming() throws Exception {
+        enableTableForCdc();
+
         Configuration config = getConfigurationBuilder()
                 .with("reselector.reselect.columns.include.list", reselectColumnsList())
                 .build();
@@ -271,6 +281,9 @@ public abstract class AbstractReselectProcessorTest<T extends SourceConnector> e
 
     protected String fieldName(String fieldName) {
         return fieldName;
+    }
+
+    protected void enableTableForCdc() throws Exception {
     }
 
 }
