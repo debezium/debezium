@@ -157,7 +157,7 @@
         <version.infinispan.protostream>4.6.2.Final</version.infinispan.protostream>
 
         <!-- RocketMQ version for RocketMQ storage and Server sink -->
-        <version.rocketmq>4.9.4</version.rocketmq>
+        <version.rocketmq>5.1.4</version.rocketmq>
 
         <!-- MySQL server image name -->
         <mysql.server.image.source>container-registry.oracle.com/mysql/community-server</mysql.server.image.source>

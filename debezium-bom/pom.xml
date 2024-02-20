@@ -479,6 +479,12 @@
                 <version>${version.rocketmq}</version>
             </dependency>
 
+            <dependency>
+                <groupId>org.apache.rocketmq</groupId>
+                <artifactId>rocketmq-remoting</artifactId>
+                <version>${version.rocketmq}</version>
+            </dependency>
+
             <!-- S3 Storage -->
             <dependency>
                 <groupId>software.amazon.awssdk</groupId>
