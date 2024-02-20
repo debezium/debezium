@@ -13,12 +13,6 @@ ifdef::community[]
 
 toc::[]
 
-[NOTE]
-====
-This connector is currently in an incubating state. In future versions, we might change the exact semantics, configuration options, and so forth, depending on the feedback that we receive.
-Please let us know if you encounter any problems.
-====
-
 [[jdbc-overview]]
 == Overview
 endif::community[]
