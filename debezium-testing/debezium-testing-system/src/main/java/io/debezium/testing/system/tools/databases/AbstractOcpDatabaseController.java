@@ -5,17 +5,12 @@
  */
 package io.debezium.testing.system.tools.databases;
 
-import java.io.ByteArrayOutputStream;
-import java.io.PrintStream;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.testing.system.tools.OpenShiftUtils;
-import io.debezium.testing.system.tools.WaitConditions;
 import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.openshift.client.OpenShiftClient;
@@ -79,22 +74,6 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
     @Override
     public int getPublicDatabasePort() {
         return getDatabasePort();
-    }
-
-    protected void executeInitCommand(Deployment deployment, String... commands) throws InterruptedException {
-        ByteArrayOutputStream captureOut = new ByteArrayOutputStream();
-        ByteArrayOutputStream captureErr = new ByteArrayOutputStream();
-        PrintStream pso = new PrintStream(captureOut);
-        PrintStream pse = new PrintStream(captureErr);
-
-        CountDownLatch latch = new CountDownLatch(1);
-        String containerName = deployment.getMetadata().getLabels().get("app");
-        try (var ignored = ocpUtils.prepareExec(deployment, project, pso, pse)
-                .usingListener(new DatabaseInitListener(containerName, latch))
-                .exec(commands)) {
-            LOGGER.info("Waiting until database is initialized");
-            latch.await(WaitConditions.scaled(1), TimeUnit.MINUTES);
-        }
     }
 
     private int getOriginalDatabasePort() {

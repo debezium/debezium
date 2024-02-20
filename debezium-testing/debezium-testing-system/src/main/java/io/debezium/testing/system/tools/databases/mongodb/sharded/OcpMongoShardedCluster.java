@@ -26,8 +26,8 @@ import org.testcontainers.lifecycle.Startable;
 
 import io.debezium.testing.system.tools.ConfigProperties;
 import io.debezium.testing.system.tools.OpenShiftUtils;
-import io.debezium.testing.system.tools.databases.mongodb.sharded.componentfactories.OcpMongosModelFactory;
-import io.debezium.testing.system.tools.databases.mongodb.sharded.componentfactories.OcpShardModelFactory;
+import io.debezium.testing.system.tools.databases.mongodb.sharded.componentfactories.OcpMongosModelProvider;
+import io.debezium.testing.system.tools.databases.mongodb.sharded.componentfactories.OcpShardModelProvider;
 import io.fabric8.openshift.client.OpenShiftClient;
 
 import freemarker.template.TemplateException;
@@ -158,7 +158,7 @@ public class OcpMongoShardedCluster implements Startable {
         LOGGER.info("Deploying shard number " + shardNum);
         OcpMongoShardedReplicaSet replicaSet = OcpMongoShardedReplicaSet.builder()
                 .withShardNum(shardNum)
-                .withName(OcpShardModelFactory.getShardReplicaSetName(shardNum))
+                .withName(OcpShardModelProvider.getShardReplicaSetName(shardNum))
                 .withConfigServer(false)
                 .withRootUserName(rootUserName)
                 .withRootPassword(rootPassword)
@@ -200,8 +200,8 @@ public class OcpMongoShardedCluster implements Startable {
     }
 
     private void deployMongos() {
-        mongosRouter = new OcpMongoShardedNode(OcpMongosModelFactory.mongosDeployment(configServerReplicaSet.getReplicaSetFullName()),
-                OcpMongosModelFactory.mongosService(), null, ocp, project);
+        mongosRouter = new OcpMongoShardedNode(OcpMongosModelProvider.mongosDeployment(configServerReplicaSet.getReplicaSetFullName()),
+                OcpMongosModelProvider.mongosService(), null, ocp, project);
         if (useInternalAuth) {
             MongoShardedUtil.addKeyFileToDeployment(mongosRouter.getDeployment());
         }

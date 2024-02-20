@@ -11,6 +11,7 @@ import io.debezium.testing.system.tools.ConfigProperties;
 import io.debezium.testing.system.tools.databases.mongodb.sharded.OcpMongoShardedConstants;
 import io.fabric8.kubernetes.api.model.ContainerBuilder;
 import io.fabric8.kubernetes.api.model.ContainerPortBuilder;
+import io.fabric8.kubernetes.api.model.EmptyDirVolumeSource;
 import io.fabric8.kubernetes.api.model.ExecActionBuilder;
 import io.fabric8.kubernetes.api.model.IntOrString;
 import io.fabric8.kubernetes.api.model.LabelSelectorBuilder;
@@ -23,22 +24,19 @@ import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.ServiceBuilder;
 import io.fabric8.kubernetes.api.model.ServicePortBuilder;
 import io.fabric8.kubernetes.api.model.ServiceSpecBuilder;
+import io.fabric8.kubernetes.api.model.TCPSocketActionBuilder;
+import io.fabric8.kubernetes.api.model.VolumeBuilder;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.api.model.apps.DeploymentBuilder;
 import io.fabric8.kubernetes.api.model.apps.DeploymentSpecBuilder;
 import io.fabric8.kubernetes.api.model.apps.DeploymentStrategyBuilder;
 
-public class OcpMongosModelFactory {
-    public static final String DEPLOYMENT_NAME = "mongo-mongos";
+public class OcpShardModelProvider {
 
-    public static Deployment mongosDeployment(String configServersRs) {
-        ObjectMeta metaData = new ObjectMetaBuilder()
-                .withName(DEPLOYMENT_NAME)
-                .withLabels(Map.of("app", "mongo",
-                        "deployment", DEPLOYMENT_NAME,
-                        "role", OcpMongoShardedConstants.MONGO_MONGOS_ROLE))
-                .build();
-        return new DeploymentBuilder()
+    public static Deployment shardDeployment(int shardNum, int replicaNum) {
+        String name = getShardNodeName(shardNum, replicaNum);
+        ObjectMeta metaData = getMetaData(shardNum, replicaNum);
+        DeploymentBuilder builder = new DeploymentBuilder()
                 .withKind("Deployment")
                 .withApiVersion("apps/v1")
                 .withMetadata(metaData)
@@ -55,51 +53,80 @@ public class OcpMongosModelFactory {
                                         .withLabels(metaData.getLabels())
                                         .build())
                                 .withSpec(new PodSpecBuilder()
+                                        .withVolumes(new VolumeBuilder()
+                                                .withName("volume-" + name)
+                                                .withEmptyDir(new EmptyDirVolumeSource())
+                                                .build())
                                         .withContainers(new ContainerBuilder()
                                                 .withName("mongo")
                                                 .withReadinessProbe(new ProbeBuilder()
                                                         .withExec(new ExecActionBuilder()
-                                                                .withCommand("mongosh")
+                                                                .withCommand("mongosh", "localhost:" + OcpMongoShardedConstants.MONGO_SHARD_PORT)
                                                                 .build())
                                                         .withInitialDelaySeconds(5)
                                                         .build())
                                                 .withPorts(new ContainerPortBuilder()
                                                         .withProtocol("TCP")
-                                                        .withContainerPort(OcpMongoShardedConstants.MONGO_MONGOS_PORT)
+                                                        .withContainerPort(OcpMongoShardedConstants.MONGO_SHARD_PORT)
                                                         .build())
                                                 .withImagePullPolicy("Always")
+                                                .withLivenessProbe(new ProbeBuilder()
+                                                        .withInitialDelaySeconds(10)
+                                                        .withTcpSocket(new TCPSocketActionBuilder()
+                                                                .withPort(new IntOrString(OcpMongoShardedConstants.MONGO_SHARD_PORT))
+                                                                .build())
+                                                        .withTimeoutSeconds(20)
+                                                        .build())
                                                 .withTerminationMessagePolicy("File")
                                                 .withTerminationMessagePath("/dev/termination-log")
                                                 .withImage(ConfigProperties.DOCKER_IMAGE_MONGO_SHARDED)
-                                                .withCommand("mongos",
-                                                        "--configdb",
-                                                        configServersRs,
+                                                .withCommand("mongod",
+                                                        "--shardsvr",
+                                                        "--replSet",
+                                                        getShardReplicaSetName(shardNum),
+                                                        "--dbpath",
+                                                        "/data/db",
                                                         "--bind_ip_all")
                                                 .build())
                                         .build())
                                 .build())
-                        .build())
-                .build();
+                        .build());
+        return builder.build();
     }
 
-    public static Service mongosService() {
+    public static Service shardService(int shardNum, int replicaNum) {
+        ObjectMeta metaData = getMetaData(shardNum, replicaNum);
         return new ServiceBuilder()
                 .withKind("Service")
                 .withApiVersion("v1")
-                .withMetadata(new ObjectMetaBuilder()
-                        .withName(DEPLOYMENT_NAME)
-                        .build())
+                .withMetadata(metaData)
                 .withSpec(new ServiceSpecBuilder()
-                        .withSelector(Map.of("app", "mongo",
-                                "deployment", DEPLOYMENT_NAME,
-                                "role", OcpMongoShardedConstants.MONGO_MONGOS_ROLE))
+                        .withSelector(metaData.getLabels())
                         .withPorts(new ServicePortBuilder()
                                 .withName("db")
-                                .withPort(OcpMongoShardedConstants.MONGO_MONGOS_PORT)
-                                .withTargetPort(new IntOrString(OcpMongoShardedConstants.MONGO_MONGOS_PORT))
+                                .withPort(OcpMongoShardedConstants.MONGO_SHARD_PORT)
+                                .withTargetPort(new IntOrString(OcpMongoShardedConstants.MONGO_SHARD_PORT))
                                 .build())
                         .build())
                 .build();
     }
 
+    public static String getShardNodeName(int shardNum, int replicaNum) {
+        return OcpMongoShardedConstants.MONGO_SHARD_DEPLOYMENT_PREFIX + shardNum + "r" + replicaNum;
+    }
+
+    public static String getShardReplicaSetName(int shardNum) {
+        return OcpMongoShardedConstants.MONGO_SHARD_DEPLOYMENT_PREFIX + shardNum + "rs";
+    }
+
+    private static ObjectMeta getMetaData(int shardNum, int replicaNum) {
+        String name = getShardNodeName(shardNum, replicaNum);
+        return new ObjectMetaBuilder()
+                .withName(name)
+                .withLabels(Map.of("app", "mongo",
+                        "deployment", name,
+                        "shard", String.valueOf(shardNum),
+                        "role", OcpMongoShardedConstants.MONGO_SHARD_ROLE))
+                .build();
+    }
 }

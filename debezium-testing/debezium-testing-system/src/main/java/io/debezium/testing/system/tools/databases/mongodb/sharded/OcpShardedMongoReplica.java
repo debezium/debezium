@@ -9,12 +9,14 @@ import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.openshift.client.OpenShiftClient;
 
+import lombok.Builder;
 import lombok.Getter;
 
 @Getter
 public class OcpShardedMongoReplica extends OcpMongoShardedNode {
     private final int replicaNum;
 
+    @Builder(setterPrefix = "with")
     public OcpShardedMongoReplica(Deployment deployment, Service service, String serviceUrl, OpenShiftClient ocp, String project, int replicaNum) {
         super(deployment, service, serviceUrl, ocp, project);
         this.replicaNum = replicaNum;

@@ -54,6 +54,7 @@ public class OcpSqlServerController extends OcpSqlDatabaseController {
         ocp.pods().inNamespace(project).withName(pod.getMetadata().getName())
                 .file(DB_INIT_SCRIPT_PATH_CONTAINER)
                 .upload(initScript);
-        executeInitCommand(deployment, "/opt/mssql-tools/bin/sqlcmd", "-U", "sa", "-P", DATABASE_SQLSERVER_SA_PASSWORD, "-i", DB_INIT_SCRIPT_PATH_CONTAINER);
+        ocpUtils.executeCommand(deployment, project, true, "/opt/mssql-tools/bin/sqlcmd", "-U", "sa", "-P", DATABASE_SQLSERVER_SA_PASSWORD, "-i",
+                DB_INIT_SCRIPT_PATH_CONTAINER);
     }
 }
