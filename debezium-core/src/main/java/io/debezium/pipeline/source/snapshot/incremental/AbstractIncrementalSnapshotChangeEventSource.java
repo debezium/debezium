@@ -388,7 +388,12 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                                 context.maximumKey().orElse(new Object[0]));
                     }
                 }
+
                 if (createDataEventsForTable(partition)) {
+
+                    if (!context.snapshotRunning()) { // A stop signal has been processed and window cleared.
+                        return;
+                    }
 
                     if (window.isEmpty()) {
                         LOGGER.info("No data returned by the query, incremental snapshotting of table '{}' finished",
