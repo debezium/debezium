@@ -20,6 +20,9 @@ import javax.net.ssl.HttpsURLConnection;
 
 public class ContainerImageVersions {
 
+    public static final String DEFAULT_VERSION_REGEX_PATTERN = "\\d.\\d.\\d.Final";
+    public static final String NUMBERS_ONLY_VERSION_REGEX_PATTERN = "\\d\\.\\d\\.\\d";
+
     private static final String QUAY_IO_REGISTRY = "quay.io/";
     private static final String QUAY_URL = "https://quay.io/api/v1/repository/%s/tag/?onlyActiveTags=true";
     private static final String DOCKER_HUB_URL = "https://hub.docker.com/v2/repositories/%s/tags/";
@@ -31,22 +34,26 @@ public class ContainerImageVersions {
     }
 
     public static String getStableVersion(String image) {
+        return getStableVersion(image, DEFAULT_VERSION_REGEX_PATTERN);
+    }
+
+    public static String getStableVersion(String image, String pattern) {
         if (image.startsWith(QUAY_IO_REGISTRY)) {
             image = image.substring(QUAY_IO_REGISTRY.length());
         }
 
-        return getStableVersionFromProperty(image).orElse(getStableVersionFromAnyRegistry(image));
+        return getStableVersionFromProperty(image).orElse(getStableVersionFromAnyRegistry(image, pattern));
     }
 
-    public static String getStableVersionFromQuay(String name) {
-        return getStableVersionFromRegistry(QUAY_URL, name);
+    public static String getStableVersionFromQuay(String name, String pattern) {
+        return getStableVersionFromRegistry(QUAY_URL, name, pattern);
     }
 
-    public static String getStableVersionFromDockerHub(String name) {
-        return getStableVersionFromRegistry(DOCKER_HUB_URL, name);
+    public static String getStableVersionFromDockerHub(String name, String pattern) {
+        return getStableVersionFromRegistry(DOCKER_HUB_URL, name, pattern);
     }
 
-    public static String getStableVersionFromRegistry(String baseUrl, String image) {
+    public static String getStableVersionFromRegistry(String baseUrl, String image, String versionRegexPattern) {
         try {
             URL url = new URL(String.format(baseUrl, image));
             HttpsURLConnection httpsURLConnection = (HttpsURLConnection) url.openConnection();
@@ -63,7 +70,7 @@ public class ContainerImageVersions {
                     response.append(content);
                 }
 
-                Pattern pattern = Pattern.compile("\\d.\\d.\\d.Final");
+                Pattern pattern = Pattern.compile(versionRegexPattern);
                 Matcher matcher = pattern.matcher(response);
 
                 List<String> stableVersionList = new ArrayList<>();
@@ -91,12 +98,12 @@ public class ContainerImageVersions {
         return Optional.ofNullable(version);
     }
 
-    private static String getStableVersionFromAnyRegistry(String name) {
+    private static String getStableVersionFromAnyRegistry(String name, String pattern) {
         try {
-            return getStableVersionFromQuay(name);
+            return getStableVersionFromQuay(name, pattern);
         }
         catch (Exception e) {
-            return getStableVersionFromDockerHub(name);
+            return getStableVersionFromDockerHub(name, pattern);
         }
     }
 }
