@@ -14,6 +14,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -247,23 +248,33 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         consumer = testConsumer(expectedRecordsCount, "s1", "s2");
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
 
-        AtomicInteger counter = new AtomicInteger(0);
-        boolean checkOrder = checkRecordOrder();
+        // As tables are streamed one per thread, we can safely group these by topic and then assert
+        // based on the grouping from this map.
+        final Map<String, List<SourceRecord>> tableRecordsMap = new HashMap<>();
+        final List<SourceRecord> allRecordsOrdered = new ArrayList<>();
         consumer.process(record -> {
-            int counterVal = counter.getAndIncrement();
-            if (checkOrder) {
-                int expectedPk = (counterVal % 3) + 1; // each table has 3 entries keyed 1-3
-                VerifyRecord.isValidRead(record, PK_FIELD, expectedPk);
-            }
-            else {
-                VerifyRecord.isValidRead(record);
-            }
-            SnapshotRecord expectedType = (counterVal % 3) == 0 ? SnapshotRecord.FIRST_IN_DATA_COLLECTION
-                    : (counterVal % 3) == 1 ? SnapshotRecord.TRUE
-                            : (counterVal == expectedRecordsCount - 1) ? SnapshotRecord.LAST : SnapshotRecord.LAST_IN_DATA_COLLECTION;
-            assertRecordOffsetAndSnapshotSource(record, expectedType);
+            tableRecordsMap.computeIfAbsent(record.topic(), k -> new ArrayList<>()).add(record);
+            allRecordsOrdered.add(record);
             assertSourceInfo(record);
         });
+        assertThat(allRecordsOrdered).hasSize(expectedRecordsCount);
+        assertThat(tableRecordsMap).hasSize(2);
+
+        for (String topicName : tableRecordsMap.keySet()) {
+            List<SourceRecord> tableRecords = tableRecordsMap.get(topicName);
+            assertThat(tableRecords).hasSize(3);
+            for (int i = 0; i < tableRecords.size(); i++) {
+                VerifyRecord.isValidRead(tableRecords.get(i), PK_FIELD, i + 1);
+            }
+            assertRecordOffsetAndSnapshotSource(tableRecords.get(0), SnapshotRecord.FIRST_IN_DATA_COLLECTION);
+            assertRecordOffsetAndSnapshotSource(tableRecords.get(1), SnapshotRecord.TRUE);
+            if (allRecordsOrdered.get(5).topic().equals(topicName)) {
+                assertRecordOffsetAndSnapshotSource(tableRecords.get(2), SnapshotRecord.LAST);
+            }
+            else {
+                assertRecordOffsetAndSnapshotSource(tableRecords.get(2), SnapshotRecord.LAST_IN_DATA_COLLECTION);
+            }
+        }
         consumer.clear();
 
         // now insert two more records and check that we only get those back from the stream
@@ -1279,10 +1290,6 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
                 .build());
         assertConnectorIsRunning();
-    }
-
-    protected boolean checkRecordOrder() {
-        return true;
     }
 
     protected void alterConfig(Builder config) {
