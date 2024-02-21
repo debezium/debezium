@@ -72,7 +72,7 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
             LOGGER.trace("Emitting open window for chunk = '{}'", context.currentChunkId());
             x.setString(1, context.currentChunkId() + "-open");
             x.setString(2, OpenIncrementalSnapshotWindow.NAME);
-            x.setString(3, signalMetadata.signalMetadataString(SignalMetadata.SignalType.OPEN));
+            x.setString(3, signalMetadata.openWindowSignalMetadataString());
         });
         jdbcConnection.commit();
     }

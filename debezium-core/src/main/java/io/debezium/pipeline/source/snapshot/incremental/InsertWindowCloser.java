@@ -37,7 +37,7 @@ public class InsertWindowCloser implements WatermarkWindowCloser {
             LOGGER.trace("Emitting close window for chunk = '{}'", chunkId);
             x.setString(1, chunkId + "-close");
             x.setString(2, CloseIncrementalSnapshotWindow.NAME);
-            x.setString(3, signalMetadata.signalMetadataString(SignalMetadata.SignalType.CLOSE));
+            x.setString(3, signalMetadata.closeWindowSignalMetadataString());
         });
 
         jdbcConnection.commit();
