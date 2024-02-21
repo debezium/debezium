@@ -218,7 +218,15 @@ The following example shows how to configure the CloudEvents converter to emit c
 "value.converter.avro.schema.registry.url": "http://my-registry/schemas/ids/1"
 ...
 ----
-<1> Specifying the `serializer.type` is optional, because `json` is the default.
+[cols="1,7",options="header",subs="+attributes"]
+.Description of fields in CloudEvents converter configuration
+|===
+|Item |Description
+
+|1
+|Specifying the `serializer.type` is optional, because `json` is the default.
+
+|===
 
 The CloudEvents converter converts Kafka record values. In the same connector configuration, you can specify `key.converter` if you want to operate on record keys.
 For example, you might specify `StringConverter`, `LongConverter`, `JsonConverter`, or `AvroConverter`.
