@@ -85,11 +85,25 @@ public interface CustomConverter<S, F extends ConvertedField> {
     void converterFor(F field, ConverterRegistration<S> registration); // <4>
 }
 ----
-<1> A function for converting data from one type to another.
-<2> Callback for registering a converter.
-<3> Registers the given schema and converter for the current field.
+.Descriptions of fields in a Java converter class that implements the `io.debezium.spi.converter.CustomConverter` interface
+[cols="1,7",options="header",subs="+attributes"]
+|===
+|Item |Description
+
+|1
+|Converts data from one type to another.
+
+|2
+|Callback for registering a converter.
+
+|3
+|Registers the given schema and converter for the current field.
 Should not be invoked more than once for the same field.
-<4> Registers the customized value and schema converter for use with a specific field.
+
+|4
+|Registers the customized value and schema converter for use with a specific field.
+
+|===
 
 [id="debezium-custom-converter-methods"]
 === Custom converter methods
@@ -182,8 +196,19 @@ These compile dependencies must be included in your project's `pom.xml`, as show
     <version>${version.kafka}</version> <2>
 </dependency>
 ----
-<1> `${version.debezium}` represents the version of the {prodname} connector.
-<2> `${version.kafka}` represents the version of Apache Kafka in your environment.
+[cols="1,7",options="header",subs="+attributes"]
+.Descriptions of compile dependency versions in `pom.xml`
+|===
+|Item |Description
+
+|1
+|`${version.debezium}` represents the version of the {prodname} connector.
+
+|2
+|`${version.kafka}` represents the version of Apache Kafka in your environment.
+
+|===
+
 
 // Type: assembly
 // Title: Using custom converters with {prodname} connectors
@@ -225,9 +250,21 @@ If the converter requires further information to customize the formats of specif
 converters: _<converterSymbolicName>_ // <1>
 _<converterSymbolicName>_.type: _<fullyQualifiedConverterClassName>_ // <2>
 ----
-<1> The `converters` property is mandatory and enumerates a comma-separated list of symbolic names of the converter instances to use with the connector.
++
+[cols="1,7a",options="header",subs="+attributes"]
+.Description of connector configuration properties for enabling a converter
+|===
+|Item |Description
+
+|1
+|The mandatory `converters` property enumerates a comma-separated list of symbolic names of the converter instances to use with the connector.
 The values listed for this property serve as prefixes in the names of other properties that you specify for the converter.
-<2> The `_<converterSymbolicName>_.type` property is mandatory, and specifies the name of the class that implements the converter.
+
+|2
+|The mandatory `_<converterSymbolicName>_.type` property specifies the name of the class that implements the converter.
+
+|===
++
 For example, for the earlier xref:example-debezium-simple-custom-converter[custom converter example], you would add the following properties to the connector configuration:
 +
 ----
