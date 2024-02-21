@@ -32,6 +32,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.UUID;
+import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
 import javax.management.InstanceNotFoundException;
@@ -43,6 +44,7 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
+import org.jetbrains.annotations.NotNull;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -82,6 +84,8 @@ import io.debezium.util.Testing;
  * @author Jiri Pechanec
  */
 public class SqlServerConnectorIT extends AbstractConnectorTest {
+
+    public static final int ON_LINE = 0;
 
     private SqlServerConnection connection;
 
@@ -2919,7 +2923,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
     @Test
     public void shouldStopRetriableRestartsAtConfiguredMaximumDuringSnapshot() throws Exception {
         shouldStopRetriableRestartsAtConfiguredMaximum(() -> {
-            connection.execute("ALTER DATABASE " + TestHelper.TEST_DATABASE_2 + " SET OFFLINE");
+            connection.execute("ALTER DATABASE " + TestHelper.TEST_DATABASE_2 + " SET OFFLINE WITH ROLLBACK IMMEDIATE");
             TestHelper.waitForDatabaseSnapshotToBeCompleted(TestHelper.TEST_DATABASE_1);
         });
     }
@@ -2967,8 +2971,27 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         finally {
             // Set the database back online, since otherwise, it will be impossible to create it again
             // https://docs.microsoft.com/en-us/sql/t-sql/statements/drop-database-transact-sql?view=sql-server-ver15#general-remarks
-            connection.execute("ALTER DATABASE " + TestHelper.TEST_DATABASE_2 + " SET ONLINE");
+            try {
+                connection.execute("ALTER DATABASE " + TestHelper.TEST_DATABASE_2 + " SET ONLINE");
+            }
+            catch (SQLException e) {
+                System.out.println("Exception while setting database online " + e.getMessage());
+            }
+
+            Awaitility.await().atMost(120, TimeUnit.SECONDS)
+                    .pollInterval(5, TimeUnit.SECONDS)
+                    .until(databaseIsOnline());
         }
+    }
+
+    @NotNull
+    private Callable<Boolean> databaseIsOnline() {
+
+        return () -> connection.queryAndMap("select state from sys.databases where name = '" + TEST_DATABASE_2 + "'", rs -> {
+            rs.next();
+            System.out.println("DB status " + rs.getInt(1));
+            return rs.getInt(1) == ON_LINE;
+        });
     }
 
     private void assertRecord(Struct record, List<SchemaAndValueField> expected) {
