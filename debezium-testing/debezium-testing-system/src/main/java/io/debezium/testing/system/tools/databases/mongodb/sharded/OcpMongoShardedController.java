@@ -18,7 +18,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.testing.system.tools.ConfigProperties;
 import io.debezium.testing.system.tools.databases.mongodb.MongoDatabaseClient;
 import io.debezium.testing.system.tools.databases.mongodb.MongoDatabaseController;
-import io.debezium.testing.system.tools.databases.mongodb.sharded.componentfactories.OcpMongosModelProvider;
+import io.debezium.testing.system.tools.databases.mongodb.sharded.componentproviders.OcpMongosModelProvider;
 import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.openshift.client.OpenShiftClient;
 

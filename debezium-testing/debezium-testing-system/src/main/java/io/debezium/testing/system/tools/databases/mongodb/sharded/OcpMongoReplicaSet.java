@@ -23,10 +23,10 @@ import org.testcontainers.lifecycle.Startable;
 
 import io.debezium.testing.system.tools.ConfigProperties;
 import io.debezium.testing.system.tools.OpenShiftUtils;
-import io.debezium.testing.system.tools.databases.mongodb.sharded.componentfactories.OcpConfigServerModelProvider;
-import io.debezium.testing.system.tools.databases.mongodb.sharded.componentfactories.OcpShardModelProvider;
-import io.debezium.testing.system.tools.databases.mongodb.sharded.freemarkermodels.FreemarkerConfiguration;
-import io.debezium.testing.system.tools.databases.mongodb.sharded.freemarkermodels.InitReplicaSetModel;
+import io.debezium.testing.system.tools.databases.mongodb.sharded.componentproviders.OcpConfigServerModelProvider;
+import io.debezium.testing.system.tools.databases.mongodb.sharded.componentproviders.OcpShardModelProvider;
+import io.debezium.testing.system.tools.databases.mongodb.sharded.freemarker.FreemarkerConfiguration;
+import io.debezium.testing.system.tools.databases.mongodb.sharded.freemarker.InitReplicaSetModel;
 import io.fabric8.openshift.client.OpenShiftClient;
 
 import freemarker.template.Template;
@@ -34,8 +34,11 @@ import freemarker.template.TemplateException;
 import lombok.Builder;
 import lombok.Getter;
 
-public class OcpMongoShardedReplicaSet implements Startable {
-    private static final Logger LOGGER = LoggerFactory.getLogger(OcpMongoShardedReplicaSet.class);
+/**
+ * Mongo replica set. When started, member number 0 is set as primary, root user is created and optionally internal member auth is enabled
+ */
+public class OcpMongoReplicaSet implements Startable {
+    private static final Logger LOGGER = LoggerFactory.getLogger(OcpMongoReplicaSet.class);
 
     @Getter
     private String name;
@@ -51,11 +54,11 @@ public class OcpMongoShardedReplicaSet implements Startable {
     private final boolean useInternalAuth;
     @Getter
     private int shardNum;
-    private final List<OcpShardedMongoReplica> members;
+    private final List<OcpMongoReplicaSetMember> members;
 
     @Builder(setterPrefix = "with")
-    public OcpMongoShardedReplicaSet(String name, boolean configServer, int memberCount, String rootUserName, String rootPassword, OpenShiftClient ocp, String project,
-                                     boolean useInternalAuth, int shardNum) {
+    public OcpMongoReplicaSet(String name, boolean configServer, int memberCount, String rootUserName, String rootPassword, OpenShiftClient ocp, String project,
+                              boolean useInternalAuth, int shardNum) {
         this.name = name;
         this.configServer = configServer;
         this.memberCount = memberCount;
@@ -72,7 +75,7 @@ public class OcpMongoShardedReplicaSet implements Startable {
                 .stream()
                 .map(i -> {
                     if (configServer) {
-                        return OcpShardedMongoReplica.builder()
+                        return OcpMongoReplicaSetMember.builder()
                                 .withDeployment(OcpConfigServerModelProvider.configServerDeployment(i))
                                 .withService(OcpConfigServerModelProvider.configServerService(i))
                                 .withServiceUrl(getConfigServerServiceName(i))
@@ -82,7 +85,7 @@ public class OcpMongoShardedReplicaSet implements Startable {
                                 .build();
                     }
                     else {
-                        return OcpShardedMongoReplica.builder()
+                        return OcpMongoReplicaSetMember.builder()
                                 .withDeployment(OcpShardModelProvider.shardDeployment(shardNum, i))
                                 .withService(OcpShardModelProvider.shardService(shardNum, i))
                                 .withServiceUrl(getShardReplicaServiceName(i))
@@ -98,7 +101,7 @@ public class OcpMongoShardedReplicaSet implements Startable {
     public String getReplicaSetFullName() {
         return name + "/" + members
                 .stream()
-                .map(OcpShardedMongoReplica::getServiceUrl)
+                .map(OcpMongoReplicaSetMember::getServiceUrl)
                 .collect(Collectors.joining(","));
     }
 
@@ -166,19 +169,25 @@ public class OcpMongoShardedReplicaSet implements Startable {
 
     @Override
     public void stop() {
-        members.parallelStream().forEach(OcpMongoShardedNode::stop);
+        members.parallelStream().forEach(OcpMongoDeploymentManager::stop);
     }
 
     public void waitForStopped() {
-        members.parallelStream().forEach(OcpMongoShardedNode::waitForStopped);
+        members.parallelStream().forEach(OcpMongoDeploymentManager::waitForStopped);
+    }
+
+    /**
+     * execute mongosh command/script on node number 0 (member 0 should always be primary)
+     * @param command
+     * @param debugLogs print command and outputs to log
+     * @return captured outputs from command execution
+     */
+    public OpenShiftUtils.CommandOutputs executeMongosh(String command, boolean debugLogs) {
+        return executeMongoShOnPod(ocpUtil, project, members.get(0).getDeployment(), getLocalhostConnectionString(), command, debugLogs);
     }
 
     private int getPort() {
         return configServer ? OcpMongoShardedConstants.MONGO_CONFIG_PORT : OcpMongoShardedConstants.MONGO_SHARD_PORT;
-    }
-
-    public OpenShiftUtils.CommandOutputs executeMongosh(String command, boolean debugLogs) {
-        return executeMongoShOnPod(ocpUtil, project, members.get(0).getDeployment(), getLocalhostConnectionString(), command, debugLogs);
     }
 
     private String getInitRsCommand() throws IOException, TemplateException {

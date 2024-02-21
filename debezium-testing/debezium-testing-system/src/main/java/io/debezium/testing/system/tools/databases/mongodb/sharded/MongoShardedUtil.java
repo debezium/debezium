@@ -12,9 +12,9 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import io.debezium.testing.system.tools.OpenShiftUtils;
-import io.debezium.testing.system.tools.databases.mongodb.sharded.componentfactories.OcpShardModelProvider;
-import io.debezium.testing.system.tools.databases.mongodb.sharded.freemarkermodels.CreateUserModel;
-import io.debezium.testing.system.tools.databases.mongodb.sharded.freemarkermodels.FreemarkerConfiguration;
+import io.debezium.testing.system.tools.databases.mongodb.sharded.componentproviders.OcpShardModelProvider;
+import io.debezium.testing.system.tools.databases.mongodb.sharded.freemarker.CreateUserModel;
+import io.debezium.testing.system.tools.databases.mongodb.sharded.freemarker.FreemarkerConfiguration;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 
 import freemarker.template.Template;
@@ -48,7 +48,7 @@ public class MongoShardedUtil {
     }
 
     public static List<MongoShardKey> getTestShardKeys() {
-        MongoShardKey customersKey = new MongoShardKey("inventory.customers", "_id", MongoShardKey.ShardingType.NORMAL);
+        MongoShardKey customersKey = new MongoShardKey("inventory.customers", "_id", MongoShardKey.ShardingType.RANGED);
         customersKey.getKeyRanges().add(new ShardKeyRange(OcpShardModelProvider.getShardReplicaSetName(1), "1000", "1003"));
         customersKey.getKeyRanges().add(new ShardKeyRange(OcpShardModelProvider.getShardReplicaSetName(2), "1003", "1004"));
 

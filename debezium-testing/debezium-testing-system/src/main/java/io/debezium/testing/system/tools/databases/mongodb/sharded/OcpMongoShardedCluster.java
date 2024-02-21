@@ -26,14 +26,17 @@ import org.testcontainers.lifecycle.Startable;
 
 import io.debezium.testing.system.tools.ConfigProperties;
 import io.debezium.testing.system.tools.OpenShiftUtils;
-import io.debezium.testing.system.tools.databases.mongodb.sharded.componentfactories.OcpMongosModelProvider;
-import io.debezium.testing.system.tools.databases.mongodb.sharded.componentfactories.OcpShardModelProvider;
+import io.debezium.testing.system.tools.databases.mongodb.sharded.componentproviders.OcpMongosModelProvider;
+import io.debezium.testing.system.tools.databases.mongodb.sharded.componentproviders.OcpShardModelProvider;
 import io.fabric8.openshift.client.OpenShiftClient;
 
 import freemarker.template.TemplateException;
 import lombok.Builder;
 import lombok.Getter;
 
+/**
+ * Mongo sharded cluster containing config server replica set, one or more shard replica sets and a mongos router
+ */
 public class OcpMongoShardedCluster implements Startable {
     private static final Logger LOGGER = LoggerFactory.getLogger(OcpMongoShardedCluster.class);
     private final int replicaCount;
@@ -48,12 +51,15 @@ public class OcpMongoShardedCluster implements Startable {
     @Getter
     private final List<MongoShardKey> shardKeys;
     @Getter
-    private final List<OcpMongoShardedReplicaSet> shardReplicaSets = Collections.synchronizedList(new LinkedList<>());
+    private final List<OcpMongoReplicaSet> shardReplicaSets = Collections.synchronizedList(new LinkedList<>());
     @Getter
-    private OcpMongoShardedReplicaSet configServerReplicaSet;
-    private OcpMongoShardedNode mongosRouter;
+    private OcpMongoReplicaSet configServerReplicaSet;
+    private OcpMongoDeploymentManager mongosRouter;
     private boolean isRunning = false;
 
+    /**
+     * Deploy all deployments and services to openshift, initialize replicaSets and sharding, create root user
+     */
     @Override
     public void start() {
         if (isRunning) {
@@ -77,16 +83,19 @@ public class OcpMongoShardedCluster implements Startable {
         isRunning = true;
     }
 
+    /**
+     * Scale all cluster deployments to zero
+     */
     @Override
     public void stop() {
-        shardReplicaSets.parallelStream().forEach(OcpMongoShardedReplicaSet::stop);
+        shardReplicaSets.parallelStream().forEach(OcpMongoReplicaSet::stop);
         configServerReplicaSet.stop();
         mongosRouter.stop();
         isRunning = false;
     }
 
     public void waitForStopped() {
-        shardReplicaSets.parallelStream().forEach(OcpMongoShardedReplicaSet::waitForStopped);
+        shardReplicaSets.parallelStream().forEach(OcpMongoReplicaSet::waitForStopped);
         configServerReplicaSet.waitForStopped();
         mongosRouter.waitForStopped();
     }
@@ -127,6 +136,9 @@ public class OcpMongoShardedCluster implements Startable {
         registerShardInMongos(rangeMap, rs);
     }
 
+    /**
+     * get connection string for mongos router
+     * */
     public String getConnectionString() {
         StringBuilder builder = new StringBuilder("mongodb://");
         if (StringUtils.isNotEmpty(rootUserName) && StringUtils.isNotEmpty(rootPassword)) {
@@ -143,6 +155,11 @@ public class OcpMongoShardedCluster implements Startable {
         return shardKeys.stream().filter(s -> s.getCollection().equals(collection)).findFirst().get();
     }
 
+    /**
+     * execute a mongosh command/script on mongos router
+     * @param command
+     * @return captured outputs of command execution
+     */
     public OpenShiftUtils.CommandOutputs executeMongoSh(String command) {
         return executeMongoShOnPod(ocpUtils, project, mongosRouter.getDeployment(), getConnectionString(), command, false);
     }
@@ -154,9 +171,9 @@ public class OcpMongoShardedCluster implements Startable {
     /**
      * deploy new shard, initialize replica set and set authentication if specified
      */
-    private OcpMongoShardedReplicaSet deployNewShard(int shardNum) {
+    private OcpMongoReplicaSet deployNewShard(int shardNum) {
         LOGGER.info("Deploying shard number " + shardNum);
-        OcpMongoShardedReplicaSet replicaSet = OcpMongoShardedReplicaSet.builder()
+        OcpMongoReplicaSet replicaSet = OcpMongoReplicaSet.builder()
                 .withShardNum(shardNum)
                 .withName(OcpShardModelProvider.getShardReplicaSetName(shardNum))
                 .withConfigServer(false)
@@ -174,7 +191,7 @@ public class OcpMongoShardedCluster implements Startable {
         return replicaSet;
     }
 
-    private void registerShardInMongos(@Nullable Map<MongoShardKey, ShardKeyRange> rangeMap, OcpMongoShardedReplicaSet rs) {
+    private void registerShardInMongos(@Nullable Map<MongoShardKey, ShardKeyRange> rangeMap, OcpMongoReplicaSet rs) {
         StringBuilder command = new StringBuilder();
         command.append(addShardAndZoneInMongosCommand(rs));
 
@@ -185,7 +202,7 @@ public class OcpMongoShardedCluster implements Startable {
     }
 
     private void deployConfigServers() {
-        OcpMongoShardedReplicaSet replicaSet = OcpMongoShardedReplicaSet.builder()
+        OcpMongoReplicaSet replicaSet = OcpMongoReplicaSet.builder()
                 .withName(OcpMongoShardedConstants.MONGO_CONFIG_REPLICASET_NAME)
                 .withConfigServer(true)
                 .withRootUserName(rootUserName)
@@ -200,7 +217,7 @@ public class OcpMongoShardedCluster implements Startable {
     }
 
     private void deployMongos() {
-        mongosRouter = new OcpMongoShardedNode(OcpMongosModelProvider.mongosDeployment(configServerReplicaSet.getReplicaSetFullName()),
+        mongosRouter = new OcpMongoDeploymentManager(OcpMongosModelProvider.mongosDeployment(configServerReplicaSet.getReplicaSetFullName()),
                 OcpMongosModelProvider.mongosService(), null, ocp, project);
         if (useInternalAuth) {
             MongoShardedUtil.addKeyFileToDeployment(mongosRouter.getDeployment());
@@ -235,7 +252,7 @@ public class OcpMongoShardedCluster implements Startable {
         return createKeyRangeCommand(range, key);
     }
 
-    private String addShardAndZoneInMongosCommand(OcpMongoShardedReplicaSet shardRs) {
+    private String addShardAndZoneInMongosCommand(OcpMongoReplicaSet shardRs) {
         return "sh.addShard(\"" + shardRs.getReplicaSetFullName() + "\");\n " +
                 "sh.addShardToZone(\"" + shardRs.getName() + "\", \"" + shardRs.getName() + "\");\n";
     }
