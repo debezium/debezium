@@ -6,7 +6,6 @@
 package io.debezium.pipeline.source.snapshot.incremental;
 
 import java.sql.SQLException;
-import java.time.Instant;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,10 +22,12 @@ public class InsertWindowCloser implements WatermarkWindowCloser {
 
     private final JdbcConnection jdbcConnection;
     private final String signalWindowStatement;
+    private final SignalMetadata signalMetadata;
 
-    public InsertWindowCloser(JdbcConnection jdbcConnection, String signalTable, String instant) {
+    public InsertWindowCloser(JdbcConnection jdbcConnection, String signalTable, SignalMetadata signalMetadata) {
         this.jdbcConnection = jdbcConnection;
-        signalWindowStatement = String.format(INSERT_STATEMENT, signalTable + "," + instant);
+        signalWindowStatement = String.format(INSERT_STATEMENT, signalTable);
+        this.signalMetadata = signalMetadata;
     }
 
     @Override
@@ -36,7 +37,7 @@ public class InsertWindowCloser implements WatermarkWindowCloser {
             LOGGER.trace("Emitting close window for chunk = '{}'", chunkId);
             x.setString(1, chunkId + "-close");
             x.setString(2, CloseIncrementalSnapshotWindow.NAME);
-            x.setString(3, Instant.now().toString());
+            x.setString(3, signalMetadata.signalMetadataString(SignalMetadata.SignalType.CLOSE));
         });
 
         jdbcConnection.commit();

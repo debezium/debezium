@@ -36,6 +36,7 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
     private static final Logger LOGGER = LoggerFactory.getLogger(SignalBasedIncrementalSnapshotChangeEventSource.class);
     private final String signalWindowStatement;
     private final String signalWindowDeleteStatement;
+    private SignalMetadata signalMetadata;
 
     public SignalBasedIncrementalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig config,
                                                            JdbcConnection jdbcConnection,
@@ -45,7 +46,7 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
                                                            DataChangeEventListener<P> dataChangeEventListener,
                                                            NotificationService<P, ? extends OffsetContext> notificationService) {
         super(config, jdbcConnection, dispatcher, databaseSchema, clock, progressListener, dataChangeEventListener, notificationService);
-        signalWindowStatement = "INSERT INTO " + getSignalTableName(config.getSignalingDataCollectionId()) + "," + Instant.now()
+        signalWindowStatement = "INSERT INTO " + getSignalTableName(config.getSignalingDataCollectionId())
                 + " VALUES (?, ?, ?)";
         signalWindowDeleteStatement = "DELETE FROM " + getSignalTableName(config.getSignalingDataCollectionId()) + " WHERE id = ?";
     }
@@ -66,11 +67,12 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
 
     @Override
     protected void emitWindowOpen() throws SQLException {
+        signalMetadata = new SignalMetadata(Instant.now().toString(), null);
         jdbcConnection.prepareUpdate(signalWindowStatement, x -> {
             LOGGER.trace("Emitting open window for chunk = '{}'", context.currentChunkId());
             x.setString(1, context.currentChunkId() + "-open");
             x.setString(2, OpenIncrementalSnapshotWindow.NAME);
-            x.setString(3, Instant.now().toString());
+            x.setString(3, signalMetadata.signalMetadataString(SignalMetadata.SignalType.OPEN));
         });
         jdbcConnection.commit();
     }
@@ -91,6 +93,6 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
             return new DeleteWindowCloser<>(jdbcConnection, signalTable, this);
         }
 
-        return new InsertWindowCloser(jdbcConnection, signalTable, Instant.now().toString());
+        return new InsertWindowCloser(jdbcConnection, signalTable, new SignalMetadata(signalMetadata.getOpenWindowTimestamp(), Instant.now().toString()));
     }
 }
