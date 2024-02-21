@@ -231,7 +231,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
     }
 
     public SnapshotReceiver<P> getSnapshotChangeEventReceiver() {
-        return new BufferingSnapshotChangeRecordReceiver();
+        return new BufferingSnapshotChangeRecordReceiver(connectorConfig.getSnapshotMaxThreads() > 1);
     }
 
     public SnapshotReceiver<P> getIncrementalSnapshotChangeEventReceiver(DataChangeEventListener<P> dataListener) {
@@ -512,6 +512,11 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
     private final class BufferingSnapshotChangeRecordReceiver implements SnapshotReceiver<P> {
 
         private AtomicReference<BufferedDataChangeEvent> bufferedEventRef = new AtomicReference<>(BufferedDataChangeEvent.NULL);
+        private final boolean threaded;
+
+        BufferingSnapshotChangeRecordReceiver(boolean threaded) {
+            this.threaded = threaded;
+        }
 
         @Override
         public void changeRecord(P partition,
@@ -543,7 +548,17 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
             nextBufferedEvent.offsetContext = offsetContext;
             nextBufferedEvent.dataChangeEvent = new DataChangeEvent(record);
 
-            queue.enqueue(bufferedEventRef.getAndSet(nextBufferedEvent).dataChangeEvent);
+            if (threaded) {
+                // This entire step needs to happen atomically when using buffering with multiple threads.
+                // This guarantees that the getAndSet and the enqueue do not cause a dispatch of out-of-order
+                // events within a single thread.
+                synchronized (queue) {
+                    queue.enqueue(bufferedEventRef.getAndSet(nextBufferedEvent).dataChangeEvent);
+                }
+            }
+            else {
+                queue.enqueue(bufferedEventRef.getAndSet(nextBufferedEvent).dataChangeEvent);
+            }
         }
 
         @Override
