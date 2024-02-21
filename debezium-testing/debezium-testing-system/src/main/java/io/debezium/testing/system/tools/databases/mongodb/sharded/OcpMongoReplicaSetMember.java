@@ -12,12 +12,15 @@ import io.fabric8.openshift.client.OpenShiftClient;
 import lombok.Builder;
 import lombok.Getter;
 
+/**
+ * Mongo deployment, that is part of a replica set
+ */
 @Getter
-public class OcpShardedMongoReplica extends OcpMongoShardedNode {
+public class OcpMongoReplicaSetMember extends OcpMongoDeploymentManager {
     private final int replicaNum;
 
     @Builder(setterPrefix = "with")
-    public OcpShardedMongoReplica(Deployment deployment, Service service, String serviceUrl, OpenShiftClient ocp, String project, int replicaNum) {
+    public OcpMongoReplicaSetMember(Deployment deployment, Service service, String serviceUrl, OpenShiftClient ocp, String project, int replicaNum) {
         super(deployment, service, serviceUrl, ocp, project);
         this.replicaNum = replicaNum;
     }

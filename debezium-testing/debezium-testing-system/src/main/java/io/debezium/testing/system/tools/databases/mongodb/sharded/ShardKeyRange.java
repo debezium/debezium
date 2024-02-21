@@ -7,6 +7,9 @@ package io.debezium.testing.system.tools.databases.mongodb.sharded;
 
 import lombok.Getter;
 
+/**
+ * Range used for ranged collection sharding
+ */
 @Getter
 public class ShardKeyRange {
     private final String shardName;

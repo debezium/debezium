@@ -14,8 +14,11 @@ import io.fabric8.openshift.client.OpenShiftClient;
 
 import lombok.Getter;
 
+/**
+ * Abstraction for a single mongo machine that you can start, stop and connect to using hostname
+ */
 @Getter
-public class OcpMongoShardedNode implements Startable {
+public class OcpMongoDeploymentManager implements Startable {
     private Deployment deployment;
     private Service service;
     private final String serviceUrl;
@@ -23,7 +26,7 @@ public class OcpMongoShardedNode implements Startable {
     private final OpenShiftUtils ocpUtils;
     private final String project;
 
-    public OcpMongoShardedNode(Deployment deployment, Service service, String serviceUrl, OpenShiftClient ocp, String project) {
+    public OcpMongoDeploymentManager(Deployment deployment, Service service, String serviceUrl, OpenShiftClient ocp, String project) {
         this.deployment = deployment;
         this.service = service;
         this.serviceUrl = serviceUrl;

@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.testing.system.tools.databases.mongodb.sharded.componentfactories;
+package io.debezium.testing.system.tools.databases.mongodb.sharded.componentproviders;
 
 import java.util.Map;
 
@@ -24,27 +24,19 @@ import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.ServiceBuilder;
 import io.fabric8.kubernetes.api.model.ServicePortBuilder;
 import io.fabric8.kubernetes.api.model.ServiceSpecBuilder;
+import io.fabric8.kubernetes.api.model.TCPSocketActionBuilder;
 import io.fabric8.kubernetes.api.model.VolumeBuilder;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.api.model.apps.DeploymentBuilder;
 import io.fabric8.kubernetes.api.model.apps.DeploymentSpecBuilder;
 import io.fabric8.kubernetes.api.model.apps.DeploymentStrategyBuilder;
 
-public class OcpConfigServerModelProvider {
+public class OcpShardModelProvider {
 
-    public static String getConfigServerName(int num) {
-        return OcpMongoShardedConstants.MONGO_CONFIG_DEPLOYMENT_NAME + num;
-    }
-
-    public static Deployment configServerDeployment(int num) {
-        String name = getConfigServerName(num);
-        ObjectMeta metaData = new ObjectMetaBuilder()
-                .withName(name)
-                .withLabels(Map.of("app", "mongo",
-                        "deployment", name,
-                        "role", OcpMongoShardedConstants.MONGO_CONFIG_ROLE))
-                .build();
-        return new DeploymentBuilder()
+    public static Deployment shardDeployment(int shardNum, int replicaNum) {
+        String name = getShardNodeName(shardNum, replicaNum);
+        ObjectMeta metaData = getMetaData(shardNum, replicaNum);
+        DeploymentBuilder builder = new DeploymentBuilder()
                 .withKind("Deployment")
                 .withApiVersion("apps/v1")
                 .withMetadata(metaData)
@@ -69,51 +61,72 @@ public class OcpConfigServerModelProvider {
                                                 .withName("mongo")
                                                 .withReadinessProbe(new ProbeBuilder()
                                                         .withExec(new ExecActionBuilder()
-                                                                .withCommand("mongosh", "localhost:" + OcpMongoShardedConstants.MONGO_CONFIG_PORT)
+                                                                .withCommand("mongosh", "localhost:" + OcpMongoShardedConstants.MONGO_SHARD_PORT)
                                                                 .build())
                                                         .withInitialDelaySeconds(5)
                                                         .build())
                                                 .withPorts(new ContainerPortBuilder()
                                                         .withProtocol("TCP")
-                                                        .withContainerPort(OcpMongoShardedConstants.MONGO_CONFIG_PORT)
+                                                        .withContainerPort(OcpMongoShardedConstants.MONGO_SHARD_PORT)
                                                         .build())
                                                 .withImagePullPolicy("Always")
+                                                .withLivenessProbe(new ProbeBuilder()
+                                                        .withInitialDelaySeconds(10)
+                                                        .withTcpSocket(new TCPSocketActionBuilder()
+                                                                .withPort(new IntOrString(OcpMongoShardedConstants.MONGO_SHARD_PORT))
+                                                                .build())
+                                                        .withTimeoutSeconds(20)
+                                                        .build())
                                                 .withTerminationMessagePolicy("File")
                                                 .withTerminationMessagePath("/dev/termination-log")
                                                 .withImage(ConfigProperties.DOCKER_IMAGE_MONGO_SHARDED)
                                                 .withCommand("mongod",
-                                                        "--configsvr",
+                                                        "--shardsvr",
                                                         "--replSet",
-                                                        OcpMongoShardedConstants.MONGO_CONFIG_REPLICASET_NAME,
+                                                        getShardReplicaSetName(shardNum),
                                                         "--dbpath",
                                                         "/data/db",
                                                         "--bind_ip_all")
                                                 .build())
                                         .build())
                                 .build())
-                        .build())
-                .build();
+                        .build());
+        return builder.build();
     }
 
-    public static Service configServerService(int num) {
-        String name = getConfigServerName(num);
+    public static Service shardService(int shardNum, int replicaNum) {
+        ObjectMeta metaData = getMetaData(shardNum, replicaNum);
         return new ServiceBuilder()
                 .withKind("Service")
                 .withApiVersion("v1")
-                .withMetadata(new ObjectMetaBuilder()
-                        .withName(name)
-                        .build())
+                .withMetadata(metaData)
                 .withSpec(new ServiceSpecBuilder()
-                        .withSelector(Map.of("app", "mongo",
-                                "deployment", name,
-                                "role", OcpMongoShardedConstants.MONGO_CONFIG_ROLE))
+                        .withSelector(metaData.getLabels())
                         .withPorts(new ServicePortBuilder()
                                 .withName("db")
-                                .withPort(OcpMongoShardedConstants.MONGO_CONFIG_PORT)
-                                .withTargetPort(new IntOrString(OcpMongoShardedConstants.MONGO_CONFIG_PORT))
+                                .withPort(OcpMongoShardedConstants.MONGO_SHARD_PORT)
+                                .withTargetPort(new IntOrString(OcpMongoShardedConstants.MONGO_SHARD_PORT))
                                 .build())
                         .build())
                 .build();
     }
 
+    public static String getShardNodeName(int shardNum, int replicaNum) {
+        return OcpMongoShardedConstants.MONGO_SHARD_DEPLOYMENT_PREFIX + shardNum + "r" + replicaNum;
+    }
+
+    public static String getShardReplicaSetName(int shardNum) {
+        return OcpMongoShardedConstants.MONGO_SHARD_DEPLOYMENT_PREFIX + shardNum + "rs";
+    }
+
+    private static ObjectMeta getMetaData(int shardNum, int replicaNum) {
+        String name = getShardNodeName(shardNum, replicaNum);
+        return new ObjectMetaBuilder()
+                .withName(name)
+                .withLabels(Map.of("app", "mongo",
+                        "deployment", name,
+                        "shard", String.valueOf(shardNum),
+                        "role", OcpMongoShardedConstants.MONGO_SHARD_ROLE))
+                .build();
+    }
 }

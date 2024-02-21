@@ -45,7 +45,7 @@ public class MongoShardKey {
     @Getter
     public enum ShardingType {
         HASHED("\"hashed\""),
-        NORMAL("1");
+        RANGED("1");
 
         private final String value;
 

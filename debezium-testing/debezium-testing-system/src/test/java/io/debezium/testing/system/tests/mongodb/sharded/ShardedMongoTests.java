@@ -26,7 +26,7 @@ import io.debezium.testing.system.tools.databases.mongodb.MongoDatabaseControlle
 import io.debezium.testing.system.tools.databases.mongodb.sharded.MongoShardedUtil;
 import io.debezium.testing.system.tools.databases.mongodb.sharded.OcpMongoShardedController;
 import io.debezium.testing.system.tools.databases.mongodb.sharded.ShardKeyRange;
-import io.debezium.testing.system.tools.databases.mongodb.sharded.componentfactories.OcpShardModelProvider;
+import io.debezium.testing.system.tools.databases.mongodb.sharded.componentproviders.OcpShardModelProvider;
 import io.debezium.testing.system.tools.kafka.ConnectorConfigBuilder;
 import io.debezium.testing.system.tools.kafka.KafkaConnectController;
 import io.debezium.testing.system.tools.kafka.KafkaController;
