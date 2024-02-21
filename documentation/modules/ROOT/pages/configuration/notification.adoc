@@ -82,12 +82,17 @@ The following example shows a typical notification that provides the status of a
     "type": "COMPLETED", // <1>
 }
 ----
+[cols="1,7a",options="header",subs="+attributes"]
+|===
+|Item |Description
 
-<1> The `type` field can contain one of the following values:
+|1
+|The `type` field can contain one of the following values:
 
 * `COMPLETED`
 * `ABORTED`
 * `SKIPPED`
+|===
 
 // Type: reference
 // Title: Example: {prodname} notifications that report on the progress of incremental snapshots
@@ -284,13 +289,26 @@ public interface NotificationChannel {
     void close(); // <4>
 }
 ----
-<1> The name of the channel.
+[cols="1,7a",options="header",subs="+attributes"]
+|===
+|Item |Description
+
+|1
+|The name of the channel.
 To enable {prodname} to use the channel, specify this name in the connector's `notification.enabled.channels` property.
-<2> Initializes specific configuration, variables, or connections that the channel requires.
-<3> Sends the notification on the channel.
+
+|2
+|Initializes specific configuration, variables, or connections that the channel requires.
+
+|3
+|ends the notification on the channel.
 {prodname} calls this method to report its status.
-<4> Closes all allocated resources.
+
+|4
+|Closes all allocated resources.
 {prodname} calls this method when the connector is stopped.
+
+|===
 
 //   Type: concept
 [id="debezium-core-module-dependency"]
@@ -307,7 +325,14 @@ You must include these compile dependencies in your project's `pom.xml` file, as
     <version>${version.debezium}</version> // <1>
 </dependency>
 ----
-<1> `${version.debezium}` represents the version of the {prodname} connector.
+[cols="1,7",options="header",subs="+attributes"]
+|===
+|Item |Description
+
+|1
+|`${version.debezium}` represents the version of the {prodname} connector.
+
+|===
 
 Declare your implementation in the `META-INF/services/io.debezium.pipeline.notification.channels.NotificationChannel` file.
 
