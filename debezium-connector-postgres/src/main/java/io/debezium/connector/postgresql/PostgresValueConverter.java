@@ -253,7 +253,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.INT4RANGE_ARRAY:
             case PgOid.NUM_RANGE_ARRAY:
             case PgOid.INT8RANGE_ARRAY:
-                return SchemaBuilder.array(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+                return SchemaBuilder.array(SchemaBuilder.STRING_SCHEMA);
             case PgOid.NUMERIC_ARRAY:
                 return SchemaBuilder.array(numericSchema(column).optional().build());
             case PgOid.FLOAT4_ARRAY:

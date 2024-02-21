@@ -10,6 +10,8 @@ import static io.debezium.connector.postgresql.TestHelper.defaultJdbcConfig;
 import java.nio.charset.Charset;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.After;
@@ -111,6 +113,55 @@ public class PostgresDefaultValueConverterIT {
                 NumericalColumn.defaultValueExpression().orElse(null));
 
         Assert.assertEquals(nonNumericalConvertedValue, Optional.of(" 1 "));
+    }
+
+    @Test
+    public void shouldWorkOnEmptyAndNonEmptyArrayDefaults() {
+        Column textArrayColumn = Column.editor().type("_varchar").jdbcType(Types.ARRAY).defaultValueExpression("{a,b}").create();
+        Optional<Object> textArrConvertedValue = postgresDefaultValueConverter.parseDefaultValue(
+                textArrayColumn,
+                textArrayColumn.defaultValueExpression().orElse(null));
+        Assert.assertTrue(textArrConvertedValue.isPresent());
+        Assert.assertEquals(((List<?>) textArrConvertedValue.get()).size(), 2);
+        Assert.assertEquals(textArrConvertedValue.get(), Arrays.asList("a", "b"));
+
+        textArrayColumn = Column.editor().type("_text").jdbcType(Types.ARRAY).defaultValueExpression("{a,\"b\"}").create();
+        textArrConvertedValue = postgresDefaultValueConverter.parseDefaultValue(
+                textArrayColumn,
+                textArrayColumn.defaultValueExpression().orElse(null));
+        Assert.assertTrue(textArrConvertedValue.isPresent());
+        Assert.assertEquals(((List<?>) textArrConvertedValue.get()).size(), 2);
+        Assert.assertEquals(textArrConvertedValue.get(), Arrays.asList("a", "b"));
+
+        textArrayColumn = Column.editor().type("_text").jdbcType(Types.ARRAY).defaultValueExpression("{}").create();
+        textArrConvertedValue = postgresDefaultValueConverter.parseDefaultValue(
+                textArrayColumn,
+                textArrayColumn.defaultValueExpression().orElse(null));
+        Assert.assertTrue(textArrConvertedValue.isPresent());
+        Assert.assertEquals(((List<?>) textArrConvertedValue.get()).size(), 0);
+
+        textArrayColumn = Column.editor().type("_varchar").jdbcType(Types.ARRAY).defaultValueExpression("{a,b}").create();
+        textArrConvertedValue = postgresDefaultValueConverter.parseDefaultValue(
+                textArrayColumn,
+                textArrayColumn.defaultValueExpression().orElse(null));
+        Assert.assertTrue(textArrConvertedValue.isPresent());
+        Assert.assertEquals(((List<?>) textArrConvertedValue.get()).size(), 2);
+        Assert.assertEquals(textArrConvertedValue.get(), Arrays.asList("a", "b"));
+
+        textArrayColumn = Column.editor().type("_varchar").jdbcType(Types.ARRAY).defaultValueExpression("{a,\"b\"}").create();
+        textArrConvertedValue = postgresDefaultValueConverter.parseDefaultValue(
+                textArrayColumn,
+                textArrayColumn.defaultValueExpression().orElse(null));
+        Assert.assertTrue(textArrConvertedValue.isPresent());
+        Assert.assertEquals(((List<?>) textArrConvertedValue.get()).size(), 2);
+        Assert.assertEquals(textArrConvertedValue.get(), Arrays.asList("a", "b"));
+
+        textArrayColumn = Column.editor().type("_varchar").jdbcType(Types.ARRAY).defaultValueExpression("{}").create();
+        textArrConvertedValue = postgresDefaultValueConverter.parseDefaultValue(
+                textArrayColumn,
+                textArrayColumn.defaultValueExpression().orElse(null));
+        Assert.assertTrue(textArrConvertedValue.isPresent());
+        Assert.assertEquals(((List<?>) textArrConvertedValue.get()).size(), 0);
     }
 
 }
