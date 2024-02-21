@@ -398,6 +398,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         LOGGER.debug("Waiting max. for {} ms for individual source tasks to start.", taskStartupTimeout);
         final int nTasks = tasks.size();
         Exception error = null;
+        int failedTasks = 0;
         // To avoid leaked resources, we have to ensure that all tasks that were scheduled to start are really started before we continue with the execution in
         // the main (engine) thread and change engine state. If any of the scheduled tasks has failed, catch the exception, wait for other tasks to start and then
         // re-throw the exception and let engine stop already running tasks gracefully during the engine shutdown.
@@ -415,6 +416,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
             }
             catch (Exception e) {
                 LOGGER.debug("Task #{} (out of {} tasks) failed to start. Failed with", i + 1, nTasks, e);
+                failedTasks++;
 
                 // Store only the first error.
                 if (error == null) {
@@ -429,7 +431,11 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
 
         // If at least one task failed to start, re-throw exception and abort the start of the connector.
         if (error != null) {
+            LOGGER.info("{} task(s) out of {} failed to start.", failedTasks, nTasks);
             throw error;
+        }
+        else {
+            LOGGER.info("All tasks have stated successfully.");
         }
     }
 

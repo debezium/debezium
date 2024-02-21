@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.kafka.connect.connector.Task;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -70,21 +71,34 @@ public class DebeziumAsyncEngineTestUtils {
         }
     }
 
-    public static class RandomlyFailingDuringStartConnector extends MultiTaskSimpleSourceConnector {
+    public static class AlmostRandomlyFailingDuringStartConnector extends MultiTaskSimpleSourceConnector {
 
         @Override
         public Class<? extends Task> taskClass() {
-            return RandomlyFailingDuringStartTask.class;
+            return AlmostRandomlyFailingDuringStartTask.class;
         }
     }
 
-    public static class RandomlyFailingDuringStartTask extends SimpleSourceConnector.SimpleConnectorTask {
+    public static class AlmostRandomlyFailingDuringStartTask extends SimpleSourceConnector.SimpleConnectorTask {
+
+        private static final AtomicInteger taskCounter = new AtomicInteger(0);
 
         Random rand = new Random();
 
         @Override
         public void start(Map<String, String> props) {
-            if (rand.nextBoolean()) {
+            boolean shouldFail = rand.nextBoolean();
+            int taskCount = taskCounter.incrementAndGet();
+
+            // Ensure at least one task starts and one fails, see also DBZ-7535.
+            if (taskCount == 1) {
+                shouldFail = false;
+            }
+            if (taskCount == 2) {
+                shouldFail = true;
+            }
+
+            if (shouldFail) {
                 try {
                     // Give other tasks chance to start
                     Thread.sleep(100);
