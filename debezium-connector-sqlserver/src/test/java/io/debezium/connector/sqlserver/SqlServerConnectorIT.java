@@ -2975,7 +2975,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
                 connection.execute("ALTER DATABASE " + TestHelper.TEST_DATABASE_2 + " SET ONLINE");
             }
             catch (SQLException e) {
-                System.out.println("Exception while setting database online " + e.getMessage());
+                Testing.print("Exception while setting database online " + e.getMessage());
             }
 
             Awaitility.await().atMost(120, TimeUnit.SECONDS)
@@ -2989,7 +2989,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
 
         return () -> connection.queryAndMap("select state from sys.databases where name = '" + TEST_DATABASE_2 + "'", rs -> {
             rs.next();
-            System.out.println("DB status " + rs.getInt(1));
+            Testing.print("DB status " + rs.getInt(1));
             return rs.getInt(1) == ON_LINE;
         });
     }

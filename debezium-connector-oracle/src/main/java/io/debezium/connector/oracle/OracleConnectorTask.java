@@ -103,7 +103,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
 
         taskContext = new OracleTaskContext(connectorConfig, schema);
 
-        // If the binlog position is not available it is necessary to re-execute snapshot
+        // If the redo log position is not available it is necessary to re-execute snapshot
         if (previousOffset == null) {
             LOGGER.info("No previous offset found");
         }
