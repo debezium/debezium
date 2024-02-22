@@ -431,7 +431,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
 
         // If at least one task failed to start, re-throw exception and abort the start of the connector.
         if (error != null) {
-            LOGGER.info("{} task(s) out of {} failed to start.", failedTasks, nTasks);
+            LOGGER.error("{} task(s) out of {} failed to start.", failedTasks, nTasks);
             throw error;
         }
         else {
