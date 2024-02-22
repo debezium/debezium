@@ -67,12 +67,12 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
 
     @Override
     protected void emitWindowOpen() throws SQLException {
-        signalMetadata = new SignalMetadata(Instant.now().toString(), null);
+        signalMetadata = new SignalMetadata(Instant.now(), null);
         jdbcConnection.prepareUpdate(signalWindowStatement, x -> {
             LOGGER.trace("Emitting open window for chunk = '{}'", context.currentChunkId());
             x.setString(1, context.currentChunkId() + "-open");
             x.setString(2, OpenIncrementalSnapshotWindow.NAME);
-            x.setString(3, signalMetadata.openWindowSignalMetadataString());
+            x.setString(3, signalMetadata.metadataString());
         });
         jdbcConnection.commit();
     }
@@ -93,6 +93,6 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
             return new DeleteWindowCloser<>(jdbcConnection, signalTable, this);
         }
 
-        return new InsertWindowCloser(jdbcConnection, signalTable, new SignalMetadata(signalMetadata.getOpenWindowTimestamp(), Instant.now().toString()));
+        return new InsertWindowCloser(jdbcConnection, signalTable, new SignalMetadata(signalMetadata.getOpenWindowTimestamp(), Instant.now()));
     }
 }

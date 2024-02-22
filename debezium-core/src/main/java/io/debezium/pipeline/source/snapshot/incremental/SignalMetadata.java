@@ -5,28 +5,34 @@
  */
 package io.debezium.pipeline.source.snapshot.incremental;
 
-public class SignalMetadata {
-    private final String openWindowTimestamp;
-    private final String closeWindowTimestamp;
+import java.time.Instant;
 
-    public SignalMetadata(String openWindowTimestamp, String closeWindowTimestamp) {
+/**
+ * Signal metadata for the incremental snapshotting
+ *
+ * @author Anisha Mohanty
+ */
+public class SignalMetadata {
+    private final Instant openWindowTimestamp;
+    private final Instant closeWindowTimestamp;
+
+    public SignalMetadata(Instant openWindowTimestamp, Instant closeWindowTimestamp) {
         this.openWindowTimestamp = openWindowTimestamp;
         this.closeWindowTimestamp = closeWindowTimestamp;
     }
 
-    public String openWindowSignalMetadataString() {
-        return String.format("{\"openWindowTimestamp\": \"%s\"}", openWindowTimestamp);
-    }
-
-    public String closeWindowSignalMetadataString() {
+    public String metadataString() {
+        if (closeWindowTimestamp == null) {
+            return String.format("{\"openWindowTimestamp\": \"%s\"}", openWindowTimestamp);
+        }
         return String.format("{\"openWindowTimestamp\": \"%s\", \"closeWindowTimestamp\": \"%s\"}", openWindowTimestamp, closeWindowTimestamp);
     }
 
-    public String getOpenWindowTimestamp() {
+    public Instant getOpenWindowTimestamp() {
         return openWindowTimestamp;
     }
 
-    public String getCloseWindowTimestamp() {
+    public Instant getCloseWindowTimestamp() {
         return closeWindowTimestamp;
     }
 }
