@@ -16,7 +16,7 @@ public class MySqlConnectorMetadata implements ConnectorMetadata {
 
     @Override
     public ConnectorDescriptor getConnectorDescriptor() {
-        return new ConnectorDescriptor("mysql", "Debezium MySQL Connector", MySqlConnector.class.getName(), Module.version());
+        return new ConnectorDescriptor(MySqlConnector.class.getName(), Module.version());
     }
 
     @Override
