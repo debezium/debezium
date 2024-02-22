@@ -171,23 +171,26 @@ If the connector fails, is rebalanced, or stops after Step 1 begins but before S
 * It is known that some WAL segments have been deleted and are no longer available. +
 * After a cluster failure, a new primary has been promoted. The `always` snapshot mode ensures that the connector does not miss any changes that were made after the new primary had been promoted but before the connector was restarted on the new primary.
 
-|`never`
-|The connector never performs snapshots. When a connector is configured this way, its behavior when it starts is as follows. If there is a previously stored LSN in the Kafka offsets topic, the connector continues streaming changes from that position. If no LSN has been stored, the connector starts streaming changes from the point in time when the PostgreSQL logical replication slot was created on the server. The `never` snapshot mode is useful only when you know all data of interest is still reflected in the WAL.
-
 |`initial` (default)
 |The connector performs a database snapshot when no Kafka offsets topic exists. After the database snapshot completes the Kafka offsets topic is written. If there is a previously stored LSN in the Kafka offsets topic, the connector continues streaming changes from that position.
 
 |`initial_only`
 |The connector performs a database snapshot and stops before streaming any change event records. If the connector had started but did not complete a snapshot before stopping, the connector restarts the snapshot process and stops when the snapshot completes.
 
-|`exported`
-|Deprecated, all modes are lockless.
+|`no_data`
+|The connector never performs snapshots. When a connector is configured this way, its behavior when it starts is as follows. If there is a previously stored LSN in the Kafka offsets topic, the connector continues streaming changes from that position. If no LSN has been stored, the connector starts streaming changes from the point in time when the PostgreSQL logical replication slot was created on the server. This snapshot mode is useful only when you know all data of interest is still reflected in the WAL.
+
+|[.line-through]`never`
+|Deprecated, see `no_data`
+
+|`when_needed`
+|The connector performs a snapshot upon startup whenever it deems it necessary. That is, when no offsets are available, or when a previously recorded offset specifies a log position that is not available in the server.
 
 ifdef::community[]
 |`custom`
 |The `custom` snapshot mode lets you inject your own implementation of the `io.debezium.spi.snapshot.Snapshotter` interface.
 Set the `snapshot.mode.custom.name` configuration property to the name provided by the `name()` method of your implementation, as specified on the classpath of your Kafka Connect cluster, or included in the connector JAR file, if using the `EmbeddedEngine`.
-For more information, see xref:postgresql-custom-snapshot[custom snapshotter SPI].
+For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
 endif::community[]
 
 |===
@@ -241,163 +244,9 @@ include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snaps
 include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot-kafka.adoc[leveloffset=+1]
 
 ifdef::community[]
-[[postgresql-custom-snapshot]]
+[[connector-custom-snapshot]]
 === Custom snapshotter SPI
-
-For more advanced uses, you can fine-tune control the snapshot by implementing one of the following interfaces:
-
-`io.debezium.snapshot.spi.Snapshotter`:: Controls whether the connector takes a snapshot.
-`io.debezium.snapshot.spi.SnapshotQuery`:: Controls how data is queried during a snapshot.
-`io.debezium.snapshot.spi.SnapshotLock`:: Controls whether the connector locks tables when taking a snapshot.
-
-
-[source,java,indent=0,subs="+attributes"]
-.io.debezium.snapshot.spi.Snapshotter interface. All built-in snapshot modes implement this interface.
-----
-/**
- * {@link Snapshotter} is used to determine the following details about the snapshot process:
- * <p>
- * - Whether a snapshot occurs. <br>
- * - Whether streaming continues during the snapshot. <br>
- * - Whether the snapshot includes schema (if supported). <br>
- * - Whether to snapshot data or schema following an error.
- * <p>
- * Although {prodname} provides many default snapshot modes,
- * to provide more advanced functionality, such as partial snapshots,
- * you can customize implementation of the interface.
- * For more information, see the documentation.
-
- *
- *
- * @author Mario Fiore Vitale
- */
-@Incubating
-public interface Snapshotter extends Configurable {
-
-    /**
-     * @return the name of the snapshotter.
-     *
-     *
-     */
-    String name();
-
-    /**
-     * Validate the snapshotter compatibility with the current connector configuration.
-     * Throws a {@link DebeziumException} in case it is not compatible.
-     *
-     * @param offsetContextExists is {@code true} when the connector has an offset context (i.e. restarted)
-     * @param isSnapshotInProgress is {@code true} when the connector is started, but a snapshot is already in progress
-     */
-    void validate(boolean offsetContextExists, boolean isSnapshotInProgress);
-
-    /**
-     * @return {@code true} if the snapshotter should take a snapshot
-     */
-    boolean shouldSnapshot();
-
-    /**
-     * @return {@code true} if the snapshotter should take a snapshot
-     */
-    boolean shouldSnapshotSchema();
-
-    /**
-     * @return {@code true} if the snapshotter should stream after taking a snapshot
-     */
-    boolean shouldStream();
-
-    /**
-     * @return {@code true} whether the schema can be recovered if database schema history is corrupted.
-     */
-    boolean shouldSnapshotOnSchemaError();
-
-    /**
-     * @return {@code true} whether the snapshot should be re-executed when there is a gap in data stream.
-     */
-    boolean shouldSnapshotOnDataError();
-
-    /**
-     *
-     * @return {@code true} if streaming should resume from the start of the snapshot
-     * transaction, or {@code false} if following a restart, the connector
-     * should take a snapshot, and then resume streaming from the last offset.
-     */
-    default boolean shouldStreamEventsStartingFromSnapshot() {
-        return true;
-    }
-
-    /**
-     * Lifecycle hook called after the snapshot phase is successful.
-     */
-    default void snapshotCompleted() {
-        // no operation
-    }
-
-    /**
-     * Lifecycle hook called after the snapshot phase is aborted.
-     */
-    default void snapshotAborted() {
-        // no operation
-    }
-}
-----
-
-[source,java,indent=0,subs="+attributes"]
-.io.debezium.snapshot.spi.SnapshotQuery interface. All built-in snapshot query modes implement this interface.
-----
-/**
- * {@link SnapshotQuery} is used to determine the query used during a data snapshot
- *
- * @author Mario Fiore Vitale
- */
-public interface SnapshotQuery extends Configurable, Service {
-
-    /**
-     * @return the name of the snapshot lock.
-     *
-     *
-     */
-    String name();
-
-    /**
-     * Generate a valid query string for the specified table, or an empty {@link Optional}
-     * to skip snapshotting this table (but that table will still be streamed from)
-     *
-     * @param tableId the table to generate a query for
-     * @param snapshotSelectColumns the columns to be used in the snapshot select based on the column
-     *                              include/exclude filters
-     * @return a valid query string, or none to skip snapshotting this table
-     */
-    Optional<String> snapshotQuery(String tableId, List<String> snapshotSelectColumns);
-
-}
-----
-
-[source,java,indent=0,subs="+attributes"]
-.io.debezium.snapshot.spi.SnapshotLock interface. All built-in snapshot lock modes implement this interface.
-----
-/**
- * {@link SnapshotLock} is used to determine the table lock mode used during schema snapshot
- *
- * @author Mario Fiore Vitale
- */
-public interface SnapshotLock extends Configurable, Service {
-
-    /**
-     * @return the name of the snapshot lock.
-     *
-     *
-     */
-    String name();
-
-    /**
-     * Returns a SQL statement for locking the given tables during snapshotting, if required by the specific snapshotter
-     * implementation.
-     */
-    Optional<String> tableLockingStatement(Duration lockTimeout, Set<String> tableIds);
-
-}
-----
-
+include::{partialsdir}/modules/all-connectors/custom-snapshotter-spi.adoc[leveloffset=+3]
 endif::community[]
 
 // Type: concept
@@ -3418,23 +3267,25 @@ For example, +
  isbn.schema.name: io.debezium.postgresql.type.Isbn
 
 |[[postgresql-property-snapshot-mode]]<<postgresql-property-snapshot-mode, `+snapshot.mode+`>>
-|`initial`
+|_initial_
 |Specifies the criteria for performing a snapshot when the connector starts: +
- +
-`initial` -  The connector performs a snapshot only when no offsets have been recorded for the logical server name. +
- +
-`always` - The connector performs a snapshot each time the connector starts. +
- +
-`never` - The connector never performs snapshots. When a connector is configured this way, its behavior when it starts is as follows. If there is a previously stored LSN in the Kafka offsets topic, the connector continues streaming changes from that position. If no LSN has been stored, the connector starts streaming changes from the point in time when the PostgreSQL logical replication slot was created on the server. The `never` snapshot mode is useful only when you know all data of interest is still reflected in the WAL. +
- +
-`initial_only` - The connector performs an initial snapshot and then stops, without processing any subsequent changes. +
- +
-`exported` -  deprecated +
- +
+
+`always`:: The connector performs a snapshot each time the connector starts.
+
+`initial`:: The connector performs a snapshot only when no offsets have been recorded for the logical server name.
+
+`initial_only`:: The connector performs an initial snapshot and then stops, without processing any subsequent changes.
+
+`no_data`:: The connector never performs snapshots. When a connector is configured this way, its behavior when it starts is as follows. If there is a previously stored LSN in the Kafka offsets topic, the connector continues streaming changes from that position. If no LSN has been stored, the connector starts streaming changes from the point in time when the PostgreSQL logical replication slot was created on the server. This snapshot mode is useful only when you know all data of interest is still reflected in the WAL.
+
+`never`:: Deprecated see `no_data`.
+
+`when_needed`:: The connector performs a snapshot upon startup whenever it deems it necessary. That is, when no offsets are available, or when a previously recorded offset specifies a log position that is not available in the server.
+
 ifdef::community[]
-`custom` - The connector performs a snapshot according to the implementation specified by the xref:postgresql-property-snapshot-mode-custom-name[`snapshot.mode.custom.name`] property, which defines a custom implementation of the `io.debezium.spi.snapshot.Snapshotter` interface. +
+`custom`:: The connector performs a snapshot according to the implementation specified by the xref:postgresql-property-snapshot-mode-custom-name[`snapshot.mode.custom.name`] property, which defines a custom implementation of the `io.debezium.spi.snapshot.Snapshotter` interface.
 endif::community[]
- +
+
 For more information, see the xref:#postgresql-connector-snapshot-mode-options[table of `snapshot.mode` options].
 
 ifdef::community[]
@@ -3442,7 +3293,7 @@ ifdef::community[]
 |No default
 | When `snapshot.mode` is set as `custom`, use this setting to specify the name of the custom implementation provided in the `name()` method that is defined by the 'io.debezium.spi.snapshot.Snapshotter' interface.
 The provided implementation is called after a connector restart to determine whether to perform a snapshot.
-For more information, see xref:postgresql-custom-snapshot[custom snapshotter SPI].
+For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
 endif::community[]
 
 |[[postgresql-property-snapshot-locking-mode]]<<postgresql-property-snapshot-locking-mode, `+snapshot.locking.mode+`>>
@@ -3468,7 +3319,7 @@ ifdef::community[]
 |[[postgresql-property-snapshot-locking-mode-custom-name]]<<postgresql-property-snapshot-locking-mode-custom-name, `+snapshot.locking.mode.custom.name+`>>
 |No default
 | When `snapshot.locking.mode` is set as `custom`, use this setting to specify the name of the custom implementation provided in the `name()` method that is defined by the 'io.debezium.spi.snapshot.SnapshotLock' interface.
-For more information, see xref:postgresql-custom-snapshot[custom snapshotter SPI].
+For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
 endif::community[]
 
 |[[postgresql-property-snapshot-query-mode]]<<postgresql-property-snapshot-query-mode, `+snapshot.query.mode+`>>
@@ -3488,7 +3339,7 @@ ifdef::community[]
 |[[postgresql-property-snapshot-snapshot-query-mode-custom-name]]<<postgresql-property-snapshot-query-mode-custom-name, `+snapshot.query.mode.custom.name+`>>
 |No default
 | When xref:postgresql-property-snapshot-query-mode[`snapshot.query.mode`] is set as `custom`, use this setting to specify the name of the custom implementation provided in the `name()` method that is defined by the 'io.debezium.spi.snapshot.SnapshotQuery' interface.
-For more information, see xref:postgresql-custom-snapshot[custom snapshotter SPI].
+For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
 endif::community[]
 
 |[[postgresql-property-snapshot-include-collection-list]]<<postgresql-property-snapshot-include-collection-list, `+snapshot.include.collection.list+`>>
