@@ -551,7 +551,7 @@ jobs:
 
   build_rest_extension:
     needs: [check_style, file_changes]
-    if: ${{ needs.file_changes.outputs.rest-extension-changed == 'true' }}
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.rest-extension-changed == 'true' }}
     name: "REST Extension"
     runs-on: ubuntu-latest
     steps:
@@ -583,7 +583,7 @@ jobs:
 
   build_schema_generator:
     needs: [check_style, file_changes]
-    if: ${{ needs.file_changes.outputs.schema-generator-changed == 'true' }}
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' }}
     name: "Schema Generator"
     runs-on: ubuntu-latest
     steps:
