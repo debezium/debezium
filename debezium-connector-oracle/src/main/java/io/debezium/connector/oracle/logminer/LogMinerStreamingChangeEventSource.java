@@ -397,25 +397,6 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
         return bufferType.createProcessor(context, connectorConfig, jdbcConnection, dispatcher, partition, offsetContext, schema, streamingMetrics);
     }
 
-    /**
-     * Gets the first system change number in both archive and redo logs.
-     *
-     * @param connection database connection, should not be {@code null}
-     * @return the oldest system change number
-     * @throws SQLException if a database exception occurred
-     * @throws DebeziumException if the oldest system change number cannot be found due to no logs available
-     */
-    private Optional<Scn> getFirstScnInLogs(OracleConnection connection) throws SQLException {
-
-        final String oldestFirstChangeQuery = SqlUtils.oldestFirstChangeQuery(archiveLogRetention, archiveDestinationName);
-        final String oldestScn = connection.singleOptionalValue(oldestFirstChangeQuery, rs -> rs.getString(1));
-        if (oldestScn == null) {
-            return Optional.empty();
-        }
-        LOGGER.trace("Oldest SCN in logs is '{}'", oldestScn);
-        return Optional.of(Scn.valueOf(oldestScn));
-    }
-
     private void initializeRedoLogsForMining(OracleConnection connection, boolean postEndMiningSession, Scn startScn)
             throws SQLException {
         if (!postEndMiningSession) {

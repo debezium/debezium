@@ -106,10 +106,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
         boolean offsetExists = previousOffset != null;
         boolean snapshotInProgress = false;
 
-        if (!offsetExists) {
-            LOGGER.info("No previous offset found");
-        }
-        else {
+        if (offsetExists) {
             snapshotInProgress = previousOffset.isSnapshotRunning();
         }
 
