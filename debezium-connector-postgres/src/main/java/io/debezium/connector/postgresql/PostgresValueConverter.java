@@ -625,6 +625,19 @@ public class PostgresValueConverter extends JdbcValueConverters {
         return SpecialValueDecimal.fromLogical(new SpecialValueDecimal(newDecimal), mode, column.name());
     }
 
+    @Override
+    protected BigDecimal withScaleAdjustedIfNeeded(Column column, BigDecimal data) {
+        BigDecimal value = super.withScaleAdjustedIfNeeded(column, data);
+        // Deal with PostgreSQL where a default value will have higher scale than column
+        if (column.scale().isPresent()) {
+            // Check for Default DECIMAL
+            if (column.length() != VARIABLE_SCALE_DECIMAL_LENGTH) {
+                value = value.setScale(column.scale().get());
+            }
+        }
+        return value;
+    }
+
     protected Object convertHStore(Column column, Field fieldDefn, Object data, HStoreHandlingMode mode) {
         if (mode == HStoreHandlingMode.JSON) {
             return convertHstoreToJsonString(column, fieldDefn, data);
