@@ -8,6 +8,7 @@ package io.debezium.connector.postgresql;
 import static io.debezium.connector.postgresql.TestHelper.topicName;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.util.List;
 
@@ -119,6 +120,44 @@ public class PostgresDefaultValueConverterIT extends AbstractConnectorTest {
 
         final Object defaultValue = after.schema().field("id").schema().defaultValue();
         assertThat(defaultValue).isEqualTo("00000000-0000-0000-0000-000000000000");
+    }
+
+    @Test
+    @FixFor("DBZ-7562")
+    public void shouldTruncateDefaultValuePrecisionToMatchColumnMaxPrecision() throws Exception {
+        final String ddl = "DROP SCHEMA IF EXISTS s1 CASCADE;"
+                + "CREATE SCHEMA s1;"
+                + "CREATE TABLE s1.dbz7562 (pk SERIAL, cost numeric(12,0) not null default 0.0, PRIMARY KEY(pk));"
+                + "INSERT INTO s1.dbz7562 (cost) values (2.25);"
+                + "INSERT INTO s1.dbz7562 (cost) values (3);"
+                + "INSERT INTO s1.dbz7562 (cost) values (0);";
+
+        // Test Snapshot
+        TestHelper.execute(ddl);
+
+        Configuration config = TestHelper.defaultConfig().build();
+        start(PostgresConnector.class, config);
+
+        waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
+
+        // Test Streaming
+        TestHelper.execute("INSERT INTO s1.dbz7562 (cost) values (5.5);");
+        TestHelper.execute("INSERT INTO s1.dbz7562 (cost) values (4);");
+        TestHelper.execute("INSERT INTO s1.dbz7562 (cost) values (0);");
+
+        final int expectedRecords = 6;
+        final SourceRecords records = consumeRecordsByTopic(expectedRecords);
+        final List<SourceRecord> recordsForTopic = records.recordsForTopic(topicName("s1.dbz7562"));
+        assertThat(recordsForTopic).hasSize(expectedRecords);
+
+        for (SourceRecord record : recordsForTopic) {
+            final Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+            final Schema schema = after.schema().field("cost").schema();
+            assertThat(schema.parameters()).containsEntry("connect.decimal.precision", "12");
+            assertThat(schema.parameters()).containsEntry("scale", "0");
+            assertThat(schema.defaultValue().getClass()).isEqualTo(BigDecimal.class);
+            assertThat(schema.defaultValue()).isEqualTo(new BigDecimal(0).setScale(0));
+        }
     }
 
     private void createTableAndInsertData() {
