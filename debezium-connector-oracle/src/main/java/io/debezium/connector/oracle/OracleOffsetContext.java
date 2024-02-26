@@ -334,6 +334,7 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
         }
 
         sb.append(", commit_scn=").append(sourceInfo.getCommitScn().toLoggableFormat());
+        sb.append(", lcr_position=").append(sourceInfo.getLcrPosition());
 
         sb.append("]");
 

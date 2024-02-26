@@ -155,16 +155,16 @@ public class XStreamAdapter extends AbstractStreamingAdapter<XStreamStreamingCha
         String lcrPosition = offsetContext.getLcrPosition();
         if (lcrPosition != null) {
             startPosition = LcrPosition.valueOf(lcrPosition).getRawPosition();
-            getScn(startPosition);
+            return getScn(startPosition);
         }
         return offsetContext.getScn();
     }
 
-    private static void getScn(byte[] startPosition) {
+    private static Scn getScn(byte[] startPosition) {
         try {
-            XStreamUtility.getSCNFromPosition(startPosition);
+            return new Scn(XStreamUtility.getSCNFromPosition(startPosition).bigIntegerValue());
         }
-        catch (StreamsException e) {
+        catch (StreamsException | SQLException e) {
             throw new RuntimeException(e);
         }
     }
