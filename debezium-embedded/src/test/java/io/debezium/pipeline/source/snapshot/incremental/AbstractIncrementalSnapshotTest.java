@@ -934,6 +934,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
     }
 
     @Test
+    // TODO seems slow try to speedup
     public void testNotification() throws Exception {
 
         populateTable();

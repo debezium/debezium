@@ -21,6 +21,8 @@ import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.sqlserver.metrics.SqlServerMetricsFactory;
+import io.debezium.connector.sqlserver.snapshot.SqlServerSnapshotLockProvider;
+import io.debezium.connector.sqlserver.snapshot.SqlServerSnapshotterServiceProvider;
 import io.debezium.document.DocumentReader;
 import io.debezium.jdbc.DefaultMainConnectionProvidingConnectionFactory;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
@@ -33,6 +35,7 @@ import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
+import io.debezium.service.spi.ServiceRegistry;
 import io.debezium.snapshot.SnapshotterService;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Clock;
@@ -92,7 +95,6 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
                 new SqlServerPartition.Provider(connectorConfig),
                 new SqlServerOffsetContext.Loader(connectorConfig));
 
-        schema.recover(offsets);
 
         // Manual Bean Registration
         connectorConfig.getBeanRegistry().add(StandardBeanNames.CONFIGURATION, config);
@@ -100,9 +102,18 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
         connectorConfig.getBeanRegistry().add(StandardBeanNames.DATABASE_SCHEMA, schema);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.JDBC_CONNECTION, metadataConnection);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.VALUE_CONVERTER, valueConverters);
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.OFFSETS, offsets);
 
         // Service providers
         registerServiceProviders(connectorConfig.getServiceRegistry());
+
+        final SnapshotterService snapshotterService = connectorConfig.getServiceRegistry().tryGetService(SnapshotterService.class);
+
+        for (Map.Entry<SqlServerPartition, SqlServerOffsetContext> offset : offsets) {
+
+            validateAndLoadSchemaHistory(connectorConfig, metadataConnection, Offsets.of(offset.getKey(), offset.getValue()), schema,
+                    snapshotterService.getSnapshotter());
+        }
 
         taskContext = new SqlServerTaskContext(connectorConfig, schema);
 
@@ -138,8 +149,6 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
 
         NotificationService<SqlServerPartition, SqlServerOffsetContext> notificationService = new NotificationService<>(getNotificationChannels(),
                 connectorConfig, SchemaFactory.get(), dispatcher::enqueueNotification);
-
-        SnapshotterService snapshotterService = null; // TODO with DBZ-7303
 
         ChangeEventSourceCoordinator<SqlServerPartition, SqlServerOffsetContext> coordinator = new SqlServerChangeEventSourceCoordinator(
                 offsets,
@@ -206,5 +215,13 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
     @Override
     protected Iterable<Field> getAllConfigurationFields() {
         return SqlServerConnectorConfig.ALL_FIELDS;
+    }
+
+    @Override
+    protected void registerServiceProviders(ServiceRegistry serviceRegistry) {
+
+        super.registerServiceProviders(serviceRegistry);
+        serviceRegistry.registerServiceProvider(new SqlServerSnapshotLockProvider());
+        serviceRegistry.registerServiceProvider(new SqlServerSnapshotterServiceProvider());
     }
 }
