@@ -35,16 +35,16 @@ public abstract class SnapshotLockProvider implements ServiceProvider<SnapshotLo
         final String configuredSnapshotQueryMode = snapshotLockingMode(beanRegistry);
         final String snapshotLockingModeCustomName = commonConnectorConfig.snapshotLockingModeCustomName();
 
-        String snapshotQueryMode;
+        String snapshotLockMode;
         if ("custom".equals(configuredSnapshotQueryMode) && !snapshotLockingModeCustomName.isEmpty()) {
-            snapshotQueryMode = snapshotLockingModeCustomName;
+            snapshotLockMode = snapshotLockingModeCustomName;
         }
         else {
-            snapshotQueryMode = configuredSnapshotQueryMode;
+            snapshotLockMode = configuredSnapshotQueryMode;
         }
 
         Optional<SnapshotLock> snapshotLock = StreamSupport.stream(ServiceLoader.load(SnapshotLock.class).spliterator(), false)
-                .filter(s -> s.name().equals(snapshotQueryMode))
+                .filter(s -> s.name().equals(snapshotLockMode))
                 .findAny();
 
         return snapshotLock.map(s -> {
@@ -54,7 +54,7 @@ public abstract class SnapshotLockProvider implements ServiceProvider<SnapshotLo
             }
             return s;
         })
-                .orElseThrow(() -> new DebeziumException(String.format("Unable to find %s snapshot query mode. Please check your configuration.", snapshotQueryMode)));
+                .orElseThrow(() -> new DebeziumException(String.format("Unable to find %s snapshot lock mode. Please check your configuration.", snapshotLockMode)));
 
     }
 
