@@ -3173,7 +3173,7 @@ endif::community[]
 |Specifies how the connector queries data while performing a snapshot. +
 Set one of the following options:
 
-`select_all`:: The connector performs a `select all` query.
+`select_all`:: `select_all`:: The connector performs a `select all` query by default, optionally adjusting the columns selected based on the column include and exclude list configurations.
 
 ifdef::community[]
 `custom`:: The connector performs a snapshot query according to the implementation specified by the xref:oracle-property-snapshot-snapshot-query-mode-custom-name[`snapshot.query.mode.custom.name`] property, which defines a custom implementation of the `io.debezium.spi.snapshot.SnapshotQuery` interface. +
