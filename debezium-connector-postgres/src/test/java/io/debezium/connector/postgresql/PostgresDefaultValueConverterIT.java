@@ -130,7 +130,8 @@ public class PostgresDefaultValueConverterIT extends AbstractConnectorTest {
                 + "CREATE TABLE s1.dbz7562 (pk SERIAL, cost numeric(12,0) not null default 0.0, PRIMARY KEY(pk));"
                 + "INSERT INTO s1.dbz7562 (cost) values (2.25);"
                 + "INSERT INTO s1.dbz7562 (cost) values (3);"
-                + "INSERT INTO s1.dbz7562 (cost) values (0);";
+                + "INSERT INTO s1.dbz7562 (cost) values (0);"
+                + "INSERT INTO s1.dbz7562 default values;";
 
         // Test Snapshot
         TestHelper.execute(ddl);
@@ -144,8 +145,9 @@ public class PostgresDefaultValueConverterIT extends AbstractConnectorTest {
         TestHelper.execute("INSERT INTO s1.dbz7562 (cost) values (5.5);");
         TestHelper.execute("INSERT INTO s1.dbz7562 (cost) values (4);");
         TestHelper.execute("INSERT INTO s1.dbz7562 (cost) values (0);");
+        TestHelper.execute("INSERT INTO s1.dbz7562 default values;");
 
-        final int expectedRecords = 6;
+        final int expectedRecords = 8;
         final SourceRecords records = consumeRecordsByTopic(expectedRecords);
         final List<SourceRecord> recordsForTopic = records.recordsForTopic(topicName("s1.dbz7562"));
         assertThat(recordsForTopic).hasSize(expectedRecords);
