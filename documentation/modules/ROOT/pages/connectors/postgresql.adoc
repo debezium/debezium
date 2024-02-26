@@ -1914,7 +1914,8 @@ PostgreSQL supports `NaN` (not a number) as a special value to be stored in `DEC
 
 The setting of the PostgreSQL connector configuration property xref:postgresql-property-hstore-handling-mode[`hstore.handling.mode`] determines how the connector maps `HSTORE` values.
 
-When the `dhstore.handling.mode` property is set to `json` (the default), the connector represents `HSTORE` values as string representations of JSON values and encodes them as shown in the following table. When the `hstore.handling.mode` property is set to `map`, the connector uses the `MAP` schema type for `HSTORE` values.
+When the `hstore.handling.mode` property is set to `json` (the default), the connector represents `HSTORE` values as string representations of JSON values and encodes them as shown in the following table.
+When the `hstore.handling.mode` property is set to `map`, the connector uses the `MAP` schema type for `HSTORE` values.
 
 .Mappings for `HSTORE` data type
 [cols="25%a,20%a,55%a",options="header"]
@@ -3087,7 +3088,7 @@ For more information, see xref:postgresql-temporal-types[temporal values].
 For more information, see xref:postgresql-decimal-types[Decimal types].
 
 |[[postgresql-property-hstore-handling-mode]]<<postgresql-property-hstore-handling-mode, `+hstore.handling.mode+`>>
-|`map`
+|`json`
 | Specifies how the connector should handle values for `hstore` columns: +
  +
 `map` represents values by using `MAP`. +
