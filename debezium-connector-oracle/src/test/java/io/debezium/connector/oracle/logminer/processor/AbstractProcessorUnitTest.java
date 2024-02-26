@@ -285,6 +285,19 @@ public abstract class AbstractProcessorUnitTest<T extends AbstractLogMinerEventP
                     .when(processorMock)
                     .getTableMetadataDdl(Mockito.any(OracleConnection.class), Mockito.any(TableId.class));
 
+            final Table table = Table.editor()
+                    .tableId(TableId.parse(TestHelper.getDatabaseName() + ".DEBEZIUM.ABC"))
+                    .addColumn(Column.editor().name("ID").create())
+                    .addColumn(Column.editor().name("DATA").create())
+                    .setPrimaryKeyNames("ID").create();
+
+            Mockito.doReturn(table)
+                    .when(processorMock)
+                    .dispatchSchemaChangeEventAndGetTableForNewCapturedTable(
+                            Mockito.any(TableId.class),
+                            Mockito.any(OracleOffsetContext.class),
+                            Mockito.any(EventDispatcher.class));
+
             Scn nextStartScn = processorMock.process(Scn.valueOf(100), Scn.valueOf(200));
             assertThat(nextStartScn).isEqualTo(Scn.valueOf(101));
         }

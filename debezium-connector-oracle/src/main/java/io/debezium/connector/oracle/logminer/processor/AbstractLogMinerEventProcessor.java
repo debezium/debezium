@@ -1323,9 +1323,10 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
      * @throws SQLException if a database exception occurred
      * @throws InterruptedException if the event dispatch was interrupted
      */
-    private Table dispatchSchemaChangeEventAndGetTableForNewCapturedTable(TableId tableId,
-                                                                          OracleOffsetContext offsetContext,
-                                                                          EventDispatcher<OraclePartition, TableId> dispatcher)
+    @VisibleForTesting
+    public Table dispatchSchemaChangeEventAndGetTableForNewCapturedTable(TableId tableId,
+                                                                         OracleOffsetContext offsetContext,
+                                                                         EventDispatcher<OraclePartition, TableId> dispatcher)
             throws SQLException, InterruptedException {
 
         LOGGER.warn("Obtaining schema for table {}, which should be already loaded, this may signal potential bug in fetching table schemas.", tableId);
