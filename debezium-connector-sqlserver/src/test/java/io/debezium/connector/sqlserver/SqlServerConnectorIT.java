@@ -48,7 +48,9 @@ import org.jetbrains.annotations.NotNull;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
@@ -59,6 +61,7 @@ import io.debezium.data.SourceRecordAssert;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.junit.ConditionalFail;
 import io.debezium.junit.Flaky;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.ErrorHandler;
@@ -84,6 +87,9 @@ import io.debezium.util.Testing;
  * @author Jiri Pechanec
  */
 public class SqlServerConnectorIT extends AbstractConnectorTest {
+
+    @Rule
+    public TestRule conditionalFail = new ConditionalFail();
 
     public static final int ON_LINE = 0;
 
