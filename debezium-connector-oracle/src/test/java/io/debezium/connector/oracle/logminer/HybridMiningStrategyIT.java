@@ -44,7 +44,9 @@ import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.antlr.OracleDdlParser;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
+import io.debezium.connector.oracle.junit.SkipTestWhenRunWithApicurioRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
+import io.debezium.connector.oracle.junit.SkipWhenRunWithApicurio;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.data.VariableScaleDecimal;
@@ -73,6 +75,9 @@ import io.debezium.util.Testing;
  */
 @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Only applies to LogMiner")
 public class HybridMiningStrategyIT extends AbstractConnectorTest {
+
+    @Rule
+    public final TestRule skipApicurioRule = new SkipTestWhenRunWithApicurioRule();
 
     @Rule
     public final TestRule skipAdapterRule = new SkipTestDependingOnAdapterNameRule();
@@ -369,6 +374,7 @@ public class HybridMiningStrategyIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-3401")
+    @SkipWhenRunWithApicurio
     public void shouldStreamOfflineSchemaChangesIntegerDataTypes() throws Exception {
         streamOfflineSchemaChanges("int",
                 QueryValue.ofBind(1), QueryValue.ofBind(2),
@@ -427,6 +433,7 @@ public class HybridMiningStrategyIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-3401")
+    @SkipWhenRunWithApicurio
     public void shouldStreamSchemaChangeWithDataChangeIntegerDataTypes() throws Exception {
         streamSchemaChangeMixedWithDataChange("int",
                 QueryValue.ofBind(1), QueryValue.ofBind(2),

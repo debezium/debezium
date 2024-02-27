@@ -1084,7 +1084,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         // so to be backward compatible, we only explicitly trigger this behavior if there is an
         // error reason for STATUS=2 in the INFO column as well as STATUS=2.
         if (row.getStatus() == 2 && !Strings.isNullOrBlank(row.getInfo())) {
-            if (!isUsingHybridStrategy() && !isTableKnown(row)) {
+            if (!isUsingHybridStrategy() || (isUsingHybridStrategy() && !isTableKnown(row))) {
                 // The SQL in the SQL_REDO column is not valid and cannot be parsed.
                 switch (connectorConfig.getEventProcessingFailureHandlingMode()) {
                     case FAIL:
