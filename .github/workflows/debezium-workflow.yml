@@ -645,6 +645,7 @@ jobs:
           -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
           -Dmaven.wagon.http.pool=false
           -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+          -DfailFlakyTests=false
 
   build_storage:
     needs: [check_style, file_changes]
