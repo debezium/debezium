@@ -227,7 +227,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
     }
 
     private void setEventTimestamp(Event event, long eventTs) {
-        if (connection.isMariaDb() || !isGtidModeEnabled) {
+        if (eventTimestamp == null || connection.isMariaDb() || !isGtidModeEnabled) {
             // Fallback to second resolution event timestamps
             eventTimestamp = Instant.ofEpochMilli(eventTs);
         }
