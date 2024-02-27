@@ -1225,7 +1225,7 @@ public abstract class AbstractConnectorTest implements Testing {
     public void waitForEngineShutdown() {
         Awaitility.await()
                 .pollInterval(200, TimeUnit.MILLISECONDS)
-                .atMost(waitTimeForEngine() * 3, TimeUnit.MILLISECONDS)
+                .atMost(waitTimeForEngine(), TimeUnit.SECONDS)
                 .until(() -> !isEngineRunning.get());
     }
 
@@ -1273,7 +1273,7 @@ public abstract class AbstractConnectorTest implements Testing {
     }
 
     public static int waitTimeForEngine() {
-        return Integer.parseInt(System.getProperty(TEST_PROPERTY_PREFIX + "engine.waittime", "1000"));
+        return Integer.parseInt(System.getProperty(TEST_PROPERTY_PREFIX + "engine.waittime", "5"));
     }
 
     public static int waitTimeForRecords() {
