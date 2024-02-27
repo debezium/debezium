@@ -23,6 +23,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.connector.postgresql.connection.PostgresDefaultValueConverter;
 import io.debezium.data.Envelope;
+import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.junit.EqualityCheck;
@@ -153,6 +154,7 @@ public class PostgresDefaultValueConverterIT extends AbstractConnectorTest {
         assertThat(recordsForTopic).hasSize(expectedRecords);
 
         for (SourceRecord record : recordsForTopic) {
+            VerifyRecord.isValid(record);
             final Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
             final Schema schema = after.schema().field("cost").schema();
             assertThat(schema.parameters()).containsEntry("connect.decimal.precision", "12");
