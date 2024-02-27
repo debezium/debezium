@@ -8,7 +8,6 @@ package io.debezium.snapshot.mode;
 import java.util.Map;
 
 import io.debezium.bean.StandardBeanNames;
-import io.debezium.relational.HistorizedRelationalDatabaseSchema;
 import io.debezium.schema.DatabaseSchema;
 import io.debezium.spi.snapshot.Snapshotter;
 
@@ -39,12 +38,7 @@ public class WhenNeededSnapshotter extends BeanAwareSnapshotter implements Snaps
             return false;
         }
 
-        final HistorizedRelationalDatabaseSchema historizedRelationalDatabaseSchema = (HistorizedRelationalDatabaseSchema) databaseSchema;
-        if (offsetExists && !snapshotInProgress) {
-            return historizedRelationalDatabaseSchema.isStorageInitializationExecuted();
-        }
-
-        return true;
+        return !offsetExists || snapshotInProgress;
     }
 
     @Override

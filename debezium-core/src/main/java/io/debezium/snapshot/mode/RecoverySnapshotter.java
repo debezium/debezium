@@ -13,6 +13,11 @@ public class RecoverySnapshotter extends NoDataSnapshotter {
     }
 
     @Override
+    public boolean shouldSnapshotSchema(boolean offsetExists, boolean snapshotInProgress) {
+        return true;
+    }
+
+    @Override
     public boolean shouldSnapshotOnSchemaError() {
         return true;
     }
