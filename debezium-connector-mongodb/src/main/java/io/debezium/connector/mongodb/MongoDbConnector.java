@@ -142,7 +142,7 @@ public class MongoDbConnector extends BaseSourceConnector {
 
     @Override
     protected Map<String, ConfigValue> validateAllFields(Configuration config) {
-        return config.validate(MongoDbConnectorConfig.EXPOSED_FIELDS);
+        return config.validate(MongoDbConnectorConfig.ALL_FIELDS);
     }
 
     @SuppressWarnings("unchecked")

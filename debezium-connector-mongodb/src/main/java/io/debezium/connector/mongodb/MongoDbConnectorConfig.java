@@ -1021,8 +1021,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         return CONFIG_DEFINITION.configDef();
     }
 
-    protected static Field.Set EXPOSED_FIELDS = ALL_FIELDS;
-
     private final SnapshotMode snapshotMode;
     private final CaptureMode captureMode;
     private final FullUpdateType captureModeFullUpdateType;

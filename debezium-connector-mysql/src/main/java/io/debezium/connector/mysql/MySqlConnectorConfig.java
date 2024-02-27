@@ -987,8 +987,6 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
      */
     public static Field.Set ALL_FIELDS = Field.setOf(CONFIG_DEFINITION.all());
 
-    protected static Field.Set EXPOSED_FIELDS = ALL_FIELDS;
-
     protected static final Set<String> BUILT_IN_DB_NAMES = Collect.unmodifiableSet("mysql", "performance_schema", "sys", "information_schema");
 
     @Override
