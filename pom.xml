@@ -125,7 +125,7 @@
         <version.apicurio>2.4.3.Final</version.apicurio>
 
         <!-- Database drivers, should align with databases -->
-        <version.postgresql.driver>42.6.0</version.postgresql.driver>
+        <version.postgresql.driver>42.6.1</version.postgresql.driver>
         <version.mysql.driver>8.0.33</version.mysql.driver>
         <version.mysql.binlog>0.29.0</version.mysql.binlog>
         <version.mongo.driver>4.11.0</version.mongo.driver>
