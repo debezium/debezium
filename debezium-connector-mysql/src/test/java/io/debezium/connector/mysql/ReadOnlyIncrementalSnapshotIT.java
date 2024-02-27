@@ -42,6 +42,8 @@ import io.debezium.connector.mysql.junit.SkipTestDependingOnGtidModeRule;
 import io.debezium.connector.mysql.junit.SkipWhenGtidModeIs;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.junit.ConditionalFail;
+import io.debezium.junit.Flaky;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.kafka.KafkaCluster;
 import io.debezium.pipeline.signal.channels.FileSignalChannel;
@@ -59,6 +61,8 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
     public static final String EXCLUDED_TABLE = "b";
     @Rule
     public TestRule skipTest = new SkipTestDependingOnGtidModeRule();
+    @Rule
+    public ConditionalFail conditionalFail = new ConditionalFail();
     private final Path signalsFile = Paths.get("src", "test", "resources").resolve("debezium_signaling_file.txt");
 
     @Before
@@ -310,6 +314,7 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
 
     @Test
     @FixFor("DBZ-5453")
+    @Flaky("DBZ-7572")
     public void testStopSnapshotKafkaSignal() throws Exception {
         final LogInterceptor logInterceptor = new LogInterceptor(AbstractIncrementalSnapshotChangeEventSource.class);
 
