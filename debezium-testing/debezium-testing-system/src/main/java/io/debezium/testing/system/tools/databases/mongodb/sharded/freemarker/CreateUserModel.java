@@ -5,9 +5,6 @@
  */
 package io.debezium.testing.system.tools.databases.mongodb.sharded.freemarker;
 
-import lombok.Getter;
-
-@Getter
 public class CreateUserModel {
     private final String userName;
     private final String password;
@@ -15,5 +12,13 @@ public class CreateUserModel {
     public CreateUserModel(String userName, String password) {
         this.userName = userName;
         this.password = password;
+    }
+
+    public String getUserName() {
+        return userName;
+    }
+
+    public String getPassword() {
+        return password;
     }
 }

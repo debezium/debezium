@@ -31,8 +31,6 @@ import io.debezium.testing.system.tools.databases.mongodb.sharded.componentprovi
 import io.fabric8.openshift.client.OpenShiftClient;
 
 import freemarker.template.TemplateException;
-import lombok.Builder;
-import lombok.Getter;
 
 /**
  * Mongo sharded cluster containing config server replica set, one or more shard replica sets and a mongos router
@@ -48,11 +46,8 @@ public class OcpMongoShardedCluster implements Startable {
     private final OpenShiftUtils ocpUtils;
     private final int initialShardCount;
     private final String project;
-    @Getter
     private final List<MongoShardKey> shardKeys;
-    @Getter
     private final List<OcpMongoReplicaSet> shardReplicaSets = Collections.synchronizedList(new LinkedList<>());
-    @Getter
     private OcpMongoReplicaSet configServerReplicaSet;
     private OcpMongoDeploymentManager mongosRouter;
     private boolean isRunning = false;
@@ -164,6 +159,18 @@ public class OcpMongoShardedCluster implements Startable {
         return executeMongoShOnPod(ocpUtils, project, mongosRouter.getDeployment(), getConnectionString(), command, false);
     }
 
+    public List<MongoShardKey> getShardKeys() {
+        return shardKeys;
+    }
+
+    public List<OcpMongoReplicaSet> getShardReplicaSets() {
+        return shardReplicaSets;
+    }
+
+    public OcpMongoReplicaSet getConfigServerReplicaSet() {
+        return configServerReplicaSet;
+    }
+
     private void deployShards() {
         MongoShardedUtil.intRange(initialShardCount).parallelStream().forEach(this::deployNewShard);
     }
@@ -266,7 +273,6 @@ public class OcpMongoShardedCluster implements Startable {
                 range.getEnd(), range.getShardName());
     }
 
-    @Builder(setterPrefix = "with")
     public OcpMongoShardedCluster(int initialShardCount, int replicaCount, int configServerCount, @Nullable String rootUserName, @Nullable String rootPassword,
                                   boolean useInternalAuth, OpenShiftClient ocp, String project, List<MongoShardKey> shardKeys) {
         this.initialShardCount = initialShardCount;
@@ -281,11 +287,67 @@ public class OcpMongoShardedCluster implements Startable {
         this.shardKeys = shardKeys;
     }
 
-    public static class OcpMongoShardedClusterBuilder {
+    public static OcpMongoShardedClusterBuilder builder() {
+        return new OcpMongoShardedClusterBuilder();
+    }
+
+    public static final class OcpMongoShardedClusterBuilder {
+        private int replicaCount;
+        private int configServerCount;
+        private String rootUserName;
+        private String rootPassword;
+        private boolean useInternalAuth;
+        private OpenShiftClient ocp;
+        private int initialShardCount;
+        private String project;
+        private List<MongoShardKey> shardKeys;
+
+        private OcpMongoShardedClusterBuilder() {
+        }
+
+        public OcpMongoShardedClusterBuilder withReplicaCount(int replicaCount) {
+            this.replicaCount = replicaCount;
+            return this;
+        }
+
+        public OcpMongoShardedClusterBuilder withConfigServerCount(int configServerCount) {
+            this.configServerCount = configServerCount;
+            return this;
+        }
+
         public OcpMongoShardedClusterBuilder withRootUser(String rootUserName, String rootPassword) {
             this.rootUserName = rootUserName;
             this.rootPassword = rootPassword;
             return this;
+        }
+
+        public OcpMongoShardedClusterBuilder withUseInternalAuth(boolean useInternalAuth) {
+            this.useInternalAuth = useInternalAuth;
+            return this;
+        }
+
+        public OcpMongoShardedClusterBuilder withOcp(OpenShiftClient ocp) {
+            this.ocp = ocp;
+            return this;
+        }
+
+        public OcpMongoShardedClusterBuilder withInitialShardCount(int initialShardCount) {
+            this.initialShardCount = initialShardCount;
+            return this;
+        }
+
+        public OcpMongoShardedClusterBuilder withProject(String project) {
+            this.project = project;
+            return this;
+        }
+
+        public OcpMongoShardedClusterBuilder withShardKeys(List<MongoShardKey> shardKeys) {
+            this.shardKeys = shardKeys;
+            return this;
+        }
+
+        public OcpMongoShardedCluster build() {
+            return new OcpMongoShardedCluster(initialShardCount, replicaCount, configServerCount, rootUserName, rootPassword, useInternalAuth, ocp, project, shardKeys);
         }
     }
 }

@@ -10,17 +10,21 @@ import java.util.stream.Collectors;
 
 import io.debezium.testing.system.tools.databases.mongodb.sharded.OcpMongoReplicaSetMember;
 
-import lombok.Getter;
-
 public class InitReplicaSetModel {
     private final List<OcpMongoReplicaSetMember> members;
-    @Getter
     private final String rsId;
-    @Getter
     private final boolean configServer;
 
     public String getMembers() {
         return members.stream().map(en -> "{ _id: " + en.getReplicaNum() + ", host: \"" + en.getServiceUrl() + "\" }").collect(Collectors.joining(","));
+    }
+
+    public String getRsId() {
+        return rsId;
+    }
+
+    public boolean isConfigServer() {
+        return configServer;
     }
 
     public InitReplicaSetModel(List<OcpMongoReplicaSetMember> members, String rsId, boolean configServer) {
