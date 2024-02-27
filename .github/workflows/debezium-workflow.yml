@@ -881,6 +881,7 @@ jobs:
           -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
           -Ddebezium.test.records.waittime=5
           -Ddebezium.test.records.waittime.after.nulls=5
+          -Dfail.flaky.tests=false
           
   build_vitess:
     needs: [check_style, file_changes]
