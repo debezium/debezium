@@ -298,7 +298,7 @@ public class AsyncEmbeddedEngineTest {
             engine.run();
         });
 
-        callbackLatch.await(2 * AbstractConnectorTest.waitTimeForEngine(), TimeUnit.MILLISECONDS);
+        callbackLatch.await(2 * AbstractConnectorTest.waitTimeForEngine(), TimeUnit.SECONDS);
         assertThat(callbackLatch.getCount()).isEqualTo(0);
     }
 
@@ -696,7 +696,7 @@ public class AsyncEmbeddedEngineTest {
         Awaitility.await()
                 .alias("Engine haven't started on time")
                 .pollInterval(10, TimeUnit.MILLISECONDS)
-                .atMost(AbstractConnectorTest.waitTimeForEngine(), TimeUnit.MILLISECONDS)
+                .atMost(AbstractConnectorTest.waitTimeForEngine(), TimeUnit.SECONDS)
                 .until(() -> runningTasks.get() >= minRunningTasks);
     }
 
