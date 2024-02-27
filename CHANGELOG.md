@@ -2,6 +2,56 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.5.2.Final
+February 27th 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12422552)
+
+### New features since 2.5.1.Final
+
+* Support connector scoped trustore/keystore for MongoDB [DBZ-7379](https://issues.redhat.com/browse/DBZ-7379)
+* Allow the C3P0ConnectionProvider to be customized via configuration [DBZ-7431](https://issues.redhat.com/browse/DBZ-7431)
+* Consolidate version management  [DBZ-7455](https://issues.redhat.com/browse/DBZ-7455)
+
+
+### Breaking changes since 2.5.1.Final
+
+None
+
+
+### Fixes since 2.5.1.Final
+
+* PostgreSQL connector doesn't restart properly if database if not reachable [DBZ-6236](https://issues.redhat.com/browse/DBZ-6236)
+* Cassandra-4: Debezium connector stops producing events after a schema change [DBZ-7363](https://issues.redhat.com/browse/DBZ-7363)
+* Informix-Connector breaks on table with numerical default value [DBZ-7372](https://issues.redhat.com/browse/DBZ-7372)
+* Poor performance with incremental snapshot with long list of tables [DBZ-7421](https://issues.redhat.com/browse/DBZ-7421)
+* Oracle Snapshot mistakenly uses LogMiner Offset Loader by default [DBZ-7425](https://issues.redhat.com/browse/DBZ-7425)
+* Reselect columns should source key values from after Struct when not using event-key sources [DBZ-7429](https://issues.redhat.com/browse/DBZ-7429)
+* Stopwatch throw NPE when toString is called without having statistics [DBZ-7436](https://issues.redhat.com/browse/DBZ-7436)
+* Adhoc snapshots are not triggered via File channel signal when submitted before the start of the application [DBZ-7441](https://issues.redhat.com/browse/DBZ-7441)
+* LogMiner batch size does not increase automatically [DBZ-7445](https://issues.redhat.com/browse/DBZ-7445)
+* Oracle connector does not ignore reselection for excluded clob/blob columns [DBZ-7456](https://issues.redhat.com/browse/DBZ-7456)
+* The expected value pattern for table.include.list does not align with the documentation [DBZ-7460](https://issues.redhat.com/browse/DBZ-7460)
+* Signals actions are not loaded for SQLServer [DBZ-7467](https://issues.redhat.com/browse/DBZ-7467)
+* MySQL connector cannot parse table with WITH SYSTEM VERSIONING PARTITION BY SYSTEM_TIME [DBZ-7468](https://issues.redhat.com/browse/DBZ-7468)
+* Make readiness and liveness proble timouts configurable [DBZ-7476](https://issues.redhat.com/browse/DBZ-7476)
+* PreparedStatement leak in Oracle ReselectColumnsProcessor [DBZ-7479](https://issues.redhat.com/browse/DBZ-7479)
+* Poor snapshot performance with new reselect SMT [DBZ-7488](https://issues.redhat.com/browse/DBZ-7488)
+* Debezium Oracle Connector ParsingException on XMLTYPE with lob.enabled=true [DBZ-7489](https://issues.redhat.com/browse/DBZ-7489)
+* Fix MySQL 8 event timestamp resolution logic error where fallback to seconds occurs erroneously for non-GTID events [DBZ-7500](https://issues.redhat.com/browse/DBZ-7500)
+
+
+### Other changes since 2.5.1.Final
+
+* Correctly handle METADATA records [DBZ-7176](https://issues.redhat.com/browse/DBZ-7176)
+* Upgrade protobuf to 3.25.2 [DBZ-7442](https://issues.redhat.com/browse/DBZ-7442)
+* Correct debezium.sink.pubsub.flowcontrol.* variable names in Debezium Server docs site [DBZ-7443](https://issues.redhat.com/browse/DBZ-7443)
+* Test Db2ReselectColumnsProcessorIT randomly fails [DBZ-7471](https://issues.redhat.com/browse/DBZ-7471)
+* Document toggling MariaDB mode  [DBZ-7487](https://issues.redhat.com/browse/DBZ-7487)
+* Add Start CDC hook in Reselect Columns PostProcessor Tests [DBZ-7516](https://issues.redhat.com/browse/DBZ-7516)
+* Update commons-compress to 1.26.0 [DBZ-7520](https://issues.redhat.com/browse/DBZ-7520)
+* Promote JDBC sink from Incubating [DBZ-7521](https://issues.redhat.com/browse/DBZ-7521)
+
+
+
 ## 2.5.1.Final
 January 30th 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12418394)
 
@@ -32,7 +82,7 @@ January 30th 2024 [Detailed release notes](https://issues.redhat.com/secure/Rele
 * MSSQL wrong default values in db schema for varchar, nvarchar, char columns [DBZ-7374](https://issues.redhat.com/browse/DBZ-7374)
 * Kinesis Sink Exception on PutRecord [DBZ-7417](https://issues.redhat.com/browse/DBZ-7417)
 * ParsingException (MariaDB Only): alterSpec drop foreign key with 'tablename.' prefix [DBZ-7420](https://issues.redhat.com/browse/DBZ-7420)
-
+* Fix null event timestamp possible from FORMAT_DESCRIPTION and PREVIOUS_GTIDS events in MySqlStreamingChangeEventSource::setEventTimestamp [DBZ-7567](https://issues.redhat.com/browse/DBZ-7567)
 
 ### Other changes since 2.5.0.Final
 
