@@ -12,12 +12,9 @@ import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.openshift.client.OpenShiftClient;
 
-import lombok.Getter;
-
 /**
  * Abstraction for a single mongo machine that you can start, stop and connect to using hostname
  */
-@Getter
 public class OcpMongoDeploymentManager implements Startable {
     private Deployment deployment;
     private Service service;
@@ -52,5 +49,29 @@ public class OcpMongoDeploymentManager implements Startable {
 
     public String getHostname() {
         return service.getMetadata().getName() + "." + project + ".svc.cluster.local";
+    }
+
+    public Deployment getDeployment() {
+        return deployment;
+    }
+
+    public Service getService() {
+        return service;
+    }
+
+    public String getServiceUrl() {
+        return serviceUrl;
+    }
+
+    public OpenShiftClient getOcp() {
+        return ocp;
+    }
+
+    public OpenShiftUtils getOcpUtils() {
+        return ocpUtils;
+    }
+
+    public String getProject() {
+        return project;
     }
 }

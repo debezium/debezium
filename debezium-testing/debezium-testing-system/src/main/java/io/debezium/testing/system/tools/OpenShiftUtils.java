@@ -56,8 +56,6 @@ import io.fabric8.openshift.api.model.operatorhub.v1.OperatorGroupSpecBuilder;
 import io.fabric8.openshift.client.DefaultOpenShiftClient;
 import io.fabric8.openshift.client.OpenShiftClient;
 
-import lombok.Getter;
-
 /**
  * Utility methods for working with OpenShift
  * @author Jakub Cechacek
@@ -376,7 +374,6 @@ public class OpenShiftUtils {
         return new CommandOutputs(captureOut.toString(StandardCharsets.UTF_8), captureErr.toString(StandardCharsets.UTF_8));
     }
 
-    @Getter
     public static class CommandOutputs {
         String stdOut;
         String stdErr;
@@ -384,6 +381,14 @@ public class OpenShiftUtils {
         public CommandOutputs(String stdOut, String stdErr) {
             this.stdOut = stdOut;
             this.stdErr = stdErr;
+        }
+
+        public String getStdOut() {
+            return stdOut;
+        }
+
+        public String getStdErr() {
+            return stdErr;
         }
 
         @Override

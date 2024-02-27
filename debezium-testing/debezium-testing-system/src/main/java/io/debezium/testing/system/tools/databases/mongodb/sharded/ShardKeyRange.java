@@ -5,12 +5,9 @@
  */
 package io.debezium.testing.system.tools.databases.mongodb.sharded;
 
-import lombok.Getter;
-
 /**
  * Range used for ranged collection sharding
  */
-@Getter
 public class ShardKeyRange {
     private final String shardName;
     private final String start;
@@ -20,5 +17,17 @@ public class ShardKeyRange {
         this.shardName = shardName;
         this.start = start;
         this.end = end;
+    }
+
+    public String getShardName() {
+        return shardName;
+    }
+
+    public String getStart() {
+        return start;
+    }
+
+    public String getEnd() {
+        return end;
     }
 }

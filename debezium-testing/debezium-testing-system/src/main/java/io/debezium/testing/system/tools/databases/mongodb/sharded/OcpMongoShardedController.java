@@ -23,12 +23,10 @@ import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.openshift.client.OpenShiftClient;
 
 import freemarker.template.TemplateException;
-import lombok.Getter;
 
 public class OcpMongoShardedController implements MongoDatabaseController {
     private static final Logger LOGGER = LoggerFactory.getLogger(OcpMongoShardedController.class);
 
-    @Getter
     private final OcpMongoShardedCluster mongo;
     private final OpenShiftClient ocp;
     private final String project;
@@ -118,6 +116,10 @@ public class OcpMongoShardedController implements MongoDatabaseController {
      */
     public void removeShard() {
         mongo.removeShard();
+    }
+
+    public OcpMongoShardedCluster getMongo() {
+        return mongo;
     }
 
     private Service getService() {

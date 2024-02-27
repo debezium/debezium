@@ -31,8 +31,6 @@ import io.fabric8.openshift.client.OpenShiftClient;
 
 import freemarker.template.Template;
 import freemarker.template.TemplateException;
-import lombok.Builder;
-import lombok.Getter;
 
 /**
  * Mongo replica set. When started, member number 0 is set as primary, root user is created and optionally internal member auth is enabled
@@ -40,8 +38,7 @@ import lombok.Getter;
 public class OcpMongoReplicaSet implements Startable {
     private static final Logger LOGGER = LoggerFactory.getLogger(OcpMongoReplicaSet.class);
 
-    @Getter
-    private String name;
+    private final String name;
     private final boolean configServer;
     private final int memberCount;
     private boolean authRequired = false;
@@ -52,11 +49,9 @@ public class OcpMongoReplicaSet implements Startable {
     private final OpenShiftUtils ocpUtil;
     private final String project;
     private final boolean useInternalAuth;
-    @Getter
-    private int shardNum;
+    private final int shardNum;
     private final List<OcpMongoReplicaSetMember> members;
 
-    @Builder(setterPrefix = "with")
     public OcpMongoReplicaSet(String name, boolean configServer, int memberCount, String rootUserName, String rootPassword, OpenShiftClient ocp, String project,
                               boolean useInternalAuth, int shardNum) {
         this.name = name;
@@ -105,28 +100,6 @@ public class OcpMongoReplicaSet implements Startable {
                 .collect(Collectors.joining(","));
     }
 
-    private String getLocalhostConnectionString() {
-        var builder = new StringBuilder("mongodb://");
-
-        if (authRequired) {
-            builder
-                    .append(URLEncoder.encode(rootUserName, StandardCharsets.UTF_8))
-                    .append(":")
-                    .append(URLEncoder.encode(rootPassword, StandardCharsets.UTF_8))
-                    .append("@");
-        }
-
-        var host = "localhost:" + getPort();
-
-        builder.append(host)
-                .append("/?");
-
-        if (authRequired) {
-            builder.append("&").append("authSource=admin");
-        }
-        return builder.toString();
-    }
-
     @Override
     public void start() {
         if (started) {
@@ -172,6 +145,14 @@ public class OcpMongoReplicaSet implements Startable {
         members.parallelStream().forEach(OcpMongoDeploymentManager::stop);
     }
 
+    public String getName() {
+        return name;
+    }
+
+    public int getShardNum() {
+        return shardNum;
+    }
+
     public void waitForStopped() {
         members.parallelStream().forEach(OcpMongoDeploymentManager::waitForStopped);
     }
@@ -184,6 +165,28 @@ public class OcpMongoReplicaSet implements Startable {
      */
     public OpenShiftUtils.CommandOutputs executeMongosh(String command, boolean debugLogs) {
         return executeMongoShOnPod(ocpUtil, project, members.get(0).getDeployment(), getLocalhostConnectionString(), command, debugLogs);
+    }
+
+    private String getLocalhostConnectionString() {
+        var builder = new StringBuilder("mongodb://");
+
+        if (authRequired) {
+            builder
+                    .append(URLEncoder.encode(rootUserName, StandardCharsets.UTF_8))
+                    .append(":")
+                    .append(URLEncoder.encode(rootPassword, StandardCharsets.UTF_8))
+                    .append("@");
+        }
+
+        var host = "localhost:" + getPort();
+
+        builder.append(host)
+                .append("/?");
+
+        if (authRequired) {
+            builder.append("&").append("authSource=admin");
+        }
+        return builder.toString();
     }
 
     private int getPort() {
@@ -207,4 +210,71 @@ public class OcpMongoReplicaSet implements Startable {
                 OcpMongoShardedConstants.MONGO_CONFIG_PORT);
     }
 
+    public static OcpMongoReplicaSetBuilder builder() {
+        return new OcpMongoReplicaSetBuilder();
+    }
+
+    public static final class OcpMongoReplicaSetBuilder {
+        private String name;
+        private boolean configServer;
+        private int memberCount;
+        private String rootUserName;
+        private String rootPassword;
+        private OpenShiftClient ocp;
+        private String project;
+        private boolean useInternalAuth;
+        private int shardNum;
+
+        private OcpMongoReplicaSetBuilder() {
+        }
+
+        public OcpMongoReplicaSetBuilder withName(String name) {
+            this.name = name;
+            return this;
+        }
+
+        public OcpMongoReplicaSetBuilder withConfigServer(boolean configServer) {
+            this.configServer = configServer;
+            return this;
+        }
+
+        public OcpMongoReplicaSetBuilder withMemberCount(int memberCount) {
+            this.memberCount = memberCount;
+            return this;
+        }
+
+        public OcpMongoReplicaSetBuilder withRootUserName(String rootUserName) {
+            this.rootUserName = rootUserName;
+            return this;
+        }
+
+        public OcpMongoReplicaSetBuilder withRootPassword(String rootPassword) {
+            this.rootPassword = rootPassword;
+            return this;
+        }
+
+        public OcpMongoReplicaSetBuilder withOcp(OpenShiftClient ocp) {
+            this.ocp = ocp;
+            return this;
+        }
+
+        public OcpMongoReplicaSetBuilder withProject(String project) {
+            this.project = project;
+            return this;
+        }
+
+        public OcpMongoReplicaSetBuilder withUseInternalAuth(boolean useInternalAuth) {
+            this.useInternalAuth = useInternalAuth;
+            return this;
+        }
+
+        public OcpMongoReplicaSetBuilder withShardNum(int shardNum) {
+            this.shardNum = shardNum;
+            return this;
+        }
+
+        public OcpMongoReplicaSet build() {
+            return new OcpMongoReplicaSet(name, configServer, memberCount, rootUserName, rootPassword, ocp, project, useInternalAuth, shardNum);
+        }
+    }
 }

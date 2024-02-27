@@ -9,9 +9,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 
-import lombok.Getter;
-
-@Getter
 public class MongoShardKey {
     private final String collection;
     private final String key;
@@ -37,12 +34,27 @@ public class MongoShardKey {
         return Objects.equals(collection, that.collection) && Objects.equals(key, that.key);
     }
 
+    public String getCollection() {
+        return collection;
+    }
+
+    public String getKey() {
+        return key;
+    }
+
+    public ShardingType getShardingType() {
+        return shardingType;
+    }
+
+    public List<ShardKeyRange> getKeyRanges() {
+        return keyRanges;
+    }
+
     @Override
     public int hashCode() {
         return Objects.hash(collection, key);
     }
 
-    @Getter
     public enum ShardingType {
         HASHED("\"hashed\""),
         RANGED("1");
@@ -51,6 +63,10 @@ public class MongoShardKey {
 
         ShardingType(String value) {
             this.value = value;
+        }
+
+        public String getValue() {
+            return value;
         }
     }
 }
