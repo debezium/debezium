@@ -1185,6 +1185,14 @@ public class PostgresValueConverter extends JdbcValueConverters {
     @Override
     protected Object handleUnknownData(Column column, Field fieldDefn, Object data) {
         Optional<Object> toastedArrayPlaceholder = unchangedToastedPlaceholder.getValue(data);
-        return toastedArrayPlaceholder.orElseGet(() -> super.handleUnknownData(column, fieldDefn, data));
+        if (toastedArrayPlaceholder.isPresent()) {
+            if (UnchangedToastedReplicationMessageColumn.UNCHANGED_HSTORE_TOAST_VALUE == data) {
+                if (HStoreHandlingMode.JSON.equals(hStoreMode)) {
+                    return convertMapToJsonStringRepresentation((Map<String, String>) toastedArrayPlaceholder.get());
+                }
+            }
+            return toastedArrayPlaceholder.get();
+        }
+        return super.handleUnknownData(column, fieldDefn, data);
     }
 }
