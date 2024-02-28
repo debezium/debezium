@@ -22,7 +22,7 @@ For more advanced uses, you can fine-tune control of the snapshot by implementin
  * For more information, see the documentation.
  *
  *
- * @author Mario Fiore Vitale
+ *
  */
 @Incubating
 public interface Snapshotter extends Configurable {
@@ -97,7 +97,7 @@ public interface Snapshotter extends Configurable {
 /**
  * {@link SnapshotQuery} is used to determine the query used during a data snapshot
  *
- * @author Mario Fiore Vitale
+ * 
  */
 public interface SnapshotQuery extends Configurable, Service {
 
@@ -128,7 +128,7 @@ public interface SnapshotQuery extends Configurable, Service {
 /**
  * {@link SnapshotLock} is used to determine the table lock mode used during schema snapshot
  *
- * @author Mario Fiore Vitale
+ *
  */
 public interface SnapshotLock extends Configurable, Service {
 
