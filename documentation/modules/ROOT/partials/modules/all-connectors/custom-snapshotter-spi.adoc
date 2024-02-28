@@ -1,4 +1,4 @@
-For more advanced uses, you can fine-tune control the snapshot by implementing one of the following interfaces:
+For more advanced uses, you can fine-tune control of the snapshot by implementing one of the following interfaces:
 
 `io.debezium.snapshot.spi.Snapshotter`:: Controls whether the connector takes a snapshot.
 `io.debezium.snapshot.spi.SnapshotQuery`:: Controls how data is queried during a snapshot.

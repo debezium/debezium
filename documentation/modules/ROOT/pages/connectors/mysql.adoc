@@ -637,7 +637,7 @@ a|Record the successful completion of the snapshot in the connector offsets.
 |Setting |Description
 
 |`always`
-|Perform snapshot on each connector start.
+|The connector performs a database snapshot after every restart.
 After the snapshot completes, the connector begins to stream event records for subsequent database changes.
 
 |`initial`
@@ -654,7 +654,8 @@ After the snapshot completes, the connector begins to stream event records for s
 |The connector captures the structure of all relevant tables, performing all of the steps described in the xref:initial-snapshot-workflow-with-global-read-lock[default workflow for creating an initial snapshot], except that it does not create `READ` events to represent the data set at the point of the connector's start-up (Step 8.2).
 
 |`never`
-|The connector starts to stream event records for subsequent database changes. Evaluating deprecation in favor of `no_data`.
+|When the connector starts, rather than performing a snapshot, it immediately begins to stream event records for subsequent database changes. 
+This option is under consideration for future deprecation, in favor of the `no_data` option.
 
 |`schema_only_recovery`
 |Deprecated, see `recovery`.
@@ -667,7 +668,10 @@ You can also set the property to periodically prune a database schema history to
 WARNING: Do not use this mode to perform a snapshot if schema changes were committed to the database after the last connector shutdown.
 
 |`when_needed`
-|The connector performs a snapshot upon startup whenever it deems it necessary. That is, when no offsets are available, or when a previously recorded offset specifies a log position that is not available in the server.
+|`when_needed`:: After the connector starts, it performs a snapshot only if it detects one of the following circumstances:
+ 
+* It cannot detect any topic offsets.
+* A previously recorded offset specifies a log position that is not available on the server.
 
 ifdef::community[]
 |`custom`
@@ -3407,26 +3411,37 @@ For example, if you set `max.queue.size=1000`, and `max.queue.size.in.bytes=5000
 |Specifies the criteria for running a snapshot when the connector starts. Possible settings are: +
 
 `always`:: The snapshot includes the structure and data of the captured tables.
-Specify this value to populate topics with a complete representation of the data from the captured tables on each connector start.
+Specify this value to populate topics with a complete representation of the data from the captured tables every time that the connector starts.
 
-`initial`:: the connector runs a snapshot only when no offsets have been recorded for the logical server name.
+`initial`:: The connector runs a snapshot only when no offsets have been recorded for the logical server name.
 
-`initial_only`:: the connector runs a snapshot only when no offsets have been recorded for the logical server name and then stops; i.e. it will not read change events from the binlog.
+`initial_only`:: The connector runs a snapshot only when no offsets have been recorded for the logical server name.
+After the snapshot completes, the connector stops.
+It does not transition to streaming to read change events from the binlog.
 
 `schema_only`:: Deprecated, see `no_data`.
 
-`no_data`:: the connector runs a snapshot of the schemas and not the data. This setting is useful when you do not need the topics to contain a consistent snapshot of the data but need them to have only the changes since the connector was started.
+`no_data`:: The connector runs a snapshot that captures only the schema, but not any table data. 
+Set this option if you do not need the topics to contain a consistent snapshot of the data, but you want to capture any schema changes that were applied after the last connector restart.
 
 `schema_only_recovery`:: Deprecated, see `recovery`.
 
-`recovery`:: this is a recovery setting for a connector that has already been capturing changes. When you restart the connector, this setting enables recovery of a corrupted or lost database schema history topic. You might set it periodically to "clean up" a database schema history topic that has been growing unexpectedly. Database schema history topics require infinite retention.
+`recovery`::  Set this option to restore a database schema history topic that is lost or corrupted.
+After a restart, the connector runs a snapshot that rebuilds the topic from the source tables.
+You can also set the property to periodically prune a database schema history topic that experiences unexpected growth. +
+ +
+WARNING: Do not use this mode to perform a snapshot if schema changes were committed to the database after the last connector shutdown.
 
-`never`:: The connector starts to stream event records for subsequent database changes. Evaluating deprecation in favor of `no_data`.
+`never`:: When the connector starts, rather than performing a snapshot, it immediately begins to stream event records for subsequent database changes. 
+This option is under consideration for future deprecation, in favor of the `no_data` option.
 
-`when_needed`:: the connector runs a snapshot upon startup whenever it deems it necessary. That is, when no offsets are available, or when a previously recorded offset specifies a binlog location or GTID that is not available in the server.
+`when_needed`:: After the connector starts, it performs a snapshot only if it detects one of the following circumstances:
+ 
+* It cannot detect any topic offsets.
+* A previously recorded offset specifies a binlog position or GTID that is not available on the server.
 
 ifdef::community[]
-`custom`:: - The connector performs a snapshot according to the implementation specified by the xref:postgresql-property-snapshot-mode-custom-name[`snapshot.mode.custom.name`] property, which defines a custom implementation of the `io.debezium.spi.snapshot.Snapshotter` interface.
+`custom`:: The connector performs a snapshot according to the implementation specified by the xref:mysql-property-snapshot-mode-custom-name[`snapshot.mode.custom.name`] property, which defines a custom implementation of the `io.debezium.spi.snapshot.Snapshotter` interface.
 endif::community[]
 
 |[[mysql-property-snapshot-locking-mode]]<<mysql-property-snapshot-locking-mode, `+snapshot.locking.mode+`>>
@@ -3435,11 +3450,19 @@ a|Controls whether and how long the connector holds the global MySQL read lock, 
 
 `minimal`:: the connector holds the global read lock for only the initial portion of the snapshot during which the connector reads the database schemas and other metadata. The remaining work in a snapshot involves selecting all rows from each table. The connector can do this in a consistent fashion by using a REPEATABLE READ transaction. This is the case even when the global read lock is no longer held and other MySQL clients are updating the database. +
 
-`minimal_percona`:: the connector holds link:https://www.percona.com/doc/percona-server/8.0/management/backup_locks.html[the global backup lock] for only the initial portion of the snapshot during which the connector reads the database schemas and other metadata. The remaining work in a snapshot involves selecting all rows from each table. The connector can do this in a consistent fashion by using a REPEATABLE READ transaction. This is the case even when the global backup lock is no longer held and other MySQL clients are updating the database. This mode does not flush tables to disk, is not blocked by long-running reads, and is available only in Percona Server. +
+`minimal_percona`:: The connector holds link:https://www.percona.com/doc/percona-server/8.0/management/backup_locks.html[the global backup lock] for only the initial portion of the snapshot during which the connector reads the database schemas and other metadata. 
+The remaining work in a snapshot involves selecting all rows from each table. 
+The connector can do this in a consistent fashion by using a REPEATABLE READ transaction. 
+This is the case even when the global backup lock is no longer held and other MySQL clients are updating the database. 
+This mode does not flush tables to disk, is not blocked by long-running reads, and is available only in Percona Server. +
 
 `extended`:: blocks all writes for the duration of the snapshot. Use this setting if there are clients that are submitting operations that MySQL excludes from REPEATABLE READ semantics. +
 
-`none`:: prevents the connector from acquiring any table locks during the snapshot. While this setting is allowed with all snapshot modes, it is safe to use if and _only_ if no schema changes are happening while the snapshot is running. For tables defined with MyISAM engine, the tables would still be locked despite this property being set as MyISAM acquires a table lock. This behavior is unlike InnoDB engine, which acquires row level locks.
+`none`:: Prevents the connector from acquiring any table locks during the snapshot. 
+Although this option is allowed with all snapshot modes, it is safe to use if and _only_ if no schema changes occur while the snapshot is running. 
+Tables that are defined with the MyISAM engine always acquire a table lock. 
+As a result, such tables are locked even if you set this option. 
+This behavior differs from tables that are defined by the InnoDB engine, which acquire row-level locks.
 
 ifdef::community[]
 `custom`:: The connector performs a snapshot according to the implementation specified by the xref:mysql-property-snapshot-locking-mode-custom-name[`snapshot.locking.mode.custom.name`] property, which is a custom implementation of the `io.debezium.spi.snapshot.SnapshotLock` interface.
@@ -3448,7 +3471,7 @@ endif::community[]
 ifdef::community[]
 |[[mysql-property-snapshot-locking-mode-custom-name]]<<mysql-property-snapshot-locking-mode-custom-name, `+snapshot.locking.mode.custom.name+`>>
 |No default
-| When `snapshot.locking.mode` is set as `custom`, use this setting to specify the name of the custom implementation provided in the `name()` method that is defined by the 'io.debezium.spi.snapshot.SnapshotLock' interface.
+| When xref:mysql-property-snapshot-locking-mode[`snapshot.locking.mode`] is set to `custom`, use this setting to specify the name of the custom implementation provided in the `name()` method that is defined by the 'io.debezium.spi.snapshot.SnapshotLock' interface.
 For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
 endif::community[]
 
