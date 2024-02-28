@@ -95,7 +95,6 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
                 new SqlServerPartition.Provider(connectorConfig),
                 new SqlServerOffsetContext.Loader(connectorConfig));
 
-
         // Manual Bean Registration
         connectorConfig.getBeanRegistry().add(StandardBeanNames.CONFIGURATION, config);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.CONNECTOR_CONFIG, connectorConfig);
@@ -109,11 +108,8 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
 
         final SnapshotterService snapshotterService = connectorConfig.getServiceRegistry().tryGetService(SnapshotterService.class);
 
-        for (Map.Entry<SqlServerPartition, SqlServerOffsetContext> offset : offsets) {
-
-            validateAndLoadSchemaHistory(connectorConfig, metadataConnection, Offsets.of(offset.getKey(), offset.getValue()), schema,
-                    snapshotterService.getSnapshotter());
-        }
+        validateAndLoadSchemaHistory(connectorConfig, metadataConnection, offsets, schema,
+                snapshotterService.getSnapshotter());
 
         taskContext = new SqlServerTaskContext(connectorConfig, schema);
 

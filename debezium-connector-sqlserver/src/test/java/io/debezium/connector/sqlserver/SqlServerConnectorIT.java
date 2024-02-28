@@ -5,11 +5,13 @@
  */
 package io.debezium.connector.sqlserver;
 
+import static io.debezium.connector.sqlserver.util.TestHelper.SCHEMA_HISTORY_PATH;
 import static io.debezium.connector.sqlserver.util.TestHelper.TEST_DATABASE_2;
 import static io.debezium.connector.sqlserver.util.TestHelper.TYPE_LENGTH_PARAMETER_KEY;
 import static io.debezium.connector.sqlserver.util.TestHelper.TYPE_NAME_PARAMETER_KEY;
 import static io.debezium.connector.sqlserver.util.TestHelper.TYPE_SCALE_PARAMETER_KEY;
 import static io.debezium.connector.sqlserver.util.TestHelper.waitForStreamingStarted;
+import static io.debezium.data.Envelope.FieldName.AFTER;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.SCHEMA_EXCLUDE_LIST;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.SCHEMA_INCLUDE_LIST;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -34,6 +36,7 @@ import java.util.TimeZone;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import javax.management.InstanceNotFoundException;
 
@@ -52,6 +55,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
@@ -73,6 +77,7 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.history.HistoryRecordComparator;
+import io.debezium.relational.history.MemorySchemaHistory;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.relational.history.SchemaHistoryException;
 import io.debezium.relational.history.SchemaHistoryListener;
@@ -80,6 +85,8 @@ import io.debezium.relational.history.TableChanges;
 import io.debezium.schema.DatabaseSchema;
 import io.debezium.storage.file.history.FileSchemaHistory;
 import io.debezium.util.Testing;
+
+import junit.framework.TestCase;
 
 /**
  * Integration test for the Debezium SQL Server connector.
@@ -107,7 +114,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         TestHelper.enableTableCdc(connection, "tableb");
 
         initializeConnectorTestFramework();
-        Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
+        Testing.Files.delete(SCHEMA_HISTORY_PATH);
         // Testing.Print.enable();
     }
 
@@ -2169,13 +2176,13 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
             connection.execute("INSERT INTO tableb VALUES(" + id + ", 'b')");
         }
 
-        Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
+        Testing.Files.delete(SCHEMA_HISTORY_PATH);
 
         final LogInterceptor logInterceptor = new LogInterceptor(SqlServerConnectorIT.class);
         start(SqlServerConnector.class, config);
         waitForConnectorShutdown("sqlserver", TestHelper.TEST_SERVER_NAME);
         assertThat(logInterceptor.containsStacktraceElement(
-                "The db history topic or its content is fully or partially missing. Please check database schema history topic configuration and re-execute the snapshot."))
+                " The db history topic is missing. You may attempt to recover it by reconfiguring the connector to recovery."))
                 .isTrue();
     }
 
@@ -2943,6 +2950,240 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         });
     }
 
+    @Test
+    public void shouldNotUseOffsetWhenSnapshotIsAlways() throws Exception {
+
+        try {
+            Configuration config = TestHelper.defaultConfig()
+                    .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.ALWAYS)
+                    .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.always_snapshot")
+                    .with(SqlServerConnectorConfig.SNAPSHOT_MODE_TABLES, "[A-z].*dbo.always_snapshot")
+                    .with(SqlServerConnectorConfig.STORE_ONLY_CAPTURED_TABLES_DDL, true)
+                    .with(SqlServerConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                    .build();
+
+            connection.execute("CREATE TABLE always_snapshot ("
+                    + " id INT PRIMARY KEY NOT NULL,"
+                    + " data VARCHAR(50) NOT NULL);");
+            connection.execute("INSERT INTO always_snapshot VALUES (1,'Test1');");
+            connection.execute("INSERT INTO always_snapshot VALUES (2,'Test2');");
+
+            TestHelper.enableTableCdc(connection, "always_snapshot");
+
+            start(SqlServerConnector.class, config);
+
+            TestHelper.waitForStreamingStarted();
+
+            int expectedRecordCount = 2;
+            SourceRecords sourceRecords = consumeRecordsByTopic(expectedRecordCount);
+            assertThat(sourceRecords.recordsForTopic("server1.testDB1.dbo.always_snapshot")).hasSize(expectedRecordCount);
+            Struct struct = (Struct) ((Struct) sourceRecords.allRecordsInOrder().get(0).value()).get(AFTER);
+            TestCase.assertEquals(1, struct.get("id"));
+            TestCase.assertEquals("Test1", struct.get("data"));
+            struct = (Struct) ((Struct) sourceRecords.allRecordsInOrder().get(1).value()).get(AFTER);
+            TestCase.assertEquals(2, struct.get("id"));
+            TestCase.assertEquals("Test2", struct.get("data"));
+
+            stopConnector();
+
+            connection.execute("DELETE FROM always_snapshot WHERE id=1;");
+            connection.execute("INSERT INTO always_snapshot VALUES (3,'Test3');");
+
+            start(SqlServerConnector.class, config);
+            TestHelper.waitForStreamingStarted();
+            sourceRecords = consumeRecordsByTopic(expectedRecordCount);
+
+            // Check we get up-to-date data in the snapshot.
+            assertThat(sourceRecords.recordsForTopic("server1.testDB1.dbo.always_snapshot")).hasSize(expectedRecordCount);
+            struct = (Struct) ((Struct) sourceRecords.allRecordsInOrder().get(0).value()).get(AFTER);
+            TestCase.assertEquals(2, struct.get("id"));
+            TestCase.assertEquals("Test2", struct.get("data"));
+            struct = (Struct) ((Struct) sourceRecords.allRecordsInOrder().get(1).value()).get(AFTER);
+            TestCase.assertEquals(3, struct.get("id"));
+            TestCase.assertEquals("Test3", struct.get("data"));
+        }
+        catch (Exception e) {
+            e.printStackTrace();
+        }
+        finally {
+            connection.execute("DROP TABLE testDB1.dbo.always_snapshot");
+        }
+    }
+
+    @Test
+    public void shouldCreateSnapshotSchemaOnlyRecovery() throws Exception {
+
+        Configuration.Builder builder = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SqlServerConnectorConfig.SnapshotMode.INITIAL)
+                .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.tablea")
+                .with(SqlServerConnectorConfig.SCHEMA_HISTORY, MemorySchemaHistory.class.getName());
+
+        Configuration config = builder.build();
+        // Start the connector ...
+        start(SqlServerConnector.class, config);
+
+        // Poll for records ...
+        // Testing.Print.enable();
+        int recordCount = 1;
+        SourceRecords sourceRecords = consumeRecordsByTopic(recordCount);
+        assertThat(sourceRecords.allRecordsInOrder()).hasSize(recordCount);
+        stopConnector();
+
+        builder.with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.RECOVERY);
+        config = builder.build();
+        start(SqlServerConnector.class, config);
+
+        connection.execute("INSERT INTO tablea VALUES (100,'100')");
+        connection.execute("INSERT INTO tablea VALUES (200,'200')");
+
+        recordCount = 2;
+        sourceRecords = consumeRecordsByTopic(recordCount);
+        assertThat(sourceRecords.allRecordsInOrder()).hasSize(recordCount);
+    }
+
+    @Test
+    public void shouldProcessPurgedLogsWhenDownAndSnapshotNeeded() throws SQLException, InterruptedException {
+
+        Testing.Files.delete(SCHEMA_HISTORY_PATH);
+
+        purgeDatabaseLogs();
+
+        // Use the DB configuration to define the connector's configuration ...
+        Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.WHEN_NEEDED)
+                .with(SqlServerConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.tablea")
+                .build();
+
+        // Start the connector ...
+        start(SqlServerConnector.class, config);
+
+        // Consume the first records due to startup and initialization of the database ...
+        // Testing.Print.enable();
+        SourceRecords records = consumeRecordsByTopic(1 + 1); // CREATE 1 tables + 1 data
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea").size()).isEqualTo(1);
+        assertThat(records.topics().size()).isEqualTo(1 + 1);
+        assertThat(records.ddlRecordsForDatabase("testDB1").size()).isEqualTo(1);
+
+        // Check that all records are valid, can be serialized and deserialized ...
+        records.forEach(this::validate);
+
+        stopConnector();
+
+        connection.execute(
+                "INSERT INTO tablea VALUES(100,'100')",
+                "INSERT INTO tablea VALUES(200,'200')");
+
+        start(SqlServerConnector.class, config);
+        records = consumeRecordsByTopic(2);
+        stopConnector();
+
+        connection.execute(
+                "INSERT INTO tablea VALUES(300,'300')",
+                "INSERT INTO tablea VALUES(400,'400')");
+
+        purgeDatabaseLogs();
+
+        start(SqlServerConnector.class, config);
+        // CREATE 1 tables + 5 data
+        records = consumeRecordsByTopic(1 + 5);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea").size()).isEqualTo(5);
+        assertThat(records.topics().size()).isEqualTo(1 + 1);
+        assertThat(records.ddlRecordsForDatabase("testDB1").size()).isEqualTo(1);
+        stopConnector();
+
+        connection.execute(
+                "INSERT INTO tablea VALUES(500,'500')",
+                "INSERT INTO tablea VALUES(600,'600')");
+
+        purgeDatabaseLogs();
+
+        connection.execute(
+                "INSERT INTO tablea VALUES(700,'700')",
+                "INSERT INTO tablea VALUES(800,'800')");
+
+        start(SqlServerConnector.class, config);
+        // CREATE 1 table + 9 data
+        records = consumeRecordsByTopic(1 + 9);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea").size()).isEqualTo(9);
+        assertThat(records.topics().size()).isEqualTo(1 + 1);
+        assertThat(records.ddlRecordsForDatabase("testDB1").size()).isEqualTo(1);
+        stopConnector();
+    }
+
+    @Test
+    public void shouldAllowForCustomSnapshot() throws InterruptedException, SQLException {
+
+        final String pkField = "id";
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SqlServerConnectorConfig.SnapshotMode.CUSTOM.getValue())
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE_CUSTOM_NAME, CustomTestSnapshot.class.getName())
+                .with(CommonConnectorConfig.SNAPSHOT_QUERY_MODE, CommonConnectorConfig.SnapshotQueryMode.CUSTOM)
+                .with(CommonConnectorConfig.SNAPSHOT_QUERY_MODE_CUSTOM_NAME, CustomTestSnapshot.class.getName())
+                .build();
+
+        connection.execute("INSERT INTO tableb VALUES (1, '1');");
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+
+        SourceRecords actualRecords = consumeRecordsByTopic(2);
+
+        List<SourceRecord> s1recs = actualRecords.recordsForTopic("server1.testDB1.dbo.tablea");
+        List<SourceRecord> s2recs = actualRecords.recordsForTopic("server1.testDB1.dbo.tableb");
+
+        if (s2recs != null) { // Sometimes the record is processed by the stream so filtering it out
+            s2recs = s2recs.stream().filter(r -> "r".equals(((Struct) r.value()).get("op")))
+                    .collect(Collectors.toList());
+        }
+        assertThat(s1recs.size()).isEqualTo(1);
+        assertThat(s2recs).isEmpty();
+
+        SourceRecord record = s1recs.get(0);
+        VerifyRecord.isValidRead(record, pkField, 1);
+
+        connection.execute("INSERT INTO tablea VALUES (2, '1');");
+        connection.execute("INSERT INTO tableb VALUES (2, '1');");
+
+        actualRecords = consumeRecordsByTopic(2);
+
+        s1recs = actualRecords.recordsForTopic("server1.testDB1.dbo.tablea");
+        s2recs = actualRecords.recordsForTopic("server1.testDB1.dbo.tableb");
+        assertThat(s1recs.size()).isEqualTo(1);
+        assertThat(s2recs.size()).isEqualTo(1);
+        record = s1recs.get(0);
+        VerifyRecord.isValidInsert(record, pkField, 2);
+        record = s2recs.get(0);
+        VerifyRecord.isValidInsert(record, pkField, 2);
+        stopConnector();
+
+        config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SqlServerConnectorConfig.SnapshotMode.CUSTOM.getValue())
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE_CUSTOM_NAME, CustomTestSnapshot.class.getName())
+                .with(CommonConnectorConfig.SNAPSHOT_QUERY_MODE, CommonConnectorConfig.SnapshotQueryMode.CUSTOM)
+                .with(CommonConnectorConfig.SNAPSHOT_QUERY_MODE_CUSTOM_NAME, CustomTestSnapshot.class.getName())
+                .build();
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+        actualRecords = consumeRecordsByTopic(4);
+
+        s1recs = actualRecords.recordsForTopic("server1.testDB1.dbo.tablea");
+        s2recs = actualRecords.recordsForTopic("server1.testDB1.dbo.tableb");
+        assertThat(s1recs.size()).isEqualTo(2);
+        assertThat(s2recs.size()).isEqualTo(2);
+        VerifyRecord.isValidRead(s1recs.get(0), pkField, 1);
+        VerifyRecord.isValidRead(s1recs.get(1), pkField, 2);
+        VerifyRecord.isValidRead(s2recs.get(0), pkField, 1);
+        VerifyRecord.isValidRead(s2recs.get(1), pkField, 2);
+    }
+
+    private void purgeDatabaseLogs() throws SQLException {
+        connection.execute("ALTER DATABASE testDB1 SET RECOVERY SIMPLE");
+        connection.execute("DBCC SHRINKFILE (testDB1, 1)");
+    }
+
     private void shouldStopRetriableRestartsAtConfiguredMaximum(SqlRunnable scenario) throws Exception {
         TestHelper.createTestDatabase(TestHelper.TEST_DATABASE_2);
         connection = TestHelper.testConnection(TEST_DATABASE_2);
@@ -2952,7 +3193,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
                 "INSERT INTO tablea VALUES(1, 'a')");
         TestHelper.enableTableCdc(connection, "tablea");
         TestHelper.enableTableCdc(connection, "tableb");
-        Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
+        Testing.Files.delete(SCHEMA_HISTORY_PATH);
 
         final Configuration config1 = TestHelper.defaultConnectorConfig()
                 .with(SqlServerConnectorConfig.DATABASE_NAMES.name(), TestHelper.TEST_DATABASE_1 + "," + TestHelper.TEST_DATABASE_2)
@@ -3011,7 +3252,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         @Override
         public boolean exists() {
             try {
-                return storageExists() && java.nio.file.Files.size(TestHelper.SCHEMA_HISTORY_PATH) > 0;
+                return storageExists() && java.nio.file.Files.size(SCHEMA_HISTORY_PATH) > 0;
             }
             catch (IOException e) {
                 throw new SchemaHistoryException("File should exist");

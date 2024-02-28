@@ -87,16 +87,6 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
          * This can be used for recovery only if the connector has existing offsets and the schema.history.internal.kafka.topic does not exist (deleted).
          * This recovery option should be used with care as it assumes there have been no schema changes since the connector last stopped,
          * otherwise some events during the gap may be processed with an incorrect schema and corrupted.
-         *
-         * @deprecated to be removed in Debezium 3.0, replaced by {{@link #RECOVERY}}
-         */
-        SCHEMA_ONLY_RECOVERY("schema_only_recovery"),
-
-        /**
-         * Perform a snapshot of only the database schemas (without data) and then begin reading the redo log at the current redo log position.
-         * This can be used for recovery only if the connector has existing offsets and the schema.history.internal.kafka.topic does not exist (deleted).
-         * This recovery option should be used with care as it assumes there have been no schema changes since the connector last stopped,
-         * otherwise some events during the gap may be processed with an incorrect schema and corrupted.
          */
         RECOVERY("recovery"),
 

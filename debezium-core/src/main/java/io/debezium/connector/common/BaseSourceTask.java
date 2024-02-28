@@ -69,74 +69,77 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
     protected void validateAndLoadSchemaHistory(CommonConnectorConfig config, JdbcConnection jdbcConnection, Offsets<P, O> previousOffsets, DatabaseSchema schema,
                                                 Snapshotter snapshotter) {
 
-        final OffsetContext offset = previousOffsets.getTheOnlyOffset();
-        final Partition partition = previousOffsets.getTheOnlyPartition();
+        for (Map.Entry<P, O> previousOffset : previousOffsets) {
 
-        if (offset == null) {
-            if (snapshotter.shouldSnapshotOnSchemaError()) {
-                // We are in schema only recovery mode, use the existing redo log position
-                // would like to also verify redo log position exists, but it defaults to 0 which is technically valid
-                throw new DebeziumException("Could not find existing redo log information while attempting schema only recovery snapshot");
-            }
-            LOGGER.info("Connector started for the first time.");
-            if (schema.isHistorized()) {
-                ((HistorizedDatabaseSchema) schema).initializeStorage();
-            }
-            return;
-        }
+            Partition partition = previousOffset.getKey();
+            OffsetContext offset = previousOffset.getValue();
 
-        if (offset.isSnapshotRunning()) {
-            // The last offset was an incomplete snapshot and now the snapshot was disabled
-            if (!snapshotter.shouldSnapshotData(true, true)) {
-                // No snapshots are allowed
-                throw new DebeziumException("The connector previously stopped while taking a snapshot, but now the connector is configured "
-                        + "to never allow snapshots. Reconfigure the connector to use snapshots initially or when needed.");
-            }
-        }
-        else {
-
-            boolean logPositionAvailable = jdbcConnection.isLogPositionAvailable(offset, config);
-
-            if (schema.isHistorized() && !((HistorizedDatabaseSchema) schema).historyExists()) {
-
-                LOGGER.warn("Database schema history was not found but was expected");
-
+            if (offset == null) {
                 if (snapshotter.shouldSnapshotOnSchemaError()) {
+                    // We are in schema only recovery mode, use the existing redo log position
+                    // would like to also verify redo log position exists, but it defaults to 0 which is technically valid
+                    throw new DebeziumException("Could not find existing redo log information while attempting schema only recovery snapshot");
+                }
+                LOGGER.info("Connector started for the first time.");
+                if (schema.isHistorized()) {
+                    ((HistorizedDatabaseSchema) schema).initializeStorage();
+                }
+                return;
+            }
 
-                    LOGGER.info("The db-history topic is missing but we are in {} snapshot mode. " +
-                            "Attempting to snapshot the current schema and then begin reading the redo log from the last recorded offset.",
-                            snapshotter.name());
-                    if (schema.isHistorized()) {
-                        ((HistorizedDatabaseSchema) schema).initializeStorage();
+            if (offset.isSnapshotRunning()) {
+                // The last offset was an incomplete snapshot and now the snapshot was disabled
+                if (!snapshotter.shouldSnapshotData(true, true)) {
+                    // No snapshots are allowed
+                    throw new DebeziumException("The connector previously stopped while taking a snapshot, but now the connector is configured "
+                            + "to never allow snapshots. Reconfigure the connector to use snapshots initially or when needed.");
+                }
+            }
+            else {
+
+                boolean logPositionAvailable = jdbcConnection.isLogPositionAvailable(offset, config);
+
+                if (schema.isHistorized() && !((HistorizedDatabaseSchema) schema).historyExists()) {
+
+                    LOGGER.warn("Database schema history was not found but was expected");
+
+                    if (snapshotter.shouldSnapshotOnSchemaError()) {
+
+                        LOGGER.info("The db-history topic is missing but we are in {} snapshot mode. " +
+                                "Attempting to snapshot the current schema and then begin reading the redo log from the last recorded offset.",
+                                snapshotter.name());
+                        if (schema.isHistorized()) {
+                            ((HistorizedDatabaseSchema) schema).initializeStorage();
+                        }
+                        return;
                     }
-                    return;
-                }
-                else {
-                    throw new DebeziumException("The db history topic is missing. You may attempt to recover it by reconfiguring the connector to schema_only_recovery.");
-                }
-            }
-
-            if (!logPositionAvailable && !offset.isSnapshotRunning()) {
-                LOGGER.warn("Last recorded offset is no longer available on the server.");
-
-                if (snapshotter.shouldSnapshotOnDataError()) {
-
-                    LOGGER.info("The last recorded offset is no longer available but we are in {} snapshot mode. " +
-                            "Attempting to snapshot data to fill the gap.",
-                            snapshotter.name());
-
-                    previousOffsets.resetOffset(previousOffsets.getTheOnlyPartition());
-
-                    return;
+                    else {
+                        throw new DebeziumException("The db history topic is missing. You may attempt to recover it by reconfiguring the connector to recovery.");
+                    }
                 }
 
-                LOGGER.warn("The connector is trying to read redo log starting at " + offset + ", but this is no longer "
-                        + "available on the server. Reconfigure the connector to use a snapshot when needed if you want to recover. " +
-                        "If not the connector will streaming from the last available position in the log");
-            }
+                if (!logPositionAvailable && !offset.isSnapshotRunning()) {
+                    LOGGER.warn("Last recorded offset is no longer available on the server.");
 
-            if (schema.isHistorized()) {
-                ((HistorizedDatabaseSchema) schema).recover(partition, offset);
+                    if (snapshotter.shouldSnapshotOnDataError()) {
+
+                        LOGGER.info("The last recorded offset is no longer available but we are in {} snapshot mode. " +
+                                "Attempting to snapshot data to fill the gap.",
+                                snapshotter.name());
+
+                        previousOffsets.resetOffset(previousOffsets.getTheOnlyPartition());
+
+                        return;
+                    }
+
+                    LOGGER.warn("The connector is trying to read redo log starting at " + offset + ", but this is no longer "
+                            + "available on the server. Reconfigure the connector to use a snapshot when needed if you want to recover. " +
+                            "If not the connector will streaming from the last available position in the log");
+                }
+
+                if (schema.isHistorized()) {
+                    ((HistorizedDatabaseSchema) schema).recover(partition, offset);
+                }
             }
         }
     }
