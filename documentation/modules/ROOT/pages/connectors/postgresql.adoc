@@ -189,7 +189,10 @@ Use this snapshot mode only when you know that all data of interest is still ref
 |Deprecated, see `no_data`
 
 |`when_needed`
-|The connector performs a snapshot upon startup whenever it deems it necessary. That is, when no offsets are available, or when a previously recorded offset specifies a log position that is not available in the server.
+|After the connector starts, it performs a snapshot only if it detects one of the following circumstances:
+ 
+* It cannot detect any topic offsets.
+* A previously recorded offset specifies a log position that is not available on the server.
 
 ifdef::community[]
 |`custom`
@@ -3283,7 +3286,12 @@ For example, +
 
 `initial_only`:: The connector performs an initial snapshot and then stops, without processing any subsequent changes.
 
-`no_data`:: The connector never performs snapshots. When a connector is configured this way, its behavior when it starts is as follows. If there is a previously stored LSN in the Kafka offsets topic, the connector continues streaming changes from that position. If no LSN has been stored, the connector starts streaming changes from the point in time when the PostgreSQL logical replication slot was created on the server. This snapshot mode is useful only when you know all data of interest is still reflected in the WAL.
+`no_data`:: The connector never performs snapshots. 
+When a connector is configured this way, after it starts, it behaves as follows:
+
+If there is a previously stored LSN in the Kafka offsets topic, the connector continues streaming changes from that position.
+If no LSN is stored, the connector starts streaming changes from the point in time when the PostgreSQL logical replication slot was created on the server. 
+Use this snapshot mode only when you know all data of interest is still reflected in the WAL.
 
 `never`:: Deprecated see `no_data`.
 

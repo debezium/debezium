@@ -676,7 +676,9 @@ WARNING: Do not use this mode to perform a snapshot if schema changes were commi
 ifdef::community[]
 |`custom`
 |The `custom` snapshot mode lets you inject your own implementation of the `io.debezium.spi.snapshot.Snapshotter` interface.
-Set the `snapshot.mode.custom.name` configuration property to the name provided by the `name()` method of your implementation, as specified on the classpath of your Kafka Connect cluster, or included in the connector JAR file, if using the `EmbeddedEngine`.
+Set the `snapshot.mode.custom.name` configuration property to the name provided by the `name()` method of your implementation. 
+The name is specified on the classpath of your Kafka Connect cluster.
+If you use the `EmbeddedEngine`, the name is included in the connector JAR file.
 For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
 endif::community[]
 
@@ -3448,7 +3450,10 @@ endif::community[]
 |_minimal_
 a|Controls whether and how long the connector holds the global MySQL read lock, which prevents any updates to the database, while the connector is performing a snapshot. Possible settings are: +
 
-`minimal`:: the connector holds the global read lock for only the initial portion of the snapshot during which the connector reads the database schemas and other metadata. The remaining work in a snapshot involves selecting all rows from each table. The connector can do this in a consistent fashion by using a REPEATABLE READ transaction. This is the case even when the global read lock is no longer held and other MySQL clients are updating the database. +
+`minimal`:: The connector holds the global read lock for only the initial portion of the snapshot during which the connector reads the database schemas and other metadata. 
+The remaining work in a snapshot involves selecting all rows from each table. 
+The connector can do this in a consistent fashion by using a REPEATABLE READ transaction. 
+This is the case even when the global read lock is no longer held and other MySQL clients are updating the database. +
 
 `minimal_percona`:: The connector holds link:https://www.percona.com/doc/percona-server/8.0/management/backup_locks.html[the global backup lock] for only the initial portion of the snapshot during which the connector reads the database schemas and other metadata. 
 The remaining work in a snapshot involves selecting all rows from each table. 
@@ -3456,7 +3461,8 @@ The connector can do this in a consistent fashion by using a REPEATABLE READ tra
 This is the case even when the global backup lock is no longer held and other MySQL clients are updating the database. 
 This mode does not flush tables to disk, is not blocked by long-running reads, and is available only in Percona Server. +
 
-`extended`:: blocks all writes for the duration of the snapshot. Use this setting if there are clients that are submitting operations that MySQL excludes from REPEATABLE READ semantics. +
+`extended`:: Blocks all write operations for the duration of the snapshot. 
+Use this setting if clients submit concurrent operations that are incompatible with the REPEATABLE READ isolation level in MySQL. +
 
 `none`:: Prevents the connector from acquiring any table locks during the snapshot. 
 Although this option is allowed with all snapshot modes, it is safe to use if and _only_ if no schema changes occur while the snapshot is running. 
