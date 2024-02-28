@@ -178,7 +178,12 @@ If the connector fails, is rebalanced, or stops after Step 1 begins but before S
 |The connector performs a database snapshot and stops before streaming any change event records. If the connector had started but did not complete a snapshot before stopping, the connector restarts the snapshot process and stops when the snapshot completes.
 
 |`no_data`
-|The connector never performs snapshots. When a connector is configured this way, its behavior when it starts is as follows. If there is a previously stored LSN in the Kafka offsets topic, the connector continues streaming changes from that position. If no LSN has been stored, the connector starts streaming changes from the point in time when the PostgreSQL logical replication slot was created on the server. This snapshot mode is useful only when you know all data of interest is still reflected in the WAL.
+|The connector never performs snapshots. 
+When a connector is configured this way, after it starts, it behaves as follows:
+
+If there is a previously stored LSN in the Kafka offsets topic, the connector continues streaming changes from that position. 
+If no LSN is stored, the connector starts streaming changes from the point at which the PostgreSQL logical replication slot was created on the server. 
+Use this snapshot mode only when you know that all data of interest is still reflected in the WAL.
 
 |[.line-through]`never`
 |Deprecated, see `no_data`
@@ -189,7 +194,9 @@ If the connector fails, is rebalanced, or stops after Step 1 begins but before S
 ifdef::community[]
 |`custom`
 |The `custom` snapshot mode lets you inject your own implementation of the `io.debezium.spi.snapshot.Snapshotter` interface.
-Set the `snapshot.mode.custom.name` configuration property to the name provided by the `name()` method of your implementation, as specified on the classpath of your Kafka Connect cluster, or included in the connector JAR file, if using the `EmbeddedEngine`.
+Set the `snapshot.mode.custom.name` configuration property to the name provided by the `name()` method of your implementation. 
+The name is specified on the classpath of your Kafka Connect cluster.
+If you use the `EmbeddedEngine`, the name is included in the connector JAR file.
 For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
 endif::community[]
 
@@ -3280,7 +3287,10 @@ For example, +
 
 `never`:: Deprecated see `no_data`.
 
-`when_needed`:: The connector performs a snapshot upon startup whenever it deems it necessary. That is, when no offsets are available, or when a previously recorded offset specifies a log position that is not available in the server.
+`when_needed`:: After the connector starts, it performs a snapshot only if it detects one of the following circumstances:
+ 
+* It cannot detect any topic offsets.
+* A previously recorded offset specifies a log position that is not available on the server.
 
 ifdef::community[]
 `custom`:: The connector performs a snapshot according to the implementation specified by the xref:postgresql-property-snapshot-mode-custom-name[`snapshot.mode.custom.name`] property, which defines a custom implementation of the `io.debezium.spi.snapshot.Snapshotter` interface.
@@ -3318,7 +3328,7 @@ endif::community[]
 ifdef::community[]
 |[[postgresql-property-snapshot-locking-mode-custom-name]]<<postgresql-property-snapshot-locking-mode-custom-name, `+snapshot.locking.mode.custom.name+`>>
 |No default
-| When `snapshot.locking.mode` is set as `custom`, use this setting to specify the name of the custom implementation provided in the `name()` method that is defined by the 'io.debezium.spi.snapshot.SnapshotLock' interface.
+| When xref:postgresql-property-snapshot-locking-mode[`snapshot.locking.mode`] is set to `custom`, use this setting to specify the name of the custom implementation provided in the `name()` method that is defined by the 'io.debezium.spi.snapshot.SnapshotLock' interface.
 For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
 endif::community[]
 

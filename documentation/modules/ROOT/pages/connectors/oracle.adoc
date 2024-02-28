@@ -190,12 +190,17 @@ You can also set the property to periodically prune a database schema history to
 WARNING: Do not use this mode to perform a snapshot if schema changes were committed to the database after the last connector shutdown.
 
 |`when_needed`
-|The connector performs a snapshot upon startup whenever it deems it necessary. That is, when no offsets are available, or when a previously recorded offset specifies a log position that is not available in the server.
+|`when_needed`:: After the connector starts, it performs a snapshot only if it detects one of the following circumstances:
+
+* It cannot detect any topic offsets.
+* A previously recorded offset specifies a log position that is not available on the server.
 
 ifdef::community[]
 |`custom`
 |The `custom` snapshot mode lets you inject your own implementation of the `io.debezium.spi.snapshot.Snapshotter` interface.
-Set the `snapshot.mode.custom.name` configuration property to the name provided by the `name()` method of your implementation, as specified on the classpath of your Kafka Connect cluster, or included in the connector JAR file, if using the `EmbeddedEngine`.
+Set the `snapshot.mode.custom.name` configuration property to the name provided by the `name()` method of your implementation. 
+The name is specified on the classpath of your Kafka Connect cluster.
+If you use the {prodname} `EmbeddedEngine`, the name is included in the connector JAR file.
 For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
 endif::community[]
 
@@ -3138,7 +3143,10 @@ Note this mode is only safe to be used when it is guaranteed that no schema chan
 
 After the snapshot is complete, the connector continues to read change events from the database's redo logs except when `snapshot.mode` is configured as `initial_only`.
 
-`when_needed`:: The connector performs a snapshot upon startup whenever it deems it necessary. That is, when no offsets are available, or when a previously recorded offset specifies a log position that is not available in the server.
+`when_needed`:: After the connector starts, it performs a snapshot only if it detects one of the following circumstances:
+ 
+* It cannot detect any topic offsets.
+* A previously recorded offset specifies a log position that is not available on the server.
 
 ifdef::community[]
 `custom`:: - The connector performs a snapshot according to the implementation specified by the xref:postgresql-property-snapshot-mode-custom-name[`snapshot.mode.custom.name`] property, which defines a custom implementation of the `io.debezium.spi.snapshot.Snapshotter` interface.
@@ -3184,7 +3192,7 @@ This setting enables you to manage snapshot content in a more flexible manner co
 ifdef::community[]
 |[[oracle-property-snapshot-snapshot-query-mode-custom-name]]<<oracle-property-snapshot-query-mode-custom-name, `+snapshot.query.mode.custom.name+`>>
 |No default
-| When xref:oracle-property-snapshot-query-mode[`snapshot.query.mode`] is set as `custom`, use this setting to specify the name of the custom implementation provided in the `name()` method that is defined by the 'io.debezium.spi.snapshot.SnapshotQuery' interface.
+| When xref:oracle-property-snapshot-query-mode[`snapshot.query.mode`] is set to `custom`, use this setting to specify the name of the custom implementation provided in the `name()` method that is defined by the 'io.debezium.spi.snapshot.SnapshotQuery' interface.
 For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
 endif::community[]
 
