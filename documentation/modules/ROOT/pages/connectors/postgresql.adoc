@@ -3280,7 +3280,10 @@ For example, +
 |_initial_
 |Specifies the criteria for performing a snapshot when the connector starts: +
 
-`always`:: The connector performs a snapshot each time the connector starts.
+`always`:: The connector performs a snapshot every time that it starts.
+The snapshot includes the structure and data of the captured tables.
+Specify this value to populate topics with a complete representation of the data from the captured tables every time that the connector starts.
+After the snapshot completes, the connector begins to stream event records for subsequent database changes.
 
 `initial`:: The connector performs a snapshot only when no offsets have been recorded for the logical server name.
 
