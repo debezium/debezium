@@ -398,11 +398,7 @@ public class OracleValueConverters extends JdbcValueConverters {
             return ((Double) data).floatValue();
         }
         else if (data instanceof String) {
-            final String s = (String) data;
-            if (isHexToRawFunctionCall(s)) {
-                data = String.valueOf(convertHexToRawFunctionToNumber(column, s));
-            }
-            return Float.parseFloat((String) data);
+            return Float.parseFloat(toStringFromNumericHexToRawIfApplicable(column, (String) data));
         }
 
         return super.convertFloat(column, fieldDefn, data);
@@ -419,11 +415,7 @@ public class OracleValueConverters extends JdbcValueConverters {
             }
         }
         else if (data instanceof String) {
-            final String s = (String) data;
-            if (isHexToRawFunctionCall(s)) {
-                data = String.valueOf(convertHexToRawFunctionToNumber(column, s));
-            }
-            return Double.parseDouble((String) data);
+            return Double.parseDouble(toStringFromNumericHexToRawIfApplicable(column, (String) data));
         }
 
         return super.convertDouble(column, fieldDefn, data);
@@ -445,11 +437,7 @@ public class OracleValueConverters extends JdbcValueConverters {
         }
         else if (data instanceof String) {
             // LogMiner
-            final String s = (String) data;
-            if (isHexToRawFunctionCall(s)) {
-                data = convertHexToRawFunctionToNumber(column, s);
-            }
-            data = toBigDecimal(column, fieldDefn, data);
+            data = toBigDecimal(column, fieldDefn, toNumberFromNumericHexToRawIfApplicable(column, (String) data));
         }
 
         // adjust scale to column's scale if the column's scale is larger than the one from
@@ -476,10 +464,7 @@ public class OracleValueConverters extends JdbcValueConverters {
             }
         }
         else if (data instanceof String) {
-            final String s = (String) data;
-            if (isHexToRawFunctionCall(s)) {
-                data = convertHexToRawFunctionToNumber(column, s);
-            }
+            data = toNumberFromNumericHexToRawIfApplicable(column, (String) data);
         }
 
         return convertTinyInt(column, fieldDefn, data);
@@ -495,10 +480,7 @@ public class OracleValueConverters extends JdbcValueConverters {
             }
         }
         else if (data instanceof String) {
-            final String s = (String) data;
-            if (isHexToRawFunctionCall(s)) {
-                data = convertHexToRawFunctionToNumber(column, s);
-            }
+            data = toNumberFromNumericHexToRawIfApplicable(column, (String) data);
         }
 
         return super.convertSmallInt(column, fieldDefn, data);
@@ -514,10 +496,7 @@ public class OracleValueConverters extends JdbcValueConverters {
             }
         }
         else if (data instanceof String) {
-            final String s = (String) data;
-            if (isHexToRawFunctionCall(s)) {
-                data = convertHexToRawFunctionToNumber(column, s);
-            }
+            data = toNumberFromNumericHexToRawIfApplicable(column, (String) data);
         }
 
         return super.convertInteger(column, fieldDefn, data);
@@ -533,10 +512,7 @@ public class OracleValueConverters extends JdbcValueConverters {
             }
         }
         else if (data instanceof String) {
-            final String s = (String) data;
-            if (isHexToRawFunctionCall(s)) {
-                data = convertHexToRawFunctionToNumber(column, s);
-            }
+            data = toNumberFromNumericHexToRawIfApplicable(column, (String) data);
         }
 
         return super.convertBigInt(column, fieldDefn, data);
@@ -557,10 +533,7 @@ public class OracleValueConverters extends JdbcValueConverters {
             return ((BigDecimal) data).byteValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
         }
         if (data instanceof String) {
-            final String s = (String) data;
-            if (isHexToRawFunctionCall(s)) {
-                data = convertHexToRawFunctionToString(column, s);
-            }
+            data = toStringFromStringHexToRawIfApplicable(column, (String) data);
             return Byte.parseByte((String) data) == 0 ? Boolean.FALSE : Boolean.TRUE;
         }
         if (data instanceof NUMBER) {
@@ -588,13 +561,7 @@ public class OracleValueConverters extends JdbcValueConverters {
                 r.deliver(NumberConversions.getByte((boolean) data));
             }
             else if (data instanceof String) {
-                final String s = (String) data;
-                if (isHexToRawFunctionCall(s)) {
-                    r.deliver(Byte.parseByte(String.valueOf(convertHexToRawFunctionToNumber(column, s))));
-                }
-                else {
-                    r.deliver(Byte.parseByte(s));
-                }
+                r.deliver(Byte.parseByte(toStringFromNumericHexToRawIfApplicable(column, (String) data)));
             }
         });
     }
@@ -646,9 +613,7 @@ public class OracleValueConverters extends JdbcValueConverters {
     @Override
     protected Object convertDateToEpochDays(Column column, Field fieldDefn, Object data) {
         if (data instanceof String) {
-            if (isHexToRawFunctionCall((String) data)) {
-                data = convertHexToRawFunctionToString(column, (String) data);
-            }
+            data = toStringFromStringHexToRawIfApplicable(column, (String) data);
         }
         return super.convertDateToEpochDays(column, fieldDefn, data);
     }
@@ -656,9 +621,7 @@ public class OracleValueConverters extends JdbcValueConverters {
     @Override
     protected Object convertDateToEpochDaysAsDate(Column column, Field fieldDefn, Object data) {
         if (data instanceof String) {
-            if (isHexToRawFunctionCall((String) data)) {
-                data = convertHexToRawFunctionToString(column, (String) data);
-            }
+            data = toStringFromStringHexToRawIfApplicable(column, (String) data);
         }
         return super.convertDateToEpochDaysAsDate(column, fieldDefn, data);
     }
@@ -959,6 +922,27 @@ public class OracleValueConverters extends JdbcValueConverters {
         catch (Exception e) {
             throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
         }
+    }
+
+    private String toStringFromNumericHexToRawIfApplicable(Column column, String data) {
+        if (isHexToRawFunctionCall(data)) {
+            return String.valueOf(convertHexToRawFunctionToNumber(column, data));
+        }
+        return data;
+    }
+
+    private Object toNumberFromNumericHexToRawIfApplicable(Column column, String data) {
+        if (isHexToRawFunctionCall(data)) {
+            return convertHexToRawFunctionToNumber(column, data);
+        }
+        return data;
+    }
+
+    private Object toStringFromStringHexToRawIfApplicable(Column column, String data) {
+        if (isHexToRawFunctionCall(data)) {
+            return convertHexToRawFunctionToString(column, data);
+        }
+        return data;
     }
 
     /**
