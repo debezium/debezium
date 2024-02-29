@@ -81,6 +81,7 @@
                         <systemPropertyVariables combine.children="append">
                             <project.basedir>${project.basedir}</project.basedir>
                             <project.build.directory>${project.build.directory}</project.build.directory>
+                            <failFlakyTests>${failFlakyTests}</failFlakyTests>
                         </systemPropertyVariables>
                     </configuration>
                 </plugin>
