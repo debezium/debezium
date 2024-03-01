@@ -145,7 +145,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                     .with("assumeMinServerVersion.set", "9.4");
         }
 
-        Testing.Print.enable();
+        // Testing.Print.enable();
     }
 
     private void startConnector(Function<Configuration.Builder, Configuration.Builder> customConfig, boolean waitForSnapshot, Predicate<SourceRecord> isStopRecord)
@@ -229,7 +229,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-5014")
     public void shouldReceiveDeletesWithInfinityDate() throws Exception {
-        Testing.Print.enable();
+        // Testing.Print.enable();
         TestHelper.executeDDL("postgres_create_tables.ddl");
         TestHelper.execute("ALTER TABLE time_table REPLICA IDENTITY FULL");
         startConnector();
@@ -1386,7 +1386,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-800")
     public void shouldReceiveHeartbeatAlsoWhenChangingNonWhitelistedTable() throws Exception {
-        Testing.Print.enable();
+        // Testing.Print.enable();
         startConnector(config -> config
                 .with(Heartbeat.HEARTBEAT_INTERVAL, "100")
                 .with(PostgresConnectorConfig.POLL_INTERVAL_MS, "50")
@@ -1756,7 +1756,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-6122")
     public void shouldHandleToastedByteArrayColumn() throws Exception {
-        Testing.Print.enable();
+        // Testing.Print.enable();
         TestHelper.execute(
                 "DROP TABLE IF EXISTS test_toast_table;",
                 "CREATE TABLE test_toast_table (id SERIAL PRIMARY KEY);");
@@ -2604,7 +2604,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-1824")
     public void stopInTheMiddleOfTxAndResume() throws Exception {
-        Testing.Print.enable();
+        // Testing.Print.enable();
         final int numberOfEvents = 50;
         final int STOP_ID = 20;
 
@@ -2654,7 +2654,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-2397")
     public void restartConnectorInTheMiddleOfUncommittedTx() throws Exception {
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         final PostgresConnection tx1Connection = TestHelper.create();
         tx1Connection.setAutoCommit(false);
@@ -2697,7 +2697,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-1730")
     public void shouldStartConsumingFromSlotLocation() throws Exception {
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         startConnector(config -> config
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, false)

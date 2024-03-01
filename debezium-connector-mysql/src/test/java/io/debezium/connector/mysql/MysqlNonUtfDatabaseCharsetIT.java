@@ -57,7 +57,7 @@ public class MysqlNonUtfDatabaseCharsetIT extends AbstractAsyncEngineConnectorTe
                 .build();
         start(MySqlConnector.class, config);
 
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         AbstractConnectorTest.SourceRecords records = consumeRecordsByTopic(7);
         final SourceRecord record = records.recordsForTopic(DATABASE.topicForTable("DATA")).get(0);
@@ -90,7 +90,7 @@ public class MysqlNonUtfDatabaseCharsetIT extends AbstractAsyncEngineConnectorTe
                 .build();
         start(MySqlConnector.class, config);
 
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         AbstractConnectorTest.SourceRecords records = consumeRecordsByTopic(7);
         final SourceRecord record = records.recordsForTopic(DATABASE.topicForTable("DATA")).get(0);

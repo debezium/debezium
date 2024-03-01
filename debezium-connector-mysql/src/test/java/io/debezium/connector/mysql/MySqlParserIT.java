@@ -94,7 +94,7 @@ public class MySqlParserIT extends AbstractAsyncEngineConnectorTest {
     public void parseTableWithVisibleColumns() throws SQLException, InterruptedException {
         config = defaultConfig().build();
 
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DB_NAME, mySQLContainer.getUsername(), mySQLContainer.getPassword())) {
             try (JdbcConnection connection = db.connect()) {
@@ -128,7 +128,7 @@ public class MySqlParserIT extends AbstractAsyncEngineConnectorTest {
     public void parseTableWithInVisibleColumns() throws SQLException, InterruptedException {
         config = defaultConfig().build();
 
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DB_NAME, mySQLContainer.getUsername(), mySQLContainer.getPassword())) {
             try (JdbcConnection connection = db.connect()) {

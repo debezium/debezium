@@ -281,7 +281,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
     @Test
     @FixFor("DBZ-4939")
     public void tableWithDatetime() throws Exception {
-        Testing.Print.enable();
+        // Testing.Print.enable();
         final int ROWS = 10;
 
         try (JdbcConnection connection = databaseConnection()) {
@@ -334,7 +334,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
     @Test
     @FixFor("DBZ-5099")
     public void tableWithZeroDate() throws Exception {
-        Testing.Print.enable();
+        // Testing.Print.enable();
         final LogInterceptor logInterceptor = new LogInterceptor(MySqlBinaryProtocolFieldReader.class);
 
         try (JdbcConnection connection = databaseConnection()) {

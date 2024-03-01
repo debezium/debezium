@@ -193,7 +193,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
     @Test
     @FixFor("DBZ-6481")
     public void insertsEnumPk() throws Exception {
-        Testing.Print.enable();
+        // Testing.Print.enable();
         final var enumValues = List.of("UP", "DOWN", "LEFT", "RIGHT", "STORY");
 
         try (JdbcConnection connection = databaseConnection()) {

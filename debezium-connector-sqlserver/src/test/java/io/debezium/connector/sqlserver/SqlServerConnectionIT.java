@@ -103,7 +103,7 @@ public class SqlServerConnectionIT {
             // and issue a test call to a CDC wrapper function
             Thread.sleep(5_000); // Need to wait to make sure the min_lsn is available
 
-            Testing.Print.enable();
+            // Testing.Print.enable();
             connection.query(
                     "select * from cdc.fn_cdc_get_all_changes_dbo_testTable(sys.fn_cdc_get_min_lsn('dbo_testTable'), sys.fn_cdc_get_max_lsn(), N'all')",
                     rs -> {
