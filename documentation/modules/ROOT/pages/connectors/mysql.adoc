@@ -3419,7 +3419,8 @@ For example, if you set `max.queue.size=1000`, and `max.queue.size.in.bytes=5000
 The snapshot includes the structure and data of the captured tables.
 Specify this value to populate topics with a complete representation of the data from the captured tables every time that the connector starts.
 
-`initial`:: The connector runs a snapshot only when no offsets have been recorded for the logical server name.
+`initial`:: The connector runs a snapshot only when no offsets have been recorded for the logical server name, or if it detects that an earlier snapshot failed to complete.
+After the snapshot completes, the connector begins to stream event records for subsequent database changes.
 
 `initial_only`:: The connector runs a snapshot only when no offsets have been recorded for the logical server name.
 After the snapshot completes, the connector stops.
