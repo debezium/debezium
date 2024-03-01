@@ -102,7 +102,6 @@ import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.TableId;
 import io.debezium.schema.DatabaseSchema;
 import io.debezium.util.Strings;
-import io.debezium.util.Testing;
 
 /**
  * Integration test for {@link PostgresConnector} using an {@link io.debezium.engine.DebeziumEngine}
@@ -393,7 +392,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-997")
     public void shouldReceiveChangesForChangePKColumnDefinition() throws Exception {
-        Testing.Print.enable();
+        // Testing.Print.enable();
         final String slotName = "pkcolumndef" + new Random().nextInt(100);
         TestHelper.create().dropReplicationSlot(slotName);
         try {
@@ -491,7 +490,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
     @Test
     public void shouldReceiveChangesForChangeColumnDefault() throws Exception {
-        Testing.Print.enable();
+        // Testing.Print.enable();
         final String slotName = "default_change" + new Random().nextInt(100);
         TestHelper.create().dropReplicationSlot(slotName);
         try {
@@ -647,7 +646,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
     @Test
     public void showThatSchemaColumnDefaultMayApplyRetroactively() throws Exception {
-        Testing.Print.enable();
+        // Testing.Print.enable();
         final String slotName = "default_change" + new Random().nextInt(100);
         try (PostgresConnection conn = TestHelper.create()) {
             conn.dropReplicationSlot(slotName);
@@ -939,7 +938,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
     @Test
     public void shouldProduceEventsWhenSnapshotsAreNeverAllowed() throws InterruptedException {
-        Testing.Print.enable();
+        // Testing.Print.enable();
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.execute(SETUP_TABLES_STMT);
         Configuration config = TestHelper.defaultConfig()
@@ -961,7 +960,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
     @Test
     public void shouldNotProduceEventsWithInitialOnlySnapshot() throws InterruptedException {
-        Testing.Print.enable();
+        // Testing.Print.enable();
         TestHelper.execute(SETUP_TABLES_STMT);
         Configuration config = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_ONLY.getValue())
@@ -2042,7 +2041,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     public void customSnapshotterSkipsTablesOnRestartWithConcurrentTx() throws Exception {
         final LogInterceptor logInterceptor = new LogInterceptor(RelationalSnapshotChangeEventSource.class);
 
-        Testing.Print.enable();
+        // Testing.Print.enable();
         TestHelper.execute(SETUP_TABLES_STMT);
         // Perform an regular snapshot using the always snapshotter
         Configuration config = TestHelper.defaultConfig()
@@ -2743,7 +2742,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         waitForStreamingRunning();
         TestHelper.execute(INSERT_STMT);
 
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         final List<SourceRecord> streaming = new ArrayList<SourceRecord>();
         Awaitility.await().atMost(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS).until(() -> {
@@ -3016,7 +3015,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
     @Test
     public void shouldEmitNoEventsForSkippedCreateOperations() throws Exception {
-        Testing.Print.enable();
+        // Testing.Print.enable();
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.execute(SETUP_TABLES_STMT);
         Configuration config = TestHelper.defaultConfig()

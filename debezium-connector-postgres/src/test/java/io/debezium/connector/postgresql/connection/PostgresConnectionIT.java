@@ -151,7 +151,7 @@ public class PostgresConnectionIT {
 
     @Test
     public void shouldDetectRunningConncurrentTxOnInit() throws Exception {
-        Testing.Print.enable();
+        // Testing.Print.enable();
         // drop the slot from the previous connection
         final String slotName = "block";
         try (PostgresConnection connection = TestHelper.create()) {

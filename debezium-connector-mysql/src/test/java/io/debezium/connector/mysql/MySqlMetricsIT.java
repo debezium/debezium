@@ -49,7 +49,7 @@ public class MySqlMetricsIT extends AbstractAsyncEngineConnectorTest {
 
     @Before
     public void before() throws Exception {
-        Testing.Print.enable();
+        // Testing.Print.enable();
         stopConnector();
         DATABASE.createAndInitialize();
         initializeConnectorTestFramework();
@@ -319,7 +319,7 @@ public class MySqlMetricsIT extends AbstractAsyncEngineConnectorTest {
 
         waitForAvailableRecords(30, TimeUnit.SECONDS);
 
-        Testing.Print.enable();
+        // Testing.Print.enable();
         int size = consumeAvailableRecords(VerifyRecord::print);
 
         // Check streaming metrics

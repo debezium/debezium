@@ -172,7 +172,7 @@ public class JdbcSchemaHistoryIT extends AbstractConnectorTest {
         start(MySqlConnector.class, config);
         waitForStreamingRunning("mysql", TOPIC_PREFIX);
 
-        Testing.Print.enable();
+        // Testing.Print.enable();
         SourceRecords records = consumeRecordsByTopic(4); // 4 DML changes
         assertThat(records.topics().size()).isEqualTo(1);
         assertThat(records.recordsForTopic(topicName())).hasSize(4);

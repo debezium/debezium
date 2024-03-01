@@ -27,7 +27,6 @@ import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.testing.testcontainers.ImageNames;
-import io.debezium.util.Testing;
 
 public class TimescaleDbDatabaseTest extends AbstractConnectorTest {
 
@@ -98,7 +97,7 @@ public class TimescaleDbDatabaseTest extends AbstractConnectorTest {
 
     @Test
     public void shouldTransformChunks() throws Exception {
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         start(PostgresConnector.class, config);
         waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
@@ -116,7 +115,7 @@ public class TimescaleDbDatabaseTest extends AbstractConnectorTest {
 
     @Test
     public void shouldTransformAggregates() throws Exception {
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         start(PostgresConnector.class, config);
         waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
@@ -146,7 +145,7 @@ public class TimescaleDbDatabaseTest extends AbstractConnectorTest {
 
     @Test
     public void shouldTransformCompressedChunks() throws Exception {
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         start(PostgresConnector.class, config);
         waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
