@@ -116,6 +116,9 @@ public class TestHelper {
                 }
             });
         }
+        catch (Exception e) {
+            logger.error("Error while cleaning database", e);
+        }
     }
 
     public static boolean transactionsSupported() {

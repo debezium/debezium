@@ -27,7 +27,7 @@ public class DefaultMongoDbAuthProvider implements MongoDbAuthProvider {
     public Builder addAuthConfig(Builder settings) {
         // Use credential if provided as properties
         if (username != null || password != null) {
-            settings.credential(MongoCredential.createCredential(username, adminDbName, password.toCharArray()));
+            settings.credential(MongoCredential.createCredential(username, adminDbName, password != null ? password.toCharArray() : null));
         }
 
         return settings;
