@@ -1059,6 +1059,29 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     }
 
     @Test
+    @FixFor("DBZ-6434")
+    public void testMissingAuthenticationCredentials() {
+        final String authDbName = "authdb";
+
+        // Use the DB configuration to define the connector's configuration ...
+        config = TestHelper.getConfiguration(mongo).edit()
+                .with(MongoDbConnectorConfig.USER, "dbz")
+                .with(MongoDbConnectorConfig.AUTH_SOURCE, authDbName)
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
+                .build();
+
+        // Set up the replication context for connections ...
+        context = new MongoDbTaskContext(config);
+
+        // Start the connector ...
+        start(MongoDbConnector.class, config);
+
+        assertConnectorNotRunning();
+        stopConnector();
+    }
+
+    @Test
     @FixFor("DBZ-4575")
     public void shouldConsumeEventsOnlyFromIncludedDatabasesWithRegexFilter() throws IOException, InterruptedException {
         shouldConsumeEventsOnlyFromIncludedDatabases(FiltersMatchMode.REGEX);
