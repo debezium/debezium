@@ -821,7 +821,7 @@ jobs:
           -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
           -Dmaven.wagon.http.pool=false
           -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
-          -Dfail.flaky.tests=false
+          -DfailFlakyTests=false
           
   build_informix:
     needs: [check_style, file_changes]

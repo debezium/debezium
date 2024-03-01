@@ -239,7 +239,7 @@ jobs:
           -Dhttp.keepAlive=false 
           -Dmaven.wagon.http.pool=false 
           -Dmaven.wagon.httpconnectionManager.ttlSeconds=120 
-          -Dfail.flaky.tests=false
+          -DfailFlakyTests=false
           ${{ matrix.feature.extra }}
   spanner:
     runs-on: ubuntu-latest
