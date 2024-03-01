@@ -46,7 +46,7 @@ Configure a `PostProcessor` much in the same way that you would configure a `Cus
 To enable the connector to use the `ReselectColumnsPostProcessor`, add the following options to the connector configuration:
 [source,json]
 ----
-  "post-processors": "reselector", // <1>
+  "post.processors": "reselector", // <1>
   "reselector.type": "io.debezium.processors.reselect.ReselectColumnsPostProcessor", // <2>
   "reselector.reselect.columns.include.list": "<schema_name>.<table_name>:<colA>,<schema_name>.<table_name>:<colB>", // <3>
   "reselector.reselect.unavailable.values": "true", // <4>
