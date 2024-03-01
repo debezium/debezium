@@ -55,6 +55,8 @@ import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.embedded.EmbeddedEngineConfig;
 import io.debezium.embedded.KafkaConnectUtil;
 import io.debezium.jdbc.TemporalPrecisionMode;
+import io.debezium.junit.SkipLongRunning;
+import io.debezium.junit.SkipTestRule;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingMode;
 import io.debezium.relational.Table;
@@ -81,6 +83,9 @@ public class HybridMiningStrategyIT extends AbstractConnectorTest {
 
     @Rule
     public final TestRule skipAdapterRule = new SkipTestDependingOnAdapterNameRule();
+
+    @Rule
+    public final TestRule skipLongRunning = new SkipTestRule();
 
     private OracleConnection connection;
     private DecimalHandlingMode decimalHandlingMode;
@@ -152,6 +157,7 @@ public class HybridMiningStrategyIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-3401")
+    @SkipLongRunning
     public void shouldStreamOfflineSchemaChangesFloatingPointDataTypes() throws Exception {
         streamOfflineSchemaChanges("binary_float",
                 QueryValue.ofBind(3.14f), QueryValue.ofBind(4.14f),
@@ -187,6 +193,7 @@ public class HybridMiningStrategyIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-3401")
+    @SkipLongRunning
     public void shouldStreamOfflineSchemaChangesFloatingPointDataTypesAsString() throws Exception {
         // Override DecimalHandlingMode default
         decimalHandlingMode = DecimalHandlingMode.STRING;
@@ -225,6 +232,7 @@ public class HybridMiningStrategyIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-3401")
+    @SkipLongRunning
     public void shouldStreamOfflineSchemaChangesFloatingPointDataTypesAsDouble() throws Exception {
         // Override DecimalHandlingMode default
         decimalHandlingMode = DecimalHandlingMode.DOUBLE;
@@ -263,6 +271,7 @@ public class HybridMiningStrategyIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-3401")
+    @SkipLongRunning
     public void shouldStreamSchemaChangeWithDataChangeFloatingPointDataTypes() throws Exception {
         streamSchemaChangeMixedWithDataChange("binary_float",
                 QueryValue.ofBind(3.14f), QueryValue.ofBind(4.14f),
@@ -298,6 +307,7 @@ public class HybridMiningStrategyIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-3401")
+    @SkipLongRunning
     public void shouldStreamSchemaChangeWithDataChangeFloatingPointDataTypesAsString() throws Exception {
         // Override DecimalHandlingMode default
         decimalHandlingMode = DecimalHandlingMode.STRING;
@@ -336,6 +346,7 @@ public class HybridMiningStrategyIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-3401")
+    @SkipLongRunning
     public void shouldStreamSchemaChangeWithDataChangeFloatingPointDataTypesAsDouble() throws Exception {
         // Override DecimalHandlingMode default
         decimalHandlingMode = DecimalHandlingMode.DOUBLE;
@@ -375,6 +386,7 @@ public class HybridMiningStrategyIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-3401")
     @SkipWhenRunWithApicurio
+    @SkipLongRunning
     public void shouldStreamOfflineSchemaChangesIntegerDataTypes() throws Exception {
         streamOfflineSchemaChanges("int",
                 QueryValue.ofBind(1), QueryValue.ofBind(2),
@@ -434,6 +446,7 @@ public class HybridMiningStrategyIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-3401")
     @SkipWhenRunWithApicurio
+    @SkipLongRunning
     public void shouldStreamSchemaChangeWithDataChangeIntegerDataTypes() throws Exception {
         streamSchemaChangeMixedWithDataChange("int",
                 QueryValue.ofBind(1), QueryValue.ofBind(2),
@@ -542,6 +555,7 @@ public class HybridMiningStrategyIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-3401")
+    @SkipLongRunning
     public void shouldStreamOfflineSchemaChangesTemporalDataTypesAsConnect() throws Exception {
         // Override TemporalPrecisionMode default
         temporalPrecisionMode = TemporalPrecisionMode.CONNECT;
@@ -645,6 +659,7 @@ public class HybridMiningStrategyIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-3401")
+    @SkipLongRunning
     public void shouldStreamSchemaChangeWithDataChangeTemporalDataTypesAsConnect() throws Exception {
         // Override TemporalPrecisionMode default
         temporalPrecisionMode = TemporalPrecisionMode.CONNECT;
