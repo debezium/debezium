@@ -221,6 +221,74 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         }
     }
 
+    /**
+     * The set of predefined CursorPipelineOrder options or aliases.
+     */
+    public enum FiltersMatchMode implements EnumeratedValue {
+        /**
+         * Do not match using server side filtering
+         */
+        NONE("none"),
+        /**
+         * Match by regex (use fully qualified name for collections)
+         */
+        REGEX("regex"),
+
+        /**
+         * Match by simple comparison (use simple name for collections)
+         */
+        LITERAL("literal");
+
+        private String value;
+
+        FiltersMatchMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static FiltersMatchMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+
+            for (FiltersMatchMode option : FiltersMatchMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static FiltersMatchMode parse(String value, String defaultValue) {
+            FiltersMatchMode mode = parse(value);
+
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+
+            return mode;
+        }
+    }
+
     protected static final int DEFAULT_SNAPSHOT_FETCH_SIZE = 0;
 
     /**
@@ -477,6 +545,18 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withInvisibleRecommender()
             .withDescription("A comma-separated list of regular expressions that match the collection names for which changes are to be excluded (deprecated, use \""
                     + COLLECTION_EXCLUDE_LIST.name() + "\" instead)");
+
+    public static final Field FILTERS_MATCH_MODE = Field.create("filters.match.mode")
+            .withDisplayName("Database and collection include/exclude match mode")
+            .withEnum(FiltersMatchMode.class, FiltersMatchMode.NONE)
+            .withGroup(Field.createGroupEntry(Field.Group.FILTERS, 6))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("The mode used by the aggregation pipeline to match events based on included/excluded database and collection names"
+                    + "Options include: "
+                    + "'none' (the default) Database and collection includes/excludes are evaluated on DBZ client side; "
+                    + "'regex' Database and collection includes/excludes are evaluated as regular expressions; "
+                    + "'literal' Database and collection includes/excludes are evaluated as comma-separated list of string literals; ");
 
     /**
      * A comma-separated list of the fully-qualified names of fields that should be excluded from change event message values.
@@ -771,6 +851,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
     private final int multiTaskGen;
 
+    private final FiltersMatchMode filtersMatchMode;
+
     public MongoDbConnectorConfig(Configuration config) {
         super(config, config.getString(LOGICAL_NAME), DEFAULT_SNAPSHOT_FETCH_SIZE);
 
@@ -789,6 +871,9 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         this.incrementalSnapshotThreads = config.getInteger(MongoDbConnectorConfig.INCREMENTAL_SNAPSHOT_THREADS, 1);
         this.streamingShards = config.getInteger(MongoDbConnectorConfig.STREAMING_SHARDS, 1);
         this.streamingShardId = config.getInteger(MongoDbConnectorConfig.STREAMING_SHARD_ID, 0);
+
+        String filterMatchModeValue = config.getString(MongoDbConnectorConfig.FILTERS_MATCH_MODE);
+        this.filtersMatchMode = FiltersMatchMode.parse(filterMatchModeValue, MongoDbConnectorConfig.FILTERS_MATCH_MODE.defaultValueAsString());
 
         this.multiTaskEnabled = config.getBoolean(MongoDbConnectorConfig.MONGODB_MULTI_TASK_ENABLED, false);
         this.multiTaskGen = config.getInteger(MongoDbConnectorConfig.MONGODB_MULTI_TASK_GEN, -1);
@@ -991,6 +1076,10 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     @Override
     public boolean supportsOperationFiltering() {
         return true;
+    }
+
+    public FiltersMatchMode getFiltersMatchMode() {
+        return filtersMatchMode;
     }
 
     @Override

@@ -35,6 +35,7 @@ import org.bson.conversions.Bson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.mongodb.BasicDBObject;
 import com.mongodb.CursorType;
 import com.mongodb.ServerAddress;
 import com.mongodb.client.ChangeStreamIterable;
@@ -43,6 +44,7 @@ import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.model.Aggregates;
+import com.mongodb.client.model.Field;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
 import com.mongodb.client.model.changestream.FullDocument;
@@ -306,7 +308,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         }
     }
 
-    private List<String> getChangeStreamSkippedOperationsFilter() {
+    private Bson getChangeStreamSkippedOperationsFilter() {
         final Set<Operation> skippedOperations = taskContext.getConnectorConfig().getSkippedOperations();
         final List<String> includedOperations = new ArrayList<>();
 
@@ -322,7 +324,96 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         if (!skippedOperations.contains(Operation.DELETE)) {
             includedOperations.add("delete");
         }
-        return includedOperations;
+
+        return Filters.in("operationType", includedOperations);
+    }
+
+    private List<Bson> PipelineWrapper(ReplicaSetOffsetContext rsOffsetContext) {
+        if (!this.taskContext.filters().supportPipelineFilter()) {
+            return new ArrayList<>();
+        }
+
+        // Filter the documents
+        Bson matchFilter = getServerSideFilters(rsOffsetContext);
+
+        // Done if matching databases and collections as literals
+        if (this.taskContext.filters().isLiteralsMatchMode() || this.taskContext.filters().isNoneMatchMode()) {
+            return Collections.singletonList(matchFilter);
+        }
+
+        // To match databases and collections as regexes we need the following transformations
+        return createRegexMatchPipeline(matchFilter);
+    }
+
+    private List<Bson> createRegexMatchPipeline(Bson matchFilter) {
+        // Materialize a "namespace" field so that we can do qualified collection name matching per
+        // the configuration requirements
+        // Note that per the docs, if `$ns` doesn't exist, `$concat` will return `null`
+        Bson addFieldStage = Aggregates.addFields(new Field<>(
+                "namespace",
+                new BasicDBObject("$concat", Arrays.asList("$ns.db", ".", "$ns.coll"))));
+
+        // Filter the documents
+        Bson filter = matchFilter;
+
+        // Required to prevent driver `ChangeStreamDocument` deserialization issues:
+        // > Caused by: org.bson.codecs.configuration.CodecConfigurationException:
+        // > Failed to decode 'ChangeStreamDocument'. Decoding 'namespace' errored with:
+        // > readStartDocument can only be called when CurrentBSONType is DOCUMENT, not when CurrentBSONType is STRING.
+        Bson removeFieldStage = Aggregates.addFields(new Field<>("namespace", "$$REMOVE"));
+
+        List<Bson> result = Arrays.asList(addFieldStage, filter, removeFieldStage);
+
+        return result;
+    }
+
+    private Bson getServerSideFilters(ReplicaSetOffsetContext rsOffsetContext) {
+        List<Bson> filters = new ArrayList<>();
+        filters.add(getChangeStreamSkippedOperationsFilter());
+
+        // TODO we should be able to remove this due to
+        // rsChangeStream.startAtOperationTime(oplogStart);
+        if (rsOffsetContext.lastResumeToken() == null) {
+            // After snapshot the oplogStart points to the last change snapshotted
+            // It must be filtered-out
+            filters.add(Filters.ne("clusterTime", rsOffsetContext.lastOffsetTimestamp()));
+        }
+
+        if (this.taskContext.filters().supportPipelineFilter() && !this.taskContext.filters().isNoneMatchMode()) {
+            if (this.taskContext.filters().isLiteralsMatchMode()) {
+                LOGGER.info("getServerSideFilters - literal filter");
+                if (this.taskContext.filters().getDatabaseIncludeList().isPresent()) {
+                    List<String> dbs = io.debezium.connector.mongodb.Filters.SplitList(
+                            this.taskContext.filters().getDatabaseIncludeList().get());
+                    Bson pipeline = Filters.in("ns.db", dbs);
+                    filters.add(pipeline);
+                }
+
+                if (this.taskContext.filters().getCollectionIncludeList().isPresent()) {
+                    List<Bson> cols = io.debezium.connector.mongodb.Filters.SplitNamespaceList(
+                            this.taskContext.filters().getCollectionIncludeList().get());
+                    Bson pipeline = Filters.in("ns", cols);
+                    filters.add(pipeline);
+                }
+            }
+            else {
+                LOGGER.info("getServerSideFilters - regex filter");
+                if (this.taskContext.filters().getDatabaseIncludeList().isPresent()) {
+                    String dbRegex = this.taskContext.filters().getDatabaseIncludeList().get().replaceAll(",", "|");
+                    Bson pipeline = Filters.regex("ns.db", dbRegex, "i");
+                    filters.add(pipeline);
+                }
+
+                if (this.taskContext.filters().getCollectionIncludeList().isPresent()) {
+                    String includeRegex = this.taskContext.filters().getCollectionIncludeList().get().replaceAll(",", "|");
+                    Bson pipeline = Filters.regex("namespace", includeRegex, "i");
+                    filters.add(pipeline);
+                }
+            }
+        }
+
+        Bson result = Aggregates.match(Filters.and(filters));
+        return result;
     }
 
     private void readChangeStream(MongoClient primary, MongoPrimary primaryClient, ReplicaSet replicaSet, ChangeEventSourceContext context,
@@ -342,14 +433,14 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         final ServerAddress primaryAddress = MongoUtil.getPrimaryAddress(primary);
         LOGGER.info("Reading change stream for '{}' primary {} starting at {} with shardId {}", replicaSet, primaryAddress, oplogStart, shardId);
 
-        Bson filters = Filters.in("operationType", getChangeStreamSkippedOperationsFilter());
-        if (rsOffsetContext.lastResumeToken() == null) {
-            // After snapshot the oplogStart points to the last change snapshotted
-            // It must be filtered-out
-            filters = Filters.and(filters, Filters.ne("clusterTime", oplogStart));
-        }
+        List<Bson> serverSideFilters = PipelineWrapper(rsOffsetContext);
+
+        LOGGER.info("Effective change stream pipeline: {}", serverSideFilters);
+
         final ChangeStreamIterable<BsonDocument> rsChangeStream = primary.watch(
-                Arrays.asList(Aggregates.match(filters)), BsonDocument.class);
+                serverSideFilters,
+                BsonDocument.class);
+
         if (taskContext.getCaptureMode().isFullUpdate()) {
             rsChangeStream.fullDocument(FullDocument.UPDATE_LOOKUP);
         }
@@ -425,7 +516,9 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                             event.getNamespace().getDatabaseName(),
                             event.getNamespace().getCollectionName());
 
-                    if (taskContext.filters().databaseFilter().test(event.getDatabaseName()) && taskContext.filters().collectionFilter().test(collectionId)) {
+                    if (!this.taskContext.filters().isNoneMatchMode() ||
+                            (taskContext.filters().databaseFilter().test(event.getDatabaseName()) &&
+                                    taskContext.filters().collectionFilter().test(collectionId))) {
                         try {
                             dispatcher.dispatchDataChangeEvent(
                                     oplogContext.getPartition(),
