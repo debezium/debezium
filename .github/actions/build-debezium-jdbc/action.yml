@@ -31,7 +31,6 @@ runs:
         -Dmaven.wagon.http.pool=false
         -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
 
-    # Remove skipTests
     - name: Build JDBC
       shell: ${{ inputs.shell }}
       run: >
@@ -44,4 +43,3 @@ runs:
         -Dmaven.wagon.http.pool=false
         -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
         -DfailFlakyTests=false        
-        -DskipTests=true

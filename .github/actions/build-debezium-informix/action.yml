@@ -31,7 +31,6 @@ runs:
         -Dmaven.wagon.http.pool=false
         -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
 
-    # Remove skipITs/skipTests
     - name: Build Informix
       shell: ${{ inputs.shell }}
       run: >
@@ -45,5 +44,3 @@ runs:
         -Ddebezium.test.records.waittime=5
         -Ddebezium.test.records.waittime.after.nulls=5        
         -DfailFlakyTests=false
-        -DskipITs=true
-        -DskipTests=true

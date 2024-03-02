@@ -19,7 +19,6 @@ runs:
       with:
         key: ${{ inputs.maven-cache-key }}
 
-    # Remove skipITs/skipTests
     - name: Build Schema Generator
       shell: ${{ inputs.shell }}
       run: >
@@ -29,5 +28,3 @@ runs:
         -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
         -Dmaven.wagon.http.pool=false
         -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
-        -DskipITs=true
-        -DskipTests=true

@@ -27,7 +27,6 @@ runs:
       with:
         key: ${{ inputs.maven-cache-key }}
 
-    # Remove skipITs/skipTests
     - name: Build MySQL connector (MySQL ${{ inputs.version-mysql-server }} - ${{ inputs.profile }})
       shell: ${{ inputs.shell }}
       run: >
@@ -40,5 +39,3 @@ runs:
         -Dmaven.wagon.http.pool=false
         -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
         -DfailFlakyTests=false
-        -DskipITs=true
-        -DskipTests=true

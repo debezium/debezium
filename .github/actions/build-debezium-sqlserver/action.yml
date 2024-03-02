@@ -19,7 +19,6 @@ runs:
       with:
         key: ${{ inputs.maven-cache-key }}
 
-    # Remove skipITs/skipTests
     - name: Build SQL Server connector
       shell: ${{ inputs.shell }}
       run: >
@@ -32,5 +31,3 @@ runs:
         -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
         -Ddebezium.test.records.waittime=10
         -DfailFlakyTests=false
-        -DskipITs=true
-        -DskipTests=true        
