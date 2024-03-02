@@ -1,0 +1,35 @@
+name: "Build Oracle"
+description: "Builds the Debezium Oracle connector"
+
+inputs:
+  maven-cache-key:
+    description: "The maven build cache key"
+    required: true
+  shell:
+    description: "The shell to use"
+    required: false
+    default: bash
+
+runs:
+  using: "composite"
+  steps:
+    - uses: ./.github/actions/setup-java
+
+    - uses: ./.github/actions/maven-cache
+      with:
+        key: ${{ inputs.maven-cache-key }}
+
+    # We intentionally do not run the integration tests here because the runner does not have adequate space
+    # for the docker container and pull requests are not permitted to fetch the container image.
+    - name: Build Oracle connector
+      shell: ${{ inputs.shell }}
+      run: >
+        ./mvnw clean install -B -pl debezium-connector-oracle -am
+        -Pinfinispan-buffer,oracle-tests
+        -DskipITs=true
+        -Dcheckstyle.skip=true
+        -Dformat.skip=true
+        -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+        -Dmaven.wagon.http.pool=false
+        -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        -DfailFlakyTests=false       

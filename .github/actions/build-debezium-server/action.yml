@@ -1,0 +1,46 @@
+name: "Build Server"
+description: "Builds the Debezium Server"
+
+inputs:
+  path-core:
+    description: "Debezium core repository checkout path"
+    required: true
+  path-server:
+    description: "Debezium Server repository checkout path"
+    required: true
+  shell:
+    description: "The shell to use"
+    required: false
+    default: bash
+
+runs:
+  using: "composite"
+  steps:
+    - name: Build Debezium (Core)
+      shell: ${{ inputs.shell }}
+      run: >
+        ./${{ inputs.path-core }}/mvnw clean install -B -ntp -f ${{ inputs.path-core }}/pom.xml
+        -DskipTests=true
+        -DskipITs=true
+        -Dcheckstyle.skip=true
+        -Dformat.skip=true
+        -Drevapi.skip
+        -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+        -Dmaven.wagon.http.pool=false
+        -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+
+    # Remove skipITs/skipTests
+    - name: Build Server
+      shell: ${{ inputs.shell }}
+      run: >
+        ./${{ inputs.path-core }}/mvnw clean install -B -ntp -fae -f ${{ inputs.path-server }}/pom.xml 
+        -Passembly                
+        -Dcheckstyle.skip=true
+        -Dformat.skip=true
+        -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+        -Dmaven.wagon.http.pool=false
+        -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        -DskipNonCore
+        -DfailFlakyTests=false        
+        -DskipTests=true
+        -DskipITs=true
