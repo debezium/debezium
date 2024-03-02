@@ -29,7 +29,6 @@ runs:
         -Dmaven.wagon.http.pool=false
         -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
 
-    # Remove skipITs/skipTests
     - name: Build Server
       shell: ${{ inputs.shell }}
       run: >
@@ -42,5 +41,3 @@ runs:
         -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
         -DskipNonCore
         -DfailFlakyTests=false        
-        -DskipTests=true
-        -DskipITs=true

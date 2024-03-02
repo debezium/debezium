@@ -31,7 +31,6 @@ runs:
         -Dmaven.wagon.http.pool=false
         -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
 
-    # Remove skipITs/skipTests
     - name: Build Db2
       shell: ${{ inputs.shell }}
       run: >
@@ -43,5 +42,3 @@ runs:
         -Dmaven.wagon.http.pool=false
         -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
         -DfailFlakyTests=false
-        -DskipITs=true
-        -DskipTests=true
