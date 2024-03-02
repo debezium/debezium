@@ -72,7 +72,7 @@ public class LogMinerQueryBuilder {
         query.append("FROM ").append(LOGMNR_CONTENTS_VIEW).append(" ");
 
         // These bind parameters will be bound when the query is executed by the caller.
-        query.append("WHERE SCN > ? AND SCN <= ?");
+        query.append("WHERE SCN >= ? AND SCN < ?");
 
         // Transactions cannot span across multiple pluggable database boundaries.
         // Therefore, it is safe to apply the multi-tenant restriction to the full query when
