@@ -227,7 +227,7 @@ jobs:
   # Approx 2m
   build_outbox:
     name: "Quarkus Outbox Extension"
-    needs: [ check_style, file_changes ]
+    needs: [ check_style, file_changes, build_oracle ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action
@@ -240,7 +240,7 @@ jobs:
   # Approx 5m
   build_rest_extension:
     name: "REST Extension"
-    needs: [ check_style, file_changes ]
+    needs: [ check_style, file_changes, build_outbox ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action
@@ -253,7 +253,7 @@ jobs:
   # Approx 2m
   build_schema_generator:
     name: "Schema Generator"
-    needs: [ check_style, file_changes ]
+    needs: [ check_style, file_changes, build_rest_extension ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action
@@ -266,7 +266,7 @@ jobs:
   # Approx 5m
   build_debezium_testing:
     name: "Testing Module"
-    needs: [ check_style, file_changes ]
+    needs: [ check_style, file_changes, build_schema_generator ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action
@@ -279,7 +279,7 @@ jobs:
   # Approx 3m
   build_storage:
     name: "Storage Module"
-    needs: [ check_style, file_changes ]
+    needs: [ check_style, file_changes, build_debezium_testing ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action
@@ -292,7 +292,7 @@ jobs:
   # Approx 25m
   build_cassandra:
     name: "Cassandra"
-    needs: [ check_style, file_changes ]
+    needs: [ check_style, file_changes, build_storage ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action (Debezium Core)
@@ -379,7 +379,7 @@ jobs:
   # Approx 20m
   build_vitess:
     name: "Vitess"
-    needs: [ check_style, file_changes ]
+    needs: [ check_style, file_changes, build_cassandra ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action (Debezium Core)
@@ -408,7 +408,7 @@ jobs:
   # Approx 7m
   build_spanner:
     name: "Spanner"
-    needs: [ check_style, file_changes ]
+    needs: [ check_style, file_changes, build_vitess ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action (Debezium Core)
@@ -437,7 +437,7 @@ jobs:
   # Approx 1m
   build_jdbc:
     name: "JDBC"
-    needs: [ check_style, file_changes ]
+    needs: [ check_style, file_changes, build_spanner ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action (Debezium Core)
@@ -466,7 +466,7 @@ jobs:
   # Approx 26m
   build_server:
     name: "Debezium Server"
-    needs: [ check_style, file_changes ]
+    needs: [ check_style, file_changes, build_jdbc ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action (Debezium Core)
