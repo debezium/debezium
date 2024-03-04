@@ -200,7 +200,7 @@ You can also set the property to periodically prune a database schema history to
 WARNING: Do not use this mode to perform a snapshot if schema changes were committed to the database after the last connector shutdown.
 
 |`when_needed`
-|`when_needed`:: After the connector starts, it performs a snapshot only if it detects one of the following circumstances:
+|After the connector starts, it performs a snapshot only if it detects one of the following circumstances:
 
 * It cannot detect any topic offsets.
 * A previously recorded offset specifies a log position that is not available on the server.
@@ -3159,7 +3159,7 @@ After the snapshot is complete, the connector continues to read change events fr
 * A previously recorded offset specifies a log position that is not available on the server.
 
 ifdef::community[]
-`custom`:: - The connector performs a snapshot according to the implementation specified by the xref:postgresql-property-snapshot-mode-custom-name[`snapshot.mode.custom.name`] property, which defines a custom implementation of the `io.debezium.spi.snapshot.Snapshotter` interface.
+`custom`:: The connector performs a snapshot according to the implementation specified by the xref:postgresql-property-snapshot-mode-custom-name[`snapshot.mode.custom.name`] property, which defines a custom implementation of the `io.debezium.spi.snapshot.Snapshotter` interface.
 endif::community[]
 
 For more information, see the xref:oracle-connector-snapshot-mode-options[table of `snapshot.mode` options].
