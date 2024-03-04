@@ -19,29 +19,8 @@ concurrency:
 jobs:
 
   # Approx 1m
-  file_changes:
-    name: "Detect repository changes"
-    runs-on: ubuntu-latest
-    outputs:
-      documentation-only-changed: ${{ steps.changed-files-documentation.outputs.only_changed }}
-    steps:
-      - name: Checkout Action
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Get modified files (Documentation)
-        id: changed-files-documentation
-        uses: tj-actions/changed-files@v42.0.5
-        with:
-          files: |
-            documentation/**
-
-  # Approx 1m
   build_cache:
     name: "Update Dependencies"
-    needs: [ file_changes ]
-    if: ${{ needs.file_changes.outputs.documentation-only-changed == 'false' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action (Core)
@@ -124,7 +103,7 @@ jobs:
         version-mongo-server: [ "5.0", "7.0" ]
       fail-fast: false
     name: "MongoDB ${{ matrix.version-mongo-server }}"
-    needs: [ check_style, file_changes ]
+    needs: [ check_style ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action
@@ -145,7 +124,7 @@ jobs:
         version-mysql-server: [ "8.0", "8.2" ]
       fail-fast: false
     name: "MySQL ${{ matrix.version-mysql-server }} - ${{ matrix.profile }}"
-    needs: [ check_style, file_changes ]
+    needs: [ check_style ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action
@@ -166,7 +145,7 @@ jobs:
         profile: [ 'mysql-ci', 'mysql-ci-gtids' ]
       fail-fast: false
     name: "MariaDB - ${{ matrix.profile }}"
-    needs: [ check_style, file_changes ]
+    needs: [ check_style ]
     runs-on: ubuntu-latest
 
     steps:
@@ -187,7 +166,7 @@ jobs:
         profile: [ "assembly", "assembly,postgres-16,pgoutput-decoder" ]
       fail-fast: false
     name: "PostgreSQL - ${{ matrix.profile }}"
-    needs: [ check_style, file_changes ]
+    needs: [ check_style ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action
@@ -201,7 +180,7 @@ jobs:
   # Approx 1h 45m
   build_sqlserver:
     name: "SQL Server"
-    needs: [ check_style, file_changes ]
+    needs: [ check_style ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action
@@ -214,7 +193,7 @@ jobs:
   # Approx 6m
   build_oracle:
     name: "Oracle"
-    needs: [ check_style, file_changes ]
+    needs: [ check_style ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action
@@ -227,7 +206,7 @@ jobs:
   # Approx 2m
   build_outbox:
     name: "Quarkus Outbox Extension"
-    needs: [ check_style, file_changes, build_oracle ]
+    needs: [ check_style, build_oracle ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action
@@ -240,7 +219,7 @@ jobs:
   # Approx 5m
   build_rest_extension:
     name: "REST Extension"
-    needs: [ check_style, file_changes, build_outbox ]
+    needs: [ check_style, build_outbox ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action
@@ -253,7 +232,7 @@ jobs:
   # Approx 2m
   build_schema_generator:
     name: "Schema Generator"
-    needs: [ check_style, file_changes, build_rest_extension ]
+    needs: [ check_style, build_rest_extension ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action
@@ -266,7 +245,7 @@ jobs:
   # Approx 5m
   build_debezium_testing:
     name: "Testing Module"
-    needs: [ check_style, file_changes, build_schema_generator ]
+    needs: [ check_style, build_schema_generator ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action
@@ -279,7 +258,7 @@ jobs:
   # Approx 3m
   build_storage:
     name: "Storage Module"
-    needs: [ check_style, file_changes, build_debezium_testing ]
+    needs: [ check_style, build_debezium_testing ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action
@@ -292,7 +271,7 @@ jobs:
   # Approx 25m
   build_cassandra:
     name: "Cassandra"
-    needs: [ check_style, file_changes, build_storage ]
+    needs: [ check_style, build_storage ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action (Debezium Core)
@@ -321,7 +300,7 @@ jobs:
   # Approx 1h
   build_db2:
     name: "Db2"
-    needs: [ check_style, file_changes ]
+    needs: [ check_style ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action (Debezium Core)
@@ -350,7 +329,7 @@ jobs:
   # Approx 45m
   build_informix:
     name: "Informix"
-    needs: [ check_style, file_changes ]
+    needs: [ check_style ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action (Debezium Core)
@@ -379,7 +358,7 @@ jobs:
   # Approx 20m
   build_vitess:
     name: "Vitess"
-    needs: [ check_style, file_changes, build_cassandra ]
+    needs: [ check_style, build_cassandra ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action (Debezium Core)
@@ -408,7 +387,7 @@ jobs:
   # Approx 7m
   build_spanner:
     name: "Spanner"
-    needs: [ check_style, file_changes, build_vitess ]
+    needs: [ check_style, build_vitess ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action (Debezium Core)
@@ -437,7 +416,7 @@ jobs:
   # Approx 1m
   build_jdbc:
     name: "JDBC"
-    needs: [ check_style, file_changes, build_spanner ]
+    needs: [ check_style, build_spanner ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action (Debezium Core)
@@ -466,7 +445,7 @@ jobs:
   # Approx 26m
   build_debezium_server:
     name: "Debezium Server"
-    needs: [ check_style, file_changes, build_jdbc ]
+    needs: [ check_style, build_jdbc ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action (Debezium Core)
