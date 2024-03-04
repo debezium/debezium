@@ -523,6 +523,12 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
         assertThat(after.get("c3")).isEqualTo(toMicroSeconds("-PT733H0M0.001S"));
         assertThat(after.get("c4")).isEqualTo(toMicroSeconds("-PT1H59M59.001S"));
         assertThat(after.get("c5")).isEqualTo(toMicroSeconds("-PT838H59M58.999999S"));
+        assertThat(after.get("c6")).isEqualTo(toMicroSeconds("-PT00H20M38.000000S"));
+        assertThat(after.get("c7")).isEqualTo(toMicroSeconds("-PT01H01M01.000001S"));
+        assertThat(after.get("c8")).isEqualTo(toMicroSeconds("-PT01H01M01.000000S"));
+        assertThat(after.get("c9")).isEqualTo(toMicroSeconds("-PT01H01M00.000000S"));
+        assertThat(after.get("c10")).isEqualTo(toMicroSeconds("-PT01H00M00.000000S"));
+        assertThat(after.get("c11")).isEqualTo(toMicroSeconds("-PT00H00M00.000000S"));
     }
 
     private String productsTableName() throws SQLException {
@@ -614,6 +620,12 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
         assertThat(after.get("c3")).isEqualTo(toMicroSeconds("-PT733H0M0.001S"));
         assertThat(after.get("c4")).isEqualTo(toMicroSeconds("-PT1H59M59.001S"));
         assertThat(after.get("c5")).isEqualTo(toMicroSeconds("-PT838H59M58.999999S"));
+        assertThat(after.get("c6")).isEqualTo(toMicroSeconds("-PT00H20M38.000000S"));
+        assertThat(after.get("c7")).isEqualTo(toMicroSeconds("-PT01H01M01.000001S"));
+        assertThat(after.get("c8")).isEqualTo(toMicroSeconds("-PT01H01M01.000000S"));
+        assertThat(after.get("c9")).isEqualTo(toMicroSeconds("-PT01H01M00.000000S"));
+        assertThat(after.get("c10")).isEqualTo(toMicroSeconds("-PT01H00M00.000000S"));
+        assertThat(after.get("c11")).isEqualTo(toMicroSeconds("-PT00H00M00.000000S"));
     }
 
     @Test(expected = DebeziumException.class)
