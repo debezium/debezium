@@ -6,7 +6,6 @@
 package io.debezium.testing.testcontainers;
 
 import static io.debezium.testing.testcontainers.util.DockerUtils.logDockerDesktopBanner;
-import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.joining;
 import static org.awaitility.Awaitility.await;
@@ -45,7 +44,9 @@ import io.debezium.testing.testcontainers.util.RandomPortResolver;
 public class MongoDbReplicaSet implements MongoDbDeployment {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbReplicaSet.class);
-
+    private static final String STARTUP_TIMEOUT = System.getProperty("startup.timeout.seconds");
+    private static final long DEFAULT_STARTUP_TIMEOUT = 60;
+    private final long STARTUP_TIMEOUT_SECONDS = STARTUP_TIMEOUT != null ? Long.parseLong(STARTUP_TIMEOUT) : DEFAULT_STARTUP_TIMEOUT;
     private final String name;
     private final int memberCount;
     private final boolean configServer;
@@ -342,7 +343,7 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
 
     public void awaitReplicaPrimary() {
         await()
-                .atMost(1, MINUTES)
+                .atMost(Duration.ofSeconds(STARTUP_TIMEOUT_SECONDS))
                 .pollDelay(1, SECONDS)
                 .ignoreException(IllegalStateException.class)
                 .until(() -> tryPrimary().isPresent());
