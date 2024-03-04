@@ -63,7 +63,7 @@ jobs:
             pom.xml
             .mvn/**
             .github/actions/**
-            .github/workflows/debezium-workflow-*.yml
+            .github/workflows/debezium-workflow-pr.yml
 
       - name: Get modified files (MongoDB)
         id: changed-files-mongodb
