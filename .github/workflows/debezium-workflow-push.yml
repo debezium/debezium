@@ -20,7 +20,7 @@ jobs:
 
   # Approx 1m
   file_changes:
-    name: "Detect changes"
+    name: "Detect repository changes"
     runs-on: ubuntu-latest
     outputs:
       documentation-only-changed: ${{ steps.changed-files-documentation.outputs.only_changed }}
@@ -55,7 +55,7 @@ jobs:
           repository: debezium/debezium-server
           path: server
 
-      - uses: ./.github/actions/setup-java
+      - uses: ./core/.github/actions/setup-java
 
       # GitHub actions seem to struggle returning actions/cache cache-hit
       # Directly use the cache action here to control whether to fetch dependencies
@@ -82,7 +82,7 @@ jobs:
       - name: Download dependencies (Core)
         if: steps.maven-cache-check.outputs.cache-hit != 'true'
         run: >
-          ./mvnw -B -ntp clean install -f core/pom.xml
+          ./core/mvnw -B -ntp clean install -f core/pom.xml
           -pl ${{ env.MAVEN_FULL_BUILD_PROJECTS }}
           -Dformat.skip=true
           -Dcheckstyle.skip=true
@@ -94,7 +94,7 @@ jobs:
       - name: Download dependencies (Debezium Server)
         if: steps.maven-cache-check.outputs.cache-hit != 'true'
         run: >
-          ./server/mvnw -B -ntp clean install -f server/pom.xml        
+          ./server/mvnw -B -ntp clean install -f server/pom.xml
           -Dformat.skip=true
           -Dcheckstyle.skip=true
           -Dorg.slf4j.simpleLogger.showDateTime=true
@@ -163,7 +163,7 @@ jobs:
       # Run each MariaDB job sequentially
       max-parallel: 1
       matrix:
-        profile: [ "mysql-ci", "mysql-ci-gtids" ]
+        profile: [ 'mysql-ci', 'mysql-ci-gtids' ]
       fail-fast: false
     name: "MariaDB - ${{ matrix.profile }}"
     needs: [ check_style, file_changes ]
@@ -179,7 +179,7 @@ jobs:
           profile: ${{ matrix.profile }}
 
   # Approx 40m each
-  build_postgres:
+  build_postgresql:
     strategy:
       # Run each PostgreSQL job sequentially
       max-parallel: 1
@@ -464,7 +464,7 @@ jobs:
           path-jdbc: jdbc
 
   # Approx 26m
-  build_server:
+  build_debezium_server:
     name: "Debezium Server"
     needs: [ check_style, file_changes, build_jdbc ]
     runs-on: ubuntu-latest
@@ -474,7 +474,7 @@ jobs:
         with:
           path: core
 
-      - name: Checkout Action (Server)
+      - name: Checkout Action (Debezium Server)
         uses: actions/checkout@v4
         with:
           repository: debezium/debezium-server
@@ -491,6 +491,3 @@ jobs:
         with:
           path-core: core
           path-server: server
-
-
-
