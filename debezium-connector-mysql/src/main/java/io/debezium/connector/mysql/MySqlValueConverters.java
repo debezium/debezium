@@ -900,6 +900,8 @@ public class MySqlValueConverters extends JdbcValueConverters {
             throw new DebeziumException("Unexpected format for TIME column: " + timeString);
         }
 
+        boolean isNegative = !timeString.isBlank() && timeString.charAt(0) == '-';
+
         final long hours = Long.parseLong(matcher.group(1));
         final long minutes = Long.parseLong(matcher.group(2));
         final String secondsGroup = matcher.group(4);
@@ -914,18 +916,18 @@ public class MySqlValueConverters extends JdbcValueConverters {
             }
         }
 
-        if (hours >= 0) {
-            return Duration.ofHours(hours)
-                    .plusMinutes(minutes)
-                    .plusSeconds(seconds)
-                    .plusNanos(nanoSeconds);
-        }
-        else {
-            return Duration.ofHours(hours)
-                    .minusMinutes(minutes)
-                    .minusSeconds(seconds)
-                    .minusNanos(nanoSeconds);
-        }
+        final Duration duration = hours >= 0
+                ? Duration
+                        .ofHours(hours)
+                        .plusMinutes(minutes)
+                        .plusSeconds(seconds)
+                        .plusNanos(nanoSeconds)
+                : Duration
+                        .ofHours(hours)
+                        .minusMinutes(minutes)
+                        .minusSeconds(seconds)
+                        .minusNanos(nanoSeconds);
+        return isNegative && !duration.isNegative() ? duration.negated() : duration;
     }
 
     public static LocalDate stringToLocalDate(String dateString, Column column, Table table) {
