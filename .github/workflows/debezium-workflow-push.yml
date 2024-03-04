@@ -271,7 +271,7 @@ jobs:
   # Approx 25m
   build_cassandra:
     name: "Cassandra"
-    needs: [ check_style, build_storage ]
+    needs: [ check_style, build_debezium_server ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action (Debezium Core)
@@ -358,7 +358,7 @@ jobs:
   # Approx 20m
   build_vitess:
     name: "Vitess"
-    needs: [ check_style, build_cassandra ]
+    needs: [ check_style, build_storage ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action (Debezium Core)
