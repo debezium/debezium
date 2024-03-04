@@ -1162,6 +1162,9 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
     @Override
     protected Object convertBinaryToHex(Column column, Field fieldDefn, Object data) {
+        if (data == UnchangedToastedReplicationMessageColumn.UNCHANGED_TOAST_VALUE) {
+            return unchangedToastedPlaceholder.getToastPlaceholderString();
+        }
         return super.convertBinaryToHex(column, fieldDefn, (data instanceof PGobject) ? ((PGobject) data).getValue() : data);
     }
 

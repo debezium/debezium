@@ -23,6 +23,7 @@ import static org.junit.Assert.assertNotNull;
 
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
@@ -103,6 +104,7 @@ import io.debezium.time.MicroTime;
 import io.debezium.time.MicroTimestamp;
 import io.debezium.time.ZonedTime;
 import io.debezium.time.ZonedTimestamp;
+import io.debezium.util.HexConverter;
 import io.debezium.util.Stopwatch;
 import io.debezium.util.Testing;
 
@@ -1799,6 +1801,33 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         Assertions.assertThat(byteaArray.get(0)).isEqualTo(DecoderDifferences.mandatoryToastedValueBinaryPlaceholder());
         Assertions.assertThat(after.schema().field("bytea_array").schema())
                 .isEqualTo(SchemaBuilder.array(Schema.OPTIONAL_BYTES_SCHEMA).optional().build());
+    }
+
+    @Test
+    public void shouldHandleToastedByteaColumnInHexMode() throws Exception {
+        TestHelper.execute(
+                "DROP TABLE IF EXISTS test_toast_table;",
+                "CREATE TABLE test_toast_table (id SERIAL PRIMARY KEY);");
+
+        startConnector(config -> config.with(CommonConnectorConfig.BINARY_HANDLING_MODE, BinaryHandlingMode.HEX), false);
+        final String toastedValue = RandomStringUtils.randomNumeric(10000);
+
+        String statement = "ALTER TABLE test_toast_table ADD COLUMN not_toast integer;"
+                + "ALTER TABLE test_toast_table ADD COLUMN bytea_ bytea;"
+                + "ALTER TABLE test_toast_table ALTER COLUMN bytea_ SET STORAGE EXTENDED;"
+                + "INSERT INTO test_toast_table (not_toast, bytea_) values (10,  '" + toastedValue + "'::bytea);";
+        consumer = testConsumer(1);
+        executeAndWait(statement);
+
+        // after record should contain the toasted value
+        assertValueField(consumer.remove(), "after/bytea_", HexConverter.convertToHexString(toastedValue.getBytes(StandardCharsets.UTF_8)));
+
+        statement = "UPDATE test_toast_table SET not_toast = 2;";
+
+        consumer.expects(1);
+        executeAndWait(statement);
+        // after update of toasted value record should contain the placeholder
+        assertValueField(consumer.remove(), "after/bytea_", DecoderDifferences.mandatoryToastedValuePlaceholder());
     }
 
     @Test
