@@ -31,3 +31,4 @@ runs:
         -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
         -Ddebezium.test.records.waittime=10
         -DfailFlakyTests=false
+        -Ddebezium.test.mongo.replica.primary.startup.timeout.seconds=120

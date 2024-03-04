@@ -30,3 +30,4 @@ runs:
         -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
         -Dmaven.wagon.http.pool=false
         -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        -Ddebezium.test.mongo.replica.primary.startup.timeout.seconds=120
