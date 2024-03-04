@@ -44,7 +44,8 @@ import io.debezium.testing.testcontainers.util.RandomPortResolver;
 public class MongoDbReplicaSet implements MongoDbDeployment {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbReplicaSet.class);
-    private static final String STARTUP_TIMEOUT = System.getProperty("startup.timeout.seconds");
+    private static final String TEST_PROPERTY_PREFIX = "debezium.test.";
+    private static final String STARTUP_TIMEOUT = System.getProperty(TEST_PROPERTY_PREFIX + "mongo.replica.primary.startup.timeout.seconds");
     private static final long DEFAULT_STARTUP_TIMEOUT = 60;
     private final long STARTUP_TIMEOUT_SECONDS = STARTUP_TIMEOUT != null ? Long.parseLong(STARTUP_TIMEOUT) : DEFAULT_STARTUP_TIMEOUT;
     private final String name;
