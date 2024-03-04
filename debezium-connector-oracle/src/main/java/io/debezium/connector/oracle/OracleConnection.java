@@ -591,7 +591,7 @@ public class OracleConnection extends JdbcConnection {
         else if (OracleTypes.NUMBER == column.jdbcType()) {
             column.scale().filter(s -> s == ORACLE_UNSET_SCALE).ifPresent(s -> column.scale(null));
         }
-        else if ("JSON".equals(column.typeName())) {
+        else if (OracleTypes.JSON == column.jdbcType() || "JSON".equals(column.typeName())) {
             column.jdbcType(OracleTypes.JSON);
         }
         return column;

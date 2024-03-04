@@ -40,7 +40,7 @@ import io.debezium.junit.SkipWhenDatabaseVersion;
  * @author Artem Shubovych
  */
 @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "LogMiner specific tests")
-@SkipWhenDatabaseVersion(check = LESS_THAN, major = 19, reason = "JSON columns are only supported in Oracle 19+")
+@SkipWhenDatabaseVersion(check = LESS_THAN, major = 23, reason = "JSON columns are only supported in Oracle 23+")
 public class OracleJSONDataTypeIT extends AbstractConnectorTest {
 
     private static final String JSON_DATA_RAW = Files.readResourceAsString("data/test_lob_data.json");
