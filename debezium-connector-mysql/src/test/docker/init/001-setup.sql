@@ -6,19 +6,13 @@
 -- 2) 'snapper' - all privileges required by the snapshot reader AND binlog reader
 -- 3) 'mysqluser' - all privileges
 --
-CREATE USER 'replicator'@'%' IDENTIFIED WITH caching_sha2_password BY 'replpass';
-GRANT REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 'replicator'@'%';
-
-CREATE USER 'snapper'@'%' IDENTIFIED WITH caching_sha2_password BY 'snapperpass';
+CREATE USER 'replicator' IDENTIFIED BY 'replpass';
+GRANT REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 'replicator';
+CREATE USER 'snapper' IDENTIFIED BY 'snapperpass';
 GRANT SELECT, INSERT, RELOAD, SHOW DATABASES, REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 'snapper'@'%';
-
-CREATE USER 'cloud'@'%' IDENTIFIED WITH caching_sha2_password BY 'cloudpass';
-GRANT SELECT, RELOAD, SHOW DATABASES, REPLICATION SLAVE, REPLICATION CLIENT, LOCK TABLES ON *.* TO 'cloud'@'%';
-
-ALTER USER 'mysqluser'@'%' IDENTIFIED WITH caching_sha2_password BY 'mysqlpw';
+CREATE USER 'cloud' IDENTIFIED BY 'cloudpass';
+GRANT SELECT, RELOAD, SHOW DATABASES, REPLICATION SLAVE, REPLICATION CLIENT, LOCK TABLES  ON *.* TO 'cloud'@'%';
 GRANT ALL PRIVILEGES ON *.* TO 'mysqluser'@'%';
-
-FLUSH PRIVILEGES;
 
 -- ----------------------------------------------------------------------------------------------------------------
 -- DATABASE:  emptydb
