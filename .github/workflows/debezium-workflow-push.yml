@@ -355,6 +355,34 @@ jobs:
           path-core: core
           path-informix: informix
 
+  build_ibmi:
+    name: "IBMi"
+    needs: [ check_style ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action (Debezium Core)
+        uses: actions/checkout@v4
+        with:
+          path: core
+
+      - name: Checkout Action (IBMi)
+        uses: actions/checkout@v4
+        with:
+          repository: debezium/debezium-connector-ibmi
+          path: ibmi
+
+      - uses: ./core/.github/actions/setup-java
+
+      - uses: ./core/.github/actions/maven-cache
+        with:
+          # We specifically only use the hash of the pom files from the core repository
+          key: maven-debezium-test-push-build-${{ hashFiles('core/**/pom.xml') }}
+
+      - uses: ./core/.github/actions/build-debezium-ibmi
+        with:
+          path-core: core
+          path-ibmi: ibmi
+
   # Approx 20m
   build_vitess:
     name: "Vitess"
