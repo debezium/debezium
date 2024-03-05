@@ -371,6 +371,52 @@ jobs:
           -Ddebezium.test.records.waittime.after.nulls=5 
           -DfailFlakyTests=false
           ${{ matrix.feature.extra }}
+  ibmi:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        feature: [ { release: ga, args: '-DskipITs=true -DskipTests=true', extra: '' }, { release: ea, args: '', extra: '-Dnet.bytebuddy.experimental=true' } ]
+      fail-fast: false
+    name: IBMi - Java ${{ matrix.feature.release }}
+    steps:
+      - name: Checkout Core
+        uses: actions/checkout@v4
+        with:
+          path: core
+      - name: Checkout IBMi
+        uses: actions/checkout@v4
+        with:
+          repository: debezium/debezium-connector-ibmi
+          path: ibmi
+      - name: Setup OpenJDK
+        uses: oracle-actions/setup-java@v1
+        with:
+          website: jdk.java.net
+          release: ${{ matrix.feature.release }}
+      - name: Build Debezium Core
+        run: >
+          ./core/mvnw clean install -f core/pom.xml
+          -DskipTests
+          -DskipITs
+          -Dformat.formatter.goal=validate
+          -Dformat.imports.goal=check
+          -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false
+          -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+          ${{ matrix.feature.extra }}
+      - name: Build Debezium Connector IBMi
+        run: >
+          ./core/mvnw clean install -f ibmi/pom.xml
+          -Passembly ${{ matrix.feature.args }}
+          -Dformat.formatter.goal=validate
+          -Dformat.imports.goal=check
+          -Dhttp.keepAlive=false
+          -Dmaven.wagon.http.pool=false
+          -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+          -Ddebezium.test.records.waittime=5
+          -Ddebezium.test.records.waittime.after.nulls=5
+          -DfailFlakyTests=false
+          -DskipITs
+          ${{ matrix.feature.extra }}
   quarkus-outbox:
     runs-on: ubuntu-latest
     strategy:

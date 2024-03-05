@@ -480,6 +480,35 @@ jobs:
           path-core: core
           path-db2: db2
 
+  build_ibmi:
+    name: "IBMi"
+    needs: [ check_style, file_changes ]
+    runs-on: ubuntu-latest
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' }}
+    steps:
+      - name: Checkout Action (Debezium Core)
+        uses: actions/checkout@v4
+        with:
+          path: core
+
+      - name: Checkout Action (IBMi)
+        uses: actions/checkout@v4
+        with:
+          repository: debezium/debezium-connector-ibmi
+          path: ibmi
+
+      - uses: ./core/.github/actions/setup-java
+
+      - uses: ./core/.github/actions/maven-cache
+        with:
+          # We specifically only use the hash of the pom files from the core repository
+          key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
+
+      - uses: ./core/.github/actions/build-debezium-ibmi
+        with:
+          path-core: core
+          path-ibmi: ibmi
+
   # Approx 45m
   build_informix:
     name: "Informix"
