@@ -3052,6 +3052,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.WHEN_NEEDED)
                 .with(SqlServerConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                .with(SqlServerConnectorConfig.STORE_ONLY_CAPTURED_TABLES_DDL, "true")
                 .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.tablea")
                 .build();
 
