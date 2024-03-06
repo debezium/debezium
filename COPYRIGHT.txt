@@ -49,6 +49,7 @@ Anton Martynov
 Arik Cohen
 Arkoprabho Chakraborti
 artiship
+Arthur Le Ray
 Artur Gukasian
 Ashhar Hasan
 Ashique Ansari
@@ -293,7 +294,7 @@ Krizhan Mariampillai
 Kyley Jex
 Lairen Hightower
 laoflch
-Lars M Johansson
+Lars M. Johansson
 Lars Werkman
 Laurent Broudoux
 Leo Mei
@@ -327,6 +328,7 @@ Mark Ducommun
 Mark Lambert
 Martin Medek
 Martin Sillence
+Martin Tosney
 Masazumi Kobayashi
 Matt Beary
 Matt Vance
@@ -351,6 +353,7 @@ Ming Luo
 Mohamed Pudukulathan
 Mohammad Yousuf Minhaj Zia
 Moira Tagle
+Mostafa Ghadimi
 Muhammad Sufyian
 My Lang Pangzi
 Nancy Xu
@@ -462,6 +465,7 @@ SiuFay
 Siddhant Agnihotry
 Stanley Shyiko
 Stathis Souris
+Stavros Champilomatis
 Stefan Miklosovic
 Stephen Powis
 Steven Siahetiong
@@ -558,6 +562,7 @@ Andrei Isac
 M. Gökhan Akgül
 Mark Allanson
 Rahul Khanna
+Razvan Laurus
 Ronak Jain
 Pengwei Dou
 Zhongqiang Gong
