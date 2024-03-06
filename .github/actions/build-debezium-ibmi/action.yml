@@ -45,3 +45,4 @@ runs:
         -Ddebezium.test.records.waittime.after.nulls=5        
         -DfailFlakyTests=false
         -DskipITs
+        -Ddebezium.test.mongo.replica.primary.startup.timeout.seconds=120
