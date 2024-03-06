@@ -6,19 +6,23 @@
 package io.debezium.connector.mysql;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.BitSet;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -167,6 +171,102 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
     @FunctionalInterface
     private interface BinlogChangeEmitter<T> {
         void emit(TableId tableId, T data) throws InterruptedException;
+    }
+
+    private interface FullRowBuilder {
+        Serializable[] getFullRow(Serializable[] row);
+    }
+
+    private static class IndexMapFullRowBuilder implements FullRowBuilder {
+
+        private final int[] indexMap;
+        private final int fullRowSize;
+
+        IndexMapFullRowBuilder(BitSet includedColumns) {
+            fullRowSize = includedColumns.length();
+            indexMap = new int[includedColumns.cardinality()];
+            int skippedColumns = 0;
+            for (int i = 0; i < indexMap.length; i++) {
+                if (includedColumns.get(i)) {
+                    indexMap[i] = i + skippedColumns;
+                }
+                else {
+                    skippedColumns += 1;
+                }
+            }
+        }
+
+        @Override
+        public Serializable[] getFullRow(Serializable[] row) {
+            Serializable[] fullRow = new Serializable[fullRowSize];
+            for (int i = 0; i < indexMap.length; i++) {
+                fullRow[indexMap[i]] = row[i];
+            }
+            return fullRow;
+        }
+    }
+
+    private static Optional<FullRowBuilder> getFullRowBuilder(BitSet includedColumns) {
+        // If all included columns are set, return the rows as is.
+        if (includedColumns.cardinality() == includedColumns.length()) {
+            return Optional.empty();
+        }
+        else {
+            return Optional.of(new IndexMapFullRowBuilder(includedColumns));
+        }
+    }
+
+    private static class RowMapEntry implements Map.Entry<Serializable[], Serializable[]> {
+
+        private final Serializable[] key;
+        private Serializable[] value;
+
+        RowMapEntry(Serializable[] key, Serializable[] value) {
+
+            this.key = key;
+            this.value = value;
+        }
+
+        @Override
+        public Serializable[] getKey() {
+            return key;
+        }
+
+        @Override
+        public Serializable[] getValue() {
+            return value;
+        }
+
+        @Override
+        public Serializable[] setValue(Serializable[] value) {
+            Serializable[] oldValue = this.value;
+            this.value = value;
+            return oldValue;
+        }
+    }
+
+    private static List<Serializable[]> getListFullRows(List<Serializable[]> rows,
+                                                        Optional<FullRowBuilder> fullRowBuilderMaybe) {
+        if (fullRowBuilderMaybe.isEmpty()) {
+            return rows;
+        }
+        else {
+            FullRowBuilder builder = fullRowBuilderMaybe.get();
+            return rows.stream().map(builder::getFullRow).collect(Collectors.toList());
+        }
+    }
+
+    private static List<Map.Entry<Serializable[], Serializable[]>> getMapFullRows(List<Map.Entry<Serializable[], Serializable[]>> rows,
+                                                                                  Optional<FullRowBuilder> fullRowBuilderMaybe) {
+        if (fullRowBuilderMaybe.isEmpty()) {
+            return rows;
+        }
+        else {
+            FullRowBuilder builder = fullRowBuilderMaybe.get();
+            return rows.stream()
+                    .map(x -> new RowMapEntry(builder.getFullRow(x.getKey()), builder.getFullRow(x.getValue())))
+                    .collect(Collectors.toList());
+        }
     }
 
     public MySqlStreamingChangeEventSource(MySqlConnectorConfig connectorConfig, AbstractConnectorConnection connection,
@@ -709,7 +809,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
     protected void handleInsert(MySqlPartition partition, MySqlOffsetContext offsetContext, Event event) throws InterruptedException {
         handleChange(partition, offsetContext, event, Operation.CREATE, WriteRowsEventData.class,
                 x -> taskContext.getSchema().getTableId(x.getTableId()),
-                WriteRowsEventData::getRows,
+                x -> getListFullRows(x.getRows(), getFullRowBuilder(x.getIncludedColumns())),
                 (tableId, row) -> eventDispatcher.dispatchDataChangeEvent(partition, tableId,
                         new MySqlChangeRecordEmitter(partition, offsetContext, clock, Operation.CREATE, null, row, connectorConfig)),
                 (tableId, row) -> validateChangeEventWithTable(taskContext.getSchema().tableFor(tableId), null, row));
@@ -725,7 +825,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
     protected void handleUpdate(MySqlPartition partition, MySqlOffsetContext offsetContext, Event event) throws InterruptedException {
         handleChange(partition, offsetContext, event, Operation.UPDATE, UpdateRowsEventData.class,
                 x -> taskContext.getSchema().getTableId(x.getTableId()),
-                UpdateRowsEventData::getRows,
+                x -> getMapFullRows(x.getRows(), getFullRowBuilder(x.getIncludedColumns())),
                 (tableId, row) -> eventDispatcher.dispatchDataChangeEvent(partition, tableId,
                         new MySqlChangeRecordEmitter(partition, offsetContext, clock, Operation.UPDATE, row.getKey(), row.getValue(),
                                 connectorConfig)),
