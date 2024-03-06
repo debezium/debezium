@@ -2856,6 +2856,82 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         });
     }
 
+    @Test
+    @FixFor("DBZ-7593")
+    public void shouldCaptureTableSchemaForAllTablesIncludingNonCaptured() throws Exception {
+        Configuration.Builder builder = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SqlServerConnectorConfig.SnapshotMode.INITIAL)
+                .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.tablea")
+                .with(SqlServerConnectorConfig.STORE_ONLY_CAPTURED_TABLES_DDL, "false")
+                .with(SqlServerConnectorConfig.INCLUDE_SCHEMA_CHANGES, "true");
+
+        Configuration config = builder.build();
+        start(SqlServerConnector.class, config);
+
+        int recordCount = 3;
+        SourceRecords sourceRecords = consumeRecordsByTopic(recordCount);
+        assertThat(sourceRecords.allRecordsInOrder()).hasSize(recordCount);
+
+        final TableId tableA = TableId.parse("testDB1.dbo.tablea");
+        final TableId tableB = TableId.parse("testDB1.dbo.tableb");
+
+        List<SourceRecord> schemaChanges = sourceRecords.recordsForTopic("server1");
+        assertThat(schemaChanges).hasSize(2);
+        for (int i = 0; i < 2; i++) {
+            final SourceRecord record = schemaChanges.get(i);
+            assertThat(((Struct) record.key()).getString("databaseName")).isEqualTo("testDB1");
+
+            List<Struct> tableChanges = ((Struct) record.value()).getArray("tableChanges");
+            assertThat(tableChanges).hasSize(1);
+            assertThat(tableChanges.get(0).get("type")).isEqualTo("CREATE");
+
+            final TableId table = i == 0 ? tableA : tableB;
+            assertThat(tableChanges.get(0).get("id")).isEqualTo(table.toDoubleQuotedString());
+        }
+
+        List<SourceRecord> snapshot = sourceRecords.recordsForTopic("server1.testDB1.dbo.tablea");
+        assertThat(snapshot).hasSize(1);
+
+        assertNoRecordsToConsume();
+    }
+
+    @Test
+    @FixFor("DBZ-7593")
+    public void shouldOnlyCaptureTableSchemaForIncluded() throws Exception {
+        Configuration.Builder builder = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SqlServerConnectorConfig.SnapshotMode.INITIAL)
+                .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.tablea")
+                .with(SqlServerConnectorConfig.STORE_ONLY_CAPTURED_TABLES_DDL, "true")
+                .with(SqlServerConnectorConfig.INCLUDE_SCHEMA_CHANGES, "true");
+
+        Configuration config = builder.build();
+        start(SqlServerConnector.class, config);
+
+        int recordCount = 2;
+        SourceRecords sourceRecords = consumeRecordsByTopic(recordCount);
+        assertThat(sourceRecords.allRecordsInOrder()).hasSize(recordCount);
+
+        final TableId tableA = TableId.parse("testDB1.dbo.tablea");
+
+        List<SourceRecord> schemaChanges = sourceRecords.recordsForTopic("server1");
+        assertThat(schemaChanges).hasSize(1);
+        for (int i = 0; i < schemaChanges.size(); i++) {
+            final SourceRecord record = schemaChanges.get(i);
+            assertThat(((Struct) record.key()).getString("databaseName")).isEqualTo("testDB1");
+
+            List<Struct> tableChanges = ((Struct) record.value()).getArray("tableChanges");
+            assertThat(tableChanges).hasSize(1);
+            assertThat(tableChanges.get(0).get("type")).isEqualTo("CREATE");
+
+            assertThat(tableChanges.get(0).get("id")).isEqualTo(tableA.toDoubleQuotedString());
+        }
+
+        List<SourceRecord> snapshot = sourceRecords.recordsForTopic("server1.testDB1.dbo.tablea");
+        assertThat(snapshot).hasSize(1);
+
+        assertNoRecordsToConsume();
+    }
+
     private void shouldStopRetriableRestartsAtConfiguredMaximum(SqlRunnable scenario) throws Exception {
         TestHelper.createTestDatabase(TestHelper.TEST_DATABASE_2);
         connection = TestHelper.testConnection(TEST_DATABASE_2);
