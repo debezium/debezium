@@ -55,11 +55,8 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
-        <!-- Can't use the (generally preferable) release option yet, as the
-             Cassandra connector still needs to be built with Java 1.8 which
-             isn't aware of this option -->
-        <maven.compiler.source>1.8</maven.compiler.source>
-        <maven.compiler.target>1.8</maven.compiler.target>
+        <maven.compiler.release>11</maven.compiler.release>
+        <maven.compiler.testRelease>11</maven.compiler.testRelease>
 
         <!-- Enforce JDK 11 for building (handled via JBoss parent POM)-->
         <jdk.min.version>11</jdk.min.version>
@@ -432,16 +429,6 @@
                     </plugin>
                 </plugins>
             </build>
-        </profile>
-        <profile>
-            <id>jdk11</id>
-            <activation>
-                <jdk>11</jdk>
-            </activation>
-            <properties>
-                <modules.argline>--illegal-access=permit</modules.argline>
-                <maven.compiler.release>8</maven.compiler.release>
-            </properties>
         </profile>
         <profile>
             <id>oracle</id>
