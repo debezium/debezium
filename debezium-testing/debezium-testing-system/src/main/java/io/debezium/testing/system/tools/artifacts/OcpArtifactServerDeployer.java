@@ -75,6 +75,7 @@ public class OcpArtifactServerDeployer extends AbstractOcpDeployer<OcpArtifactSe
     @Override
     public OcpArtifactServerController deploy() throws Exception {
         LOGGER.info("Deploying debezium artifact server");
+        LOGGER.debug("Artifact server spec: \n" + deployment.getSpec().toString());
         deployment = ocp.apps().deployments().inNamespace(project).createOrReplace(deployment);
 
         service.getMetadata().setLabels(deployment.getMetadata().getLabels());

@@ -22,6 +22,7 @@
     <version.apicurio>2.4.1.Final</version.apicurio>
     <version.apicurio.model>1.1.0</version.apicurio.model>
     <version.fixture5>0.1.0</version.fixture5>
+    <version.debezium.jdbc.tests>2.6.0.Beta1</version.debezium.jdbc.tests>
 
     <product.build>false</product.build>
     <prepare.strimzi>true</prepare.strimzi>
@@ -142,7 +143,7 @@
   <repositories>
     <repository>
       <id>sonatype-snapshots</id>
-      <url>https://s01.oss.sonatype.org/content/repositories/snapshots/</url>
+      <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
       <snapshots>
         <updatePolicy>always</updatePolicy>
       </snapshots>
@@ -204,6 +205,13 @@
       </dependency>
       <dependency>
         <groupId>io.debezium</groupId>
+        <artifactId>debezium-connector-jdbc</artifactId>
+        <classifier>plugin</classifier>
+        <type>zip</type>
+        <version>${version.debezium.connector}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.debezium</groupId>
         <artifactId>debezium-scripting</artifactId>
         <type>zip</type>
         <version>${version.debezium.connector}</version>
@@ -259,6 +267,22 @@
     </dependency>
 
     <dependency>
+      <groupId>org.apache.kafka</groupId>
+      <artifactId>connect-api</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.kafka</groupId>
+      <artifactId>connect-runtime</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>ch.qos.reload4j</groupId>
+          <artifactId>reload4j</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+
+    <dependency>
       <groupId>io.strimzi</groupId>
       <artifactId>api</artifactId>
       <version>${version.strimzi}</version>
@@ -286,6 +310,16 @@
       <groupId>io.apicurio</groupId>
       <artifactId>apicurio-registry-operator-api-model</artifactId>
       <version>${version.apicurio.model}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.apache.logging.log4j</groupId>
+          <artifactId>log4j-api</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-simple</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
 
     <dependency>
@@ -408,6 +442,14 @@
     <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>db2</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>io.debezium</groupId>
+      <artifactId>debezium-connector-jdbc</artifactId>
+      <type>test-jar</type>
+      <scope>test</scope>
+      <version>${version.debezium.jdbc.tests}</version>
     </dependency>
 
     <dependency>

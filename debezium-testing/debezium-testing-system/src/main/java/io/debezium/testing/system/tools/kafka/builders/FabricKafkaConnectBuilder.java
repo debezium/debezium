@@ -90,7 +90,9 @@ public class FabricKafkaConnectBuilder extends
                 artifactServer.createDebeziumPlugin("postgres"),
                 artifactServer.createDebeziumPlugin("mongodb"),
                 artifactServer.createDebeziumPlugin("sqlserver"),
-                artifactServer.createDebeziumPlugin("db2", List.of("jdbc/jcc"))));
+                artifactServer.createDebeziumPlugin("db2", List.of("jdbc/jcc")),
+                // jdbc sink connector, not to be confused with the libraries stored in jdbc directory used in db2 and oracle connectors
+                artifactServer.createDebeziumPlugin("jdbc")));
 
         if (ConfigProperties.DATABASE_ORACLE) {
             plugins.add(

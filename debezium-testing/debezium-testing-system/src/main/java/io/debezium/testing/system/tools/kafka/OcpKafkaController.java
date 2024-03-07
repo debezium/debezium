@@ -13,6 +13,9 @@ import static org.apache.kafka.clients.consumer.ConsumerConfig.AUTO_OFFSET_RESET
 import static org.apache.kafka.clients.consumer.ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG;
 import static org.apache.kafka.clients.consumer.ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG;
 import static org.apache.kafka.clients.consumer.ConsumerConfig.GROUP_ID_CONFIG;
+import static org.apache.kafka.clients.producer.ProducerConfig.ACKS_CONFIG;
+import static org.apache.kafka.clients.producer.ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG;
+import static org.apache.kafka.clients.producer.ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG;
 
 import java.io.File;
 import java.io.IOException;
@@ -167,6 +170,25 @@ public class OcpKafkaController implements KafkaController {
         kafkaConsumerProps.put(SslConfigs.SSL_TRUSTSTORE_TYPE_CONFIG, "PEM");
         return kafkaConsumerProps;
     }
+
+    @Override
+    public Properties getDefaultProducerProperties() {
+        Properties kafkaProducerProps = new Properties();
+        try {
+            kafkaProducerProps.put(SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, getKafkaCaCertificate().getAbsolutePath());
+        }
+        catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        kafkaProducerProps.put(BOOTSTRAP_SERVERS_CONFIG, getPublicBootstrapAddress());
+        kafkaProducerProps.put(KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
+        kafkaProducerProps.put(VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
+        kafkaProducerProps.put(ACKS_CONFIG, "all");
+        kafkaProducerProps.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SSL");
+        kafkaProducerProps.put(SslConfigs.SSL_TRUSTSTORE_TYPE_CONFIG, "PEM");
+        return kafkaProducerProps;
+    }
+
 
     private File getKafkaCaCertificate() throws IOException {
         // get kafka cluster ca secret
