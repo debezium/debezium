@@ -160,16 +160,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withValidation(OracleConnectorConfig::validateLogMiningStrategy)
             .withDescription("There are strategies: Online catalog with faster mining but no captured DDL. Another - with data dictionary loaded into REDO LOG files");
 
-    // this option could be true up to Oracle 18c version. Starting from Oracle 19c this option cannot be true todo should we do it?
-    public static final Field CONTINUOUS_MINE = Field.create("log.mining.continuous.mine")
-            .withDisplayName("Should log mining session configured with CONTINUOUS_MINE setting?")
-            .withType(Type.BOOLEAN)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.LOW)
-            .withDefault(false)
-            .withValidation(Field::isBoolean)
-            .withDescription("If true, CONTINUOUS_MINE option will be added to the log mining session. This will manage log files switches seamlessly.");
-
     public static final Field SNAPSHOT_ENHANCEMENT_TOKEN = Field.create("snapshot.enhance.predicate.scn")
             .withDisplayName("A string to replace on snapshot predicate enhancement")
             .withType(Type.STRING)
@@ -737,7 +727,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     // LogMiner options
     private final LogMiningStrategy logMiningStrategy;
     private final Set<String> racNodes;
-    private final boolean logMiningContinuousMine;
     private final Duration archiveLogRetention;
     private final int logMiningBatchSizeMin;
     private final int logMiningBatchSizeMax;
@@ -807,7 +796,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         // LogMiner
         this.logMiningStrategy = LogMiningStrategy.parse(config.getString(LOG_MINING_STRATEGY));
         this.racNodes = resolveRacNodes(config);
-        this.logMiningContinuousMine = config.getBoolean(CONTINUOUS_MINE);
         this.archiveLogRetention = resolveArchiveLogHours(config);
         this.logMiningBatchSizeMin = config.getInteger(LOG_MINING_BATCH_SIZE_MIN);
         this.logMiningBatchSizeMax = config.getInteger(LOG_MINING_BATCH_SIZE_MAX);
@@ -1638,13 +1626,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      */
     public String getTokenToReplaceInSnapshotPredicate() {
         return snapshotEnhancementToken;
-    }
-
-    /**
-     * @return whether continuous log mining is enabled
-     */
-    public boolean isContinuousMining() {
-        return logMiningContinuousMine;
     }
 
     /**
