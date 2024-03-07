@@ -74,7 +74,6 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     private final JdbcConfiguration jdbcConfiguration;
     private final OracleConnectorConfig.LogMiningStrategy strategy;
     private final ErrorHandler errorHandler;
-    private final boolean isContinuousMining;
     private final LogMinerStreamingChangeEventSourceMetrics streamingMetrics;
     private final OracleConnectorConfig connectorConfig;
     private final Duration archiveLogRetention;
@@ -105,7 +104,6 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
         this.schema = schema;
         this.connectorConfig = connectorConfig;
         this.strategy = connectorConfig.getLogMiningStrategy();
-        this.isContinuousMining = connectorConfig.isContinuousMining();
         this.errorHandler = errorHandler;
         this.streamingMetrics = streamingMetrics;
         this.jdbcConfiguration = JdbcConfiguration.adapt(jdbcConfig);
@@ -168,7 +166,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
             }
 
             try (LogWriterFlushStrategy flushStrategy = resolveFlushStrategy()) {
-                if (!isContinuousMining && startScn.compareTo(firstScn.subtract(Scn.ONE)) < 0) {
+                if (startScn.compareTo(firstScn.subtract(Scn.ONE)) < 0) {
                     // startScn is the exclusive lower bound, so must be >= (firstScn - 1)
                     throw new DebeziumException(
                             "Online REDO LOG files or archive log files do not contain the offset scn " + startScn + ".  Please perform a new snapshot.");
@@ -183,7 +181,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                         return;
                     }
 
-                    initializeRedoLogsForMining(jdbcConnection, false, startScn);
+                    initializeRedoLogsForMining(jdbcConnection, startScn);
 
                     int retryAttempts = 1;
                     Stopwatch sw = Stopwatch.accumulating().start();
@@ -239,7 +237,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                             if (connectorConfig.isLogMiningRestartConnection()) {
                                 prepareConnection(true);
                             }
-                            initializeRedoLogsForMining(jdbcConnection, true, startScn);
+                            initializeRedoLogsForMining(jdbcConnection, startScn);
 
                             // log switch or restart required, re-create a new stop watch
                             sw = Stopwatch.accumulating().start();
@@ -395,28 +393,13 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
         return bufferType.createProcessor(context, connectorConfig, jdbcConnection, dispatcher, partition, offsetContext, schema, streamingMetrics);
     }
 
-    private void initializeRedoLogsForMining(OracleConnection connection, boolean postEndMiningSession, Scn startScn)
-            throws SQLException {
-        if (!postEndMiningSession) {
-            if (OracleConnectorConfig.LogMiningStrategy.CATALOG_IN_REDO.equals(strategy)) {
-                buildDataDictionary(connection);
-            }
-            if (!isContinuousMining) {
-                currentLogFiles = setLogFilesForMining(connection, startScn, archiveLogRetention, archiveLogOnlyMode,
-                        archiveDestinationName, logFileQueryMaxRetries, initialDelay, maxDelay);
-                currentRedoLogSequences = getCurrentLogFileSequences(currentLogFiles);
-            }
+    private void initializeRedoLogsForMining(OracleConnection connection, Scn startScn) throws SQLException {
+        if (OracleConnectorConfig.LogMiningStrategy.CATALOG_IN_REDO.equals(strategy)) {
+            buildDataDictionary(connection);
         }
-        else {
-            if (!isContinuousMining) {
-                if (OracleConnectorConfig.LogMiningStrategy.CATALOG_IN_REDO.equals(strategy)) {
-                    buildDataDictionary(connection);
-                }
-                currentLogFiles = setLogFilesForMining(connection, startScn, archiveLogRetention, archiveLogOnlyMode,
-                        archiveDestinationName, logFileQueryMaxRetries, initialDelay, maxDelay);
-                currentRedoLogSequences = getCurrentLogFileSequences(currentLogFiles);
-            }
-        }
+        currentLogFiles = setLogFilesForMining(connection, startScn, archiveLogRetention, archiveLogOnlyMode,
+                archiveDestinationName, logFileQueryMaxRetries, initialDelay, maxDelay);
+        currentRedoLogSequences = getCurrentLogFileSequences(currentLogFiles);
 
         updateRedoLogMetrics();
     }
@@ -617,13 +600,12 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
      * @throws SQLException if mining session failed to start
      */
     public boolean startMiningSession(OracleConnection connection, Scn startScn, Scn endScn, int attempts) throws SQLException {
-        LOGGER.debug("Starting mining session startScn={}, endScn={}, strategy={}, continuous={}",
-                startScn, endScn, strategy, isContinuousMining);
+        LOGGER.debug("Starting mining session startScn={}, endScn={}, strategy={}", startScn, endScn, strategy);
         try {
             Instant start = Instant.now();
             // NOTE: we treat startSCN as the _exclusive_ lower bound for mining,
             // whereas START_LOGMNR takes an _inclusive_ lower bound, hence the increment.
-            connection.executeWithoutCommitting(SqlUtils.startLogMinerStatement(startScn.add(Scn.ONE), endScn, strategy, isContinuousMining));
+            connection.executeWithoutCommitting(SqlUtils.startLogMinerStatement(startScn.add(Scn.ONE), endScn, strategy));
             streamingMetrics.setLastMiningSessionStartDuration(Duration.between(start, Instant.now()));
             return true;
         }
@@ -654,8 +636,8 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
      */
     public void endMiningSession(OracleConnection connection, OracleOffsetContext offsetContext) throws SQLException {
         try {
-            LOGGER.trace("Ending log mining startScn={}, endScn={}, offsetContext.getScn={}, strategy={}, continuous={}",
-                    startScn, endScn, offsetContext.getScn(), strategy, isContinuousMining);
+            LOGGER.trace("Ending log mining startScn={}, endScn={}, offsetContext.getScn={}, strategy={}",
+                    startScn, endScn, offsetContext.getScn(), strategy);
             connection.executeWithoutCommitting("BEGIN SYS.DBMS_LOGMNR.END_LOGMNR(); END;");
         }
         catch (SQLException e) {

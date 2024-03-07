@@ -199,16 +199,13 @@ public class SqlUtils {
      * @param strategy Log Mining strategy
      * @return statement todo: handle corruption. STATUS (Double) — value of 0 indicates it is executable
      */
-    static String startLogMinerStatement(Scn startScn, Scn endScn, OracleConnectorConfig.LogMiningStrategy strategy, boolean isContinuousMining) {
+    static String startLogMinerStatement(Scn startScn, Scn endScn, OracleConnectorConfig.LogMiningStrategy strategy) {
         String miningStrategy;
         if (strategy.equals(OracleConnectorConfig.LogMiningStrategy.CATALOG_IN_REDO)) {
             miningStrategy = "DBMS_LOGMNR.DICT_FROM_REDO_LOGS + DBMS_LOGMNR.DDL_DICT_TRACKING ";
         }
         else {
             miningStrategy = "DBMS_LOGMNR.DICT_FROM_ONLINE_CATALOG ";
-        }
-        if (isContinuousMining) {
-            miningStrategy += " + DBMS_LOGMNR.CONTINUOUS_MINE ";
         }
         return "BEGIN sys.dbms_logmnr.start_logmnr(" +
                 "startScn => '" + startScn + "', " +
