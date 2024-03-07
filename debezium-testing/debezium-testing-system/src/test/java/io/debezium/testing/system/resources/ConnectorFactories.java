@@ -171,4 +171,22 @@ public class ConnectorFactories {
                 .put("log.mining.strategy", "online_catalog")
                 .addOperationRouterForTable("u", "CUSTOMERS");
     }
+
+    public ConnectorConfigBuilder jdbcSink(SqlDatabaseController controller, String connectorName) {
+        ConnectorConfigBuilder cb = new ConnectorConfigBuilder(connectorName);
+        String dbHost = controller.getDatabaseHostname();
+        int dbPort = controller.getDatabasePort();
+        String connectionUrl = String.format("jdbc:mysql://%s:%s/inventory", dbHost, dbPort);
+        return cb
+                .put("connector.class", "io.debezium.connector.jdbc.JdbcSinkConnector")
+                .put("task.max", 1)
+                .put("connection.url", connectionUrl)
+                .put("connection.username", ConfigProperties.DATABASE_MYSQL_DBZ_USERNAME)
+                .put("connection.password", ConfigProperties.DATABASE_MYSQL_DBZ_PASSWORD)
+                .put("insert.mode", "upsert")
+                .put("primary.key.mode", "kafka")
+                .put("schema.evolution", "basic")
+                .put("database.time_zone", "UTC")
+                .put("topics", "jdbc_sink_test");
+    }
 }
