@@ -15,6 +15,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -66,7 +67,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
     private final RelationalTableFilters filters;
     private final MySqlSnapshotChangeEventSourceMetrics metrics;
     private final MySqlDatabaseSchema databaseSchema;
-    private final Set<SchemaChangeEvent> schemaEvents = new HashSet<>();
+    private final Set<SchemaChangeEvent> schemaEvents = new LinkedHashSet<>();
     private Set<TableId> delayedSchemaSnapshotTables = Collections.emptySet();
     private final BlockingConsumer<Function<SourceRecord, SourceRecord>> lastEventProcessor;
     private final Runnable preSnapshotAction;
@@ -298,7 +299,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
 
         List<SchemaChangeEvent> schemaChangeEvents = databaseSchema.parseSnapshotDdl(snapshotContext.partition, ddl, database,
                 snapshotContext.offset, clock.currentTimeAsInstant());
-        schemaEvents.addAll(new HashSet<>(schemaChangeEvents));
+        schemaEvents.addAll(new LinkedHashSet<>(schemaChangeEvents));
     }
 
     @Override
