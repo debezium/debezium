@@ -508,12 +508,12 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord>, Embed
     private Map<String, String> getConnectorConfig(final SourceConnector connector, final String connectorClassName) throws EmbeddedEngineRuntimeException {
         Map<String, String> connectorConfig = workerConfig.originalsStrings();
         Config validatedConnectorConfig = null;
-        try{
-          validatedConnectorConfig = connector.validate(connectorConfig);
+        try {
+            validatedConnectorConfig = connector.validate(connectorConfig);
         }
-        catch (java.lang.NoClassDefFoundError ex){
-          String msg = "Connector configuration is not valid: "+ex.getMessage();
-          failAndThrow(msg, ex);
+        catch (java.lang.NoClassDefFoundError ex) {
+            String msg = "Connector configuration is not valid: " + ex.getMessage();
+            failAndThrow(msg, ex);
         }
         ConfigInfos configInfos = AbstractHerder.generateResult(connectorClassName, Collections.emptyMap(), validatedConnectorConfig.configValues(),
                 connector.config().groups());
