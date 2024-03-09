@@ -537,6 +537,16 @@ public class LogMinerStreamingChangeEventSourceMetrics
     }
 
     /**
+     * Sets the number of times the system change number is considered frozen and has not changed over several consecutive
+     * LogMiner query batches.
+     *
+     * @param scnFreezeCount number of times the system change number is considered frozen
+     */
+    public void setScnFreezeCount(long scnFreezeCount) {
+        this.scnFreezeCount.set(scnFreezeCount);
+    }
+
+    /**
      * Sets the duration of the last LogMiner query execution.
      *
      * @param duration duration of the last LogMiner query
