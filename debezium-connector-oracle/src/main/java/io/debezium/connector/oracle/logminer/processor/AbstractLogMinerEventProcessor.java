@@ -1177,9 +1177,11 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                             previousOffsetScn,
                             previousOffsetCommitScns);
                     metrics.incrementScnFreezeCount();
+                    counters.stuckCount = 0;
                 }
             }
             else {
+                metrics.setScnFreezeCount(0);
                 counters.stuckCount = 0;
             }
         }
@@ -1674,8 +1676,8 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
      * Wrapper for all counter variables
      *
      */
-    protected class Counters {
-        public int stuckCount;
+    protected static class Counters {
+        public int stuckCount; // it will be reset after 25 mining session iterations or if offset SCN changes
         public int dmlCount;
         public int ddlCount;
         public int insertCount;
@@ -1687,7 +1689,6 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         public long rows;
 
         public void reset() {
-            stuckCount = 0;
             dmlCount = 0;
             ddlCount = 0;
             insertCount = 0;
