@@ -7,7 +7,6 @@ package io.debezium.kcrestextension;
 
 import java.util.Map;
 
-import org.apache.kafka.common.utils.AppInfoParser;
 import org.apache.kafka.connect.rest.ConnectRestExtension;
 import org.apache.kafka.connect.rest.ConnectRestExtensionContext;
 
@@ -43,6 +42,6 @@ public class DebeziumConnectRestExtension implements ConnectRestExtension {
 
     @Override
     public String version() {
-        return AppInfoParser.getVersion();
+        return Module.version();
     }
 }
