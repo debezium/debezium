@@ -30,6 +30,7 @@ import java.util.Optional;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import org.apache.kafka.connect.components.Versioned;
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
@@ -42,6 +43,7 @@ import org.apache.kafka.connect.transforms.util.SchemaUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.Module;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.data.Envelope;
@@ -58,7 +60,7 @@ import io.debezium.util.Strings;
  * @param <R> the subtype of {@link ConnectRecord} on which this transformation will operate
  * @author Harvey Yue
  */
-public abstract class AbstractExtractNewRecordState<R extends ConnectRecord<R>> implements Transformation<R> {
+public abstract class AbstractExtractNewRecordState<R extends ConnectRecord<R>> implements Transformation<R>, Versioned {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractExtractNewRecordState.class);
     private static final Pattern FIELD_SEPARATOR = Pattern.compile("\\.");
@@ -72,6 +74,11 @@ public abstract class AbstractExtractNewRecordState<R extends ConnectRecord<R>> 
     protected List<FieldReference> additionalHeaders;
     protected List<FieldReference> additionalFields;
     protected String routeByField;
+
+    @Override
+    public String version() {
+        return Module.version();
+    }
 
     @Override
     public void configure(final Map<String, ?> configs) {
