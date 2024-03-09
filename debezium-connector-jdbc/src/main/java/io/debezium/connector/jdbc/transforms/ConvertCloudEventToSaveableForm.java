@@ -14,6 +14,7 @@ import java.util.Map;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigException;
+import org.apache.kafka.connect.components.Versioned;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaAndValue;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -28,6 +29,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
+import io.debezium.connector.jdbc.Module;
 import io.debezium.converters.spi.CloudEventsMaker;
 import io.debezium.converters.spi.CloudEventsValidator;
 import io.debezium.converters.spi.SerializerType;
@@ -38,7 +40,7 @@ import io.debezium.transforms.outbox.AdditionalFieldsValidator;
  *
  * @author Roman Kudryashov
  */
-public class ConvertCloudEventToSaveableForm implements Transformation<SinkRecord> {
+public class ConvertCloudEventToSaveableForm implements Transformation<SinkRecord>, Versioned {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ConvertCloudEventToSaveableForm.class);
 
@@ -255,5 +257,10 @@ public class ConvertCloudEventToSaveableForm implements Transformation<SinkRecor
 
     @Override
     public void close() {
+    }
+
+    @Override
+    public String version() {
+        return Module.version();
     }
 }
