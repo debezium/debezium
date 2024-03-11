@@ -1041,6 +1041,7 @@ public abstract class CommonConnectorConfig {
     private final FieldNameAdjustmentMode fieldNameAdjustmentMode;
     private final EventConvertingFailureHandlingMode eventConvertingFailureHandlingMode;
     private final String signalingDataCollection;
+    private final TableId signalingDataCollectionId;
 
     private final Duration signalPollInterval;
 
@@ -1100,6 +1101,10 @@ public abstract class CommonConnectorConfig {
         this.snapshotLockingModeCustomName = config.getString(SNAPSHOT_LOCKING_MODE_CUSTOM_NAME, "");
         this.snapshotQueryMode = SnapshotQueryMode.parse(config.getString(SNAPSHOT_QUERY_MODE), SNAPSHOT_QUERY_MODE.defaultValueAsString());
         this.snapshotQueryModeCustomName = config.getString(SNAPSHOT_QUERY_MODE_CUSTOM_NAME, "");
+
+        this.signalingDataCollectionId = !Strings.isNullOrBlank(this.signalingDataCollection)
+                ? TableId.parse(this.signalingDataCollection)
+                : null;
     }
 
     private static List<String> getSignalEnabledChannels(Configuration config) {
@@ -1490,7 +1495,7 @@ public abstract class CommonConnectorConfig {
     }
 
     public boolean isSignalDataCollection(DataCollectionId dataCollectionId) {
-        return signalingDataCollection != null && TableId.parse(signalingDataCollection).equals(dataCollectionId);
+        return signalingDataCollectionId != null && signalingDataCollectionId.equals(dataCollectionId);
     }
 
     public Optional<String> customRetriableException() {
