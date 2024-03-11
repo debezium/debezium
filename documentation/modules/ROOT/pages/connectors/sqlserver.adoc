@@ -2878,9 +2878,6 @@ Set the `snapshot.mode.custom.name` configuration property to the name provided 
 
 For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
 endif::community[]
-* `initial`: Takes a snapshot of structure and data of captured tables; useful if topics should be populated with a complete representation of the data from the captured tables. +
-* `initial_only`: Takes a snapshot of structure and data like `initial` but instead does not transition into streaming changes once the snapshot has completed. +
-* `schema_only`: Takes a snapshot of the structure of captured tables only; useful if only changes happening from now onwards should be propagated to topics.
 
 |[[sqlserver-property-snapshot-locking-mode]]<<sqlserver-property-snapshot-locking-mode, `+snapshot.locking.mode+`>>
 |_exclusive_
