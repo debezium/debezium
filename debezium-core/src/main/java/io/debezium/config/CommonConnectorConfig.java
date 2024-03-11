@@ -47,6 +47,7 @@ import io.debezium.heartbeat.HeartbeatImpl;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.notification.channels.SinkNotificationChannel;
 import io.debezium.relational.CustomConverterRegistry;
+import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.schema.SchemaTopicNamingStrategy;
 import io.debezium.service.DefaultServiceRegistry;
@@ -849,6 +850,7 @@ public abstract class CommonConnectorConfig {
     private final SchemaNameAdjustmentMode schemaNameAdjustmentMode;
     private final FieldNameAdjustmentMode fieldNameAdjustmentMode;
     private final String signalingDataCollection;
+    private final TableId signalingDataCollectionId;
 
     private final Duration signalPollInterval;
 
@@ -903,6 +905,10 @@ public abstract class CommonConnectorConfig {
         this.maxRetriesOnError = config.getInteger(MAX_RETRIES_ON_ERROR);
         this.customMetricTags = createCustomMetricTags(config);
         this.incrementalSnapshotWatermarkingStrategy = WatermarkStrategy.parse(config.getString(INCREMENTAL_SNAPSHOT_WATERMARKING_STRATEGY));
+
+        this.signalingDataCollectionId = !Strings.isNullOrBlank(this.signalingDataCollection)
+                ? TableId.parse(this.signalingDataCollection)
+                : null;
     }
 
     private static List<String> getSignalEnabledChannels(Configuration config) {
@@ -1273,7 +1279,7 @@ public abstract class CommonConnectorConfig {
     }
 
     public boolean isSignalDataCollection(DataCollectionId dataCollectionId) {
-        return signalingDataCollection != null && signalingDataCollection.equals(dataCollectionId.identifier());
+        return signalingDataCollectionId != null && signalingDataCollectionId.equals(dataCollectionId);
     }
 
     public Optional<String> customRetriableException() {
