@@ -7,10 +7,6 @@ package io.debezium.connector.mongodb;
 
 import java.util.Optional;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.connector.mongodb.metrics.MongoDbStreamingChangeEventSourceMetrics;
 import io.debezium.connector.mongodb.snapshot.MongoDbIncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.ErrorHandler;
@@ -33,8 +29,6 @@ import io.debezium.util.Clock;
  * @author Chris Cranford
  */
 public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory<MongoDbPartition, MongoDbOffsetContext> {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbConnection.class);
 
     private final MongoDbConnectorConfig configuration;
     private final ErrorHandler errorHandler;
