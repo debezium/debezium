@@ -520,7 +520,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord>, Embed
         try {
             validatedConnectorConfig = connector.validate(connectorConfig);
         }
-        catch (java.lang.NoClassDefFoundError ex) {
+        catch (Exception ex) {
             String msg = "Connector configuration is not valid: " + ex.getMessage();
             failAndThrow(msg, ex);
         }
