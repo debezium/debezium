@@ -64,6 +64,7 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
     private String unavailableValuePlaceholder;
     private byte[] unavailableValuePlaceholderBytes;
     private RelationalDatabaseSchema schema;
+    private RelationalDatabaseConnectorConfig connectorConfig;
 
     @Override
     public void configure(Map<String, ?> properties) {
@@ -123,6 +124,11 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
             return;
         }
 
+        if (connectorConfig.isSignalDataCollection(tableId)) {
+            LOGGER.debug("Signal table '{}' events are not eligible for re-selection.", tableId);
+            return;
+        }
+
         final Table table = schema.tableFor(tableId);
         if (table == null) {
             LOGGER.debug("Unable to locate table {} in relational model.", tableId);
@@ -179,8 +185,7 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
 
     @Override
     public void injectBeanRegistry(BeanRegistry beanRegistry) {
-        final RelationalDatabaseConnectorConfig connectorConfig = beanRegistry.lookupByName(
-                StandardBeanNames.CONNECTOR_CONFIG, RelationalDatabaseConnectorConfig.class);
+        this.connectorConfig = beanRegistry.lookupByName(StandardBeanNames.CONNECTOR_CONFIG, RelationalDatabaseConnectorConfig.class);
         this.unavailableValuePlaceholder = new String(connectorConfig.getUnavailableValuePlaceholder());
         this.unavailableValuePlaceholderBytes = connectorConfig.getUnavailableValuePlaceholder();
 
