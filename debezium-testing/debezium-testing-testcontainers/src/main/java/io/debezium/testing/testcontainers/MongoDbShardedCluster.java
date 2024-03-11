@@ -58,11 +58,13 @@ public class MongoDbShardedCluster implements MongoDbDeployment {
 
     public static class Builder {
 
+        private static final Network commonNetwork = Network.newNetwork();
+
         private int shardCount = 1;
         private int replicaCount = 1;
         private int routerCount = 1;
 
-        private Network network = Network.newNetwork();
+        private Network network = commonNetwork;
         private PortResolver portResolver = new RandomPortResolver();
         private boolean skipDockerDesktopLogWarning = false;
         private DockerImageName imageName;

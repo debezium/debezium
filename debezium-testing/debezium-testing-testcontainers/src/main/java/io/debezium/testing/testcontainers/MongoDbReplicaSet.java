@@ -78,12 +78,14 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
 
     public static class Builder {
 
+        private static final Network commonNetwork = Network.newNetwork();
+
         private String name = "rs0";
         private String namespace = "test-mongo";
         private int memberCount = 3;
         private boolean configServer = false;
 
-        private Network network = Network.newNetwork();
+        private Network network = commonNetwork;
         private PortResolver portResolver = new RandomPortResolver();
         private boolean skipDockerDesktopLogWarning = false;
         private DockerImageName imageName;
