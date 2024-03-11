@@ -33,6 +33,7 @@ jobs:
       rest-extension-changed: ${{ steps.changed-files-rest-extension.outputs.any_changed }}
       schema-generator-changed: ${{ steps.changed-files-schema-generator.outputs.any_changed }}
       debezium-testing-changed: ${{ steps.changed-files-debezium-testing.outputs.any_changed }}
+      debezium-testing-mongodb-changed: ${{ steps.changed-files-debezium-testing-mongodb.outputs.any_changed }}
       mysql-ddl-parser-changed: ${{ steps.changed-files-mysql-ddl-parser.outputs.any_changed }}
       oracle-ddl-parser-changed: ${{ steps.changed-files-oracle-ddl-parser.outputs.any_changed }}
       documentation-only-changed: ${{ steps.changed-files-documentation.outputs.only_changed }}
@@ -129,6 +130,13 @@ jobs:
         with:
           files: |
             debezium-testing/**
+
+      - name: Get modified files (Debezium Testing MongoDB)
+        id: changed-files-debezium-testing-mongodb
+        uses: tj-actions/changed-files@v42.0.5
+        with:
+          files: |
+            debezium-testing/**/MongoDb*.java
 
       - name: Get modified files (MySQL DDL parser)
         id: changed-files-mysql-ddl-parser
@@ -250,7 +258,7 @@ jobs:
     name: "MongoDB ${{ matrix.version-mongo-server }}"
     needs: [ check_style, file_changes ]
     runs-on: ubuntu-latest
-    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mongodb-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' }}
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mongodb-changed == 'true' || needs.file_changes.outputs.debezium-testing-mongodb-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' }}
     steps:
       - name: Checkout Action
         uses: actions/checkout@v4
