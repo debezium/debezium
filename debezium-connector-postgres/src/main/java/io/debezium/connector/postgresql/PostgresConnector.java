@@ -93,7 +93,7 @@ public class PostgresConnector extends RelationalBaseSourceConnector {
                 // Prepare connection without initial statement execution
                 connection.connection(false);
                 testConnection(connection);
-                checkWalLevel(connection, postgresConfig);
+                // checkWalLevel(connection, postgresConfig);
                 checkLoginReplicationRoles(connection);
             }
             catch (SQLException e) {

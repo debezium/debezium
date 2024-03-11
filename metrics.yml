@@ -1,0 +1,131 @@
+lowercaseOutputName: true
+rules:
+  #kafka.connect:type=app-info,client-id="{clientid}"
+  #kafka.consumer:type=app-info,client-id="{clientid}"
+  #kafka.producer:type=app-info,client-id="{clientid}"
+  - pattern: 'kafka.(.+)<type=app-info, client-id=(.+)><>start-time-ms'
+    name: kafka_$1_start_time_seconds
+    labels:
+      clientId: "$2"
+    help: "Kafka $1 JMX metric start time seconds"
+    type: GAUGE
+    valueFactor: 0.001
+  - pattern: 'kafka.(.+)<type=app-info, client-id=(.+)><>(commit-id|version): (.+)'
+    name: kafka_$1_$3_info
+    value: 1
+    labels:
+      clientId: "$2"
+      $3: "$4"
+    help: "Kafka $1 JMX metric info version and commit-id"
+    type: GAUGE
+
+  #kafka.producer:type=producer-topic-metrics,client-id="{clientid}",topic="{topic}"", partition="{partition}"
+  #kafka.consumer:type=consumer-fetch-manager-metrics,client-id="{clientid}",topic="{topic}"", partition="{partition}"
+  - pattern: kafka.(.+)<type=(.+)-metrics, client-id=(.+), topic=(.+), partition=(.+)><>(.+-total|.+-rate|.+-avg|.+-replica|.+-lag|.+-lead)
+    name: kafka_$2_$6
+    labels:
+      clientId: "$3"
+      topic: "$4"
+      partition: "$5"
+    help: "Kafka $1 JMX metric type $2"
+    type: GAUGE
+
+  #kafka.producer:type=producer-topic-metrics,client-id="{clientid}",topic="{topic}"
+  #kafka.consumer:type=consumer-fetch-manager-metrics,client-id="{clientid}",topic="{topic}"", partition="{partition}"
+  - pattern: kafka.(.+)<type=(.+)-metrics, client-id=(.+), topic=(.+)><>(.+-total|.+-rate|.+-avg)
+    name: kafka_$2_$5
+    labels:
+      clientId: "$3"
+      topic: "$4"
+    help: "Kafka $1 JMX metric type $2"
+    type: GAUGE
+
+  #kafka.connect:type=connect-node-metrics,client-id="{clientid}",node-id="{nodeid}"
+  #kafka.consumer:type=consumer-node-metrics,client-id=consumer-1,node-id="{nodeid}"
+  - pattern: kafka.(.+)<type=(.+)-metrics, client-id=(.+), node-id=(.+)><>(.+-total|.+-avg)
+    name: kafka_$2_$5
+    labels:
+      clientId: "$3"
+      nodeId: "$4"
+    help: "Kafka $1 JMX metric type $2"
+    type: UNTYPED
+
+  #kafka.connect:type=kafka-metrics-count,client-id="{clientid}"
+  #kafka.consumer:type=consumer-fetch-manager-metrics,client-id="{clientid}"
+  #kafka.consumer:type=consumer-coordinator-metrics,client-id="{clientid}"
+  #kafka.consumer:type=consumer-metrics,client-id="{clientid}"
+  - pattern: kafka.(.+)<type=(.+)-metrics, client-id=(.*)><>(.+-total|.+-avg|.+-bytes|.+-count|.+-ratio|.+-rate|.+-age|.+-flight|.+-threads|.+-connectors|.+-tasks|.+-ago)
+    name: kafka_$2_$4
+    labels:
+      clientId: "$3"
+    help: "Kafka $1 JMX metric type $2"
+    type: GAUGE
+
+  #kafka.connect:type=connector-task-metrics,connector="{connector}",task="{task}<> status"
+  - pattern: 'kafka.connect<type=connector-task-metrics, connector=(.+), task=(.+)><>status: ([a-z-]+)'
+    name: kafka_connect_connector_status
+    value: 1
+    labels:
+      connector: "$1"
+      task: "$2"
+      status: "$3"
+    help: "Kafka Connect JMX Connector status"
+    type: GAUGE
+
+  #kafka.connect:type=task-error-metrics,connector="{connector}",task="{task}"
+  #kafka.connect:type=source-task-metrics,connector="{connector}",task="{task}"
+  #kafka.connect:type=sink-task-metrics,connector="{connector}",task="{task}"
+  #kafka.connect:type=connector-task-metrics,connector="{connector}",task="{task}"
+  - pattern: kafka.connect<type=(.+)-metrics, connector=(.+), task=(.+)><>(.+-total|.+-count|.+-ms|.+-ratio|.+-rate|.+-avg|.+-failures|.+-requests|.+-timestamp|.+-logged|.+-errors|.+-retries|.+-skipped)
+    name: kafka_connect_$1_$4
+    labels:
+      connector: "$2"
+      task: "$3"
+    help: "Kafka Connect JMX metric type $1"
+    type: GAUGE
+
+  #kafka.connect:type=connector-metrics,connector="{connector}"
+  #kafka.connect:type=connect-worker-metrics,connector="{connector}"
+  - pattern: kafka.connect<type=connect-worker-metrics, connector=(.+)><>([a-z-]+)
+    name: kafka_connect_worker_$2
+    labels:
+      connector: "$1"
+    help: "Kafka Connect JMX metric $1"
+    type: GAUGE
+
+  #kafka.connect:type=connect-worker-metrics
+  - pattern: kafka.connect<type=connect-worker-metrics><>([a-z-]+)
+    name: kafka_connect_worker_$1
+    help: "Kafka Connect JMX metric worker"
+    type: GAUGE
+
+  #kafka.connect:type=connect-worker-rebalance-metrics
+  - pattern: kafka.connect<type=connect-worker-rebalance-metrics><>([a-z-]+)
+    name: kafka_connect_worker_rebalance_$1
+    help: "Kafka Connect JMX metric rebalance information"
+    type: GAUGE
+
+  - pattern: "debezium.([^:]+)<type=connector-metrics, context=([^,]+), server=([^,]+), key=([^>]+)><>RowsScanned"
+    name: "debezium_metrics_RowsScanned"
+    labels:
+      plugin: "$1"
+      name: "$3"
+      context: "$2"
+      table: "$4"
+
+  - pattern: "debezium.([^:]+)<type=connector-metrics, server=([^,]+), task=([^,]+), context=([^,]+), partition=([^>]+)>([^:]+)"
+    name: "debezium_metrics_$6"
+    labels:
+      plugin: "$1"
+      name: "$2"
+      context: "$4"
+      task: "$3"
+      partition: "$5"
+
+  - pattern: "debezium.([^:]+)<type=connector-metrics, server=([^,]+), task=([^,]+), context=([^>]+)>([^:]+)"
+    name: "debezium_metrics_$5"
+    labels:
+      plugin: "$1"
+      name: "$2"
+      context: "$4"
+      task: "$3"

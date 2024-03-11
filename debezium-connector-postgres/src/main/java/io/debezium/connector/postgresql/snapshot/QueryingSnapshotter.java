@@ -44,8 +44,16 @@ public abstract class QueryingSnapshotter implements Snapshotter {
              * For an on demand blocking snapshot we don't need to reuse
              * the same snapshot from the existing exported transaction as for the initial snapshot.
              */
-            String snapSet = String.format("SET TRANSACTION SNAPSHOT '%s';", newSlotInfo.snapshotName());
-            return "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ; \n" + snapSet;
+            try {
+                Thread.sleep(1000);
+            } catch(Exception e) {
+            }
+
+            // String snapSet = String.format("SET TRANSACTION SNAPSHOT '%s';", newSlotInfo.snapshotName());
+            // return "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ; \n" + snapSet;
+
+            String ans = String.format("SET LOCAL yb_read_time TO '%s ht'", newSlotInfo.snapshotName());
+	        return ans;
         }
         return Snapshotter.super.snapshotTransactionIsolationLevelStatement(newSlotInfo, isOnDemand);
     }

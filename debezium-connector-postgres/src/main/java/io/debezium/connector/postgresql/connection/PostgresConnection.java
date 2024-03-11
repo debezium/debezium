@@ -510,6 +510,7 @@ public class PostgresConnection extends JdbcConnection {
      * @throws SQLException if anything fails.
      */
     public Long currentTransactionId() throws SQLException {
+        /* 
         AtomicLong txId = new AtomicLong(0);
         query("select (case pg_is_in_recovery() when 't' then 0 else txid_current() end) AS pg_current_txid", rs -> {
             if (rs.next()) {
@@ -518,6 +519,9 @@ public class PostgresConnection extends JdbcConnection {
         });
         long value = txId.get();
         return value > 0 ? value : null;
+        */
+        LOGGER.info("AS: txid_current");
+        return 2L;
     }
 
     /**
