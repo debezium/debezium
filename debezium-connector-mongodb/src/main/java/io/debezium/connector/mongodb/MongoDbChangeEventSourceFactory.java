@@ -75,7 +75,8 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
                 dispatcher,
                 errorHandler,
                 clock,
-                streamingMetrics);
+                streamingMetrics,
+                snapshotterService);
     }
 
     @Override

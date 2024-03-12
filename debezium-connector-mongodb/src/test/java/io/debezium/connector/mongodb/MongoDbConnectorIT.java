@@ -2591,6 +2591,137 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         assertThat(value.getInt64(Envelope.FieldName.TIMESTAMP)).isGreaterThanOrEqualTo(timestamp.toEpochMilli());
     }
 
+    @Test
+    public void shouldAlwaysSnapshot() throws Exception {
+
+        config = TestHelper.getConfiguration(mongo).edit()
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbA.contacts")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
+                .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.ALWAYS)
+                .build();
+
+        context = new MongoDbTaskContext(config);
+
+        TestHelper.cleanDatabase(mongo, "dbA");
+
+        try (var client = connect()) {
+            // Create database and collection
+            MongoDatabase db = client.getDatabase("dbA");
+            MongoCollection<Document> contacts = db.getCollection("contacts");
+            InsertOneOptions options = new InsertOneOptions().bypassDocumentValidation(true);
+            contacts.insertOne(new Document().append("name", "Jon Snow"), options);
+            contacts.insertOne(new Document().append("name", "Ygritte"), options);
+            assertThat(db.getCollection("contacts").countDocuments()).isEqualTo(2);
+        }
+
+        // Start the connector
+        start(MongoDbConnector.class, config);
+        waitForSnapshotToBeCompleted("mongodb", "mongo");
+
+        // Consume records
+        List<SourceRecord> records = consumeRecordsByTopic(2).allRecordsInOrder();
+        final Set<String> foundNames = new HashSet<>();
+        records.forEach(record -> {
+            VerifyRecord.isValid(record);
+
+            final Struct value = (Struct) record.value();
+            final String after = value.getString(Envelope.FieldName.AFTER);
+
+            final Document document = Document.parse(after);
+            foundNames.add(document.getString("name"));
+
+            final Operation operation = Operation.forCode(value.getString(Envelope.FieldName.OPERATION));
+            assertThat(operation).isEqualTo(Operation.READ);
+        });
+        assertNoRecordsToConsume();
+        assertThat(foundNames).containsOnly("Jon Snow", "Ygritte");
+
+        stopConnector();
+
+        try (var client = connect()) {
+            // Create database and collection
+            MongoDatabase db = client.getDatabase("dbA");
+            MongoCollection<Document> contacts = db.getCollection("contacts");
+            contacts.deleteOne(new Document().append("name", "Jon Snow"));
+            contacts.insertOne(new Document().append("name", "Arya Stark"));
+            assertThat(db.getCollection("contacts").countDocuments()).isEqualTo(2);
+        }
+
+        // Start the connector
+        start(MongoDbConnector.class, config);
+        waitForSnapshotToBeCompleted("mongodb", "mongo");
+
+        // Consume records
+        records = consumeRecordsByTopic(2).allRecordsInOrder();
+        final Set<String> founds = new HashSet<>();
+        records.forEach(record -> {
+            VerifyRecord.isValid(record);
+
+            final Struct value = (Struct) record.value();
+            final String after = value.getString(Envelope.FieldName.AFTER);
+
+            final Document document = Document.parse(after);
+            founds.add(document.getString("name"));
+
+            final Operation operation = Operation.forCode(value.getString(Envelope.FieldName.OPERATION));
+            assertThat(operation).isEqualTo(Operation.READ);
+        });
+        assertNoRecordsToConsume();
+        assertThat(founds).containsOnly("Ygritte", "Arya Stark");
+    }
+
+    @Test
+    public void shouldAllowForCustomSnapshot() throws Exception {
+
+        final LogInterceptor logInterceptor = new LogInterceptor(CustomTestSnapshot.class);
+
+        config = TestHelper.getConfiguration(mongo).edit()
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbA.contacts")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
+                .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.CUSTOM)
+                .with(CommonConnectorConfig.SNAPSHOT_MODE_CUSTOM_NAME, CustomTestSnapshot.class)
+                .build();
+
+        context = new MongoDbTaskContext(config);
+
+        TestHelper.cleanDatabase(mongo, "dbA");
+
+        try (var client = connect()) {
+            // Create database and collection
+            MongoDatabase db = client.getDatabase("dbA");
+            MongoCollection<Document> contacts = db.getCollection("contacts");
+            InsertOneOptions options = new InsertOneOptions().bypassDocumentValidation(true);
+            contacts.insertOne(new Document().append("name", "Jon Snow"), options);
+            contacts.insertOne(new Document().append("name", "Ygritte"), options);
+            assertThat(db.getCollection("contacts").countDocuments()).isEqualTo(2);
+        }
+
+        // Start the connector
+        start(MongoDbConnector.class, config);
+        waitForSnapshotToBeCompleted("mongodb", "mongo");
+
+        // Consume records
+        List<SourceRecord> records = consumeRecordsByTopic(2).allRecordsInOrder();
+        final Set<String> foundNames = new HashSet<>();
+        records.forEach(record -> {
+            VerifyRecord.isValid(record);
+
+            final Struct value = (Struct) record.value();
+            final String after = value.getString(Envelope.FieldName.AFTER);
+
+            final Document document = Document.parse(after);
+            foundNames.add(document.getString("name"));
+
+            final Operation operation = Operation.forCode(value.getString(Envelope.FieldName.OPERATION));
+            assertThat(operation).isEqualTo(Operation.READ);
+        });
+        assertNoRecordsToConsume();
+        assertThat(foundNames).containsOnly("Jon Snow", "Ygritte");
+
+        assertThat(logInterceptor.containsMessage("Should snapshot data true")).isTrue();
+        assertThat(logInterceptor.containsMessage("Should stream false")).isTrue();
+    }
+
     private String formatObjectId(ObjectId objId) {
         return "{\"$oid\": \"" + objId + "\"}";
     }

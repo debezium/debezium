@@ -28,6 +28,7 @@ import io.debezium.function.BlockingRunnable;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
+import io.debezium.snapshot.SnapshotterService;
 import io.debezium.util.Clock;
 
 /**
@@ -44,17 +45,20 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
 
     private final MongoDbTaskContext taskContext;
     private final MongoDbStreamingChangeEventSourceMetrics streamingMetrics;
+    private final SnapshotterService snapshotterService;
     private MongoDbOffsetContext effectiveOffset;
 
     public MongoDbStreamingChangeEventSource(MongoDbConnectorConfig connectorConfig, MongoDbTaskContext taskContext,
                                              EventDispatcher<MongoDbPartition, CollectionId> dispatcher,
-                                             ErrorHandler errorHandler, Clock clock, MongoDbStreamingChangeEventSourceMetrics streamingMetrics) {
+                                             ErrorHandler errorHandler, Clock clock, MongoDbStreamingChangeEventSourceMetrics streamingMetrics,
+                                             SnapshotterService snapshotterService) {
         this.connectorConfig = connectorConfig;
         this.dispatcher = dispatcher;
         this.errorHandler = errorHandler;
         this.clock = clock;
         this.taskContext = taskContext;
         this.streamingMetrics = streamingMetrics;
+        this.snapshotterService = snapshotterService;
     }
 
     @Override
@@ -70,6 +74,12 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
      */
     @Override
     public void execute(ChangeEventSourceContext context, MongoDbPartition partition, MongoDbOffsetContext offsetContext) {
+
+        if (!snapshotterService.getSnapshotter().shouldStream()) {
+            LOGGER.info("Streaming is not enabled in configuration");
+            return;
+        }
+
         try (MongoDbConnection mongo = taskContext.getConnection(dispatcher, partition)) {
             mongo.execute("Reading change stream", client -> {
                 readChangeStream(client, context, partition);
