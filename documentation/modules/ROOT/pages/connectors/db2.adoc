@@ -213,7 +213,7 @@ If the connector stops again for any reason, after it restarts, it resumes strea
 |Setting |Description
 
 |`always`
-|Perform snapshot on each connector start.
+|The connector performs a snapshot every time that it starts.
 After the snapshot completes, the connector begins to stream event records for subsequent database changes.
 
 |`initial`
@@ -221,7 +221,8 @@ After the snapshot completes, the connector begins to stream event records for s
 After the snapshot completes, the connector begins to stream event records for subsequent database changes.
 
 |`initial_only`
-|The connector performs a database snapshot and stops before streaming any change event records, not allowing any subsequent change events to be captured.
+|The connector performs a database snapshot.
+After the snapshot completes, the connector stops, and does not stream event records for subsequent database changes.
 
 |`schema_only`
 |Deprecated, see `no_data`.
@@ -2682,17 +2683,21 @@ For example, +
 |_initial_
 |Specifies the criteria for performing a snapshot when the connector starts: +
 
-`always`:: Perform snapshot on each connector start.
+`always`:: The connector performs a snapshot every time that it starts.
+The snapshot includes the structure and data of the captured tables.
+Specify this value to populate topics with a complete representation of the data from the captured tables every time that the connector starts.
 After the snapshot completes, the connector begins to stream event records for subsequent database changes.
 
 `initial`:: The connector performs a database snapshot as described in the xref:default-workflow-for-performing-an-initial-snapshot[default workflow for creating an initial snapshot].
 After the snapshot completes, the connector begins to stream event records for subsequent database changes.
 
-`initial_only`:: The connector performs a database snapshot and stops before streaming any change event records, not allowing any subsequent change events to be captured.
+`initial_only`:: The connector performs a database a snapshot only when no offsets have been recorded for the logical server name.
+After the snapshot completes, the connector stops.
+It does not transition to streaming event records for subsequent database changes.
 
 `schema_only`:: Deprecated, see `no_data`.
 
-`no_data`:: The connector captures the structure of all relevant tables, performing all the steps described in the xref:default-workflow-for-performing-an-initial-snapshot[default snapshot workflow], except that it does not create `READ` events to represent the data set at the point of the connector's start-up (Step 7.b).
+`no_data`:: The connector runs a snapshot that captures the structure of all relevant tables, performing all the steps described in the xref:default-workflow-for-performing-an-initial-snapshot[default snapshot workflow], except that it does not create `READ` events to represent the data set at the point of the connector's start-up (Step 7.b).
 
 `recovery`:: Set this option to restore a database schema history topic that is lost or corrupted.
 After a restart, the connector runs a snapshot that rebuilds the topic from the source tables.
@@ -2714,15 +2719,14 @@ endif::community[]
 
 |[[db2-property-snapshot-locking-mode]]<<db2-property-snapshot-locking-mode, `+snapshot.locking.mode+`>>
 |_exclusive_
-a|Controls whether and for how long the connector holds a table lock. Table locks prevent certain types of changes table operations from occurring while the connector performs a snapshot.
+a|Controls whether and for how long the connector holds a table lock. 
+Table locks prevent other database clients from performing certain table operations during a snapshot.
 You can set the following values:
 
 `exclusive`:: Controls how the connector holds locks on tables while performing the schema snapshot when `snapshot.isolation.mode` is `REPEATABLE_READ` or `EXCLUSIVE`. +
-The connector will hold a table lock for exclusive table access for just the initial portion of the snapshot
-while the database schemas and other metadata are being read. The remaining work in a snapshot involves selecting all rows from
-each table, and this is done using a flashback query that requires no locks. However, in some cases it may be desirable to avoid
-locks entirely which can be done by specifying `none`. This mode is only safe to use if no schema changes are happening while the
-snapshot is taken.
+The connector holds a table lock that ensures exclusive table access during only the initial phase of the snapshot in which the connector reads the database schema and other metadata.
+In subsequent phases of the snapshot, the connector uses a flashback query, which requires no locks, to select all rows from each table. 
+If you prefer snapshots to run without setting any locks, set the following option, `none`.
 
 `none`:: Prevents the connector from acquiring any table locks during the snapshot.
 Use this setting only if no schema changes might occur during the creation of the snapshot.
@@ -2734,7 +2738,7 @@ endif::community[]
 ifdef::community[]
 |[[db2-property-snapshot-locking-mode-custom-name]]<<db2-property-snapshot-locking-mode-custom-name, `+snapshot.locking.mode.custom.name+`>>
 |No default
-| When `snapshot.locking.mode` is set as `custom`, use this setting to specify the name of the custom implementation provided in the `name()` method that is defined by the 'io.debezium.spi.snapshot.SnapshotLock' interface.
+| When `snapshot.locking.mode` is set to `custom`, use this setting to specify the name of the custom locking implementation provided in the `name()` method that is defined by the 'io.debezium.spi.snapshot.SnapshotLock' interface.
 For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
 endif::community[]
 
@@ -2754,7 +2758,7 @@ This setting enables you to manage snapshot content in a more flexible manner co
 ifdef::community[]
 |[[db2-property-snapshot-snapshot-query-mode-custom-name]]<<db2-property-snapshot-query-mode-custom-name, `+snapshot.query.mode.custom.name+`>>
 |No default
-| When xref:db2-property-snapshot-query-mode[`snapshot.query.mode`] is set to `custom`, use this setting to specify the name of the custom implementation provided in the `name()` method that is defined by the 'io.debezium.spi.snapshot.SnapshotQuery' interface.
+| When xref:db2-property-snapshot-query-mode[`snapshot.query.mode`] is set to `custom`, use this setting to specify the name of the custom query implementation provided in the `name()` method that is defined by the 'io.debezium.spi.snapshot.SnapshotQuery' interface.
 For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
 endif::community[]
 
