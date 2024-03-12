@@ -1,5 +1,11 @@
-= Re-select columns
+// Category: debezium-using
+// Type: assembly
+// ModuleID: using-the-reselect-columns-post-processor-to-add-source-fields-to-change-event-records
+// Title: Using the reselect columns post processor to add source fields to change event records
+[id="reselect-columns-post-processor"]
+= Reselect columns
 
+ifdef::community[]
 :toc:
 :toc-placement: macro
 :linkattrs:
@@ -8,58 +14,101 @@
 
 toc::[]
 
-[NOTE]
-====
-This post-processor is supported only for the SQL database connectors.
-====
-
 == Overview
+endif::community[]
 
-In some cases, because of the way that certain source databases function, when a {prodname} connector emits a change event, the event might exclude values for specific column types.
-For example, values for TOAST columns in PostgreSQL, LOB columns in Oracle, or Extended String columns in Oracle Exadata, might all be excluded.
+To improve performance and reduce storage overhead, databases can use external storage for certain columns.
+This type of storage is used for columns that store large amounts of data, such as the PostgreSQL TOAST (The Oversized-Attribute Storage Technique), Oracle Large Object (LOB), or the Oracle Exadata Extended String data types.
+To reduce I/O overhead and increase query speed, when data changes in a table row, the database retrieves only the columns that contain new values, ignoring data in externally stored columns that remains unchanged,   .
+As a result, the value of the externally stored column is not recorded in the database log, and {prodname} subsequently omits the column when it emits the event record.
+Downstream consumers that receive event records that omit required keys or values can experience processing errors.
 
-The `ReselectColumnsPostProcessor` provides a way to re-select one or more columns from a database table and fetch the current state.
-You can configure the post processor to re-select the following column types:
+To retrieve data for columns that were not available in the initial query, you can apply the {prodname} reselect columns post processor (`ReselectColumnsPostProcessor`).
+You can configure the post processor to reselect one or more columns from a table.
+After you configure the post processor, it monitors events that the connector emits for the column names that you designate for reselection.
+When it detects an event with the specified columns, the post processor re-queries the source tables to retrieve data for the specified columns, and fetches their current state.
+
+You can configure the post processor to reselect the following column types:
 
  * `null` columns.
- * columns that contain the `unavailable.value.placeholder` sentinel value.
+ * Columns that contain the `unavailable.value.placeholder` sentinel value.
 
-Configuring a `PostProcessor` is similar to configuring a `CustomConverter` or `Transformation`.
 
+NOTE: You can use the `ReselectColumnsPostProcessor` post processor only with {prodname} SQL database connectors.
+
+ifdef::product[]
+For details about using the `ReselectColumnsPostProcessor` post processor, see the following topics:
+
+* xref:use-of-the-debezium-reselect-columns-post-processor-with-keyless-tables[]
+* xref:example-debezium-reselect-columns-post-processor-configuration[]
+* xref:descriptions-of-debezium-reselect-columns-post-processor-configuration-properties[]
+
+endif::product[]
+
+// Type: concept
+// ModuleID: use-of-the-debezium-reselect-columns-post-processor-with-keyless-tables
+// Title: Use of the {prodname} `ReselectColumnsPostProcessor` with keyless tables
+[id="keyless-tables"]
 == Keyless tables
 
-The `ReselectColumnsPostProcessor` requires that the table have some unique combination of columns that can be used to generate a re-select query that returns a single row.
-By default, the `PostProcessor` will use the relational table model to construct a where-clause based on the table's primary key columns or the unique index that is defined on the table.
-However, if a table has no primary key or unique index, effectively keyless, then you can use the `message.key.columns` configuration to define a combination of columns that uniquely identifies a single row.
-When using `message.key.columns` for keyless tables, it is important to set the `reselect.use.event.key` configuration property to `true` that the event's key fields are used as the basis for the selection criteria since the relational table model would have no primary key columns.
+The reselect columns post processor generates a reselect query that returns the row to be modified.
+To construct the `WHERE` clause for the query, by default, the post processor uses a relational table model that is based on the table's primary key columns or on the unique index that is defined for the table.
 
-[NOTE]
-====
-The `ReselectColumnsPostProcessor` tolerates a re-select query that returns more than one row.
-In such circumstances, only the first row will be used and that entry is entirely random and database driven.
-It's recommended that if you use `reselect.use.event.key` set to `true`, your connector configuration and data model guarantees that the columns that participate in the event's key uniquely identify a single database row so that the re-select is always deterministic.
-====
+For keyless tables, the `SELECT` query that `ReselectColumnsPostProcessor` submits might return multiple rows, in which case {prodname} always uses only the first row.
+You cannot prioritize the order of the returned rows.
+To enable the post processor to return a consistently usable result for a keyless table, it's best to designate a custom key that can identify a unique row.
+The custom key must be capable of uniquely identify records in the source table based on a combination of columns.
 
+To define such a custom message key, use the `message.key.columns` property in the connector configuration.
+After you define a custom key, set the xref:reselect-columns-post-processor-property-reselect-use-event-key[`reselect.use.event.key`] configuration property to `true`.
+Setting this option enables the post processor to use the specified event key fields as selection criteria in lieu of a primary key column.
+Be sure to test the configuration to ensure that the reselection query provides the expected results.
+
+// Type: concept
+// ModuleID: example-debezium-reselect-columns-post-processor-configuration
+// Title: Example: {prodname} `ReselectColumnsPostProcessor` configuration
+[id="configuration-example"]
 == Configuration example
 
-Configure a `PostProcessor` much in the same way that you would configure a `CustomConverter` or `Transformation`.
-To enable the connector to use the `ReselectColumnsPostProcessor`, add the following options to the connector configuration:
-[source,json]
+Configuring a post processor is similar to configuring a {link-prefix}:{link-custom-converters}#developing-debezium-custom-data-type-converters[custom converter] or {link-prefix}:{link-transformations}#applying-transformations-to-modify-messages-exchanged-with-kafka[single message transformation (SMT)].
+To enable the connector to use the `ReselectColumnsPostProcessor`, add the following entries to the connector configuration:
+
+[source,json,subs="+attributes,+quotes"]
 ----
   "post.processors": "reselector", // <1>
   "reselector.type": "io.debezium.processors.reselect.ReselectColumnsPostProcessor", // <2>
-  "reselector.reselect.columns.include.list": "<schema_name>.<table_name>:<colA>,<schema_name>.<table_name>:<colB>", // <3>
+  "reselector.reselect.columns.include.list": "_<schema>_.__<table>__:__<column>__,__<schema>__.__<table>__:__<column>__", // <3>
   "reselector.reselect.unavailable.values": "true", // <4>
   "reselector.reselect.null.values": "true" // <5>
   "reselector.reselect.use.event.key": "false" // <6>
 ----
-<1> Comma-separated list of post-processor prefixes.
-<2> The fully-qualified class type name for the post-processor.
-<3> Comma-separated list of column names specified by using the following format: `<schema>.<table>:<column>`.
-<4> Enables or disables the re-selection of columns that contain the `unavailable.value.placeholder` sentinel value.
-<5> Enables or disables the re-selection of columns that are `null`.
-<6> Enables or disables the re-selection based event key field names.
+[cols="1,7",options="header"]
+|===
+|Item |Description
 
+|1
+|Comma-separated list of post processor prefixes.
+
+|2
+|The fully-qualified class type name for the post processor.
+
+|3
+|Comma-separated list of column names, specified by using the following format: `_<schema>_.__<table>__:__<column>__`.
+
+|4
+|Enables or disables reselection of columns that contain the `unavailable.value.placeholder` sentinel value.
+
+|5
+|Enables or disables reselection of columns that are `null`.
+
+|6
+|Enables or disables reselection based event key field names.
+
+|===
+
+// Type: reference
+// ModuleID: descriptions-of-debezium-reselect-columns-post-processor-configuration-properties
+// Title: Descriptions of {prodname} reselect columns post processor configuration properties
 == Configuration options
 
 The following table lists the configuration options that you can set for the Reselect Columns post-processor.
@@ -73,14 +122,14 @@ The following table lists the configuration options that you can set for the Res
 
 |[[reselect-columns-post-processor-property-reselect-columns-include-list]]<<reselect-columns-post-processor-property-reselect-columns-include-list, `+reselect.columns.include.list+`>>
 |No default
-|Comma-separated list of column names to re-select from the source database.
+|Comma-separated list of column names to reselect from the source database.
 Use the following format to specify column names: + `_<schema>_._<table>_:_<column>_`  +
  +
 Do not set this property if you set the `reselect.columns.exclude.list` property.
 
 |[[reselect-columns-post-processor-property-reselect-columns-exclude-list]]<<reselect-columns-post-processor-property-reselect-columns-exclude-list, `+reselect.columns.exclude.list+`>>
 |No default
-|Comma-separated list of column names in the source database to exclude from re-selection.
+|Comma-separated list of column names in the source database to exclude from reselection.
 Use the following format to specify column names: + `_<schema>_._<table>_:_<column>_` +
  +
 Do not set this property if you set the `reselect.columns.include.list` property.
@@ -97,7 +146,8 @@ Do not set this property if you set the `reselect.columns.include.list` property
 |`false`
 |Specifies whether the post processor reselects based on the event's key field names or uses the relational table's primary key column names. +
  +
-By default, the reselect is based on the relational table's primary key columns or unique key index.
-Setting this to `true` can be useful if the table has no primary key and the connector is configured to use `message.key.columns` to create events with a key.
-This will then use the key field names as the primary key in the SQL reselection query.
+By default, the reselection query is based on the relational table's primary key columns or unique key index.
+For tables that do not have a primary key, set this property to `true`, and configure the `message.key.columns` property in the connector configuration to specify a custom key for the connector to use when it creates events.
+The post processor then uses the specified key field names as the primary key in the SQL reselection query.
+
 |===
