@@ -129,7 +129,7 @@ Transaction boundary events contain the following fields:
 `status`:: `BEGIN` or `END`.
 `id`:: String representation of the unique transaction identifier.
 `ts_ms`:: The time of a transaction boundary event (`BEGIN` or `END` event) at the data source.
-If the data source does not provide {prodname} with the event time, then the field instead represents the time at which {prodname} processes the event.
+If the data source does not provide {prodname} with the event time, then the field instead represents the time at which {prodname} processes the event. Note:`ts_ms` is in milliseconds, but only has seconds-level precision due to a limitation of MySQL, which can only provide binlog timestamps in seconds.
 `event_count` (for `END` events):: Total number of events emitted by the transaction.
 `data_collections` (for `END` events):: An array of pairs of `data_collection` and `event_count` elements that indicates the number of events that the connector emits for changes that originate from a data collection.
 
@@ -140,7 +140,7 @@ If the data source does not provide {prodname} with the event time, then the fie
 {
   "status": "BEGIN",
   "id": "[{\"keyspace\":\"test_unsharded_keyspace\",\"shard\":\"0\",\"gtid\":\"MySQL56/e03ece6c-4c04-11ec-8e20-0242ac110004:1-37\"}]",
-  "ts_ms": 1486500577125,
+  "ts_ms": 1486500577000,
   "event_count": null,
   "data_collections": null
 }
@@ -148,7 +148,7 @@ If the data source does not provide {prodname} with the event time, then the fie
 {
   "status": "END",
   "id": "[{\"keyspace\":\"test_unsharded_keyspace\",\"shard\":\"0\",\"gtid\":\"MySQL56/e03ece6c-4c04-11ec-8e20-0242ac110004:1-37\"}]",
-  "ts_ms": 1486500577691,
+  "ts_ms": 1486500577000,
   "event_count": 1,
   "data_collections": [
     {
@@ -567,9 +567,9 @@ The following example shows the value portion of a change event that the connect
             "version": "{debezium-version}",
             "connector": "vitess",
             "name": "my_sharded_connector",
-            "ts_ms": 1559033904863,
-            "ts_us": 1559033904863000,
-            "ts_ns": 1559033904863000000,
+            "ts_ms": 1559033904000,
+            "ts_us": 1559033904000000,
+            "ts_ns": 1559033904000000000,
             "snapshot": "false",
             "db": "",
             "sequence": null,
@@ -651,7 +651,7 @@ a|Mandatory string that describes the type of operation that caused the connecto
 a|Optional field that displays the time at which the connector processed the event.
 The time is based on the system clock in the JVM running the Kafka Connect task.  +
  +
-In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
+In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}. Note:`ts_ms` is in milliseconds, but only has seconds-level precision due to a limitation of MySQL, which can only provide binlog timestamps in seconds.
 
 |===
 
@@ -682,9 +682,9 @@ The value of a change event for an update in the sample `customers` table has th
             "version": "{debezium-version}",
             "connector": "vitess",
             "name": "my_sharded_connector",
-            "ts_ms": 1559033904863,
-            "ts_us": 1559033904863000,
-            "ts_ns": 1559033904863000000,
+            "ts_ms": 1559033904000,
+            "ts_us": 1559033904000000,
+            "ts_ns": 1559033904000000000,
             "snapshot": "false",
             "db": "",
             "sequence": null,
@@ -734,7 +734,7 @@ a|Mandatory string that describes the type of operation. In an _update_ event va
 a|Optional field that displays the time at which the connector processed the event.
 The time is based on the system clock in the JVM running the Kafka Connect task.  +
  +
-In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
+In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}. Note:`ts_ms` is in milliseconds, but only has seconds-level precision due to a limitation of MySQL, which can only provide binlog timestamps in seconds.
 
 |===
 
@@ -774,9 +774,9 @@ The value in a _delete_ change event has the same `schema` portion as _create_ a
             "version": "{debezium-version}",
             "connector": "vitess",
             "name": "my_sharded_connector",
-            "ts_ms": 1559033904863,
-            "ts_us": 1559033904863000,
-            "ts_ns": 1559033904863000000,
+            "ts_ms": 1559033904000,
+            "ts_us": 1559033904000000,
+            "ts_ns": 1559033904000000000,
             "snapshot": "false",
             "db": "",
             "sequence": null,
@@ -826,7 +826,7 @@ a|Mandatory string that describes the type of operation. The `op` field value is
 a|Optional field that displays the time at which the connector processed the event.
 The time is based on the system clock in the JVM running the Kafka Connect task.  +
  +
-In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
+In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}. Note:`ts_ms` is in milliseconds, but only has seconds-level precision due to a limitation of MySQL, which can only provide binlog timestamps in seconds.
 
 |===
 
