@@ -51,4 +51,4 @@ jobs:
         continue-on-error: false
         with:
           script: |
-            throw new Error('Commit has no DBZ-xxx prefiix')
+            throw new Error('Commit has no DBZ-xxx prefix')
