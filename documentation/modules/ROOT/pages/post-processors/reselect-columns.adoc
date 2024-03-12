@@ -19,9 +19,9 @@ endif::community[]
 
 To improve performance and reduce storage overhead, databases can use external storage for certain columns.
 This type of storage is used for columns that store large amounts of data, such as the PostgreSQL TOAST (The Oversized-Attribute Storage Technique), Oracle Large Object (LOB), or the Oracle Exadata Extended String data types.
-To reduce I/O overhead and increase query speed, when data changes in a table row, the database retrieves only the columns that contain new values, ignoring data in externally stored columns that remains unchanged,   .
+To reduce I/O overhead and increase query speed, when data changes in a table row, the database retrieves only the columns that contain new values, ignoring data in externally stored columns that remain unchanged.
 As a result, the value of the externally stored column is not recorded in the database log, and {prodname} subsequently omits the column when it emits the event record.
-Downstream consumers that receive event records that omit required keys or values can experience processing errors.
+Downstream consumers that receive event records that omit required values can experience processing errors.
 
 To retrieve data for columns that were not available in the initial query, you can apply the {prodname} reselect columns post processor (`ReselectColumnsPostProcessor`).
 You can configure the post processor to reselect one or more columns from a table.
