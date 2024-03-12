@@ -342,6 +342,17 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
         });
     }
 
+    private Optional<String> determineSnapshotQuery(Map<String, String> snapshotFilterQueryForCollection, CollectionId collectionId) {
+
+        String snapshotFilterForCollectionId = snapshotFilterQueryForCollection.get(collectionId.dbName() + "." + collectionId.name());
+
+        if (snapshotFilterForCollectionId != null) {
+            return Optional.of(snapshotFilterForCollectionId);
+        }
+
+        return Optional.empty();
+    }
+
     private ChangeRecordEmitter<MongoDbPartition> getChangeRecordEmitter(SnapshotContext<MongoDbPartition, MongoDbOffsetContext> snapshotContext,
                                                                          CollectionId collectionId, BsonDocument document) {
         snapshotContext.offset.readEvent(collectionId, getClock().currentTime());
