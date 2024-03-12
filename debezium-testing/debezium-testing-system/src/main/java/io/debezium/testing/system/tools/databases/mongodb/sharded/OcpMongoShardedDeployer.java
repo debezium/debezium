@@ -28,7 +28,6 @@ public class OcpMongoShardedDeployer implements Deployer<OcpMongoShardedControll
 
     private OcpMongoShardedCluster mongo;
 
-    @lombok.Builder(setterPrefix = "with")
     public OcpMongoShardedDeployer(int shardCount, int replicaCount, int configServerCount, String rootUserName, String rootPassword, boolean useInternalAuth,
                                    OpenShiftClient ocp,
                                    String project, List<MongoShardKey> shardKeys) {
@@ -65,12 +64,67 @@ public class OcpMongoShardedDeployer implements Deployer<OcpMongoShardedControll
         return new OcpMongoShardedController(mongo, ocp, project);
     }
 
-    public static class OcpMongoShardedDeployerBuilder {
+    public static OcpMongoShardedDeployerBuilder builder() {
+        return new OcpMongoShardedDeployerBuilder();
+    }
+
+    public static final class OcpMongoShardedDeployerBuilder {
+        private OpenShiftClient ocp;
+        private String project;
+        private int shardCount;
+        private int replicaCount;
+        private int configServerCount;
+        private String rootUserName;
+        private String rootPassword;
+        private boolean useInternalAuth;
+        private List<MongoShardKey> shardKeys;
+
+        private OcpMongoShardedDeployerBuilder() {
+        }
+
+        public OcpMongoShardedDeployerBuilder withOcp(OpenShiftClient ocp) {
+            this.ocp = ocp;
+            return this;
+        }
+
+        public OcpMongoShardedDeployerBuilder withProject(String project) {
+            this.project = project;
+            return this;
+        }
+
+        public OcpMongoShardedDeployerBuilder withShardCount(int shardCount) {
+            this.shardCount = shardCount;
+            return this;
+        }
+
+        public OcpMongoShardedDeployerBuilder withReplicaCount(int replicaCount) {
+            this.replicaCount = replicaCount;
+            return this;
+        }
+
+        public OcpMongoShardedDeployerBuilder withConfigServerCount(int configServerCount) {
+            this.configServerCount = configServerCount;
+            return this;
+        }
+
         public OcpMongoShardedDeployerBuilder withRootUser(String rootUserName, String rootPassword) {
             this.rootUserName = rootUserName;
             this.rootPassword = rootPassword;
             return this;
         }
-    }
 
+        public OcpMongoShardedDeployerBuilder withUseInternalAuth(boolean useInternalAuth) {
+            this.useInternalAuth = useInternalAuth;
+            return this;
+        }
+
+        public OcpMongoShardedDeployerBuilder withShardKeys(List<MongoShardKey> shardKeys) {
+            this.shardKeys = shardKeys;
+            return this;
+        }
+
+        public OcpMongoShardedDeployer build() {
+            return new OcpMongoShardedDeployer(shardCount, replicaCount, configServerCount, rootUserName, rootPassword, useInternalAuth, ocp, project, shardKeys);
+        }
+    }
 }
