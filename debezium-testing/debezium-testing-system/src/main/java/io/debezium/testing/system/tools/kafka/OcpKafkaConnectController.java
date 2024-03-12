@@ -269,7 +269,17 @@ public class OcpKafkaConnectController implements KafkaConnectController {
      */
     @Override
     public boolean undeploy() {
-        return kafkaConnectOperation(ocp).delete(kafkaConnect);
+        try {
+            kafkaConnectOperation(ocp).resource(kafkaConnect).delete();
+            kafkaConnectOperation(ocp)
+                    .resource(kafkaConnect)
+                    .waitUntilCondition(WaitConditions::resourceDeleted, scaled(1), MINUTES);
+        }
+        catch (Exception exception) {
+            LOGGER.error("Kafka connect cluster was not deleted");
+            return false;
+        }
+        return true;
     }
 
     @Override

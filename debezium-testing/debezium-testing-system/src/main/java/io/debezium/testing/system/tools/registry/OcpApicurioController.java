@@ -119,6 +119,16 @@ public class OcpApicurioController implements RegistryController {
 
     @Override
     public boolean undeploy() {
-        return registryOperation().delete(registry);
+        try {
+            registryOperation().resource(registry).delete();
+            registryOperation()
+                    .resource(registry)
+                    .waitUntilCondition(WaitConditions::apicurioResourceDeleted, scaled(1), MINUTES);
+        }
+        catch (Exception exception) {
+            LOGGER.error("Apicurio registry was not deleted");
+            return false;
+        }
+        return true;
     }
 }
