@@ -23,6 +23,9 @@ To reduce I/O overhead and increase query speed, when data changes in a table ro
 As a result, the value of the externally stored column is not recorded in the database log, and {prodname} subsequently omits the column when it emits the event record.
 Downstream consumers that receive event records that omit required values can experience processing errors.
 
+IF a value for an externally stored column is not present in the database log entry for an event, when {prodname} emits a record for the event, it replaces the missing value with an `unavailable.value.placeholder` sentinel value.
+These sentinel values are inserted into appropriately typed fields, for example, a byte array for bytes, a string for strings, or a key-value map for maps.
+
 To retrieve data for columns that were not available in the initial query, you can apply the {prodname} reselect columns post processor (`ReselectColumnsPostProcessor`).
 You can configure the post processor to reselect one or more columns from a table.
 After you configure the post processor, it monitors events that the connector emits for the column names that you designate for reselection.
