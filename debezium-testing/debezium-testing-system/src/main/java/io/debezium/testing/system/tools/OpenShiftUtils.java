@@ -339,7 +339,7 @@ public class OpenShiftUtils {
         return new DefaultOpenShiftClient(configBuilder.build());
     }
 
-    private PodResource<Pod> getPodResource(Pod pod, String project) {
+    private PodResource getPodResource(Pod pod, String project) {
         return client.pods().inNamespace(project).withName(pod.getMetadata().getName());
     }
 

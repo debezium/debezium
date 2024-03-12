@@ -104,7 +104,7 @@ public class NamespacePreparationListener implements TestExecutionListener {
                 .withName("default")
                 .withNamespace(saNamespace)
                 .build());
-        bindingBuilder.addNewUserName("system:serviceaccount:" + saNamespace + ":default");
+        bindingBuilder.addToUserNames("system:serviceaccount:" + saNamespace + ":default");
     }
 
     /**

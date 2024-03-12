@@ -67,7 +67,7 @@ public class OcpKafkaController implements KafkaController {
     public String getPublicBootstrapAddress() {
         List<ListenerStatus> listeners = kafka.getStatus().getListeners();
         ListenerStatus listener = listeners.stream()
-                .filter(l -> l.getType().equalsIgnoreCase("external"))
+                .filter(l -> l.getName().equalsIgnoreCase("external"))
                 .findAny().orElseThrow(() -> new IllegalStateException("No external listener found for Kafka cluster " + kafka.getMetadata().getName()));
         ListenerAddress address = listener.getAddresses().get(0);
         return address.getHost() + ":" + address.getPort();
@@ -108,7 +108,17 @@ public class OcpKafkaController implements KafkaController {
 
     @Override
     public boolean undeploy() {
-        return Crds.kafkaOperation(ocp).delete(kafka);
+        try {
+            Crds.kafkaOperation(ocp).resource(kafka).delete();
+            Crds.kafkaOperation(ocp)
+                    .resource(kafka)
+                    .waitUntilCondition(WaitConditions::resourceDeleted, scaled(1), MINUTES);
+        }
+        catch (Exception exception) {
+            LOGGER.error("Kafka cluster was not deleted");
+            return false;
+        }
+        return true;
     }
 
     @Override
