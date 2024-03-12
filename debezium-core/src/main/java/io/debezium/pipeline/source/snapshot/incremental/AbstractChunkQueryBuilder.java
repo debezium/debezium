@@ -13,6 +13,9 @@ import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.Column;
 import io.debezium.relational.Key.KeyMapper;
@@ -27,6 +30,8 @@ import io.debezium.spi.schema.DataCollectionId;
  */
 public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
         implements ChunkQueryBuilder<T> {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(AbstractChunkQueryBuilder.class);
 
     protected final RelationalDatabaseConnectorConfig connectorConfig;
     protected final JdbcConnection jdbcConnection;
@@ -219,8 +224,10 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
         final String orderBy = getQueryColumns(context, table).stream()
                 .map(c -> jdbcConnection.quotedColumnIdString(c.name()))
                 .collect(Collectors.joining(" DESC, ")) + " DESC";
-        return jdbcConnection.buildSelectWithRowLimits(table.id(), 1, buildProjection(table), Optional.empty(),
+        String selectWithRowLimits = jdbcConnection.buildSelectWithRowLimits(table.id(), 1, buildProjection(table), Optional.empty(),
                 additionalCondition, orderBy);
+        LOGGER.debug("MaxPrimaryKeyQuery {}", selectWithRowLimits);
+        return selectWithRowLimits;
     }
 
     private KeyMapper getKeyMapper() {

@@ -401,6 +401,42 @@ public class DefaultChunkQueryBuilderTest {
                         "ORDER BY \"pk1\", \"pk2\", \"pk3\" LIMIT 1024");
     }
 
+    @Test
+    @FixFor("DBZ-7617")
+    public void testBuildQueryThreePkColumnsAndMessageKeyColumnsOrder() {
+
+        RelationalDatabaseConnectorConfig connectorConfig = buildConfig(Configuration.create()
+                .with(RelationalDatabaseConnectorConfig.SIGNAL_DATA_COLLECTION, "debezium.signal")
+                .with(RelationalDatabaseConnectorConfig.TOPIC_PREFIX, "core")
+                .with(RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS, String.format("%s:%s", "s1.table1", "pk2,pk1,pk3"))
+                .build());
+
+        final ChunkQueryBuilder<TableId> chunkQueryBuilder = new DefaultChunkQueryBuilder<>(
+                connectorConfig, new JdbcConnection(config().getJdbcConfig(), config -> null, "\"", "\""));
+        final IncrementalSnapshotContext<TableId> context = new SignalBasedIncrementalSnapshotContext<>();
+        final Column pk1 = Column.editor().name("pk1").optional(false).create();
+        final Column pk2 = Column.editor().name("pk2").optional(false).create();
+        final Column pk3 = Column.editor().name("pk3").optional(false).create();
+        final Column val1 = Column.editor().name("val1").create();
+        final Column val2 = Column.editor().name("val2").create();
+        final Table table = Table.editor().tableId(new TableId(null, "s1", "table1"))
+                .addColumn(pk1)
+                .addColumn(pk2)
+                .addColumn(pk3)
+                .addColumn(val1)
+                .addColumn(val2)
+                .setPrimaryKeyNames("pk1", "pk2", "pk3").create();
+
+        assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.empty())).isEqualTo(
+                "SELECT * FROM \"s1\".\"table1\" ORDER BY \"pk2\", \"pk1\", \"pk3\" LIMIT 1024");
+
+        context.nextChunkPosition(new Object[]{ 1, 5, 3 });
+        context.maximumKey(new Object[]{ 10, 50, 30 });
+
+        assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.empty())).isEqualTo(
+                "SELECT * FROM \"s1\".\"table1\" WHERE ((\"pk2\" > ?) OR (\"pk2\" = ? AND \"pk1\" > ?) OR (\"pk2\" = ? AND \"pk1\" = ? AND \"pk3\" > ?)) AND NOT ((\"pk2\" > ?) OR (\"pk2\" = ? AND \"pk1\" > ?) OR (\"pk2\" = ? AND \"pk1\" = ? AND \"pk3\" > ?)) ORDER BY \"pk2\", \"pk1\", \"pk3\" LIMIT 1024");
+    }
+
     private Table createTwoPrimaryKeysTable() {
         final Column pk1 = Column.editor().name("pk1").optional(false).create();
         final Column pk2 = Column.editor().name("pk2").optional(false).create();
