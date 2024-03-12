@@ -15,6 +15,7 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Struct;
 import org.junit.After;
@@ -247,6 +248,37 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
         for (int i = 0; i < expectedRecordCount; i++) {
             assertThat(dbChanges).contains(entry(i + 1, i));
         }
+    }
+
+    @Test
+    @FixFor("DBZ-7617")
+    public void incrementalSnapshotMustRespectMessageKeyColumnsOrder() throws Exception {
+        // Testing.Print.enable();
+
+        try (JdbcConnection connection = databaseConnection()) {
+            connection.setAutoCommit(false);
+            connection.executeWithoutCommitting("INSERT INTO s1.a4 (pk1, pk2, pk3, pk4, aa) VALUES (3, 1, 1, 1, 0)");
+            connection.executeWithoutCommitting("INSERT INTO s1.a4 (pk1, pk2, pk3, pk4, aa) VALUES (2, 2, 2, 2, 1)");
+            connection.executeWithoutCommitting("INSERT INTO s1.a4 (pk1, pk2, pk3, pk4, aa) VALUES (1, 2, 2, 2, 2)");
+
+            connection.commit();
+        }
+
+        startConnector(builder -> mutableConfig(false, true)
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.a4")
+                .with(RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS, String.format("%s:%s", "s1.a4", "pk2,pk1")));
+
+        sendAdHocSnapshotSignal("s1.a4");
+
+        Thread.sleep(5000);
+
+        SourceRecords sourceRecords = consumeAvailableRecordsByTopic();
+        List<Integer> ordered = sourceRecords.recordsForTopic("test_server.s1.a4").stream()
+                .map(sourceRecord -> ((Struct) sourceRecord.value()).getStruct("after").getInt32(valueFieldName()))
+                .collect(Collectors.toList());
+
+        assertThat(ordered).containsExactly(0, 2, 1);
+
     }
 
     @Test
