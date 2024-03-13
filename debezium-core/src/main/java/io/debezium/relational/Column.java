@@ -46,6 +46,13 @@ public interface Column extends Comparable<Column> {
     int position();
 
     /**
+     * Get the segment position of the column in the table.
+     *
+     * @return the 1-based segment position
+     */
+    int segmentPosition();
+
+    /**
      * Get the {@link Types JDBC type} for this column
      *
      * @return the type constant

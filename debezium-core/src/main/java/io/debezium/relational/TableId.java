@@ -121,6 +121,7 @@ public final class TableId implements DataCollectionId, Comparable<TableId> {
     private final String schemaName;
     private final String tableName;
     private final String id;
+    private Long objectId;
 
     /**
      * Create a new table identifier.
@@ -178,6 +179,14 @@ public final class TableId implements DataCollectionId, Comparable<TableId> {
      */
     public String table() {
         return tableName;
+    }
+
+    public void objectId(Long objectId) {
+        this.objectId = objectId;
+    }
+
+    public Long objectId() {
+        return objectId;
     }
 
     @Override

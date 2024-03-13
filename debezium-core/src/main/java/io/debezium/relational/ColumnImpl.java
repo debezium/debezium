@@ -15,6 +15,7 @@ import io.debezium.util.Strings;
 final class ColumnImpl implements Column, Comparable<Column> {
     private final String name;
     private final int position;
+    private final int segmentPosition;
     private final int jdbcType;
     private final int nativeType;
     private final String typeName;
@@ -30,26 +31,27 @@ final class ColumnImpl implements Column, Comparable<Column> {
     private final List<String> enumValues;
     private final String comment;
 
-    protected ColumnImpl(String columnName, int position, int jdbcType, int componentType, String typeName, String typeExpression,
+    protected ColumnImpl(String columnName, int position, int segmentPosition, int jdbcType, int componentType, String typeName, String typeExpression,
                          String charsetName, String defaultCharsetName, int columnLength, Integer columnScale,
                          boolean optional, boolean autoIncremented, boolean generated) {
-        this(columnName, position, jdbcType, componentType, typeName, typeExpression, charsetName,
+        this(columnName, position, segmentPosition, jdbcType, componentType, typeName, typeExpression, charsetName,
                 defaultCharsetName, columnLength, columnScale, null, optional, autoIncremented, generated, null, false, null);
     }
 
-    protected ColumnImpl(String columnName, int position, int jdbcType, int nativeType, String typeName, String typeExpression,
+    protected ColumnImpl(String columnName, int position, int segmentPosition, int jdbcType, int nativeType, String typeName, String typeExpression,
                          String charsetName, String defaultCharsetName, int columnLength, Integer columnScale,
                          boolean optional, boolean autoIncremented, boolean generated, String defaultValueExpression, boolean hasDefaultValue) {
-        this(columnName, position, jdbcType, nativeType, typeName, typeExpression, charsetName,
+        this(columnName, position, segmentPosition, jdbcType, nativeType, typeName, typeExpression, charsetName,
                 defaultCharsetName, columnLength, columnScale, null, optional, autoIncremented, generated, defaultValueExpression, hasDefaultValue, null);
     }
 
-    protected ColumnImpl(String columnName, int position, int jdbcType, int nativeType, String typeName, String typeExpression,
+    protected ColumnImpl(String columnName, int position, int segmentPosition, int jdbcType, int nativeType, String typeName, String typeExpression,
                          String charsetName, String defaultCharsetName, int columnLength, Integer columnScale,
                          List<String> enumValues, boolean optional, boolean autoIncremented, boolean generated,
                          String defaultValueExpression, boolean hasDefaultValue, String comment) {
         this.name = columnName;
         this.position = position;
+        this.segmentPosition = segmentPosition;
         this.jdbcType = jdbcType;
         this.nativeType = nativeType;
         this.typeName = typeName;
@@ -80,6 +82,11 @@ final class ColumnImpl implements Column, Comparable<Column> {
     @Override
     public int position() {
         return position;
+    }
+
+    @Override
+    public int segmentPosition() {
+        return segmentPosition;
     }
 
     @Override
@@ -170,6 +177,7 @@ final class ColumnImpl implements Column, Comparable<Column> {
                     this.jdbcType() == that.jdbcType() &&
                     Strings.equalsIgnoreCase(this.charsetName(), that.charsetName()) &&
                     this.position() == that.position() &&
+                    this.segmentPosition() == that.segmentPosition() &&
                     this.length() == that.length() &&
                     this.scale().equals(that.scale()) &&
                     this.isOptional() == that.isOptional() &&
@@ -228,6 +236,7 @@ final class ColumnImpl implements Column, Comparable<Column> {
                 .length(length())
                 .scale(scale().orElse(null))
                 .position(position())
+                .segmentPosition(segmentPosition())
                 .optional(isOptional())
                 .autoIncremented(isAutoIncremented())
                 .generated(isGenerated())

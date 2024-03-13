@@ -6,7 +6,10 @@
 package io.debezium.connector.oracle;
 
 import java.sql.Clob;
+import java.sql.Connection;
 import java.sql.DatabaseMetaData;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLRecoverableException;
 import java.sql.Statement;
@@ -72,6 +75,11 @@ public class OracleConnection extends JdbcConnection {
      */
     private final OracleDatabaseVersion databaseVersion;
 
+    /**
+     * the character set encoding and time zone of the oracle database
+     */
+    private final OracleCharacterSetAndTimezone characterSetAndTimezone;
+
     private static final String QUOTED_CHARACTER = "\"";
 
     public OracleConnection(JdbcConfiguration config) {
@@ -88,6 +96,8 @@ public class OracleConnection extends JdbcConnection {
         if (showVersion) {
             LOGGER.info("Database Version: {}", databaseVersion.getBanner());
         }
+
+        this.characterSetAndTimezone = resolveOracleCharacterSetAndTimezone();
     }
 
     public OracleConnection(JdbcConfiguration config, boolean showVersion) {
@@ -96,6 +106,8 @@ public class OracleConnection extends JdbcConnection {
         if (showVersion) {
             LOGGER.info("Database Version: {}", databaseVersion.getBanner());
         }
+
+        this.characterSetAndTimezone = resolveOracleCharacterSetAndTimezone();
     }
 
     public void setSessionToPdb(String pdbName) {
@@ -146,6 +158,10 @@ public class OracleConnection extends JdbcConnection {
         return databaseVersion;
     }
 
+    public OracleCharacterSetAndTimezone getCharacterSetAndTimezone() {
+        return characterSetAndTimezone;
+    }
+
     private OracleDatabaseVersion resolveOracleDatabaseVersion() {
         String versionStr;
         try {
@@ -193,6 +209,35 @@ public class OracleConnection extends JdbcConnection {
         }
 
         return OracleDatabaseVersion.parse(versionStr);
+    }
+
+    /**
+     * Obtain the character set of the Oracle database
+     */
+    private OracleCharacterSetAndTimezone resolveOracleCharacterSetAndTimezone() {
+        String characterSet;
+        try {
+            characterSet = queryAndMap("SELECT VALUE FROM nls_database_parameters WHERE PARAMETER = 'NLS_CHARACTERSET'", (rs) -> {
+                if (rs.next()) {
+                    return rs.getString(1);
+                }
+                return null;
+            });
+        }
+        catch (SQLException e) {
+            throw new RuntimeException("Failed to resolve Oracle database character set", e);
+        }
+
+        try {
+            oracle.jdbc.OracleConnection conn = (oracle.jdbc.OracleConnection) connection();
+            String sessionTimeZoneOffset = conn.getSessionTimeZoneOffset();
+            String databaseTimeZone = conn.physicalConnectionWithin().getDatabaseTimeZone();
+
+            return new OracleCharacterSetAndTimezone(characterSet, databaseTimeZone, sessionTimeZoneOffset);
+        }
+        catch (SQLException e) {
+            throw new RuntimeException("Failed to resolve Oracle database time zone", e);
+        }
     }
 
     @Override
@@ -543,5 +588,147 @@ public class OracleConnection extends JdbcConnection {
         public NonRelationalTableException(String message) {
             super(message);
         }
+    }
+
+    @Override
+    protected Optional<ColumnEditor> readTableColumn(ResultSet columnMetadata, TableId tableId, ColumnNameFilter columnFilter) throws SQLException {
+        Optional<ColumnEditor> columnEditor = super.readTableColumn(columnMetadata, tableId, columnFilter);
+        if (columnEditor.isPresent()) {
+            // The segment position is the position of the column that is actually recorded in the sql_redo of the redo log
+            columnEditor.get().segmentPosition(columnMetadata.getInt(25));
+        }
+        return columnEditor;
+    }
+
+    @Override
+    public ResultSet getTables(DatabaseMetaData metaData, String catalog, String schemaPattern) throws SQLException {
+        String querySql = "SELECT NULL AS table_cat,\n" +
+                "       o.owner AS table_schem,\n" +
+                "       o.object_name AS table_name,\n" +
+                "       o.object_type AS table_type,\n" +
+                "       NULL AS remarks,\n" +
+                "       o.object_id\n" +
+                "  FROM all_objects o\n" +
+                "  WHERE o.owner LIKE :1 ESCAPE '/'\n" +
+                "    AND o.object_type IN ('xxx', 'TABLE', 'VIEW')\n" +
+                "  ORDER BY table_type, table_schem, table_name";
+        return queryResult(metaData.getConnection(), querySql, schemaPattern);
+    }
+
+    @Override
+    public Long getObjectId(ResultSet rs) throws SQLException {
+        return rs.getLong(6);
+    }
+
+    @Override
+    public ResultSet getColumns(DatabaseMetaData metaData, String catalog, String schemaPattern, String table) throws SQLException {
+        oracle.jdbc.internal.OracleConnection conn = (oracle.jdbc.internal.OracleConnection)metaData.getConnection();
+        short versionNumber = conn.getVersionNumber();
+        String querySql = "SELECT\n" +
+                "  NULL AS table_cat,\n" +
+                "  t.owner AS table_schem,\n" +
+                "  t.table_name AS table_name,\n" +
+                "  t.column_name AS column_name,\n" +
+                "  DECODE(\n" +
+                "    substr(t.data_type, 1, 9), \n" +
+                "    'TIMESTAMP', \n" +
+                "    DECODE(\n" +
+                "      substr(t.data_type, 10, 1),\n" +
+                "      '(', \n" +
+                "      DECODE(substr(t.data_type, 19, 5), 'LOCAL', -102, 'TIME ', -101, 93),\n" +
+                "      DECODE(substr(t.data_type, 16, 5), \n" +
+                "      'LOCAL', -102, 'TIME ', -101, 93)\n" +
+                "    ), \n" +
+                "    'INTERVAL ', \n" +
+                "    DECODE(substr(t.data_type, 10, 3), 'DAY', -104, 'YEA', -103), \n" +
+                "    DECODE(\n" +
+                "      t.data_type, \n" +
+                "      'BINARY_DOUBLE', 101, \n" +
+                "      'BINARY_FLOAT', 100, \n" +
+                "      'BFILE', -13, \n" +
+                "      'BLOB', 2004, \n" +
+                "      'CHAR', 1, \n" +
+                "      'CLOB', 2005, \n" +
+                "      'COLLECTION', 2003, \n" +
+                "      'DATE', 93, \n" +
+                "      'FLOAT', 6, \n" +
+                "      'LONG', -1, \n" +
+                "      'LONG RAW', -4, \n" +
+                "      'NCHAR', -15, \n" +
+                "      'NCLOB', 2011, \n" +
+                "      'NUMBER', 2, \n" +
+                "      'NVARCHAR', -9, \n" +
+                "      'NVARCHAR2', -9, \n" +
+                "      'OBJECT', 2002, \n" +
+                "      'OPAQUE/XMLTYPE', 2009, \n" +
+                "      'RAW', -3, \n" +
+                "      'REF', 2006, \n" +
+                "      'ROWID', -8, \n" +
+                "      'SQLXML', 2009, \n" +
+                "      'UROWID', -8, \n" +
+                "      'VARCHAR2', 12, \n" +
+                "      'VARRAY', 2003, \n" +
+                "      'XMLTYPE', 2009, \n" +
+                "      DECODE((SELECT a.typecode FROM ALL_TYPES a WHERE a.type_name = t.data_type AND ((a.owner IS NULL AND t.data_type_owner IS NULL) OR (a.owner = t.data_type_owner))),'OBJECT', 2002, 'COLLECTION', 2003, 1111)\n" +
+                "    )\n" +
+                "  ) AS data_type,\n" +
+                "  t.data_type AS type_name,\n" +
+                "  DECODE (t.data_precision, NULL,\n" +
+                "    DECODE(t.data_type,\n" +
+                "      'NUMBER', DECODE(t.data_scale, NULL, 0, 38),\n" +
+                "      DECODE(t.data_type,\n" +
+                "        'CHAR', t.char_length,\n" +
+                "        'VARCHAR', t.char_length,\n" +
+                "        'VARCHAR2', t.char_length,\n" +
+                "        'NVARCHAR2', t.char_length,\n" +
+                "        'NCHAR', t.char_length,\n" +
+                "        'NUMBER', 0,\n" +
+                "        t.data_length)),\n" +
+                "    t.data_precision\n" +
+                "  ) AS column_size,\n" +
+                "  0 AS buffer_length,\n" +
+                "  DECODE (t.data_type, 'NUMBER', DECODE(t.data_precision, NULL, DECODE(t.data_scale, NULL, -127 , t.data_scale), t.data_scale), t.data_scale) AS decimal_digits,\n" +
+                "  10 AS num_prec_radix,\n" +
+                "  DECODE (t.nullable, 'N', 0, 1) AS nullable,\n" +
+                "  NULL AS remarks,\n" +
+                "  t.data_default AS column_def,\n" +
+                "  0 AS sql_data_type,\n" +
+                "  0 AS sql_datetime_sub,\n" +
+                "  t.data_length AS char_octet_length,\n" +
+                "  t.column_id AS ordinal_position,\n" +
+                "  DECODE (t.nullable, 'N', 'NO', 'YES') AS is_nullable,\n" +
+                "  NULL AS SCOPE_CATALOG,\n" +
+                "  NULL AS SCOPE_SCHEMA,\n" +
+                "  NULL AS SCOPE_TABLE,\n" +
+                "  NULL AS SOURCE_DATA_TYPE,\n" +
+                "  'NO' AS IS_AUTOINCREMENT,\n" +
+                "  t.virtual_column AS IS_GENERATEDCOLUMN,\n" +
+                "  t.segment_column_id AS segment_position\n" +
+                "FROM all_tab_cols t\n" +
+                "WHERE\n" +
+                "\tt.owner LIKE :1 ESCAPE '/'\n" +
+                "\tAND t.table_name LIKE :2 ESCAPE '/'\n";
+        if (versionNumber >= 12000) {
+            querySql += "\tAND t.user_generated = 'YES'\n";
+        }
+        querySql += "ORDER BY table_schem, table_name, segment_position";
+
+        return queryResult(conn, querySql, schemaPattern, table);
+    }
+
+    private ResultSet queryResult(Connection conn, String querySql, String... parameters) throws SQLException {
+        PreparedStatement ps = conn.prepareStatement(querySql);
+        if (parameters != null && parameters.length > 0) {
+            for (int i = 0; i < parameters.length; i++) {
+                ps.setString(i+1, null != parameters[i] ? parameters[i] : "%");
+            }
+        }
+        ps.closeOnCompletion();
+        return ps.executeQuery();
+    }
+
+    @Override
+    public Integer getSegmentPosition(ResultSet rs) throws SQLException {
+        return rs.getInt(25);
     }
 }

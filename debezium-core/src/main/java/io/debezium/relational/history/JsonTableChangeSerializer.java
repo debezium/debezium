@@ -99,6 +99,7 @@ public class JsonTableChangeSerializer implements TableChanges.TableChangesSeria
         column.scale().ifPresent(s -> document.setNumber("scale", s));
 
         document.setNumber("position", column.position());
+        document.setNumber("segmentPosition", column.segmentPosition());
         document.setBoolean("optional", column.isOptional());
         document.setBoolean("autoIncremented", column.isAutoIncremented());
         document.setBoolean("generated", column.isGenerated());
@@ -199,6 +200,11 @@ public class JsonTableChangeSerializer implements TableChanges.TableChangesSeria
                     }
 
                     columnEditor.position(v.getInteger("position"))
+                            .optional(v.getBoolean("optional"))
+                            .autoIncremented(v.getBoolean("autoIncremented"))
+                            .generated(v.getBoolean("generated"));
+
+                    columnEditor.segmentPosition(v.getInteger("segmentPosition"))
                             .optional(v.getBoolean("optional"))
                             .autoIncremented(v.getBoolean("autoIncremented"))
                             .generated(v.getBoolean("generated"));

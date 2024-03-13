@@ -13,6 +13,7 @@ import java.time.ZoneOffset;
 import java.util.Calendar;
 import java.util.TimeZone;
 
+import java.util.function.BiFunction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -154,7 +155,26 @@ public class LogMinerEventRow {
      */
     public static LogMinerEventRow fromResultSet(ResultSet resultSet, String catalogName, boolean isTxIdRawValue) throws SQLException {
         LogMinerEventRow row = new LogMinerEventRow();
-        row.initializeFromResultSet(resultSet, catalogName, isTxIdRawValue);
+        row.initializeFromResultSet(resultSet, catalogName, isTxIdRawValue, null);
+        return row;
+    }
+
+    /**
+     * Returns a {@link LogMinerEventRow} instance based on the current row of the JDBC {@link ResultSet}.
+     *
+     * It's important to note that the instance returned by this method is never created as a new instance. The
+     * method uses an internal single instance that is initialized based on the values from the current row
+     * of the JDBC result-set to avoid creating lots of intermediate objects.
+     *
+     * @param resultSet the result set to be read, should never be {@code null}
+     * @param catalogName the catalog name, should never be {@code null}
+     * @param isTxIdRawValue whether the transaction id should be read as a raw value or not
+     * @return a populated instance of a LogMinerEventRow object.
+     * @throws SQLException if there was a problem reading the result set
+     */
+    public static LogMinerEventRow fromResultSet(ResultSet resultSet, String catalogName, boolean isTxIdRawValue, BiFunction<String, String, TableId> tableIdFunc) throws SQLException {
+        LogMinerEventRow row = new LogMinerEventRow();
+        row.initializeFromResultSet(resultSet, catalogName, isTxIdRawValue, tableIdFunc);
         return row;
     }
 
@@ -166,7 +186,7 @@ public class LogMinerEventRow {
      * @param isTxIdRawValue whether the transaction id should be read as a raw value or not
      * @throws SQLException if there was a problem reading the result set
      */
-    private void initializeFromResultSet(ResultSet resultSet, String catalogName, boolean isTxIdRawValue) throws SQLException {
+    private void initializeFromResultSet(ResultSet resultSet, String catalogName, boolean isTxIdRawValue, BiFunction<String, String, TableId> tableIdFunc) throws SQLException {
         // Initialize the state from the result set
         this.scn = getScn(resultSet);
         this.tableName = resultSet.getString(TABLE_NAME);
@@ -185,7 +205,15 @@ public class LogMinerEventRow {
         this.ssn = resultSet.getLong(SSN);
         this.thread = resultSet.getInt(THREAD);
         if (this.tableName != null) {
-            this.tableId = new TableId(catalogName, tablespaceName, tableName);
+            TableId tableId = null;
+            if (tableIdFunc != null && (tableName.startsWith("OBJ# ") || tableName.startsWith("BIN$"))) {
+                tableId = tableIdFunc.apply(transactionId, tableName);
+                if (tableId != null) {
+                    this.tableName = tableId.table();
+                    this.tablespaceName = tableId.schema();
+                }
+            }
+            this.tableId = tableId != null ? tableId : new TableId(catalogName, tablespaceName, tableName);
         }
     }
 

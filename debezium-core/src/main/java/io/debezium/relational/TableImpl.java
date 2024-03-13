@@ -20,6 +20,7 @@ final class TableImpl implements Table {
     private final List<Column> columnDefs;
     private final List<String> pkColumnNames;
     private final Map<String, Column> columnsByLowercaseName;
+    private final Map<Integer, Column> columnsByPosition;
     private final String defaultCharsetName;
     private final String comment;
     private final List<Attribute> attributes;
@@ -35,10 +36,13 @@ final class TableImpl implements Table {
         this.columnDefs = Collections.unmodifiableList(sortedColumns);
         this.pkColumnNames = pkColumnNames == null ? Collections.emptyList() : Collections.unmodifiableList(pkColumnNames);
         Map<String, Column> defsByLowercaseName = new LinkedHashMap<>();
+        Map<Integer, Column> defsByPosition = new LinkedHashMap<>();
         for (Column def : this.columnDefs) {
             defsByLowercaseName.put(def.name().toLowerCase(), def);
+            defsByPosition.put(def.position(), def);
         }
         this.columnsByLowercaseName = Collections.unmodifiableMap(defsByLowercaseName);
+        this.columnsByPosition = Collections.unmodifiableMap(defsByPosition);
         this.defaultCharsetName = defaultCharsetName;
         this.comment = comment;
         this.attributes = attributes;
@@ -69,6 +73,11 @@ final class TableImpl implements Table {
     @Override
     public Column columnWithName(String name) {
         return columnsByLowercaseName.get(name.toLowerCase());
+    }
+
+    @Override
+    public Column columnWithPosition(int position) {
+        return columnsByPosition.get(position);
     }
 
     @Override
