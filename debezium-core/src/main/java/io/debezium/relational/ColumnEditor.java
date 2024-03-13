@@ -249,6 +249,14 @@ public interface ColumnEditor {
     ColumnEditor position(int position);
 
     /**
+     * Set the segment position of the column within the table definition.
+     *
+     * @param segmentPosition the new column segment position
+     * @return this editor so callers can chain methods together
+     */
+    ColumnEditor segmentPosition(int segmentPosition);
+
+    /**
      * Set the default value expression of the column;
      *
      * @param defaultValueExpression the default value expression

@@ -5,9 +5,31 @@
  */
 package io.debezium.connector.oracle.logminer.parser;
 
+import java.sql.SQLException;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+
 import io.debezium.DebeziumException;
+import io.debezium.connector.oracle.OracleCharacterSetAndTimezone;
+import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.connector.oracle.logminer.LogMinerHelper;
+import io.debezium.relational.Column;
 import io.debezium.relational.Table;
+import io.debezium.util.Strings;
+
+import java.time.format.DateTimeFormatterBuilder;
+import oracle.sql.BINARY_DOUBLE;
+import oracle.sql.BINARY_FLOAT;
+import oracle.sql.CHAR;
+import oracle.sql.CharacterSet;
+import oracle.sql.INTERVALDS;
+import oracle.sql.INTERVALYM;
+import oracle.sql.NUMBER;
+import oracle.sql.RAW;
+import oracle.sql.TIMESTAMP;
+import oracle.sql.TIMESTAMPTZ;
 
 /**
  * A simple DML parser implementation specifically for Oracle LogMiner.
@@ -61,6 +83,65 @@ public class LogMinerDmlParser implements DmlParser {
     private static final int VALUES_LENGTH = VALUES.length();
     private static final int SET_LENGTH = SET.length();
     private static final int WHERE_LENGTH = WHERE.length();
+
+    private static final String DEFAULT_CHARACTER_SET = "AL32UTF8";
+    private static final String DEFAULT_TIME_ZONE = "+00:00";
+
+    private static final String DATE_FORMAT = "'YYYY-MM-DD HH24:MI:SS'";
+
+    /**
+     * The oracle database character set encoding
+     */
+    private final CharacterSet databaseCharacterSet;
+    /**
+     * The time zone of the oracle database
+     */
+    private final ZoneId databaseZoneId;
+    /**
+     * The time zone of the oracle connection session
+     */
+    private final ZoneId sessionZoneId;
+
+    /**
+     * The oracle database Date type formatting
+     */
+    private final DateTimeFormatter dateFormatter;
+    /**
+     * The oracle database timestamp / timestamp_with_local_time_zone type formatting
+     */
+    private final DateTimeFormatter timestampFormatter;
+    /**
+     * The oracle database timestamp with time zone type formatting
+     */
+    private final DateTimeFormatter timestampTzFormatter;
+
+    public LogMinerDmlParser() {
+        this(null);
+    }
+
+    public LogMinerDmlParser(OracleCharacterSetAndTimezone characterSetAndTimezone) {
+        String characterSet = DEFAULT_CHARACTER_SET;
+        String databaseTimeZone = DEFAULT_TIME_ZONE;
+        String sessionTimeZoneOffset = null;
+        if (characterSetAndTimezone != null) {
+            if (!Strings.isNullOrBlank(characterSetAndTimezone.getCharacterSet())) {
+                characterSet = characterSetAndTimezone.getCharacterSet();
+            }
+            if (!Strings.isNullOrBlank(characterSetAndTimezone.getDatabaseTimezone())) {
+                databaseTimeZone = characterSetAndTimezone.getDatabaseTimezone();
+            }
+            if (!Strings.isNullOrBlank(characterSetAndTimezone.getSessionTimezoneOffset())) {
+                sessionTimeZoneOffset = characterSetAndTimezone.getSessionTimezoneOffset();
+            }
+        }
+        this.databaseCharacterSet = CharacterSetUtils.getDatabaseCharacterSet(characterSet);
+        this.databaseZoneId = ZoneId.of(databaseTimeZone);
+        this.sessionZoneId = sessionTimeZoneOffset != null ? ZoneId.of(sessionTimeZoneOffset) : ZoneId.systemDefault();
+
+        this.dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(sessionZoneId);
+        this.timestampFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSSSSS").withZone(sessionZoneId);
+        this.timestampTzFormatter = new DateTimeFormatterBuilder().appendPattern("yyyy-MM-dd HH:mm:ss.SSSSSSSSS ").appendOffset("+HH:MM", "+00:00").toFormatter().withZone(sessionZoneId);
+    }
 
     @Override
     public LogMinerDmlEntry parse(String sql, Table table) {
@@ -320,8 +401,10 @@ public class LogMinerDmlParser implements DmlParser {
                     // use value as-is
                     String s = sql.substring(start, index);
                     if (!s.equals(UNSUPPORTED_TYPE) && !s.equals(NULL)) {
-                        int position = LogMinerHelper.getColumnIndexByName(columnNames[columnIndex], table);
-                        values[position] = s;
+                        Column column = LogMinerHelper.getColumnByName(columnNames[columnIndex], table);
+                        columnNames[columnIndex] = column.name();
+                        int position = column.position() - 1;
+                        values[position] = parseHexToRaw(s, column);
                     }
                 }
 
@@ -477,8 +560,8 @@ public class LogMinerDmlParser implements DmlParser {
                     else if (value.equals(UNSUPPORTED)) {
                         continue;
                     }
-                    int position = LogMinerHelper.getColumnIndexByName(currentColumnName, table);
-                    newValues[position] = value;
+                    Column column = LogMinerHelper.getColumnByName(currentColumnName, table);
+                    newValues[column.position() - 1] = parseHexToRaw(value, column);
                     start = index + 1;
                     inColumnValue = false;
                     inSpecial = false;
@@ -635,8 +718,8 @@ public class LogMinerDmlParser implements DmlParser {
                     else if (value.equals(UNSUPPORTED)) {
                         continue;
                     }
-                    int position = LogMinerHelper.getColumnIndexByName(currentColumnName, table);
-                    values[position] = value;
+                    Column column = LogMinerHelper.getColumnByName(currentColumnName, table);
+                    values[column.position() - 1] = parseHexToRaw(value, column);
                     start = index + 1;
                     inColumnValue = false;
                     inSpecial = false;
@@ -658,5 +741,101 @@ public class LogMinerDmlParser implements DmlParser {
         }
 
         return index;
+    }
+
+    /**
+     * parse the actual value represented by {@code hextoraw}
+     *
+     * @param hexToRaw {@code hextoraw} value
+     * @param column column info
+     * @return actual value
+     */
+    private String parseHexToRaw(String hexToRaw, Column column) {
+        if (column.jdbcType() == -3) {
+            return hexToRaw;
+        }
+        if (hexToRaw.startsWith(OracleValueConverters.HEXTORAW_FUNCTION_START)
+                && hexToRaw.endsWith(OracleValueConverters.HEXTORAW_FUNCTION_END)) {
+            String hex = hexToRaw.substring(10, hexToRaw.length() - 2);
+            try {
+                byte[] bytes = RAW.hexString2Bytes(hex);
+                switch (column.jdbcType()) {
+                    case 2: // NUMERIC / NUMBER / DECIMAL / DEC / INTEGER / SMALLINT / INT
+                    case 6: // FLOAT / DOUBLE_PRECISION / REAL
+                        return NUMBER.toBigDecimal(bytes).toString();
+                    case 100: // BINARY_FLOAT
+                        return new BINARY_FLOAT(bytes).stringValue();
+                    case 101: // BINARY_DOUBLE
+                        return new BINARY_DOUBLE(bytes).stringValue();
+
+                    case 1: // CHAR
+                    case 12: // VARCHAR / VARCHAR2
+                    case -1: // LONG
+                        return new CHAR(bytes, databaseCharacterSet).getString();
+                    case -15: // NCHAR
+                    case -9: // NVARCHAR2
+                    case 2005: // CLOB
+                    case 2011: // NCLOB
+                        return getNString(bytes);
+
+                    case 93: // DATE / TIMESTAMP
+                        LocalDateTime timestamp = TIMESTAMP.toTimestamp(bytes).toLocalDateTime();
+                        if ("DATE".equals(column.typeName())) {
+                            return "TO_DATE('" + dateFormatter.format(timestamp) + "'," + DATE_FORMAT + ")";
+                        }
+                        else {
+                            return "TO_TIMESTAMP('" + timestampFormatter.format(timestamp) + "')";
+                        }
+                    case -101: // TIMESTAMP WITH TIME ZONE
+                    case -102: // TIMESTAMP WITH LOCAL TIME ZONE
+                        ZonedDateTime zonedDateTime;
+                        String timestampStr;
+                        if (column.jdbcType() == -101) {
+                            zonedDateTime = TIMESTAMPTZ.toZonedDateTime(bytes);
+                            timestampStr = timestampTzFormatter.format(zonedDateTime);
+                        }
+                        else {
+                            zonedDateTime = ParserUtils.toZonedDateTime(bytes, databaseZoneId, sessionZoneId);
+                            timestampStr = timestampFormatter.format(zonedDateTime);
+                        }
+                        return "TO_TIMESTAMP_TZ('" + timestampStr + "')";
+                    case -103: // INTERVAL YEAR TO MONTH
+                        INTERVALYM intervalym = new INTERVALYM(bytes);
+                        return "TO_YMINTERVAL('" + intervalym + "')";
+                    case -104: // INTERVAL DAY TO SECOND
+                        INTERVALDS intervalds = new INTERVALDS(bytes);
+                        return "TO_DSINTERVAL('" + intervalds + "')";
+                    case -3: // RAW
+                    case -4: // LONG RAW
+                    case 2004: // BLOB
+                        return hexToRaw;
+                    default:
+                        throw new DebeziumException("Unsupported data type");
+                }
+            } catch (SQLException e) {
+                throw new DebeziumException(e);
+            }
+        }
+
+        return hexToRaw;
+    }
+
+    /**
+     * {@code hextoraw} represents NCHAR/NVARCHAR2 to actual string value
+     *
+     * @param bytes the binary array after {@code hextoraw} parsing
+     * @return  actual string value
+     */
+    private String getNString(byte[] bytes) {
+        char[] chars = new char[bytes.length / 2];
+        int index = 0;
+        int charIndex = 0;
+        while (charIndex < chars.length) {
+            chars[charIndex++] = (char) ((bytes[index++] << 8) | (bytes[index++] & 255));
+        }
+        if (charIndex > 0) {
+            return new String(chars);
+        }
+        return null;
     }
 }

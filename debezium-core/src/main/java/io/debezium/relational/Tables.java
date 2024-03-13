@@ -309,6 +309,16 @@ public final class Tables {
     }
 
     /**
+     * Obtain the table id of the oracle object id.
+     *
+     * @param objectId the id of the oracle table object
+     * @return the table id, or null if there was no definition for the oracle table object
+     */
+    public TableId forTableId(long objectId) {
+        return lock.read(() -> tablesByTableId.getByObjectId(objectId));
+    }
+
+    /**
      * Obtain the definition of the identified table.
      *
      * @param catalogName the name of the database catalog that contains the table; may be null if the JDBC driver does not
@@ -419,10 +429,12 @@ public final class Tables {
 
         private final boolean tableIdCaseInsensitive;
         private final ConcurrentMap<TableId, Table> values;
+        private final ConcurrentMap<Long, TableId> tableIdMap;
 
         TablesById(boolean tableIdCaseInsensitive) {
             this.tableIdCaseInsensitive = tableIdCaseInsensitive;
             this.values = new ConcurrentHashMap<>();
+            this.tableIdMap = new ConcurrentHashMap<>();
         }
 
         public Set<TableId> ids() {
@@ -440,19 +452,33 @@ public final class Tables {
             }
             else {
                 values.putAll(tablesByTableId.values);
+                tablesByTableId.values.values().stream()
+                        .map(Table::id)
+                        .filter(tableId -> tableId.objectId() != null && tableId.objectId() > 0)
+                        .forEach(tableId -> tableIdMap.put(tableId.objectId(), tableId));
             }
         }
 
         public Table remove(TableId tableId) {
-            return values.remove(toLowerCaseIfNeeded(tableId));
+            tableId = toLowerCaseIfNeeded(tableId);
+            tableIdMap.remove(tableId.objectId());
+            return values.remove(tableId);
         }
 
         public Table get(TableId tableId) {
             return values.get(toLowerCaseIfNeeded(tableId));
         }
 
+        public TableId getByObjectId(long objectId) {
+            return tableIdMap.get(objectId);
+        }
+
         public Table put(TableId tableId, Table updated) {
-            return values.put(toLowerCaseIfNeeded(tableId), updated);
+            tableId = toLowerCaseIfNeeded(tableId);
+            if (null != tableId.objectId() && tableId.objectId() > 0) {
+                tableIdMap.put(tableId.objectId(), tableId);
+            }
+            return values.put(tableId, updated);
         }
 
         int size() {

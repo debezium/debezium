@@ -21,6 +21,7 @@ final class ColumnEditorImpl implements ColumnEditor {
     private int length = Column.UNSET_INT_VALUE;
     private Integer scale;
     private int position = 1;
+    private int segmentPosition = -1;
     private boolean optional = true;
     private boolean autoIncremented = false;
     private boolean generated = false;
@@ -79,7 +80,7 @@ final class ColumnEditorImpl implements ColumnEditor {
 
     @Override
     public int position() {
-        return position;
+        return segmentPosition > 0 ? segmentPosition : position;
     }
 
     @Override
@@ -203,6 +204,12 @@ final class ColumnEditorImpl implements ColumnEditor {
     }
 
     @Override
+    public ColumnEditor segmentPosition(int segmentPosition) {
+        this.segmentPosition = segmentPosition;
+        return this;
+    }
+
+    @Override
     public ColumnEditor defaultValueExpression(String defaultValueExpression) {
         this.hasDefaultValue = true;
         this.defaultValueExpression = defaultValueExpression;
@@ -230,7 +237,7 @@ final class ColumnEditorImpl implements ColumnEditor {
 
     @Override
     public Column create() {
-        return new ColumnImpl(name, position, jdbcType, nativeType, typeName, typeExpression, charsetName, tableCharsetName,
+        return new ColumnImpl(name, position, position(), jdbcType, nativeType, typeName, typeExpression, charsetName, tableCharsetName,
                 length, scale, enumValues, optional, autoIncremented, generated, defaultValueExpression, hasDefaultValue, comment);
     }
 

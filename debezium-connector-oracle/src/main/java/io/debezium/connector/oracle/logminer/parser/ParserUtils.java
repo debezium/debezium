@@ -5,10 +5,15 @@
  */
 package io.debezium.connector.oracle.logminer.parser;
 
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
+
+import oracle.sql.TIMESTAMP;
 
 /**
  * Utility helper methods for the Oracle LogMiner DML parsing classes.
@@ -16,6 +21,8 @@ import io.debezium.relational.Table;
  * @author Chris Cranford
  */
 public class ParserUtils {
+
+    private static final int SIZE_TIMESTAMP_LTZ = 11;
 
     /**
      * Set the unavailable value placeholder in the column value array for null LOB-based columns.
@@ -49,5 +56,24 @@ public class ParserUtils {
             return OracleValueConverters.UNAVAILABLE_VALUE;
         }
         return value;
+    }
+
+    public static ZonedDateTime toZonedDateTime(byte[] dataBytes, ZoneId databaseZoneId, ZoneId sessionZoneId) {
+        int dataLength = dataBytes.length;
+        int[] dataArray = new int[dataLength];
+
+        int i;
+        for(i = 0; i < dataLength; ++i) {
+            dataArray[i] = dataBytes[i] & 255;
+        }
+
+        i = 0;
+        if (dataLength == SIZE_TIMESTAMP_LTZ) {
+            i = TIMESTAMP.getNanos(dataBytes, 7);
+        }
+
+        int year = TIMESTAMP.getJavaYear(dataArray[0], dataArray[1]);
+        ZonedDateTime zonedDateTime = ZonedDateTime.of(year, dataArray[2], dataArray[3], dataArray[4] - 1, dataArray[5] - 1, dataArray[6] - 1, i, databaseZoneId);
+        return zonedDateTime.withZoneSameInstant(sessionZoneId);
     }
 }

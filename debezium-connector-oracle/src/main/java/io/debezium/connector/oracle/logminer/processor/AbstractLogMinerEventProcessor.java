@@ -78,6 +78,8 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
     private final SelectLobParser selectLobParser;
     private final Tables.TableFilter tableFilter;
 
+    protected final OracleConnection jdbcConnection;
+
     protected final Counters counters;
     protected final String sqlQuery;
 
@@ -87,8 +89,11 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
     private Scn lastProcessedScn = Scn.NULL;
     private boolean sequenceUnavailable = false;
 
+    private final Map<String, Map<String, TableId>> transactionDroppedTableIds = new HashMap<>();
+
     public AbstractLogMinerEventProcessor(ChangeEventSourceContext context,
                                           OracleConnectorConfig connectorConfig,
+                                          OracleConnection jdbcConnection,
                                           OracleDatabaseSchema schema,
                                           OraclePartition partition,
                                           OracleOffsetContext offsetContext,
@@ -96,6 +101,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                                           OracleStreamingChangeEventSourceMetrics metrics) {
         this.context = context;
         this.connectorConfig = connectorConfig;
+        this.jdbcConnection = jdbcConnection;
         this.schema = schema;
         this.partition = partition;
         this.offsetContext = offsetContext;
@@ -103,7 +109,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         this.metrics = metrics;
         this.tableFilter = connectorConfig.getTableFilters().dataCollectionFilter();
         this.counters = new Counters();
-        this.dmlParser = new LogMinerDmlParser();
+        this.dmlParser = new LogMinerDmlParser(jdbcConnection.getCharacterSetAndTimezone());
         this.selectLobParser = new SelectLobParser();
         this.sqlQuery = LogMinerQueryBuilder.build(connectorConfig);
     }
@@ -274,7 +280,14 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
     protected void processResults(OraclePartition partition, ResultSet resultSet) throws SQLException, InterruptedException {
         while (context.isRunning() && hasNextWithMetricsUpdate(resultSet)) {
             counters.rows++;
-            processRow(partition, LogMinerEventRow.fromResultSet(resultSet, getConfig().getCatalogName(), isTrxIdRawValue()));
+            processRow(partition, LogMinerEventRow.fromResultSet(resultSet, getConfig().getCatalogName(), isTrxIdRawValue(), (transactionId, tableName) -> {
+                Map<String, TableId> droppedTables = transactionDroppedTableIds.computeIfAbsent(transactionId, key -> new HashMap<>());
+                try {
+                    return getTableId(tableName, droppedTables);
+                } catch (SQLException e) {
+                    throw new DebeziumException(e);
+                }
+            }));
         }
     }
 
@@ -348,6 +361,52 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                 handleUnsupportedEvent(row);
                 break;
         }
+    }
+
+    /**
+     * Query the dropped table from the Oracle Recycle bin
+     * @param tableName The name of the dropped table
+     * @param droppedTables This table contains information in the recycle bin
+     * @return the dropped table
+     * @throws SQLException
+     */
+    private TableId getTableId(String tableName, Map<String, TableId> droppedTables) throws SQLException {
+        if (tableName.startsWith("BIN$")) {
+            // If the table starts with 'BIN$', it means that the table has been deleted,
+            // placed in the oracle recycle bin , has not been purged,
+            // the actual table name of the table can be queried from the recycle bin
+            TableId tableId = droppedTables.get(tableName);
+            if (tableId == null) {
+                boolean hasPdbName = !Strings.isNullOrBlank(getConfig().getPdbName());
+                String querySql = "SELECT OWNER, ORIGINAL_NAME, RELATED, BASE_OBJECT, PURGE_OBJECT FROM DBA_RECYCLEBIN WHERE OBJECT_NAME=? TYPE='TABLE'";
+                if (hasPdbName) {
+                    jdbcConnection.setSessionToPdb(getConfig().getPdbName());
+                }
+                try (PreparedStatement ps = jdbcConnection.connection().prepareStatement(querySql);
+                     ResultSet rs = ps.executeQuery()){
+                    ps.setString(1, tableName);
+                    if (rs != null && rs.next()) {
+                        tableId = new TableId(getConfig().getCatalogName(), rs.getString(1), rs.getString(2));
+                        tableId.objectId(rs.getLong(5));
+                        droppedTables.put(tableName, tableId);
+                    }
+                }
+                finally {
+                    if (hasPdbName) {
+                        jdbcConnection.resetSessionToCdb();
+                    }
+                }
+                return null;
+            }
+            return tableId;
+        }
+        else if (tableName.startsWith("OBJ# ")) {
+            // Beginning with 'OBJ#' followed by a number indicates that the table has been deleted,
+            // the data for that table has been cleared from the Recycle Bin.
+            long objectId = Long.parseLong(tableName.substring(5));
+            return getSchema().getTables().forTableId(objectId);
+        }
+        return null;
     }
 
     /**
@@ -758,6 +817,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
             return;
         }
 
+        tableId.objectId(table.id().objectId());
         addToTransaction(row.getTransactionId(),
                 row,
                 () -> {
@@ -796,6 +856,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         }
 
         if (row.getRedoSql() != null) {
+            tableId.objectId(table.id().objectId());
             addToTransaction(row.getTransactionId(), row, () -> {
                 final ParsedLobWriteSql parsed = parseLobWriteSql(row.getRedoSql());
                 return new LobWriteEvent(row, parsed.data, parsed.offset, parsed.length);

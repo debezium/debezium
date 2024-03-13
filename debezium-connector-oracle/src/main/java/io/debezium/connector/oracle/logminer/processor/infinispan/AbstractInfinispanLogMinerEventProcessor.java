@@ -43,7 +43,6 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractInfinispanLogMinerEventProcessor.class);
 
-    private final OracleConnection jdbcConnection;
     private final OracleStreamingChangeEventSourceMetrics metrics;
     private final OraclePartition partition;
     private final OracleOffsetContext offsetContext;
@@ -57,8 +56,7 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
                                                     OracleOffsetContext offsetContext,
                                                     OracleDatabaseSchema schema,
                                                     OracleStreamingChangeEventSourceMetrics metrics) {
-        super(context, connectorConfig, schema, partition, offsetContext, dispatcher, metrics);
-        this.jdbcConnection = jdbcConnection;
+        super(context, connectorConfig, jdbcConnection, schema, partition, offsetContext, dispatcher, metrics);
         this.metrics = metrics;
         this.partition = partition;
         this.offsetContext = offsetContext;

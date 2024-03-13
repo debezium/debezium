@@ -279,4 +279,25 @@ public class LogMinerHelper {
         // want to return a 0-based index and column positions are 1-based
         return column.position() - 1;
     }
+
+    /**
+     * Returns for column information in the relational table.
+     *
+     * @param columnName the column name, should not be {@code null}.
+     * @param table the relational table, should not be {@code null}.
+     * @return the column information in the relational table.
+     */
+    public static Column getColumnByName(String columnName, Table table) {
+        Column column = null;
+        if (columnName.startsWith("COL ")) {
+            column = table.columnWithPosition(Integer.parseInt(columnName.substring(4)));
+        }
+        if (column == null) {
+            column = table.columnWithName(columnName);
+        }
+        if (column == null) {
+            throw new DebeziumException("No column '" + columnName + "' found in table '" + table.id() + "'");
+        }
+        return column;
+    }
 }

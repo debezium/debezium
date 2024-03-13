@@ -89,6 +89,14 @@ public interface Table {
     Column columnWithName(String name);
 
     /**
+     * Get the definition for the column in this table with the supplied position.
+     *
+     * @param position the position of the column
+     * @return the column definition, or null if there is no column with the given position
+     */
+    Column columnWithPosition(int position);
+
+    /**
      * Get the database-specific name of the default character set used by columns in this table.
      *
      * @return the database-specific character set name used by default in columns of this table, or {@code null} if there is no
