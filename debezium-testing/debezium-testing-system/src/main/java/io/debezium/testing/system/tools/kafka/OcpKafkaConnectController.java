@@ -37,7 +37,7 @@ import io.fabric8.kubernetes.api.model.networking.v1.NetworkPolicyPortBuilder;
 import io.fabric8.openshift.api.model.Route;
 import io.fabric8.openshift.client.OpenShiftClient;
 import io.strimzi.api.kafka.Crds;
-import io.strimzi.api.kafka.model.KafkaConnect;
+import io.strimzi.api.kafka.model.connect.KafkaConnect;
 
 import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
