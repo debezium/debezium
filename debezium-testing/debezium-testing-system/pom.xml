@@ -16,7 +16,7 @@
     <version.fabric8.client>6.10.0</version.fabric8.client>
     <version.commons.codec>1.14</version.commons.codec>
     <version.commons.compress>1.26.0</version.commons.compress>
-    <version.strimzi>0.39.0</version.strimzi>
+    <version.strimzi>0.40.0</version.strimzi>
     <version.strimzi.kafka>${version.kafka}</version.strimzi.kafka>
     <version.assertj>3.11.1</version.assertj>
     <version.apicurio>2.4.1.Final</version.apicurio>

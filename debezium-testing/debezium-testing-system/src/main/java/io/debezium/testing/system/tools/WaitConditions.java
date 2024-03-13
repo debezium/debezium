@@ -17,7 +17,7 @@ import io.fabric8.kubernetes.api.model.apps.DeploymentStatus;
 import io.fabric8.kubernetes.client.CustomResource;
 import io.fabric8.openshift.api.model.DeploymentConfig;
 import io.fabric8.openshift.api.model.DeploymentConfigStatus;
-import io.strimzi.api.kafka.model.status.Status;
+import io.strimzi.api.kafka.model.kafka.Status;
 
 /**
  *
