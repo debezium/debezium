@@ -1818,7 +1818,7 @@ The following _advanced_ configuration properties have good defaults that will w
 |[[mongodb-property-capture-mode-full-update-type]]<<mongodb-property-capture-mode-full-update-type, `+capture.mode.full.update.type+`>>
 |`lookup`
 |Specifies how the connector looks up the full value of an updated document when the xref:mongodb-property-capture-mode[`capture.mode`] is set retrieve full documents.
-The connector retrieves full documents when `capture.mode` is set to one of the following options:
+The connector retrieves full documents when its `capture.mode` is set to one of the following options:
 
 * `change_streams_update_full`
 * `change_streams_update_full_with_pre-image`
