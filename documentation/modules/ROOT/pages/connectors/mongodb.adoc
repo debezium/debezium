@@ -1718,6 +1718,7 @@ Messages do not include a field that represents the state of the document `befor
 `change_streams_update_full`:: `update` event messages include the full document.
 Messages do not include a `before` field that represents the state of the document before the update.
 The event message returns the full state of the document in the `after` field.
+Set xref:mongodb-property-capture-mode-full-update-type[capture.mode.full.update.type] to specify how the connector fetches full documents from the database.
 +
 [NOTE]
 ====
@@ -1729,6 +1730,7 @@ If a later update modifies the source document before the connector can retrieve
 
 `change_streams_update_full_with_pre_image`::
 `update` event event messages include the full document, and include a field that represents the state of the document `before` the change.
+Set xref:mongodb-property-capture-mode-full-update-type[capture.mode.full.update.type] to specify how the connector fetches full documents from the database.
 
 `change_streams_with_pre_image`::
 `update` events do not include the full document, but include a field that represents the state of the document `before` the change.
@@ -1812,6 +1814,20 @@ The following _advanced_ configuration properties have good defaults that will w
 |Property
 |Default
 |Description
+
+|[[mongodb-property-capture-mode-full-update-type]]<<mongodb-property-capture-mode-full-update-type, `+capture.mode.full.update.type+`>>
+|`lookup`
+|Specifies how the connector looks up the full value of an updated document when the xref:mongodb-property-capture-mode[`capture.mode`] is set retrieve full documents.
+The connector retrieves full documents when `capture.mode` is set to one of the following options:
+
+* `change_streams_update_full`
+* `change_streams_update_full_with_pre-image`
+
+Set this property to one of the following values:
+
+`lookup`:: The connector uses a separate lookup to fetch the updated full MongoDB document.
+`post_image`:: The connector uses MongoDB post images to populate events with the full MongoDB document.
+The database must be running MongoDB 6.0 or later to use this option.
 
 |[[mongodb-property-max-batch-size]]<<mongodb-property-max-batch-size, `+max.batch.size+`>>
 |`2048`
