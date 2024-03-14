@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.util.Strings;
 
 import redis.clients.jedis.DefaultJedisClientConfig;
 import redis.clients.jedis.HostAndPort;
@@ -81,10 +82,10 @@ public class RedisConnection {
             client = new Jedis(address, DefaultJedisClientConfig.builder().database(this.dbIndex).connectionTimeoutMillis(this.connectionTimeout)
                     .socketTimeoutMillis(this.socketTimeout).ssl(this.sslEnabled).build());
 
-            if (this.user != null) {
+            if (!Strings.isNullOrEmpty(this.user)) {
                 client.auth(this.user, this.password);
             }
-            else if (this.password != null) {
+            else if (!Strings.isNullOrEmpty(this.password)) {
                 client.auth(this.password);
             }
             else {
