@@ -621,6 +621,17 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withValidation(Field::isNonNegativeInteger)
             .withDescription("The number of attempts to retry database errors during snapshots before failing.");
 
+    @Deprecated
+    public static final Field LOG_MINING_CONTINUOUS_MINE = Field.create("log.mining.continuous.mine")
+            .withDisplayName("Should log mining session configured with CONTINUOUS_MINE setting?")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(false)
+            .withValidation(Field::isBoolean)
+            .withDescription("(Deprecated) if true, CONTINUOUS_MINE option will be added to the log mining session. " +
+                    "This will manage log files switches seamlessly.");
+
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("Oracle")
             .excluding(
@@ -692,7 +703,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     OLR_SOURCE,
                     OLR_HOST,
                     OLR_PORT,
-                    SNAPSHOT_DATABASE_ERRORS_MAX_RETRIES)
+                    SNAPSHOT_DATABASE_ERRORS_MAX_RETRIES,
+                    LOG_MINING_CONTINUOUS_MINE)
             .events(SOURCE_INFO_STRUCT_MAKER)
             .create();
 
@@ -760,6 +772,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final String logMiningInifispanGlobalConfiguration;
     private final Set<String> logMiningSchemaChangesUsernameExcludes;
     private final Boolean logMiningIncludeRedoSql;
+    private final boolean logMiningContinuousMining;
 
     private final String openLogReplicatorSource;
     private final String openLogReplicatorHostname;
@@ -828,6 +841,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningInifispanGlobalConfiguration = config.getString(LOG_MINING_BUFFER_INFINISPAN_CACHE_GLOBAL);
         this.logMiningSchemaChangesUsernameExcludes = Strings.setOf(config.getString(LOG_MINING_SCHEMA_CHANGES_USERNAME_EXCLUDE_LIST), String::new);
         this.logMiningIncludeRedoSql = config.getBoolean(LOG_MINING_INCLUDE_REDO_SQL);
+        this.logMiningContinuousMining = config.getBoolean(LOG_MINING_CONTINUOUS_MINE);
 
         // OpenLogReplicator
         this.openLogReplicatorSource = config.getString(OLR_SOURCE);
@@ -1873,6 +1887,16 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      */
     public boolean isLogMiningIncludeRedoSql() {
         return logMiningIncludeRedoSql;
+    }
+
+    /**
+     * Returns whether the LogMiner adapter should use continuous mining or not.
+     *
+     * @return true continuous mining should be used
+     */
+    @Deprecated
+    public boolean isLogMiningContinuousMining() {
+        return logMiningContinuousMining;
     }
 
     /**
