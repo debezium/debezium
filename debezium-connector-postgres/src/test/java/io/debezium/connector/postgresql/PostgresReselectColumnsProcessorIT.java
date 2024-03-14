@@ -5,9 +5,12 @@
  */
 package io.debezium.connector.postgresql;
 
+import static io.debezium.connector.postgresql.PostgresConnectorConfig.HStoreHandlingMode.JSON;
+import static io.debezium.connector.postgresql.PostgresConnectorConfig.HStoreHandlingMode.MAP;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.kafka.connect.data.Struct;
@@ -22,6 +25,7 @@ import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.processors.AbstractReselectProcessorTest;
 import io.debezium.processors.reselect.ReselectColumnsPostProcessor;
 
@@ -114,7 +118,8 @@ public class PostgresReselectColumnsProcessorIT extends AbstractReselectProcesso
     @FixFor("DBZ-4321")
     public void testToastColumnReselectedWhenValueIsUnavailable() throws Exception {
         TestHelper.execute("CREATE TABLE s1.dbz4321_toast (id int primary key, data text, data2 int);");
-        TestHelper.execute("ALTER TABLE s1.dbz4321_toast REPLICA IDENTITY FULL;");
+
+        final LogInterceptor logInterceptor = getReselectLogInterceptor();
 
         Configuration config = getConfigurationBuilder()
                 .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1\\.dbz4321_toast")
@@ -146,6 +151,95 @@ public class PostgresReselectColumnsProcessorIT extends AbstractReselectProcesso
         assertThat(after.get("id")).isEqualTo(1);
         assertThat(after.get("data")).isEqualTo(text);
         assertThat(after.get("data2")).isEqualTo(2);
+
+        assertColumnReselectedForUnavailableValue(logInterceptor, "s1.dbz4321_toast", "data");
+    }
+
+    @Test
+    @FixFor("DBZ-7596")
+    public void testToastColumnHstoreAsMapReselectedWhenValueIsUnavailable() throws Exception {
+        TestHelper.execute("CREATE TABLE s1.dbz7596_toast (id int primary key, data hstore, data2 int);");
+
+        final LogInterceptor logInterceptor = getReselectLogInterceptor();
+
+        final String data = RandomStringUtils.randomAlphanumeric(8192);
+
+        Configuration config = getConfigurationBuilder()
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1\\.dbz7596_toast")
+                .with(PostgresConnectorConfig.HSTORE_HANDLING_MODE, MAP.getValue())
+                .build();
+
+        start(PostgresConnector.class, config);
+        waitForStreamingStarted();
+
+        TestHelper.execute(
+                "INSERT INTO s1.dbz7596_toast (id,data,data2) values (1,'\"key\"=>\"" + data + "\"', 1);",
+                "UPDATE s1.dbz7596_toast SET data2 = 2 where id = 1;");
+
+        final SourceRecords sourceRecords = consumeRecordsByTopic(2);
+        final List<SourceRecord> tableRecords = sourceRecords.recordsForTopic("test_server.s1.dbz7596_toast");
+
+        // Check insert
+        SourceRecord record = tableRecords.get(0);
+        Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+        VerifyRecord.isValidInsert(record, "id", 1);
+        assertThat(after.get("id")).isEqualTo(1);
+        assertThat(after.get("data")).isEqualTo(Map.of("key", data));
+        assertThat(after.get("data2")).isEqualTo(1);
+
+        // Check update
+        record = tableRecords.get(1);
+        after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+        VerifyRecord.isValidUpdate(record, "id", 1);
+        assertThat(after.get("id")).isEqualTo(1);
+        assertThat(after.get("data")).isEqualTo(Map.of("key", data));
+        assertThat(after.get("data2")).isEqualTo(2);
+
+        assertColumnReselectedForUnavailableValue(logInterceptor, "s1.dbz7596_toast", "data");
+    }
+
+    @Test
+    @FixFor("DBZ-7596")
+    public void testToastColumnHstoreAsJsonReselectedWhenValueIsUnavailable() throws Exception {
+        TestHelper.execute("CREATE TABLE s1.dbz7596_toast (id int primary key, data hstore, data2 int);");
+
+        final LogInterceptor logInterceptor = getReselectLogInterceptor();
+
+        final String data = RandomStringUtils.randomAlphanumeric(8192);
+        final String expectedData = "{\"key\":\"" + data + "\"}";
+
+        Configuration config = getConfigurationBuilder()
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1\\.dbz7596_toast")
+                .with(PostgresConnectorConfig.HSTORE_HANDLING_MODE, JSON.getValue())
+                .build();
+
+        start(PostgresConnector.class, config);
+        waitForStreamingStarted();
+
+        TestHelper.execute(
+                "INSERT INTO s1.dbz7596_toast (id,data,data2) values (1,'\"key\"=>\"" + data + "\"', 1);",
+                "UPDATE s1.dbz7596_toast SET data2 = 2 where id = 1;");
+
+        final SourceRecords sourceRecords = consumeRecordsByTopic(2);
+        final List<SourceRecord> tableRecords = sourceRecords.recordsForTopic("test_server.s1.dbz7596_toast");
+
+        // Check insert
+        SourceRecord record = tableRecords.get(0);
+        Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+        VerifyRecord.isValidInsert(record, "id", 1);
+        assertThat(after.get("id")).isEqualTo(1);
+        assertThat(after.get("data")).isEqualTo(expectedData);
+        assertThat(after.get("data2")).isEqualTo(1);
+
+        // Check update
+        record = tableRecords.get(1);
+        after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+        VerifyRecord.isValidUpdate(record, "id", 1);
+        assertThat(after.get("id")).isEqualTo(1);
+        assertThat(after.get("data")).isEqualTo(expectedData);
+        assertThat(after.get("data2")).isEqualTo(2);
+
+        assertColumnReselectedForUnavailableValue(logInterceptor, "s1.dbz7596_toast", "data");
     }
 
 }

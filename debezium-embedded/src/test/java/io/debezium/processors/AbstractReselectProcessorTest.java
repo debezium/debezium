@@ -286,4 +286,18 @@ public abstract class AbstractReselectProcessorTest<T extends SourceConnector> e
     protected void enableTableForCdc() throws Exception {
     }
 
+    protected LogInterceptor getReselectLogInterceptor() {
+        final LogInterceptor logInterceptor = new LogInterceptor(ReselectColumnsPostProcessor.class);
+        logInterceptor.setLoggerLevel(ReselectColumnsPostProcessor.class, Level.DEBUG);
+        return logInterceptor;
+    }
+
+    protected void assertColumnReselectedForUnavailableValue(LogInterceptor interceptor, String tableName, String columnName) {
+        assertThat(interceptor.containsMessage(String.format(
+                "Adding column %s for table %s to re-select list due to unavailable value placeholder.",
+                columnName,
+                tableName)))
+                .isTrue();
+    }
+
 }
