@@ -274,7 +274,8 @@ Connectors can capture data from a table only if the table's schema history is p
 .. Add the tables that you want the connector to capture to `table.include.list`.
 4. Restart the connector.
 The snapshot recovery process rebuilds the schema history based on the current structure of the tables.
-5. (Optional) After the snapshot completes, initiate an xref:debezium-oracle-incremental-snapshots[incremental snapshot] on the newly added tables. In this way, the connector will stream the historical data of the newly added tables and it will resume reading the changes related to the previously configured tables from the redo and archive logs, including changes that occurred while that connector was off-line.
+5. (Optional) After the snapshot completes, initiate an xref:debezium-oracle-incremental-snapshots[incremental snapshot] on the newly added tables. 
+The incremental snapshot first streams the historical data of the newly added tables, and then resumes reading changes from the redo and archive logs for previously configured tables, including changes that occur while that connector was off-line.
 6. (Optional) Reset the `snapshot.mode` back to `schema_only` to prevent the connector from initiating recovery after a future restart.
 
 // Type: procedure
