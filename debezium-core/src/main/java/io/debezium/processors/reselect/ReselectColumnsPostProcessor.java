@@ -13,7 +13,6 @@ import java.util.Map;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
-import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,6 +24,7 @@ import io.debezium.common.annotation.Incubating;
 import io.debezium.config.Configuration;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.data.Envelope;
+import io.debezium.data.Json;
 import io.debezium.function.Predicates;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.processors.spi.PostProcessor;
@@ -62,7 +62,9 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
     private JdbcConnection jdbcConnection;
     private ValueConverterProvider valueConverterProvider;
     private String unavailableValuePlaceholder;
-    private byte[] unavailableValuePlaceholderBytes;
+    private ByteBuffer unavailableValuePlaceholderBytes;
+    private Map<String, String> unavailableValuePlaceholderMap;
+    private String unavailableValuePlaceholderJson;
     private RelationalDatabaseSchema schema;
     private RelationalDatabaseConnectorConfig connectorConfig;
 
@@ -186,8 +188,12 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
     @Override
     public void injectBeanRegistry(BeanRegistry beanRegistry) {
         this.connectorConfig = beanRegistry.lookupByName(StandardBeanNames.CONNECTOR_CONFIG, RelationalDatabaseConnectorConfig.class);
+
+        // Various unavailable value placeholders
         this.unavailableValuePlaceholder = new String(connectorConfig.getUnavailableValuePlaceholder());
-        this.unavailableValuePlaceholderBytes = connectorConfig.getUnavailableValuePlaceholder();
+        this.unavailableValuePlaceholderBytes = ByteBuffer.wrap(connectorConfig.getUnavailableValuePlaceholder());
+        this.unavailableValuePlaceholderMap = Map.of(this.unavailableValuePlaceholder, this.unavailableValuePlaceholder);
+        this.unavailableValuePlaceholderJson = "{\"" + this.unavailableValuePlaceholder + "\":\"" + this.unavailableValuePlaceholder + "\"}";
 
         this.valueConverterProvider = beanRegistry.lookupByName(StandardBeanNames.VALUE_CONVERTER, ValueConverterProvider.class);
         this.jdbcConnection = beanRegistry.lookupByName(StandardBeanNames.JDBC_CONNECTION, JdbcConnection.class);
@@ -218,10 +224,20 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
     }
 
     private boolean isUnavailableValueHolder(org.apache.kafka.connect.data.Field field, Object value) {
-        if (field.schema().type() == Schema.Type.BYTES && this.unavailableValuePlaceholderBytes != null) {
-            return ByteBuffer.wrap(unavailableValuePlaceholderBytes).equals(value);
+        if (unavailableValuePlaceholder != null) {
+            switch (field.schema().type()) {
+                case BYTES:
+                    return unavailableValuePlaceholderBytes.equals(value);
+                case MAP:
+                    return unavailableValuePlaceholderMap.equals(value);
+                case STRING:
+                    if (Json.LOGICAL_NAME.equals(field.schema().name())) {
+                        return unavailableValuePlaceholderJson.equals(value);
+                    }
+                    return unavailableValuePlaceholder.equals(value);
+            }
         }
-        return unavailableValuePlaceholder != null && unavailableValuePlaceholder.equals(value);
+        return false;
     }
 
     private Object getConvertedValue(Column column, org.apache.kafka.connect.data.Field field, Object value) {
