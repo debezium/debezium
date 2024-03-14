@@ -269,7 +269,8 @@ For information about capturing data from a new table that has undergone structu
 2. Remove the internal database schema history topic that is specified by the xref:{context}-property-database-history-kafka-topic[`schema.history.internal.kafka.topic property`].
 3. In the connector configuration:
 .. Set the xref:{context}-property-snapshot-mode[`snapshot.mode`] to `schema_only_recovery`.
-.. (Optional) Set the value of xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.store.only.captured.tables.ddl`] to `false`. This guarantees that in the future, the connector can reconstruct the schema history for all tables.
+.. (Optional) Set the value of xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.store.only.captured.tables.ddl`] to `false` to ensure that in the future the connector can readily capture data for tables that are not currently designated for capture. 
+Connectors can capture data from a table only if the table's schema history is present in the history topic. 
 .. Add the tables that you want the connector to capture to `table.include.list`.
 4. Restart the connector.
 The snapshot recovery process rebuilds the schema history based on the current structure of the tables.
