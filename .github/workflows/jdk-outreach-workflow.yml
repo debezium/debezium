@@ -9,6 +9,9 @@ on:
   schedule:
     - cron: 0 22 * * *
 
+env:
+  MAVEN_FULL_BUILD_PROJECTS: "\\!debezium-microbenchmark-oracle"
+
 jobs:
   sqlserver:
     runs-on: ubuntu-latest
@@ -433,9 +436,20 @@ jobs:
         with:
           website: jdk.java.net
           release: ${{ matrix.feature.release }}
+      - name: Build (core)
+        run: >
+          ./mvnw -B -ntp clean install
+          -pl ${{ env.MAVEN_FULL_BUILD_PROJECTS }}
+          -Dformat.skip=true
+          -Dcheckstyle.skip=true
+          -Dorg.slf4j.simpleLogger.showDateTime=true
+          -Dorg.slf4j.simpleLogger.dateTimeFormat="YYYY-MM-dd HH:mm:ss,SSS"
+          -DskipTests=true
+          -DskipITs=true
+          ${{ matrix.feature.extra }}
       - name: Maven Build
         run: >
-          ./mvnw clean install -B -pl debezium-bom,:debezium-quarkus-outbox -U -am -amd 
+          ./mvnw clean install -B -pl :debezium-quarkus-outbox -am -amd 
           -Passembly ${{ matrix.feature.args }} 
           -Dformat.formatter.goal=validate 
           -Dformat.imports.goal=check 
