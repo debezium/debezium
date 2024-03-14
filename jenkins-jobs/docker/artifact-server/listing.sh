@@ -1,6 +1,6 @@
 #! /usr/bin/env bash
 
-CONNECTORS="db2 mongodb mysql oracle postgres sqlserver"
+CONNECTORS="db2 mongodb mysql oracle postgres sqlserver jdbc"
 OPTS=$(getopt -o d:o:c: --long dir:,output:,connectors: -n 'parse-options' -- "$@")
 if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
 eval set -- "$OPTS"
