@@ -27,11 +27,5 @@
     <logger name="io.debezium.embedded.EmbeddedEngine$EmbeddedConfig" level="warn" additivity="false">
         <appender-ref ref="CONSOLE" />
     </logger>
-    <logger name="org.hibernate" level="trace" additivity="false">
-        <appender-ref ref="CONSOLE" />
-    </logger>
-    <logger name="org.hibernate.orm.jdbc.bind" level="trace" additivity="false">
-        <appender-ref ref="CONSOLE" />
-    </logger>
 
 </configuration>
