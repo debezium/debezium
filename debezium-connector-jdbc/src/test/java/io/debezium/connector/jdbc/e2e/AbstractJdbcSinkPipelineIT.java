@@ -1591,6 +1591,16 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
 
         switch (sink.getType()) {
             case MYSQL:
+                if (source.getType().is(SourceType.POSTGRES)) {
+                    nanoSeconds = connect ? 123000000 : 123456000;
+                }
+                else if (source.getType().is(SourceType.SQLSERVER)) {
+                    nanoSeconds = 123000000;
+                }
+                else {
+                    nanoSeconds = 0;
+                }
+                break;
             case ORACLE:
             case DB2:
                 // TIME is only seconds precision
@@ -1634,7 +1644,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
             }
         }
 
-        if (sink.getType().is(SinkType.ORACLE, SinkType.MYSQL, SinkType.DB2)) {
+        if (sink.getType().is(SinkType.ORACLE, SinkType.DB2)) {
             nanoSeconds0 = 0;
             nanoSeconds1 = 0;
         }
