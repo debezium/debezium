@@ -18,7 +18,8 @@ import io.debezium.connector.jdbc.junit.TestHelper;
  */
 public class MySqlSinkDatabaseContextProvider extends AbstractSinkDatabaseContextProvider {
 
-    private static final DockerImageName IMAGE_NAME = DockerImageName.parse("mysql");
+    private static final DockerImageName IMAGE_NAME = DockerImageName.parse("mysql:8.2")
+            .asCompatibleSubstituteFor("mysql");
 
     @SuppressWarnings("resource")
     public MySqlSinkDatabaseContextProvider() {
