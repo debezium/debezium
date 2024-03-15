@@ -179,6 +179,7 @@
         <module>debezium-connector-mongodb</module>
         <module>debezium-connector-sqlserver</module>
         <module>debezium-connector-oracle</module>
+        <module>debezium-microbenchmark-embedded</module>
         <module>debezium-microbenchmark</module>
         <module>debezium-microbenchmark-oracle</module>
         <module>debezium-quarkus-outbox-common</module>
