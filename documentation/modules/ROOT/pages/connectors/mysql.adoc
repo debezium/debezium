@@ -59,11 +59,21 @@ ifdef::community[]
 [NOTE]
 ====
 The {prodname} MySQL connector has been tested and officially supports MariaDB 11.1.2+.
-Please see the xref:mysql-mariadb-support[MariaDB support] section for details on how to enable the official MariaDB support mode.
+For information about how to connect {prodname} to MariaDB, see xref:mysql-mariadb-support[Using the connector with a MariaDB database].
 ====
 endif::community[]
 
 ifdef::product[]
+
+[IMPORTANT]
+====
+Use of the {prodname} MySQL connector with MariaDB is a Technology Preview feature only.
+Technology Preview features are not supported with Red{nbsp}Hat production service level agreements (SLAs) and might not be functionally complete.
+Red{nbsp}Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+For more information about the support scope of Red{nbsp}Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
+
 Details are in the following topics:
 
 * xref:mysql-topologies-supported-by-debezium-connectors[]
@@ -106,12 +116,14 @@ There is support for the {prodname} MySQL connector to use hosted options such a
 +
 Because these hosted options do not allow a global read lock, table-level locks are used to create the _consistent snapshot_.
 
-ifdef::community[]
+// Type: concept
+// ModuleID: supplemental-configuration-for-connecting-debezium-to-mariadb
+// Title: Supplemental configuration for connecting {prodname} to a MariaDB database
 [[mysql-mariadb-support]]
-=== MariaDB support
+=== Using the connector with a MariaDB database
 
-While it is possible to use the MySQL driver to connect and stream changes from MariaDB, we recommend configuring the {prodname} MySQL connector to use the MariaDB adapter mode, allowing you to take advantage of the MariaDB driver, and it's unique feature stack.
-To toggle the MariaDB support mode, the xref:#mysql-property-connector-adapter[`connector.adapter`] configuration property must be specified with a value of `mariadb`.
+Although it is possible to use the MySQL driver to connect and stream changes from MariaDB, it's best to configure the {prodname} MySQL connector to use the MariaDB adapter mode, so that the connector can take advantage of the MariaDB driver, and its unique feature stack.
+To toggle the MariaDB support mode, the xref:mysql-property-connector-adapter[`connector.adapter`] configuration property must be specified with a value of `mariadb`.
 This mode utilizes the MariaDB driver instead of the MySQL driver, meaning that you must also provide the database protocol and JDBC driver strings that are compliant with MariaDB, see the example below.
 
 .MariaDB supplemental configuration
@@ -124,16 +136,25 @@ This mode utilizes the MariaDB driver instead of the MySQL driver, meaning that 
   "database.jdbc.driver": "org.mariadb.jdbc.Driver"
 }
 ----
-
+ifdef::product[]
+[IMPORTANT]
+====
+Use of the {prodname} MySQL connector with MariaDB is a Technology Preview feature only.
+Technology Preview features are not supported with Red{nbsp}Hat production service level agreements (SLAs) and might not be functionally complete.
+Red{nbsp}Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+For more information about the support scope of Red{nbsp}Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
+endif::product[]
+ifdef::community[]
 [NOTE]
 ====
 When the new {prodname} MariaDB connector is available in a future release, these supplemental configurations will no longer be necessary.
 As the connector currently includes both the MySQL and MariaDB drivers, the MariaDB mode is _opt-in_ until {prodname} introduces the new MariaDB-specific connector.
 ====
-
-With this configuration, the {prodname} MySQL connector will use the new MariaDB adapter connector, which natively streams changes from MariaDB binary transaction logs.
-All other MySQL xref:mysql-connector-properties[connector properties] can be used in conjunction with the above supplemental configuration.
 endif::community[]
+After you apply the Maria DB supplemental configuration, the {prodname} MySQL connector uses the MariaDB adapter connector, which natively streams changes from MariaDB binary transaction logs.
+You can use all other xref:mysql-connector-properties[MySQL connector properties] in conjunction with the preceding supplemental configuration.
 
 // Type: concept
 // ModuleID: how-debezium-mysql-connectors-handle-database-schema-changes
@@ -657,7 +678,7 @@ After the snapshot completes, the connector stops, and does not stream event rec
 |The connector captures the structure of all relevant tables, performing all of the steps described in the xref:initial-snapshot-workflow-with-global-read-lock[default workflow for creating an initial snapshot], except that it does not create `READ` events to represent the data set at the point of the connector's start-up (Step 8.2).
 
 |`never`
-|When the connector starts, rather than performing a snapshot, it immediately begins to stream event records for subsequent database changes. 
+|When the connector starts, rather than performing a snapshot, it immediately begins to stream event records for subsequent database changes.
 This option is under consideration for future deprecation, in favor of the `no_data` option.
 
 |`schema_only_recovery`
@@ -672,14 +693,14 @@ WARNING: Do not use this mode to perform a snapshot if schema changes were commi
 
 |`when_needed`
 |After the connector starts, it performs a snapshot only if it detects one of the following circumstances:
- 
+
 * It cannot detect any topic offsets.
 * A previously recorded offset specifies a log position that is not available on the server.
 
 ifdef::community[]
 |`custom`
 |The `custom` snapshot mode lets you inject your own implementation of the `io.debezium.spi.snapshot.Snapshotter` interface.
-Set the `snapshot.mode.custom.name` configuration property to the name provided by the `name()` method of your implementation. 
+Set the `snapshot.mode.custom.name` configuration property to the name provided by the `name()` method of your implementation.
 The name is specified on the classpath of your Kafka Connect cluster.
 If you use the `EmbeddedEngine`, the name is included in the connector JAR file.
 For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
@@ -2942,26 +2963,49 @@ The following configuration properties are _required_ unless a default value is 
 |`1`
 |The maximum number of tasks that should be created for this connector. The MySQL connector always uses a single task and therefore does not use this value, so the default is always acceptable.
 
-ifdef::community[]
 |[[mysql-property-connector-adapter]]<<mysql-property-connector-adapter, `+connector.adapter+`>>
 |mysql
 |The connector adapter mode to be used.
-Please see the xref:mysql-mariadb-support[MariaDB support] section on how to connect to MariaDB.
-endif::community[]
-
+For information about how to connect {prodname} to MariaDB, see xref:mysql-mariadb-support[Using the connector with a MariaDB database].
+ifdef::product[]
+[IMPORTANT]
+====
+Use of the {prodname} MySQL connector with MariaDB is a Technology Preview feature only.
+Technology Preview features are not supported with Red{nbsp}Hat production service level agreements (SLAs) and might not be functionally complete.
+Red{nbsp}Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+For more information about the support scope of Red{nbsp}Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
+endif::product[]
 |[[mysql-property-database-protocol]]<<mysql-property-database-protocol, `+database.protocol+`>>
 |jdbc:mysql
 |JDBC protocol used by the driver connection string for connecting to the database.
-ifdef::community[]
-Please see the xref:mysql-mariadb-support[MariaDB support] section on how to connect to MariaDB.
-endif::community[]
+For information about how to connect {prodname} to MariaDB, see xref:mysql-mariadb-support[Using the connector with a MariaDB database].
+ifdef::product[]
+[IMPORTANT]
+====
+Use of the {prodname} MySQL connector with MariaDB is a Technology Preview feature only.
+Technology Preview features are not supported with Red{nbsp}Hat production service level agreements (SLAs) and might not be functionally complete.
+Red{nbsp}Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+For more information about the support scope of Red{nbsp}Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
+endif::product[]
 
 |[[mysql-property-database-jdbc-driver]]<<mysql-property-database-jdbc-driver, `+database.jdbc.driver+`>>
 |com.mysql.cj.jdbc.Driver
 |The driver class name to use. This can be useful when using an alternative driver to the one packaged with the connector.
-ifdef::community[]
-Please see the xref:mysql-mariadb-support[MariaDB support] section on how to connect to MariaDB.
-endif::community[]
+For information about how to connect {prodhame} to MariaDB, see xref:mysql-mariadb-support[Using the connector with a MariaDB database].
+ifdef::product[]
+[IMPORTANT]
+====
+Use of the {prodname} MySQL connector with MariaDB is a Technology Preview feature only.
+Technology Preview features are not supported with Red{nbsp}Hat production service level agreements (SLAs) and might not be functionally complete.
+Red{nbsp}Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+For more information about the support scope of Red{nbsp}Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
+endif::product[]
 
 |[[mysql-property-database-hostname]]<<mysql-property-database-hostname, `+database.hostname+`>>
 |No default
@@ -3185,9 +3229,21 @@ endif::community[]
 |`false`
 |Boolean value that specifies whether the connector should include the original SQL query that generated the change event. +
  +
-If you set this option to `true` then you must also configure MySQL with the `binlog_rows_query_log_events` option or MariaDB with the `binlog_annotate_row_events` option set to `ON`. When `include.query` is `true`, the query is not present for events that the snapshot process generates. +
+If you set this option to `true` then you must also configure MySQL with the `binlog_rows_query_log_events` option or MariaDB with the `binlog_annotate_row_events` option set to `ON`.
+When `include.query` is `true`, the query is not present for events that the snapshot process generates. +
  +
-Setting `include.query` to `true` might expose tables or fields that are explicitly excluded or masked by including the original SQL statement in the change event. For this reason, the default setting is `false`.
+Setting `include.query` to `true` might expose tables or fields that are explicitly excluded or masked by including the original SQL statement in the change event.
+For this reason, the default setting is `false`.
+ifdef::product[]
+[IMPORTANT]
+====
+Use of the {prodname} MySQL connector with MariaDB is a Technology Preview feature only.
+Technology Preview features are not supported with Red{nbsp}Hat production service level agreements (SLAs) and might not be functionally complete.
+Red{nbsp}Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+For more information about the support scope of Red{nbsp}Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
+endif::product[]
 
 |[[mysql-property-event-deserialization-failure-handling-mode]]<<mysql-property-event-deserialization-failure-handling-mode, `+event.deserialization.failure.handling.mode+`>>
 |`fail`
@@ -3428,7 +3484,7 @@ It does not transition to streaming to read change events from the binlog.
 
 `schema_only`:: Deprecated, see `no_data`.
 
-`no_data`:: The connector runs a snapshot that captures only the schema, but not any table data. 
+`no_data`:: The connector runs a snapshot that captures only the schema, but not any table data.
 Set this option if you do not need the topics to contain a consistent snapshot of the data, but you want to capture any schema changes that were applied after the last connector restart.
 
 `schema_only_recovery`:: Deprecated, see `recovery`.
@@ -3439,11 +3495,11 @@ You can also set the property to periodically prune a database schema history to
  +
 WARNING: Do not use this mode to perform a snapshot if schema changes were committed to the database after the last connector shutdown.
 
-`never`:: When the connector starts, rather than performing a snapshot, it immediately begins to stream event records for subsequent database changes. 
+`never`:: When the connector starts, rather than performing a snapshot, it immediately begins to stream event records for subsequent database changes.
 This option is under consideration for future deprecation, in favor of the `no_data` option.
 
 `when_needed`:: After the connector starts, it performs a snapshot only if it detects one of the following circumstances:
- 
+
 * It cannot detect any topic offsets.
 * A previously recorded offset specifies a binlog position or GTID that is not available on the server.
 
@@ -3455,25 +3511,25 @@ endif::community[]
 |_minimal_
 a|Controls whether and how long the connector holds the global MySQL read lock, which prevents any updates to the database, while the connector is performing a snapshot. Possible settings are: +
 
-`minimal`:: The connector holds the global read lock for only the initial phase of the snapshot during which it reads the database schemas and other metadata. 
-During the next phase of the snapshot, the connector releases the lock as it selects all rows from each table. 
-To perform the SELECT operation in a consistent fashion, the connector uses a REPEATABLE READ transaction. 
+`minimal`:: The connector holds the global read lock for only the initial phase of the snapshot during which it reads the database schemas and other metadata.
+During the next phase of the snapshot, the connector releases the lock as it selects all rows from each table.
+To perform the SELECT operation in a consistent fashion, the connector uses a REPEATABLE READ transaction.
 Although the release of the global read lock permits other MySQL clients to update the database, use of REPEATABLE READ isolation ensures a consistent snapshot, because the connector continues to read the same data for the duration of  the transaction. +
 
-`minimal_percona`:: The connector holds link:https://www.percona.com/doc/percona-server/8.0/management/backup_locks.html[the global backup lock] for only the initial phase of the snapshot during which it reads the database schemas and other metadata. 
-During the next phase of the snapshot, the connector releases the lock as it selects all rows from each table. 
-To perform the SELECT operation in a consistent fashion, the connector uses a REPEATABLE READ transaction. 
+`minimal_percona`:: The connector holds link:https://www.percona.com/doc/percona-server/8.0/management/backup_locks.html[the global backup lock] for only the initial phase of the snapshot during which it reads the database schemas and other metadata.
+During the next phase of the snapshot, the connector releases the lock as it selects all rows from each table.
+To perform the SELECT operation in a consistent fashion, the connector uses a REPEATABLE READ transaction.
 
 Although the release of the global read lock permits other MySQL clients to update the database, use of REPEATABLE READ isolation ensures a consistent snapshot, because the connector continues to read the same data for the duration of  the transaction. +
 This mode does not flush tables to disk, is not blocked by long-running reads, and is available only in Percona Server. +
 
-`extended`:: Blocks all write operations for the duration of the snapshot. 
+`extended`:: Blocks all write operations for the duration of the snapshot.
 Use this setting if clients submit concurrent operations that are incompatible with the REPEATABLE READ isolation level in MySQL. +
 
-`none`:: Prevents the connector from acquiring any table locks during the snapshot. 
-Although this option is allowed with all snapshot modes, it is safe to use _only_ if no schema changes occur while the snapshot is running. 
-Tables that are defined with the MyISAM engine always acquire a table lock. 
-As a result, such tables are locked even if you set this option. 
+`none`:: Prevents the connector from acquiring any table locks during the snapshot.
+Although this option is allowed with all snapshot modes, it is safe to use _only_ if no schema changes occur while the snapshot is running.
+Tables that are defined with the MyISAM engine always acquire a table lock.
+As a result, such tables are locked even if you set this option.
 This behavior differs from tables that are defined by the InnoDB engine, which acquire row-level locks.
 
 ifdef::community[]
@@ -3712,11 +3768,15 @@ endif::community[]
 ifdef::product[]
 [IMPORTANT]
 ====
-Parallel initial snapshots is a Technology Preview feature only.
-Technology Preview features are not supported with Red Hat production service level agreements (SLAs) and might not be functionally complete.
-Red Hat does not recommend using them in production.
-These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
-For more information about the support scope of Red Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+Parallel initial snapshots is a Developer Preview feature only.
+Developer Preview software is not supported by Red{nbsp}Hat in any way and is not functionally complete or production-ready.
+Do not use Developer Preview software for production or business-critical workloads.
+Developer Preview software provides early access to upcoming product software in advance of its possible inclusion in a Red{nbsp}Hat product offering.
+Customers can use this software to test functionality and provide feedback during the development process.
+This software is subject to change or removal at any time, and has received limited testing.
+Red{nbsp}Hat might provide ways to submit feedback on Developer Preview software without an associated SLA.
+
+For more information about the support scope of Red{nbsp}Hat Developer Preview software, see link:https://access.redhat.com/support/offerings/devpreview/[Developer Preview Support Scope].
 ====
 endif::product[]
 
