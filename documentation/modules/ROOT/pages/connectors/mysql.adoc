@@ -59,11 +59,21 @@ ifdef::community[]
 [NOTE]
 ====
 The {prodname} MySQL connector has been tested and officially supports MariaDB 11.1.2+.
-Please see the xref:mysql-mariadb-support[MariaDB support] section for details on how to enable the official MariaDB support mode.
+For information about how to connect {prodname} to MariaDB, see xref:mysql-mariadb-support[Using the connector with a MariaDB database].
 ====
 endif::community[]
 
 ifdef::product[]
+
+[IMPORTANT]
+====
+Use of the {prodname} MySQL connector with MariaDB is a Technology Preview feature only.
+Technology Preview features are not supported with Red{nbsp}Hat production service level agreements (SLAs) and might not be functionally complete.
+Red{nbsp}Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+For more information about the support scope of Red{nbsp}Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
+
 Details are in the following topics:
 
 * xref:mysql-topologies-supported-by-debezium-connectors[]
@@ -106,12 +116,14 @@ There is support for the {prodname} MySQL connector to use hosted options such a
 +
 Because these hosted options do not allow a global read lock, table-level locks are used to create the _consistent snapshot_.
 
-ifdef::community[]
+// Type: concept
+// ModuleID: supplemental-configuration-for-connecting-debezium-to-mariadb
+// Title: Supplemental configuration for connecting {prodname} to a MariaDB database
 [[mysql-mariadb-support]]
-=== MariaDB support
+=== Using the connector with a MariaDB database
 
-While it is possible to use the MySQL driver to connect and stream changes from MariaDB, we recommend configuring the {prodname} MySQL connector to use the MariaDB adapter mode, allowing you to take advantage of the MariaDB driver, and it's unique feature stack.
-To toggle the MariaDB support mode, the xref:#mysql-property-connector-adapter[`connector.adapter`] configuration property must be specified with a value of `mariadb`.
+Although it is possible to use the MySQL driver to connect and stream changes from MariaDB, it's best to configure the {prodname} MySQL connector to use the MariaDB adapter mode, so that the connector can take advantage of the MariaDB driver, and its unique feature stack.
+To toggle the MariaDB support mode, the xref:mysql-property-connector-adapter[`connector.adapter`] configuration property must be specified with a value of `mariadb`.
 This mode utilizes the MariaDB driver instead of the MySQL driver, meaning that you must also provide the database protocol and JDBC driver strings that are compliant with MariaDB, see the example below.
 
 .MariaDB supplemental configuration
@@ -124,16 +136,25 @@ This mode utilizes the MariaDB driver instead of the MySQL driver, meaning that 
   "database.jdbc.driver": "org.mariadb.jdbc.Driver"
 }
 ----
-
+ifdef::product[]
+[IMPORTANT]
+====
+Use of the {prodname} MySQL connector with MariaDB is a Technology Preview feature only.
+Technology Preview features are not supported with Red{nbsp}Hat production service level agreements (SLAs) and might not be functionally complete.
+Red{nbsp}Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+For more information about the support scope of Red{nbsp}Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
+endif::product[]
+ifdef::community[]
 [NOTE]
 ====
 When the new {prodname} MariaDB connector is available in a future release, these supplemental configurations will no longer be necessary.
 As the connector currently includes both the MySQL and MariaDB drivers, the MariaDB mode is _opt-in_ until {prodname} introduces the new MariaDB-specific connector.
 ====
-
-With this configuration, the {prodname} MySQL connector will use the new MariaDB adapter connector, which natively streams changes from MariaDB binary transaction logs.
-All other MySQL xref:mysql-connector-properties[connector properties] can be used in conjunction with the above supplemental configuration.
 endif::community[]
+After you apply the Maria DB supplemental configuration, the {prodname} MySQL connector uses the MariaDB adapter connector, which natively streams changes from MariaDB binary transaction logs.
+You can use all other xref:mysql-connector-properties[MySQL connector properties] in conjunction with the preceding supplemental configuration.
 
 // Type: concept
 // ModuleID: how-debezium-mysql-connectors-handle-database-schema-changes
@@ -2942,26 +2963,49 @@ The following configuration properties are _required_ unless a default value is 
 |`1`
 |The maximum number of tasks that should be created for this connector. The MySQL connector always uses a single task and therefore does not use this value, so the default is always acceptable.
 
-ifdef::community[]
 |[[mysql-property-connector-adapter]]<<mysql-property-connector-adapter, `+connector.adapter+`>>
 |mysql
 |The connector adapter mode to be used.
-Please see the xref:mysql-mariadb-support[MariaDB support] section on how to connect to MariaDB.
-endif::community[]
-
+For information about how to connect {prodname} to MariaDB, see xref:mysql-mariadb-support[Using the connector with a MariaDB database].
+ifdef::product[]
+[IMPORTANT]
+====
+Use of the {prodname} MySQL connector with MariaDB is a Technology Preview feature only.
+Technology Preview features are not supported with Red{nbsp}Hat production service level agreements (SLAs) and might not be functionally complete.
+Red{nbsp}Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+For more information about the support scope of Red{nbsp}Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
+endif::product[]
 |[[mysql-property-database-protocol]]<<mysql-property-database-protocol, `+database.protocol+`>>
 |jdbc:mysql
 |JDBC protocol used by the driver connection string for connecting to the database.
-ifdef::community[]
-Please see the xref:mysql-mariadb-support[MariaDB support] section on how to connect to MariaDB.
-endif::community[]
+For information about how to connect {prodname} to MariaDB, see xref:mysql-mariadb-support[Using the connector with a MariaDB database].
+ifdef::product[]
+[IMPORTANT]
+====
+Use of the {prodname} MySQL connector with MariaDB is a Technology Preview feature only.
+Technology Preview features are not supported with Red{nbsp}Hat production service level agreements (SLAs) and might not be functionally complete.
+Red{nbsp}Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+For more information about the support scope of Red{nbsp}Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
+endif::product[]
 
 |[[mysql-property-database-jdbc-driver]]<<mysql-property-database-jdbc-driver, `+database.jdbc.driver+`>>
 |com.mysql.cj.jdbc.Driver
 |The driver class name to use. This can be useful when using an alternative driver to the one packaged with the connector.
-ifdef::community[]
-Please see the xref:mysql-mariadb-support[MariaDB support] section on how to connect to MariaDB.
-endif::community[]
+For information about how to connect {prodhame} to MariaDB, see xref:mysql-mariadb-support[Using the connector with a MariaDB database].
+ifdef::product[]
+[IMPORTANT]
+====
+Use of the {prodname} MySQL connector with MariaDB is a Technology Preview feature only.
+Technology Preview features are not supported with Red{nbsp}Hat production service level agreements (SLAs) and might not be functionally complete.
+Red{nbsp}Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+For more information about the support scope of Red{nbsp}Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
+endif::product[]
 
 |[[mysql-property-database-hostname]]<<mysql-property-database-hostname, `+database.hostname+`>>
 |No default
@@ -3185,9 +3229,21 @@ endif::community[]
 |`false`
 |Boolean value that specifies whether the connector should include the original SQL query that generated the change event. +
  +
-If you set this option to `true` then you must also configure MySQL with the `binlog_rows_query_log_events` option or MariaDB with the `binlog_annotate_row_events` option set to `ON`. When `include.query` is `true`, the query is not present for events that the snapshot process generates. +
+If you set this option to `true` then you must also configure MySQL with the `binlog_rows_query_log_events` option or MariaDB with the `binlog_annotate_row_events` option set to `ON`.
+When `include.query` is `true`, the query is not present for events that the snapshot process generates. +
  +
-Setting `include.query` to `true` might expose tables or fields that are explicitly excluded or masked by including the original SQL statement in the change event. For this reason, the default setting is `false`.
+Setting `include.query` to `true` might expose tables or fields that are explicitly excluded or masked by including the original SQL statement in the change event.
+For this reason, the default setting is `false`.
+ifdef::product[]
+[IMPORTANT]
+====
+Use of the {prodname} MySQL connector with MariaDB is a Technology Preview feature only.
+Technology Preview features are not supported with Red{nbsp}Hat production service level agreements (SLAs) and might not be functionally complete.
+Red{nbsp}Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+For more information about the support scope of Red{nbsp}Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
+endif::product[]
 
 |[[mysql-property-event-deserialization-failure-handling-mode]]<<mysql-property-event-deserialization-failure-handling-mode, `+event.deserialization.failure.handling.mode+`>>
 |`fail`
@@ -3720,11 +3776,15 @@ endif::community[]
 ifdef::product[]
 [IMPORTANT]
 ====
-Parallel initial snapshots is a Technology Preview feature only.
-Technology Preview features are not supported with Red Hat production service level agreements (SLAs) and might not be functionally complete.
-Red Hat does not recommend using them in production.
-These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
-For more information about the support scope of Red Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+Parallel initial snapshots is a Developer Preview feature only.
+Developer Preview software is not supported by Red{nbsp}Hat in any way and is not functionally complete or production-ready.
+Do not use Developer Preview software for production or business-critical workloads.
+Developer Preview software provides early access to upcoming product software in advance of its possible inclusion in a Red{nbsp}Hat product offering.
+Customers can use this software to test functionality and provide feedback during the development process.
+This software is subject to change or removal at any time, and has received limited testing.
+Red{nbsp}Hat might provide ways to submit feedback on Developer Preview software without an associated SLA.
+
+For more information about the support scope of Red{nbsp}Hat Developer Preview software, see link:https://access.redhat.com/support/offerings/devpreview/[Developer Preview Support Scope].
 ====
 endif::product[]
 
