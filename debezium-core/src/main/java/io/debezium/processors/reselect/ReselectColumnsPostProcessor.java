@@ -8,11 +8,13 @@ package io.debezium.processors.reselect;
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
+import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -225,17 +227,33 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
 
     private boolean isUnavailableValueHolder(org.apache.kafka.connect.data.Field field, Object value) {
         if (unavailableValuePlaceholder != null) {
-            switch (field.schema().type()) {
-                case BYTES:
-                    return unavailableValuePlaceholderBytes.equals(value);
-                case MAP:
-                    return unavailableValuePlaceholderMap.equals(value);
-                case STRING:
-                    if (Json.LOGICAL_NAME.equals(field.schema().name())) {
-                        return unavailableValuePlaceholderJson.equals(value);
+            if (field.schema().type() == Schema.Type.ARRAY && value != null) {
+                // Special use case to inspect by element
+                final Collection<?> values = (Collection<?>) value;
+                for (Object collectionValue : values) {
+                    if (isUnavailableValueHolder(field.schema().valueSchema(), collectionValue)) {
+                        return true;
                     }
-                    return unavailableValuePlaceholder.equals(value);
+                }
             }
+            else {
+                return isUnavailableValueHolder(field.schema(), value);
+            }
+        }
+        return false;
+    }
+
+    private boolean isUnavailableValueHolder(Schema schema, Object value) {
+        switch (schema.type()) {
+            case BYTES:
+                return unavailableValuePlaceholderBytes.equals(value);
+            case MAP:
+                return unavailableValuePlaceholderMap.equals(value);
+            case STRING:
+                if (Json.LOGICAL_NAME.equals(schema.name())) {
+                    return unavailableValuePlaceholderJson.equals(value);
+                }
+                return unavailableValuePlaceholder.equals(value);
         }
         return false;
     }
