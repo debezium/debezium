@@ -315,17 +315,6 @@ Please consider using other types for the primary key when performing incrementa
 
 .Incremental snapshots for sharded clusters
 
-ifdef::product[]
-[IMPORTANT]
-====
-Incremental snapshots for sharded clusters is a Technology Preview feature for the {prodname} MongoDB connector.
-Technology Preview features are not supported with Red Hat production service-level agreements (SLAs) and might not be functionally complete;
-therefore, Red Hat does not recommend implementing any Technology Preview features in production environments.
-This Technology Preview feature provides early access to upcoming product innovations, enabling you to test functionality and provide feedback during the development process.
-For more information about support scope, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
-====
-endif::product[]
-
 To use incremental snapshots with sharded MongoDB clusters, you must set specific values for the following properties:
 
 * Set xref:mongodb-property-mongodb-connection-mode[`mongodb.connection.mode`] to `sharded`.
@@ -2030,9 +2019,7 @@ endif::community[]
 Increasing the chunk size provides greater efficiency, because the snapshot runs fewer snapshot queries of a greater size.
 However, larger chunk sizes also require more memory to buffer the snapshot data.
 Adjust the chunk size to a value that provides the best performance in your environment. +
-ifdef::product[]
-Incremental snapshots is a Technology Preview feature for the {prodname} MongoDB connector.
-endif::product[]
+
 
 |[[mongodb-property-incremental-snapshot-watermarking-strategy]]<<mongodb-property-incremental-snapshot-watermarking-strategy, `+incremental.snapshot.watermarking.strategy+`>>
 |`insert_insert`
