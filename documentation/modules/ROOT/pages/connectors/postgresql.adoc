@@ -178,11 +178,11 @@ If the connector fails, is rebalanced, or stops after Step 1 begins but before S
 |The connector performs a database snapshot and stops before streaming any change event records. If the connector had started but did not complete a snapshot before stopping, the connector restarts the snapshot process and stops when the snapshot completes.
 
 |`no_data`
-|The connector never performs snapshots. 
+|The connector never performs snapshots.
 When a connector is configured this way, after it starts, it behaves as follows:
 
-If there is a previously stored LSN in the Kafka offsets topic, the connector continues streaming changes from that position. 
-If no LSN is stored, the connector starts streaming changes from the point at which the PostgreSQL logical replication slot was created on the server. 
+If there is a previously stored LSN in the Kafka offsets topic, the connector continues streaming changes from that position.
+If no LSN is stored, the connector starts streaming changes from the point at which the PostgreSQL logical replication slot was created on the server.
 Use this snapshot mode only when you know that all data of interest is still reflected in the WAL.
 
 |[.line-through]`never`
@@ -190,14 +190,14 @@ Use this snapshot mode only when you know that all data of interest is still ref
 
 |`when_needed`
 |After the connector starts, it performs a snapshot only if it detects one of the following circumstances:
- 
+
 * It cannot detect any topic offsets.
 * A previously recorded offset specifies a log position that is not available on the server.
 
 ifdef::community[]
 |`custom`
 |The `custom` snapshot mode lets you inject your own implementation of the `io.debezium.spi.snapshot.Snapshotter` interface.
-Set the `snapshot.mode.custom.name` configuration property to the name provided by the `name()` method of your implementation. 
+Set the `snapshot.mode.custom.name` configuration property to the name provided by the `name()` method of your implementation.
 The name is specified on the classpath of your Kafka Connect cluster.
 If you use the `EmbeddedEngine`, the name is included in the connector JAR file.
 For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
@@ -3290,17 +3290,17 @@ After the snapshot completes, the connector begins to stream event records for s
 
 `initial_only`:: The connector performs an initial snapshot and then stops, without processing any subsequent changes.
 
-`no_data`:: The connector never performs snapshots. 
+`no_data`:: The connector never performs snapshots.
 When a connector is configured this way, after it starts, it behaves as follows:
 
 If there is a previously stored LSN in the Kafka offsets topic, the connector continues streaming changes from that position.
-If no LSN is stored, the connector starts streaming changes from the point in time when the PostgreSQL logical replication slot was created on the server. 
+If no LSN is stored, the connector starts streaming changes from the point in time when the PostgreSQL logical replication slot was created on the server.
 Use this snapshot mode only when you know all data of interest is still reflected in the WAL.
 
 `never`:: Deprecated see `no_data`.
 
 `when_needed`:: After the connector starts, it performs a snapshot only if it detects one of the following circumstances:
- 
+
 * It cannot detect any topic offsets.
 * A previously recorded offset specifies a log position that is not available on the server.
 
@@ -3708,9 +3708,25 @@ include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming
 [[postgresql-when-things-go-wrong]]
 == Behavior when things go wrong
 
-{prodname} is a distributed system that captures all changes in multiple upstream databases; it never misses or loses an event. When the system is operating normally or being managed carefully then {prodname} provides _exactly once_ delivery of every change event record.
+{prodname} is a distributed system that captures all changes in multiple upstream databases; it never misses or loses an event.
+When the system is operating normally or being managed carefully then {prodname} provides _exactly once_ delivery of every change event record.
+ifdef::product[]
+[IMPORTANT]
+====
+Exactly-once delivery of PostgreSQL change event records is a Developer Preview feature only.
+Developer Preview software is not supported by Red{nbsp}Hat in any way and is not functionally complete or production-ready.
+Do not use Developer Preview software for production or business-critical workloads.
+Developer Preview software provides early access to upcoming product software in advance of its possible inclusion in a Red{nbsp}Hat product offering.
+Customers can use this software to test functionality and provide feedback during the development process.
+This software might not have any documentation, is subject to change or removal at any time, and has received limited testing.
+Red{nbsp}Hat might provide ways to submit feedback on Developer Preview software without an associated SLA.
 
-If a fault does happen then the system does not lose any events. However, while it is recovering from the fault, it might repeat some change events. In these abnormal situations, {prodname}, like Kafka, provides _at least once_ delivery of change events.
+For more information about the support scope of Red{nbsp}Hat Developer Preview software, see link:https://access.redhat.com/support/offerings/devpreview/[Developer Preview Support Scope].
+====
+endif::product[]
+If a fault does happen then the system does not lose any events.
+However, while it is recovering from the fault, it's possible that the connector might emit some duplicate change events.
+In these abnormal situations, {prodname}, like Kafka, provides _at least once_ delivery of change events.
 
 ifdef::community[]
 The rest of this section describes how {prodname} handles various kinds of faults and problems.
