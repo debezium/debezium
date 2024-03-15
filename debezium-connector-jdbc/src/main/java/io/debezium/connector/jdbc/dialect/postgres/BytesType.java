@@ -5,16 +5,13 @@
  */
 package io.debezium.connector.jdbc.dialect.postgres;
 
-import java.nio.ByteBuffer;
 import java.sql.Types;
-import java.util.List;
 
 import org.apache.kafka.connect.data.Schema;
 import org.hibernate.engine.jdbc.Size;
 
-import io.debezium.connector.jdbc.ValueBindDescriptor;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
-import io.debezium.connector.jdbc.type.AbstractType;
+import io.debezium.connector.jdbc.type.AbstractBytesType;
 import io.debezium.connector.jdbc.type.Type;
 import io.debezium.connector.jdbc.util.ByteArrayUtils;
 
@@ -23,14 +20,9 @@ import io.debezium.connector.jdbc.util.ByteArrayUtils;
  *
  * @author Bertrand Paquet
  */
-class BytesType extends AbstractType {
+class BytesType extends AbstractBytesType {
 
     public static final BytesType INSTANCE = new BytesType();
-
-    @Override
-    public String[] getRegistrationKeys() {
-        return new String[]{ "BYTES" };
-    }
 
     @Override
     public String getDefaultValueBinding(DatabaseDialect dialect, Schema schema, Object value) {
@@ -47,15 +39,5 @@ class BytesType extends AbstractType {
             return dialect.getTypeName(Types.VARBINARY, Size.length(dialect.getMaxVarbinaryLength()));
         }
         return dialect.getTypeName(Types.VARBINARY);
-    }
-
-    @Override
-    public List<ValueBindDescriptor> bind(int index, Schema schema, Object value) {
-
-        if (value instanceof ByteBuffer) {
-            return List.of(new ValueBindDescriptor(index, ((ByteBuffer) value).array()));
-        }
-
-        return super.bind(index, schema, value);
     }
 }
