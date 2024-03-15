@@ -12,7 +12,7 @@ import org.apache.kafka.connect.data.Schema;
 import org.hibernate.engine.jdbc.Size;
 
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
-import io.debezium.connector.jdbc.type.AbstractType;
+import io.debezium.connector.jdbc.type.AbstractBytesType;
 import io.debezium.connector.jdbc.type.Type;
 
 /**
@@ -20,14 +20,9 @@ import io.debezium.connector.jdbc.type.Type;
  *
  * @author Chris Cranford
  */
-class BytesType extends AbstractType {
+class BytesType extends AbstractBytesType {
 
     public static final BytesType INSTANCE = new BytesType();
-
-    @Override
-    public String[] getRegistrationKeys() {
-        return new String[]{ "BYTES" };
-    }
 
     @Override
     public String getTypeName(DatabaseDialect dialect, Schema schema, boolean key) {

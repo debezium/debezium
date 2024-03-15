@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.jdbc;
 
-import java.nio.ByteBuffer;
 import java.sql.BatchUpdateException;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
@@ -153,10 +152,6 @@ public class RecordWriter {
             }
             else {
                 value = source.get(fieldName);
-            }
-            // Converter can use ByteBuffer value for BYTES schema, so we need to extract byte array
-            if (value instanceof ByteBuffer) {
-                value = ((ByteBuffer) value).array();
             }
             List<ValueBindDescriptor> boundValues = dialect.bindValue(field, index, value);
 
