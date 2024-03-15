@@ -9,8 +9,10 @@ import static io.debezium.connector.postgresql.PostgresConnectorConfig.HStoreHan
 import static io.debezium.connector.postgresql.PostgresConnectorConfig.HStoreHandlingMode.MAP;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.kafka.connect.data.Struct;
@@ -242,4 +244,50 @@ public class PostgresReselectColumnsProcessorIT extends AbstractReselectProcesso
         assertColumnReselectedForUnavailableValue(logInterceptor, "s1.dbz7596_toast", "data");
     }
 
+    @Test
+    @FixFor("DBZ-7596")
+    public void testToastColumnArrayReselectedWhenValueIsUnavailable() throws Exception {
+        TestHelper.execute("CREATE TABLE s1.dbz7596_toast (id int primary key, data text[], data2 int);");
+
+        final LogInterceptor logInterceptor = getReselectLogInterceptor();
+
+        final List<String> textValues = new ArrayList<>();
+        textValues.add(RandomStringUtils.randomAlphanumeric(8192));
+        textValues.add(RandomStringUtils.randomAlphanumeric(8192));
+
+        final String data = textValues.stream().map(v -> "\"" + v + "\"").collect(Collectors.joining(", "));
+
+        Configuration config = getConfigurationBuilder()
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1\\.dbz7596_toast")
+                .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, "true")
+                .build();
+
+        start(PostgresConnector.class, config);
+        waitForStreamingStarted();
+
+        TestHelper.execute(
+                "INSERT INTO s1.dbz7596_toast (id,data,data2) values (1,'{" + data + "}', 1);",
+                "UPDATE s1.dbz7596_toast SET data2 = 2 where id = 1;");
+
+        final SourceRecords sourceRecords = consumeRecordsByTopic(2);
+        final List<SourceRecord> tableRecords = sourceRecords.recordsForTopic("test_server.s1.dbz7596_toast");
+
+        // Check insert
+        SourceRecord record = tableRecords.get(0);
+        Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+        VerifyRecord.isValidInsert(record, "id", 1);
+        assertThat(after.get("id")).isEqualTo(1);
+        assertThat(after.get("data")).isEqualTo(textValues);
+        assertThat(after.get("data2")).isEqualTo(1);
+
+        // Check update
+        record = tableRecords.get(1);
+        after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+        VerifyRecord.isValidUpdate(record, "id", 1);
+        assertThat(after.get("id")).isEqualTo(1);
+        assertThat(after.get("data")).isEqualTo(textValues);
+        assertThat(after.get("data2")).isEqualTo(2);
+
+        assertColumnReselectedForUnavailableValue(logInterceptor, "s1.dbz7596_toast", "data");
+    }
 }
