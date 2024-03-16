@@ -20,7 +20,7 @@
         <sqlserver.user>sa</sqlserver.user>
         <sqlserver.password>Password!</sqlserver.password>
         <sqlserver.dbname>testDB</sqlserver.dbname>
-        <docker.db>mcr.microsoft.com/mssql/server:2019-latest</docker.db>
+        <docker.db>mcr.microsoft.com/mssql/server:2022-latest</docker.db>
         <docker.filter>${docker.db}</docker.filter>
         <docker.skip>false</docker.skip>
         <docker.showLogs>true</docker.showLogs>
