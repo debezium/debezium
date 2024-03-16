@@ -87,7 +87,7 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
     private static final String POSTGRES_USERNAME = "postgres";
     private static final String POSTGRES_PASSWORD = "postgres";
 
-    private static final String SQLSERVER_IMAGE_NAME = "mcr.microsoft.com/mssql/server:2019-latest";
+    private static final String SQLSERVER_IMAGE_NAME = "mcr.microsoft.com/mssql/server:2022-latest";
     private static final String SQLSERVER_PASSWORD = "Debezium1!";
 
     private static final String ORACLE_IMAGE_NAME = "quay.io/rh_integration/dbz-oracle:19.3.0";
