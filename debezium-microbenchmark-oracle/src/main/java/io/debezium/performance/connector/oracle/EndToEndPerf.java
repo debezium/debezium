@@ -253,7 +253,7 @@ public class EndToEndPerf {
         }
 
         private OracleConnection getTestConnection() {
-            OracleConnection connection = new OracleConnection(testJdbcConfig());
+            OracleConnection connection = new OracleConnection(new OracleConnection.OracleConnectionConfiguration(testJdbcConfig()));
             try {
                 connection.setAutoCommit(false);
             }

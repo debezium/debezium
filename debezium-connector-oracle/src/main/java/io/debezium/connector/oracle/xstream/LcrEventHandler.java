@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.DebeziumException;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnection.NonRelationalTableException;
+import io.debezium.connector.oracle.OracleConnection.OracleConnectionConfiguration;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
@@ -305,7 +306,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
         final String pdbName = connectorConfig.getPdbName();
         // A separate connection must be used for this out-of-bands query while processing the Xstream callback.
         // This should have negligible overhead as this should happen rarely.
-        try (OracleConnection connection = new OracleConnection(connectorConfig.getJdbcConfig(), false)) {
+        try (OracleConnection connection = new OracleConnection(new OracleConnectionConfiguration(connectorConfig.getJdbcConfig()), false)) {
             if (!Strings.isNullOrBlank(pdbName)) {
                 connection.setSessionToPdb(pdbName);
             }

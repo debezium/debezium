@@ -32,6 +32,7 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.connector.oracle.logminer.UnistrHelper;
+import io.debezium.data.Json;
 import io.debezium.data.SpecialValueDecimal;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.jdbc.JdbcValueConverters;
@@ -165,6 +166,8 @@ public class OracleValueConverters extends JdbcValueConverters {
                 return SchemaBuilder.string();
             case OracleTypes.ROWID:
                 return SchemaBuilder.string();
+            case OracleTypes.JSON:
+                return Json.builder();
             default: {
                 SchemaBuilder builder = super.schemaBuilder(column);
                 logger.debug("JdbcValueConverters returned '{}' for column '{}'", builder != null ? builder.getClass().getName() : null, column.name());
@@ -220,6 +223,7 @@ public class OracleValueConverters extends JdbcValueConverters {
             case Types.STRUCT:
             case Types.CLOB:
             case OracleTypes.ROWID:
+            case OracleTypes.JSON:
                 return data -> convertString(column, fieldDefn, data);
             case Types.BLOB:
                 return data -> convertBinary(column, fieldDefn, data, binaryMode);
