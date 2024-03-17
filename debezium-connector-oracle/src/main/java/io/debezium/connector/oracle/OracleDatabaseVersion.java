@@ -8,6 +8,8 @@ package io.debezium.connector.oracle;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import io.debezium.annotation.VisibleForTesting;
+
 /**
  * Represents the Oracle database version.
  *
@@ -18,6 +20,9 @@ public class OracleDatabaseVersion {
             .compile("(?:.*)(?:Release )([0-9]+)\\.([0-9]+)\\.([0-9]+)\\.([0-9]+)\\.([0-9]+)(?:.*)");
     private final static Pattern VERSION_18_1_PATTERN = Pattern
             .compile("^Oracle Database.*(?:\\r\\n|\\r|\\n)^(?:Version )([0-9]+)\\.([0-9]+)\\.([0-9]+)\\.([0-9]+)\\.([0-9]+)", Pattern.MULTILINE);
+
+    @VisibleForTesting
+    public static final OracleDatabaseVersion VERSION_19_3 = new OracleDatabaseVersion(19, 3, 0, 0, 0, "");
 
     private final int major;
     private final int maintenance;

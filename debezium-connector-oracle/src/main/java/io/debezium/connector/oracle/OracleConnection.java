@@ -5,11 +5,14 @@
  */
 package io.debezium.connector.oracle;
 
+import java.sql.CallableStatement;
 import java.sql.Clob;
 import java.sql.DatabaseMetaData;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLRecoverableException;
 import java.sql.Statement;
+import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -758,6 +761,76 @@ public class OracleConnection extends JdbcConnection {
         catch (SQLException e) {
             throw new DebeziumException("Failed to resolve Oracle's NLS_NCHAR_CHARACTERSET property", e);
         }
+    }
+
+    public void removeAllLogFilesFromLogMinerSession() throws SQLException {
+        final Set<String> fileNames = queryAndMap("SELECT FILENAME AS NAME FROM V$LOGMNR_LOGS", rs -> {
+            final Set<String> results = new HashSet<>();
+            while (rs.next()) {
+                results.add(rs.getString(1));
+            }
+            return results;
+        });
+
+        for (String fileName : fileNames) {
+            LOGGER.debug("Removing file {} from LogMiner mining session.", fileName);
+            final String sql = "BEGIN SYS.DBMS_LOGMNR.REMOVE_LOGFILE(LOGFILENAME => '" + fileName + "');END;";
+            try (CallableStatement statement = connection(false).prepareCall(sql)) {
+                statement.execute();
+            }
+        }
+    }
+
+    public RedoThreadState getRedoThreadState() throws SQLException {
+        final String query = "SELECT * FROM V$THREAD";
+        try {
+            return queryAndMap(query, rs -> {
+                RedoThreadState.Builder builder = RedoThreadState.builder();
+                while (rs.next()) {
+                    // While this field should never be NULL, the database metadata allows it
+                    final int threadId = rs.getInt("THREAD#");
+                    if (!rs.wasNull()) {
+                        RedoThreadState.RedoThread.Builder threadBuilder = builder.thread()
+                                .threadId(threadId)
+                                .status(rs.getString("STATUS"))
+                                .enabled(rs.getString("ENABLED"))
+                                .logGroups(rs.getLong("GROUPS"))
+                                .instanceName(rs.getString("INSTANCE"))
+                                .openTime(readTimestampAsInstant(rs, "OPEN_TIME"))
+                                .currentGroupNumber(rs.getLong("CURRENT_GROUP#"))
+                                .currentSequenceNumber(rs.getLong("SEQUENCE#"))
+                                .checkpointScn(readScnColumnAsScn(rs, "CHECKPOINT_CHANGE#"))
+                                .checkpointTime(readTimestampAsInstant(rs, "CHECKPOINT_TIME"))
+                                .enabledScn(readScnColumnAsScn(rs, "ENABLE_CHANGE#"))
+                                .enabledTime(readTimestampAsInstant(rs, "ENABLE_TIME"))
+                                .disabledScn(readScnColumnAsScn(rs, "DISABLE_CHANGE#"))
+                                .disabledTime(readTimestampAsInstant(rs, "DISABLE_TIME"));
+                        if (getOracleVersion().getMajor() >= 11) {
+                            threadBuilder = threadBuilder.lastRedoSequenceNumber(rs.getLong("LAST_REDO_SEQUENCE#"))
+                                    .lastRedoBlock(rs.getLong("LAST_REDO_BLOCK"))
+                                    .lastRedoScn(readScnColumnAsScn(rs, "LAST_REDO_CHANGE#"))
+                                    .lastRedoTime(readTimestampAsInstant(rs, "LAST_REDO_TIME"))
+                                    .conId(rs.getLong("CON_ID"));
+                        }
+                        builder = threadBuilder.build();
+                    }
+                }
+                return builder.build();
+            });
+        }
+        catch (SQLException e) {
+            throw new DebeziumException("Failed to read the Oracle database redo thread state", e);
+        }
+    }
+
+    private static Scn readScnColumnAsScn(ResultSet rs, String columnName) throws SQLException {
+        final String value = rs.getString(columnName);
+        return Strings.isNullOrEmpty(value) ? Scn.NULL : Scn.valueOf(value);
+    }
+
+    private static Instant readTimestampAsInstant(ResultSet rs, String columnName) throws SQLException {
+        final Timestamp value = rs.getTimestamp(columnName);
+        return value == null ? null : value.toInstant();
     }
 
     @FunctionalInterface
