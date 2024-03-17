@@ -15,14 +15,12 @@ import java.sql.Clob;
 import java.sql.SQLException;
 import java.sql.Types;
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
-import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -32,6 +30,7 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.connector.oracle.logminer.UnistrHelper;
+import io.debezium.connector.oracle.util.TimestampUtils;
 import io.debezium.data.SpecialValueDecimal;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.jdbc.JdbcValueConverters;
@@ -72,27 +71,6 @@ public class OracleValueConverters extends JdbcValueConverters {
 
     private static final Pattern INTERVAL_DAY_SECOND_PATTERN = Pattern.compile("([+\\-])?(\\d+) (\\d+):(\\d+):(\\d+).(\\d+)");
 
-    private static final ZoneId GMT_ZONE_ID = ZoneId.of("GMT");
-
-    private static final DateTimeFormatter TIMESTAMP_FORMATTER = new DateTimeFormatterBuilder()
-            .parseCaseInsensitive()
-            .appendPattern("yyyy-MM-dd HH:mm:ss")
-            .optionalStart()
-            .appendPattern(".")
-            .appendFraction(ChronoField.NANO_OF_SECOND, 0, 9, false)
-            .optionalEnd()
-            .toFormatter();
-
-    private static final DateTimeFormatter TIMESTAMP_AM_PM_SHORT_FORMATTER = new DateTimeFormatterBuilder()
-            .parseCaseInsensitive()
-            .appendPattern("dd-MMM-yy hh.mm.ss")
-            .optionalStart()
-            .appendPattern(".")
-            .appendFraction(ChronoField.NANO_OF_SECOND, 0, 9, false)
-            .optionalEnd()
-            .appendPattern(" a")
-            .toFormatter(Locale.ENGLISH);
-
     private static final DateTimeFormatter TIMESTAMP_TZ_FORMATTER = new DateTimeFormatterBuilder()
             .parseCaseInsensitive()
             .appendPattern("yyyy-MM-dd HH:mm:ss")
@@ -106,9 +84,7 @@ public class OracleValueConverters extends JdbcValueConverters {
             .appendOffset("+HH:MM", "")
             .toFormatter();
 
-    private static final Pattern TO_TIMESTAMP = Pattern.compile("TO_TIMESTAMP\\('(.*)'\\)", Pattern.CASE_INSENSITIVE);
     private static final Pattern TO_TIMESTAMP_TZ = Pattern.compile("TO_TIMESTAMP_TZ\\('(.*)'\\)", Pattern.CASE_INSENSITIVE);
-    private static final Pattern TO_DATE = Pattern.compile("TO_DATE\\('(.*)',[ ]*'(.*)'\\)", Pattern.CASE_INSENSITIVE);
     private static final BigDecimal MICROSECONDS_PER_SECOND = new BigDecimal(1_000_000);
 
     private final OracleConnection connection;
@@ -669,28 +645,7 @@ public class OracleValueConverters extends JdbcValueConverters {
         if (isHexToRawFunctionCall(data)) {
             return convertHexToRawFunctionToTimestamp(data).toInstant();
         }
-
-        LocalDateTime dateTime;
-        final Matcher toTimestampMatcher = TO_TIMESTAMP.matcher(data);
-        if (toTimestampMatcher.matches()) {
-            String dateText = toTimestampMatcher.group(1);
-            if (dateText.indexOf(" AM") > 0 || dateText.indexOf(" PM") > 0) {
-                dateTime = LocalDateTime.from(TIMESTAMP_AM_PM_SHORT_FORMATTER.parse(dateText.trim()));
-            }
-            else {
-                dateTime = LocalDateTime.from(TIMESTAMP_FORMATTER.parse(dateText.trim()));
-            }
-            return dateTime.atZone(GMT_ZONE_ID).toInstant();
-        }
-
-        final Matcher toDateMatcher = TO_DATE.matcher(data);
-        if (toDateMatcher.matches()) {
-            dateTime = LocalDateTime.from(TIMESTAMP_FORMATTER.parse(toDateMatcher.group(1)));
-            return dateTime.atZone(GMT_ZONE_ID).toInstant();
-        }
-
-        // Unable to resolve
-        return null;
+        return TimestampUtils.convertTimestampNoZoneToInstant(data);
     }
 
     @Override
