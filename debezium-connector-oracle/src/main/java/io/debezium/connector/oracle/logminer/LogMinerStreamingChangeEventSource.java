@@ -5,9 +5,8 @@
  */
 package io.debezium.connector.oracle.logminer;
 
-import static io.debezium.connector.oracle.logminer.LogMinerHelper.setLogFilesForMining;
-
 import java.math.BigInteger;
+import java.sql.CallableStatement;
 import java.sql.SQLException;
 import java.text.DecimalFormat;
 import java.time.Duration;
@@ -79,9 +78,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     private final Duration archiveLogRetention;
     private final boolean archiveLogOnlyMode;
     private final String archiveDestinationName;
-    private final int logFileQueryMaxRetries;
-    private final Duration initialDelay;
-    private final Duration maxDelay;
+    private final LogFileCollector logCollector;
     private final boolean continuousMining;
 
     private Scn startScn; // startScn is the **exclusive** lower bound for mining
@@ -111,9 +108,6 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
         this.archiveLogRetention = connectorConfig.getArchiveLogRetention();
         this.archiveLogOnlyMode = connectorConfig.isArchiveLogOnlyMode();
         this.archiveDestinationName = connectorConfig.getArchiveLogDestinationName();
-        this.logFileQueryMaxRetries = connectorConfig.getMaximumNumberOfLogQueryRetries();
-        this.initialDelay = connectorConfig.getLogMiningInitialDelay();
-        this.maxDelay = connectorConfig.getLogMiningMaxDelay();
         this.currentBatchSize = connectorConfig.getLogMiningBatchSizeDefault();
         this.currentSleepTime = connectorConfig.getLogMiningSleepTimeDefault().toMillis();
         this.continuousMining = connectorConfig.isLogMiningContinuousMining();
@@ -122,6 +116,8 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
 
         this.streamingMetrics.setBatchSize(this.currentBatchSize);
         this.streamingMetrics.setSleepTime(this.currentSleepTime);
+
+        this.logCollector = new LogFileCollector(connectorConfig, jdbcConnection);
     }
 
     @Override
@@ -397,15 +393,28 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     }
 
     private void initializeRedoLogsForMining(OracleConnection connection, boolean postEndMiningSession, Scn startScn) throws SQLException {
+        if (!continuousMining) {
+            connection.removeAllLogFilesFromLogMinerSession();
+        }
+
         if ((!postEndMiningSession || !continuousMining)
                 && OracleConnectorConfig.LogMiningStrategy.CATALOG_IN_REDO.equals(strategy)) {
             buildDataDictionary(connection);
         }
+
         if (!continuousMining) {
-            currentLogFiles = setLogFilesForMining(connection, startScn, archiveLogRetention, archiveLogOnlyMode,
-                    archiveDestinationName, logFileQueryMaxRetries, initialDelay, maxDelay);
+            // Collect logs and add them to the session
+            currentLogFiles = logCollector.getLogs(startScn);
+            for (LogFile logFile : currentLogFiles) {
+                LOGGER.trace("Adding log file {} to the mining session.", logFile.getFileName());
+                String addLogFileStatement = SqlUtils.addLogFileStatement("DBMS_LOGMNR.ADDFILE", logFile.getFileName());
+                try (CallableStatement statement = connection.connection(false).prepareCall(addLogFileStatement)) {
+                    statement.execute();
+                }
+            }
             currentRedoLogSequences = getCurrentLogFileSequences(currentLogFiles);
         }
+
         updateRedoLogMetrics();
     }
 
@@ -1027,9 +1036,11 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
      * @throws SQLException if a database exception occurred
      */
     private boolean isStartScnInArchiveLogs(Scn startScn) throws SQLException {
-        List<LogFile> logs = LogMinerHelper.getLogFilesForOffsetScn(jdbcConnection, startScn, archiveLogRetention, archiveLogOnlyMode, archiveDestinationName);
+        List<LogFile> logs = logCollector.getLogs(startScn);
         return logs.stream()
-                .anyMatch(l -> l.getFirstScn().compareTo(startScn) <= 0 && l.getNextScn().compareTo(startScn) > 0 && l.getType().equals(LogFile.Type.ARCHIVE));
+                .anyMatch(l -> l.getFirstScn().compareTo(startScn) <= 0
+                        && l.getNextScn().compareTo(startScn) > 0
+                        && l.getType().equals(LogFile.Type.ARCHIVE));
     }
 
     @Override

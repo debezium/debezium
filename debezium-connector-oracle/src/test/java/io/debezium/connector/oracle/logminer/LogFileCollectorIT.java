@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.oracle;
+package io.debezium.connector.oracle.logminer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -25,40 +25,44 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
 
+import io.debezium.config.Configuration;
+import io.debezium.connector.oracle.OracleConnection;
+import io.debezium.connector.oracle.OracleConnectorConfig;
+import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
-import io.debezium.connector.oracle.logminer.LogFile;
-import io.debezium.connector.oracle.logminer.LogMinerHelper;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.util.Strings;
 import io.debezium.util.Testing;
 
 /**
- * This subclasses common OracleConnectorIT for LogMiner adaptor
+ * Integration tests for the {@link LogFileCollector} implementation.
+ *
+ * @author Chris Cranford
  */
-@SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "LogMiner specific tests")
-public class LogMinerHelperIT extends AbstractConnectorTest {
+@SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "LogMiner specific")
+public class LogFileCollectorIT extends AbstractConnectorTest {
 
     @Rule
     public final TestRule skipAdapterRule = new SkipTestDependingOnAdapterNameRule();
 
-    private static OracleConnection conn;
+    private static OracleConnection connection;
 
     @BeforeClass
     public static void beforeSuperClass() throws SQLException {
         try (OracleConnection adminConnection = TestHelper.adminConnection(true)) {
-            LogMinerHelper.removeLogFilesFromMining(adminConnection);
+            adminConnection.removeAllLogFilesFromLogMinerSession();
         }
-
-        conn = TestHelper.defaultConnection(true);
+        connection = TestHelper.defaultConnection(true);
         TestHelper.forceFlushOfRedoLogsToArchiveLogs();
     }
 
     @AfterClass
     public static void closeConnection() throws SQLException {
-        if (conn != null && conn.isConnected()) {
-            conn.close();
+        if (connection != null && connection.isConnected()) {
+            connection.close();
         }
     }
 
@@ -72,21 +76,57 @@ public class LogMinerHelperIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-3256")
     public void shouldAddCorrectLogFiles() throws Exception {
-        final int instances = getNumberOfInstances(conn);
+        final int instances = getNumberOfInstances(connection);
 
         // case 1 : oldest scn = current scn
-        Scn currentScn = conn.getCurrentScn();
-        List<LogFile> redoFiles = LogMinerHelper.getLogFilesForOffsetScn(conn, currentScn, Duration.ofHours(0L), false, null);
+        Scn currentScn = connection.getCurrentScn();
+        List<LogFile> redoFiles = getLogFileCollector(Duration.ofHours(0L), false, null).getLogs(currentScn);
         assertThat(redoFiles).hasSize(instances); // just the current redo log
 
         // case 2 : oldest scn = oldest in not cleared archive
-        List<Scn> oneDayArchivedNextScn = getOneDayArchivedLogNextScn(conn);
+        List<Scn> oneDayArchivedNextScn = getOneDayArchivedLogNextScn(connection);
         Scn oldestArchivedScn = getOldestArchivedScn(oneDayArchivedNextScn);
-        List<LogFile> files = LogMinerHelper.getLogFilesForOffsetScn(conn, oldestArchivedScn, Duration.ofHours(0L), false, null);
+        List<LogFile> files = getLogFileCollector(Duration.ofHours(0L), false, null).getLogs(oldestArchivedScn);
         assertLogFilesHaveNoGaps(instances, files, oneDayArchivedNextScn);
 
-        files = LogMinerHelper.getLogFilesForOffsetScn(conn, oldestArchivedScn.subtract(Scn.valueOf(1L)), Duration.ofHours(0L), false, null);
+        files = getLogFileCollector(Duration.ofHours(0L), false, null).getLogs(oldestArchivedScn.subtract(Scn.ONE));
         assertLogFilesHaveNoGaps(instances, files, oneDayArchivedNextScn);
+    }
+
+    @Test
+    @FixFor("DBZ-3561")
+    public void shouldOnlyReturnArchiveLogs() throws Exception {
+        List<LogFile> files = getLogFileCollector(Duration.ofHours(0L), true, null).getLogs(Scn.valueOf(0));
+        files.forEach(file -> assertThat(file.getType()).isEqualTo(LogFile.Type.ARCHIVE));
+    }
+
+    @Test
+    @FixFor("DBZ-3661")
+    public void shouldGetArchiveLogsWithDestinationSpecified() throws Exception {
+        // First force all redo logs to be flushed to archives to guarantee there will be some.
+        try (OracleConnection admin = TestHelper.adminConnection(true)) {
+            admin.execute("ALTER SYSTEM SWITCH ALL LOGFILE");
+            // Wait 5 seconds to give Oracle time to toggle the ARC process
+            Thread.sleep(5000);
+        }
+
+        // Test environment always has 1 destination at LOG_ARCHIVE_DEST_1
+        List<LogFile> files = getLogFileCollector(Duration.ofHours(1L), true, "LOG_ARCHIVE_DEST_1").getLogs(Scn.valueOf(0));
+        assertThat(files.isEmpty()).isFalse();
+        files.forEach(file -> assertThat(file.getType()).isEqualTo(LogFile.Type.ARCHIVE));
+    }
+
+    private LogFileCollector getLogFileCollector(Duration logRetention, boolean archiveLogsOnly, String destinationName) {
+        Configuration.Builder builder = TestHelper.defaultConfig()
+                .with(OracleConnectorConfig.ARCHIVE_LOG_HOURS, logRetention.toHours())
+                .with(OracleConnectorConfig.LOG_MINING_ARCHIVE_LOG_ONLY_MODE, Boolean.toString(archiveLogsOnly));
+
+        if (!Strings.isNullOrBlank(destinationName)) {
+            builder = builder.with(OracleConnectorConfig.ARCHIVE_DESTINATION_NAME, destinationName);
+        }
+
+        final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(builder.build());
+        return new LogFileCollector(connectorConfig, connection);
     }
 
     private void assertLogFilesHaveNoGaps(int instances, List<LogFile> logFiles, List<Scn> scnList) {
@@ -113,61 +153,17 @@ public class LogMinerHelperIT extends AbstractConnectorTest {
         }
     }
 
-    @Test
-    @FixFor("DBZ-3256")
-    public void shouldSetCorrectLogFiles() throws Exception {
-        List<Scn> oneDayArchivedNextScn = getOneDayArchivedLogNextScn(conn);
-        Scn oldestArchivedScn = getOldestArchivedScn(oneDayArchivedNextScn);
-        LogMinerHelper.setLogFilesForMining(conn, oldestArchivedScn, Duration.ofHours(0L), false, null, 5, Duration.ofSeconds(1), Duration.ofSeconds(60));
-
-        List<LogFile> files = LogMinerHelper.getLogFilesForOffsetScn(conn, oldestArchivedScn, Duration.ofHours(0L), false, null);
-        assertThat(files.size()).isEqualTo(getNumberOfAddedLogFiles(conn));
-    }
-
-    @Test
-    @FixFor("DBZ-3561")
-    public void shouldOnlyReturnArchiveLogs() throws Exception {
-        List<LogFile> files = LogMinerHelper.getLogFilesForOffsetScn(conn, Scn.valueOf(0), Duration.ofHours(0L), true, null);
-        files.forEach(file -> assertThat(file.getType()).isEqualTo(LogFile.Type.ARCHIVE));
-    }
-
-    @Test
-    @FixFor("DBZ-3661")
-    public void shouldGetArchiveLogsWithDestinationSpecified() throws Exception {
-        // First force all redo logs to be flushed to archives to guarantee there will be some.
-        try (OracleConnection admin = TestHelper.adminConnection(true)) {
-            admin.execute("ALTER SYSTEM SWITCH ALL LOGFILE");
-            // Wait 5 seconds to give Oracle time to toggle the ARC process
-            Thread.sleep(5000);
-        }
-
-        // Test environment always has 1 destination at LOG_ARCHIVE_DEST_1
-        List<LogFile> files = LogMinerHelper.getLogFilesForOffsetScn(conn, Scn.valueOf(0), Duration.ofHours(1), true, "LOG_ARCHIVE_DEST_1");
-        assertThat(files.size()).isGreaterThan(0);
-        files.forEach(file -> assertThat(file.getType()).isEqualTo(LogFile.Type.ARCHIVE));
-    }
-
     private Scn getOldestArchivedScn(List<Scn> oneDayArchivedNextScn) {
         return oneDayArchivedNextScn.stream().min(Scn::compareTo).orElse(Scn.NULL);
-    }
-
-    private static int getNumberOfAddedLogFiles(OracleConnection conn) throws SQLException {
-        int counter = 0;
-        try (PreparedStatement ps = conn.connection(false).prepareStatement("select * from V$LOGMNR_LOGS");
-                ResultSet result = ps.executeQuery()) {
-            while (result.next()) {
-                counter++;
-            }
-        }
-        return counter;
     }
 
     private List<Scn> getOneDayArchivedLogNextScn(OracleConnection conn) throws SQLException {
         List<Scn> allArchivedNextScn = new ArrayList<>();
         try (
-                PreparedStatement st = conn.connection(false).prepareStatement("SELECT NAME AS FILE_NAME, NEXT_CHANGE# AS NEXT_CHANGE FROM V$ARCHIVED_LOG " +
-                        " WHERE NAME IS NOT NULL AND FIRST_TIME >= SYSDATE - 1 AND ARCHIVED = 'YES' " +
-                        " AND STATUS = 'A' ORDER BY 2");
+                PreparedStatement st = conn.connection(false).prepareStatement(
+                        "SELECT NAME AS FILE_NAME, NEXT_CHANGE# AS NEXT_CHANGE FROM V$ARCHIVED_LOG " +
+                                " WHERE NAME IS NOT NULL AND FIRST_TIME >= SYSDATE - 1 AND ARCHIVED = 'YES' " +
+                                " AND STATUS = 'A' ORDER BY 2");
                 ResultSet rs = st.executeQuery()) {
             while (rs.next()) {
                 allArchivedNextScn.add(Scn.valueOf(rs.getString(2)));

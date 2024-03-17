@@ -3,28 +3,50 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.oracle.logminer.processor;
+package io.debezium.connector.oracle.logminer;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
 
 import java.math.BigInteger;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestRule;
+import org.mockito.Mockito;
 
+import io.debezium.config.Configuration;
+import io.debezium.connector.oracle.OracleConnection;
+import io.debezium.connector.oracle.OracleConnectorConfig;
+import io.debezium.connector.oracle.RedoThreadState;
+import io.debezium.connector.oracle.RedoThreadState.RedoThread;
 import io.debezium.connector.oracle.Scn;
-import io.debezium.connector.oracle.logminer.LogFile;
-import io.debezium.connector.oracle.logminer.LogMinerHelper;
+import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
+import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
+import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.jdbc.JdbcConnection;
 
 /**
- * Unit tests for the {@link LogMinerHelper} class.
+ * Unit tests for the {@link LogFileCollector} class.
  *
  * @author Chris Cranford
  */
-public class LogMinerHelperTest extends AbstractConnectorTest {
+@SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER)
+public class LogFileCollectorTest {
+
+    @Rule
+    public TestRule skipRule = new SkipTestDependingOnAdapterNameRule();
+
+    private int currentQueryRow;
 
     @Test
     public void testStandaloneLogStateWithOneThreadArchiveLogGap() throws Exception {
@@ -33,10 +55,12 @@ public class LogMinerHelperTest extends AbstractConnectorTest {
         // ARC1 - 080 to 090 - SEQ2
         // SEQ3 for ARC1 is missing
         // Expectation: Return false, wait needed.
-        List<LogFile> files = new ArrayList<>();
+        final List<LogFile> files = new ArrayList<>();
         files.add(createRedoLog("redo1.log", 100, 4, 1));
         files.add(createArchiveLog("archive1.log", 80, 90, 2, 1));
-        assertThat(LogMinerHelper.hasLogFilesStartingBeforeOrAtScn(files, Scn.valueOf(101))).isFalse();
+
+        final RedoThreadState state = getSingleThreadOpenState(Scn.valueOf(50), Scn.valueOf(101));
+        assertThat(getLogFileCollector(state).isLogFileListConsistent(Scn.valueOf(101), files, state)).isFalse();
     }
 
     @Test
@@ -46,11 +70,13 @@ public class LogMinerHelperTest extends AbstractConnectorTest {
         // ARC1 - 080 to 090 - SEQ2
         // ARC1 - 090 to 100 - SEQ3
         // Expectation: Return true, no wait needed.
-        List<LogFile> files = new ArrayList<>();
+        final List<LogFile> files = new ArrayList<>();
         files.add(createRedoLog("redo1.log", 100, 4, 1));
         files.add(createArchiveLog("archive1.log", 80, 90, 2, 1));
         files.add(createArchiveLog("archive0.log", 90, 100, 3, 1));
-        assertThat(LogMinerHelper.hasLogFilesStartingBeforeOrAtScn(files, Scn.valueOf(101))).isTrue();
+
+        final RedoThreadState state = getSingleThreadOpenState(Scn.valueOf(50), Scn.valueOf(101));
+        assertThat(getLogFileCollector(state).isLogFileListConsistent(Scn.valueOf(101), files, state)).isTrue();
     }
 
     @Test
@@ -58,9 +84,11 @@ public class LogMinerHelperTest extends AbstractConnectorTest {
         // The test scenario is (no gaps, just online redo logs)
         // ARC1 - 100 to NOW - SEQ4
         // Expectation: Return true, no wait needed.
-        List<LogFile> files = new ArrayList<>();
+        final List<LogFile> files = new ArrayList<>();
         files.add(createRedoLog("redo1.log", 100, 4, 1));
-        assertThat(LogMinerHelper.hasLogFilesStartingBeforeOrAtScn(files, Scn.valueOf(101))).isTrue();
+
+        final RedoThreadState state = getSingleThreadOpenState(Scn.valueOf(50), Scn.valueOf(101));
+        assertThat(getLogFileCollector(state).isLogFileListConsistent(Scn.valueOf(101), files, state)).isTrue();
     }
 
     @Test
@@ -69,10 +97,12 @@ public class LogMinerHelperTest extends AbstractConnectorTest {
         // ARC1 - 100 to NOW - SEQ4
         // ARC1 - 080 to 090 - SEQ2
         // Expectation: Return true, no wait needed.
-        List<LogFile> files = new ArrayList<>();
+        final List<LogFile> files = new ArrayList<>();
         files.add(createRedoLog("redo1.log", 100, 4, 1));
         files.add(createArchiveLog("archive1.log", 80, 90, 3, 1));
-        assertThat(LogMinerHelper.hasLogFilesStartingBeforeOrAtScn(files, Scn.valueOf(101))).isTrue();
+
+        final RedoThreadState state = getSingleThreadOpenState(Scn.valueOf(50), Scn.valueOf(101));
+        assertThat(getLogFileCollector(state).isLogFileListConsistent(Scn.valueOf(101), files, state)).isTrue();
     }
 
     @Test
@@ -83,11 +113,13 @@ public class LogMinerHelperTest extends AbstractConnectorTest {
         // ARC1 - 080 to 090 - SEQ2
         // SEQ3 for ARC1 is missing
         // Expectation: Return false, wait needed.
-        List<LogFile> files = new ArrayList<>();
+        final List<LogFile> files = new ArrayList<>();
         files.add(createRedoLog("redo1.log", 100, 4, 1));
         files.add(createRedoLog("redo2.log", 80, 1, 2));
         files.add(createArchiveLog("archive1.log", 80, 90, 2, 1));
-        assertThat(LogMinerHelper.hasLogFilesStartingBeforeOrAtScn(files, Scn.valueOf(101))).isFalse();
+
+        final RedoThreadState state = getSingleThreadOpenState(Scn.valueOf(50), Scn.valueOf(101));
+        assertThat(getLogFileCollector(state).isLogFileListConsistent(Scn.valueOf(101), files, state)).isFalse();
     }
 
     @Test
@@ -98,12 +130,14 @@ public class LogMinerHelperTest extends AbstractConnectorTest {
         // ARC1 - 080 to 090 - SEQ2
         // ARC1 - 090 to 100 - SEQ3
         // Expectation: Return true, no wait needed.
-        List<LogFile> files = new ArrayList<>();
+        final List<LogFile> files = new ArrayList<>();
         files.add(createRedoLog("redo1.log", 100, 4, 1));
         files.add(createRedoLog("redo2.log", 80, 1, 2));
         files.add(createArchiveLog("archive1.log", 80, 90, 2, 1));
         files.add(createArchiveLog("archive0.log", 90, 100, 3, 1));
-        assertThat(LogMinerHelper.hasLogFilesStartingBeforeOrAtScn(files, Scn.valueOf(101))).isTrue();
+
+        final RedoThreadState state = getTwoThreadOpenState(Scn.valueOf(50), Scn.valueOf(101), Scn.valueOf(50), Scn.valueOf(95));
+        assertThat(getLogFileCollector(state).isLogFileListConsistent(Scn.valueOf(101), files, state)).isTrue();
     }
 
     @Test
@@ -112,10 +146,12 @@ public class LogMinerHelperTest extends AbstractConnectorTest {
         // ARC1 - 100 to NOW - SEQ4
         // ARC2 - 090 to NOW - SEQ3
         // Expectation: Return true, no wait needed.
-        List<LogFile> files = new ArrayList<>();
+        final List<LogFile> files = new ArrayList<>();
         files.add(createRedoLog("redo1.log", 100, 4, 1));
         files.add(createRedoLog("redo2.log", 90, 3, 2));
-        assertThat(LogMinerHelper.hasLogFilesStartingBeforeOrAtScn(files, Scn.valueOf(101))).isTrue();
+
+        final RedoThreadState state = getTwoThreadOpenState(Scn.valueOf(50), Scn.valueOf(101), Scn.valueOf(50), Scn.valueOf(95));
+        assertThat(getLogFileCollector(state).isLogFileListConsistent(Scn.valueOf(101), files, state)).isTrue();
     }
 
     @Test
@@ -127,11 +163,13 @@ public class LogMinerHelperTest extends AbstractConnectorTest {
         // Expectation: Return true, no wait needed.
         // NOTE: Oracle RAC sequences are independent across redo thread, so its perfectly valid
         // for two redo threads to reuse the same sequence value.
-        List<LogFile> files = new ArrayList<>();
+        final List<LogFile> files = new ArrayList<>();
         files.add(createRedoLog("redo1.log", 100, 4, 1));
         files.add(createRedoLog("redo2.log", 90, 3, 2));
         files.add(createArchiveLog("archive1.log", 80, 90, 3, 1));
-        assertThat(LogMinerHelper.hasLogFilesStartingBeforeOrAtScn(files, Scn.valueOf(101))).isTrue();
+
+        final RedoThreadState state = getTwoThreadOpenState(Scn.valueOf(50), Scn.valueOf(101), Scn.valueOf(50), Scn.valueOf(95));
+        assertThat(getLogFileCollector(state).isLogFileListConsistent(Scn.valueOf(101), files, state)).isTrue();
     }
 
     @Test
@@ -144,18 +182,20 @@ public class LogMinerHelperTest extends AbstractConnectorTest {
         // Expectation: Return true, no wait needed.
         // NOTE: Oracle RAC sequences are independent across redo thread, so its perfectly valid
         // for two redo threads to reuse the same sequence value.
-        List<LogFile> files = new ArrayList<>();
+        final List<LogFile> files = new ArrayList<>();
         files.add(createRedoLog("redo1.log", 100, 4, 1));
         files.add(createRedoLog("redo2.log", 90, 3, 2));
         files.add(createArchiveLog("archive1.log", 80, 90, 3, 1));
         files.add(createArchiveLog("archive2.log", 70, 80, 2, 2));
-        assertThat(LogMinerHelper.hasLogFilesStartingBeforeOrAtScn(files, Scn.valueOf(101))).isTrue();
+
+        final RedoThreadState state = getTwoThreadOpenState(Scn.valueOf(50), Scn.valueOf(101), Scn.valueOf(50), Scn.valueOf(95));
+        assertThat(getLogFileCollector(state).isLogFileListConsistent(Scn.valueOf(101), files, state)).isTrue();
     }
 
     @Test
     @FixFor("DBZ-7158")
     public void testOracleRacWithRealDataRedoThreadsWithIndependentSequenceRanges() throws Exception {
-        List<LogFile> files = new ArrayList<>();
+        final List<LogFile> files = new ArrayList<>();
         files.add(createArchiveLog("thread_3_seq_56768.164992.1152789389", 10403071210665L, 10403071900071L, 56768, 3));
         files.add(createArchiveLog("thread_3_seq_56769.148871.1152791329", 10403071900071L, 10403072997229L, 56769, 3));
         files.add(createRedoLog("group_303.8411.1106167689", 10403072997229L, 56770, 3));
@@ -167,13 +207,15 @@ public class LogMinerHelperTest extends AbstractConnectorTest {
         files.add(createRedoLog("group_101.8391.1106167659", 10326919867747L, 10326919867788L, 83112, 1, false));
         files.add(createRedoLog("group_102.8392.1106167661", 10326919867788L, 10326919910390L, 83113, 1, false));
         files.add(createRedoLog("group_103.8393.1106167663", 10326919910390L, 10326919923663L, 83114, 1, false));
-        assertThat(LogMinerHelper.hasLogFilesStartingBeforeOrAtScn(files, Scn.valueOf("10403071210665"))).isTrue();
+
+        final RedoThreadState state = getFourThreadOpenState(Scn.valueOf(10326919867700L), Scn.valueOf(10326919867700L));
+        assertThat(getLogFileCollector(state).isLogFileListConsistent(Scn.valueOf("10403071210665"), files, state)).isTrue();
     }
 
     @Test
     @FixFor("DBZ-7345")
     public void testOracleLogDeduplicationDoesNotCreateLogSequenceGaps() throws Exception {
-        List<LogFile> archiveLogs = new ArrayList<>();
+        final List<LogFile> archiveLogs = new ArrayList<>();
         archiveLogs.add(createArchiveLog("thread_2_seq_19.102432.1157630513", 10420065077951L, 10420065814784L, 19, 2));
         archiveLogs.add(createArchiveLog("thread_2_seq_20.114925.1157630517", 10420065814784L, 10420065815599L, 20, 2));
         archiveLogs.add(createArchiveLog("thread_2_seq_21.53484.1157630833", 10420065815599L, 10420066540859L, 21, 2));
@@ -1394,14 +1436,336 @@ public class LogMinerHelperTest extends AbstractConnectorTest {
         archiveLogs.add(createArchiveLog("thread_4_seq_402.100157.1157718833", 10420281275115L, 10420281276189L, 402, 4));
         archiveLogs.add(createArchiveLog("thread_4_seq_403.138149.1157718833", 10420281276189L, 10420281276471L, 403, 4));
 
-        List<LogFile> redoLogs = new ArrayList<>();
+        final List<LogFile> redoLogs = new ArrayList<>();
         redoLogs.add(createRedoLog("group_200.5681.1128514009", 10420281276306L, 241, 2));
         redoLogs.add(createRedoLog("group_304.5698.1128514231", 10420281277224L, 389, 3));
         redoLogs.add(createRedoLog("group_103.5671.1128513879", 10420281277309L, 244, 1));
         redoLogs.add(createRedoLog("group_401.5708.1128514359", 10420281276471L, 404, 4));
 
-        List<LogFile> files = LogMinerHelper.deduplicateLogFiles(archiveLogs, redoLogs);
-        assertThat(LogMinerHelper.hasLogFilesStartingBeforeOrAtScn(files, Scn.valueOf(10420281277315L))).isTrue();
+        final RedoThreadState state = getFourThreadOpenState(Scn.valueOf(10420281277314L), Scn.valueOf(10420281277314L));
+
+        final LogFileCollector logFileCollector = getLogFileCollector(state);
+        final List<LogFile> files = logFileCollector.deduplicateLogFiles(archiveLogs, redoLogs);
+        assertThat(logFileCollector.isLogFileListConsistent(Scn.valueOf(10420281277315L), files, state)).isTrue();
+    }
+
+    @Test
+    @FixFor("DBZ-2855")
+    public void testLogsWithRegularScns() throws Exception {
+        final List<LogFile> files = new ArrayList<>();
+        files.add(createArchiveLog("logfile1", 103400, 103700, 1, 1));
+        files.add(createRedoLog("logfile2", 103700, 104000, 2, 1));
+
+        final RedoThreadState redoThreadState = getSingleThreadOpenState(Scn.valueOf(1L), Scn.valueOf(104000));
+
+        final Configuration config = getDefaultConfig().build();
+        final OracleConnection connection = getOracleConnectionMock(redoThreadState, files);
+        final LogFileCollector collector = getLogFileCollector(config, connection);
+
+        final List<LogFile> result = collector.getLogs(Scn.valueOf(10));
+        assertThat(result).hasSize(2);
+        assertThat(getLogFileWithName(result, "logfile1").getNextScn()).isEqualTo(Scn.valueOf(103700));
+        assertThat(getLogFileWithName(result, "logfile2").getNextScn()).isEqualTo(Scn.MAX);
+    }
+
+    @Test
+    @FixFor("DBZ-2855")
+    public void testExcludeLogsBeforeOffsetScn() throws Exception {
+        final List<LogFile> files = new ArrayList<>();
+        files.add(createArchiveLog("logfile1", 103300, 103400, 1, 1));
+        files.add(createArchiveLog("logfile3", 103400, 103700, 2, 1));
+        files.add(createRedoLog("logfile2", 103700, 104000, 3, 1));
+
+        final RedoThreadState redoThreadState = getSingleThreadOpenState(Scn.valueOf(1L), Scn.valueOf(104000));
+
+        final Configuration config = getDefaultConfig().build();
+        final OracleConnection connection = getOracleConnectionMock(redoThreadState, files);
+        final LogFileCollector collector = getLogFileCollector(config, connection);
+
+        final List<LogFile> result = collector.getLogs(Scn.valueOf(103401));
+        assertThat(result).hasSize(2);
+        assertThat(getLogFileWithName(result, "logfile1")).isNull();
+    }
+
+    @Test
+    @FixFor("DBZ-2855")
+    public void testNullsHandledAsMaxScn() throws Exception {
+        final List<LogFile> files = new ArrayList<>();
+        files.add(createArchiveLog("logfile1", 103300, 103400, 1, 1));
+        files.add(createArchiveLog("logfile3", 103400, 103700, 2, 1));
+        files.add(createRedoLogWithNullEndScn("logfile2", 103700, 3, 1));
+
+        final RedoThreadState redoThreadState = getSingleThreadOpenState(Scn.valueOf(1L), Scn.valueOf(104000));
+
+        final Configuration config = getDefaultConfig().build();
+        final OracleConnection connection = getOracleConnectionMock(redoThreadState, files);
+        final LogFileCollector collector = getLogFileCollector(config, connection);
+
+        final List<LogFile> result = collector.getLogs(Scn.valueOf(600));
+        assertThat(result).hasSize(3);
+        assertThat(getLogFileWithName(result, "logfile2").getNextScn()).isEqualTo(Scn.MAX);
+    }
+
+    @Test
+    @FixFor("DBZ-2855")
+    public void testCanHandleMaxScn() throws Exception {
+        final List<LogFile> files = new ArrayList<>();
+        files.add(createArchiveLog("logfile1", 103300, 103400, 1, 1));
+        files.add(createArchiveLog("logfile3", 103400, 103700, 2, 1));
+        files.add(createRedoLog("logfile2", "103700", "18446744073709551615", 3, 1));
+
+        final RedoThreadState redoThreadState = getSingleThreadOpenState(Scn.valueOf(1L), Scn.valueOf(104000));
+
+        final Configuration config = getDefaultConfig().build();
+        final OracleConnection connection = getOracleConnectionMock(redoThreadState, files);
+        final LogFileCollector collector = getLogFileCollector(config, connection);
+
+        final List<LogFile> result = collector.getLogs(Scn.valueOf(600));
+        assertThat(result).hasSize(3);
+        assertThat(getLogFileWithName(result, "logfile2").getNextScn()).isEqualTo(Scn.MAX);
+    }
+
+    @Test
+    @FixFor("DBZ-2855")
+    public void testCanHandleVeryLargeScnValuesInNonCurrentRedoLog() throws Exception {
+        final String largeScnValue = "18446744073709551615";
+
+        final List<LogFile> files = new ArrayList<>();
+        files.add(createArchiveLog("logfile1", 103300, 103400, 1, 1));
+        files.add(createArchiveLog("logfile3", 103400, 103700, 2, 1));
+        files.add(createRedoLog("logfile2", "103700", largeScnValue, 3, false, 1));
+
+        final RedoThreadState redoThreadState = getSingleThreadOpenState(Scn.valueOf(1L), Scn.valueOf(104000));
+
+        final Configuration config = getDefaultConfig().build();
+        final OracleConnection connection = getOracleConnectionMock(redoThreadState, files);
+        final LogFileCollector collector = getLogFileCollector(config, connection);
+
+        final List<LogFile> result = collector.getLogs(Scn.valueOf(600));
+        assertThat(result).hasSize(3);
+        assertThat(getLogFileWithName(result, "logfile2").getNextScn()).isEqualTo(Scn.valueOf(largeScnValue));
+    }
+
+    @Test
+    @FixFor("DBZ-7389")
+    public void testRacMultipleNodesNoThreadStateChanges() throws Exception {
+        // Tests mining with 2 nodes, status/enabled state remains unchanged
+        RedoThreadState redoThreadState = initialMultiNodeRedoThreadState();
+
+        final List<LogFile> files = new ArrayList<>();
+        files.add(createArchiveLog("archive.log", 1, 999, 1, 1));
+        files.add(createRedoLog("redo01.log", 999, 2, 1));
+        files.add(createRedoLog("redo02.log", 50, 2, 2));
+
+        final Configuration config = getDefaultConfig().build();
+        final OracleConnection connection = getOracleConnectionMock(redoThreadState);
+
+        LogFileCollector collector = setCollectorLogFiles(getLogFileCollector(config, connection), files);
+
+        // Since no thread state changes and mining from SCN 1, we should get the same log files
+        assertThat(collector.getLogs(Scn.ONE)).isEqualTo(files);
+
+        // Bump redo thread state
+        // No redo thread state changes, no checkpoints or log switches
+        redoThreadState = advanceRedoThreadState(redoThreadState, 1, 10, false);
+        redoThreadState = advanceRedoThreadState(redoThreadState, 2, 10, false);
+        setConnectionRedoThreadState(connection, redoThreadState);
+
+        // Should get the same logs even after state advancement
+        assertThat(collector.getLogs(Scn.ONE)).isEqualTo(files);
+    }
+
+    @Test
+    @FixFor("DBZ-7389")
+    public void testRacMultipleNodesOneThreadChangesToClosed() throws Exception {
+        // Tests mining with 2 nodes, status of one node changes to closed
+        RedoThreadState redoThreadState = initialMultiNodeRedoThreadState();
+
+        // One archive for node 1, node 2 has no archive logs, only redo
+        final List<LogFile> files = new ArrayList<>();
+        files.add(createArchiveLog("archive.log", 1, 999, 1, 1));
+        files.add(createRedoLog("redo01.log", 999, 2, 1));
+        files.add(createRedoLog("redo02.log", 50, 2, 2));
+
+        final Configuration config = getDefaultConfig().build();
+        final OracleConnection connection = getOracleConnectionMock(redoThreadState);
+
+        LogFileCollector collector = setCollectorLogFiles(getLogFileCollector(config, connection), files);
+
+        // Since no thread state changes yet, we should get the same logs
+        assertThat(collector.getLogs(Scn.ONE)).isEqualTo(files);
+
+        // Transition redo thread 1 to CLOSED (offline)
+        redoThreadState = transitionRedoThreadToOffline(redoThreadState, 1, 1);
+        setConnectionRedoThreadState(connection, redoThreadState);
+
+        // Since redo thread 1 transitioned from OPEN to CLOSED; this causes a checkpoint.
+        // A checkpoint causes a log switch, so logs should reflect this change.
+        files.clear();
+        files.add(createArchiveLog("archive1.log", 1, 999, 1, 1));
+        files.add(createArchiveLog("archive2.log", 999, 1102, 2, 1));
+        files.add(createRedoLog("redo01.log", 1102, 3, 1));
+        files.add(createRedoLog("redo02.log", 50, 2, 2));
+        collector = setCollectorLogFiles(collector, files);
+
+        assertThat(collector.getLogs(Scn.ONE)).isEqualTo(files);
+    }
+
+    @Test
+    @FixFor("DBZ-7389")
+    public void testRacMultipleNodesOneThreadChangesToOpen() throws Exception {
+        // Tests mining with 2 nodes, status of one node changes from closed to open
+        RedoThreadState redoThreadState = initialMultiNodeRedoThreadState();
+        redoThreadState = transitionRedoThreadToOffline(redoThreadState, 1, 0);
+
+        // One archive for node 1, node 2 has no archive logs, only redo
+        final List<LogFile> files = new ArrayList<>();
+        files.add(createArchiveLog("archive.log", 1, 999, 1, 1));
+        files.add(createRedoLog("redo01.log", 999, 2, 1));
+        files.add(createRedoLog("redo02.log", 50, 2, 2));
+
+        final Configuration config = getDefaultConfig().build();
+        final OracleConnection connection = getOracleConnectionMock(redoThreadState);
+
+        LogFileCollector collector = setCollectorLogFiles(getLogFileCollector(config, connection), files);
+
+        // Since no thread state changes yet, we should get the same logs.
+        assertThat(collector.getLogs(Scn.ONE)).isEqualTo(files);
+
+        // Transition node 1 to OPEN (online)
+        redoThreadState = transitionRedoThreadToOnline(redoThreadState, 1);
+        setConnectionRedoThreadState(connection, redoThreadState);
+
+        // Since redo thread 1 transitioned from CLOSED to OPEN; this causes a checkpoint.
+        // A checkpoint causes a log switch, so logs should reflect this change.
+        files.clear();
+        files.add(createArchiveLog("archive1.log", 1, 999, 1, 1));
+        files.add(createArchiveLog("archive2.log", 999, 1102, 2, 1));
+        files.add(createRedoLog("redo01.log", 1102, 3, 1));
+        files.add(createRedoLog("redo02.log", 50, 2, 2));
+        collector = setCollectorLogFiles(collector, files);
+
+        assertThat(collector.getLogs(Scn.ONE)).isEqualTo(files);
+    }
+
+    @Test
+    @FixFor("DBZ-7389")
+    public void testRacMultipleNodesOpenedAndAddNewNodeInClosedStateEnabled() throws Exception {
+        // Tests mining with 2 nodes, add a new node that is in closed state.
+        RedoThreadState redoThreadState = initialMultiNodeRedoThreadState();
+
+        // One archive for node 1, node 2 has no archive logs, only redo
+        final List<LogFile> files = new ArrayList<>();
+        files.add(createArchiveLog("archive.log", 1, 999, 1, 1));
+        files.add(createRedoLog("redo01.log", 999, 2, 1));
+        files.add(createRedoLog("redo02.log", 50, 2, 2));
+
+        final Configuration config = getDefaultConfig().build();
+        final OracleConnection connection = getOracleConnectionMock(redoThreadState);
+
+        LogFileCollector collector = setCollectorLogFiles(getLogFileCollector(config, connection), files);
+
+        // Since no thread state changes yet, we should get the same logs.
+        assertThat(collector.getLogs(Scn.ONE)).isEqualTo(files);
+
+        // Add new redo thread 3 in CLOSED state
+        RedoThreadState.Builder builder = duplicateState(redoThreadState);
+        redoThreadState = builder.thread()
+                // Node 3
+                .threadId(3)
+                .status("CLOSED")
+                .enabled("PUBLIC")
+                .logGroups(2L)
+                .instanceName("ORCLCDB")
+                .openTime(Instant.now().minus(1, ChronoUnit.DAYS))
+                .currentGroupNumber(1L)
+                .currentSequenceNumber(1L)
+                .checkpointScn(Scn.valueOf(1000))
+                .checkpointTime(Instant.now().minus(5, ChronoUnit.MINUTES))
+                .enabledScn(Scn.valueOf(1000))
+                .enabledTime(Instant.now().minus(1, ChronoUnit.DAYS).plus(1, ChronoUnit.HOURS))
+                .disabledScn(Scn.valueOf(0))
+                .disabledTime(Instant.now())
+                .lastRedoSequenceNumber(1L)
+                .lastRedoBlock(1024L)
+                .lastRedoScn(Scn.valueOf(1100))
+                .lastRedoTime(Instant.now().minus(1, ChronoUnit.MINUTES))
+                .conId(0L)
+                .build()
+                .build();
+        setConnectionRedoThreadState(connection, redoThreadState);
+
+        // With the addition of redo thread 3, a checkpoint will happen such that there is some logs
+        // that get created for the redo thread upon start.
+        files.clear();
+        files.add(createArchiveLog("archive1.log", 1, 999, 1, 1));
+        files.add(createArchiveLog("archive2.log", 999, 1102, 2, 1));
+        files.add(createRedoLog("redo01.log", 1102, 3, 1));
+        files.add(createRedoLog("redo02.log", 50, 2, 2));
+        files.add(createRedoLog("redo03.log", 1000, 4, 3));
+        collector = setCollectorLogFiles(collector, files);
+
+        assertThat(collector.getLogs(Scn.ONE)).isEqualTo(files);
+    }
+
+    @Test
+    @FixFor("DBZ-7389")
+    public void testRacMultipleNodesOpenedAndAddNewNodeInOpened() throws Exception {
+        // Tests mining with 2 nodes, add a new node that is in closed state.
+        RedoThreadState redoThreadState = initialMultiNodeRedoThreadState();
+
+        // One archive for node 1, node 2 has no archive logs, only redo
+        final List<LogFile> files = new ArrayList<>();
+        files.add(createArchiveLog("archive.log", 1, 999, 1, 1));
+        files.add(createRedoLog("redo01.log", 999, 2, 1));
+        files.add(createRedoLog("redo02.log", 50, 2, 2));
+
+        final Configuration config = getDefaultConfig().build();
+        final OracleConnection connection = getOracleConnectionMock(redoThreadState);
+
+        LogFileCollector collector = setCollectorLogFiles(getLogFileCollector(config, connection), files);
+
+        // Since no thread state changes yet, we should get the same logs.
+        assertThat(collector.getLogs(Scn.ONE)).isEqualTo(files);
+
+        // Add new redo thread 3 in CLOSED state
+        RedoThreadState.Builder builder = duplicateState(redoThreadState);
+        redoThreadState = builder.thread()
+                // Node 3
+                .threadId(3)
+                .status("OPEN")
+                .enabled("PUBLIC")
+                .logGroups(2L)
+                .instanceName("ORCLCDB")
+                .openTime(Instant.now().minus(1, ChronoUnit.DAYS))
+                .currentGroupNumber(1L)
+                .currentSequenceNumber(1L)
+                .checkpointScn(Scn.valueOf(1000))
+                .checkpointTime(Instant.now().minus(5, ChronoUnit.MINUTES))
+                .enabledScn(Scn.valueOf(500))
+                .enabledTime(Instant.now().minus(1, ChronoUnit.DAYS).plus(1, ChronoUnit.HOURS))
+                .disabledScn(Scn.valueOf(0))
+                .disabledTime(null)
+                .lastRedoSequenceNumber(1L)
+                .lastRedoBlock(1024L)
+                .lastRedoScn(Scn.valueOf(1100))
+                .lastRedoTime(Instant.now().minus(1, ChronoUnit.MINUTES))
+                .conId(0L)
+                .build()
+                .build();
+        setConnectionRedoThreadState(connection, redoThreadState);
+
+        // With the addition of redo thread 3, a checkpoint will happen such that there is some logs
+        // that get created for the redo thread upon start.
+        files.clear();
+        files.add(createArchiveLog("archive1.log", 1, 999, 1, 1));
+        files.add(createArchiveLog("archive2.log", 999, 1102, 2, 1));
+        files.add(createRedoLog("redo01.log", 1102, 3, 1));
+        files.add(createRedoLog("redo02.log", 50, 2, 2));
+        files.add(createRedoLog("redo03.log", 1100, 4, 3));
+        collector = setCollectorLogFiles(collector, files);
+
+        assertThat(collector.getLogs(Scn.ONE)).isEqualTo(files);
     }
 
     private static LogFile createRedoLog(String name, long startScn, int sequence, int threadId) {
@@ -1412,9 +1776,21 @@ public class LogMinerHelperTest extends AbstractConnectorTest {
         return createRedoLog(name, startScn, endScn, sequence, threadId, true);
     }
 
+    private static LogFile createRedoLog(String name, String startScn, String endScn, int sequence, int threadId) {
+        return createRedoLog(name, startScn, endScn, sequence, true, threadId);
+    }
+
+    private static LogFile createRedoLog(String name, String startScn, String endScn, int sequence, boolean current, int threadId) {
+        return new LogFile(name, Scn.valueOf(startScn), Scn.valueOf(endScn), BigInteger.valueOf(sequence), LogFile.Type.REDO, current, threadId);
+    }
+
     private static LogFile createRedoLog(String name, long startScn, long endScn, int sequence, int threadId, boolean current) {
-        return new LogFile(name, Scn.valueOf(startScn), Scn.valueOf(Long.MAX_VALUE),
+        return new LogFile(name, Scn.valueOf(startScn), Scn.valueOf(endScn),
                 BigInteger.valueOf(sequence), LogFile.Type.REDO, current, threadId);
+    }
+
+    private static LogFile createRedoLogWithNullEndScn(String name, long startScn, int sequence, int threadId) {
+        return new LogFile(name, Scn.valueOf(startScn), null, BigInteger.valueOf(sequence), LogFile.Type.REDO, true, threadId);
     }
 
     private static LogFile createArchiveLog(String name, long startScn, long endScn, int sequence, int threadId) {
@@ -1422,4 +1798,315 @@ public class LogMinerHelperTest extends AbstractConnectorTest {
                 BigInteger.valueOf(sequence), LogFile.Type.ARCHIVE, false, threadId);
     }
 
+    private LogFile getLogFileWithName(List<LogFile> logs, String fileName) {
+        return logs.stream().filter(log -> log.getFileName().equals(fileName)).findFirst().orElse(null);
+    }
+
+    private static Configuration.Builder getDefaultConfig() {
+        return TestHelper.defaultConfig().with(OracleConnectorConfig.LOG_MINING_LOG_QUERY_MAX_RETRIES, 0);
+    }
+
+    private OracleConnection getOracleConnectionMock(RedoThreadState state) throws SQLException {
+        final OracleConnection connection = Mockito.mock(OracleConnection.class);
+        Mockito.when(connection.getRedoThreadState()).thenReturn(state);
+        return connection;
+    }
+
+    private OracleConnection getOracleConnectionMock(RedoThreadState state, List<LogFile> logFileQueryResult) throws SQLException {
+        final OracleConnection connection = getOracleConnectionMock(state);
+
+        ResultSet resultSet = Mockito.mock(ResultSet.class);
+        Connection jdbcConnection = Mockito.mock(Connection.class);
+        Mockito.when(connection.connection()).thenReturn(jdbcConnection);
+        Mockito.when(connection.connection(false)).thenReturn(jdbcConnection);
+
+        PreparedStatement preparedStatement = Mockito.mock(PreparedStatement.class);
+        JdbcConnection.StatementFactory factory = Mockito.mock(JdbcConnection.StatementFactory.class);
+        Mockito.when(factory.createStatement(jdbcConnection)).thenReturn(preparedStatement);
+
+        Mockito.when(jdbcConnection.prepareStatement(anyString())).thenReturn(preparedStatement);
+
+        Mockito.when(preparedStatement.executeQuery()).thenReturn(resultSet);
+        Mockito.when(resultSet.next()).thenAnswer(it -> ++currentQueryRow <= logFileQueryResult.size());
+        Mockito.when(resultSet.getString(1)).thenAnswer(it -> logFileQueryResult.get(currentQueryRow - 1).getFileName());
+        Mockito.when(resultSet.getString(2)).thenAnswer(it -> logFileQueryResult.get(currentQueryRow - 1).getFirstScn().toString());
+        Mockito.when(resultSet.getString(3)).thenAnswer(it -> {
+            final LogFile file = logFileQueryResult.get(currentQueryRow - 1);
+            return file.getNextScn() == null ? null : file.getNextScn().toString();
+        });
+        Mockito.when(resultSet.getString(5)).thenAnswer(it -> {
+            final LogFile file = logFileQueryResult.get(currentQueryRow - 1);
+            if (LogFile.Type.ARCHIVE.equals(file.getType())) {
+                return null;
+            }
+            return file.isCurrent() ? "CURRENT" : "ACTIVE";
+        });
+        Mockito.when(resultSet.getString(6)).thenAnswer(it -> {
+            final LogFile file = logFileQueryResult.get(currentQueryRow - 1);
+            return LogFile.Type.ARCHIVE.equals(file.getType()) ? "ARCHIVED" : "ONLINE";
+        });
+        Mockito.when(resultSet.getString(7)).thenAnswer(it -> logFileQueryResult.get(currentQueryRow - 1).getSequence().toString());
+        Mockito.when(resultSet.getInt(10)).thenAnswer(it -> logFileQueryResult.get(currentQueryRow - 1).getThread());
+
+        Mockito.doAnswer(a -> {
+            JdbcConnection.ResultSetConsumer consumer = a.getArgument(1);
+            consumer.accept(resultSet);
+            return null;
+        }).when(connection).query(anyString(), Mockito.any(JdbcConnection.ResultSetConsumer.class));
+
+        return connection;
+    }
+
+    private LogFileCollector getLogFileCollector(RedoThreadState state) throws SQLException {
+        final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(getDefaultConfig().build());
+        return new LogFileCollector(connectorConfig, getOracleConnectionMock(state));
+    }
+
+    private LogFileCollector getLogFileCollector(Configuration configuration, OracleConnection connection) {
+        return new LogFileCollector(new OracleConnectorConfig(configuration), connection);
+    }
+
+    private LogFileCollector setCollectorLogFiles(LogFileCollector collector, List<LogFile> logFiles) throws SQLException {
+        final LogFileCollector mock = Mockito.mockingDetails(collector).isMock() ? collector : Mockito.spy(collector);
+        Mockito.doReturn(logFiles).when(mock).getLogsForOffsetScn(Mockito.any(Scn.class));
+        return mock;
+    }
+
+    private void setConnectionRedoThreadState(OracleConnection connection, RedoThreadState redoThreadState) throws SQLException {
+        Mockito.when(connection.getRedoThreadState()).thenReturn(redoThreadState);
+    }
+
+    private RedoThreadState getSingleThreadOpenState(Scn enabledScn, Scn lastFlushedScn) {
+        RedoThreadState.Builder builder = RedoThreadState.builder();
+        builder = makeOpenRedoThreadState(builder.thread(), 1, enabledScn, lastFlushedScn).build();
+        return builder.build();
+    }
+
+    private RedoThreadState getTwoThreadOpenState(Scn enabledScnOne, Scn lastFlushedScnOne, Scn enabledScnTwo, Scn lastFlushedScnTwo) {
+        RedoThreadState.Builder builder = RedoThreadState.builder();
+        builder = makeOpenRedoThreadState(builder.thread(), 1, enabledScnOne, lastFlushedScnOne).build();
+        builder = makeOpenRedoThreadState(builder.thread(), 2, enabledScnTwo, lastFlushedScnTwo).build();
+        return builder.build();
+    }
+
+    private RedoThreadState getFourThreadOpenState(Scn enabledScn, Scn lastFlushScn) {
+        RedoThreadState.Builder builder = RedoThreadState.builder();
+        builder = makeOpenRedoThreadState(builder.thread(), 1, enabledScn, lastFlushScn).build();
+        builder = makeOpenRedoThreadState(builder.thread(), 2, enabledScn, lastFlushScn).build();
+        builder = makeOpenRedoThreadState(builder.thread(), 3, enabledScn, lastFlushScn).build();
+        builder = makeOpenRedoThreadState(builder.thread(), 4, enabledScn, lastFlushScn).build();
+        return builder.build();
+    }
+
+    private RedoThread.Builder makeOpenRedoThreadState(RedoThread.Builder builder,
+                                                       int threadId, Scn enabledScn, Scn lastFlushedScn) {
+        return builder.threadId(threadId)
+                .status("OPEN")
+                .enabled("PUBLIC")
+                .instanceName("ORCLCDB")
+                .logGroups(2L)
+                .openTime(Instant.now().minus(10, ChronoUnit.MINUTES))
+                .checkpointTime(Instant.now().minus(5, ChronoUnit.MINUTES))
+                .checkpointScn(enabledScn.add(Scn.ONE))
+                .currentGroupNumber(1L)
+                .currentSequenceNumber(1L)
+                .enabledScn(enabledScn)
+                .enabledTime(Instant.now().minus(10, ChronoUnit.MINUTES))
+                .disabledScn(Scn.valueOf(0))
+                .disabledTime(null)
+                .lastRedoScn(lastFlushedScn)
+                .lastRedoBlock(1234L)
+                .lastRedoSequenceNumber(2L)
+                .lastRedoTime(Instant.now().minus(3, ChronoUnit.SECONDS))
+                .conId(0L);
+    }
+
+    // Node 1 - OPEN Sequence 1, started at SCN 500, last SCN 1100, recent checkpoint SCN 1000
+    // Node 2 - OPEN Sequence 1, started at SCN 500, last SCN 1100, recent checkpoint SCN 1000
+    private RedoThreadState initialMultiNodeRedoThreadState() {
+        return RedoThreadState.builder()
+                .thread()
+                // Node 1
+                .threadId(1)
+                .status("OPEN")
+                .enabled("PUBLIC")
+                .logGroups(2L)
+                .instanceName("ORCLCDB")
+                .openTime(Instant.now().minus(1, ChronoUnit.DAYS))
+                .currentGroupNumber(1L)
+                .currentSequenceNumber(1L)
+                .checkpointScn(Scn.valueOf(1000))
+                .checkpointTime(Instant.now().minus(5, ChronoUnit.MINUTES))
+                .enabledScn(Scn.valueOf(500))
+                .enabledTime(Instant.now().minus(1, ChronoUnit.DAYS).plus(1, ChronoUnit.HOURS))
+                .disabledScn(Scn.valueOf(0))
+                .disabledTime(null)
+                .lastRedoSequenceNumber(1L)
+                .lastRedoBlock(1024L)
+                .lastRedoScn(Scn.valueOf(1100))
+                .lastRedoTime(Instant.now().minus(1, ChronoUnit.MINUTES))
+                .conId(0L)
+                .build()
+                .thread()
+                // Node 2
+                .threadId(2)
+                .status("OPEN")
+                .enabled("PUBLIC")
+                .logGroups(2L)
+                .instanceName("ORCLCDB")
+                .openTime(Instant.now().minus(1, ChronoUnit.DAYS))
+                .currentGroupNumber(1L)
+                .currentSequenceNumber(1L)
+                .checkpointScn(Scn.valueOf(1000))
+                .checkpointTime(Instant.now().minus(5, ChronoUnit.MINUTES))
+                .enabledScn(Scn.valueOf(500))
+                .enabledTime(Instant.now().minus(1, ChronoUnit.DAYS).plus(1, ChronoUnit.HOURS))
+                .disabledScn(Scn.valueOf(0))
+                .disabledTime(null)
+                .lastRedoSequenceNumber(1L)
+                .lastRedoBlock(1024L)
+                .lastRedoScn(Scn.valueOf(1100))
+                .lastRedoTime(Instant.now().minus(1, ChronoUnit.MINUTES))
+                .conId(0L)
+                .build()
+                .build();
+    }
+
+    /**
+     * Performs a checkpoint operation on a redo thread, this is when a redo log rolls to an archive.
+     *
+     * @param currentState the current state to be mutated, should not be {@code null}
+     * @param threadId the thread id
+     * @param checkpointScn the scn to store in the checkpoint
+     * @return a new redo thread state with the thread modifications
+     */
+    private static RedoThreadState checkpointRedoThreadState(RedoThreadState currentState, int threadId, int checkpointScn) {
+        RedoThreadState.Builder builder = RedoThreadState.builder();
+        for (RedoThread currentThread : currentState.getThreads()) {
+            final RedoThread.Builder threadBuilder = duplicateThreadState(builder.thread(), currentThread);
+            if (currentThread.getThreadId() == threadId) {
+                threadBuilder.checkpointTime(Instant.now())
+                        .checkpointScn(Scn.valueOf(checkpointScn));
+            }
+            builder = threadBuilder.build();
+        }
+        return builder.build();
+    }
+
+    /**
+     * Transitions a redo thread to online mode.
+     *
+     * @param currentState the current state to be mutated, should not be {@code null}
+     * @param threadId the thread id
+     * @return a new redo thread state with the thread modifications
+     */
+    private static RedoThreadState transitionRedoThreadToOnline(RedoThreadState currentState, int threadId) {
+        RedoThreadState.Builder builder = RedoThreadState.builder();
+        for (RedoThread currentThread : currentState.getThreads()) {
+            final RedoThread.Builder threadBuilder = duplicateThreadState(builder.thread(), currentThread);
+            if (currentThread.getThreadId() == threadId) {
+                threadBuilder.status("OPEN")
+                        .enabled("PUBLIC")
+                        .disabledScn(Scn.valueOf(0))
+                        .disabledTime(null);
+            }
+            builder = threadBuilder.build();
+        }
+        return builder.build();
+    }
+
+    /**
+     * Transitions a redo thread to offline mode.
+     *
+     * @param currentState the current state to be mutated, should not be {@code null}
+     * @param threadId the thread id
+     * @param changes the number of changes to advance by before going offline, can be {@code 0}.
+     * @return a new redo thread state with the thread modifications
+     */
+    private static RedoThreadState transitionRedoThreadToOffline(RedoThreadState currentState, int threadId, int changes) {
+        // Advance the thread's last position details
+        RedoThreadState newCurrentState = advanceRedoThreadState(currentState, threadId, changes, false);
+
+        // Checkpoint the node
+        final int checkpointScn = newCurrentState.getRedoThread(threadId).getLastRedoScn().asBigInteger().intValue();
+        newCurrentState = checkpointRedoThreadState(newCurrentState, threadId, checkpointScn);
+
+        RedoThreadState.Builder builder = RedoThreadState.builder();
+        for (RedoThread currentThread : newCurrentState.getThreads()) {
+            final RedoThread.Builder threadBuilder = duplicateThreadState(builder.thread(), currentThread);
+            if (currentThread.getThreadId() == threadId) {
+                threadBuilder.status("CLOSED")
+                        .enabled("DISABLED")
+                        .disabledScn(currentThread.getCheckpointScn())
+                        .disabledTime(Instant.now());
+            }
+            builder = threadBuilder.build();
+        }
+        return builder.build();
+    }
+
+    /**
+     * This method advances the provided redo thread state for a given thread by the specified number of changes.
+     *
+     * @param currentState the current state to be mutated, should not be {@code null}
+     * @param threadId the thread id
+     * @param changes the number of changes to advance by
+     * @param increaseSequence whether to increase the sequence number
+     * @return a new redo thread state with the thread modifications
+     */
+    private static RedoThreadState advanceRedoThreadState(RedoThreadState currentState, int threadId, int changes, boolean increaseSequence) {
+        RedoThreadState.Builder builder = RedoThreadState.builder();
+        for (RedoThread currentThread : currentState.getThreads()) {
+            final RedoThread.Builder threadBuilder = duplicateThreadState(builder.thread(), currentThread);
+            if (currentThread.getThreadId() == threadId) {
+                // When advancing by changes, update the last redo attributes
+                if (increaseSequence) {
+                    threadBuilder.lastRedoSequenceNumber(currentThread.getLastRedoSequenceNumber() + 1)
+                            .currentSequenceNumber(currentThread.getCurrentSequenceNumber() + 1);
+                }
+                threadBuilder.lastRedoScn(currentThread.getLastRedoScn().add(Scn.valueOf(changes)))
+                        .lastRedoBlock(currentThread.getLastRedoBlock() + changes)
+                        .lastRedoTime(currentThread.getLastRedoTime().plus(changes, ChronoUnit.MINUTES));
+            }
+            builder = threadBuilder.build();
+        }
+        return builder.build();
+    }
+
+    /**
+     * Helper method to duplicate the existing immutable thread state for mutation operations.
+     *
+     * @param builder the new redo thread builder to create a thread within
+     * @param thread the existing thread to be duplicated
+     * @return the mutated redo thread builder
+     */
+    private static RedoThread.Builder duplicateThreadState(RedoThread.Builder builder, RedoThread thread) {
+        return builder.threadId(thread.getThreadId())
+                .status(thread.getStatus())
+                .enabled(thread.getEnabled())
+                .logGroups(thread.getLogGroups())
+                .instanceName(thread.getInstanceName())
+                .openTime(thread.getOpenTime())
+                .currentGroupNumber(thread.getCurrentGroupNumber())
+                .currentSequenceNumber(thread.getCurrentSequenceNumber())
+                .checkpointScn(thread.getCheckpointScn())
+                .checkpointTime(thread.getCheckpointTime())
+                .enabledScn(thread.getEnabledScn())
+                .enabledTime(thread.getEnabledTime())
+                .disabledScn(thread.getDisabledScn())
+                .disabledTime(thread.getDisabledTime())
+                .lastRedoSequenceNumber(thread.getLastRedoSequenceNumber())
+                .lastRedoBlock(thread.getLastRedoBlock())
+                .lastRedoScn(thread.getLastRedoScn())
+                .lastRedoTime(thread.getLastRedoTime())
+                .conId(thread.getConId());
+    }
+
+    private static RedoThreadState.Builder duplicateState(RedoThreadState threadState) {
+        RedoThreadState.Builder builder = RedoThreadState.builder();
+        for (RedoThread redoThread : threadState.getThreads()) {
+            builder = duplicateThreadState(builder.thread(), redoThread).build();
+        }
+        return builder;
+    }
 }
