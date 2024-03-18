@@ -70,6 +70,7 @@ import io.debezium.engine.StopEngineException;
 import io.debezium.engine.format.ChangeEventFormat;
 import io.debezium.engine.format.KeyValueChangeEventFormat;
 import io.debezium.engine.format.KeyValueHeaderChangeEventFormat;
+import io.debezium.engine.source.DebeziumSourceConnectorContext;
 import io.debezium.engine.source.EngineSourceConnector;
 import io.debezium.engine.source.EngineSourceConnectorContext;
 import io.debezium.engine.source.EngineSourceTask;
@@ -335,7 +336,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         final OffsetStorageWriter offsetWriter = new OffsetStorageWriter(offsetStore, engineName, offsetKeyConverter, offsetValueConverter);
 
         LOGGER.debug("Initializing Connect connector itself");
-        connector.initialize(new EngineSourceConnectorContext(this, offsetReader, offsetWriter));
+        connector.initialize(new EngineSourceConnectorContext(this, offsetStore, offsetReader, offsetWriter));
 
         return connectorConfig;
     }
@@ -619,6 +620,27 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
     }
 
     /**
+     * Stops {@link OffsetBackingStore} used by engine if there is any.
+     * If engine fails during initialization phase before connector context is created, the reference may be {@code null} and in such this method does nothing.
+     *
+     * @param connectorContext {@link DebeziumSourceConnectorContext} used by the connector or {@code null} if the context hasn't been initialized yet.
+     */
+    private void stopOffsetStore(final DebeziumSourceConnectorContext connectorContext) {
+        if (connectorContext == null || connectorContext.offsetStore() == null) {
+            LOGGER.debug("Offset store hasn't been initialized yet, closing of the offset store is skipped.");
+            return;
+        }
+
+        LOGGER.debug("Stopping offset backing store.");
+        try {
+            connectorContext.offsetStore().stop();
+        }
+        catch (Exception e) {
+            LOGGER.warn("Failed to stop offset backing store", e);
+        }
+    }
+
+    /**
      * Stops connector's tasks if they are already running and then stops connector itself.
      *
      * @param tasks {@link List<EngineSourceTask>} of source task should be stopped now.
@@ -630,6 +652,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
             stopPollingIfNeeded();
             stopSourceTasks(tasks);
         }
+        stopOffsetStore(connector.context());
         LOGGER.debug("Stopping the connector.");
         connector.connectConnector().stop();
         LOGGER.debug("Calling connector callback after connector stop");
