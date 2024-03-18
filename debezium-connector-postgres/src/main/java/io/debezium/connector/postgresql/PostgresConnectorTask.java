@@ -30,8 +30,6 @@ import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.PostgresConnection.PostgresValueConverterBuilder;
 import io.debezium.connector.postgresql.connection.PostgresDefaultValueConverter;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
-import io.debezium.connector.postgresql.snapshot.PostgresSnapshotLockProvider;
-import io.debezium.connector.postgresql.snapshot.PostgresSnapshotterServiceProvider;
 import io.debezium.connector.postgresql.spi.SlotCreationResult;
 import io.debezium.connector.postgresql.spi.SlotState;
 import io.debezium.document.DocumentReader;
@@ -47,7 +45,6 @@ import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
-import io.debezium.service.spi.ServiceRegistry;
 import io.debezium.snapshot.SnapshotterService;
 import io.debezium.spi.snapshot.Snapshotter;
 import io.debezium.spi.topic.TopicNamingStrategy;
@@ -304,14 +301,6 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
             }
         }
         return replicationConnection;
-    }
-
-    @Override
-    protected void registerServiceProviders(ServiceRegistry serviceRegistry) {
-
-        super.registerServiceProviders(serviceRegistry);
-        serviceRegistry.registerServiceProvider(new PostgresSnapshotLockProvider());
-        serviceRegistry.registerServiceProvider(new PostgresSnapshotterServiceProvider());
     }
 
     @Override

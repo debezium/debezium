@@ -67,6 +67,8 @@ public abstract class CommonConnectorConfig {
     public static final String TASK_ID = "task.id";
     public static final Pattern TOPIC_NAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_.\\-]+$");
     public static final String MULTI_PARTITION_MODE = "multi.partition.mode";
+    public static final String SNAPSHOT_MODE_PROPERTY_NAME = "snapshot.mode";
+    public static final String SNAPSHOT_LOCKING_MODE_PROPERTY_NAME = "snapshot.locking.mode";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CommonConnectorConfig.class);
     protected SnapshotQueryMode snapshotQueryMode;
@@ -1180,16 +1182,16 @@ public abstract class CommonConnectorConfig {
 
     public abstract String getConnectorName();
 
+    public abstract EnumeratedValue getSnapshotMode();
+
+    public abstract Optional<? extends EnumeratedValue> getSnapshotLockingMode();
+
     public String getHeartbeatTopicsPrefix() {
         return heartbeatTopicsPrefix;
     }
 
     public Duration getHeartbeatInterval() {
         return heartbeatInterval;
-    }
-
-    public Duration getRetriableRestartWait() {
-        return retriableRestartWait;
     }
 
     public Duration getSnapshotDelay() {

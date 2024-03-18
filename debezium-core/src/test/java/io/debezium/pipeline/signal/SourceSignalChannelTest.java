@@ -8,6 +8,7 @@ package io.debezium.pipeline.signal;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -16,6 +17,7 @@ import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.config.EnumeratedValue;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.data.Envelope;
 import io.debezium.pipeline.signal.channels.SourceSignalChannel;
@@ -95,6 +97,16 @@ public class SourceSignalChannelTest {
             @Override
             public String getConnectorName() {
                 return null;
+            }
+
+            @Override
+            public EnumeratedValue getSnapshotMode() {
+                return null;
+            }
+
+            @Override
+            public Optional<EnumeratedValue> getSnapshotLockingMode() {
+                return Optional.empty();
             }
         };
     }

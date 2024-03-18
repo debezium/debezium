@@ -10,6 +10,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
@@ -596,8 +597,8 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         return this.snapshotIsolationMode;
     }
 
-    public SnapshotLockingMode getSnapshotLockingMode() {
-        return this.snapshotLockingMode;
+    public Optional<SnapshotLockingMode> getSnapshotLockingMode() {
+        return Optional.of(this.snapshotLockingMode);
     }
 
     public SnapshotMode getSnapshotMode() {

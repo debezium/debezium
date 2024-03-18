@@ -7,6 +7,7 @@ package io.debezium.connector.mysql;
 
 import java.math.BigDecimal;
 import java.time.Duration;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
 
@@ -824,7 +825,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
                     + "For this reason the default value is 'false'.")
             .withDefault(false);
 
-    public static final Field SNAPSHOT_MODE = Field.create("snapshot.mode")
+    public static final Field SNAPSHOT_MODE = Field.create(SNAPSHOT_MODE_PROPERTY_NAME)
             .withDisplayName("Snapshot mode")
             .withEnum(SnapshotMode.class, SnapshotMode.INITIAL)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 0))
@@ -840,7 +841,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
                     + "'never': The connector does not run a snapshot. Upon first startup, the connector immediately begins reading from the beginning of the binlog. "
                     + "The 'never' mode should be used with care, and only when the binlog is known to contain all history.");
 
-    public static final Field SNAPSHOT_LOCKING_MODE = Field.create("snapshot.locking.mode")
+    public static final Field SNAPSHOT_LOCKING_MODE = Field.create(SNAPSHOT_LOCKING_MODE_PROPERTY_NAME)
             .withDisplayName("Snapshot locking mode")
             .withEnum(SnapshotLockingMode.class, SnapshotLockingMode.MINIMAL)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 1))
@@ -1074,8 +1075,8 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
         return this.getSnapshotFetchSize() > 0;
     }
 
-    public SnapshotLockingMode getSnapshotLockingMode() {
-        return this.snapshotLockingMode;
+    public Optional<SnapshotLockingMode> getSnapshotLockingMode() {
+        return Optional.of(this.snapshotLockingMode);
     }
 
     private static int validateEventDeserializationFailureHandlingModeNotSet(Configuration config, Field field, ValidationOutput problems) {
@@ -1176,7 +1177,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
         return temporalPrecisionMode;
     }
 
-    public SnapshotMode getSnapshotMode() {
+    public EnumeratedValue getSnapshotMode() {
         return snapshotMode;
     }
 

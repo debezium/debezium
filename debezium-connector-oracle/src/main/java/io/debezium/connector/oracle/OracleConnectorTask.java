@@ -22,8 +22,6 @@ import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.oracle.StreamingAdapter.TableNameCaseSensitivity;
-import io.debezium.connector.oracle.snapshot.OracleSnapshotLockProvider;
-import io.debezium.connector.oracle.snapshot.OracleSnapshotterServiceProvider;
 import io.debezium.document.DocumentReader;
 import io.debezium.jdbc.DefaultMainConnectionProvidingConnectionFactory;
 import io.debezium.jdbc.JdbcConfiguration;
@@ -38,7 +36,6 @@ import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
-import io.debezium.service.spi.ServiceRegistry;
 import io.debezium.snapshot.SnapshotterService;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Clock;
@@ -239,14 +236,6 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         if (schema != null) {
             schema.close();
         }
-    }
-
-    @Override
-    protected void registerServiceProviders(ServiceRegistry serviceRegistry) {
-
-        super.registerServiceProviders(serviceRegistry);
-        serviceRegistry.registerServiceProvider(new OracleSnapshotLockProvider());
-        serviceRegistry.registerServiceProvider(new OracleSnapshotterServiceProvider());
     }
 
     @Override

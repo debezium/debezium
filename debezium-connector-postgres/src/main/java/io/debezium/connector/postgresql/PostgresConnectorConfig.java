@@ -1090,12 +1090,14 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return Optional.ofNullable(this.replicaIdentityMapper);
     }
 
-    public SnapshotMode snapshotMode() {
+    @Override
+    public SnapshotMode getSnapshotMode() {
         return this.snapshotMode;
     }
 
-    public SnapshotLockingMode snapshotLockingMode() {
-        return this.snapshotLockingMode;
+    @Override
+    public Optional<SnapshotLockingMode> getSnapshotLockingMode() {
+        return Optional.of(this.snapshotLockingMode);
     }
 
     protected int moneyFractionDigits() {

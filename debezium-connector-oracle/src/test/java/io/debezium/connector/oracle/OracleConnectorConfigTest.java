@@ -241,7 +241,7 @@ public class OracleConnectorConfigTest {
         assertThat(config.validateAndRecord(Collections.singletonList(snapshotLockMode), LOGGER::error)).isTrue();
 
         OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
-        assertThat(connectorConfig.getSnapshotLockingMode().usesLocking()).isTrue();
+        assertThat(connectorConfig.getSnapshotLockingMode().get().usesLocking()).isTrue();
 
         config = Configuration.create()
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "myserver")
@@ -251,7 +251,7 @@ public class OracleConnectorConfigTest {
         assertThat(config.validateAndRecord(Collections.singletonList(snapshotLockMode), LOGGER::error)).isTrue();
 
         connectorConfig = new OracleConnectorConfig(config);
-        assertThat(connectorConfig.getSnapshotLockingMode().usesLocking()).isFalse();
+        assertThat(connectorConfig.getSnapshotLockingMode().get().usesLocking()).isFalse();
     }
 
     @Test

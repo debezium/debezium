@@ -21,8 +21,6 @@ import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.sqlserver.metrics.SqlServerMetricsFactory;
-import io.debezium.connector.sqlserver.snapshot.SqlServerSnapshotLockProvider;
-import io.debezium.connector.sqlserver.snapshot.SqlServerSnapshotterServiceProvider;
 import io.debezium.document.DocumentReader;
 import io.debezium.jdbc.DefaultMainConnectionProvidingConnectionFactory;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
@@ -35,7 +33,6 @@ import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
-import io.debezium.service.spi.ServiceRegistry;
 import io.debezium.snapshot.SnapshotterService;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Clock;
@@ -213,11 +210,4 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
         return SqlServerConnectorConfig.ALL_FIELDS;
     }
 
-    @Override
-    protected void registerServiceProviders(ServiceRegistry serviceRegistry) {
-
-        super.registerServiceProviders(serviceRegistry);
-        serviceRegistry.registerServiceProvider(new SqlServerSnapshotLockProvider());
-        serviceRegistry.registerServiceProvider(new SqlServerSnapshotterServiceProvider());
-    }
 }

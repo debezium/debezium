@@ -1258,6 +1258,11 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         return snapshotMode;
     }
 
+    @Override
+    public Optional<EnumeratedValue> getSnapshotLockingMode() {
+        return Optional.empty();
+    }
+
     /**
      * Provides statically configured capture mode. The configured value can be overrided upon
      * connector start if offsets stored were created by a different capture mode.

@@ -17,6 +17,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.service.spi.ServiceProvider;
 import io.debezium.service.spi.ServiceRegistry;
+import io.debezium.snapshot.lock.NoLockingSupport;
 import io.debezium.snapshot.spi.SnapshotLock;
 
 /**
@@ -24,7 +25,7 @@ import io.debezium.snapshot.spi.SnapshotLock;
  *
  * @author Mario Fiore Vitale
  */
-public abstract class SnapshotLockProvider implements ServiceProvider<SnapshotLock> {
+public class SnapshotLockProvider implements ServiceProvider<SnapshotLock> {
 
     @Override
     public SnapshotLock createService(Configuration configuration, ServiceRegistry serviceRegistry) {
@@ -32,19 +33,19 @@ public abstract class SnapshotLockProvider implements ServiceProvider<SnapshotLo
         BeanRegistry beanRegistry = serviceRegistry.tryGetService(BeanRegistry.class);
 
         final CommonConnectorConfig commonConnectorConfig = beanRegistry.lookupByName(StandardBeanNames.CONNECTOR_CONFIG, CommonConnectorConfig.class);
-        final String configuredSnapshotQueryMode = snapshotLockingMode(beanRegistry);
+        final String configuredSnapshotLockingMode = snapshotLockingMode(commonConnectorConfig);
         final String snapshotLockingModeCustomName = commonConnectorConfig.snapshotLockingModeCustomName();
 
         String snapshotLockMode;
-        if ("custom".equals(configuredSnapshotQueryMode) && !snapshotLockingModeCustomName.isEmpty()) {
+        if ("custom".equals(configuredSnapshotLockingMode) && !snapshotLockingModeCustomName.isEmpty()) {
             snapshotLockMode = snapshotLockingModeCustomName;
         }
         else {
-            snapshotLockMode = configuredSnapshotQueryMode;
+            snapshotLockMode = configuredSnapshotLockingMode;
         }
 
         Optional<SnapshotLock> snapshotLock = StreamSupport.stream(ServiceLoader.load(SnapshotLock.class).spliterator(), false)
-                .filter(s -> s.name().equals(snapshotLockMode))
+                .filter(s -> s.name().equalsIgnoreCase(snapshotLockMode))
                 .findAny();
 
         return snapshotLock.map(s -> {
@@ -63,8 +64,14 @@ public abstract class SnapshotLockProvider implements ServiceProvider<SnapshotLo
         return SnapshotLock.class;
     }
 
-    // TODO this could be delete after DBZ-7308 if all modes will be effectively available to all connectors and
-    // SnapshotLockingMode enum moved into CommonConnectorConfig
-    public abstract String snapshotLockingMode(BeanRegistry beanRegistry);
+    // SnapshotLockingMode differs from different connectors, so it is not moved to CommonConnectorConfig.
+    public String snapshotLockingMode(CommonConnectorConfig configuration) {
+
+        if (configuration.getSnapshotLockingMode().isEmpty()) {
+            return NoLockingSupport.NO_LOCKING_SUPPORT;
+        }
+
+        return configuration.getSnapshotLockingMode().get().getValue();
+    }
 
 }

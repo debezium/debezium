@@ -16,6 +16,7 @@ import org.junit.runner.RunWith;
 import org.mockito.junit.MockitoJUnitRunner;
 
 import io.debezium.config.Configuration;
+import io.debezium.config.EnumeratedValue;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConfiguration;
@@ -51,6 +52,16 @@ public class DefaultChunkQueryBuilderTest {
             @Override
             public String getConnectorName() {
                 return null;
+            }
+
+            @Override
+            public EnumeratedValue getSnapshotMode() {
+                return null;
+            }
+
+            @Override
+            public Optional<EnumeratedValue> getSnapshotLockingMode() {
+                return Optional.empty();
             }
         };
     }
