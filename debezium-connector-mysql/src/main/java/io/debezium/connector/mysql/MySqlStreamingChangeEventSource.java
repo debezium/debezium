@@ -836,10 +836,6 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
     @Override
     public void execute(ChangeEventSourceContext context, MySqlPartition partition, MySqlOffsetContext offsetContext) throws InterruptedException {
 
-        if (!snapshotterService.getSnapshotter().shouldStream()) {
-            LOGGER.info("Streaming is disabled for snapshot mode {}", snapshotterService.getSnapshotter().name());
-            return;
-        }
         if (!(snapshotterService.getSnapshotter() instanceof NeverSnapshotter)) {
             taskContext.getSchema().assureNonEmptySchema();
         }

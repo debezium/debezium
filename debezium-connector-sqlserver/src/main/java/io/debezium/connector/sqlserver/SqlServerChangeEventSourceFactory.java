@@ -68,7 +68,8 @@ public class SqlServerChangeEventSourceFactory implements ChangeEventSourceFacto
                 errorHandler,
                 clock,
                 schema,
-                notificationService);
+                notificationService,
+                snapshotterService);
     }
 
     @Override

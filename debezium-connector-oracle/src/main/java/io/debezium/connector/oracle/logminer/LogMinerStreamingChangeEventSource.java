@@ -141,11 +141,6 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     @Override
     public void execute(ChangeEventSourceContext context, OraclePartition partition, OracleOffsetContext offsetContext) {
 
-        if (!snapshotterService.getSnapshotter().shouldStream()) { // TODO check with DBZ-7308 if this can be moved up
-            LOGGER.info("Streaming is not enabled in current configuration");
-            return;
-        }
-
         try {
 
             prepareConnection(false);
