@@ -4677,7 +4677,7 @@ For more information about the required format of this file, see the https://git
 [source,json,indent=0]
 ----
 {
-  "version": "1.3.0",
+  "version": "1.5.0",
   "source": [{
     "alias": "SOURCE",
     "name": "ORACLE", <1>
@@ -4745,6 +4745,11 @@ The following configuration properties are required when using OpenLogReplicator
 |The port number that is used by the OpenLogReplicator network service.
 
 |===
+
+[[oracle-openlogreplicator-xml-support]]
+=== OpenLogReplicator XML support
+
+To capture XML columns using {prodname} Oracle connector with OpenLogReplicator, OpenLogReplicator should be 1.5.0 or later.
 
 [[oracle-xstreams-support]]
 == XStreams support
