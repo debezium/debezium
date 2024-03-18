@@ -122,11 +122,25 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
 
         final Duration lockTimeout = connectorConfig.snapshotLockTimeout();
         final Set<String> capturedTablesNames = snapshotContext.capturedTables.stream().map(TableId::toDoubleQuotedString).collect(Collectors.toSet());
-        final Optional<String> lockStatement = snapshotterService.getSnapshotLock().tableLockingStatement(lockTimeout, capturedTablesNames);
 
-        if (lockStatement.isPresent()) {
+        List<String> tableLockStatements = capturedTablesNames.stream()
+                .map(tableId -> snapshotterService.getSnapshotLock().tableLockingStatement(lockTimeout, tableId))
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .collect(Collectors.toList());
+
+        if (!tableLockStatements.isEmpty()) {
+
+            String lineSeparator = System.lineSeparator();
+            StringBuilder statements = new StringBuilder();
+            statements.append("SET lock_timeout = ").append(lockTimeout.toMillis()).append(";").append(lineSeparator);
+            // we're locking in ACCESS SHARE MODE to avoid concurrent schema changes while we're taking the snapshot
+            // this does not prevent writes to the table, but prevents changes to the table's schema....
+            // DBZ-298 Quoting name in case it has been quoted originally; it doesn't do harm if it hasn't been quoted
+            tableLockStatements.forEach(tableStatement -> statements.append(tableStatement).append(lineSeparator));
+
             LOGGER.info("Waiting a maximum of '{}' seconds for each table lock", lockTimeout.getSeconds());
-            jdbcConnection.executeWithoutCommitting(lockStatement.get());
+            jdbcConnection.executeWithoutCommitting(statements.toString());
             // now that we have the locks, refresh the schema
             schema.refresh(jdbcConnection, false);
         }

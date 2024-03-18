@@ -8,7 +8,6 @@ package io.debezium.connector.oracle.snapshot.lock;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.snapshot.spi.SnapshotLock;
@@ -26,9 +25,8 @@ public class SharedSnapshotLock implements SnapshotLock {
     }
 
     @Override
-    public Optional<String> tableLockingStatement(Duration lockTimeout, Set<String> tableIds) {
+    public Optional<String> tableLockingStatement(Duration lockTimeout, String tableId) {
 
-        String tableId = tableIds.iterator().next(); // For Oracle ww expect just one table at time.
-        return Optional.of("LOCK TABLE " + tableId + " IN ROW SHARE MODE");
+        return Optional.of(String.format("LOCK TABLE %s IN ROW SHARE MODE", tableId));
     }
 }

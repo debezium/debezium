@@ -119,7 +119,7 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
                     }
 
                     Optional<String> lockingStatement = snapshotterService.getSnapshotLock().tableLockingStatement(connectorConfig.snapshotLockTimeout(),
-                            Set.of(quoteTableName(tableId)));
+                            quoteTableName(tableId));
 
                     if (lockingStatement.isPresent()) {
                         LOGGER.info("Locking table {}", tableId);
