@@ -468,7 +468,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
 
     private void globalLock() throws SQLException {
         LOGGER.info("Flush and obtain global read lock to prevent writes to database");
-        Optional<String> lockingStatement = snapshotterService.getSnapshotLock().tableLockingStatement(null, Set.of());
+        Optional<String> lockingStatement = snapshotterService.getSnapshotLock().tableLockingStatement(null, null);
         if (lockingStatement.isPresent()) {
             connection.executeWithoutCommitting(lockingStatement.get());
             globalLockAcquiredAt = clock.currentTimeInMillis();

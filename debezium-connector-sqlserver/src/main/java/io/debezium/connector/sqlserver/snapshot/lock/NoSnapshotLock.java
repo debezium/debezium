@@ -8,7 +8,6 @@ package io.debezium.connector.sqlserver.snapshot.lock;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig;
 import io.debezium.snapshot.spi.SnapshotLock;
@@ -26,7 +25,7 @@ public class NoSnapshotLock implements SnapshotLock {
     }
 
     @Override
-    public Optional<String> tableLockingStatement(Duration lockTimeout, Set<String> tableIds) {
+    public Optional<String> tableLockingStatement(Duration lockTimeout, String tableId) {
 
         return Optional.empty();
     }

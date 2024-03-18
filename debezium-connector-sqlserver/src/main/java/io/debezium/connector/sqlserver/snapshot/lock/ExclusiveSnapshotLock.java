@@ -8,7 +8,6 @@ package io.debezium.connector.sqlserver.snapshot.lock;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig;
 import io.debezium.snapshot.spi.SnapshotLock;
@@ -26,10 +25,8 @@ public class ExclusiveSnapshotLock implements SnapshotLock {
     }
 
     @Override
-    public Optional<String> tableLockingStatement(Duration lockTimeout, Set<String> tableIds) {
+    public Optional<String> tableLockingStatement(Duration lockTimeout, String tableId) {
 
-        String tableId = tableIds.iterator().next(); // For SqlServer ww expect just one table at time.
-
-        return Optional.of("SELECT TOP(0) * FROM " + tableId + " WITH (TABLOCKX)");
+        return Optional.of(String.format("SELECT TOP(0) * FROM %s WITH (TABLOCKX)", tableId));
     }
 }
