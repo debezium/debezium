@@ -6,6 +6,7 @@
 package io.debezium.connector.mongodb;
 
 import static io.debezium.config.CommonConnectorConfig.TASKS_MAX;
+import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static org.fest.assertions.Assertions.assertThat;
 
 import java.util.ArrayList;
@@ -23,6 +24,8 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.data.Envelope;
+import io.debezium.junit.SkipWhenDatabaseVersion;
 
 public class MongoDbMultiTaskConnectorIT extends AbstractMongoConnectorIT {
 
@@ -37,6 +40,7 @@ public class MongoDbMultiTaskConnectorIT extends AbstractMongoConnectorIT {
                 .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
                 .with(MongoDbConnectorConfig.DATABASE_INCLUDE_LIST, db)
                 .with(MongoDbConnectorConfig.MONGODB_MULTI_TASK_ENABLED, true)
+                .with(MongoDbConnectorConfig.CAPTURE_MODE, "change_streams_with_pre_image")
                 .build();
 
         context = new MongoDbTaskContext(config);
@@ -83,6 +87,7 @@ public class MongoDbMultiTaskConnectorIT extends AbstractMongoConnectorIT {
      * @throws Exception
      */
     @Test
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 6, reason = "Wall Time in Change Stream is officially released in Mongo > 5.3.")
     public void multiTaskModeWithASingleTasksShouldGenerateRecordForAllEvents() throws Exception {
         final int numDocs = 100;
         final int numUpdates = 35;
@@ -152,6 +157,7 @@ public class MongoDbMultiTaskConnectorIT extends AbstractMongoConnectorIT {
      * @throws Exception
      */
     @Test
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 6, reason = "Wall Time in Change Stream is officially released in Mongo > 5.3.")
     public void multiTaskModeWithMultipleTasksShouldGenerateRecordForOnlyAssignedEvents() throws Exception {
         final int numTasks = 4;
         final int numDocs = 100; // numDocs should be a multiple of numTasks to simply the test logic
@@ -178,33 +184,34 @@ public class MongoDbMultiTaskConnectorIT extends AbstractMongoConnectorIT {
         // and that they should be assigned to this task
         final SourceRecords inserts = consumeRecordsByTopic(numDocs);
         assertNoRecordsToConsume();
-        assertThat(inserts.allRecordsInOrder().size()).isEqualTo(numDocs / numTasks);
+        assertThat(inserts.allRecordsInOrder().size()).isLessThan(numDocs);
         for (SourceRecord record : inserts.allRecordsInOrder()) {
-            int ord = (Integer) record.sourceOffset().get("ord");
-            assertThat(ord % numTasks).isEqualTo(defaultTaskId)
-                    .overridingErrorMessage("Record with offset " + ord + " should not be assigned to task " + defaultTaskId);
+            final long wallTime = getWallTime(record);
+            assertThat(wallTime % numTasks).isEqualTo(defaultTaskId)
+                    .overridingErrorMessage("Record with offset wall time " + wallTime + " should not be assigned to task " + defaultTaskId);
             assertThat(TestHelper.getDocumentId(record)).isIn(docIdStrs);
         }
 
-        // Update the same number of documents as the number of tasks
-        Set<String> updatedDocIds = new HashSet<>();
-        for (int i = 0; i < numTasks; i++) {
-            ObjectId id = docIds.get((int) (Math.random() * docIds.size()));
-            updatedDocIds.add(TestHelper.formatObjectId(id));
+        // updates records
+        Set<String> updateDocIdStrs = new HashSet<>();
+        List<ObjectId> updatedDocIds = new ArrayList<>(numDocs);
+        for (int i = 0; i < numDocs; i++) {
+            ObjectId id = docIds.get(i);
             updateDocument(db, col, TestHelper.getFilterFromId(id), new Document("$set", new Document("update", "success")));
+            updateDocIdStrs.add(TestHelper.formatObjectId(id));
+            updatedDocIds.add(id);
         }
 
-        // Consume the records of all the updates
-        // Since we update the same number of documents as the number of tasks, task 0 should only consume one update
-        final SourceRecords updates = consumeRecordsByTopic(numTasks);
+        // Consume the records of all the udpates and verify that they match the inserted documents
+        // and that they should be assigned to this task
+        final SourceRecords updates = consumeRecordsByTopic(numDocs);
         assertNoRecordsToConsume();
-        assertThat(updates.allRecordsInOrder().size()).isEqualTo(1);
-        {
-            SourceRecord record = updates.allRecordsInOrder().get(0);
-            int ord = (Integer) record.sourceOffset().get("ord");
-            assertThat(ord % numTasks).isEqualTo(defaultTaskId)
-                    .overridingErrorMessage("Record with offset " + ord + " should not be assigned to task " + defaultTaskId);
-            assertThat(TestHelper.getDocumentId(record)).isIn(updatedDocIds);
+        assertThat(updates.allRecordsInOrder().size()).isLessThan(numDocs);
+        for (SourceRecord record : updates.allRecordsInOrder()) {
+            final long wallTime = getWallTime(record);
+            assertThat(wallTime % numTasks).isEqualTo(defaultTaskId)
+                    .overridingErrorMessage("Record with offset wall time " + wallTime + " should not be assigned to task " + defaultTaskId);
+            assertThat(TestHelper.getDocumentId(record)).isIn(updateDocIdStrs);
             assertThat(((Struct) record.value()).getStruct("updateDescription").getString("updatedFields"))
                     .isEqualTo("{\"update\": \"success\"}");
         }
@@ -216,14 +223,28 @@ public class MongoDbMultiTaskConnectorIT extends AbstractMongoConnectorIT {
         }
 
         // Consume the records of all the deletes and verify that they match the deleted documents
-        final SourceRecords deletes = consumeRecordsByTopic(2 * numDocs / numTasks);
+        final SourceRecords deletes = consumeRecordsByTopic(numDocs);
         assertNoRecordsToConsume();
-        assertThat(deletes.allRecordsInOrder().size()).isEqualTo(2 * numDocs / numTasks);
+        assertThat(deletes.allRecordsInOrder().size()).isLessThan(numDocs);
         for (SourceRecord record : deletes.allRecordsInOrder()) {
-            int ord = (Integer) record.sourceOffset().get("ord");
-            assertThat(ord % numTasks).isEqualTo(defaultTaskId)
-                    .overridingErrorMessage("Record with offset " + ord + " should not be assigned to task " + defaultTaskId);
+            final long wallTime = getWallTime(record);
+            assertThat(wallTime % numTasks).isEqualTo(defaultTaskId)
+                    .overridingErrorMessage("Record with offset wall time" + wallTime + " should not be assigned to task " + defaultTaskId);
             assertThat(TestHelper.getDocumentId(record)).isIn(docIdStrs);
         }
+    }
+
+    private long getWallTime(SourceRecord record) {
+        final Object recordValue = record.value();
+        if (recordValue != null && recordValue instanceof Struct) {
+            final Struct value = (Struct) recordValue;
+
+            final long wallTime = value.getStruct(Envelope.FieldName.SOURCE).getInt64(SourceInfo.WALL_TIME);
+            return wallTime;
+        }
+
+        // TODO we need to investigate WALL TIME is not present in some cases.
+        // In this case this will always be managed by task 0.
+        return 0;
     }
 }

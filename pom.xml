@@ -128,6 +128,9 @@
         <!-- Databases, should align with database drivers -->
         <version.mysql.server>5.7</version.mysql.server>
         <version.mongo.server>4.4</version.mongo.server>
+        <!-- For testing multi-task enable version 6.0 for local instance -->
+        <!-- wall-time is not available before 6.0 defaulting all tasks to task 0 -->
+        <!-- <version.mongo.server>6.0</version.mongo.server> -->
         <version.cassandra3>3.11.12</version.cassandra3>
         <version.cassandra4>4.0.2</version.cassandra4>
 

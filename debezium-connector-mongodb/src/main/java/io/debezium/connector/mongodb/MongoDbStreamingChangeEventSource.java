@@ -328,13 +328,13 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         return Filters.in("operationType", includedOperations);
     }
 
-    private List<Bson> PipelineWrapper(ReplicaSetOffsetContext rsOffsetContext) {
+    private List<Bson> PipelineWrapper(ReplicaSetOffsetContext rsOffsetContext, boolean multiTaskEnabled) {
         if (!this.taskContext.filters().supportPipelineFilter()) {
             return new ArrayList<>();
         }
 
         // Filter the documents
-        Bson matchFilter = getServerSideFilters(rsOffsetContext);
+        Bson matchFilter = getServerSideFilters(rsOffsetContext, multiTaskEnabled);
 
         // Done if matching databases and collections as literals
         if (this.taskContext.filters().isLiteralsMatchMode() || this.taskContext.filters().isNoneMatchMode()) {
@@ -367,7 +367,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         return result;
     }
 
-    private Bson getServerSideFilters(ReplicaSetOffsetContext rsOffsetContext) {
+    private Bson getServerSideFilters(ReplicaSetOffsetContext rsOffsetContext, boolean multiTaskEnabled) {
         List<Bson> filters = new ArrayList<>();
         filters.add(getChangeStreamSkippedOperationsFilter());
 
@@ -412,6 +412,30 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             }
         }
 
+        if (multiTaskEnabled) {
+            int taskId = taskContext.getMongoTaskId();
+            int taskCount = connectorConfig.getMaxTasks();
+            LOGGER.info("getServerSideFilters - multi task filter for taskId {} taskCount {}", taskId, taskCount);
+
+            // Distribution of events to tasks when multi task is enabled
+            // Leverage wall time timestamps as the property to distribute events
+            // Ensure that we do not skip events if wall time is not present default then to task 0.
+            // The following pipelines includes if (wallTime % taskCount == taskId)
+            // https://www.mongodb.com/docs/v6.0/reference/change-events/create/
+            Bson pipeline = new Document("$expr",
+                    new Document("$eq",
+                            Arrays.asList(
+                                    new Document("$mod",
+                                            Arrays.asList(
+                                                new Document("$ifNull",
+                                                    Arrays.asList(new Document("$toLong", "$wallTime"),
+                                                0)),
+                                            2)),
+                                    taskId)));
+
+            filters.add(pipeline);
+        }
+
         Bson result = Aggregates.match(Filters.and(filters));
         return result;
     }
@@ -433,7 +457,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         final ServerAddress primaryAddress = MongoUtil.getPrimaryAddress(primary);
         LOGGER.info("Reading change stream for '{}' primary {} starting at {} with shardId {}", replicaSet, primaryAddress, oplogStart, shardId);
 
-        List<Bson> serverSideFilters = PipelineWrapper(rsOffsetContext);
+        List<Bson> serverSideFilters = PipelineWrapper(rsOffsetContext, connectorConfig.getMultiTaskEnabled());
 
         LOGGER.info("Effective change stream pipeline: {}", serverSideFilters);
 
@@ -489,18 +513,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                         continue;
                     }
 
-                    // Distribution of events to tasks or connectors is enabled
-                    // It uses timestamps as the property to distribute events
-                    if (multiTaskEnabled) {
-                        if (event.getClusterTime() != null && event.getClusterTime().getValue() % connectorConfig.getMaxTasks() != taskContext.getMongoTaskId()) {
-                            LOGGER.debug("task id doesn't match, skip change stream event {}:{}", taskContext.getMongoTaskId(), event.getClusterTime().getValue());
-                            continue;
-                        }
-                        else {
-                            LOGGER.debug("task id match, process stream event {}:{}", taskContext.getMongoTaskId(), event.getClusterTime().getValue());
-                        }
-                    }
-                    else if (connectorConfig.getStreamingShards() > 0) {
+                    if (!this.connectorConfig.getMultiTaskEnabled() && connectorConfig.getStreamingShards() > 0) {
                         if (event.getClusterTime() != null && event.getClusterTime().getValue() % connectorConfig.getStreamingShards() != shardId) {
                             LOGGER.debug("shard id doesn't match, skip change stream event {}:{}", shardId, event.getClusterTime().getValue());
                             continue;
