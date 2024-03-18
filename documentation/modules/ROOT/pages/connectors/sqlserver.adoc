@@ -2882,8 +2882,8 @@ endif::community[]
 ifdef::community[]
 |[[sqlserver-property-snapshot-mode-custom-name]]<<sqlserver-property-snapshot-mode-custom-name, `+snapshot.mode.custom.name+`>>
 |No default
-| When `snapshot.mode` is set as `custom`, use this setting to specify the name of the custom implementation provided in the `name()` method that is defined by the 'io.debezium.spi.snapshot.Snapshotter' interface.
-The provided implementation is called after a connector restart to determine whether to perform a snapshot.
+|If `snapshot.mode` is set to `custom`, use this setting to specify the name of the custom implementation that is provided in the `name()` method that is defined in the 'io.debezium.spi.snapshot.Snapshotter' interface.
+After a connector restart, {prodname} calls the specified custom implementation to determine whether to perform a snapshot.
 For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
 endif::community[]
 
