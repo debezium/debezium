@@ -3165,6 +3165,14 @@ endif::community[]
 
 For more information, see the xref:oracle-connector-snapshot-mode-options[table of `snapshot.mode` options].
 
+ifdef::community[]
+|[[oracle-property-snapshot-mode-custom-name]]<<oracle-property-snapshot-mode-custom-name, `+snapshot.mode.custom.name+`>>
+|No default
+| When `snapshot.mode` is set as `custom`, use this setting to specify the name of the custom implementation provided in the `name()` method that is defined by the 'io.debezium.spi.snapshot.Snapshotter' interface.
+The provided implementation is called after a connector restart to determine whether to perform a snapshot.
+For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
+endif::community[]
+
 |[[oracle-property-snapshot-locking-mode]]<<oracle-property-snapshot-locking-mode, `+snapshot.locking.mode+`>>
 |_shared_
 a|Controls whether and for how long the connector holds a table lock. Table locks prevent certain types of changes table operations from occurring while the connector performs a snapshot.

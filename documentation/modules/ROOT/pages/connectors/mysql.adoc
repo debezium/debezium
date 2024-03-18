@@ -3451,6 +3451,14 @@ ifdef::community[]
 `custom`:: The connector performs a snapshot according to the implementation specified by the xref:mysql-property-snapshot-mode-custom-name[`snapshot.mode.custom.name`] property, which defines a custom implementation of the `io.debezium.spi.snapshot.Snapshotter` interface.
 endif::community[]
 
+ifdef::community[]
+|[[mysql-property-snapshot-mode-custom-name]]<<mysql-property-snapshot-mode-custom-name, `+snapshot.mode.custom.name+`>>
+|No default
+| When `snapshot.mode` is set as `custom`, use this setting to specify the name of the custom implementation provided in the `name()` method that is defined by the 'io.debezium.spi.snapshot.Snapshotter' interface.
+The provided implementation is called after a connector restart to determine whether to perform a snapshot.
+For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
+endif::community[]
+
 |[[mysql-property-snapshot-locking-mode]]<<mysql-property-snapshot-locking-mode, `+snapshot.locking.mode+`>>
 |_minimal_
 a|Controls whether and how long the connector holds the global MySQL read lock, which prevents any updates to the database, while the connector is performing a snapshot. Possible settings are: +
