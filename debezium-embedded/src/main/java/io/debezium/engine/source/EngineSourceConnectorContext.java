@@ -6,6 +6,7 @@
 package io.debezium.engine.source;
 
 import org.apache.kafka.connect.source.SourceConnectorContext;
+import org.apache.kafka.connect.storage.OffsetBackingStore;
 import org.apache.kafka.connect.storage.OffsetStorageReader;
 import org.apache.kafka.connect.storage.OffsetStorageWriter;
 
@@ -21,13 +22,21 @@ import io.debezium.embedded.async.AsyncEmbeddedEngine;
 public class EngineSourceConnectorContext implements DebeziumSourceConnectorContext, SourceConnectorContext {
 
     private final AsyncEmbeddedEngine engine;
+    private final OffsetBackingStore offsetStore;
     private final OffsetStorageReader offsetReader;
     private final OffsetStorageWriter offsetWriter;
 
-    public EngineSourceConnectorContext(final AsyncEmbeddedEngine engine, final OffsetStorageReader offsetReader, final OffsetStorageWriter offsetWriter) {
+    public EngineSourceConnectorContext(final AsyncEmbeddedEngine engine, final OffsetBackingStore offsetStore, final OffsetStorageReader offsetReader,
+                                        final OffsetStorageWriter offsetWriter) {
         this.engine = engine;
+        this.offsetStore = offsetStore;
         this.offsetReader = offsetReader;
         this.offsetWriter = offsetWriter;
+    }
+
+    @Override
+    public OffsetBackingStore offsetStore() {
+        return offsetStore;
     }
 
     @Override
