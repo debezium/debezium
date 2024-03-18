@@ -53,7 +53,6 @@ import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.snapshot.SnapshotterService;
-import io.debezium.spi.snapshot.Snapshotter;
 import io.debezium.util.Clock;
 import io.debezium.util.Collect;
 import io.debezium.util.Strings;
@@ -89,43 +88,6 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
         this.databaseSchema = schema;
         this.lastEventProcessor = lastEventProcessor;
         this.preSnapshotAction = preSnapshotAction;
-    }
-
-    @Override
-    public SnapshottingTask getSnapshottingTask(MySqlPartition partition, MySqlOffsetContext previousOffset) {
-
-        // TODO DBZ-7308 evaluate getSnapshottingTask can be shared
-
-        final Snapshotter snapshotter = snapshotterService.getSnapshotter();
-
-        List<String> dataCollectionsToBeSnapshotted = connectorConfig.getDataCollectionsToBeSnapshotted();
-        Map<String, String> snapshotSelectOverridesByTable = connectorConfig.getSnapshotSelectOverridesByTable().entrySet().stream()
-                .collect(Collectors.toMap(e -> e.getKey().identifier(), Map.Entry::getValue));
-
-        boolean offsetExists = previousOffset != null;
-        boolean snapshotInProgress = false;
-
-        if (offsetExists) {
-            snapshotInProgress = previousOffset.isSnapshotRunning();
-        }
-
-        if (offsetExists && !previousOffset.isSnapshotRunning()) {
-            LOGGER.info("A previous offset indicating a completed snapshot has been found. Neither schema nor data will be snapshotted.");
-        }
-
-        boolean shouldSnapshotSchema = snapshotter.shouldSnapshotSchema(offsetExists, snapshotInProgress);
-        boolean shouldSnapshotData = snapshotter.shouldSnapshotData(offsetExists, snapshotInProgress);
-
-        if (shouldSnapshotSchema && shouldSnapshotData) {
-            LOGGER.info("According to the connector configuration both schema and data will be snapshotted");
-        }
-        else {
-            LOGGER.info("According to the connector configuration only schema will be snapshotted");
-        }
-
-        return new SnapshottingTask(shouldSnapshotSchema, shouldSnapshotData,
-                dataCollectionsToBeSnapshotted,
-                snapshotSelectOverridesByTable, false);
     }
 
     @Override

@@ -58,6 +58,7 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig.SnapshotTablesRo
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.snapshot.SnapshotterService;
 import io.debezium.spi.schema.DataCollectionId;
+import io.debezium.spi.snapshot.Snapshotter;
 import io.debezium.util.Clock;
 import io.debezium.util.ColumnUtils;
 import io.debezium.util.Strings;
@@ -231,6 +232,40 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         Connection connection = jdbcConnection.connection();
         connection.setAutoCommit(false);
         return connection;
+    }
+
+    public SnapshottingTask getSnapshottingTask(P partition, O previousOffset) {
+
+        final Snapshotter snapshotter = snapshotterService.getSnapshotter();
+
+        List<String> dataCollectionsToBeSnapshotted = connectorConfig.getDataCollectionsToBeSnapshotted();
+        Map<String, String> snapshotSelectOverridesByTable = connectorConfig.getSnapshotSelectOverridesByTable().entrySet().stream()
+                .collect(Collectors.toMap(e -> e.getKey().identifier(), Map.Entry::getValue));
+
+        boolean offsetExists = previousOffset != null;
+        boolean snapshotInProgress = false;
+
+        if (offsetExists) {
+            snapshotInProgress = previousOffset.isSnapshotRunning();
+        }
+
+        if (offsetExists && !previousOffset.isSnapshotRunning()) {
+            LOGGER.info("A previous offset indicating a completed snapshot has been found.");
+        }
+
+        boolean shouldSnapshotSchema = snapshotter.shouldSnapshotSchema(offsetExists, snapshotInProgress);
+        boolean shouldSnapshotData = snapshotter.shouldSnapshotData(offsetExists, snapshotInProgress);
+
+        if (shouldSnapshotData && shouldSnapshotSchema) {
+            LOGGER.info("According to the connector configuration both schema and data will be snapshot.");
+        }
+        else if (shouldSnapshotSchema) {
+            LOGGER.info("According to the connector configuration only schema will be snapshot.");
+        }
+
+        return new SnapshottingTask(shouldSnapshotSchema, shouldSnapshotData,
+                dataCollectionsToBeSnapshotted, snapshotSelectOverridesByTable,
+                false);
     }
 
     /**

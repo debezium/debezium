@@ -173,11 +173,6 @@ public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O e
             throws Exception;
 
     /**
-     * Returns the snapshotting task based on the previous offset (if available) and the connector's snapshotting mode.
-     */
-    public abstract SnapshottingTask getSnapshottingTask(P partition, O previousOffset);
-
-    /**
      * Prepares the taking of a snapshot and returns an initial {@link SnapshotContext}.
      */
     protected abstract SnapshotContext<P, O> prepare(P partition, boolean onDemand) throws Exception;
