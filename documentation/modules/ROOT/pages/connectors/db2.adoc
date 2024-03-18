@@ -2717,6 +2717,14 @@ Set the `snapshot.mode.custom.name` configuration property to the name provided 
 For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
 endif::community[]
 
+ifdef::community[]
+|[[db2-property-snapshot-mode-custom-name]]<<db2-property-snapshot-mode-custom-name, `+snapshot.mode.custom.name+`>>
+|No default
+| When `snapshot.mode` is set as `custom`, use this setting to specify the name of the custom implementation provided in the `name()` method that is defined by the 'io.debezium.spi.snapshot.Snapshotter' interface.
+The provided implementation is called after a connector restart to determine whether to perform a snapshot.
+For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
+endif::community[]
+
 |[[db2-property-snapshot-locking-mode]]<<db2-property-snapshot-locking-mode, `+snapshot.locking.mode+`>>
 |_exclusive_
 a|Controls whether and for how long the connector holds a table lock. 

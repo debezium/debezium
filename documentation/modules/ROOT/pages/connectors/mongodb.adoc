@@ -292,6 +292,49 @@ You can find more information about snapshots in the following sections:
 * xref:debezium-postgresql-incremental-snapshots[]
 endif::product[]
 
+[id="mongodb-connector-snapshot-mode-options"]
+.Settings for `snapshot.mode` connector configuration property
+[cols="30%a,70%a",options="header"]
+|===
+|Setting |Description
+
+|`always`
+|The connector performs a snapshot every time that it starts.
+After the snapshot completes, the connector begins to stream event records for subsequent database changes.
+
+|`initial`
+|The connector performs a database snapshot as described in the xref:default-workflow-for-performing-an-initial-snapshot[default workflow for creating an initial snapshot].
+After the snapshot completes, the connector begins to stream event records for subsequent database changes.
+
+|`initial_only`
+|The connector performs a database snapshot.
+After the snapshot completes, the connector stops, and does not stream event records for subsequent database changes.
+
+|`never`
+|Deprecated, see `no_data`.
+
+|`no_data`
+|The connector captures the structure of all relevant tables, performing all the steps described in the xref:default-workflow-for-performing-an-initial-snapshot[default snapshot workflow], except that it does not create `READ` events to represent the data set at the point of the connector's start-up (Step 7.b).
+
+|`when_needed`
+|After the connector starts, it performs a snapshot only if it detects one of the following circumstances:
+
+* It cannot detect any topic offsets.
+* A previously recorded offset specifies a log position that is not available on the server.
+
+ifdef::community[]
+|`custom`
+|The `custom` snapshot mode lets you inject your own implementation of the `io.debezium.spi.snapshot.Snapshotter` interface.
+Set the `snapshot.mode.custom.name` configuration property to the name provided by the `name()` method of your implementation.
+The name is specified on the classpath of your Kafka Connect cluster.
+If you use the {prodname} `EmbeddedEngine`, the name is included in the connector JAR file.
+For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
+endif::community[]
+
+|===
+
+For more information, see xref:mongodb-property-snapshot-mode[`snapshot.mode`] in the table of connector configuration properties.
+
 // Type: concept
 // ModuleID: debezium-mongodb-ad-hoc-snapshots
 [id="mongodb-ad-hoc-snapshots"]
@@ -358,9 +401,15 @@ include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snaps
 ==== Using the Kafka signaling channel to stop an incremental snapshot
 include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot-kafka.adoc[leveloffset=+1]
 
+ifdef::community[]
+[[connector-custom-snapshot]]
+=== Custom snapshotter SPI
+include::{partialsdir}/modules/all-connectors/custom-snapshotter-spi.adoc[leveloffset=+3]
+endif::community[]
+
 // Type: concept
 [id="mongodb-blocking-snapshots"]
-==== Blocking snapshots
+=== Blocking snapshots
 
 include::{partialsdir}/modules/all-connectors/con-connector-blocking-snapshot.adoc[leveloffset=+3]
 
@@ -1911,15 +1960,45 @@ That is, the specified expression is matched against the entire name string of t
 |Positive integer value that specifies the maximum number of threads used to perform an intial sync of the collections in a replica set. Defaults to 1.
 
 |[[mongodb-property-snapshot-mode]]<<mongodb-property-snapshot-mode, `+snapshot.mode+`>>
-|`initial`
+|_initial_
 |Specifies the criteria for performing a snapshot when the connector starts.
 Set the property to one of the following values:
 
-`initial`::
-When the connector starts, if it does not detect a value in its offsets topic, it performs a snapshot of the database.
+`always`:: The connector performs a snapshot every time that it starts.
+The snapshot includes the structure and data of the captured tables.
+Specify this value to populate topics with a complete representation of the data from the captured tables every time that the connector starts.
+After the snapshot completes, the connector begins to stream event records for subsequent database changes.
 
-`never`::
-When the connector starts, it skips the snapshot process and immediately begins to stream change events for operations that the database records to the oplog.
+`initial`:: The connector performs a database snapshot as described in the xref:default-workflow-for-performing-an-initial-snapshot[default workflow for creating an initial snapshot].
+After the snapshot completes, the connector begins to stream event records for subsequent database changes.
+
+`initial_only`:: The connector performs a database a snapshot only when no offsets have been recorded for the logical server name.
+After the snapshot completes, the connector stops.
+It does not transition to streaming event records for subsequent database changes.
+
+`never`:: Deprecated, see `no_data`.
+
+`no_data`:: The connector runs a snapshot that captures the structure of all relevant tables, performing all the steps described in the xref:default-workflow-for-performing-an-initial-snapshot[default snapshot workflow], except that it does not create `READ` events to represent the data set at the point of the connector's start-up (Step 7.b).
+
+`when_needed`:: After the connector starts, it performs a snapshot only if it detects one of the following circumstances:
+
+* It cannot detect any topic offsets.
+* A previously recorded offset specifies a log position that is not available on the server.
+
+ifdef::community[]
+`custom`:: The `custom` snapshot mode lets you inject your own implementation of the `io.debezium.spi.snapshot.Snapshotter` interface.
+Set the `snapshot.mode.custom.name` configuration property to the name provided by the `name()` method of your implementation.
+
+For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
+endif::community[]
+
+ifdef::community[]
+|[[mongodb-property-snapshot-mode-custom-name]]<<mongodb-property-snapshot-mode-custom-name, `+snapshot.mode.custom.name+`>>
+|No default
+| When `snapshot.mode` is set as `custom`, use this setting to specify the name of the custom implementation provided in the `name()` method that is defined by the 'io.debezium.spi.snapshot.Snapshotter' interface.
+The provided implementation is called after a connector restart to determine whether to perform a snapshot.
+For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
+endif::community[]
 
 |[[mongodb-property-provide-transaction-metadata]]<<mongodb-property-provide-transaction-metadata, `+provide.transaction.metadata+`>>
 |`false`
