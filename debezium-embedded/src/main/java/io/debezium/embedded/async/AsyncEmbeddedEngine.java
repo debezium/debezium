@@ -540,10 +540,13 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         LOGGER.debug("Stopping records service.");
         final long shutdownTimeout = config.getLong(AsyncEngineConfig.RECORD_PROCESSING_SHUTDOWN_TIMEOUT_MS);
         try {
+            recordService.shutdown();
             recordService.awaitTermination(shutdownTimeout, TimeUnit.MILLISECONDS);
         }
         catch (InterruptedException e) {
             LOGGER.info("Timed out while waiting for record service shutdown. Shutting it down immediately.");
+        }
+        finally {
             recordService.shutdownNow();
         }
     }
