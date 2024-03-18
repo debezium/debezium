@@ -3422,6 +3422,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         assertThat(message.get()).contains("snapshot.mode.custom.name cannot be empty when snapshot.mode 'custom' is defined");
     }
 
+    @Test
     @FixFor("DBZ-5917")
     public void shouldIncludeTableWithBackSlashInName() throws Exception {
         String setupStmt = "DROP SCHEMA IF EXISTS s1 CASCADE;" +
