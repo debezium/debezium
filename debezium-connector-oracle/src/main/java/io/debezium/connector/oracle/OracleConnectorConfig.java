@@ -905,8 +905,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         return snapshotMode;
     }
 
-    public SnapshotLockingMode getSnapshotLockingMode() {
-        return snapshotLockingMode;
+    public Optional<SnapshotLockingMode> getSnapshotLockingMode() {
+        return Optional.ofNullable(snapshotLockingMode);
     }
 
     @Override

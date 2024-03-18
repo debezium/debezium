@@ -1907,7 +1907,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         waitForConnectorShutdown("postgres", TestHelper.TEST_SERVER);
 
         // Stop the connector, verify that no snapshot was performed
-        assertThat(logInterceptor.containsMessage("A previous offset indicating a completed snapshot has been found. Neither schema nor data will be snapshotted."))
+        assertThat(logInterceptor.containsMessage("A previous offset indicating a completed snapshot has been found."))
                 .isTrue();
     }
 

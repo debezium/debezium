@@ -166,7 +166,8 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
         // Obtain read lock on all tables. This statement closes all open tables and locks all tables
         // for all databases with a global read lock, and it prevents ALL updates while we have this lock.
         // It also ensures that everything we do while we have this lock will be consistent.
-        if (connectorConfig.getSnapshotLockingMode().usesLocking() && connectorConfig.useGlobalLock()) {
+        MySqlConnectorConfig.SnapshotLockingMode snapshotLockingMode = connectorConfig.getSnapshotLockingMode().get();
+        if (snapshotLockingMode.usesLocking() && connectorConfig.useGlobalLock()) {
             try {
                 globalLock();
                 metrics.globalLockAcquired();
@@ -176,7 +177,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
                 // Continue anyway, since RDS (among others) don't allow setting a global lock
                 assert !isGloballyLocked();
             }
-            if (connectorConfig.getSnapshotLockingMode().flushResetsIsolationLevel()) {
+            if (snapshotLockingMode.flushResetsIsolationLevel()) {
                 // FLUSH TABLES resets TX and isolation level
                 connection.executeWithoutCommitting("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ");
             }
@@ -187,7 +188,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
     protected void releaseSchemaSnapshotLocks(RelationalSnapshotContext<MySqlPartition, MySqlOffsetContext> snapshotContext)
             throws SQLException {
 
-        if (connectorConfig.getSnapshotLockingMode().usesMinimalLocking()) {
+        if (connectorConfig.getSnapshotLockingMode().get().usesMinimalLocking()) {
             if (isGloballyLocked()) {
                 globalUnlock();
             }
@@ -212,7 +213,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
             tableUnlock();
             if (!delayedSchemaSnapshotTables.isEmpty()) {
                 schemaEvents.clear();
-                if (connectorConfig.getSnapshotLockingMode().usesLocking()) {
+                if (connectorConfig.getSnapshotLockingMode().get().usesLocking()) {
                     createSchemaEventsForTables(snapshotContext, delayedSchemaSnapshotTables, false);
                 }
                 else {
@@ -253,7 +254,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
     protected void determineSnapshotOffset(RelationalSnapshotContext<MySqlPartition, MySqlOffsetContext> ctx,
                                            MySqlOffsetContext previousOffset)
             throws Exception {
-        if (!isGloballyLocked() && !isTablesLocked() && connectorConfig.getSnapshotLockingMode().usesLocking()) {
+        if (!isGloballyLocked() && !isTablesLocked() && connectorConfig.getSnapshotLockingMode().get().usesLocking()) {
             return;
         }
         if (previousOffset != null) {
@@ -320,7 +321,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
         final Map<String, DatabaseLocales> databaseCharsets = connection.readDatabaseCollations();
 
         ExecutorService executorService = null;
-        if (!connectorConfig.getSnapshotLockingMode().usesLocking()) {
+        if (!connectorConfig.getSnapshotLockingMode().get().usesLocking()) {
             int snapshotMaxThreads = connectionPool.size();
             LOGGER.info("Creating schema snapshot worker pool with {} worker thread(s)", snapshotMaxThreads);
             executorService = Executors.newFixedThreadPool(snapshotMaxThreads);
@@ -344,7 +345,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
                     addSchemaEvent(snapshotContext, database, "USE " + quote(database));
                 }
 
-                if (connectorConfig.getSnapshotLockingMode().usesLocking()) {
+                if (connectorConfig.getSnapshotLockingMode().get().usesLocking()) {
                     createSchemaEventsForTables(snapshotContext, tablesToRead.get(database), true);
                 }
                 else {
@@ -424,7 +425,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
     }
 
     private boolean twoPhaseSchemaSnapshot() {
-        return connectorConfig.getSnapshotLockingMode().usesLocking() && !isGloballyLocked();
+        return connectorConfig.getSnapshotLockingMode().get().usesLocking() && !isGloballyLocked();
     }
 
     @Override

@@ -5,7 +5,10 @@
  */
 package io.debezium.junit.relational;
 
+import java.util.Optional;
+
 import io.debezium.config.Configuration;
+import io.debezium.config.EnumeratedValue;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.relational.ColumnFilterMode;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
@@ -27,6 +30,16 @@ public class TestRelationalDatabaseConfig extends RelationalDatabaseConnectorCon
     @Override
     public String getConnectorName() {
         return null;
+    }
+
+    @Override
+    public EnumeratedValue getSnapshotMode() {
+        return null;
+    }
+
+    @Override
+    public Optional<EnumeratedValue> getSnapshotLockingMode() {
+        return Optional.empty();
     }
 
     @Override

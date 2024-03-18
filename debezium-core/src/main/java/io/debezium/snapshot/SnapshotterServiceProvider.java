@@ -27,7 +27,7 @@ import io.debezium.spi.snapshot.Snapshotter;
  *
  * @author Mario Fiore Vitale
  */
-public abstract class SnapshotterServiceProvider implements ServiceProvider<SnapshotterService> {
+public class SnapshotterServiceProvider implements ServiceProvider<SnapshotterService> {
 
     @Override
     public SnapshotterService createService(Configuration configuration, ServiceRegistry serviceRegistry) {
@@ -35,7 +35,7 @@ public abstract class SnapshotterServiceProvider implements ServiceProvider<Snap
         final BeanRegistry beanRegistry = serviceRegistry.tryGetService(BeanRegistry.class);
         final CommonConnectorConfig commonConnectorConfig = beanRegistry.lookupByName(StandardBeanNames.CONNECTOR_CONFIG, CommonConnectorConfig.class);
 
-        final String configuredSnapshotMode = snapshotMode(beanRegistry);
+        final String configuredSnapshotMode = snapshotMode(commonConnectorConfig);
         final String snapshotModeCustomName = commonConnectorConfig.getSnapshotModeCustomName();
 
         String snapshotMode;
@@ -47,7 +47,7 @@ public abstract class SnapshotterServiceProvider implements ServiceProvider<Snap
         }
 
         List<Snapshotter> snapshotters = StreamSupport.stream(ServiceLoader.load(Snapshotter.class).spliterator(), false)
-                .filter(s -> s.name().equals(snapshotMode))
+                .filter(s -> s.name().equalsIgnoreCase(snapshotMode))
                 .collect(Collectors.toList());
 
         if (snapshotters.isEmpty()) {
@@ -65,22 +65,6 @@ public abstract class SnapshotterServiceProvider implements ServiceProvider<Snap
         return getSnapshotterService(configuration, snapshotter, beanRegistry, snapshotQueryService, snapshotLockService);
     }
 
-    // This is required for DebeziumServer since it loads all connectors and until all modes will be moved into the core (if possible)
-    private boolean isForCurrentConnector(Configuration configuration, Snapshotter s) {
-
-        return s.getClass().getCanonicalName().contains(getConnectorClassPackage(configuration));
-    }
-
-    private String getConnectorClassPackage(Configuration config) {
-
-        try {
-            return Class.forName(config.getString("connector.class")).getPackageName();
-        }
-        catch (ClassNotFoundException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
     private static SnapshotterService getSnapshotterService(Configuration configuration, Snapshotter s, BeanRegistry beanRegistry, SnapshotQuery snapshotQueryService,
                                                             SnapshotLock snapshotLockService) {
         s.configure(configuration.asMap());
@@ -95,8 +79,9 @@ public abstract class SnapshotterServiceProvider implements ServiceProvider<Snap
         return SnapshotterService.class;
     }
 
-    // TODO this could be delete after DBZ-7308 if all modes will be effectively available to all connectors and
-    // SnapshotMode enum moved into CommonConnectorConfig
-    public abstract String snapshotMode(BeanRegistry beanRegistry);
+    // SnapshotMode differs from different connectors, so it is not moved to CommonConnectorConfig.
+    public String snapshotMode(CommonConnectorConfig configuration) {
+        return configuration.getSnapshotMode().getValue();
+    }
 
 }

@@ -91,7 +91,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     protected void lockTablesForSchemaSnapshot(ChangeEventSourceContext sourceContext,
                                                RelationalSnapshotContext<OraclePartition, OracleOffsetContext> snapshotContext)
             throws SQLException, InterruptedException {
-        if (connectorConfig.getSnapshotLockingMode().usesLocking()) {
+        if (connectorConfig.getSnapshotLockingMode().get().usesLocking()) {
             ((OracleSnapshotContext) snapshotContext).preSchemaSnapshotSavepoint = jdbcConnection.connection().setSavepoint("dbz_schema_snapshot");
 
             try (Statement statement = jdbcConnection.connection().createStatement()) {
@@ -116,7 +116,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     @Override
     protected void releaseSchemaSnapshotLocks(RelationalSnapshotContext<OraclePartition, OracleOffsetContext> snapshotContext)
             throws SQLException {
-        if (connectorConfig.getSnapshotLockingMode().usesLocking()) {
+        if (connectorConfig.getSnapshotLockingMode().get().usesLocking()) {
             jdbcConnection.connection().rollback(((OracleSnapshotContext) snapshotContext).preSchemaSnapshotSavepoint);
         }
     }

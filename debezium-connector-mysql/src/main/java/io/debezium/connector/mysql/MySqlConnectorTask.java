@@ -21,8 +21,6 @@ import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.mysql.MySqlConnectorConfig.BigIntUnsignedHandlingMode;
-import io.debezium.connector.mysql.snapshot.MySqlSnapshotLockProvider;
-import io.debezium.connector.mysql.snapshot.MySqlSnapshotterServiceProvider;
 import io.debezium.connector.mysql.strategy.AbstractConnectorConnection;
 import io.debezium.connector.mysql.strategy.ConnectorAdapter;
 import io.debezium.connector.mysql.strategy.mysql.MySqlConnection;
@@ -45,7 +43,6 @@ import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
-import io.debezium.service.spi.ServiceRegistry;
 import io.debezium.snapshot.SnapshotterService;
 import io.debezium.spi.snapshot.Snapshotter;
 import io.debezium.spi.topic.TopicNamingStrategy;
@@ -243,14 +240,6 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
         coordinator.start(taskContext, this.queue, metadataProvider);
 
         return coordinator;
-    }
-
-    @Override
-    protected void registerServiceProviders(ServiceRegistry serviceRegistry) {
-
-        super.registerServiceProviders(serviceRegistry);
-        serviceRegistry.registerServiceProvider(new MySqlSnapshotLockProvider());
-        serviceRegistry.registerServiceProvider(new MySqlSnapshotterServiceProvider());
     }
 
     private boolean validateSnapshotFeasibility(Snapshotter snapshotter, OffsetContext offset) {
