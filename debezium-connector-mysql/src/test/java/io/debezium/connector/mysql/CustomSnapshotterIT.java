@@ -92,27 +92,24 @@ public class CustomSnapshotterIT extends AbstractConnectorTest {
         VerifyRecord.isValidInsert(record, pkField, 2);
         stopConnector();
 
-        // TODO Maybe it can be enabled when DBZ-7308 is done.
-        /*
-         * config = DATABASE_CUSTOM_SNAPSHOT.defaultConfig()
-         * .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.CUSTOM.getValue())
-         * .with(MySqlConnectorConfig.SNAPSHOT_MODE_CUSTOM_NAME, CustomTestSnapshot.class.getName())
-         * .with(MySqlConnectorConfig.SNAPSHOT_QUERY_MODE, MySqlConnectorConfig.SnapshotQueryMode.CUSTOM)
-         * .with(MySqlConnectorConfig.SNAPSHOT_QUERY_MODE_CUSTOM_NAME, CustomTestSnapshot.class.getName())
-         * .build();
-         *
-         * start(MySqlConnector.class, config);
-         * assertConnectorIsRunning();
-         * actualRecords = consumeRecordsByTopic(4);
-         *
-         * s1recs = actualRecords.recordsForTopic(DATABASE_CUSTOM_SNAPSHOT.topicForTable("a"));
-         * s2recs = actualRecords.recordsForTopic(DATABASE_CUSTOM_SNAPSHOT.topicForTable("b"));
-         * assertThat(s1recs.size()).isEqualTo(2);
-         * assertThat(s2recs.size()).isEqualTo(2);
-         * VerifyRecord.isValidRead(s1recs.get(0), pkField, 1);
-         * VerifyRecord.isValidRead(s1recs.get(1), pkField, 2);
-         * VerifyRecord.isValidRead(s2recs.get(0), pkField, 1);
-         * VerifyRecord.isValidRead(s2recs.get(1), pkField, 2);
-         */
+        config = DATABASE_CUSTOM_SNAPSHOT.defaultConfig()
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.CUSTOM.getValue())
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE_CUSTOM_NAME, CustomTestSnapshot.class.getName())
+                .with(MySqlConnectorConfig.SNAPSHOT_QUERY_MODE, MySqlConnectorConfig.SnapshotQueryMode.CUSTOM)
+                .with(MySqlConnectorConfig.SNAPSHOT_QUERY_MODE_CUSTOM_NAME, CustomTestSnapshot.class.getName())
+                .build();
+
+        start(MySqlConnector.class, config);
+        assertConnectorIsRunning();
+        actualRecords = consumeRecordsByTopic(12);
+
+        s1recs = actualRecords.recordsForTopic(DATABASE_CUSTOM_SNAPSHOT.topicForTable("a"));
+        s2recs = actualRecords.recordsForTopic(DATABASE_CUSTOM_SNAPSHOT.topicForTable("b"));
+        assertThat(s1recs.size()).isEqualTo(2);
+        assertThat(s2recs.size()).isEqualTo(2);
+        VerifyRecord.isValidRead(s1recs.get(0), pkField, 1);
+        VerifyRecord.isValidRead(s1recs.get(1), pkField, 2);
+        VerifyRecord.isValidRead(s2recs.get(0), pkField, 1);
+        VerifyRecord.isValidRead(s2recs.get(1), pkField, 2);
     }
 }
