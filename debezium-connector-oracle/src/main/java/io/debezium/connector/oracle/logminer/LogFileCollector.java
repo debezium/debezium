@@ -229,13 +229,13 @@ public class LogFileCollector {
         final Scn checkpointScn = thread.getCheckpointScn();
 
         if (thread.isDisabled()) {
-            LOGGER.error("Redo thread {} expected to have ENABLED with value PUBLIC or PRIVATE.", threadId);
+            logException(String.format("Redo thread %d expected to have ENABLED with value PUBLIC or PRIVATE.", threadId));
             return false;
         }
 
         if (threadLogs == null || threadLogs.isEmpty()) {
-            LOGGER.debug("Redo thread {} is inconsistent; enabled SCN {} checkpoint SCN {} and reading from SCN {}, no logs found.",
-                    threadId, enabledScn, checkpointScn, startScn);
+            logException(String.format("Redo thread %d is inconsistent; enabled SCN %s checkpoint SCN %s reading from SCN %s, no logs found.",
+                    threadId, enabledScn, checkpointScn, startScn));
             return false;
         }
 
@@ -248,13 +248,15 @@ public class LogFileCollector {
                     .collect(Collectors.toList());
 
             if (enabledLogs.isEmpty()) {
-                LOGGER.debug("Redo Thread {} is inconsistent; expected logs after enabled SCN {}.", threadId, enabledScn);
+                logException(String.format("Redo Thread %d is inconsistent; expected logs after enabled SCN %s",
+                        threadId, enabledLogs));
                 return false;
             }
 
             final Optional<Long> missingSequence = getFirstLogMissingSequence(enabledLogs);
             if (missingSequence.isPresent()) {
-                LOGGER.debug("Redo thread {} is inconsistent; failed to find log with sequence {} (enabled).", threadId, missingSequence.get());
+                logException(String.format("Redo Thread %d is inconsistent; failed to find log with sequence %d (enabled).",
+                        threadId, missingSequence.get()));
                 return false;
             }
 
@@ -263,7 +265,8 @@ public class LogFileCollector {
         else {
             final Optional<Long> missingSequence = getFirstLogMissingSequence(threadLogs);
             if (missingSequence.isPresent()) {
-                LOGGER.debug("Redo thread {} is inconsistent; failed to find log with sequence {}.", threadId, missingSequence.get());
+                logException(String.format("Redo Thread %d is inconsistent; failed to find log with sequence %d",
+                        threadId, missingSequence.get()));
                 return false;
             }
 
@@ -296,8 +299,8 @@ public class LogFileCollector {
                             LOGGER.debug("Read Thread {} query has log {}; not expected.", threadId, logFile);
                         }
                     }
-                    LOGGER.error("Redo Thread {} stopped at SCN {}, but logs detected using SCN {}.",
-                            threadId, checkpointScn, startScn);
+                    logException(String.format("Redo Thread %d stopped at SCN %s, but logs detected using SCN %s.",
+                            threadId, checkpointScn, startScn));
                     return false;
                 }
 
@@ -311,8 +314,8 @@ public class LogFileCollector {
                             .collect(Collectors.toList());
 
                     if (logsToCheck.isEmpty()) {
-                        LOGGER.debug("Redo Thread {} is inconsistent; expected logs between enabled SCN {} and checkpoint SCN {}.",
-                                threadId, enabledScn, checkpointScn);
+                        logException(String.format("Redo Thread %d is inconsistent; expected logs between enabled SCN %s and checkpoint SCN %s",
+                                threadId, enabledScn, checkpointScn));
                         return false;
                     }
                 }
@@ -324,14 +327,16 @@ public class LogFileCollector {
                             .collect(Collectors.toList());
 
                     if (logsToCheck.isEmpty()) {
-                        LOGGER.debug("Redo Thread {} is inconsistent; expected logs before checkpoint SCN {}.", threadId, checkpointScn);
+                        logException(String.format("Redo Thread %d is inconsistent; expected logs before checkpoint SCN %s",
+                                threadId, checkpointScn));
                         return false;
                     }
                 }
 
                 final Optional<Long> missingSequence = getFirstLogMissingSequence(logsToCheck);
                 if (missingSequence.isPresent()) {
-                    LOGGER.debug("Redo thread {} is inconsistent; failed to find log with sequence {} (checkpoint).", threadId, missingSequence.get());
+                    logException(String.format("Redo Thread %d is inconsistent; failed to find log with sequence %d (checkpoint).",
+                            threadId, missingSequence.get()));
                     return false;
                 }
             }
@@ -356,8 +361,8 @@ public class LogFileCollector {
                             LOGGER.debug("Redo Thread {} log {} not expected.", threadId, log);
                         }
                     }
-                    LOGGER.error("Redo Thread {} disabled at SCN {}, but logs detected using SCN {}.",
-                            threadId, disabledScn, startScn);
+                    logException(String.format("Redo Thread %d disabled at SCN %s, but logs detected using SCN %s.",
+                            threadId, disabledScn, startScn));
                     return false;
                 }
 
@@ -367,13 +372,15 @@ public class LogFileCollector {
                         .collect(Collectors.toList());
 
                 if (disabledLogs.isEmpty()) {
-                    LOGGER.debug("Redo Thread {} is inconsistent; expected logs before disabled SCN {}.", threadId, disabledScn);
+                    logException(String.format("Redo Thread %d is inconsistent; expected logs before disabled SCN %s.",
+                            threadId, disabledLogs));
                     return false;
                 }
 
                 final Optional<Long> missingSequence = getFirstLogMissingSequence(disabledLogs);
                 if (missingSequence.isPresent()) {
-                    LOGGER.debug("Redo thread {} is inconsistent; failed to find log with sequence {}.", threadId, missingSequence.get());
+                    logException(String.format("Redo Thread %d is inconsistent; failed to find log with sequence %d.",
+                            threadId, missingSequence.get()));
                     return false;
                 }
             }
@@ -459,6 +466,10 @@ public class LogFileCollector {
             max = Math.max(logFile.getSequence().longValue(), max);
         }
         return new SequenceRange(min, max);
+    }
+
+    private static void logException(String message) {
+        LOGGER.info("{}", message, new DebeziumException(message));
     }
 
     /**
