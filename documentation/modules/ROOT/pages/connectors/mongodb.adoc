@@ -1823,6 +1823,9 @@ The connector retrieves full documents when its `capture.mode` is set to one of 
 * `change_streams_update_full`
 * `change_streams_update_full_with_pre-image`
 
+To use this option with a MongoDB change streams collection, you must configure the collection to https://www.mongodb.com/docs/manual/changeStreams/#change-streams-with-document-pre--and-post-images[return document pre- and post-images].
+Pre- and post-images for an operation are available only if the required configuration is in place before the operation occurs.
+
 Set this property to one of the following values:
 
 `lookup`:: The connector uses a separate lookup to fetch the updated full MongoDB document.
