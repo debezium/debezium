@@ -39,6 +39,7 @@ import io.debezium.connector.postgresql.PostgresConnectorConfig;
 import io.debezium.connector.postgresql.PostgresType;
 import io.debezium.connector.postgresql.PostgresValueConverter;
 import io.debezium.connector.postgresql.TypeRegistry;
+import io.debezium.connector.postgresql.YugabyteDBServer;
 import io.debezium.connector.postgresql.spi.SlotState;
 import io.debezium.data.SpecialValueDecimal;
 import io.debezium.jdbc.JdbcConfiguration;
@@ -510,6 +511,12 @@ public class PostgresConnection extends JdbcConnection {
      * @throws SQLException if anything fails.
      */
     public Long currentTransactionId() throws SQLException {
+        // YB Note: Returning a dummy value since the txid information is not being used to make
+        // any difference.
+        if (YugabyteDBServer.isEnabled()) {
+            return 2L;
+        }
+
         AtomicLong txId = new AtomicLong(0);
         query("select (case pg_is_in_recovery() when 't' then 0 else txid_current() end) AS pg_current_txid", rs -> {
             if (rs.next()) {
