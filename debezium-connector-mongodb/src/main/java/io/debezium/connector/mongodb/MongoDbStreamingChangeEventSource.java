@@ -430,7 +430,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                                                 new Document("$ifNull",
                                                     Arrays.asList(new Document("$toLong", "$wallTime"),
                                                 0)),
-                                            2)),
+                                            taskCount)),
                                     taskId)));
 
             filters.add(pipeline);
