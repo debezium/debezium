@@ -1322,7 +1322,16 @@ See xref:{link-avro-serialization}#avro-naming[Avro naming] for more details.
 
 |[[cassandra-property-errors-max-retires]]<<cassandra-property-errors-max-retires, `errors.max.retries`>>
 |`-1`
-|The maximum number of retries on retriable errors (e.g. connection errors) before failing (-1 = no limit, 0 = disabled, > 0 = num of retries).
+|Specifies how the connector responds after an operation fails with a retriable error, such as a connection error. +
+Set one of the following options:
+
+`-1`:: No limit. The connector always restarts automatically, and retries the operation, regardless of the number of previous failures.
+
+`0`:: Disabled. The connector fails immediately, and never retries the operation.
+User intervention is required to restart the connector.
+
+`> 0`:: The connector restarts automatically until it exceeds the specified value the maximum number of retries.
+After the next failure, the connector stops, and user intervention is required to restart it.
 
 |===
 

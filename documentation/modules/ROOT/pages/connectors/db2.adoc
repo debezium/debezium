@@ -2719,13 +2719,13 @@ endif::community[]
 
 |[[db2-property-snapshot-locking-mode]]<<db2-property-snapshot-locking-mode, `+snapshot.locking.mode+`>>
 |_exclusive_
-a|Controls whether and for how long the connector holds a table lock. 
+a|Controls whether and for how long the connector holds a table lock.
 Table locks prevent other database clients from performing certain table operations during a snapshot.
 You can set the following values:
 
 `exclusive`:: Controls how the connector holds locks on tables while performing the schema snapshot when `snapshot.isolation.mode` is `REPEATABLE_READ` or `EXCLUSIVE`. +
 The connector holds a table lock that ensures exclusive table access during only the initial phase of the snapshot in which the connector reads the database schema and other metadata.
-In subsequent phases of the snapshot, the connector uses a flashback query, which requires no locks, to select all rows from each table. 
+In subsequent phases of the snapshot, the connector uses a flashback query, which requires no locks, to select all rows from each table.
 If you prefer snapshots to run without setting any locks, set the following option, `none`.
 
 `none`:: Prevents the connector from acquiring any table locks during the snapshot.
@@ -2984,7 +2984,16 @@ endif::product[]
 
 |[[db2-property-errors-max-retires]]<<db2-property-errors-max-retires, `errors.max.retries`>>
 |`-1`
-|The maximum number of retries on retriable errors (e.g. connection errors) before failing (-1 = no limit, 0 = disabled, > 0 = num of retries).
+|Specifies how the connector responds after an operation that results in a retriable error, such as a connection error. +
+Set one of the following options:
+
+`-1`:: No limit. The connector always restarts automatically, and retries the operation, regardless of the number of previous failures.
+
+`0`:: Disabled. The connector fails immediately, and never retries the operation.
+User intervention is required to restart the connector.
+
+`> 0`:: The connector restarts automatically until it exceeds the specified value the maximum number of retries.
+After the next failure, the connector stops, and user intervention is required to restart it.
 
 |===
 
