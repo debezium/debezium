@@ -11,6 +11,7 @@ import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.sql.Blob;
+import java.sql.Clob;
 import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -33,6 +34,7 @@ import java.util.Properties;
 import java.util.TimeZone;
 import java.util.stream.Collectors;
 
+import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.TestTemplate;
@@ -58,6 +60,7 @@ import io.debezium.connector.jdbc.junit.jupiter.e2e.source.Source;
 import io.debezium.connector.jdbc.junit.jupiter.e2e.source.SourceConnectorOptions;
 import io.debezium.connector.jdbc.junit.jupiter.e2e.source.SourcePipelineInvocationContextProvider;
 import io.debezium.connector.jdbc.junit.jupiter.e2e.source.SourceType;
+import io.debezium.connector.jdbc.junit.jupiter.e2e.source.ValueBinder;
 import io.debezium.connector.jdbc.naming.DefaultTableNamingStrategy;
 import io.debezium.connector.jdbc.naming.TableNamingStrategy;
 import io.debezium.jdbc.TemporalPrecisionMode;
@@ -1295,11 +1298,37 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
     @TestTemplate
     @SkipWhenSource(value = { SourceType.MYSQL, SourceType.POSTGRES, SourceType.SQLSERVER }, reason = "No CLOB data type support")
     public void testClobDataType(Source source, Sink sink) throws Exception {
+        final String data = RandomStringUtils.randomAlphanumeric(65536);
         assertDataTypeNonKeyOnly(source,
                 sink,
                 "clob",
-                List.of("'hello world'"),
-                List.of("hello world"),
+                (ps, index) -> {
+                    final Clob clob = ps.getConnection().createClob();
+                    clob.setString(1, data);
+                    ps.setClob(index, clob);
+                },
+                List.of(data),
+                (record) -> assertColumn(sink, record, "data", getTextType()),
+                ResultSet::getString);
+    }
+
+    @TestTemplate
+    @SkipWhenSource(value = { SourceType.MYSQL, SourceType.POSTGRES, SourceType.SQLSERVER }, reason = "No CLOB data type support")
+    public void testClobDataTypeWithUpsert(Source source, Sink sink) throws Exception {
+        final String data = RandomStringUtils.randomAlphanumeric(65536);
+        assertDataTypeNonKeyOnly(source,
+                sink,
+                "clob",
+                (ps, index) -> {
+                    final Clob clob = ps.getConnection().createClob();
+                    clob.setString(1, data);
+                    ps.setClob(index, clob);
+                },
+                List.of(data),
+                (config) -> {
+                    config.with(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_KEY.getValue());
+                    config.with(JdbcSinkConnectorConfig.INSERT_MODE, InsertMode.UPSERT.getValue());
+                },
                 (record) -> assertColumn(sink, record, "data", getTextType()),
                 ResultSet::getString);
     }
@@ -2868,6 +2897,13 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
         assertDataTypeNonKeyOnly(source, sink, typeName, values, expectedValues, null, columnAssert, columnReader);
     }
 
+    protected <T, U> void assertDataTypeNonKeyOnly(Source source, Sink sink, String typeName, ValueBinder valueBinder,
+                                                   List<U> expectedValues, DataTypeColumnAssert columnAssert,
+                                                   ColumnReader<U> columnReader)
+            throws Exception {
+        assertDataTypeNonKeyOnly(source, sink, typeName, valueBinder, expectedValues, null, columnAssert, columnReader);
+    }
+
     protected <T, U> void assertDataTypesNonKeyOnly(Source source, Sink sink, List<String> typeNames, List<T> values, List<U> expectedValues,
                                                     DataTypeColumnAssert columnAssert, ColumnReader<U> columnReader)
             throws Exception {
@@ -2943,6 +2979,38 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
         }
 
         registerSourceConnector(source, Collections.singletonList(typeName), tableName, configAdjuster, createSql, insertSql);
+
+        Properties sinkProperties = getDefaultSinkConfig(sink);
+        sinkProperties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
+        sinkProperties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.NONE.getValue());
+        sinkProperties.put(JdbcSinkConnectorConfig.INSERT_MODE, InsertMode.INSERT.getValue());
+        startSink(source, sinkProperties, tableName);
+
+        consumeAndAssert(sink, columnAssert, expectedValues, columnReader);
+    }
+
+    @SuppressWarnings("SameParameterValue")
+    protected <T, U> void assertDataTypeNonKeyOnly(Source source, Sink sink, String typeName, ValueBinder valueBinder,
+                                                   List<U> expectedValues, ConfigurationAdjuster configAdjuster,
+                                                   DataTypeColumnAssert columnAssert, ColumnReader<U> columnReader)
+            throws Exception {
+        final String tableName = source.randomTableName();
+
+        final String createSql = String.format("CREATE TABLE %s (data %s NOT NULL, id integer, primary key(id))", tableName, typeName);
+        final String insertSql = String.format("INSERT INTO %s VALUES (?, 1)", tableName);
+
+        if (source.getOptions().useSnapshot()) {
+            source.execute(createSql);
+            source.streamTable(tableName);
+            source.execute(insertSql, valueBinder);
+            registerSourceConnector(source, Collections.singletonList(typeName), tableName, configAdjuster);
+        }
+        else {
+            registerSourceConnector(source, Collections.singletonList(typeName), tableName, configAdjuster);
+            source.execute(createSql);
+            source.streamTable(tableName);
+            source.execute(insertSql, valueBinder);
+        }
 
         Properties sinkProperties = getDefaultSinkConfig(sink);
         sinkProperties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
@@ -3227,4 +3295,5 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
         }
         return dataType;
     }
+
 }

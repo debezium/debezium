@@ -8,11 +8,14 @@ package io.debezium.connector.jdbc.junit.jupiter;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
 
 import org.testcontainers.containers.JdbcDatabaseContainer;
+
+import io.debezium.connector.jdbc.junit.jupiter.e2e.source.ValueBinder;
 
 /**
  * @author Chris Cranford
@@ -67,6 +70,24 @@ public abstract class JdbcConnectionProvider implements AutoCloseable {
         if (!connection.getAutoCommit()) {
             connection.commit();
         }
+    }
+
+    public void execute(String statement, ValueBinder binder) throws SQLException {
+        final Connection connection = getConnection();
+        try (PreparedStatement ps = connection.prepareStatement(statement)) {
+            binder.bind(ps, 1);
+            ps.execute();
+        }
+        catch (SQLException e) {
+            throw new SQLException("Failed to execute SQL: " + statement, e);
+        }
+        if (!connection.getAutoCommit()) {
+            connection.commit();
+        }
+    }
+
+    public PreparedStatement createPreparedStatement(String query) throws SQLException {
+        return connection.prepareStatement(query);
     }
 
     public void execute(String statement, String sta) throws SQLException {
