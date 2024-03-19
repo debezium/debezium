@@ -11,11 +11,11 @@ public class ReplicaSetPartitionTest extends AbstractPartitionTest<ReplicaSetPar
 
     @Override
     protected ReplicaSetPartition createPartition1() {
-        return new ReplicaSetPartition("server1", "rs1", false, -1, -1);
+        return new ReplicaSetPartition("server1", "rs1", false, -1, -1, 1);
     }
 
     @Override
     protected ReplicaSetPartition createPartition2() {
-        return new ReplicaSetPartition("server2", "rs2", false, -1, -1);
+        return new ReplicaSetPartition("server2", "rs2", false, -1, -1, 1);
     }
 }

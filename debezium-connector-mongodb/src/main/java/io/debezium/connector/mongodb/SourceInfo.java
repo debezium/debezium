@@ -87,6 +87,7 @@ public final class SourceInfo extends BaseSourceInfo {
     public static final String REPLICA_SET_NAME = "rs";
     public static final String TASK_ID_KEY = "task_id";
     public static final String MULTI_TASK_GEN_KEY = "multi_task_gen";
+    public static final String TASK_COUNT_KEY = "task_count";
     public static final String NAMESPACE = "ns";
     public static final String TIMESTAMP = "sec";
     public static final String ORDER = "ord";
@@ -301,7 +302,8 @@ public final class SourceInfo extends BaseSourceInfo {
                         SERVER_ID_KEY, serverName(),
                         REPLICA_SET_NAME, rsName,
                         TASK_ID_KEY, String.valueOf(this.taskId),
-                        MULTI_TASK_GEN_KEY, String.valueOf(this.multiTaskGen));
+                        MULTI_TASK_GEN_KEY, String.valueOf(this.multiTaskGen),
+                        TASK_COUNT_KEY, String.valueOf(this.maxTasks));
             }
             else {
                 return Collect.hashMapOf(

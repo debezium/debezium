@@ -149,7 +149,8 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                                 offsetContext,
                                 connectorConfig.getStreamingShardId(),
                                 connectorConfig.getMultiTaskEnabled(),
-                                connectorConfig.getMultiTaskGen());
+                                connectorConfig.getMultiTaskGen(),
+                                connectorConfig.getMaxTasks());
                     }
                     else {
                         readOplog(primary, primaryReference.get(), replicaSet, context, offsetContext, connectorConfig.getStreamingShardId());
@@ -441,12 +442,13 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
     }
 
     private void readChangeStream(MongoClient primary, MongoPrimary primaryClient, ReplicaSet replicaSet, ChangeEventSourceContext context,
-                                  MongoDbOffsetContext offsetContext, int shardId, boolean multiTaskEnabled, int multiTaskGen) {
+                                  MongoDbOffsetContext offsetContext, int shardId, boolean multiTaskEnabled, int multiTaskGen, int taskCount) {
         final ReplicaSetPartition rsPartition = offsetContext.getReplicaSetPartition(
                 replicaSet,
                 multiTaskEnabled,
                 taskContext.getMongoTaskId(),
-                multiTaskGen);
+                multiTaskGen,
+                taskCount);
         final ReplicaSetOffsetContext rsOffsetContext = offsetContext.getReplicaSetOffsetContext(replicaSet);
 
         final BsonTimestamp oplogStart = rsOffsetContext.lastOffsetTimestamp();

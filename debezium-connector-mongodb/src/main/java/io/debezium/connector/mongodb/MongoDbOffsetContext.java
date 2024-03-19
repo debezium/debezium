@@ -118,7 +118,8 @@ public class MongoDbOffsetContext implements OffsetContext {
     }
 
     public ReplicaSetPartition getReplicaSetPartition(ReplicaSet replicaSet) {
-        return replicaSetPartitions.computeIfAbsent(replicaSet, rs -> new ReplicaSetPartition(sourceInfo.serverId(), rs.replicaSetName(), false, -1, -1));
+        return replicaSetPartitions.computeIfAbsent(replicaSet,
+                rs -> new ReplicaSetPartition(sourceInfo.serverId(), rs.replicaSetName(), false, -1, -1, sourceInfo.maxTasks));
     }
 
     /**
@@ -127,10 +128,10 @@ public class MongoDbOffsetContext implements OffsetContext {
      * @param replicaSet the replica set; must not be null.
      * @return a replica set partition; never null.
      */
-    public ReplicaSetPartition getReplicaSetPartition(ReplicaSet replicaSet, boolean multiTaskEnabled, int taskId, int multiTaskGen) {
+    public ReplicaSetPartition getReplicaSetPartition(ReplicaSet replicaSet, boolean multiTaskEnabled, int taskId, int multiTaskGen, int taskCount) {
         // here is where we configure the offset key
         return replicaSetPartitions.computeIfAbsent(replicaSet,
-                rs -> new ReplicaSetPartition(sourceInfo.serverId(), rs.replicaSetName(), multiTaskEnabled, taskId, multiTaskGen));
+                rs -> new ReplicaSetPartition(sourceInfo.serverId(), rs.replicaSetName(), multiTaskEnabled, taskId, multiTaskGen, taskCount));
     }
 
     /**

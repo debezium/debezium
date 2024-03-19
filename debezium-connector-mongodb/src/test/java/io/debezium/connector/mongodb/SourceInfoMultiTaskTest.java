@@ -40,6 +40,7 @@ public class SourceInfoMultiTaskTest {
                 .with(MongoDbConnectorConfig.LOGICAL_NAME, "serverX")
                 .with(MongoDbConnectorConfig.MONGODB_MULTI_TASK_ENABLED, true)
                 .with(MongoDbConnectorConfig.MONGODB_MULTI_TASK_GEN, 1)
+                .with(MongoDbConnectorConfig.TASKS_MAX, 3)
                 .build();
         context = new MongoDbTaskContext(config);
         source = new SourceInfo(new MongoDbConnectorConfig(config), context.getMongoTaskId());
@@ -67,7 +68,8 @@ public class SourceInfoMultiTaskTest {
         assertThat(partition.get(SourceInfo.SERVER_ID_KEY)).isEqualTo("serverX");
         assertThat(partition.get(SourceInfo.TASK_ID_KEY)).isEqualTo("0");
         assertThat(partition.get(SourceInfo.MULTI_TASK_GEN_KEY)).isEqualTo("1");
-        assertThat(partition.size()).isEqualTo(4);
+        assertThat(partition.get(SourceInfo.TASK_COUNT_KEY)).isEqualTo("3");
+        assertThat(partition.size()).isEqualTo(5);
     }
 
     @Test

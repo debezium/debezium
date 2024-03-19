@@ -15,18 +15,21 @@ public class ReplicaSetPartition extends MongoDbPartition {
     private static final String REPLICA_SET_NAME = "rs";
     private static final String TASK_ID_KEY = "task_id";
     private static final String MULTI_TASK_GEN_KEY = "multi_task_gen";
+    private static final String TASK_COUNT_KEY = "task_count";
     private final String serverId;
     private final String replicaSetName;
     private final boolean multiTaskEnabled;
     private final int taskId;
     private final int multiTaskGen;
+    private final int taskCount;
 
-    public ReplicaSetPartition(String serverId, String replicaSetName, boolean multiTaskEnabled, int taskId, int multiTaskGen) {
+    public ReplicaSetPartition(String serverId, String replicaSetName, boolean multiTaskEnabled, int taskId, int multiTaskGen, int taskCount) {
         this.serverId = serverId;
         this.replicaSetName = replicaSetName;
         this.taskId = taskId;
         this.multiTaskGen = multiTaskGen;
         this.multiTaskEnabled = multiTaskEnabled;
+        this.taskCount = taskCount;
     }
 
     @Override
@@ -36,7 +39,8 @@ public class ReplicaSetPartition extends MongoDbPartition {
                     SERVER_ID_KEY, serverId,
                     REPLICA_SET_NAME, replicaSetName,
                     TASK_ID_KEY, String.valueOf(this.taskId),
-                    MULTI_TASK_GEN_KEY, String.valueOf(this.multiTaskGen));
+                    MULTI_TASK_GEN_KEY, String.valueOf(this.multiTaskGen),
+                    TASK_COUNT_KEY, String.valueOf(taskCount));
         }
         else {
             return Collect.hashMapOf(
@@ -58,12 +62,13 @@ public class ReplicaSetPartition extends MongoDbPartition {
                 Objects.equals(replicaSetName, other.replicaSetName) &&
                 Objects.equals(taskId, other.taskId) &&
                 Objects.equals(multiTaskGen, other.multiTaskGen) &&
-                Objects.equals(multiTaskEnabled, other.multiTaskEnabled);
+                Objects.equals(multiTaskEnabled, other.multiTaskEnabled) &&
+                Objects.equals(taskCount, other.taskCount);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(serverId, replicaSetName, taskId, multiTaskGen, multiTaskEnabled);
+        return Objects.hash(serverId, replicaSetName, taskId, multiTaskGen, multiTaskEnabled, taskCount);
     }
 
     @Override

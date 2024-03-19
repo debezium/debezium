@@ -493,7 +493,8 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
                 replicaSet,
                 connectorConfig.getMultiTaskEnabled(),
                 taskContext.getMongoTaskId(),
-                connectorConfig.getMultiTaskGen());
+                connectorConfig.getMultiTaskGen(),
+                connectorConfig.getMaxTasks());
         final ReplicaSetOffsetContext replicaSetOffsetContext = offsetContext.getReplicaSetOffsetContext(replicaSet);
         replicaSetOffsetContext.readEvent(collectionId, getClock().currentTime());
 
