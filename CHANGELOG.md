@@ -2,6 +2,51 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.5.3.Final
+March 19th 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12423535)
+
+### New features since 2.5.2.Final
+
+* Use TRACE level log for Debezium Server in build time [DBZ-7369](https://issues.redhat.com/browse/DBZ-7369)
+* Append LSN to txID [DBZ-7454](https://issues.redhat.com/browse/DBZ-7454)
+* Upgrade PostgreSQL driver to 42.6.1 [DBZ-7571](https://issues.redhat.com/browse/DBZ-7571)
+* Improved logging in case of PostgreSQL failure [DBZ-7581](https://issues.redhat.com/browse/DBZ-7581)
+* Performance Issue in Cassandra Connector [DBZ-7622](https://issues.redhat.com/browse/DBZ-7622)
+
+
+### Breaking changes since 2.5.2.Final
+
+* Deploying Debezium for the first time, it not captures the schema of all tables in the database. [DBZ-7593](https://issues.redhat.com/browse/DBZ-7593)
+
+
+### Fixes since 2.5.2.Final
+
+* NullPointerException in MongoDB connector [DBZ-6434](https://issues.redhat.com/browse/DBZ-6434)
+* Unavailable Toasted HSTORE Json Storage Mode column causes serialization failure [DBZ-7582](https://issues.redhat.com/browse/DBZ-7582)
+* Incorrect value of TIME(n) replicate from MySQL if the original value is negative [DBZ-7594](https://issues.redhat.com/browse/DBZ-7594)
+* Re-select Post Processor not working for complex types [DBZ-7596](https://issues.redhat.com/browse/DBZ-7596)
+* Serialization of XML columns with NULL values fails using Infinispan Buffer [DBZ-7598](https://issues.redhat.com/browse/DBZ-7598)
+* Null instead of toast placeholder written for binary types when "hex" mode configured [DBZ-7599](https://issues.redhat.com/browse/DBZ-7599)
+* Poor snapshot performance during schema snapshot DDL processing [DBZ-7608](https://issues.redhat.com/browse/DBZ-7608)
+* Re-select post processor performance [DBZ-7611](https://issues.redhat.com/browse/DBZ-7611)
+* Uncaught exception during config validation in Engine [DBZ-7614](https://issues.redhat.com/browse/DBZ-7614)
+* Incremental snapshot query doesn't honor message.key.columns order [DBZ-7617](https://issues.redhat.com/browse/DBZ-7617)
+* Metric ScnFreezeCount never increases [DBZ-7619](https://issues.redhat.com/browse/DBZ-7619)
+* Cassandra can have misaligned Jackson dependencies [DBZ-7629](https://issues.redhat.com/browse/DBZ-7629)
+* Numerci value without mantissa cannot be parsed [DBZ-7643](https://issues.redhat.com/browse/DBZ-7643)
+
+
+### Other changes since 2.5.2.Final
+
+* Numeric default value decimal scale mismatch [DBZ-7562](https://issues.redhat.com/browse/DBZ-7562)
+* Documentation conflict [DBZ-7565](https://issues.redhat.com/browse/DBZ-7565)
+* Oracle connector always brings OLR dependencies [DBZ-7579](https://issues.redhat.com/browse/DBZ-7579)
+* Correct JDBC connector dependencies [DBZ-7580](https://issues.redhat.com/browse/DBZ-7580)
+* Upgrade Debezium Server to Quarkus 3.2.10 [DBZ-7624](https://issues.redhat.com/browse/DBZ-7624)
+* Fix MySQL image fetch for tests [DBZ-7651](https://issues.redhat.com/browse/DBZ-7651)
+
+
+
 ## 2.5.2.Final
 February 27th 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12422552)
 
