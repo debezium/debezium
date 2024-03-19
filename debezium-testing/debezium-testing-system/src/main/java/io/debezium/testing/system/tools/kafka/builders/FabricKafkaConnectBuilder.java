@@ -94,7 +94,7 @@ public class FabricKafkaConnectBuilder extends
 
         if (ConfigProperties.DATABASE_ORACLE) {
             plugins.add(
-                    artifactServer.createDebeziumPlugin("oracle", List.of("jdbc/ojdbc8")));
+                    artifactServer.createDebeziumPlugin("oracle", List.of("jdbc/ojdbc11")));
         }
 
         return withBuild(plugins);
