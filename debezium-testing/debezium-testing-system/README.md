@@ -31,13 +31,19 @@ mkdir -p ${ORACLE_ARTIFACT_DIR}
 cd ${ORACLE_ARTIFACT_DIR}
 ```
 
-Download [Oracle Instant Client package](https://www.oracle.com/database/technologies/instant-client/downloads.html), unpack it and place `ojdbc8.jar` and `xstreams.jar` to `${ORACLE_ARTIFACT_DIR}` folder.
+Download [Oracle Instant Client package](https://www.oracle.com/database/technologies/instant-client/downloads.html), unpack it and place `ojdbc8.jar` or `ojdbc11.jar` along with `xstreams.jar` to `${ORACLE_ARTIFACT_DIR}` folder.
 The downloaded Oracle Instant Client version has to be the same as `ORACLE_ARTIFACT_VERSION`. 
 
 ```bash
+# Used by older versions of Debezium
 mvn install:install-file -DgroupId=com.oracle.instantclient -DartifactId=ojdbc8 \
     -Dversion=${ORACLE_ARTIFACT_VERSION} -Dpackaging=jar -Dfile=ojdbc8.jar \
     -Dmaven.repo.local=${MAVEN_REPO}
+# Used by newer versions of Debezium    
+mvn install:install-file -DgroupId=com.oracle.instantclient -DartifactId=ojdbc11 \
+    -Dversion=${ORACLE_ARTIFACT_VERSION} -Dpackaging=jar -Dfile=ojdbc11.jar \
+    -Dmaven.repo.local=${MAVEN_REPO}
+# Used by both older/newer Debezium versions    
 mvn install:install-file -DgroupId=com.oracle.instantclient -DartifactId=xstreams \
     -Dversion=${ORACLE_INSTANTCLIENT_ARTIFACT_VERSION} -Dpackaging=jar -Dfile=xstreams.jar \
     -Dmaven.repo.local=${MAVEN_REPO}
