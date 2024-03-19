@@ -200,6 +200,7 @@ public class SinkRecordDescriptor {
 
             LOGGER.trace("Field [{}] with schema [{}]", this.name, schema.type());
             LOGGER.trace("    Type      : {}", type.getClass().getName());
+            LOGGER.trace("    Type Name : {}", typeName);
             LOGGER.trace("    Optional  : {}", schema.isOptional());
 
             if (schema.parameters() != null && !schema.parameters().isEmpty()) {
