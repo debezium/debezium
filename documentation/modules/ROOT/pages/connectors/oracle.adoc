@@ -2802,11 +2802,11 @@ To deploy a {prodname} Oracle connector, you install the {prodname} Oracle conne
 
 . Download the {prodname} https://repo1.maven.org/maven2/io/debezium/debezium-connector-oracle/{debezium-version}/debezium-connector-oracle-{debezium-version}-plugin.tar.gz[Oracle connector plug-in archive].
 . Extract the files into your Kafka Connect environment.
-. Download the link:https://repo1.maven.org/maven2/com/oracle/database/jdbc/ojdbc8/{ojdbc8-version}/ojdbc8-{ojdbc8-version}.jar[JDBC driver for Oracle] from Maven Central and extract the downloaded driver file to the directory that contains the {prodname} Oracle connector JAR file.
+. Download the link:https://repo1.maven.org/maven2/com/oracle/database/jdbc/ojdbc11/{ojdbc11-version}/ojdbc11-{ojdbc11-version}.jar[JDBC driver for Oracle] from Maven Central and extract the downloaded driver file to the directory that contains the {prodname} Oracle connector JAR file.
 +
 NOTE: If you use the {prodname} Oracle connector with Oracle XStream, obtain the JDBC driver as part of the Oracle Instant Client package.
 For more information, see xref:obtaining-oracle-jdbc-driver-and-xstreams-api-files[].
-. Download the link:https://repo1.maven.org/maven2/com/oracle/database/xml/xdb/{ojdbc8-version}/xdb-{ojdbc8-version}.jar[XDB library for Oracle] from Maven Central and extract the downloaded file to the directory that contains the {prodname} Oracle connector JAR file.
+. Download the link:https://repo1.maven.org/maven2/com/oracle/database/xml/xdb/{ojdbc11-version}/xdb-{ojdbc11-version}.jar[XDB library for Oracle] from Maven Central and extract the downloaded file to the directory that contains the {prodname} Oracle connector JAR file.
 . Add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`].
 . Restart your Kafka Connect process to pick up the new JAR files.
 
@@ -2909,7 +2909,7 @@ RUN cd /opt/kafka/plugins/debezium/ \
 && unzip debezium-connector-{connector-file}-{debezium-version}-redhat-{debezium-build-number}-plugin.zip \
 && rm debezium-connector-{connector-file}-{debezium-version}-redhat-{debezium-build-number}-plugin.zip
 RUN cd /opt/kafka/plugins/debezium/ \
-&& curl -O https://repo1.maven.org/maven2/com/oracle/ojdbc/ojdbc8/21.1.0.0/ojdbc8-21.1.0.0.jar
+&& curl -O https://repo1.maven.org/maven2/com/oracle/ojdbc/ojdbc11/{ojdbc11-version}/ojdbc11-{ojdbc11-version}.jar
 USER 1001
 EOF
 ----
@@ -5303,7 +5303,7 @@ The following configuration example adds the properties `database.connection.ada
 [id="obtaining-oracle-jdbc-driver-and-xstreams-api-files"]
 === Obtaining the Oracle JDBC driver and XStream API files
 
-The {prodname} Oracle connector requires the Oracle JDBC driver (`ojdbc8.jar`) to connect to Oracle databases.
+The {prodname} Oracle connector requires the Oracle JDBC driver (`ojdbc11.jar`) to connect to Oracle databases.
 If the connector uses XStream to access the database, you must also have the XStream API (`xstreams.jar`).
 Licensing requirements prohibit {prodname} from including these files in the Oracle connector archive.
 However, the required files are available for free download as part of the Oracle Instant Client.
@@ -5329,14 +5329,14 @@ instantclient_21_1/
 
 ...
 
-├── ojdbc8.jar
+├── ojdbc11.jar
 ├── ucp.jar
 ├── uidrvci
 └── xstreams.jar
 
 ----
 
-. Copy the `ojdbc8.jar` and `xstreams.jar` files, and add them to the `_<kafka_home>_/libs` directory, for example, `kafka/libs`.
+. Copy the `ojdbc11.jar` and `xstreams.jar` files, and add them to the `_<kafka_home>_/libs` directory, for example, `kafka/libs`.
 . Create an environment variable, `LD_LIBRARY_PATH`, and set its value to the path to the Instant Client directory, for example:
 +
 [source,bash,indent=0]
