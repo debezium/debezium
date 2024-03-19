@@ -17,15 +17,15 @@
           work on all platforms. We'll set some of these as system properties during integration testing.
       -->
         <version.postgres.server>10</version.postgres.server>
-        <postgres.host>${docker.host.address}</postgres.host>
-        <postgres.port>5432</postgres.port>
-        <postgres.user>postgres</postgres.user>
-        <postgres.password>postgres</postgres.password>
-        <postgres.db.name>postgres</postgres.db.name>
+        <postgres.host>127.0.0.1</postgres.host>
+        <postgres.port>5433</postgres.port>
+        <postgres.user>yugabyte</postgres.user>
+        <postgres.password>yugabyte</postgres.password>
+        <postgres.db.name>yugabyte</postgres.db.name>
         <postgres.encoding>UTF8</postgres.encoding>
         <postgres.system.lang>en_US.utf8</postgres.system.lang>
-        <postgres.image>quay.io/debezium/postgres:${version.postgres.server}</postgres.image>
-        <postgres.config.file>/usr/share/postgresql/postgresql.conf.sample</postgres.config.file>
+<!--        <postgres.image>quay.io/debezium/postgres:${version.postgres.server}</postgres.image>-->
+<!--        <postgres.config.file>/usr/share/postgresql/postgresql.conf.sample</postgres.config.file>-->
         <docker.skip>false</docker.skip>
         <docker.showLogs>true</docker.showLogs>
         <docker.initimage>ln -fs /usr/share/zoneinfo/US/Samoa /etc/localtime &amp;&amp; echo timezone=US/Samoa &gt;&gt; ${postgres.config.file}</docker.initimage>
@@ -201,7 +201,7 @@
                                     <LANG>${postgres.system.lang}</LANG>
                                 </env>
                                 <ports>
-                                    <port>${postgres.port}:5432</port>
+                                    <port>${postgres.port}:5433</port>
                                 </ports>
                                 <log>
                                     <prefix>postgres</prefix>
