@@ -230,7 +230,7 @@
             <!-- Oracle JDBC driver, XML support, Oracle XStream -->
             <dependency>
                 <groupId>com.oracle.database.jdbc</groupId>
-                <artifactId>ojdbc8</artifactId>
+                <artifactId>ojdbc11</artifactId>
                 <version>${version.oracle.driver}</version>
             </dependency>
             <dependency>
