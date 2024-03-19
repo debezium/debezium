@@ -657,7 +657,7 @@ After the snapshot completes, the connector stops, and does not stream event rec
 |The connector captures the structure of all relevant tables, performing all of the steps described in the xref:initial-snapshot-workflow-with-global-read-lock[default workflow for creating an initial snapshot], except that it does not create `READ` events to represent the data set at the point of the connector's start-up (Step 8.2).
 
 |`never`
-|When the connector starts, rather than performing a snapshot, it immediately begins to stream event records for subsequent database changes. 
+|When the connector starts, rather than performing a snapshot, it immediately begins to stream event records for subsequent database changes.
 This option is under consideration for future deprecation, in favor of the `no_data` option.
 
 |`schema_only_recovery`
@@ -672,14 +672,14 @@ WARNING: Do not use this mode to perform a snapshot if schema changes were commi
 
 |`when_needed`
 |After the connector starts, it performs a snapshot only if it detects one of the following circumstances:
- 
+
 * It cannot detect any topic offsets.
 * A previously recorded offset specifies a log position that is not available on the server.
 
 ifdef::community[]
 |`custom`
 |The `custom` snapshot mode lets you inject your own implementation of the `io.debezium.spi.snapshot.Snapshotter` interface.
-Set the `snapshot.mode.custom.name` configuration property to the name provided by the `name()` method of your implementation. 
+Set the `snapshot.mode.custom.name` configuration property to the name provided by the `name()` method of your implementation.
 The name is specified on the classpath of your Kafka Connect cluster.
 If you use the `EmbeddedEngine`, the name is included in the connector JAR file.
 For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
@@ -3428,7 +3428,7 @@ It does not transition to streaming to read change events from the binlog.
 
 `schema_only`:: Deprecated, see `no_data`.
 
-`no_data`:: The connector runs a snapshot that captures only the schema, but not any table data. 
+`no_data`:: The connector runs a snapshot that captures only the schema, but not any table data.
 Set this option if you do not need the topics to contain a consistent snapshot of the data, but you want to capture any schema changes that were applied after the last connector restart.
 
 `schema_only_recovery`:: Deprecated, see `recovery`.
@@ -3439,11 +3439,11 @@ You can also set the property to periodically prune a database schema history to
  +
 WARNING: Do not use this mode to perform a snapshot if schema changes were committed to the database after the last connector shutdown.
 
-`never`:: When the connector starts, rather than performing a snapshot, it immediately begins to stream event records for subsequent database changes. 
+`never`:: When the connector starts, rather than performing a snapshot, it immediately begins to stream event records for subsequent database changes.
 This option is under consideration for future deprecation, in favor of the `no_data` option.
 
 `when_needed`:: After the connector starts, it performs a snapshot only if it detects one of the following circumstances:
- 
+
 * It cannot detect any topic offsets.
 * A previously recorded offset specifies a binlog position or GTID that is not available on the server.
 
@@ -3455,25 +3455,25 @@ endif::community[]
 |_minimal_
 a|Controls whether and how long the connector holds the global MySQL read lock, which prevents any updates to the database, while the connector is performing a snapshot. Possible settings are: +
 
-`minimal`:: The connector holds the global read lock for only the initial phase of the snapshot during which it reads the database schemas and other metadata. 
-During the next phase of the snapshot, the connector releases the lock as it selects all rows from each table. 
-To perform the SELECT operation in a consistent fashion, the connector uses a REPEATABLE READ transaction. 
+`minimal`:: The connector holds the global read lock for only the initial phase of the snapshot during which it reads the database schemas and other metadata.
+During the next phase of the snapshot, the connector releases the lock as it selects all rows from each table.
+To perform the SELECT operation in a consistent fashion, the connector uses a REPEATABLE READ transaction.
 Although the release of the global read lock permits other MySQL clients to update the database, use of REPEATABLE READ isolation ensures a consistent snapshot, because the connector continues to read the same data for the duration of  the transaction. +
 
-`minimal_percona`:: The connector holds link:https://www.percona.com/doc/percona-server/8.0/management/backup_locks.html[the global backup lock] for only the initial phase of the snapshot during which it reads the database schemas and other metadata. 
-During the next phase of the snapshot, the connector releases the lock as it selects all rows from each table. 
-To perform the SELECT operation in a consistent fashion, the connector uses a REPEATABLE READ transaction. 
+`minimal_percona`:: The connector holds link:https://www.percona.com/doc/percona-server/8.0/management/backup_locks.html[the global backup lock] for only the initial phase of the snapshot during which it reads the database schemas and other metadata.
+During the next phase of the snapshot, the connector releases the lock as it selects all rows from each table.
+To perform the SELECT operation in a consistent fashion, the connector uses a REPEATABLE READ transaction.
 
 Although the release of the global read lock permits other MySQL clients to update the database, use of REPEATABLE READ isolation ensures a consistent snapshot, because the connector continues to read the same data for the duration of  the transaction. +
 This mode does not flush tables to disk, is not blocked by long-running reads, and is available only in Percona Server. +
 
-`extended`:: Blocks all write operations for the duration of the snapshot. 
+`extended`:: Blocks all write operations for the duration of the snapshot.
 Use this setting if clients submit concurrent operations that are incompatible with the REPEATABLE READ isolation level in MySQL. +
 
-`none`:: Prevents the connector from acquiring any table locks during the snapshot. 
-Although this option is allowed with all snapshot modes, it is safe to use _only_ if no schema changes occur while the snapshot is running. 
-Tables that are defined with the MyISAM engine always acquire a table lock. 
-As a result, such tables are locked even if you set this option. 
+`none`:: Prevents the connector from acquiring any table locks during the snapshot.
+Although this option is allowed with all snapshot modes, it is safe to use _only_ if no schema changes occur while the snapshot is running.
+Tables that are defined with the MyISAM engine always acquire a table lock.
+As a result, such tables are locked even if you set this option.
 This behavior differs from tables that are defined by the InnoDB engine, which acquire row-level locks.
 
 ifdef::community[]
@@ -3735,7 +3735,16 @@ Specify one of the following options:
 
 |[[mysql-property-errors-max-retires]]<<mysql-property-errors-max-retires, `errors.max.retries`>>
 |`-1`
-|The maximum number of retries on retriable errors (e.g. connection errors) before failing (-1 = no limit, 0 = disabled, > 0 = num of retries).
+|Specifies how the connector responds after an operation that results in a retriable error, such as a connection error. +
+Set one of the following options:
+
+`-1`:: No limit. The connector always restarts automatically, and retries the operation, regardless of the number of previous failures.
+
+`0`:: Disabled. The connector fails immediately, and never retries the operation.
+User intervention is required to restart the connector.
+
+`> 0`:: The connector restarts automatically until it exceeds the specified value the maximum number of retries.
+After the next failure, the connector stops, and user intervention is required to restart it.
 
 |[[mysql-property-event-converting-failure-handling-mode]]<<mysql-property-event-converting-failure-handling-mode, `event.converting.failure.handling.mode`>>
 |`warn`
