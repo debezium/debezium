@@ -17,6 +17,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorCompletionService;
@@ -460,7 +461,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
             try {
                 taskCompletionService.take().get();
             }
-            catch (InterruptedException e) {
+            catch (InterruptedException | CancellationException e) {
                 LOGGER.info("Task interrupted while polling.");
             }
             LOGGER.debug("Task #{} out of {} tasks has stopped polling.", i, tasks.size());
