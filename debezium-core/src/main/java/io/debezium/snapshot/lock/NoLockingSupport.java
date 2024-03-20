@@ -16,13 +16,13 @@ public class NoLockingSupport implements SnapshotLock {
     public static final String NO_LOCKING_SUPPORT = "no_locking_support";
 
     @Override
-    public void configure(Map<String, ?> properties) {
-
+    public String name() {
+        return NO_LOCKING_SUPPORT;
     }
 
     @Override
-    public String name() {
-        return NO_LOCKING_SUPPORT;
+    public void configure(Map<String, ?> properties) {
+
     }
 
     @Override

@@ -296,7 +296,7 @@ public class MySqlConnectorIT extends AbstractAsyncEngineConnectorTest {
             Config result = connector.validate(config.asMap());
             assertNoConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE);
 
-            assertThat(new MySqlConnectorConfig(config).getSnapshotLockingMode()).isEqualTo(SnapshotLockingMode.NONE);
+            assertThat(new MySqlConnectorConfig(config).getSnapshotLockingMode().get()).isEqualTo(SnapshotLockingMode.NONE);
         }
     }
 
