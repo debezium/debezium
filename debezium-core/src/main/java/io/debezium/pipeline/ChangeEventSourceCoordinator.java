@@ -271,7 +271,7 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
         getSignalProcessor(previousOffsets).ifPresent(signalProcessor -> registerSignalActionsAndStartProcessor(signalProcessor,
                 eventDispatcher, this, connectorConfig));
 
-        if (!snapshotterService.getSnapshotter().shouldStream()) {
+        if (snapshotterService != null && !snapshotterService.getSnapshotter().shouldStream()) {
             LOGGER.info("Streaming is disabled for snapshot mode {}", snapshotterService.getSnapshotter().name());
             return;
         }
