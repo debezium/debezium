@@ -8,8 +8,11 @@ package io.debezium.connector.mysql;
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.sql.SQLException;
+import java.util.concurrent.atomic.AtomicReference;
 
 import javax.xml.bind.DatatypeConverter;
 
@@ -20,8 +23,17 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+
+import io.apicurio.registry.rest.client.RegistryClient;
+import io.apicurio.registry.rest.client.RegistryClientFactory;
 import io.debezium.config.Configuration;
 import io.debezium.data.Envelope;
+import io.debezium.data.VerifyRecord;
+import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.util.Testing;
@@ -36,8 +48,9 @@ import mil.nga.wkb.io.WkbGeometryReader;
 @SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 6, reason = "Function ST_GeomFromText not added until MySQL 5.6")
 public class MySqlGeometryIT extends AbstractAsyncEngineConnectorTest {
 
-    private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-json.txt")
+    private static final Path SCHEMA_HISTORY_PATH = Files.createTestingPath("file-schema-history-json.txt")
             .toAbsolutePath();
+    public static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private UniqueDatabase DATABASE;
     private DatabaseGeoDifferences databaseDifferences;
 
@@ -53,7 +66,7 @@ public class MySqlGeometryIT extends AbstractAsyncEngineConnectorTest {
         DATABASE.createAndInitialize();
 
         initializeConnectorTestFramework();
-        Testing.Files.delete(SCHEMA_HISTORY_PATH);
+        Files.delete(SCHEMA_HISTORY_PATH);
     }
 
     @After
@@ -62,7 +75,7 @@ public class MySqlGeometryIT extends AbstractAsyncEngineConnectorTest {
             stopConnector();
         }
         finally {
-            Testing.Files.delete(SCHEMA_HISTORY_PATH);
+            Files.delete(SCHEMA_HISTORY_PATH);
         }
     }
 
@@ -124,8 +137,8 @@ public class MySqlGeometryIT extends AbstractAsyncEngineConnectorTest {
         // Consume all of the events due to startup and initialization of the database
         // ---------------------------------------------------------------------------------------------------------------
         // Testing.Debug.enable();
-        int numTables = 2;
-        int numDataRecords = databaseDifferences.geometryPointTableRecords() + 2;
+        int numTables = 3;
+        int numDataRecords = databaseDifferences.geometryPointTableRecords() + 2 + 2;
         int numDdlRecords = numTables * 2 + 3; // for each table (1 drop + 1 create) + for each db (1 create + 1 drop + 1 use)
         int numSetVariables = 1;
         SourceRecords records = consumeRecordsByTopic(numDdlRecords + numSetVariables + numDataRecords);
@@ -218,7 +231,7 @@ public class MySqlGeometryIT extends AbstractAsyncEngineConnectorTest {
         }
     }
 
-    private DatabaseGeoDifferences databaseGeoDifferences(boolean mySql5) {
+    public static DatabaseGeoDifferences databaseGeoDifferences(boolean mySql5) {
         if (mySql5) {
             return new DatabaseGeoDifferences() {
 
@@ -276,4 +289,103 @@ public class MySqlGeometryIT extends AbstractAsyncEngineConnectorTest {
 
         void geometryAssertPoints(Double expectedX, Double expectedY, Double actualX, Double actualY);
     }
+
+    public String prettyPrintJson(Object serializableObject) throws JsonProcessingException {
+        return OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(serializableObject);
+    }
+
+    @Test
+    @FixFor("DBZ-6964")
+    public void correctGeometryAvroSchema() throws InterruptedException, IOException {
+        if (!VerifyRecord.isApucurioAvailable()) {
+            return;
+        }
+
+        // Use the DB configuration to define the connector's configuration ...
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NEVER)
+                .with(MySqlConnectorConfig.PROPAGATE_COLUMN_SOURCE_TYPE, ".*")
+                .build();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        // ---------------------------------------------------------------------------------------------------------------
+        // Consume all of the events due to startup and initialization of the database
+        // ---------------------------------------------------------------------------------------------------------------
+        // Testing.Debug.enable();
+        int numCreateDatabase = 1;
+        int numCreateTables = 3;
+        int numDataRecords = databaseDifferences.geometryPointTableRecords() + 2 + 2;
+        SourceRecords records = consumeRecordsByTopic(numCreateDatabase + numCreateTables + numDataRecords);
+        stopConnector();
+        assertThat(records).isNotNull();
+        assertThat(records.recordsForTopic(DATABASE.getServerName()).size()).isEqualTo(numCreateDatabase + numCreateTables);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_6964_geometry")).size()).isEqualTo(2);
+        assertThat(records.topics().size()).isEqualTo(1 + numCreateTables);
+        assertThat(records.databaseNames().size()).isEqualTo(1);
+        assertThat(records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).size()).isEqualTo(
+                numCreateDatabase + numCreateTables);
+        assertThat(records.ddlRecordsForDatabase("regression_test")).isNull();
+        assertThat(records.ddlRecordsForDatabase("connector_test")).isNull();
+        assertThat(records.ddlRecordsForDatabase("readbinlog_test")).isNull();
+        assertThat(records.ddlRecordsForDatabase("json_test")).isNull();
+        records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).forEach(this::print);
+
+        // Check that all records are valid, can be serialized and deserialized ...
+        records.forEach(this::validate);
+
+        AtomicReference<String> topicName = new AtomicReference<>();
+        records.forEach(record -> {
+            Struct value = (Struct) record.value();
+            if (record.topic().endsWith("dbz_6964_geometry")) {
+                topicName.set(record.topic());
+                assertGeomRecord(value);
+            }
+        });
+        try (RegistryClient client = RegistryClientFactory.create(VerifyRecord.APICURIO_URL)) {
+            try (var inputStream = client.getLatestArtifact(null, topicName + "-value");
+                    ByteArrayOutputStream targetStream = new ByteArrayOutputStream()) {
+                inputStream.transferTo(targetStream);
+                var registrySchemaJson = targetStream.toString();
+                JsonNode schema = OBJECT_MAPPER.readValue(registrySchemaJson, ObjectNode.class);
+                Testing.debug(prettyPrintJson(schema));
+
+                Assert.assertTrue(schema.has("type"));
+                assertThat(schema.get("type").textValue()).isEqualTo("record");
+                Assert.assertTrue(schema.has("name"));
+                assertThat(schema.get("name").textValue()).isEqualTo("Envelope");
+
+                var root = schema.get("fields").get(0);
+                Assert.assertTrue(root.has("name"));
+                assertThat(root.get("name").textValue()).isEqualTo("before");
+                Assert.assertTrue(root.has("type"));
+
+                root = root.get("type").get(1);
+                Assert.assertTrue(root.has("type"));
+                assertThat(root.get("type").textValue()).isEqualTo("record");
+                Assert.assertTrue(root.has("name"));
+                assertThat(root.get("name").textValue()).isEqualTo("Value");
+                Assert.assertTrue(root.has("fields"));
+
+                root = root.get("fields");
+                assertThat(root.get(1).get("name").textValue()).isEqualTo("geom");
+                assertThat(root.get(2).get("name").textValue()).isEqualTo("geom2");
+                Assert.assertTrue(root.get(1).has("type"));
+
+                var geomRoot = root.get(1).get("type").get(1);
+                Assert.assertTrue(geomRoot.has("type"));
+                assertThat(geomRoot.get("type").textValue()).isEqualTo("record");
+                Assert.assertTrue(geomRoot.has("name"));
+                assertThat(geomRoot.get("name").textValue()).isEqualTo("Geometry__geom");
+
+                var geom2Root = root.get(2).get("type").get(1);
+                Assert.assertTrue(geom2Root.has("type"));
+                assertThat(geom2Root.get("type").textValue()).isEqualTo("record");
+                Assert.assertTrue(geom2Root.has("name"));
+                assertThat(geom2Root.get("name").textValue()).isEqualTo("Geometry__geom2");
+            }
+        }
+    }
+
 }
