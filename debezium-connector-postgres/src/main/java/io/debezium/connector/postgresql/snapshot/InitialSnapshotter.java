@@ -39,6 +39,7 @@ public class InitialSnapshotter extends QueryingSnapshotter {
             return true;
         }
         else {
+            // TODO Vaibhav: tests getting skipped because of this condition
             LOGGER.info(
                     "Previous snapshot has completed successfully, streaming logical changes from last known position");
             return false;

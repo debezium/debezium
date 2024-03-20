@@ -79,7 +79,7 @@ public class PostgresConnection extends JdbcConnection {
     /**
      * Obtaining a replication slot may fail if there's a pending transaction. We're retrying to get a slot for 30 min.
      */
-    private static final int MAX_ATTEMPTS_FOR_OBTAINING_REPLICATION_SLOT = 900;
+    private static final int MAX_ATTEMPTS_FOR_OBTAINING_REPLICATION_SLOT = 90;
 
     private static final Duration PAUSE_BETWEEN_REPLICATION_SLOT_RETRIEVAL_ATTEMPTS = Duration.ofSeconds(2);
 
