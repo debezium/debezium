@@ -447,7 +447,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             }
         }
         else {
-            LOGGER.warn("Couldn't commit processed log positions with the source database due to a concurrent connector shutdown or restart");
+            LOGGER.info("Couldn't commit processed log positions with the source database due to a concurrent connector shutdown or restart");
         }
     }
 
