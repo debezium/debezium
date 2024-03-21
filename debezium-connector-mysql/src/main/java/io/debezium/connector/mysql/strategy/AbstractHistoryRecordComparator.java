@@ -97,12 +97,12 @@ public abstract class AbstractHistoryRecordComparator extends HistoryRecordCompa
 
         // Both positions are missing GTIDs. Look at the servers ...
         int recordedServerId = recorded.getInteger(SourceInfo.SERVER_ID_KEY, 0);
-        int desiredServerId = recorded.getInteger(SourceInfo.SERVER_ID_KEY, 0);
+        int desiredServerId = desired.getInteger(SourceInfo.SERVER_ID_KEY, 0);
         if (recordedServerId != desiredServerId) {
             // These are from different servers, and their binlog coordinates are not related. So the only thing we can do
             // is compare timestamps, and we have to assume that the server timestamps can be compared ...
             long recordedTimestamp = recorded.getLong(SourceInfo.TIMESTAMP_KEY, 0);
-            long desiredTimestamp = recorded.getLong(SourceInfo.TIMESTAMP_KEY, 0);
+            long desiredTimestamp = desired.getLong(SourceInfo.TIMESTAMP_KEY, 0);
             return recordedTimestamp <= desiredTimestamp;
         }
 
