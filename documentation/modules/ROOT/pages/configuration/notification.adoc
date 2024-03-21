@@ -137,7 +137,7 @@ a|[source, json]
    "timestamp": "1695817046353"
 }
 ----
-Field `data_collection` are currently not supported for Mongo connector
+Field `data_collection` are currently not supported for MongoDB connector
 
 |TABLE_SCAN_COMPLETED
 a|[source, json]
@@ -161,7 +161,7 @@ In the preceding example, the `additional_data.status` field can contain one of 
 `SQL_EXCEPTION`:: A SQL exception occurred while performing the snapshot.
 `SUCCEEDED`:: The snapshot completed successfully.
 
-Fields `total_rows_scanned` and `data_collection` are currently not supported for Mongo connector
+Fields `total_rows_scanned` and `data_collection` are currently not supported for MongoDB connector
 |COMPLETED
 a|[source, json]
 ----
