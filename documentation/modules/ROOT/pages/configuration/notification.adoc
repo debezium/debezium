@@ -60,7 +60,8 @@ In domain-driven design, exported events should always refer to an aggregate.
 For an example, see xref:debezium-notifications-about-the-progress-of-incremental-snapshots[{prodname} notifications about the progress of incremental snapshots].
 
 |timestamp
-|The time when the notification has been created. Epoch unix timestamp in milliseconds
+|The time when the notification was created. 
+The value represents the number of milliseconds since the UNIX epoch.
 |===
 
 // Type: assembly
