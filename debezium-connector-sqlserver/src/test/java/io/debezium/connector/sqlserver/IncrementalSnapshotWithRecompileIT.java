@@ -175,4 +175,10 @@ public class IncrementalSnapshotWithRecompileIT extends AbstractIncrementalSnaps
     public void stopCurrentIncrementalSnapshotWithAllCollectionsAndTakeNewNewIncrementalSnapshotAfterRestart() throws Exception {
         super.stopCurrentIncrementalSnapshotWithAllCollectionsAndTakeNewNewIncrementalSnapshotAfterRestart();
     }
+
+    @Override
+    @Flaky("DBZ-5393")
+    public void stopCurrentIncrementalSnapshotWithoutCollectionsAndTakeNewNewIncrementalSnapshotAfterRestart() throws Exception {
+        super.stopCurrentIncrementalSnapshotWithoutCollectionsAndTakeNewNewIncrementalSnapshotAfterRestart();
+    }
 }
