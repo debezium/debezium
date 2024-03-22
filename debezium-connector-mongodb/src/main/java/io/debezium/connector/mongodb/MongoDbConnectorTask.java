@@ -29,7 +29,6 @@ import io.debezium.connector.mongodb.connection.ConnectionStrings;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.connector.mongodb.connection.MongoDbConnectionContext;
 import io.debezium.connector.mongodb.metrics.MongoDbChangeEventSourceMetricsFactory;
-import io.debezium.connector.mongodb.snapshot.MongoDbSnapshotterServiceProvider;
 import io.debezium.document.DocumentReader;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
@@ -40,7 +39,6 @@ import io.debezium.pipeline.signal.SignalProcessor;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
-import io.debezium.service.spi.ServiceRegistry;
 import io.debezium.snapshot.SnapshotterService;
 import io.debezium.spi.snapshot.Snapshotter;
 import io.debezium.util.Clock;
@@ -263,13 +261,6 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
     @Override
     protected Configuration withMaskedSensitiveOptions(Configuration config) {
         return super.withMaskedSensitiveOptions(config).withMasked(MongoDbConnectorConfig.CONNECTION_STRING.name());
-    }
-
-    @Override
-    protected void registerServiceProviders(ServiceRegistry serviceRegistry) {
-
-        super.registerServiceProviders(serviceRegistry);
-        serviceRegistry.registerServiceProvider(new MongoDbSnapshotterServiceProvider());
     }
 
     private void validate(MongoDbConnection mongoDbConnection, Offsets<MongoDbPartition, MongoDbOffsetContext> previousOffsets, Snapshotter snapshotter) {
