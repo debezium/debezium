@@ -6,7 +6,6 @@
 package io.debezium.storage.jdbc.history;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -23,6 +22,7 @@ import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.annotation.VisibleForTesting;
 import io.debezium.common.annotation.Incubating;
@@ -111,7 +111,7 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
                         line = writer.write(record.document());
                     }
                     catch (IOException e) {
-                        throw new UncheckedIOException(e);
+                        throw new DebeziumException(e);
                     }
                     Timestamp currentTs = new Timestamp(System.currentTimeMillis());
                     List<String> substrings = split(line, 65000);
@@ -129,7 +129,7 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
                     conn.commit();
                 }, "store history record", true);
             }
-            catch (UncheckedIOException | SQLException e) {
+            catch (SQLException e) {
                 throw new SchemaHistoryException("Failed to store record: " + record, e);
             }
         });
@@ -174,7 +174,7 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
                                     records.accept(new HistoryRecord(reader.read(historyData)));
                                 }
                                 catch (IOException e) {
-                                    throw new UncheckedIOException(e);
+                                    throw new DebeziumException(e);
                                 }
                             }
                         }
@@ -184,7 +184,7 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
                     LOG.error("Storage does not exist when recovering records");
                 }
             }
-            catch (UncheckedIOException | SQLException e) {
+            catch (SQLException e) {
                 throw new SchemaHistoryException("Failed to recover records", e);
             }
         });

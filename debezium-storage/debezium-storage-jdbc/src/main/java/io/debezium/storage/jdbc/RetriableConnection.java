@@ -5,11 +5,9 @@
  */
 package io.debezium.storage.jdbc;
 
-import java.io.UncheckedIOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
-import java.sql.SQLRecoverableException;
 import java.time.Duration;
 import java.util.Objects;
 
@@ -53,7 +51,7 @@ public class RetriableConnection implements AutoCloseable {
         try {
             createConnection();
         }
-        catch (SQLRecoverableException e) {
+        catch (SQLException e) {
             LOGGER.error("Unable to create connection. It will be re-attempted during its first use: " + e.getMessage(), e);
             if (conn != null) {
                 try {
@@ -87,10 +85,9 @@ public class RetriableConnection implements AutoCloseable {
      * @param name name of the operation being executed (for logging purposes)
      * @param rollback if set to true, the rollback will be called in case of SQLException
      * @throws SQLException sql connection related exception
-     * @throws UncheckedIOException exception that can be thrown by code snippet
      */
     public synchronized void executeWithRetry(ConnectionConsumer consumer, String name, boolean rollback)
-            throws SQLException, UncheckedIOException {
+            throws SQLException {
         executeWithRetry(null, consumer, name, rollback);
     }
 
@@ -100,15 +97,14 @@ public class RetriableConnection implements AutoCloseable {
      * @param name name of the operation being executed (for logging purposes)
      * @param rollback if set to true, the rollback will be called in case of SQLException
      * @throws SQLException sql connection related exception
-     * @throws UncheckedIOException exception that can be thrown by code snippet
      */
     public synchronized <T> T executeWithRetry(ConnectionFunction<T> func, String name, boolean rollback)
-            throws SQLException, UncheckedIOException {
+            throws SQLException {
         return executeWithRetry(func, null, name, rollback);
     }
 
     private synchronized <T> T executeWithRetry(ConnectionFunction<T> func, ConnectionConsumer consumer, String name, boolean rollback)
-            throws SQLException, UncheckedIOException {
+            throws SQLException {
         int attempt = 1;
         while (true) {
             if (conn == null) {
@@ -138,7 +134,7 @@ public class RetriableConnection implements AutoCloseable {
                     return null;
                 }
             }
-            catch (SQLRecoverableException e) {
+            catch (SQLException e) {
                 LOGGER.warn("Attempt {} to call '{}' failed.", attempt, name, e);
                 if (rollback) {
                     LOGGER.warn("'{}': doing rollback.", name);
@@ -157,19 +153,6 @@ public class RetriableConnection implements AutoCloseable {
                 }
                 conn = null;
 
-            }
-            catch (SQLException e) {
-                LOGGER.warn("Call '{}' failed.", name, e);
-                if (rollback) {
-                    LOGGER.warn("'{}': doing rollback.", name);
-                    try {
-                        conn.rollback();
-                    }
-                    catch (SQLException ex) {
-                        // ignore
-                    }
-                }
-                throw e;
             }
         }
     }
