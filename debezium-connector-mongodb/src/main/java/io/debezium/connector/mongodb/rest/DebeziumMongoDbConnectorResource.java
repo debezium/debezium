@@ -35,8 +35,7 @@ import io.debezium.rest.model.MetricsDescriptor;
 @Path(DebeziumMongoDbConnectorResource.BASE_PATH)
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-public class DebeziumMongoDbConnectorResource
-        implements SchemaResource, ConnectionValidationResource<MongoDbConnector>, FilterValidationResource<MongoDbConnector>, MetricsResource {
+public class DebeziumMongoDbConnectorResource implements SchemaResource, ConnectionValidationResource, FilterValidationResource, MetricsResource {
 
     public static final String BASE_PATH = "/debezium/mongodb";
     public static final String VERSION_ENDPOINT = "/version";

@@ -20,7 +20,7 @@ import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.util.Testing;
 
@@ -29,7 +29,7 @@ import io.debezium.util.Testing;
  */
 @SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 7, reason = "Generated values were not added until MySQL 5.7")
 @SkipWhenDatabaseVersion(check = GREATER_THAN_OR_EQUAL, major = 11, reason = "MariaDB does not allow you to specify AS and NOT NULL")
-public class MysqlDefaultGeneratedValueIT extends AbstractConnectorTest {
+public class MysqlDefaultGeneratedValueIT extends AbstractAsyncEngineConnectorTest {
 
     // 4 meta events (set character_set etc.) and then 15 tables with 3 events each (drop DDL, create DDL, insert)
     private static final int EVENT_COUNT = 4 + 15 * 3;

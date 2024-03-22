@@ -427,6 +427,8 @@ public class MongoEventRouterTest {
                 // .field(Envelope.FieldName.SOURCE, SchemaBuilder.struct().build())
                 .field(Envelope.FieldName.OPERATION, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(Envelope.FieldName.TIMESTAMP, Schema.OPTIONAL_INT64_SCHEMA)
+                .field(Envelope.FieldName.TIMESTAMP_US, Schema.OPTIONAL_INT64_SCHEMA)
+                .field(Envelope.FieldName.TIMESTAMP_NS, Schema.OPTIONAL_INT64_SCHEMA)
                 .field(Envelope.FieldName.TRANSACTION, TransactionMonitor.TRANSACTION_BLOCK_SCHEMA)
                 .build();
 
@@ -482,6 +484,8 @@ public class MongoEventRouterTest {
                 // .field(Envelope.FieldName.SOURCE, SchemaBuilder.struct().build())
                 .field(Envelope.FieldName.OPERATION, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(Envelope.FieldName.TIMESTAMP, Schema.OPTIONAL_INT64_SCHEMA)
+                .field(Envelope.FieldName.TIMESTAMP_US, Schema.OPTIONAL_INT64_SCHEMA)
+                .field(Envelope.FieldName.TIMESTAMP_NS, Schema.OPTIONAL_INT64_SCHEMA)
                 .field(Envelope.FieldName.TRANSACTION, TransactionMonitor.TRANSACTION_BLOCK_SCHEMA)
                 .build();
 
@@ -953,6 +957,8 @@ public class MongoEventRouterTest {
                 // .field(Envelope.FieldName.SOURCE, SchemaBuilder.struct().build())
                 .field(Envelope.FieldName.OPERATION, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(Envelope.FieldName.TIMESTAMP, Schema.OPTIONAL_INT64_SCHEMA)
+                .field(Envelope.FieldName.TIMESTAMP_US, Schema.OPTIONAL_INT64_SCHEMA)
+                .field(Envelope.FieldName.TIMESTAMP_NS, Schema.OPTIONAL_INT64_SCHEMA)
                 .field(Envelope.FieldName.TRANSACTION, TransactionMonitor.TRANSACTION_BLOCK_SCHEMA)
                 .build();
 

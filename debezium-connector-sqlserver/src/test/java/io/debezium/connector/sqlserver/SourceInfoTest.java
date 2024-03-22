@@ -97,6 +97,8 @@ public class SourceInfoTest {
                 .field("snapshot", AbstractSourceInfoStructMaker.SNAPSHOT_RECORD_SCHEMA)
                 .field("db", Schema.STRING_SCHEMA)
                 .field("sequence", Schema.OPTIONAL_STRING_SCHEMA)
+                .field("ts_us", Schema.INT64_SCHEMA)
+                .field("ts_ns", Schema.INT64_SCHEMA)
                 .field("schema", Schema.STRING_SCHEMA)
                 .field("table", Schema.STRING_SCHEMA)
                 .field("change_lsn", Schema.OPTIONAL_STRING_SCHEMA)

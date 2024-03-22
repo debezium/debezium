@@ -37,6 +37,7 @@ import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotWithSchemaChangesSupportTest;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.util.Testing;
@@ -69,10 +70,11 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
                 .with(MySqlConnectorConfig.INCLUDE_SQL_QUERY, true)
                 .with(MySqlConnectorConfig.USER, "mysqluser")
                 .with(MySqlConnectorConfig.PASSWORD, "mysqlpw")
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY.getValue())
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA.getValue())
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                 .with(MySqlConnectorConfig.SIGNAL_DATA_COLLECTION, DATABASE.qualifiedTableName("debezium_signal"))
                 .with(CommonConnectorConfig.SIGNAL_POLL_INTERVAL_MS, 1)
+                .with(RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS, String.format("%s:%s", DATABASE.qualifiedTableName("a42"), "pk1,pk2,pk3,pk4"))
                 .with(MySqlConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 10)
                 .with(MySqlConnectorConfig.INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES, true)
                 .with(CommonConnectorConfig.SCHEMA_NAME_ADJUSTMENT_MODE, SchemaNameAdjustmentMode.AVRO);
@@ -96,6 +98,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
                 .with(MySqlConnectorConfig.SIGNAL_DATA_COLLECTION, DATABASE.qualifiedTableName("debezium_signal"))
                 .with(CommonConnectorConfig.SIGNAL_POLL_INTERVAL_MS, 5)
                 .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, tableIncludeList)
+                .with(RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS, String.format("%s:%s", DATABASE.qualifiedTableName("a42"), "pk1,pk2,pk3,pk4"))
                 .with(MySqlConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 10)
                 .with(MySqlConnectorConfig.INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES, true)
                 .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, storeOnlyCapturedDdl)
@@ -138,6 +141,16 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
     }
 
     @Override
+    protected String noPKTopicName() {
+        return DATABASE.topicForTable("a42");
+    }
+
+    @Override
+    protected String noPKTableName() {
+        return tableNameId("a42").toQuotedString('`');
+    }
+
+    @Override
     protected List<String> tableNames() {
         final String tableA = TableId.parse(DATABASE.qualifiedTableName("a")).toQuotedString('`');
         final String tableB = TableId.parse(DATABASE.qualifiedTableName("c")).toQuotedString('`');
@@ -162,6 +175,11 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
     @Override
     protected String tableDataCollectionId() {
         return tableNameId().toString();
+    }
+
+    @Override
+    protected String noPKTableDataCollectionId() {
+        return tableNameId("a42").toString();
     }
 
     @Override
@@ -263,7 +281,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
     @Test
     @FixFor("DBZ-4939")
     public void tableWithDatetime() throws Exception {
-        Testing.Print.enable();
+        // Testing.Print.enable();
         final int ROWS = 10;
 
         try (JdbcConnection connection = databaseConnection()) {
@@ -316,7 +334,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
     @Test
     @FixFor("DBZ-5099")
     public void tableWithZeroDate() throws Exception {
-        Testing.Print.enable();
+        // Testing.Print.enable();
         final LogInterceptor logInterceptor = new LogInterceptor(MySqlBinaryProtocolFieldReader.class);
 
         try (JdbcConnection connection = databaseConnection()) {

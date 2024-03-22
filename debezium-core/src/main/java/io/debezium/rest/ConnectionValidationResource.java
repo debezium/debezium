@@ -10,12 +10,9 @@ import java.util.Map;
 import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 
-import io.debezium.connector.common.BaseSourceConnector;
 import io.debezium.rest.model.ValidationResults;
 
-public interface ConnectionValidationResource<T extends BaseSourceConnector> {
-
-    T getConnector();
+public interface ConnectionValidationResource extends ConnectorAware {
 
     String VALIDATE_CONNECTION_ENDPOINT = "/validate/connection";
 

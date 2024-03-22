@@ -103,7 +103,9 @@ A {prodname} connector that is configured to apply the outbox event router SMT g
     "xmin": null
   },
   "op": "c",
-  "ts_ms": 1556890294484
+  "ts_ms": 1556890294484,
+  "ts_us": 1556890294484651,
+  "ts_ns": 1556890294484651402
 }
 ----
 
@@ -206,13 +208,76 @@ You can use one of the following methods to configure the connector to apply the
 * Use the xref:outbox-event-router-property-route-topic-regex[`route.topic.regex`] configuration option for the SMT.
 
 // Type: concept
-// Title: Using Avro as the payload format in {prodname} outbox messages
-// ModuleID: using-avro-as-the-payload-format-in-debezium-outbox-messages
-[[avro-as-payload-format]]
-== Using Avro as the payload format
+// Title: Payload serialization format
+// ModuleID: outbox-event-router-payload-serialization-format
+== Payload serialization format
 
-The outbox event router SMT supports arbitrary payload formats. The `payload` column value in an outbox table is passed on transparently. An alternative to working with JSON is to use Avro.
-This can be beneficial for message format governance and for ensuring that outbox event schemas evolve in a backwards-compatible way.
+The outbox event router SMT supports arbitrary payload formats. 
+The SMT passes on `payload` column values that it reads from the outbox table without modification. 
+The way that the SMT converts these column values into Kafka message fields depends on how you configure the SMT.
+Common payload formats for serializing data are JSON and Avro.
+
+
+// Type: concept
+// Title: Using JSON as the serialization format
+// ModuleID: outbox-event-router-using-json-payload-format
+[[using-json-payload-format]]
+=== Using JSON as the payload format
+
+The default serialization format for the outbox event router SMT is JSON. 
+To use this format, the data type of the source column must be JSON (for example, `jsonb` in PostgreSQL).
+
+// Type: concept
+// Title: Producing Expanding escaped JSON String as JSON
+// ModuleID: outbox-event-router-expanding-escaped-json-string-as-json
+[[expanding-escaped-json-string-as-json]]
+==== Expanding escaped JSON String as JSON
+
+When a {prodname} outbox message represents the `payload` as a JSON String, the resulting Kafka message escapes the string as in the following example:
+
+[source,javascript,indent=0]
+----
+# Kafka Topic: outbox.event.order
+# Kafka Message key: "1"
+# Kafka Message Headers: "id=4d47e190-0402-4048-bc2c-89dd54343cdc"
+# Kafka Message Timestamp: 1556890294484
+{
+  "{\"id\": 1, \"lineItems\": [{\"id\": 1, \"item\": \"Debezium in Action\", \"status\": \"ENTERED\", \"quantity\": 2, \"totalPrice\": 39.98}, {\"id\": 2, \"item\": \"Debezium for Dummies\", \"status\": \"ENTERED\", \"quantity\": 1, \"totalPrice\": 29.99}], \"orderDate\": \"2019-01-31T12:13:01\", \"customerId\": 123}"
+}
+----
+
+The outbox event router enables you to expand the message content to "real" JSON, deducing the companion schema from the JSON document. 
+The resulting Kafka message is formatted as in the following example:
+
+[source,javascript,indent=0]
+----
+# Kafka Topic: outbox.event.order
+# Kafka Message key: "1"
+# Kafka Message Headers: "id=4d47e190-0402-4048-bc2c-89dd54343cdc"
+# Kafka Message Timestamp: 1556890294484
+{
+  "id": 1, "lineItems": [{"id": 1, "item": "Debezium in Action", "status": "ENTERED", "quantity": 2, "totalPrice": 39.98}, {"id": 2, "item": "Debezium for Dummies", "status": "ENTERED", "quantity": 1, "totalPrice": 29.99}], "orderDate": "2019-01-31T12:13:01", "customerId": 123
+}
+----
+
+To enable use of the outbox event router transformation, set the xref:outbox-event-router-property-table-expand-json-payload[`table.expand.json.payload`] to true, and use the `JsonConverter` as shown in the following example:
+
+[source]
+----
+transforms=outbox,...
+transforms.outbox.type=io.debezium.transforms.outbox.EventRouter
+transforms.outbox.table.expand.json.payload=true
+value.converter=org.apache.kafka.connect.json.JsonConverter
+----
+
+// Type: concept
+// Title: Using Apache Avro as the payload format in {prodname} outbox messages
+// ModuleID: outbox-event-router-using-avro-as-the-payload-format-in-debezium-outbox-messages
+[[avro-as-payload-format]]
+=== Using Apache Avro as the payload format
+
+Apache Avro is a common framework for serializing data. 
+Using Avro can be beneficial for message format governance and for ensuring that outbox event schemas evolve in a backwards-compatible way.
 
 How a source application produces Avro formatted content for outbox message payloads is out of the scope of this documentation.
 One possibility is to leverage the `KafkaAvroSerializer` class to serialize `GenericRecord` instances.
@@ -226,8 +291,9 @@ transforms.outbox.type=io.debezium.transforms.outbox.EventRouter
 value.converter=io.debezium.converters.BinaryDataConverter
 ----
 
-By default, the `payload` column value (the Avro data) is the only message value.
-Configuration of `BinaryDataConverter` as the value converter propagates the `payload` column value as-is into the Kafka message value.
+By default, the `payload` column value (the Avro data) is the only message value. 
+When data is stored in Avro format, the column format must be set to a binary data type, such as `bytea` in PostgreSQL.
+The value converter for the SMT must also be set to `BinaryDataConverter`, so that it propagates the binary value of the `payload` column as-is into the Kafka message value.
 
 The {prodname} connectors may be configured to emit heartbeat, transaction metadata, or schema change events (support varies by connector).
 These events cannot be serialized by the `BinaryDataConverter` so additional configuration must be provided so the converter knows how to serialize these events.
@@ -245,9 +311,36 @@ value.converter.delegate.converter.type.schemas.enable=false
 The delegate `Converter` implementation is specified by the `delegate.converter.type` option.
 If any extra configuration options are needed by the converter, they can also be specified, such as the disablement of schemas shown above using `schemas.enable=false`.
 
+The following example illustrates how to configure the SMT to use a delegate converter with a Apicurio Registry to convert data into Avro format:
+
+[source]
+----
+transforms=outbox,...
+transforms.outbox.type=io.debezium.transforms.outbox.EventRouter
+value.converter=io.debezium.converters.BinaryDataConverter
+value.converter.delegate.converter.type=io.apicurio.registry.utils.converter.AvroConverter
+value.converter.delegate.converter.apicurio.registry.url=http://apicurio:8080/apis/registry/v2
+value.converter.delegate.converter.apicurio.registry.auto-register=true
+value.converter.delegate.converter.registry.find-latest=true
+----
+
+Finally, the following example illustrates how to configure the SMT to use a delegate converter with a Confluent Schema Registry to convert data into Avro format:
+
+[source]
+----
+transforms=outbox,...
+transforms.outbox.type=io.debezium.transforms.outbox.EventRouter
+value.converter=io.debezium.converters.BinaryDataConverter
+value.converter.delegate.converter.type=io.confluent.connect.avro.AvroConverter
+value.converter.delegate.converter.type.basic.auth.credentials.source=USER_INFO
+value.converter.delegate.converter.type.basic.auth.user.info={CREDENTIALS}
+value.converter.delegate.converter.type.schema.registry.url={URL}
+----
+
 [NOTE]
 ====
-The converter `io.debezium.converters.ByteBufferConverter` has been deprecated since Debezium version 1.9, and has been removed in 2.0. Furthermore, when using Kafka Connect the connector's configuration must be updated before upgrading to Debezium 2.x
+In the preceding configuration examples, because the `AvroConverter` is configured as a delegate converter, third-party libraries are required.
+Information about how to add third-party libraries to the classpath is beyond the scope of this document.
 ====
 
 // Type: concept
@@ -293,50 +386,6 @@ transforms.outbox.table.fields.additional.placement=partitionColumn:partition
 ----
 
 Note that for the `partition` placement, adding an alias will have no effect.
-
-// Type: concept
-// Title: Expanding escaped JSON String as JSON
-// ModuleID: expanding-escaped-json-string-as-json
-[[expanding-escaped-json-string-as-json]]
-== Expanding escaped JSON String as JSON
-
-You may have noticed that the Debezium outbox message contains the `payload` represented as a String.
-So when this string, is actually JSON, it appears as escaped in the result Kafka message like shown below:
-
-[source,javascript,indent=0]
-----
-# Kafka Topic: outbox.event.order
-# Kafka Message key: "1"
-# Kafka Message Headers: "id=4d47e190-0402-4048-bc2c-89dd54343cdc"
-# Kafka Message Timestamp: 1556890294484
-{
-  "{\"id\": 1, \"lineItems\": [{\"id\": 1, \"item\": \"Debezium in Action\", \"status\": \"ENTERED\", \"quantity\": 2, \"totalPrice\": 39.98}, {\"id\": 2, \"item\": \"Debezium for Dummies\", \"status\": \"ENTERED\", \"quantity\": 1, \"totalPrice\": 29.99}], \"orderDate\": \"2019-01-31T12:13:01\", \"customerId\": 123}"
-}
-----
-
-The outbox event router allows you to expand this message content to "real" JSON with the companion schema
-being deduced from the JSON document itself. That way the result in Kafka message looks like:
-
-[source,javascript,indent=0]
-----
-# Kafka Topic: outbox.event.order
-# Kafka Message key: "1"
-# Kafka Message Headers: "id=4d47e190-0402-4048-bc2c-89dd54343cdc"
-# Kafka Message Timestamp: 1556890294484
-{
-  "id": 1, "lineItems": [{"id": 1, "item": "Debezium in Action", "status": "ENTERED", "quantity": 2, "totalPrice": 39.98}, {"id": 2, "item": "Debezium for Dummies", "status": "ENTERED", "quantity": 1, "totalPrice": 29.99}], "orderDate": "2019-01-31T12:13:01", "customerId": 123
-}
-----
-
-To enable this transformation, you have to set the xref:outbox-event-router-property-table-expand-json-payload[`table.expand.json.payload`] to true and use the `JsonConverter` like below:
-
-[source]
-----
-transforms=outbox,...
-transforms.outbox.type=io.debezium.transforms.outbox.EventRouter
-transforms.outbox.table.expand.json.payload=true
-value.converter=org.apache.kafka.connect.json.JsonConverter
-----
 
 // Type: reference
 // ModuleID: options-for-configuring-outbox-event-router-transformation

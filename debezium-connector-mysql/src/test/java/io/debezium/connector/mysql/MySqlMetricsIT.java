@@ -30,7 +30,7 @@ import org.junit.Test;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
 import io.debezium.data.VerifyRecord;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.storage.file.history.FileSchemaHistory;
 import io.debezium.util.Testing;
@@ -38,7 +38,7 @@ import io.debezium.util.Testing;
 /**
  * @author Chris Cranford
  */
-public class MySqlMetricsIT extends AbstractConnectorTest {
+public class MySqlMetricsIT extends AbstractAsyncEngineConnectorTest {
 
     private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-metrics.txt").toAbsolutePath();
     private static final String SERVER_NAME = "myserver";
@@ -49,7 +49,7 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
 
     @Before
     public void before() throws Exception {
-        Testing.Print.enable();
+        // Testing.Print.enable();
         stopConnector();
         DATABASE.createAndInitialize();
         initializeConnectorTestFramework();
@@ -319,7 +319,7 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
 
         waitForAvailableRecords(30, TimeUnit.SECONDS);
 
-        Testing.Print.enable();
+        // Testing.Print.enable();
         int size = consumeAvailableRecords(VerifyRecord::print);
 
         // Check streaming metrics

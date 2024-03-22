@@ -14,12 +14,14 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.connect.components.Versioned;
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.transforms.Transformation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.Module;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.relational.history.ConnectTableChangeSerializer;
@@ -30,7 +32,7 @@ import io.debezium.schema.SchemaChangeEvent;
  * This SMT to filter schema change event
  * @param <R>
  */
-public class SchemaChangeEventFilter<R extends ConnectRecord<R>> implements Transformation<R> {
+public class SchemaChangeEventFilter<R extends ConnectRecord<R>> implements Transformation<R>, Versioned {
     private static final Logger LOGGER = LoggerFactory.getLogger(SchemaChangeEventFilter.class);
 
     private static final Field SCHEMA_CHANGE_EVENT_EXCLUDE_LIST = Field.create("schema.change.event.exclude.list")
@@ -90,5 +92,10 @@ public class SchemaChangeEventFilter<R extends ConnectRecord<R>> implements Tran
 
     @Override
     public void close() {
+    }
+
+    @Override
+    public String version() {
+        return Module.version();
     }
 }

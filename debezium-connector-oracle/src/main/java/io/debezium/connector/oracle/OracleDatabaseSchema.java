@@ -109,23 +109,6 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
     }
 
     @Override
-    public void initializeStorage() {
-        super.initializeStorage();
-        storageInitializationExecuted = true;
-    }
-
-    public boolean isStorageInitializationExecuted() {
-        return storageInitializationExecuted;
-    }
-
-    /**
-     * Return true if the database schema history entity exists
-     */
-    public boolean historyExists() {
-        return schemaHistory.exists();
-    }
-
-    @Override
     protected void removeSchema(TableId id) {
         super.removeSchema(id);
         lobColumnsByTableId.remove(id);

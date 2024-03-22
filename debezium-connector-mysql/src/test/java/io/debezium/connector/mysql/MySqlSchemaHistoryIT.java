@@ -19,7 +19,7 @@ import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.util.Testing;
 
 /**
@@ -28,7 +28,7 @@ import io.debezium.util.Testing;
 *
 * @author Jiri Pechanec
 */
-public class MySqlSchemaHistoryIT extends AbstractConnectorTest {
+public class MySqlSchemaHistoryIT extends AbstractAsyncEngineConnectorTest {
 
     private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-json.txt")
             .toAbsolutePath();
@@ -64,7 +64,7 @@ public class MySqlSchemaHistoryIT extends AbstractConnectorTest {
     @FixFor("DBZ-3485")
     public void shouldUseQuotedNameInDrop() throws SQLException, InterruptedException {
         config = DATABASE.defaultConfig()
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NO_DATA)
                 .build();
 
         // Start the connector ...
@@ -77,7 +77,7 @@ public class MySqlSchemaHistoryIT extends AbstractConnectorTest {
         stopConnector();
 
         start(MySqlConnector.class, config);
-        assertConnectorIsRunning();
+        waitForStreamingRunning("mysql", DATABASE.getServerName(), getStreamingNamespace());
         stopConnector();
     }
 
@@ -85,7 +85,7 @@ public class MySqlSchemaHistoryIT extends AbstractConnectorTest {
     @FixFor("DBZ-3399")
     public void shouldStoreSingleRename() throws SQLException, InterruptedException {
         config = DATABASE.defaultConfig()
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NO_DATA)
                 .build();
 
         // Start the connector ...
@@ -105,7 +105,7 @@ public class MySqlSchemaHistoryIT extends AbstractConnectorTest {
         stopConnector();
 
         start(MySqlConnector.class, config);
-        assertConnectorIsRunning();
+        waitForStreamingRunning("mysql", DATABASE.getServerName(), getStreamingNamespace());
         stopConnector();
     }
 
@@ -113,7 +113,7 @@ public class MySqlSchemaHistoryIT extends AbstractConnectorTest {
     @FixFor("DBZ-3399")
     public void shouldStoreMultipleRenames() throws SQLException, InterruptedException {
         config = DATABASE.defaultConfig()
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NO_DATA)
                 .build();
 
         // Start the connector ...
@@ -133,7 +133,7 @@ public class MySqlSchemaHistoryIT extends AbstractConnectorTest {
         stopConnector();
 
         start(MySqlConnector.class, config);
-        assertConnectorIsRunning();
+        waitForStreamingRunning("mysql", DATABASE.getServerName(), getStreamingNamespace());
         stopConnector();
     }
 
@@ -141,7 +141,7 @@ public class MySqlSchemaHistoryIT extends AbstractConnectorTest {
     @FixFor("DBZ-3399")
     public void shouldStoreAlterRename() throws SQLException, InterruptedException {
         config = DATABASE.defaultConfig()
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NO_DATA)
                 .build();
 
         // Start the connector ...
@@ -160,7 +160,7 @@ public class MySqlSchemaHistoryIT extends AbstractConnectorTest {
         stopConnector();
 
         start(MySqlConnector.class, config);
-        assertConnectorIsRunning();
+        waitForStreamingRunning("mysql", DATABASE.getServerName(), getStreamingNamespace());
         stopConnector();
     }
 

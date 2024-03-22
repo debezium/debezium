@@ -31,6 +31,11 @@
               <exclude>org.infinispan:infinispan-client-hotrod:*</exclude>
               <exclude>org.infinispan:infinispan-client-hotrod-jakarta:*</exclude>
 
+              <!-- Exclude Oracle OpenLogReplicator dependencies -->
+              <exclude>io.vertx:vertx-core:*</exclude>
+              <exclude>com.google.protobuf:protobuf-java:*</exclude>
+              <exclude>com.google.protobuf:protobuf-java-util:*</exclude>
+
               <!-- Exclude dependencies with incorrect scope -->
               <exclude>org.checkerframework:checker-qual:*</exclude>
           </excludes>

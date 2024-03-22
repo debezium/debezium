@@ -345,37 +345,37 @@ public class RowDeserializers {
          * 10 bits hour (0-838)
          * 6 bits minute (0-59)
          * 6 bits second (0-59)
-         *
          * (3 bytes in total)
          *
          * + fractional-seconds storage (size depends on meta)
+         * The fractional part:
+         * read 1 byte, if meta is 1 or 2
+         * read 2 bytes, if meta is 3 or 4
+         * read 3 bytes, if meta is 5 or 6
          */
-        long time = bigEndianLong(inputStream.read(3), 0, 3);
-        boolean is_negative = bitSlice(time, 0, 1, 24) == 0;
-        int hours = bitSlice(time, 2, 10, 24);
-        int minutes = bitSlice(time, 12, 6, 24);
-        int seconds = bitSlice(time, 18, 6, 24);
-        int nanoSeconds;
-        if (is_negative) { // mysql binary arithmetic for negative encoded values
-            hours = ~hours & MASK_10_BITS;
-            hours = hours & ~(1 << 10); // unset sign bit
-            minutes = ~minutes & MASK_6_BITS;
-            minutes = minutes & ~(1 << 6); // unset sign bit
-            seconds = ~seconds & MASK_6_BITS;
-            seconds = seconds & ~(1 << 6); // unset sign bit
-            nanoSeconds = deserializeFractionalSecondsInNanosNegative(meta, inputStream);
-            if (nanoSeconds == 0 && seconds < 59) { // weird java Duration behavior
-                ++seconds;
-            }
-            hours = -hours;
-            minutes = -minutes;
-            seconds = -seconds;
-            nanoSeconds = -nanoSeconds;
+        int fractionBytes = (meta + 1) / 2;
+        int payloadBytes = 3 + fractionBytes;
+        int payloadBits = payloadBytes * 8;
+        long time = bigEndianLong(inputStream.read(payloadBytes), 0, payloadBytes);
+        boolean is_negative = bitSlice(time, 0, 1, payloadBits) == 0;
+
+        if (is_negative) {
+            /*
+             * Negative numbers are stored in two's complement form.
+             * To get the positive value of a negative number in two's complement form,
+             * we should invert the bits of the number and add 1 to the result.
+             * Then we can take the number from the corresponding bits on the final result.
+             */
+            time = ~time + 1;
         }
-        else {
-            nanoSeconds = deserializeFractionalSecondsInNanos(meta, inputStream);
-        }
-        return Duration.ofHours(hours).plusMinutes(minutes).plusSeconds(seconds).plusNanos(nanoSeconds);
+
+        int hours = bitSlice(time, 2, 10, payloadBits);
+        int minutes = bitSlice(time, 12, 6, payloadBits);
+        int seconds = bitSlice(time, 18, 6, payloadBits);
+        int fraction = bitSlice(time, 24, fractionBytes * 8, payloadBits);
+        long nanoSeconds = (long) (fraction / (0.0000001 * Math.pow(100, fractionBytes - 1)));
+        final Duration duration = Duration.ofHours(hours).plusMinutes(minutes).plusSeconds(seconds).plusNanos(nanoSeconds);
+        return is_negative && !duration.isNegative() ? duration.negated() : duration;
     }
 
     /**
@@ -586,50 +586,6 @@ public class RowDeserializers {
         int length = (fsp + 1) / 2;
         if (length > 0) {
             long fraction = bigEndianLong(inputStream.read(length), 0, length);
-            // Convert the fractional value (which has extra trailing digit for fsp=1,3, and 5) to nanoseconds ...
-            return (int) (fraction / (0.0000001 * Math.pow(100, length - 1)));
-        }
-        return 0;
-    }
-
-    /**
-     * Read the binary input stream to obtain the number of nanoseconds given the <em>fractional seconds precision</em>, or
-     * <em>fsp</em>.
-     * <p>
-     * We can't use/access the {@code deserializeFractionalSeconds} method in the {@link AbstractRowsEventDataDeserializer} class,
-     * so we replicate it here with modifications to support nanoseconds rather than microseconds and negative values.
-     * Note the original is licensed under the same Apache Software License 2.0 as Debezium.
-     *
-     * @param fsp the fractional seconds precision describing the number of digits precision used to store the fractional seconds
-     *            (e.g., 1 for storing tenths of a second, 2 for storing hundredths, 3 for storing milliseconds, etc.)
-     * @param inputStream the binary data stream
-     * @return the number of nanoseconds
-     * @throws IOException if there is an error reading from the binlog event data
-     */
-    protected static int deserializeFractionalSecondsInNanosNegative(int fsp, ByteArrayInputStream inputStream) throws IOException {
-        // Calculate the number of bytes to read, which is
-        // '1' when fsp=(1,2)
-        // '2' when fsp=(3,4) and
-        // '3' when fsp=(5,6)
-        int length = (fsp + 1) / 2;
-        if (length > 0) {
-            long fraction = bigEndianLong(inputStream.read(length), 0, length);
-            int maskBits = 0;
-            switch (length) { // mask bits according to field precision
-                case 1:
-                    maskBits = 8;
-                    break;
-                case 2:
-                    maskBits = 15;
-                    break;
-                case 3:
-                    maskBits = 20;
-                    break;
-                default:
-                    break;
-            }
-            fraction = ~fraction & ((1 << maskBits) - 1);
-            fraction = (fraction & ~(1 << maskBits)) + 1; // unset sign bit
             // Convert the fractional value (which has extra trailing digit for fsp=1,3, and 5) to nanoseconds ...
             return (int) (fraction / (0.0000001 * Math.pow(100, length - 1)));
         }

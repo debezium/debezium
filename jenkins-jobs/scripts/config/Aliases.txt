@@ -237,7 +237,8 @@ pricelessjunk,Kaustuv Chakrabarti
 laughingman7743,Tomoyuki Nakamura
 dtseiler,Don Seiler
 markducommun,Mark Ducommun
-Lars M Johansson,Lars M. Johansson
+larsmjoh,Lars M Johansson
+nrkljo,Lars M Johansson
 ahmedrachid,Ahmed Rachid Hazourli
 ahazourli,Ahmed Rachid Hazourli
 sherpa003,Jiri Kulhanek
@@ -251,3 +252,12 @@ wukachn,Peter Hamer
 shybovycha,Artem Shubovych
 Liaoyuxing,leoloel
 iankko,Jan Lieskovsky
+CliffordCheefoon,Clifford Cheefoon
+Fr0z3Nn,Ivanov Sergey Vasilevich
+Bue-Von-Hun,Bue Von Hun
+nrkeli,Emil Lindström
+akulapid,Akula
+VWagen1989,Sean Wu
+ArthurLR,Arthur Le Ray
+Lars M Johansson,Lars M. Johansson
+nivolg,Nick Golubev

@@ -1,0 +1,19 @@
+name: "Maven Cache"
+description: "Restores the Maven ~/.m2/repository cache"
+
+inputs:
+  key:
+    description: "The maven cache key to use"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Cache Maven Repository
+      id: cache-check
+      uses: actions/cache@v4
+      with:
+        path: ~/.m2/repository
+        key: ${{ inputs.key }}
+        restore-keys: ${{ inputs.key }}
+

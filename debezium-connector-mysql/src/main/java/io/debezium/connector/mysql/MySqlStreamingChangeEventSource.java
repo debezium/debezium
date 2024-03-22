@@ -61,6 +61,8 @@ import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
+import io.debezium.snapshot.SnapshotterService;
+import io.debezium.snapshot.mode.NeverSnapshotter;
 import io.debezium.time.Conversions;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
@@ -83,6 +85,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
     private final Clock clock;
     private final EventProcessingFailureHandlingMode eventDeserializationFailureHandlingMode;
     private final EventProcessingFailureHandlingMode inconsistentSchemaHandlingMode;
+    private final SnapshotterService snapshotterService;
 
     private int startingRowNumber = 0;
     private long initialEventsToSkip = 0L;
@@ -168,7 +171,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
 
     public MySqlStreamingChangeEventSource(MySqlConnectorConfig connectorConfig, AbstractConnectorConnection connection,
                                            EventDispatcher<MySqlPartition, TableId> dispatcher, ErrorHandler errorHandler, Clock clock,
-                                           MySqlTaskContext taskContext, MySqlStreamingChangeEventSourceMetrics metrics) {
+                                           MySqlTaskContext taskContext, MySqlStreamingChangeEventSourceMetrics metrics, SnapshotterService snapshotterService) {
 
         this.taskContext = taskContext;
         this.connectorConfig = connectorConfig;
@@ -181,6 +184,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
 
         eventDeserializationFailureHandlingMode = connectorConfig.getEventProcessingFailureHandlingMode();
         inconsistentSchemaHandlingMode = connectorConfig.inconsistentSchemaFailureHandlingMode();
+        this.snapshotterService = snapshotterService;
 
         // Set up the log reader ...
         client = connectorAdapter.getBinaryLogClientConfigurator().configure(
@@ -215,28 +219,31 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
             return;
         }
 
-        eventTimestamp = getEventTimestamp(event, eventTs);
+        setEventTimestamp(event, eventTs);
 
         ts = clock.currentTimeInMillis() - eventTimestamp.toEpochMilli();
         LOGGER.trace("Current milliseconds behind source: {} ms", ts);
         metrics.setMilliSecondsBehindSource(ts);
     }
 
-    private Instant getEventTimestamp(Event event, long eventTs) {
-        // Prefer higher resolution replication timestamps from MySQL 8 GTID events, if possible
-        if (isGtidModeEnabled) {
-            if (event.getHeader().getEventType() == EventType.GTID) {
-                GtidEventData gtidEvent = unwrapData(event);
-                final long gtidEventTs = gtidEvent.getOriginalCommitTimestamp();
-                if (gtidEventTs != 0) {
-                    // >= MySQL 8.0.1, prefer the higher resolution replication timestamp
-                    return Instant.EPOCH.plus(gtidEventTs, ChronoUnit.MICROS);
-                }
+    private void setEventTimestamp(Event event, long eventTs) {
+        if (eventTimestamp == null || connection.isMariaDb() || !isGtidModeEnabled) {
+            // Fallback to second resolution event timestamps
+            eventTimestamp = Instant.ofEpochMilli(eventTs);
+        }
+        else if (event.getHeader().getEventType() == EventType.GTID) {
+            // Prefer higher resolution replication timestamps from MySQL 8 GTID events, if possible
+            GtidEventData gtidEvent = unwrapData(event);
+            final long gtidEventTs = gtidEvent.getOriginalCommitTimestamp();
+            if (gtidEventTs != 0) {
+                // >= MySQL 8.0.1, prefer the higher resolution replication timestamp
+                eventTimestamp = Instant.EPOCH.plus(gtidEventTs, ChronoUnit.MICROS);
+            }
+            else {
+                // Fallback to second resolution event timestamps
+                eventTimestamp = Instant.ofEpochMilli(eventTs);
             }
         }
-
-        // Fallback to second resolution event timestamps
-        return Instant.ofEpochMilli(eventTs);
     }
 
     protected void ignoreEvent(MySqlOffsetContext offsetContext, Event event) {
@@ -828,11 +835,12 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
 
     @Override
     public void execute(ChangeEventSourceContext context, MySqlPartition partition, MySqlOffsetContext offsetContext) throws InterruptedException {
-        if (!connectorConfig.getSnapshotMode().shouldStream()) {
-            LOGGER.info("Streaming is disabled for snapshot mode {}", connectorConfig.getSnapshotMode());
+
+        if (!snapshotterService.getSnapshotter().shouldStream()) {
+            LOGGER.info("Streaming is disabled for snapshot mode {}", snapshotterService.getSnapshotter().name());
             return;
         }
-        if (connectorConfig.getSnapshotMode() != MySqlConnectorConfig.SnapshotMode.NEVER) {
+        if (!(snapshotterService.getSnapshotter() instanceof NeverSnapshotter)) {
             taskContext.getSchema().assureNonEmptySchema();
         }
         final Set<Operation> skippedOperations = connectorConfig.getSkippedOperations();

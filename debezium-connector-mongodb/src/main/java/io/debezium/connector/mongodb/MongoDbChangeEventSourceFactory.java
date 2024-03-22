@@ -7,10 +7,6 @@ package io.debezium.connector.mongodb;
 
 import java.util.Optional;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.connector.mongodb.metrics.MongoDbStreamingChangeEventSourceMetrics;
 import io.debezium.connector.mongodb.snapshot.MongoDbIncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.ErrorHandler;
@@ -23,6 +19,7 @@ import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
+import io.debezium.snapshot.SnapshotterService;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
 
@@ -33,8 +30,6 @@ import io.debezium.util.Clock;
  */
 public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory<MongoDbPartition, MongoDbOffsetContext> {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbConnection.class);
-
     private final MongoDbConnectorConfig configuration;
     private final ErrorHandler errorHandler;
     private final EventDispatcher<MongoDbPartition, CollectionId> dispatcher;
@@ -42,11 +37,12 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
     private final MongoDbTaskContext taskContext;
     private final MongoDbSchema schema;
     private final MongoDbStreamingChangeEventSourceMetrics streamingMetrics;
+    private final SnapshotterService snapshotterService;
 
     public MongoDbChangeEventSourceFactory(MongoDbConnectorConfig configuration, ErrorHandler errorHandler,
                                            EventDispatcher<MongoDbPartition, CollectionId> dispatcher, Clock clock,
                                            MongoDbTaskContext taskContext, MongoDbSchema schema,
-                                           MongoDbStreamingChangeEventSourceMetrics streamingMetrics) {
+                                           MongoDbStreamingChangeEventSourceMetrics streamingMetrics, SnapshotterService snapshotterService) {
         this.configuration = configuration;
         this.errorHandler = errorHandler;
         this.dispatcher = dispatcher;
@@ -54,6 +50,7 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
         this.taskContext = taskContext;
         this.schema = schema;
         this.streamingMetrics = streamingMetrics;
+        this.snapshotterService = snapshotterService;
     }
 
     @Override
@@ -66,7 +63,8 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
                 clock,
                 snapshotProgressListener,
                 errorHandler,
-                notificationService);
+                notificationService,
+                snapshotterService);
     }
 
     @Override
@@ -77,7 +75,8 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
                 dispatcher,
                 errorHandler,
                 clock,
-                streamingMetrics);
+                streamingMetrics,
+                snapshotterService);
     }
 
     @Override

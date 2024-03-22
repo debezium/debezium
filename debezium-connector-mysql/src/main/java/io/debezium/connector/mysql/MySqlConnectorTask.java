@@ -21,7 +21,8 @@ import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.mysql.MySqlConnectorConfig.BigIntUnsignedHandlingMode;
-import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
+import io.debezium.connector.mysql.snapshot.MySqlSnapshotLockProvider;
+import io.debezium.connector.mysql.snapshot.MySqlSnapshotterServiceProvider;
 import io.debezium.connector.mysql.strategy.AbstractConnectorConnection;
 import io.debezium.connector.mysql.strategy.ConnectorAdapter;
 import io.debezium.connector.mysql.strategy.mysql.MySqlConnection;
@@ -39,10 +40,14 @@ import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.signal.SignalProcessor;
 import io.debezium.pipeline.signal.channels.KafkaSignalChannel;
+import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
+import io.debezium.service.spi.ServiceRegistry;
+import io.debezium.snapshot.SnapshotterService;
+import io.debezium.spi.snapshot.Snapshotter;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Clock;
 
@@ -93,8 +98,6 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
 
         connection = connectionFactory.mainConnection();
 
-        validateBinlogConfiguration(connectorConfig);
-
         Offsets<MySqlPartition, MySqlOffsetContext> previousOffsets = getPreviousOffsets(
                 new MySqlPartition.Provider(connectorConfig, config),
                 new MySqlOffsetContext.Loader(connectorConfig));
@@ -102,6 +105,28 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
         final boolean tableIdCaseInsensitive = connection.isTableIdCaseSensitive();
 
         this.schema = new MySqlDatabaseSchema(connectorConfig, valueConverters, topicNamingStrategy, schemaNameAdjuster, tableIdCaseInsensitive);
+
+        // Manual Bean Registration
+        beanRegistryJdbcConnection = connectionFactory.newConnection();
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.CONFIGURATION, config);
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.CONNECTOR_CONFIG, connectorConfig);
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.DATABASE_SCHEMA, schema);
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.JDBC_CONNECTION, beanRegistryJdbcConnection);
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.VALUE_CONVERTER, valueConverters);
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.OFFSETS, previousOffsets);
+
+        // Service providers
+        registerServiceProviders(connectorConfig.getServiceRegistry());
+
+        final SnapshotterService snapshotterService = connectorConfig.getServiceRegistry().tryGetService(SnapshotterService.class);
+        final Snapshotter snapshotter = snapshotterService.getSnapshotter();
+
+        validateBinlogConfiguration(snapshotter);
+
+        // If the binlog position is not available it is necessary to re-execute snapshot
+        if (validateSnapshotFeasibility(snapshotter, previousOffsets.getTheOnlyOffset())) {
+            previousOffsets.resetOffset(previousOffsets.getTheOnlyPartition());
+        }
 
         LOGGER.info("Closing connection before starting schema recovery");
 
@@ -112,10 +137,9 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
             throw new DebeziumException(e);
         }
 
-        MySqlPartition partition = previousOffsets.getTheOnlyPartition();
         MySqlOffsetContext previousOffset = previousOffsets.getTheOnlyOffset();
 
-        validateAndLoadSchemaHistory(connectorConfig, partition, previousOffset, schema);
+        validateAndLoadSchemaHistory(connectorConfig, connection, previousOffsets, schema, snapshotter);
 
         LOGGER.info("Reconnecting after finishing schema recovery");
 
@@ -126,20 +150,12 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
             throw new DebeziumException(e);
         }
 
-        // Manual Bean Registration
-        beanRegistryJdbcConnection = connectionFactory.newConnection();
-        connectorConfig.getBeanRegistry().add(StandardBeanNames.CONFIGURATION, config);
-        connectorConfig.getBeanRegistry().add(StandardBeanNames.CONNECTOR_CONFIG, connectorConfig);
-        connectorConfig.getBeanRegistry().add(StandardBeanNames.DATABASE_SCHEMA, schema);
-        connectorConfig.getBeanRegistry().add(StandardBeanNames.JDBC_CONNECTION, beanRegistryJdbcConnection);
-        connectorConfig.getBeanRegistry().add(StandardBeanNames.VALUE_CONVERTER, valueConverters);
-
-        // Service providers
-        registerServiceProviders(connectorConfig.getServiceRegistry());
-
-        // If the binlog position is not available it is necessary to reexecute snapshot
-        if (validateSnapshotFeasibility(connectorConfig, previousOffset)) {
-            previousOffsets.resetOffset(partition);
+        // If the binlog position is not available it is necessary to re-execute snapshot
+        if (previousOffset == null) {
+            LOGGER.info("No previous offset found");
+        }
+        else {
+            LOGGER.info("Found previous offset {}", previousOffset);
         }
 
         taskContext = new MySqlTaskContext(connectorConfig, schema);
@@ -206,16 +222,53 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
                 errorHandler,
                 MySqlConnector.class,
                 connectorConfig,
-                new MySqlChangeEventSourceFactory(connectorConfig, connectionFactory, errorHandler, dispatcher, clock, schema, taskContext, streamingMetrics, queue),
+                new MySqlChangeEventSourceFactory(
+                        connectorConfig,
+                        connectionFactory,
+                        errorHandler,
+                        dispatcher,
+                        clock,
+                        schema,
+                        taskContext,
+                        streamingMetrics,
+                        queue,
+                        snapshotterService),
                 new MySqlChangeEventSourceMetricsFactory(streamingMetrics),
                 dispatcher,
                 schema,
                 signalProcessor,
-                notificationService);
+                notificationService,
+                snapshotterService);
 
         coordinator.start(taskContext, this.queue, metadataProvider);
 
         return coordinator;
+    }
+
+    @Override
+    protected void registerServiceProviders(ServiceRegistry serviceRegistry) {
+
+        super.registerServiceProviders(serviceRegistry);
+        serviceRegistry.registerServiceProvider(new MySqlSnapshotLockProvider());
+        serviceRegistry.registerServiceProvider(new MySqlSnapshotterServiceProvider());
+    }
+
+    private boolean validateSnapshotFeasibility(Snapshotter snapshotter, OffsetContext offset) {
+
+        if (offset == null) {
+            if (!snapshotter.shouldSnapshotData(false, false)) {
+                // Look to see what the first available binlog file is called, and whether it looks like binlog files have
+                // been purged. If so, then output a warning ...
+                String earliestBinlogFilename = connection.earliestBinlogFilename();
+                if (earliestBinlogFilename == null) {
+                    LOGGER.warn("No binlog appears to be available. Ensure that the MySQL row-level binlog is enabled.");
+                }
+                else if (!earliestBinlogFilename.endsWith("00001")) {
+                    LOGGER.warn("It is possible the server has purged some binlogs. If this is the case, then using snapshot mode may be required.");
+                }
+            }
+        }
+        return false;
     }
 
     private MySqlValueConverters getValueConverters(MySqlConnectorConfig configuration) {
@@ -288,8 +341,9 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
         return MySqlConnectorConfig.ALL_FIELDS;
     }
 
-    private void validateBinlogConfiguration(MySqlConnectorConfig config) {
-        if (config.getSnapshotMode().shouldStream()) {
+    private void validateBinlogConfiguration(Snapshotter snapshotter) {
+
+        if (snapshotter.shouldStream()) {
             // Check whether the row-level binlog is enabled ...
             if (!connection.isBinlogFormatRow()) {
                 throw new DebeziumException("The MySQL server is not configured to use a ROW binlog_format, which is "
@@ -303,82 +357,6 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
                         + "binlog_row_image=FULL and restart the connector.");
             }
         }
-    }
-
-    private boolean validateAndLoadSchemaHistory(MySqlConnectorConfig config, MySqlPartition partition, MySqlOffsetContext offset, MySqlDatabaseSchema schema) {
-        if (offset == null) {
-            if (config.getSnapshotMode().shouldSnapshotOnSchemaError()) {
-                // We are in schema only recovery mode, use the existing binlog position
-                // would like to also verify binlog position exists, but it defaults to 0 which is technically valid
-                throw new DebeziumException("Could not find existing binlog information while attempting schema only recovery snapshot");
-            }
-            LOGGER.info("Connector started for the first time, database schema history recovery will not be executed");
-            schema.initializeStorage();
-            return false;
-        }
-        if (!schema.historyExists()) {
-            LOGGER.warn("Database schema history was not found but was expected");
-            if (config.getSnapshotMode().shouldSnapshotOnSchemaError()) {
-                // But check to see if the server still has those binlog coordinates ...
-                if (!connection.isBinlogPositionAvailable(config, offset.gtidSet(), offset.getSource().binlogFilename())) {
-                    throw new DebeziumException("The connector is trying to read binlog starting at " + offset.getSource() + ", but this is no longer "
-                            + "available on the server. Reconfigure the connector to use a snapshot when needed.");
-                }
-                LOGGER.info("The db-history topic is missing but we are in {} snapshot mode. " +
-                        "Attempting to snapshot the current schema and then begin reading the binlog from the last recorded offset.",
-                        SnapshotMode.SCHEMA_ONLY_RECOVERY);
-            }
-            else {
-                throw new DebeziumException("The db history topic is missing. You may attempt to recover it by reconfiguring the connector to "
-                        + SnapshotMode.SCHEMA_ONLY_RECOVERY);
-            }
-            schema.initializeStorage();
-            return true;
-        }
-        schema.recover(partition, offset);
-        return false;
-    }
-
-    private boolean validateSnapshotFeasibility(MySqlConnectorConfig config, MySqlOffsetContext offset) {
-        if (offset != null) {
-            if (offset.isSnapshotRunning()) {
-                // The last offset was an incomplete snapshot and now the snapshot was disabled
-                if (!config.getSnapshotMode().shouldSnapshot()) {
-                    // No snapshots are allowed
-                    throw new DebeziumException("The connector previously stopped while taking a snapshot, but now the connector is configured "
-                            + "to never allow snapshots. Reconfigure the connector to use snapshots initially or when needed.");
-                }
-            }
-            else {
-                // But check to see if the server still has those binlog coordinates ...
-                if (!connection.isBinlogPositionAvailable(config, offset.gtidSet(), offset.getSource().binlogFilename())) {
-                    if (!config.getSnapshotMode().shouldSnapshotOnDataError()) {
-                        throw new DebeziumException("The connector is trying to read binlog starting at " + offset.getSource() + ", but this is no longer "
-                                + "available on the server. Reconfigure the connector to use a snapshot when needed.");
-                    }
-                    else {
-                        LOGGER.warn(
-                                "The connector is trying to read binlog starting at '{}', but this is no longer available on the server. Forcing the snapshot execution as it is allowed by the configuration.",
-                                offset.getSource());
-                        return true;
-                    }
-                }
-            }
-        }
-        else {
-            if (!config.getSnapshotMode().shouldSnapshot()) {
-                // Look to see what the first available binlog file is called, and whether it looks like binlog files have
-                // been purged. If so, then output a warning ...
-                String earliestBinlogFilename = connection.earliestBinlogFilename();
-                if (earliestBinlogFilename == null) {
-                    LOGGER.warn("No binlog appears to be available. Ensure that the MySQL row-level binlog is enabled.");
-                }
-                else if (!earliestBinlogFilename.endsWith("00001")) {
-                    LOGGER.warn("It is possible the server has purged some binlogs. If this is the case, then using snapshot mode may be required.");
-                }
-            }
-        }
-        return false;
     }
 
     private void resetOffset(MySqlConnectorConfig connectorConfig, MySqlOffsetContext previousOffset,

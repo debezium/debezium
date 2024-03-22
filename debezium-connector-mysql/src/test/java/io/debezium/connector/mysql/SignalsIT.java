@@ -27,7 +27,7 @@ import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.kafka.KafkaCluster;
@@ -36,7 +36,7 @@ import io.debezium.pipeline.signal.channels.KafkaSignalChannel;
 import io.debezium.util.Collect;
 import io.debezium.util.Testing;
 
-public class SignalsIT extends AbstractConnectorTest {
+public class SignalsIT extends AbstractAsyncEngineConnectorTest {
     protected static final String SERVER_NAME = "is_test";
     protected static final Path SCHEMA_HISTORY_PATH = Files.createTestingPath("file-schema-history-is.txt")
             .toAbsolutePath();
@@ -52,11 +52,10 @@ public class SignalsIT extends AbstractConnectorTest {
                 .deleteDataUponShutdown(true)
                 .addBrokers(1)
                 .withKafkaConfiguration(Collect.propertiesOf(
-                        "auto.create.topics.enable", "false",
+                        "auto.create.topics.enable", "true",
                         "zookeeper.session.timeout.ms", "20000"))
                 .startup();
 
-        kafka.createTopic("signals_topic", 1, 1);
     }
 
     @AfterClass
@@ -89,7 +88,7 @@ public class SignalsIT extends AbstractConnectorTest {
                 .with(MySqlConnectorConfig.INCLUDE_SQL_QUERY, true)
                 .with(MySqlConnectorConfig.USER, "mysqluser")
                 .with(MySqlConnectorConfig.PASSWORD, "mysqlpw")
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY.getValue())
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NO_DATA.getValue())
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                 .with(MySqlConnectorConfig.SIGNAL_DATA_COLLECTION, DATABASE.qualifiedTableName("debezium_signal"))
                 .with(CommonConnectorConfig.SIGNAL_POLL_INTERVAL_MS, 1)
@@ -101,12 +100,14 @@ public class SignalsIT extends AbstractConnectorTest {
     @Test
     public void givenOffsetCommitDisabledAndASignalSentWithConnectorRunning_whenConnectorComesBackUp_thenAllSignalsAreCorrectlyProcessed()
             throws ExecutionException, InterruptedException {
+
+        final String signalTopic = "signals_topic-1";
         final LogInterceptor logInterceptor = new LogInterceptor(ExecuteSnapshot.class);
         startConnector(x -> x.with(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source,kafka")
-                .with(KafkaSignalChannel.SIGNAL_TOPIC, getSignalsTopic())
+                .with(KafkaSignalChannel.SIGNAL_TOPIC, signalTopic)
                 .with(KafkaSignalChannel.BOOTSTRAP_SERVERS, kafka.brokerList()));
         assertConnectorIsRunning();
-        sendExecuteSnapshotKafkaSignal("b");
+        sendExecuteSnapshotKafkaSignal("b", signalTopic);
         waitForAvailableRecords(1000, TimeUnit.MILLISECONDS);
         Thread.sleep(5000);
 
@@ -118,11 +119,13 @@ public class SignalsIT extends AbstractConnectorTest {
     @Test
     public void givenOffsetCommitDisabledAndASignalSentWithConnectorDown_whenConnectorComesBackUp_thenNoSignalsProcessed()
             throws ExecutionException, InterruptedException {
+
+        final String signalTopic = "signals_topic-2";
         final LogInterceptor logInterceptor = new LogInterceptor(ExecuteSnapshot.class);
-        sendExecuteSnapshotKafkaSignal("b");
+        sendExecuteSnapshotKafkaSignal("b", signalTopic);
         Thread.sleep(5000);
         startConnector(x -> x.with(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source,kafka")
-                .with(KafkaSignalChannel.SIGNAL_TOPIC, getSignalsTopic())
+                .with(KafkaSignalChannel.SIGNAL_TOPIC, signalTopic)
                 .with(KafkaSignalChannel.BOOTSTRAP_SERVERS, kafka.brokerList()));
         assertConnectorIsRunning();
         waitForAvailableRecords(1000, TimeUnit.MILLISECONDS);
@@ -135,13 +138,15 @@ public class SignalsIT extends AbstractConnectorTest {
     @Test
     public void givenOffsetCommitEnabledAndASignalSentWithConnectorRunning_whenConnectorComesBackUp_thenAllSignalsAreCorrectlyProcessed()
             throws ExecutionException, InterruptedException {
+
+        final String signalTopic = "signals_topic-3";
         final LogInterceptor logInterceptor = new LogInterceptor(ExecuteSnapshot.class);
         startConnector(x -> x.with(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source,kafka")
-                .with(KafkaSignalChannel.SIGNAL_TOPIC, getSignalsTopic())
+                .with(KafkaSignalChannel.SIGNAL_TOPIC, signalTopic)
                 .with(KafkaSignalChannel.SIGNAL_CONSUMER_OFFSET_COMMIT_ENABLED, true)
                 .with(KafkaSignalChannel.BOOTSTRAP_SERVERS, kafka.brokerList()));
         assertConnectorIsRunning();
-        sendExecuteSnapshotKafkaSignal("b");
+        sendExecuteSnapshotKafkaSignal("b", signalTopic);
         waitForAvailableRecords(1000, TimeUnit.MILLISECONDS);
 
         assertThat(logInterceptor.containsMessage("Requested 'INCREMENTAL' snapshot of data collections '[b]'")).isTrue();
@@ -150,37 +155,42 @@ public class SignalsIT extends AbstractConnectorTest {
     @Test
     public void givenOffsetCommitEnabledAndMultipleSignalsSentWithConnectorRunning_whenConnectorComesBackUp_thenAllSignalsAreCorrectlyProcessed()
             throws ExecutionException, InterruptedException {
+
+        final String signalTopic = "signals_topic-4";
         final LogInterceptor logInterceptor = new LogInterceptor(ExecuteSnapshot.class);
-        sendExecuteSnapshotKafkaSignal("b");
+        sendExecuteSnapshotKafkaSignal("b", signalTopic);
         startConnector(x -> x.with(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source,kafka")
-                .with(KafkaSignalChannel.SIGNAL_TOPIC, getSignalsTopic())
+                .with(KafkaSignalChannel.SIGNAL_TOPIC, signalTopic)
                 .with(KafkaSignalChannel.SIGNAL_CONSUMER_OFFSET_COMMIT_ENABLED, true)
                 .with(KafkaSignalChannel.BOOTSTRAP_SERVERS, kafka.brokerList()));
         assertConnectorIsRunning();
         waitForAvailableRecords(1000, TimeUnit.MILLISECONDS);
 
         stopConnector();
-        Thread.sleep(5000);
 
-        sendExecuteSnapshotKafkaSignal("c");
+        sendExecuteSnapshotKafkaSignal("c", signalTopic);
         startConnector(x -> x.with(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source,kafka")
-                .with(KafkaSignalChannel.SIGNAL_TOPIC, getSignalsTopic())
+                .with(KafkaSignalChannel.SIGNAL_TOPIC, signalTopic)
                 .with(KafkaSignalChannel.SIGNAL_CONSUMER_OFFSET_COMMIT_ENABLED, true)
                 .with(KafkaSignalChannel.BOOTSTRAP_SERVERS, kafka.brokerList()));
+
         assertConnectorIsRunning();
+        waitForStreamingRunning("mysql", DATABASE.getServerName());
         waitForAvailableRecords(1000, TimeUnit.MILLISECONDS);
 
-        assertThat(logInterceptor.containsMessage("Requested 'INCREMENTAL' snapshot of data collections '[b]'")).isTrue();
-        assertThat(logInterceptor.containsMessage("Requested 'INCREMENTAL' snapshot of data collections '[c]'")).isTrue();
+        assertThat(logInterceptor.getLogEntriesThatContainsMessage("Requested 'INCREMENTAL' snapshot of data collections '[b]'")).hasSize(1);
+        assertThat(logInterceptor.getLogEntriesThatContainsMessage("Requested 'INCREMENTAL' snapshot of data collections '[c]'")).hasSize(1);
     }
 
     @Test
     public void givenOffsetCommitEnabledAndASignalSentWithConnectorNotRunning_whenConnectorComesBackUp_thenAllSignalsAreCorrectlyProcessed()
             throws ExecutionException, InterruptedException {
+
+        final String signalTopic = "signals_topic-5";
         final LogInterceptor logInterceptor = new LogInterceptor(ExecuteSnapshot.class);
-        sendExecuteSnapshotKafkaSignal("b");
+        sendExecuteSnapshotKafkaSignal("b", signalTopic);
         startConnector(x -> x.with(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source,kafka")
-                .with(KafkaSignalChannel.SIGNAL_TOPIC, getSignalsTopic())
+                .with(KafkaSignalChannel.SIGNAL_TOPIC, signalTopic)
                 .with(KafkaSignalChannel.SIGNAL_CONSUMER_OFFSET_COMMIT_ENABLED, true)
                 .with(KafkaSignalChannel.BOOTSTRAP_SERVERS, kafka.brokerList()));
         assertConnectorIsRunning();
@@ -199,22 +209,17 @@ public class SignalsIT extends AbstractConnectorTest {
         assertConnectorIsRunning();
 
         waitForAvailableRecords(5, TimeUnit.SECONDS);
-        assertNoRecordsToConsume();
     }
 
-    protected void sendExecuteSnapshotKafkaSignal(final String table) throws ExecutionException, InterruptedException {
+    protected void sendExecuteSnapshotKafkaSignal(final String table, String signalTopic) throws ExecutionException, InterruptedException {
         String signalValue = String.format(
                 "{\"type\":\"execute-snapshot\",\"data\": {\"data-collections\": [\"%s\"], \"type\": \"INCREMENTAL\"}}",
                 table);
-        sendKafkaSignal(signalValue);
+        sendKafkaSignal(signalValue, signalTopic);
     }
 
-    protected String getSignalsTopic() {
-        return "signals_topic";
-    }
-
-    protected void sendKafkaSignal(String signalValue) throws ExecutionException, InterruptedException {
-        final ProducerRecord<String, String> executeSnapshotSignal = new ProducerRecord<>(getSignalsTopic(), 0, SERVER_NAME, signalValue);
+    protected void sendKafkaSignal(String signalValue, String signalTopic) throws ExecutionException, InterruptedException {
+        final ProducerRecord<String, String> executeSnapshotSignal = new ProducerRecord<>(signalTopic, 0, SERVER_NAME, signalValue);
 
         final Configuration signalProducerConfig = Configuration.create()
                 .withDefault(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.brokerList())

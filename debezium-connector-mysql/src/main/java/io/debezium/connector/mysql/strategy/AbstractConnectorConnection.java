@@ -12,6 +12,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.function.Predicate;
 
@@ -19,12 +20,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.mysql.GtidSet;
 import io.debezium.connector.mysql.MySqlConnectorConfig;
 import io.debezium.connector.mysql.MySqlFieldReader;
 import io.debezium.connector.mysql.MySqlOffsetContext;
 import io.debezium.connector.mysql.MySqlSystemVariables;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -58,6 +61,7 @@ public abstract class AbstractConnectorConnection extends JdbcConnection {
         super(configuration.config(), configuration.factory(), QUOTED_CHARACTER, QUOTED_CHARACTER);
         this.connectionConfig = configuration;
         this.fieldReader = fieldReader;
+        this.logPositionValidator = this::validateLogPosition;
     }
 
     @Override
@@ -73,6 +77,16 @@ public abstract class AbstractConnectorConnection extends JdbcConnection {
     @Override
     public String getQualifiedTableName(TableId tableId) {
         return tableId.catalog() + "." + tableId.table();
+    }
+
+    @Override
+    public Optional<Boolean> nullsSortLast() {
+        // "any NULLs are considered to have the lowest value"
+        // https://mariadb.com/kb/en/null-values/#ordering
+        //
+        // "NULL values are presented first if you do ORDER BY ... ASC"
+        // https://dev.mysql.com/doc/refman/8.0/en/working-with-null.html
+        return Optional.of(false);
     }
 
     public String connectionString() {
@@ -477,6 +491,14 @@ public abstract class AbstractConnectorConnection extends JdbcConnection {
     }
 
     protected abstract GtidSet createGtidSet(String gtids);
+
+    public boolean validateLogPosition(OffsetContext offset, CommonConnectorConfig config) {
+
+        final String gtidSet = ((MySqlOffsetContext) offset).gtidSet();
+        final String binlogFilename = ((MySqlOffsetContext) offset).getSource().binlogFilename();
+
+        return isBinlogPositionAvailable((MySqlConnectorConfig) config, gtidSet, binlogFilename);
+    }
 
     private Map<String, String> querySystemVariables(String statement) {
         final Map<String, String> variables = new HashMap<>();

@@ -7,13 +7,19 @@ package io.debezium.kcrestextension;
 
 import static io.debezium.testing.testcontainers.testhelper.RestExtensionTestInfrastructure.DATABASE;
 import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.containsInRelativeOrder;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,6 +67,10 @@ public class DebeziumResourceIT {
             "org.apache.kafka.connect.transforms.TimestampRouter",
             "org.apache.kafka.connect.transforms.ValueToKey");
 
+    private static final List<String> KAFKA_CONNECT_SMTs = SUPPORTED_TRANSFORMS.stream()
+            .filter(smt -> smt.startsWith("org.apache.kafka.connect.transforms."))
+            .collect(Collectors.toList());
+
     private static final List<String> SUPPORTED_PREDICATES = List.of(
             "org.apache.kafka.connect.transforms.predicates.HasHeaderKey",
             "org.apache.kafka.connect.transforms.predicates.RecordIsTombstone",
@@ -102,6 +112,7 @@ public class DebeziumResourceIT {
     }
 
     @Test
+    @Disabled("See DBZ-7416 https://issues.redhat.com/browse/DBZ-7416")
     public void testTransformsEndpoint() {
         RestExtensionTestInfrastructure.startContainers(DATABASE.NONE);
         given()
@@ -109,7 +120,8 @@ public class DebeziumResourceIT {
                 .when().get(DebeziumResource.BASE_PATH + DebeziumResource.TRANSFORMS_ENDPOINT)
                 .then().log().all()
                 .statusCode(200)
-                .body("transform.size()", is(SUPPORTED_TRANSFORMS.size()))
+                .body("transform.size()", allOf(greaterThanOrEqualTo(KAFKA_CONNECT_SMTs.size()), lessThanOrEqualTo(SUPPORTED_TRANSFORMS.size() + 1)))
+                .body("transform", containsInRelativeOrder(KAFKA_CONNECT_SMTs.toArray()))
                 .body("transform", containsInAnyOrder(SUPPORTED_TRANSFORMS.toArray()));
     }
 

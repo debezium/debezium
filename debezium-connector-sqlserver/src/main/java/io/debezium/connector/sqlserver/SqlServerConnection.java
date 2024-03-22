@@ -36,12 +36,15 @@ import org.slf4j.LoggerFactory;
 
 import com.microsoft.sqlserver.jdbc.SQLServerDriver;
 
+import io.debezium.DebeziumException;
 import io.debezium.annotation.VisibleForTesting;
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.data.Envelope;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -137,6 +140,7 @@ public class SqlServerConnection extends JdbcConnection {
                                boolean useSingleDatabase) {
         super(config.getJdbcConfig(), createConnectionFactory(config.getJdbcConfig(), useSingleDatabase), OPENING_QUOTING_CHARACTER, CLOSING_QUOTING_CHARACTER);
 
+        this.logPositionValidator = this::validateLogPosition;
         defaultValueConverter = new SqlServerDefaultValueConverter(this::connection, valueConverters);
         this.queryFetchSize = config.getQueryFetchSize();
 
@@ -353,7 +357,8 @@ public class SqlServerConnection extends JdbcConnection {
 
         int idx = 0;
         for (SqlServerChangeTable changeTable : changeTables) {
-            String capturedColumns = String.join(", ", changeTable.getCapturedColumns());
+            String capturedColumns = changeTable.getCapturedColumns().stream().map(c -> "[" + c + "]")
+                    .collect(Collectors.joining(", "));
             String source = changeTable.getCaptureInstance();
             if (config.getDataQueryMode() == SqlServerConnectorConfig.DataQueryMode.DIRECT) {
                 source = changeTable.getChangeTableId().table();
@@ -431,6 +436,7 @@ public class SqlServerConnection extends JdbcConnection {
     }
 
     public static class CdcEnabledTable {
+
         private final String tableId;
         private final String captureName;
         private final Lsn fromLsn;
@@ -452,6 +458,7 @@ public class SqlServerConnection extends JdbcConnection {
         public Lsn getFromLsn() {
             return fromLsn;
         }
+
     }
 
     public List<SqlServerChangeTable> getChangeTables(String databaseName) throws SQLException {
@@ -698,6 +705,13 @@ public class SqlServerConnection extends JdbcConnection {
     }
 
     @Override
+    public Optional<Boolean> nullsSortLast() {
+        // "Null values are treated as the lowest possible values"
+        // https://learn.microsoft.com/en-us/sql/t-sql/queries/select-order-by-clause-transact-sql?view=sql-server-ver16
+        return Optional.of(false);
+    }
+
+    @Override
     public String quotedTableIdString(TableId tableId) {
         return "[" + tableId.catalog() + "].[" + tableId.schema() + "].[" + tableId.table() + "]";
     }
@@ -720,5 +734,30 @@ public class SqlServerConnection extends JdbcConnection {
     public Optional<Instant> getCurrentTimestamp() throws SQLException {
         return queryAndMap("SELECT SYSDATETIMEOFFSET()",
                 rs -> rs.next() ? Optional.of(rs.getObject(1, OffsetDateTime.class).toInstant()) : Optional.empty());
+    }
+
+    public boolean validateLogPosition(OffsetContext offset, CommonConnectorConfig config) {
+
+        final Lsn storedLsn = ((SqlServerOffsetContext) offset).getChangePosition().getCommitLsn();
+
+        String oldestFirstChangeQuery = "SELECT TOP 1 [Current LSN] FROM sys.fn_dblog (NULL, NULL) ORDER BY [Current LSN] ASC";
+
+        try {
+            final String oldestScn = singleOptionalValue(oldestFirstChangeQuery, rs -> rs.getString(1));
+
+            if (oldestScn == null) {
+                return false;
+            }
+
+            LOGGER.trace("Oldest SCN in logs is '{}'", oldestScn);
+            return storedLsn == null || Lsn.valueOf(oldestScn).compareTo(storedLsn) < 0;
+        }
+        catch (SQLException e) {
+            throw new DebeziumException("Unable to get last available log position", e);
+        }
+    }
+
+    public <T> T singleOptionalValue(String query, ResultSetExtractor<T> extractor) throws SQLException {
+        return queryAndMap(query, rs -> rs.next() ? extractor.apply(rs) : null);
     }
 }

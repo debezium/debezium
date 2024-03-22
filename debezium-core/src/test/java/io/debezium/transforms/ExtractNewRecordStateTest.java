@@ -7,6 +7,9 @@ package io.debezium.transforms;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -917,4 +920,29 @@ public class ExtractNewRecordStateTest extends AbstractExtractStateTest {
             assertThat(((Struct) unwrapped.value()).get(fieldPrefix + "TOTAL_ORDER")).isEqualTo(42L);
         }
     }
+
+    @Test
+    @FixFor("DBZ-7615")
+    public void testEnvelopeTimestampFieldsHandledCorrectly() {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(ADD_FIELDS,
+                    "source.table:META_SRC_TABLENAME,source.ts_ms:META_SRC_TS_MS,source.ts_us:META_SRC_TS_US,source.ts_ns:META_SRC_TS_NS,ts_ms:META_TS_MS,ts_us:META_TS_US,ts_ns:META_TS_NS,op:META_SRC_OP,source.scn:META_SRC_SCN,source.snapshot:META_SRC_SNAPSHOT,source.user_name:META_SRC_USER,changes:META_SRC_CHANGES");
+            props.put(DROP_TOMBSTONES, "false");
+            props.put(HANDLE_TOMBSTONE_DELETES, "rewrite");
+            transform.configure(props);
+
+            final Instant created = ZonedDateTime.of(2024, 3, 10, 1, 2, 3, 123456, ZoneOffset.UTC).toInstant();
+            final SourceRecord record = createCreateRecordWithCreateTime(created);
+
+            final SourceRecord unwrapped = transform.apply(record);
+            assertThat(((Struct) unwrapped.value()).get("__META_SRC_TS_MS")).isEqualTo(1588252618953L);
+            assertThat(((Struct) unwrapped.value()).get("__META_SRC_TS_US")).isEqualTo(1588252618953000L);
+            assertThat(((Struct) unwrapped.value()).get("__META_SRC_TS_NS")).isEqualTo(1588252618953000000L);
+            assertThat(((Struct) unwrapped.value()).get("__META_TS_MS")).isEqualTo(1710032523000L);
+            assertThat(((Struct) unwrapped.value()).get("__META_TS_US")).isEqualTo(1710032523000123L);
+            assertThat(((Struct) unwrapped.value()).get("__META_TS_NS")).isEqualTo(1710032523000123456L);
+        }
+    }
+
 }

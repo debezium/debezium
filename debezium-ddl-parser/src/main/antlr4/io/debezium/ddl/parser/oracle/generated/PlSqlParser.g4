@@ -592,6 +592,7 @@ sequence_start_clause
 
 create_index
     : CREATE (UNIQUE | BITMAP)? INDEX index_name
+       (IF NOT EXISTS)?
        ON (cluster_index_clause | table_index_clause | bitmap_join_index_clause)
        UNUSABLE?
     ;
@@ -863,6 +864,7 @@ new_index_name
 create_user
     : CREATE USER
       user_object_name
+      (IF NOT EXISTS)?
         ( identified_by
           | identified_other_clause
           | user_tablespace_clause
@@ -872,7 +874,7 @@ create_user
           | user_lock_clause
           | user_editions_clause
           | container_clause
-        )+ ';'
+        )+
     ;
 
 // The standard clauses only permit one user per statement.
@@ -897,7 +899,7 @@ alter_user
     ;
 
 drop_user
-    : DROP USER user_object_name CASCADE?
+    : DROP USER user_object_name (IF EXISTS)? CASCADE?
     ;
 
 alter_identified_by
@@ -1256,7 +1258,7 @@ sql_statement_shortcut
     ;
 
 drop_index
-    : DROP INDEX index_name ';'
+    : DROP INDEX index_name (IF EXISTS)? ';'
     ;
 
 rename_object
@@ -1387,7 +1389,7 @@ alter_view_editionable
 
 create_view
     : CREATE (OR REPLACE)? (OR? FORCE)? EDITIONABLE? EDITIONING? VIEW
-      tableview_name view_options?
+      tableview_name (IF NOT EXISTS)? view_options?
       AS select_only_statement subquery_restriction_clause?
     ;
 
@@ -1516,11 +1518,10 @@ create_tablespace
         | temporary_tablespace_clause
         | undo_tablespace_clause
         )
-      ';'
     ;
 
 permanent_tablespace_clause
-    : TABLESPACE id_expression datafile_specification?
+    : TABLESPACE id_expression (IF NOT EXISTS)? datafile_specification?
         ( MINIMUM EXTENT size_clause
         | BLOCKSIZE size_clause
         | logging_clause
@@ -1557,12 +1558,14 @@ segment_management_clause
 
 temporary_tablespace_clause
     : TEMPORARY TABLESPACE tablespace_name=id_expression
+        (IF NOT EXISTS)?
         tempfile_specification?
         tablespace_group_clause? extent_management_clause?
     ;
 
 undo_tablespace_clause
     : UNDO TABLESPACE tablespace_name=id_expression
+        (IF NOT EXISTS)?
         datafile_specification?
         extent_management_clause? tablespace_retention_clause?
     ;
@@ -1828,7 +1831,7 @@ create_table
         | DUPLICATED
         | IMMUTABLE? BLOCKCHAIN
         | IMMUTABLE
-    )? TABLE tableview_name
+    )? TABLE tableview_name (IF NOT EXISTS)?
         (SHARING '=' (NONE | METADATA | DATA | EXTENDED DATA))?
         (relational_table | object_table | xmltype_table) (USAGE QUEUE)? (AS select_only_statement)? memoptimize_read_write_clause?
     ;
@@ -1840,7 +1843,7 @@ xmltype_table
          physical_properties? column_properties? table_partitioning_clauses?
          (CACHE | NOCACHE)? (RESULT_CACHE '(' MODE (DEFAULT | FORCE) ')')?
          parallel_clause? (ROWDEPENDENCIES | NOROWDEPENDENCIES)?
-	 (enable_disable_clause+)? row_movement_clause? logical_replication_clause? flashback_archive_clause?
+	 (enable_disable_clause+)? row_movement_clause? logical_replication_clause? flashback_archive_clause? annotations_clause?
     ;
 
 xmltype_virtual_columns
@@ -1871,7 +1874,7 @@ object_table
       physical_properties? column_properties? table_partitioning_clauses?
       (CACHE | NOCACHE)? (RESULT_CACHE '(' MODE (DEFAULT | FORCE) ')')?
       parallel_clause? (ROWDEPENDENCIES | NOROWDEPENDENCIES)?
-      (enable_disable_clause+)? row_movement_clause? logical_replication_clause? flashback_archive_clause?
+      (enable_disable_clause+)? row_movement_clause? logical_replication_clause? flashback_archive_clause? annotations_clause?
     ;
 
 oid_index_clause
@@ -1903,7 +1906,7 @@ relational_table
           (CACHE | NOCACHE)? (RESULT_CACHE '(' MODE (DEFAULT | FORCE) ')')?
           parallel_clause?
           (ROWDEPENDENCIES | NOROWDEPENDENCIES)?
-          (enable_disable_clause+)? row_movement_clause? logical_replication_clause? flashback_archive_clause?
+          (enable_disable_clause+)? row_movement_clause? logical_replication_clause? flashback_archive_clause? annotations_clause?
         ;
 
 relational_property
@@ -2558,11 +2561,11 @@ truncate_cluster
     ;
 
 drop_table
-    : DROP TABLE tableview_name (AS tableview_name)? (CASCADE CONSTRAINTS)? PURGE? (AS quoted_string)? FORCE?
+    : DROP TABLE tableview_name (IF EXISTS)? (AS tableview_name)? (CASCADE CONSTRAINTS)? PURGE? (AS quoted_string)? FORCE?
     ;
 
 drop_tablespace
-    : DROP TABLESPACE ts = id_expression ((DROP | KEEP) QUOTA?)? including_contents_clause?
+    : DROP TABLESPACE ts = id_expression (IF EXISTS)? ((DROP | KEEP) QUOTA?)? including_contents_clause?
     ;
 
 drop_tablespace_set
@@ -2570,7 +2573,7 @@ drop_tablespace_set
     ;
 
 drop_view
-    : DROP VIEW tableview_name (CASCADE CONSTRAINT)? SEMICOLON
+    : DROP VIEW tableview_name (IF EXISTS)? (CASCADE CONSTRAINT)? SEMICOLON
     ;
 
 including_contents_clause
@@ -2943,6 +2946,7 @@ alter_table_properties
     | READ ONLY
     | READ WRITE
     | REKEY CHAR_STRING
+    | annotations_clause?
     ;
 
 alter_table_properties_1
@@ -3190,7 +3194,7 @@ modify_column_clauses
     ;
 
 modify_col_properties
-    : column_name datatype? (DEFAULT column_default_value)? (ENCRYPT encryption_spec | DECRYPT)? inline_constraint* lob_storage_clause? //TODO alter_xmlschema_clause
+    : column_name datatype? (DEFAULT column_default_value)? (ENCRYPT encryption_spec | DECRYPT)? inline_constraint* lob_storage_clause? annotations_clause? //TODO alter_xmlschema_clause
     ;
 
 modify_col_visibility
@@ -3337,6 +3341,7 @@ column_definition
          (VISIBLE | INVISIBLE)?
          (DEFAULT (ON NULL_)? column_default_value | identity_clause)?
          (ENCRYPT (USING  CHAR_STRING)? (IDENTIFIED BY regular_id)? CHAR_STRING? (NO? SALT)? )?  (inline_constraint* | inline_ref_constraint)
+         annotations_clause?
     ;
 
 column_default_value
@@ -3349,6 +3354,29 @@ virtual_column_definition
         (GENERATED ALWAYS)?
         AS '(' expression ')'
         VIRTUAL? evaluation_edition_clause? unusable_editions_clause? inline_constraint*
+    ;
+
+annotations_clause
+    : ANNOTATIONS '(' annotations_list ')'
+    ;
+
+annotations_list
+    : ADD (IF NOT EXISTS | OR REPLACE)? annotation (',' annotations_list)*
+    | DROP (IF EXISTS)? annotation (',' annotations_list)*
+    | REPLACE annotation (',' annotations_list)*
+    | annotation (',' annotations_list)*
+    ;
+
+annotation
+    : annotation_name annotation_value?
+    ;
+
+annotation_name
+    : identifier
+    ;
+
+annotation_value
+    : CHAR_STRING
     ;
 
 identity_clause
@@ -3930,7 +3958,7 @@ subquery_operation_part
 
 query_block
     : SELECT (DISTINCT | UNIQUE | ALL)? selected_list
-      into_clause? from_clause where_clause? hierarchical_query_clause? group_by_clause? model_clause? order_by_clause? fetch_clause?
+      into_clause? from_clause? where_clause? hierarchical_query_clause? group_by_clause? model_clause? order_by_clause? fetch_clause?
     ;
 
 selected_list
@@ -5215,7 +5243,7 @@ constant
     ;
 
 numeric
-    : UNSIGNED_INTEGER
+    : UNSIGNED_INTEGER '.'?
     | APPROXIMATE_NUM_LIT
     ;
 

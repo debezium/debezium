@@ -19,7 +19,6 @@ import org.slf4j.LoggerFactory;
 import io.debezium.connector.postgresql.PostgresOffsetContext.Loader;
 import io.debezium.connector.postgresql.connection.Lsn;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
-import io.debezium.connector.postgresql.snapshot.mode.AlwaysSnapshotter;
 import io.debezium.connector.postgresql.spi.SlotCreationResult;
 import io.debezium.connector.postgresql.spi.SlotState;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
@@ -33,7 +32,6 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.snapshot.SnapshotterService;
-import io.debezium.spi.snapshot.Snapshotter;
 import io.debezium.util.Clock;
 
 public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeEventSource<PostgresPartition, PostgresOffsetContext> {
@@ -43,8 +41,6 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     private final PostgresConnectorConfig connectorConfig;
     private final PostgresConnection jdbcConnection;
     private final PostgresSchema schema;
-    private final SnapshotterService snapshotterService;
-    private final Snapshotter blockingSnapshotter;
     private final SlotCreationResult slotCreatedInfo;
     private final SlotState startingSlotInfo;
 
@@ -53,26 +49,36 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
                                              EventDispatcher<PostgresPartition, TableId> dispatcher, Clock clock,
                                              SnapshotProgressListener<PostgresPartition> snapshotProgressListener, SlotCreationResult slotCreatedInfo,
                                              SlotState startingSlotInfo, NotificationService<PostgresPartition, PostgresOffsetContext> notificationService) {
-        super(connectorConfig, connectionFactory, schema, dispatcher, clock, snapshotProgressListener, notificationService);
+        super(connectorConfig, connectionFactory, schema, dispatcher, clock, snapshotProgressListener, notificationService, snapshotterService);
         this.connectorConfig = connectorConfig;
         this.jdbcConnection = connectionFactory.mainConnection();
         this.schema = schema;
-        this.snapshotterService = snapshotterService;
         this.slotCreatedInfo = slotCreatedInfo;
         this.startingSlotInfo = startingSlotInfo;
-        this.blockingSnapshotter = new AlwaysSnapshotter();
     }
 
     @Override
     public SnapshottingTask getSnapshottingTask(PostgresPartition partition, PostgresOffsetContext previousOffset) {
 
+        // TODO review log messages
         boolean snapshotSchema = true;
 
         List<String> dataCollectionsToBeSnapshotted = connectorConfig.getDataCollectionsToBeSnapshotted();
         Map<String, String> snapshotSelectOverridesByTable = connectorConfig.getSnapshotSelectOverridesByTable().entrySet().stream()
                 .collect(Collectors.toMap(e -> e.getKey().identifier(), Map.Entry::getValue));
 
-        boolean snapshotData = snapshotterService.getSnapshotter().shouldSnapshot();
+        boolean offsetExists = previousOffset != null;
+        boolean snapshotInProgress = false;
+
+        if (offsetExists) {
+            snapshotInProgress = previousOffset.isSnapshotRunning();
+        }
+
+        if (offsetExists && !previousOffset.isSnapshotRunning()) {
+            LOGGER.info("A previous offset indicating a completed snapshot has been found. Neither schema nor data will be snapshotted.");
+        }
+
+        boolean snapshotData = snapshotterService.getSnapshotter().shouldSnapshotData(offsetExists, snapshotInProgress);
         if (snapshotData) {
             LOGGER.info("According to the connector configuration data will be snapshotted");
         }

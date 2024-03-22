@@ -22,7 +22,7 @@ import org.junit.Test;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 
@@ -30,7 +30,7 @@ import io.debezium.junit.SkipWhenDatabaseVersion;
  * @author Inki Hwang
  */
 @SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 6, reason = "DDL uses fractional second data types, not supported until MySQL 5.6")
-public class MySqlConnectorSchemaValidateIT extends AbstractConnectorTest {
+public class MySqlConnectorSchemaValidateIT extends AbstractAsyncEngineConnectorTest {
 
     private static final Path DB_HISTORY_PATH = Files.createTestingPath("file-db-history-connect.txt").toAbsolutePath();
     private final UniqueDatabase DATABASE = new UniqueDatabase("sql_bin_log_off", "sql_bin_log_off_test")
@@ -53,6 +53,11 @@ public class MySqlConnectorSchemaValidateIT extends AbstractConnectorTest {
         try {
             stopConnector();
         }
+        catch (IllegalStateException e) {
+            if (!e.getMessage().startsWith("Engine is already being shutting down")) {
+                throw e;
+            }
+        }
         finally {
             Files.delete(DB_HISTORY_PATH);
         }
@@ -63,7 +68,7 @@ public class MySqlConnectorSchemaValidateIT extends AbstractConnectorTest {
     public void shouldRecoverToSyncSchemaWhenAddColumnToEndWithSqlLogBinIsOff() throws Exception {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .build();
 
         AtomicReference<Throwable> exception = new AtomicReference<>();
@@ -88,7 +93,7 @@ public class MySqlConnectorSchemaValidateIT extends AbstractConnectorTest {
             }
         }
 
-        waitForConnectorShutdown("mysql", DATABASE.getServerName());
+        waitForEngineShutdown();
         stopConnector();
 
         final Throwable e = exception.get();
@@ -101,7 +106,7 @@ public class MySqlConnectorSchemaValidateIT extends AbstractConnectorTest {
 
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY_RECOVERY)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.RECOVERY)
                 .build();
 
         start(MySqlConnector.class, config, (success, message, error) -> exception.set(error));
@@ -147,7 +152,7 @@ public class MySqlConnectorSchemaValidateIT extends AbstractConnectorTest {
     public void shouldRecoverToSyncSchemaWhenAddColumnInMiddleWithSqlLogBinIsOff() throws Exception {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .build();
 
         AtomicReference<Throwable> exception = new AtomicReference<>();
@@ -172,7 +177,7 @@ public class MySqlConnectorSchemaValidateIT extends AbstractConnectorTest {
             }
         }
 
-        waitForConnectorShutdown("mysql", DATABASE.getServerName());
+        waitForEngineShutdown();
         stopConnector();
 
         final Throwable e = exception.get();
@@ -185,7 +190,7 @@ public class MySqlConnectorSchemaValidateIT extends AbstractConnectorTest {
 
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY_RECOVERY)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.RECOVERY)
                 .build();
 
         start(MySqlConnector.class, config, (success, message, error) -> exception.set(error));
@@ -231,7 +236,7 @@ public class MySqlConnectorSchemaValidateIT extends AbstractConnectorTest {
     public void shouldRecoverToSyncSchemaWhenDropColumnWithSqlLogBinIsOff() throws Exception {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .build();
 
         AtomicReference<Throwable> exception = new AtomicReference<>();
@@ -256,7 +261,7 @@ public class MySqlConnectorSchemaValidateIT extends AbstractConnectorTest {
             }
         }
 
-        waitForConnectorShutdown("mysql", DATABASE.getServerName());
+        waitForEngineShutdown();
         stopConnector();
 
         final Throwable e = exception.get();
@@ -269,7 +274,7 @@ public class MySqlConnectorSchemaValidateIT extends AbstractConnectorTest {
 
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY_RECOVERY)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.RECOVERY)
                 .build();
 
         start(MySqlConnector.class, config, (success, message, error) -> exception.set(error));
@@ -308,7 +313,7 @@ public class MySqlConnectorSchemaValidateIT extends AbstractConnectorTest {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                 .with(MySqlConnectorConfig.COLUMN_INCLUDE_LIST, "dbz7093.id" + "," + "dbz7093.newcol")
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .build();
 
         AtomicReference<Throwable> exception = new AtomicReference<>();
@@ -333,7 +338,7 @@ public class MySqlConnectorSchemaValidateIT extends AbstractConnectorTest {
             }
         }
 
-        waitForConnectorShutdown("mysql", DATABASE.getServerName());
+        waitForEngineShutdown();
         stopConnector();
 
         final Throwable e = exception.get();
@@ -346,7 +351,7 @@ public class MySqlConnectorSchemaValidateIT extends AbstractConnectorTest {
 
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY_RECOVERY)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.RECOVERY)
                 .build();
 
         start(MySqlConnector.class, config, (success, message, error) -> exception.set(error));

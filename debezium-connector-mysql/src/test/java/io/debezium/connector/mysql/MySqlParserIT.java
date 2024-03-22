@@ -26,7 +26,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.junit.SkipTestDependingOnSslModeRule;
 import io.debezium.connector.mysql.junit.SkipWhenSslModeIsNot;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.testing.testcontainers.util.ContainerImageVersions;
@@ -36,7 +36,7 @@ import io.debezium.util.Testing;
  * Integration test for {@link MySqlConnector} using Testcontainers infrastructure for testing column constraints supported in MySQL 8.0.x.
  */
 @SkipWhenSslModeIsNot(value = MySqlConnectorConfig.SecureConnectionMode.DISABLED, reason = "Only running with ssl disabled mode")
-public class MySqlParserIT extends AbstractConnectorTest {
+public class MySqlParserIT extends AbstractAsyncEngineConnectorTest {
 
     @Rule
     public TestRule skipTestRule = new SkipTestDependingOnSslModeRule();
@@ -94,7 +94,7 @@ public class MySqlParserIT extends AbstractConnectorTest {
     public void parseTableWithVisibleColumns() throws SQLException, InterruptedException {
         config = defaultConfig().build();
 
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DB_NAME, mySQLContainer.getUsername(), mySQLContainer.getPassword())) {
             try (JdbcConnection connection = db.connect()) {
@@ -128,7 +128,7 @@ public class MySqlParserIT extends AbstractConnectorTest {
     public void parseTableWithInVisibleColumns() throws SQLException, InterruptedException {
         config = defaultConfig().build();
 
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DB_NAME, mySQLContainer.getUsername(), mySQLContainer.getPassword())) {
             try (JdbcConnection connection = db.connect()) {

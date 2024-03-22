@@ -625,6 +625,19 @@ public class PostgresValueConverter extends JdbcValueConverters {
         return SpecialValueDecimal.fromLogical(new SpecialValueDecimal(newDecimal), mode, column.name());
     }
 
+    @Override
+    protected BigDecimal withScaleAdjustedIfNeeded(Column column, BigDecimal data) {
+        BigDecimal value = super.withScaleAdjustedIfNeeded(column, data);
+        // Deal with PostgreSQL where a default value will have higher scale than column
+        if (column.scale().isPresent()) {
+            // Check for Default DECIMAL
+            if (column.length() != VARIABLE_SCALE_DECIMAL_LENGTH) {
+                value = value.setScale(column.scale().get());
+            }
+        }
+        return value;
+    }
+
     protected Object convertHStore(Column column, Field fieldDefn, Object data, HStoreHandlingMode mode) {
         if (mode == HStoreHandlingMode.JSON) {
             return convertHstoreToJsonString(column, fieldDefn, data);
@@ -1149,6 +1162,9 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
     @Override
     protected Object convertBinaryToHex(Column column, Field fieldDefn, Object data) {
+        if (data == UnchangedToastedReplicationMessageColumn.UNCHANGED_TOAST_VALUE) {
+            return unchangedToastedPlaceholder.getToastPlaceholderString();
+        }
         return super.convertBinaryToHex(column, fieldDefn, (data instanceof PGobject) ? ((PGobject) data).getValue() : data);
     }
 
@@ -1172,6 +1188,14 @@ public class PostgresValueConverter extends JdbcValueConverters {
     @Override
     protected Object handleUnknownData(Column column, Field fieldDefn, Object data) {
         Optional<Object> toastedArrayPlaceholder = unchangedToastedPlaceholder.getValue(data);
-        return toastedArrayPlaceholder.orElseGet(() -> super.handleUnknownData(column, fieldDefn, data));
+        if (toastedArrayPlaceholder.isPresent()) {
+            if (UnchangedToastedReplicationMessageColumn.UNCHANGED_HSTORE_TOAST_VALUE == data) {
+                if (HStoreHandlingMode.JSON.equals(hStoreMode)) {
+                    return convertMapToJsonStringRepresentation((Map<String, String>) toastedArrayPlaceholder.get());
+                }
+            }
+            return toastedArrayPlaceholder.get();
+        }
+        return super.handleUnknownData(column, fieldDefn, data);
     }
 }

@@ -29,11 +29,13 @@ import org.apache.kafka.connect.source.SourceTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.annotation.SingleThreadAccess;
 import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
+import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.notification.channels.NotificationChannel;
 import io.debezium.pipeline.signal.channels.SignalChannelReader;
@@ -41,7 +43,11 @@ import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.processors.PostProcessorRegistryServiceProvider;
+import io.debezium.schema.DatabaseSchema;
+import io.debezium.schema.HistorizedDatabaseSchema;
 import io.debezium.service.spi.ServiceRegistry;
+import io.debezium.snapshot.SnapshotQueryProvider;
+import io.debezium.spi.snapshot.Snapshotter;
 import io.debezium.util.Clock;
 import io.debezium.util.ElapsedTimeStrategy;
 import io.debezium.util.Metronome;
@@ -59,6 +65,84 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
     private static final Duration INITIAL_POLL_PERIOD_IN_MILLIS = Duration.ofMillis(TimeUnit.SECONDS.toMillis(5));
     private static final Duration MAX_POLL_PERIOD_IN_MILLIS = Duration.ofMillis(TimeUnit.HOURS.toMillis(1));
     private Configuration config;
+
+    protected void validateAndLoadSchemaHistory(CommonConnectorConfig config, JdbcConnection jdbcConnection, Offsets<P, O> previousOffsets, DatabaseSchema schema,
+                                                Snapshotter snapshotter) {
+
+        for (Map.Entry<P, O> previousOffset : previousOffsets) {
+
+            Partition partition = previousOffset.getKey();
+            OffsetContext offset = previousOffset.getValue();
+
+            if (offset == null) {
+                if (snapshotter.shouldSnapshotOnSchemaError()) {
+                    // We are in schema only recovery mode, use the existing redo log position
+                    // would like to also verify redo log position exists, but it defaults to 0 which is technically valid
+                    throw new DebeziumException("Could not find existing redo log information while attempting schema only recovery snapshot");
+                }
+                LOGGER.info("Connector started for the first time.");
+                if (schema.isHistorized()) {
+                    ((HistorizedDatabaseSchema) schema).initializeStorage();
+                }
+                return;
+            }
+
+            if (offset.isSnapshotRunning()) {
+                // The last offset was an incomplete snapshot and now the snapshot was disabled
+                if (!snapshotter.shouldSnapshotData(true, true)) {
+                    // No snapshots are allowed
+                    throw new DebeziumException("The connector previously stopped while taking a snapshot, but now the connector is configured "
+                            + "to never allow snapshots. Reconfigure the connector to use snapshots initially or when needed.");
+                }
+            }
+            else {
+
+                boolean logPositionAvailable = jdbcConnection.isLogPositionAvailable(offset, config);
+
+                if (schema.isHistorized() && !((HistorizedDatabaseSchema) schema).historyExists()) {
+
+                    LOGGER.warn("Database schema history was not found but was expected");
+
+                    if (snapshotter.shouldSnapshotOnSchemaError()) {
+
+                        LOGGER.info("The db-history topic is missing but we are in {} snapshot mode. " +
+                                "Attempting to snapshot the current schema and then begin reading the redo log from the last recorded offset.",
+                                snapshotter.name());
+                        if (schema.isHistorized()) {
+                            ((HistorizedDatabaseSchema) schema).initializeStorage();
+                        }
+                        return;
+                    }
+                    else {
+                        throw new DebeziumException("The db history topic is missing. You may attempt to recover it by reconfiguring the connector to recovery.");
+                    }
+                }
+
+                if (!logPositionAvailable && !offset.isSnapshotRunning()) {
+                    LOGGER.warn("Last recorded offset is no longer available on the server.");
+
+                    if (snapshotter.shouldSnapshotOnDataError()) {
+
+                        LOGGER.info("The last recorded offset is no longer available but we are in {} snapshot mode. " +
+                                "Attempting to snapshot data to fill the gap.",
+                                snapshotter.name());
+
+                        previousOffsets.resetOffset(previousOffsets.getTheOnlyPartition());
+
+                        return;
+                    }
+
+                    LOGGER.warn("The connector is trying to read redo log starting at " + offset + ", but this is no longer "
+                            + "available on the server. Reconfigure the connector to use a snapshot when needed if you want to recover. " +
+                            "If not the connector will streaming from the last available position in the log");
+                }
+
+                if (schema.isHistorized()) {
+                    ((HistorizedDatabaseSchema) schema).recover(partition, offset);
+                }
+            }
+        }
+    }
 
     public enum State {
         RESTARTING,
@@ -181,6 +265,9 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
 
             final List<SourceRecord> records = doPoll();
             logStatistics(records);
+
+            resetErrorHandlerRetriesIfNeeded();
+
             return records;
         }
         catch (RetriableException e) {
@@ -224,6 +311,20 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
         stateLock.lock();
         lastOffsets.put(partition, lastOffset);
         stateLock.unlock();
+    }
+
+    /**
+     * Should be called to reset the error handler's retry counter upon a successful poll or when known
+     * that the connector task has recovered from a previous failure state.
+     */
+    protected void resetErrorHandlerRetriesIfNeeded() {
+        // When a connector throws a retriable error, the task is not re-created and instead the previous
+        // error handler is passed into the new error handler, propagating the retry count. This method
+        // allows resetting that counter when a successful poll iteration step happens so that when a
+        // future failure is thrown, the maximum retry count can be utilized.
+        if (coordinator.getErrorHandler().getRetries() > 0) {
+            coordinator.getErrorHandler().resetRetries();
+        }
     }
 
     /**
@@ -346,7 +447,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             }
         }
         else {
-            LOGGER.warn("Couldn't commit processed log positions with the source database due to a concurrent connector shutdown or restart");
+            LOGGER.info("Couldn't commit processed log positions with the source database due to a concurrent connector shutdown or restart");
         }
     }
 
@@ -408,6 +509,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
 
     protected void registerServiceProviders(ServiceRegistry serviceRegistry) {
         serviceRegistry.registerServiceProvider(new PostProcessorRegistryServiceProvider());
+        serviceRegistry.registerServiceProvider(new SnapshotQueryProvider());
     }
 
 }

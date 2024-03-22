@@ -20,7 +20,7 @@ import org.junit.Test;
 import io.debezium.config.Configuration;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.jdbc.JdbcConnection;
 
 /**
@@ -28,7 +28,7 @@ import io.debezium.jdbc.JdbcConnection;
  *
  * @author Ronak Jain
  */
-public class MySqlSkipMessagesWithoutChangeConfigIT extends AbstractConnectorTest {
+public class MySqlSkipMessagesWithoutChangeConfigIT extends AbstractAsyncEngineConnectorTest {
 
     private static final Path SCHEMA_HISTORY_PATH = Files.createTestingPath("file-schema-history-decimal.txt")
             .toAbsolutePath();

@@ -35,8 +35,7 @@ import io.debezium.rest.model.MetricsDescriptor;
 @Path(DebeziumOracleConnectorResource.BASE_PATH)
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-public class DebeziumOracleConnectorResource
-        implements SchemaResource, ConnectionValidationResource<OracleConnector>, FilterValidationResource<OracleConnector>, MetricsResource {
+public class DebeziumOracleConnectorResource implements SchemaResource, ConnectionValidationResource, FilterValidationResource, MetricsResource {
 
     public static final String BASE_PATH = "/debezium/oracle";
     public static final String VERSION_ENDPOINT = "/version";

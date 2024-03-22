@@ -111,19 +111,37 @@ There are no changes in the `schema` section, so only the `payload` section is s
       "table": "customers"
     },
     "op": "u",  // <4>
-    "ts_ms": 1486501486308  // <5>
+    "ts_ms": 1486501486308,  // <5>
+    "ts_us": 1486501486308910,  // <5>
+    "ts_ns": 1486501486308910814  // <5>
   }
 }
 ----
-<1> The `before` field now has the state of the row with the values before the database commit.
-<2> The `after` field now has the updated state of the row,
-and the `first_name` value is now `Anne Marie`.
-<3> The `source` field structure has many of the same values as before,
+.Descriptions of fields in the payload of an `update` event value
+[cols="1,7",options="header",subs="+attributes"]
+|===
+|Item |Description
+
+|1
+|The `before` field shows the values present in the row before the database commit.
+The original `first_name` value is `Anne`.
+
+|2
+|The `after` field shows the state of the row after the change event.
+The `first_name` value is now `Anne Marie`.
+
+|3
+|The `source` field structure has many of the same values as before,
 except that the `ts_sec` and `pos` fields have changed
 (the `file` might have changed in other circumstances).
-<4> The `op` field value is now `u`,
-signifying that this row changed because of an update.
-<5> The `ts_ms` field shows the time stamp for when {prodname} processed this event.
+
+|4
+|The `op` field value is now `u`, signifying that this row changed because of an update.
+
+|5
+|The `ts_ms`, `ts_us`, `ts_ns` field shows a timestamp that indicates when {prodname} processed this event.
+
+|===
 
 By viewing the `payload` section, you can learn several important things about the _update_ event:
 

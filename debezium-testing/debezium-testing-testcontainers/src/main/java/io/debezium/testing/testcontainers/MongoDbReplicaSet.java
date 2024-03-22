@@ -6,7 +6,6 @@
 package io.debezium.testing.testcontainers;
 
 import static io.debezium.testing.testcontainers.util.DockerUtils.logDockerDesktopBanner;
-import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.joining;
 import static org.awaitility.Awaitility.await;
@@ -45,7 +44,10 @@ import io.debezium.testing.testcontainers.util.RandomPortResolver;
 public class MongoDbReplicaSet implements MongoDbDeployment {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbReplicaSet.class);
-
+    private static final String TEST_PROPERTY_PREFIX = "debezium.test.";
+    private static final String STARTUP_TIMEOUT = System.getProperty(TEST_PROPERTY_PREFIX + "mongo.replica.primary.startup.timeout.seconds");
+    private static final long DEFAULT_STARTUP_TIMEOUT = 60;
+    private final long STARTUP_TIMEOUT_SECONDS = STARTUP_TIMEOUT != null ? Long.parseLong(STARTUP_TIMEOUT) : DEFAULT_STARTUP_TIMEOUT;
     private final String name;
     private final int memberCount;
     private final boolean configServer;
@@ -57,6 +59,7 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
     private final boolean authEnabled;
     private final String rootUser;
     private final String rootPassword;
+    private final Duration startupTimeout;
     private final Supplier<MongoDbContainer.Builder> nodeSupplier;
 
     private boolean started = false;
@@ -75,18 +78,21 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
 
     public static class Builder {
 
+        private static final Network commonNetwork = Network.newNetwork();
+
         private String name = "rs0";
         private String namespace = "test-mongo";
         private int memberCount = 3;
         private boolean configServer = false;
 
-        private Network network = Network.newNetwork();
+        private Network network = commonNetwork;
         private PortResolver portResolver = new RandomPortResolver();
         private boolean skipDockerDesktopLogWarning = false;
         private DockerImageName imageName;
         private boolean authEnabled;
         private String rootUser = "root";
         private String rootPassword = "secret";
+        private Duration startupTimeout;
         private Supplier<MongoDbContainer.Builder> nodeSupplier = MongoDbContainer::node;
 
         public Builder nodeSupplier(Supplier<MongoDbContainer.Builder> nodeSupplier) {
@@ -145,6 +151,11 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
             return this;
         }
 
+        public Builder startupTimeout(Duration startupTimeout) {
+            this.startupTimeout = startupTimeout;
+            return this;
+        }
+
         public MongoDbReplicaSet build() {
             return new MongoDbReplicaSet(this);
         }
@@ -161,9 +172,10 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
         this.authEnabled = builder.authEnabled;
         this.rootUser = builder.rootUser;
         this.rootPassword = builder.rootPassword;
+        this.startupTimeout = builder.startupTimeout;
 
         for (int i = 1; i <= memberCount; i++) {
-            members.add(nodeSupplier.get()
+            MongoDbContainer mongoDbContainer = nodeSupplier.get()
                     .network(network)
                     .name(builder.namespace + i)
                     .replicaSet(name)
@@ -171,7 +183,11 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
                     .skipDockerDesktopLogWarning(true)
                     .imageName(imageName)
                     .authEnabled(authEnabled)
-                    .build());
+                    .build();
+            if (startupTimeout != null) {
+                mongoDbContainer.withStartupTimeout(startupTimeout);
+            }
+            members.add(mongoDbContainer);
         }
 
         logDockerDesktopBanner(LOGGER, getHostNames(), builder.skipDockerDesktopLogWarning);
@@ -330,7 +346,7 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
 
     public void awaitReplicaPrimary() {
         await()
-                .atMost(1, MINUTES)
+                .atMost(Duration.ofSeconds(STARTUP_TIMEOUT_SECONDS))
                 .pollDelay(1, SECONDS)
                 .ignoreException(IllegalStateException.class)
                 .until(() -> tryPrimary().isPresent());
@@ -372,11 +388,6 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
                 .map(MongoDbContainer::getNamedAddress)
                 .map(Address::getHost)
                 .collect(Collectors.toList());
-    }
-
-    public MongoDbReplicaSet withStartupTimeout(Duration startupTimeout) {
-        members.forEach(member -> member.withStartupTimeout(startupTimeout));
-        return this;
     }
 
     @Override

@@ -744,7 +744,7 @@ Metadata for transactions that occur before you deploy the connector is not avai
 Transaction boundary events contain the following fields:
 
 `status`:: `BEGIN` or `END`.
-`id`:: String representation of the unique transaction identifier.
+`id`:: String representation of the unique transaction identifier composed of Informix transaction ID itself and LSN of given operation separated by colon, i.e. the format is `txID:LSN`.
 `ts_ms`:: The time of a transaction boundary event (`BEGIN` or `END` event) at the data source.
 If the data source does not provide {prodname} with the event time, then the field instead represents the time at which {prodname} processes the event.
 `event_count` (for `END` events):: Total number of events emmitted by the transaction.
@@ -756,7 +756,7 @@ If the data source does not provide {prodname} with the event time, then the fie
 ----
 {
   "status": "BEGIN",
-  "id": "157",
+  "id": "571:53195829",
   "ts_ms": 1486500577125,
   "event_count": null,
   "data_collections": null
@@ -764,7 +764,7 @@ If the data source does not provide {prodname} with the event time, then the fie
 
 {
   "status": "END",
-  "id": "157",
+  "id": "571:53195832",
   "ts_ms": 1486500577691,
   "event_count": 2,
   "data_collections": [
@@ -803,12 +803,14 @@ Following is an example of a message:
     "aa": "1"
   },
   "source": {
-...
+    ...
   },
   "op": "c",
   "ts_ms": "1580390884335",
+  "ts_us": "1580390884335641",
+  "ts_ns": "1580390884335641387",
   "transaction": {
-    "id": "157",
+    "id": "571:53195832",
     "total_order": "1",
     "data_collection_order": "1"
   }
@@ -1124,6 +1126,16 @@ The following example shows the value portion of a change event that the connect
             "field": "ts_ms"
           },
           {
+            "type": "int64",
+            "optional": false,
+            "field": "ts_us"
+          },
+          {
+            "type": "int64",
+            "optional": false,
+            "field": "ts_ns"
+          },
+          {
             "type": "boolean",
             "optional": true,
             "default": false,
@@ -1178,6 +1190,16 @@ The following example shows the value portion of a change event that the connect
         "type": "int64",
         "optional": true,
         "field": "ts_ms"
+      },
+      {
+        "type": "int64",
+        "optional": true,
+        "field": "ts_us"
+      },
+      {
+        "type": "int64",
+        "optional": true,
+        "field": "ts_ns"
       }
     ],
     "optional": false,
@@ -1196,6 +1218,8 @@ The following example shows the value portion of a change event that the connect
       "connector": "informix",
       "name": "myconnector",
       "ts_ms": 1559729468470,
+      "ts_us": 1559729468470000,
+      "ts_ns": 1559729468470000000,
       "snapshot": false,
       "db": "mydatabase",
       "schema": "myschema",
@@ -1206,7 +1230,9 @@ The following example shows the value portion of a change event that the connect
       "begin_lsn": "627404540372400"
     },
     "op": "c",  // <9>
-    "ts_ms": 1559729471739  // <10>
+    "ts_ms": 1559729471739,  // <10>
+    "ts_us": 1559729471739241,  // <10>
+    "ts_ns": 1559729471739241367 // <10>
   }
 }
 ----
@@ -1290,7 +1316,7 @@ In the preceding example, `c` indicates that the operation created a row.
 `r`:: read (applies to only snapshots)
 
 |10
-|`ts_ms`
+|`ts_ms`, `ts_us`, `ts_ns`
 a|Optional field that displays the time at which the connector processed the event.
 The time is based on the system clock in the JVM that runs the Kafka Connect task. +
  +
@@ -1328,6 +1354,8 @@ The following example shows the change event value for an event record that the 
       "connector": "informix",
       "name": "myconnector",
       "ts_ms": 1559729995937,
+      "ts_us": 1559729995937000,
+      "ts_ns": 1559729995937000000,
       "snapshot": false,
       "db": "mydatabase",
       "schema": "myschema",
@@ -1338,7 +1366,9 @@ The following example shows the change event value for an event record that the 
       "begin_lsn": "627404540372400"
     },
     "op": "u",  // <4>
-    "ts_ms": 1559729998706  // <5>
+    "ts_ms": 1559729998706,  // <5>
+    "ts_us": 1559729998706742,  // <5>
+    "ts_ns": 1559729998706742877  // <5>
   }
 }
 ----
@@ -1384,7 +1414,7 @@ a|Mandatory string that describes the type of operation.
 In an _update_ event value, the `op` field value is `u`, signifying that this row changed because of an update.
 
 |5
-|`ts_ms`
+|`ts_ms`, `ts_us`, `ts_ns`
 a|Optional field that displays the time at which the connector processed the event.
 The time is based on the system clock in the JVM that runs the Kafka Connect task. +
  +
@@ -1427,6 +1457,8 @@ After a user performs a _delete_ operation in the sample `customers` table, {pro
       "connector": "informix",
       "name": "myconnector",
       "ts_ms": 1559730445243,
+      "ts_us": 1559730445243000,
+      "ts_ns": 1559730445243000000,
       "snapshot": false,
       "db": "mydatabase",
       "schema": "myschema",
@@ -1437,7 +1469,9 @@ After a user performs a _delete_ operation in the sample `customers` table, {pro
       "begin_lsn": "627404540372400"
     },
     "op": "d",  // <4>
-    "ts_ms": 1559730450205  // <5>
+    "ts_ms": 1559730450205,  // <5>
+    "ts_us": 1559730450205104,  // <5>
+    "ts_ns": 1559730450205104870  // <5>
   }
 }
 ----
@@ -1481,7 +1515,7 @@ a|Mandatory string that describes the type of operation.
 The value of the `op` field value is `d`, signifying that this row was deleted.
 
 |5
-|`ts_ms`
+|`ts_ms`, `ts_us`, `ts_ns`
 a|Optional field that displays the time at which the connector processed the event.
 The time is based on the system clock in the JVM running the Kafka Connect task. +
  +
@@ -1805,7 +1839,7 @@ Optionally, you can ignore, mask, or truncate columns that contain sensitive dat
     "database.password": "in4mix", // <6>
     "database.dbname": "mydatabase", // <7>
     "topic.prefix": "fullfillment", // <8>
-    "table.include.list": "myschema.customers", // <9>
+    "table.include.list": "mydatabase.myschema.customers", // <9>
     "schema.history.internal.kafka.bootstrap.servers": "kafka:9092", // <10>
     "schema.history.internal.kafka.topic": "schemahistory.fullfillment" // <11>
   }
@@ -1940,7 +1974,7 @@ The connector is also unable to recover its database schema history topic.
 |No default
 |An optional, comma-separated list of regular expressions that match fully-qualified table identifiers for tables whose changes you want the connector to capture.
 When this property is set, the connector captures changes only from the specified tables.
-Each identifier is of the form _schemaName_._tableName_.
+Each identifier is of the form _databaseName_._schemaName_._tableName_.
 By default, the connector captures changes in every non-system table. +
 
 To match the name of a table, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
@@ -1951,7 +1985,7 @@ If you include this property in the configuration, do not also set the `table.ex
 |No default
 |An optional, comma-separated list of regular expressions that match fully-qualified table identifiers for tables whose changes you do not want the connector to capture.
 The connector captures changes in each non-system table that is not included in the exclude list.
-Each identifier is of the form _schemaName_._tableName_. +
+Each identifier is of the form _databaseName_._schemaName_._tableName_. +
 
 To match the name of a table, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
 That is, the specified expression is matched against the entire name string of the table it does not match substrings that might be present in a table name. +
@@ -1960,7 +1994,7 @@ If you include this property in the configuration, do not also set the `table.in
 |[[informix-property-column-include-list]]<<informix-property-column-include-list, `+column.include.list+`>>
 |_empty string_
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of columns to include in change event record values.
-Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_. +
+The fully-qualified name of a column observes one of the following formats: _databaseName_._tableName_._columnName_, or _databaseName_._schemaName_._tableName_._columnName_. +
 
 To match the name of a column, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
 That is, the specified expression is matched against the entire name string of the column; it does not match substrings that might be present in a column name.
@@ -1969,7 +2003,7 @@ If you include this property in the configuration, do not also set the `column.e
 |[[informix-property-column-exclude-list]]<<informix-property-column-exclude-list, `+column.exclude.list+`>>
 |_empty string_
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of columns to exclude from change event values.
-Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_. +
+The fully-qualified name of a column observes one of the following formats: _databaseName_._tableName_._columnName_, or _databaseName_._schemaName_._tableName_._columnName_. +
 
 To match the name of a column, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
 That is, the specified expression is matched against the entire name string of the column; it does not match substrings that might be present in a column name.
@@ -1979,7 +2013,7 @@ If you include this property in the configuration, do not set the `column.includ
 |[[informix-property-column-mask-hash]]<<informix-property-column-mask-hash, `column.mask.hash._hashAlgorithm_.with.salt._salt_`>>
 |_n/a_
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns.
-Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_. +
+The fully-qualified name of a column observes one of the following formats: _databaseName_._tableName_._columnName_, or _databaseName_._schemaName_._tableName_._columnName_. +
 To match the name of a column, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
 That is, the specified expression is matched against the entire name string of the column; the expression does not match substrings that might be present in a column name.
 In the resulting change event record, the values for the specified columns are replaced with pseudonyms.
@@ -2035,7 +2069,7 @@ This property does not effect the way that the connector records information to 
 Set this property if you want to truncate the data in a set of columns when it exceeds the number of characters specified by the _length_ in the property name.
 Set `length` to a positive integer value, for example, `column.truncate.to.20.chars`.
 
-The fully-qualified name of a column observes the following format: _schemaName_._tableName_._columnName_.
+The fully-qualified name of a column observes one of the following formats: _databaseName_._tableName_._columnName_, or _databaseName_._schemaName_._tableName_._columnName_. +
 To match the name of a column, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
 That is, the specified expression is matched against the entire name string of the column; the expression does not match substrings that might be present in a column name.
 
@@ -2048,7 +2082,7 @@ Set this property if you want the connector to mask the values for a set of colu
 Set `_length_` to a positive integer to replace data in the specified columns with the number of asterisk (`*`) characters specified by the _length_ in the property name.
 Set _length_ to `0` (zero) to replace data in the specified columns with an empty string.
 
-The fully-qualified name of a column observes the following format: _schemaName_._tableName_._columnName_. +
+The fully-qualified name of a column observes one of the following formats: _databaseName_._tableName_._columnName_, or _databaseName_._schemaName_._tableName_._columnName_. +
 To match the name of a column, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
 That is, the specified expression is matched against the entire name string of the column; the expression does not match substrings that might be present in a column name.
 
@@ -2103,7 +2137,7 @@ Each list entry takes the following format: +
 To base a table key on multiple column names, insert commas between the column names. +
 Each fully-qualified table name is a regular expression in the following format: +
 
-`_<schemaName>_._<tableName>_` +
+`_<databaseName>_._<schemaName>_._<tableName>_` +
 
 The property can list entries for multiple tables.
 Use a semicolon to separate entries for different tables in the list. +
@@ -2191,6 +2225,7 @@ After the snapshot is complete, the connector continues by reading change events
 |`repeatable_read`
 |During a snapshot, specifies the transaction isolation level and the length of time that the connector locks tables that are in capture mode.
 Specify one of the following values:
+
 `read_uncommitted`::
 Does not prevent other transactions from updating table rows during an initial snapshot.
 This mode has no data consistency guarantees; some data might be lost or corrupted.
@@ -2281,7 +2316,7 @@ If you start multiple connectors in a cluster, this property is useful for avoid
 
 |[[informix-property-snapshot-include-collection-list]]<<informix-property-snapshot-include-collection-list, `+snapshot.include.collection.list+`>>
 | All tables specified in `table.include.list`
-|An optional, comma-separated list of regular expressions that match the fully-qualified names (`_<schemaName>.<tableName>_`) of the tables to include in a snapshot.
+|An optional, comma-separated list of regular expressions that match the fully-qualified names (`_databaseName_._schemaName_._tableName_`) of the tables to include in a snapshot.
 The specified items must be named in the connector's xref:informix-property-table-include-list[`table.include.list`] property.
 This property takes effect only if the connector's xref:informix-property-snapshot-mode[`snapshot.mode`] property is set to a value other than `never`. +
 This property does not affect the behavior of incremental snapshots. +
@@ -2315,25 +2350,25 @@ Use the property if you want a snapshot to include only a subset of the rows in 
 This property affects snapshots only.
 It does not apply to events that the connector reads from the log during the streaming phase.
 
-The property contains a comma-separated list of fully-qualified table names in the form `_<schemaName>.<tableName>_`. For example, +
+The property contains a comma-separated list of fully-qualified table names in the form `_<databaseName>_._<schemaName>.<tableName>_`. For example, +
  +
-`+"snapshot.select.statement.overrides": "inventory.products,customers.orders"+` +
+`+"snapshot.select.statement.overrides": "mydatabase.inventory.products,mydatabase.customers.orders"+` +
  +
 For each table in the list, add a further configuration property that specifies the `SELECT` statement for the connector to run on the table when it takes a snapshot.
 The specified `SELECT` statement determines the subset of table rows to include in the snapshot.
 Use the following format to specify the name of this `SELECT` statement property: +
  +
-`snapshot.select.statement.overrides._<schemaName>_._<tableName>_`.
+`snapshot.select.statement.overrides._<databaseName>_._<schemaName>_._<tableName>_`.
 For example,
-`snapshot.select.statement.overrides.customers.orders`. +
+`snapshot.select.statement.overrides.mydatabase.customers.orders`. +
  +
 Example:
 
 From a `customers.orders` table that includes the soft-delete column, `delete_flag`, add the following properties if you want a snapshot to include only those records that are not soft-deleted:
 
 ----
-"snapshot.select.statement.overrides": "customer.orders",
-"snapshot.select.statement.overrides.customer.orders": "SELECT * FROM [customers].[orders] WHERE delete_flag = 0 ORDER BY id DESC"
+"snapshot.select.statement.overrides": "mydatabase.customer.orders",
+"snapshot.select.statement.overrides.mydatabase.customer.orders": "SELECT * FROM [customers].[orders] WHERE delete_flag = 0 ORDER BY id DESC"
 ----
 
 In the resulting snapshot, the connector includes only the records for which `delete_flag = 0`.
@@ -2359,7 +2394,7 @@ You can specify the following values:
 |No default
 | Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}#debezium-signaling-enabling-source-signaling-channel[signals] to the connector.
 Use the following format to specify the collection name: +
-`_<schemaName>_._<tableName>_`
+`_<databaseName>_._<schemaName>_._<tableName>_`
 
 |[[informix-property-signal-enabled-channels]]<<informix-property-signal-enabled-channels, `+signal.enabled.channels+`>>
 |`source`

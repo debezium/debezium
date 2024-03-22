@@ -22,13 +22,13 @@ import org.junit.Test;
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.config.Configuration;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.util.Testing;
 
 /**
  * @author Gunnar Morling
  */
-public class MySqlFixedLengthBinaryColumnIT extends AbstractConnectorTest {
+public class MySqlFixedLengthBinaryColumnIT extends AbstractAsyncEngineConnectorTest {
 
     private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-binary-column.txt")
             .toAbsolutePath();

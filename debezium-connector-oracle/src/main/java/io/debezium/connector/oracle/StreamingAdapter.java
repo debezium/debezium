@@ -17,6 +17,7 @@ import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.RelationalSnapshotChangeEventSource.RelationalSnapshotContext;
 import io.debezium.relational.TableId;
 import io.debezium.relational.history.HistoryRecordComparator;
+import io.debezium.snapshot.SnapshotterService;
 import io.debezium.util.Clock;
 
 /**
@@ -59,7 +60,7 @@ public interface StreamingAdapter<T extends AbstractOracleStreamingChangeEventSo
                                                                                OracleDatabaseSchema schema,
                                                                                OracleTaskContext taskContext,
                                                                                Configuration jdbcConfig,
-                                                                               T streamingMetrics);
+                                                                               T streamingMetrics, SnapshotterService snapshotterService);
 
     T getStreamingMetrics(OracleTaskContext taskContext,
                           ChangeEventQueueMetrics changeEventQueueMetrics,
@@ -105,4 +106,21 @@ public interface StreamingAdapter<T extends AbstractOracleStreamingChangeEventSo
         return new OracleValueConverters(connectorConfig, connection);
     }
 
+    /**
+     * Returns the Scn stored in the offset.
+     *
+     * @param offsetContext the connector offset context
+     *
+     * @return the {@code Scn} stored in the offset
+     */
+    Scn getOffsetScn(OracleOffsetContext offsetContext);
+
+    /**
+     * Creates a copy of the existing offsets.
+     *
+     * @param connectorConfig the connector configuration, should never be {@code null}
+     * @param offsetContext the current offset context, should never be {@code null}
+     * @return a copy of the offset context for this adapter
+     */
+    OracleOffsetContext copyOffset(OracleConnectorConfig connectorConfig, OracleOffsetContext offsetContext);
 }

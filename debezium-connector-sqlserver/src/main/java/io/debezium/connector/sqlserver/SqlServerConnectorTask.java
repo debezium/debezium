@@ -21,6 +21,8 @@ import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.sqlserver.metrics.SqlServerMetricsFactory;
+import io.debezium.connector.sqlserver.snapshot.SqlServerSnapshotLockProvider;
+import io.debezium.connector.sqlserver.snapshot.SqlServerSnapshotterServiceProvider;
 import io.debezium.document.DocumentReader;
 import io.debezium.jdbc.DefaultMainConnectionProvidingConnectionFactory;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
@@ -33,6 +35,8 @@ import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
+import io.debezium.service.spi.ServiceRegistry;
+import io.debezium.snapshot.SnapshotterService;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Clock;
 
@@ -91,17 +95,21 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
                 new SqlServerPartition.Provider(connectorConfig),
                 new SqlServerOffsetContext.Loader(connectorConfig));
 
-        schema.recover(offsets);
-
         // Manual Bean Registration
         connectorConfig.getBeanRegistry().add(StandardBeanNames.CONFIGURATION, config);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.CONNECTOR_CONFIG, connectorConfig);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.DATABASE_SCHEMA, schema);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.JDBC_CONNECTION, metadataConnection);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.VALUE_CONVERTER, valueConverters);
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.OFFSETS, offsets);
 
         // Service providers
         registerServiceProviders(connectorConfig.getServiceRegistry());
+
+        final SnapshotterService snapshotterService = connectorConfig.getServiceRegistry().tryGetService(SnapshotterService.class);
+
+        validateAndLoadSchemaHistory(connectorConfig, metadataConnection, offsets, schema,
+                snapshotterService.getSnapshotter());
 
         taskContext = new SqlServerTaskContext(connectorConfig, schema);
 
@@ -144,13 +152,14 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
                 SqlServerConnector.class,
                 connectorConfig,
                 new SqlServerChangeEventSourceFactory(connectorConfig, connectionFactory, metadataConnection, errorHandler, dispatcher, clock, schema,
-                        notificationService),
+                        notificationService, snapshotterService),
                 new SqlServerMetricsFactory(offsets.getPartitions()),
                 dispatcher,
                 schema,
                 clock,
                 signalProcessor,
-                notificationService);
+                notificationService,
+                snapshotterService);
 
         coordinator.start(taskContext, this.queue, metadataProvider);
 
@@ -161,16 +170,17 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
     public List<SourceRecord> doPoll() throws InterruptedException {
         final List<DataChangeEvent> records = queue.poll();
 
-        final List<SourceRecord> sourceRecords = records.stream()
+        return records.stream()
                 .map(DataChangeEvent::getRecord)
                 .collect(Collectors.toList());
+    }
 
+    @Override
+    protected void resetErrorHandlerRetriesIfNeeded() {
         // Reset the retries if all partitions have streamed without exceptions at least once after a restart
         if (coordinator.getErrorHandler().getRetries() > 0 && ((SqlServerChangeEventSourceCoordinator) coordinator).firstStreamingIterationCompletedSuccessfully()) {
             coordinator.getErrorHandler().resetRetries();
         }
-
-        return sourceRecords;
     }
 
     @Override
@@ -201,5 +211,13 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
     @Override
     protected Iterable<Field> getAllConfigurationFields() {
         return SqlServerConnectorConfig.ALL_FIELDS;
+    }
+
+    @Override
+    protected void registerServiceProviders(ServiceRegistry serviceRegistry) {
+
+        super.registerServiceProviders(serviceRegistry);
+        serviceRegistry.registerServiceProvider(new SqlServerSnapshotLockProvider());
+        serviceRegistry.registerServiceProvider(new SqlServerSnapshotterServiceProvider());
     }
 }

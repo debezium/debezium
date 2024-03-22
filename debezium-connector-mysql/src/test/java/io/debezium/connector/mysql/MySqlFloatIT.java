@@ -19,7 +19,7 @@ import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.util.Collect;
 import io.debezium.util.Testing;
@@ -29,7 +29,7 @@ import io.debezium.util.Testing;
  *
  * @author Harvey Yue
  */
-public class MySqlFloatIT extends AbstractConnectorTest {
+public class MySqlFloatIT extends AbstractAsyncEngineConnectorTest {
     private static final String TABLE_NAME = "DBZ3865";
     private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-float.txt")
             .toAbsolutePath();

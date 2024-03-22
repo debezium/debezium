@@ -5,10 +5,12 @@
  */
 package io.debezium.connector.oracle;
 
+import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
+import java.sql.Statement;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -86,7 +88,7 @@ public abstract class BaseChangeRecordEmitter<T> extends RelationalChangeRecordE
                         connection.setSessionToPdb(connectorConfig.getPdbName());
                     }
                     connection.prepareQuery(query,
-                            ps -> prepareReselectQueryStatement(ps, table, newKey),
+                            ps -> prepareReselectQueryStatement(ps, table, newColumnValues),
                             rs -> updateNewValuesFromReselectQueryResults(rs, reselectColumns));
 
                     // newColumnValues have been updated via re-select, re-create the event's value
@@ -117,14 +119,20 @@ public abstract class BaseChangeRecordEmitter<T> extends RelationalChangeRecordE
      * @return list of columns that should be reselected, which can be empty
      */
     private List<Column> getReselectColumns(Struct newValue) {
-        final List<Column> reselectColumns = new ArrayList<>();
-        for (Column column : schema.getLobColumnsForTable(table.id())) {
-            final Object value = newValue.get(column.name());
-            if (schema.isColumnUnavailableValuePlaceholder(column, value)) {
-                reselectColumns.add(column);
-            }
+        List<Column> lobColumns = schema.getLobColumnsForTable(table.id());
+        if (lobColumns.isEmpty()) {
+            return Collections.emptyList();
         }
-        return reselectColumns;
+        else {
+            return lobColumns
+                    .stream()
+                    .filter(column -> newValue.schema().field(column.name()) != null)
+                    .filter(column -> {
+                        final Object value = newValue.get(column.name());
+                        return schema.isColumnUnavailableValuePlaceholder(column, value);
+                    })
+                    .collect(Collectors.toList());
+        }
     }
 
     /**
@@ -159,12 +167,14 @@ public abstract class BaseChangeRecordEmitter<T> extends RelationalChangeRecordE
      *
      * @param ps the prepared statement
      * @param table the relational model table
-     * @param newKey the row's new key
+     * @param rawValues the adapter provided original values
      * @throws SQLException if a database error occurred
      */
-    private void prepareReselectQueryStatement(PreparedStatement ps, Table table, Struct newKey) throws SQLException {
-        for (int i = 0; i < table.primaryKeyColumnNames().size(); ++i) {
-            ps.setObject(i + 1, newKey.get(table.primaryKeyColumnNames().get(i)));
+    private void prepareReselectQueryStatement(PreparedStatement ps, Table table, Object[] rawValues) throws SQLException {
+        final List<String> primaryKeyColumnNames = table.primaryKeyColumnNames();
+        for (int i = 0; i < primaryKeyColumnNames.size(); i++) {
+            final Column column = table.columnWithName(primaryKeyColumnNames.get(i));
+            ps.setObject(i + 1, convertReselectPrimaryKeyColumn(ps.getConnection(), column, rawValues[column.position() - 1]));
         }
     }
 
@@ -181,6 +191,32 @@ public abstract class BaseChangeRecordEmitter<T> extends RelationalChangeRecordE
                 final Column column = reselectColumns.get(i);
                 newColumnValues[column.position() - 1] = rs.getObject(i + 1);
             }
+        }
+    }
+
+    /**
+     * Converts the reselect query's primary key column value, if applicable.
+     *
+     * @param connection the underlying jdbc connection, should not be {@code null}
+     * @param column the column, should not be {@code null}
+     * @param value the value to be converted, may be {@code null}
+     * @return the converted value to be directly bound to the reselect query
+     */
+    protected Object convertReselectPrimaryKeyColumn(Connection connection, Column column, Object value) {
+        return value;
+    }
+
+    protected Object convertValueViaQuery(Connection connection, String value) {
+        try (Statement statement = connection.createStatement()) {
+            try (ResultSet rs = statement.executeQuery(String.format("SELECT %s FROM DUAL", value))) {
+                if (!rs.next()) {
+                    throw new DebeziumException("Expected query to return a value but did not.");
+                }
+                return rs.getObject(1);
+            }
+        }
+        catch (SQLException e) {
+            throw new DebeziumException(String.format("Failed to execute reselect query for value '%s'.", value), e);
         }
     }
 }

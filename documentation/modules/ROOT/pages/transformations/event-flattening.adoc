@@ -73,6 +73,8 @@ The following example shows part of the message structure for an `UPDATE` change
 		...
 	},
 	"ts_ms" : "...",
+	"ts_us" : "...",
+	"ts_ns" : "...",
 	"before" : {
 		"field1" : "oldvalue1",
 		"field2" : "oldvalue2"

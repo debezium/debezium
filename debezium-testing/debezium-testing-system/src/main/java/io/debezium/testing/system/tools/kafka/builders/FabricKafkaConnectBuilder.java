@@ -20,16 +20,16 @@ import io.fabric8.kubernetes.api.model.ConfigMap;
 import io.fabric8.kubernetes.api.model.ConfigMapKeySelector;
 import io.fabric8.kubernetes.api.model.ConfigMapKeySelectorBuilder;
 import io.fabric8.kubernetes.api.model.Secret;
-import io.strimzi.api.kafka.model.CertSecretSourceBuilder;
-import io.strimzi.api.kafka.model.ClientTls;
-import io.strimzi.api.kafka.model.ClientTlsBuilder;
-import io.strimzi.api.kafka.model.ContainerEnvVarBuilder;
-import io.strimzi.api.kafka.model.KafkaConnect;
-import io.strimzi.api.kafka.model.KafkaConnectBuilder;
+import io.strimzi.api.kafka.model.common.CertSecretSourceBuilder;
+import io.strimzi.api.kafka.model.common.ClientTls;
+import io.strimzi.api.kafka.model.common.ClientTlsBuilder;
+import io.strimzi.api.kafka.model.common.ContainerEnvVarBuilder;
+import io.strimzi.api.kafka.model.common.template.ContainerTemplateBuilder;
+import io.strimzi.api.kafka.model.connect.KafkaConnect;
+import io.strimzi.api.kafka.model.connect.KafkaConnectBuilder;
+import io.strimzi.api.kafka.model.connect.KafkaConnectTemplate;
+import io.strimzi.api.kafka.model.connect.KafkaConnectTemplateBuilder;
 import io.strimzi.api.kafka.model.connect.build.Plugin;
-import io.strimzi.api.kafka.model.template.ContainerTemplateBuilder;
-import io.strimzi.api.kafka.model.template.KafkaConnectTemplate;
-import io.strimzi.api.kafka.model.template.KafkaConnectTemplateBuilder;
 
 /**
  * This class simplifies building of kafkaConnect by providing pre-made configurations for whole kafkaConnect or parts of its definition

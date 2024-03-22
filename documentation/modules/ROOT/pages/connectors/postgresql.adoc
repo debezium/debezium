@@ -171,21 +171,36 @@ If the connector fails, is rebalanced, or stops after Step 1 begins but before S
 * It is known that some WAL segments have been deleted and are no longer available. +
 * After a cluster failure, a new primary has been promoted. The `always` snapshot mode ensures that the connector does not miss any changes that were made after the new primary had been promoted but before the connector was restarted on the new primary.
 
-|`never`
-|The connector never performs snapshots. When a connector is configured this way, its behavior when it starts is as follows. If there is a previously stored LSN in the Kafka offsets topic, the connector continues streaming changes from that position. If no LSN has been stored, the connector starts streaming changes from the point in time when the PostgreSQL logical replication slot was created on the server. The `never` snapshot mode is useful only when you know all data of interest is still reflected in the WAL.
-
 |`initial` (default)
 |The connector performs a database snapshot when no Kafka offsets topic exists. After the database snapshot completes the Kafka offsets topic is written. If there is a previously stored LSN in the Kafka offsets topic, the connector continues streaming changes from that position.
 
 |`initial_only`
 |The connector performs a database snapshot and stops before streaming any change event records. If the connector had started but did not complete a snapshot before stopping, the connector restarts the snapshot process and stops when the snapshot completes.
 
-|`exported`
-|Deprecated, all modes are lockless.
+|`no_data`
+|The connector never performs snapshots.
+When a connector is configured this way, after it starts, it behaves as follows:
+
+If there is a previously stored LSN in the Kafka offsets topic, the connector continues streaming changes from that position.
+If no LSN is stored, the connector starts streaming changes from the point at which the PostgreSQL logical replication slot was created on the server.
+Use this snapshot mode only when you know that all data of interest is still reflected in the WAL.
+
+|[.line-through]`never`
+|Deprecated, see `no_data`
+
+|`when_needed`
+|After the connector starts, it performs a snapshot only if it detects one of the following circumstances:
+
+* It cannot detect any topic offsets.
+* A previously recorded offset specifies a log position that is not available on the server.
 
 ifdef::community[]
 |`custom`
-|The `custom` snapshot mode lets you inject your own implementation of the `io.debezium.connector.postgresql.spi.Snapshotter` interface. Set the `snapshot.custom.class` configuration property to the class on the classpath of your Kafka Connect cluster or included in the JAR if using the `EmbeddedEngine`. For more details, see xref:postgresql-custom-snapshot[custom snapshotter SPI].
+|The `custom` snapshot mode lets you inject your own implementation of the `io.debezium.spi.snapshot.Snapshotter` interface.
+Set the `snapshot.mode.custom.name` configuration property to the name provided by the `name()` method of your implementation.
+The name is specified on the classpath of your Kafka Connect cluster.
+If you use the `EmbeddedEngine`, the name is included in the connector JAR file.
+For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
 endif::community[]
 
 |===
@@ -239,109 +254,14 @@ include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snaps
 include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot-kafka.adoc[leveloffset=+1]
 
 ifdef::community[]
-[[postgresql-custom-snapshot]]
+[[connector-custom-snapshot]]
 === Custom snapshotter SPI
-
-For more advanced uses, you can provide an implementation of the `io.debezium.connector.postgresql.spi.Snapshotter` interface. This interface allows control of most of the aspects of how the connector performs snapshots. This includes whether or not to take a snapshot, the options for opening the snapshot transaction, and whether to take locks.
-
-Following is the full API for the interface. All built-in snapshot modes implement this interface.
-
-[source,java,indent=0,subs="+attributes"]
-----
-/**
- * This interface is used to determine details about the snapshot process:
- *
- * Namely:
- * - Should a snapshot occur at all
- * - Should streaming occur
- * - What queries should be used to snapshot
- *
- * While many default snapshot modes are provided with {prodname},
- * a custom implementation of this interface can be provided by the implementor, which
- * can provide more advanced functionality, such as partial snapshots.
- *
- * Implementations must return true for either {@link #shouldSnapshot()} or {@link #shouldStream()}
- * or true for both.
- */
-@Incubating
-public interface Snapshotter {
-
-    void init(PostgresConnectorConfig config, OffsetState sourceInfo,
-              SlotState slotState);
-
-    /**
-     * @return true if the snapshotter should take a snapshot
-     */
-    boolean shouldSnapshot();
-
-    /**
-     * @return true if the snapshotter should stream after taking a snapshot
-     */
-    boolean shouldStream();
-
-    /**
-     *
-     * @return true if streaming should resume from the start of the snapshot
-     * transaction, or false for when a connector resumes and takes a snapshot,
-     * streaming should resume from where streaming previously left off.
-     */
-    default boolean shouldStreamEventsStartingFromSnapshot() {
-        return true;
-    }
-    /**
-     * Generate a valid postgres query string for the specified table, or an empty {@link Optional}
-     * to skip snapshotting this table (but that table will still be streamed from)
-     *
-     * @param tableId the table to generate a query for
-     * @param snapshotSelectColumns the columns to be used in the snapshot select based on the column
-     *                              include/exclude filters
-     * @return a valid query string, or none to skip snapshotting this table
-     */
-    Optional<String> buildSnapshotQuery(TableId tableId, List<String> snapshotSelectColumns);
-
-    /**
-     * Return a new string that set up the transaction for snapshotting
-     *
-     * @param newSlotInfo if a new slow was created for snapshotting, this contains information from
-     *                    the `create_replication_slot` command
-     */
-    default String snapshotTransactionIsolationLevelStatement(SlotCreationResult newSlotInfo) {
-        // we're using the same isolation level that pg_backup uses
-        return "SET TRANSACTION ISOLATION LEVEL SERIALIZABLE, READ ONLY, DEFERRABLE;";
-    }
-
-    /**
-     * Returns a SQL statement for locking the given tables during snapshotting, if required by the specific snapshotter
-     * implementation.
-     */
-    default Optional<String> snapshotTableLockingStatement(Duration lockTimeout, Set<TableId> tableIds) {
-        String lineSeparator = System.lineSeparator();
-        StringBuilder statements = new StringBuilder();
-        statements.append("SET lock_timeout = ").append(lockTimeout.toMillis()).append(";").append(lineSeparator);
-        // we're locking in ACCESS SHARE MODE to avoid concurrent schema changes while we're taking the snapshot
-        // this does not prevent writes to the table, but prevents changes to the table's schema....
-        // DBZ-298 Quoting name in case it has been quoted originally; it doesn't do harm if it hasn't been quoted
-        tableIds.forEach(tableId -> statements.append("LOCK TABLE ")
-                .append(tableId.toDoubleQuotedString())
-                .append(" IN ACCESS SHARE MODE;")
-                .append(lineSeparator));
-        return Optional.of(statements.toString());
-    }
-
-    /**
-     * Lifecycle hook called once the snapshot phase is finished.
-     */
-    default void snapshotCompleted() {
-        // no operation
-    }
-}
-----
-
+include::{partialsdir}/modules/all-connectors/custom-snapshotter-spi.adoc[leveloffset=+3]
 endif::community[]
 
 // Type: concept
 [id="postgresql-blocking-snapshots"]
-==== Blocking snapshots
+=== Blocking snapshots
 
 include::{partialsdir}/modules/all-connectors/con-connector-blocking-snapshot.adoc[leveloffset=+3]
 
@@ -500,6 +420,8 @@ Following is an example of a message:
   },
   "op": "c",
   "ts_ms": "1580390884335",
+  "ts_us": "1580390884335451",
+  "ts_ns": "1580390884335451325",
   "transaction": {
     "id": "571:53195832",
     "total_order": "1",
@@ -817,6 +739,16 @@ The following example shows the value portion of a change event that the connect
                         "field": "ts_ms"
                     },
                     {
+                        "type": "int64",
+                        "optional": false,
+                        "field": "ts_us"
+                    },
+                    {
+                        "type": "int64",
+                        "optional": false,
+                        "field": "ts_ns"
+                    },
+                    {
                         "type": "boolean",
                         "optional": true,
                         "default": false,
@@ -866,6 +798,16 @@ The following example shows the value portion of a change event that the connect
                 "type": "int64",
                 "optional": true,
                 "field": "ts_ms"
+            },
+            {
+                "type": "int64",
+                "optional": true,
+                "field": "ts_us"
+            },
+            {
+                "type": "int64",
+                "optional": true,
+                "field": "ts_ns"
             }
         ],
         "optional": false,
@@ -884,6 +826,8 @@ The following example shows the value portion of a change event that the connect
             "connector": "postgresql",
             "name": "PostgreSQL_server",
             "ts_ms": 1559033904863,
+            "ts_us": 1559033904863123,
+            "ts_ns": 1559033904863123000,
             "snapshot": true,
             "db": "postgres",
             "sequence": "[\"24023119\",\"24023128\"]",
@@ -894,7 +838,9 @@ The following example shows the value portion of a change event that the connect
             "xmin": null
         },
         "op": "c", // <9>
-        "ts_ms": 1559033904863 // <10>
+        "ts_ms": 1559033904863, // <10>
+        "ts_us": 1559033904863841, // <10>
+        "ts_ns": 1559033904863841257 // <10>
     }
 }
 ----
@@ -972,8 +918,9 @@ a|Mandatory string that describes the type of operation that caused the connecto
 * `m` = message
 
 |10
-|`ts_ms`
-a|Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.  +
+|`ts_ms`, `ts_us`, `ts_ns`
+a|Optional field that displays the time at which the connector processed the event.
+The time is based on the system clock in the JVM running the Kafka Connect task.  +
  +
 In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
 
@@ -1004,6 +951,8 @@ The value of a change event for an update in the sample `customers` table has th
             "connector": "postgresql",
             "name": "PostgreSQL_server",
             "ts_ms": 1559033904863,
+            "ts_us": 1559033904863769,
+            "ts_ns": 1559033904863769000,
             "snapshot": false,
             "db": "postgres",
             "schema": "public",
@@ -1013,7 +962,9 @@ The value of a change event for an update in the sample `customers` table has th
             "xmin": null
         },
         "op": "u", // <4>
-        "ts_ms": 1465584025523  // <5>
+        "ts_ms": 1465584025523,  // <5>
+        "ts_us": 1465584025523514,  // <5>
+        "ts_ns": 1465584025523514964,  // <5>
     }
 }
 ----
@@ -1051,8 +1002,9 @@ a|Mandatory field that describes the source metadata for the event. The `source`
 a|Mandatory string that describes the type of operation. In an _update_ event value, the `op` field value is `u`, signifying that this row changed because of an update.
 
 |5
-|`ts_ms`
-a|Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.  +
+|`ts_ms`, `ts_us`, `ts_ns`
+a|Optional field that displays the time at which the connector processed the event.
+The time is based on the system clock in the JVM running the Kafka Connect task.  +
  +
 In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
 
@@ -1094,6 +1046,8 @@ The value in a _delete_ change event has the same `schema` portion as _create_ a
             "connector": "postgresql",
             "name": "PostgreSQL_server",
             "ts_ms": 1559033904863,
+            "ts_us": 1559033904863852,
+            "ts_ns": 1559033904863852000,
             "snapshot": false,
             "db": "postgres",
             "schema": "public",
@@ -1103,7 +1057,9 @@ The value in a _delete_ change event has the same `schema` portion as _create_ a
             "xmin": null
         },
         "op": "d", // <4>
-        "ts_ms": 1465581902461 // <5>
+        "ts_ms": 1465581902461, // <5>
+        "ts_us": 1465581902461496, // <5>
+        "ts_ns": 1465581902461496187, // <5>
     }
 }
 ----
@@ -1141,8 +1097,9 @@ a|Mandatory field that describes the source metadata for the event. In a _delete
 a|Mandatory string that describes the type of operation. The `op` field value is `d`, signifying that this row was deleted.
 
 |5
-|`ts_ms`
-a|Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.  +
+|`ts_ms`, `ts_us`, `ts_ns`
+a|Optional field that displays the time at which the connector processed the event.
+The time is based on the system clock in the JVM running the Kafka Connect task.  +
  +
 In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
 
@@ -1179,6 +1136,8 @@ The message key is `null` in this case, the message value looks like this:
             "connector": "postgresql",
             "name": "PostgreSQL_server",
             "ts_ms": 1559033904863,
+            "ts_us": 1559033904863112,
+            "ts_ns": 1559033904863112000,
             "snapshot": false,
             "db": "postgres",
             "schema": "public",
@@ -1188,7 +1147,9 @@ The message key is `null` in this case, the message value looks like this:
             "xmin": null
         },
         "op": "t", // <2>
-        "ts_ms": 1559033904961 // <3>
+        "ts_ms": 1559033904961, // <3>
+        "ts_us": 1559033904961654, // <3>
+        "ts_ns": 1559033904961654789 // <3>
     }
 }
 ----
@@ -1216,8 +1177,9 @@ a|Mandatory field that describes the source metadata for the event. In a _trunca
 a|Mandatory string that describes the type of operation. The `op` field value is `t`, signifying that this table was truncated.
 
 |3
-|`ts_ms`
-a|Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.  +
+|`ts_ms`, `ts_us`, `ts_ns`
+a|Optional field that displays the time at which the connector processed the event.
+The time is based on the system clock in the JVM running the Kafka Connect task.  +
  +
 In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
 
@@ -1255,6 +1217,8 @@ The message value looks like this for transactional messages:
             "connector": "postgresql",
             "name": "PostgreSQL_server",
             "ts_ms": 1559033904863,
+            "ts_us": 1559033904863879,
+            "ts_ns": 1559033904863879000,
             "snapshot": false,
             "db": "postgres",
             "schema": "",
@@ -1265,6 +1229,8 @@ The message value looks like this for transactional messages:
         },
         "op": "m", // <2>
         "ts_ms": 1559033904961, // <3>
+        "ts_us": 1559033904961621, // <3>
+        "ts_ns": 1559033904961621379, // <3>
         "message": { // <4>
             "prefix": "foo",
             "content": "Ymfy"
@@ -1286,6 +1252,8 @@ The message value looks like this for non-transactional messages:
             "connector": "postgresql",
             "name": "PostgreSQL_server",
             "ts_ms": 1559033904863,
+            "ts_us": 1559033904863762,
+            "ts_ns": 1559033904863762000,
             "snapshot": false,
             "db": "postgres",
             "schema": "",
@@ -1294,7 +1262,9 @@ The message value looks like this for non-transactional messages:
             "xmin": null
         },
         "op": "m", // <2>
-        "ts_ms": 1559033904961 // <3>
+        "ts_ms": 1559033904961, // <3>
+        "ts_us": 1559033904961741, // <3>
+        "ts_ns": 1559033904961741698, // <3>
         "message": { // <4>
             "prefix": "foo",
             "content": "Ymfy"
@@ -1327,8 +1297,9 @@ a|Mandatory field that describes the source metadata for the event. In a _messag
 a|Mandatory string that describes the type of operation. The `op` field value is `m`, signifying that this is a _message_ event.
 
 |3
-|`ts_ms`
-a|Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.  +
+|`ts_ms`, `ts_us`, `ts_ns`
+a|Optional field that displays the time at which the connector processed the event.
+The time is based on the system clock in the JVM running the Kafka Connect task.  +
  +
 For transactional _message_ events, the `ts_ms` attribute of the `source` object indicates the time that the change was made in the database for transactional _message_ events. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
 
@@ -1802,7 +1773,8 @@ PostgreSQL supports `NaN` (not a number) as a special value to be stored in `DEC
 
 The setting of the PostgreSQL connector configuration property xref:postgresql-property-hstore-handling-mode[`hstore.handling.mode`] determines how the connector maps `HSTORE` values.
 
-When the `dhstore.handling.mode` property is set to `json` (the default), the connector represents `HSTORE` values as string representations of JSON values and encodes them as shown in the following table. When the `hstore.handling.mode` property is set to `map`, the connector uses the `MAP` schema type for `HSTORE` values.
+When the `hstore.handling.mode` property is set to `json` (the default), the connector represents `HSTORE` values as string representations of JSON values and encodes them as shown in the following table.
+When the `hstore.handling.mode` property is set to `map`, the connector uses the `MAP` schema type for `HSTORE` values.
 
 .Mappings for `HSTORE` data type
 [cols="25%a,20%a,55%a",options="header"]
@@ -2251,9 +2223,22 @@ local   replication     <youruser>                          trust   // <1>
 host    replication     <youruser>  127.0.0.1/32            trust   // <2>
 host    replication     <youruser>  ::1/128                 trust   // <3>
 ----
-<1> Instructs the server to allow replication for `<youruser>` locally, that is, on the server machine.
-<2> Instructs the server to allow `<youruser>` on `localhost` to receive replication changes using `IPV4`.
-<3> Instructs the server to allow `<youruser>` on `localhost` to receive replication changes using `IPV6`.
++
+.Descriptions of `pg_hba.conf` settings
+[cols="1,7",options="header",subs="+attributes"]
+|===
+|Item |Description
+
+|1
+|Instructs the server to allow replication for `<youruser>` locally, that is, on the server machine.
+
+|2
+|Instructs the server to allow `<youruser>` on `localhost` to receive replication changes using `IPV4`.
+
+|3
+|Instructs the server to allow `<youruser>` on `localhost` to receive replication changes using `IPV6`.
+
+|===
 
 [NOTE]
 ====
@@ -2490,10 +2475,10 @@ Apply this CR to the same OpenShift instance where you applied the `KafkaConnect
 
 .Prerequisites
 
-* PostgreSQL is running and you performed the steps to {LinkDebeziumUserGuide}#setting-up-postgresql-to-run-a-debezium-connector[set up PostgreSQL to run a {prodname} connector].
+* PostgreSQL is running and you performed the steps to xref:setting-up-postgresql-to-run-a-debezium-connector[set up PostgreSQL to run a {prodname} connector].
 
 * {StreamsName} is deployed on OpenShift and is running Apache Kafka and Kafka Connect.
-  For more information, see link:{LinkDeployStreamsOpenShift}[{NameDeployStreamsOpenShift}].
+  For more information, see link:{LinkDeployManageStreamsOpenShift}[{NameDeployManageStreamsOpenShift}].
 
 * Podman or Docker is installed.
 
@@ -2616,9 +2601,10 @@ The connector configuration might instruct {prodname} to produce events for a su
 For the complete list of the configuration properties that you can set for the {prodname} PostgreSQL connector, see xref:descriptions-of-debezium-postgresql-connector-configuration-properties[PostgreSQL connector properties].
 +
 The following example shows an excerpt from a custom resource that configures a {prodname} connector that connects to a PostgreSQL server host, `192.168.99.100`, on port `5432`.
-This host has a database named `sampledb`, a schema named `public`, and `inventory-connector-{context}` is the server's logical name.
+This host has a database named `sampledb`, a schema named `public`, and `inventory-connector-{context}` is the server's logical name. +
 +
-.`inventory-connector.yaml`
+=====================================================================
+.PostgreSQL `inventory-connector.yaml`
 [source,yaml,options="nowrap",subs="+attributes"]
 ----
 apiVersion: {KafkaConnectorApiVersion}
@@ -2642,22 +2628,44 @@ apiVersion: {KafkaConnectorApiVersion}
 
       ...
 ----
-<1> The name of the connector.
-<2> Only one task should operate at any one time.
-Because the PostgreSQL connector reads the PostgreSQL server’s `binlog`,
-using a single connector task ensures proper order and event handling.
-The Kafka Connect service uses connectors to start one or more tasks that do the work,
+=====================================================================
++
+.Descriptions of settings in the PostgreSQL `inventory-connector.yaml` example
+[cols="1,7",options="header",subs="+attributes"]
+|===
+|Item |Description
+
+|1
+|The name that is used to register the connector with Kafka Connect.
+
+|2
+|The maximum number of tasks to create for this connector.
+Because the PostgreSQL connector uses a single connector task read the PostgreSQL server `binlog`, to ensure proper order and event handling, only one task should operate at a time.
+The Kafka Connect service uses connectors to start one or more tasks to perform the work,
 and it automatically distributes the running tasks across the cluster of Kafka Connect services.
-If any of the services stop or crash,
-those tasks will be redistributed to running services.
-<3> The connector’s configuration.
-<4> The name of the database host that is running the PostgreSQL server. In this example, the database host name is `192.168.99.100`.
-<5> A unique topic prefix.
-The server name is the logical identifier for the PostgreSQL server or cluster of servers.
-This name is used as the prefix for all Kafka topics that receive change event records.
-<6> The connector captures changes in only the `public` schema. It is possible to configure the connector to capture changes in only the tables that you choose.
+If any services stop or crash, tasks are redistributed to running services.
+
+|3
+|The connector’s configuration.
+
+|4
+|The name of the database host that runs the PostgreSQL server.
+In this example, the database host name is `192.168.99.100`.
+
+|5
+|A unique topic prefix.
+The topic prefix is the logical identifier for the PostgreSQL server or cluster of servers.
+This string is prefixed to the names of all Kafka topics that receive change event records from the connector.
+
+|6
+|The connector captures changes in only the `public` schema. It is possible to configure the connector to capture changes in only the tables that you choose.
 For more information, see xref:postgresql-property-table-include-list[`table.include.list`].
-<7> The name of the PostgreSQL xref:postgresql-output-plugin[logical decoding plug-in] installed on the PostgreSQL server. While the only supported value for PostgreSQL 10 and later is `pgoutput`, you must explicitly set `plugin.name` to `pgoutput`.
+
+|7
+|The name of the PostgreSQL xref:postgresql-output-plugin[logical decoding plug-in] installed on the PostgreSQL server.
+Although the connector only supports use of the `pgoutput` plugin, you must explicitly set `plugin.name` to `pgoutput`.
+
+|===
 
 . Create your connector instance with Kafka Connect. For example, if you saved your `KafkaConnector` resource in the `inventory-connector.yaml` file, you would run the following command:
 +
@@ -2939,7 +2947,7 @@ For more information, see xref:postgresql-temporal-types[temporal values].
 For more information, see xref:postgresql-decimal-types[Decimal types].
 
 |[[postgresql-property-hstore-handling-mode]]<<postgresql-property-hstore-handling-mode, `+hstore.handling.mode+`>>
-|`map`
+|`json`
 | Specifies how the connector should handle values for `hstore` columns: +
  +
 `map` represents values by using `MAP`. +
@@ -3270,29 +3278,90 @@ For example, +
  isbn.schema.name: io.debezium.postgresql.type.Isbn
 
 |[[postgresql-property-snapshot-mode]]<<postgresql-property-snapshot-mode, `+snapshot.mode+`>>
-|`initial`
+|_initial_
 |Specifies the criteria for performing a snapshot when the connector starts: +
- +
-`initial` -  The connector performs a snapshot only when no offsets have been recorded for the logical server name. +
- +
-`always` - The connector performs a snapshot each time the connector starts. +
- +
-`never` - The connector never performs snapshots. When a connector is configured this way, its behavior when it starts is as follows. If there is a previously stored LSN in the Kafka offsets topic, the connector continues streaming changes from that position. If no LSN has been stored, the connector starts streaming changes from the point in time when the PostgreSQL logical replication slot was created on the server. The `never` snapshot mode is useful only when you know all data of interest is still reflected in the WAL. +
- +
-`initial_only` - The connector performs an initial snapshot and then stops, without processing any subsequent changes. +
- +
-`exported` -  deprecated +
- +
+
+`always`:: The connector performs a snapshot every time that it starts.
+The snapshot includes the structure and data of the captured tables.
+Specify this value to populate topics with a complete representation of the data from the captured tables every time that the connector starts.
+After the snapshot completes, the connector begins to stream event records for subsequent database changes.
+
+`initial`:: The connector performs a snapshot only when no offsets have been recorded for the logical server name.
+
+`initial_only`:: The connector performs an initial snapshot and then stops, without processing any subsequent changes.
+
+`no_data`:: The connector never performs snapshots.
+When a connector is configured this way, after it starts, it behaves as follows:
+
+If there is a previously stored LSN in the Kafka offsets topic, the connector continues streaming changes from that position.
+If no LSN is stored, the connector starts streaming changes from the point in time when the PostgreSQL logical replication slot was created on the server.
+Use this snapshot mode only when you know all data of interest is still reflected in the WAL.
+
+`never`:: Deprecated see `no_data`.
+
+`when_needed`:: After the connector starts, it performs a snapshot only if it detects one of the following circumstances:
+
+* It cannot detect any topic offsets.
+* A previously recorded offset specifies a log position that is not available on the server.
+
 ifdef::community[]
-`custom` - The connector performs a snapshot according to the setting for the `snapshot.custom.class` property, which is a custom implementation of the `io.debezium.connector.postgresql.spi.Snapshotter` interface. +
+`custom`:: The connector performs a snapshot according to the implementation specified by the xref:postgresql-property-snapshot-mode-custom-name[`snapshot.mode.custom.name`] property, which defines a custom implementation of the `io.debezium.spi.snapshot.Snapshotter` interface.
 endif::community[]
- +
+
 For more information, see the xref:#postgresql-connector-snapshot-mode-options[table of `snapshot.mode` options].
 
 ifdef::community[]
-|[[postgresql-property-snapshot-custom-class]]<<postgresql-property-snapshot-custom-class, `+snapshot.custom.class+`>>
+|[[postgresql-property-snapshot-mode-custom-name]]<<postgresql-property-snapshot-mode-custom-name, `+snapshot.mode.custom.name+`>>
 |No default
-| A full Java class name that is an implementation of the `io.debezium.connector.postgresql.spi.Snapshotter` interface. Required when the `snapshot.mode` property is set to `custom`. See xref:postgresql-custom-snapshot[custom snapshotter SPI].
+| When `snapshot.mode` is set as `custom`, use this setting to specify the name of the custom implementation provided in the `name()` method that is defined by the 'io.debezium.spi.snapshot.Snapshotter' interface.
+The provided implementation is called after a connector restart to determine whether to perform a snapshot.
+For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
+endif::community[]
+
+|[[postgresql-property-snapshot-locking-mode]]<<postgresql-property-snapshot-locking-mode, `+snapshot.locking.mode+`>>
+|`none`
+|Specifies how the connector holds locks on tables while performing a schema snapshot: +
+Set one of the following options:
+ +
+`shared`:: The connector holds a table lock that prevents exclusive table access during the initial portion phase of the snapshot in which database schemas and other metadata are read.
+After the initial phase, the snapshot no longer requires table locks.
+ +
+`none`:: The connector avoids locks entirely. +
++
+[WARNING]
+====
+Do not use this mode if schema changes might occur during the snapshot.
+====
+
+ifdef::community[]
+`custom`:: The connector performs a snapshot according to the implementation specified by the xref:postgresql-property-snapshot-locking-mode-custom-name[`snapshot.locking.mode.custom.name`] property, which is a custom implementation of the `io.debezium.spi.snapshot.SnapshotLock` interface.
+endif::community[]
+
+ifdef::community[]
+|[[postgresql-property-snapshot-locking-mode-custom-name]]<<postgresql-property-snapshot-locking-mode-custom-name, `+snapshot.locking.mode.custom.name+`>>
+|No default
+| When xref:postgresql-property-snapshot-locking-mode[`snapshot.locking.mode`] is set to `custom`, use this setting to specify the name of the custom implementation provided in the `name()` method that is defined by the 'io.debezium.spi.snapshot.SnapshotLock' interface.
+For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
+endif::community[]
+
+|[[postgresql-property-snapshot-query-mode]]<<postgresql-property-snapshot-query-mode, `+snapshot.query.mode+`>>
+|`select_all`
+|Specifies how the connector queries data while performing a snapshot. +
+Set one of the following options:
+
+`select_all`:: The connector performs a `select all` query by default, optionally adjusting the columns selected based on the column include and exclude list configurations.
+
+ifdef::community[]
+`custom`:: The connector performs a snapshot query according to the implementation specified by the xref:postgresql-property-snapshot-snapshot-query-mode-custom-name[`snapshot.query.mode.custom.name`] property, which defines a custom implementation of the `io.debezium.spi.snapshot.SnapshotQuery` interface. +
+endif::community[]
+
+This setting enables you to manage snapshot content in a more flexible manner compared to using the xref:postgresql-property-snapshot-select-statement-overrides[`snapshot.select.statement.overrides`] property.
+
+ifdef::community[]
+|[[postgresql-property-snapshot-snapshot-query-mode-custom-name]]<<postgresql-property-snapshot-query-mode-custom-name, `+snapshot.query.mode.custom.name+`>>
+|No default
+| When xref:postgresql-property-snapshot-query-mode[`snapshot.query.mode`] is set as `custom`, use this setting to specify the name of the custom implementation provided in the `name()` method that is defined by the 'io.debezium.spi.snapshot.SnapshotQuery' interface.
+For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
 endif::community[]
 
 |[[postgresql-property-snapshot-include-collection-list]]<<postgresql-property-snapshot-include-collection-list, `+snapshot.include.collection.list+`>>
@@ -3576,7 +3645,16 @@ endif::product[]
 
 |[[postgresql-property-errors-max-retires]]<<postgresql-property-errors-max-retires, `errors.max.retries`>>
 |`-1`
-|The maximum number of retries on retriable errors (e.g. connection errors) before failing (-1 = no limit, 0 = disabled, > 0 = num of retries).
+|Specifies how the connector responds after an operation that results in a retriable error, such as a connection error. +
+Set one of the following options:
+
+`-1`:: No limit. The connector always restarts automatically, and retries the operation, regardless of the number of previous failures.
+
+`0`:: Disabled. The connector fails immediately, and never retries the operation.
+User intervention is required to restart the connector.
+
+`> 0`:: The connector restarts automatically until it reaches the specified maximum number of retries.
+After the next failure, the connector stops, and user intervention is required to restart it.
 
 |===
 
@@ -3639,9 +3717,25 @@ include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming
 [[postgresql-when-things-go-wrong]]
 == Behavior when things go wrong
 
-{prodname} is a distributed system that captures all changes in multiple upstream databases; it never misses or loses an event. When the system is operating normally or being managed carefully then {prodname} provides _exactly once_ delivery of every change event record.
+{prodname} is a distributed system that captures all changes in multiple upstream databases; it never misses or loses an event.
+When the system is operating normally or being managed carefully then {prodname} provides _exactly once_ delivery of every change event record.
+ifdef::product[]
+[IMPORTANT]
+====
+Exactly-once delivery of PostgreSQL change event records is a Developer Preview feature only.
+Developer Preview software is not supported by Red{nbsp}Hat in any way and is not functionally complete or production-ready.
+Do not use Developer Preview software for production or business-critical workloads.
+Developer Preview software provides early access to upcoming product software in advance of its possible inclusion in a Red{nbsp}Hat product offering.
+Customers can use this software to test functionality and provide feedback during the development process.
+This software might not have any documentation, is subject to change or removal at any time, and has received limited testing.
+Red{nbsp}Hat might provide ways to submit feedback on Developer Preview software without an associated SLA.
 
-If a fault does happen then the system does not lose any events. However, while it is recovering from the fault, it might repeat some change events. In these abnormal situations, {prodname}, like Kafka, provides _at least once_ delivery of change events.
+For more information about the support scope of Red{nbsp}Hat Developer Preview software, see link:https://access.redhat.com/support/offerings/devpreview/[Developer Preview Support Scope].
+====
+endif::product[]
+If a fault does happen then the system does not lose any events.
+However, while it is recovering from the fault, it's possible that the connector might emit some duplicate change events.
+In these abnormal situations, {prodname}, like Kafka, provides _at least once_ delivery of change events.
 
 ifdef::community[]
 The rest of this section describes how {prodname} handles various kinds of faults and problems.

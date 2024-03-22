@@ -134,21 +134,45 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     public enum SnapshotMode implements EnumeratedValue {
 
         /**
+         * Performs a snapshot of data and schema upon each connector start.
+         */
+        ALWAYS("always"),
+
+        /**
          * Perform a snapshot when it is needed.
          */
-        WHEN_NEEDED("when_needed", true, true, true, false, true),
+        WHEN_NEEDED("when_needed"),
 
         /**
          * Perform a snapshot only upon initial startup of a connector.
          */
-        INITIAL("initial", true, true, true, false, false),
+        INITIAL("initial"),
+
+        /**
+         * Perform a snapshot of only the database schemas (without data) and then begin reading the binlog.
+         * This should be used with care, but it is very useful when the change event consumers need only the changes
+         * from the point in time the snapshot is made (and doesn't care about any state or changes prior to this point).
+         *
+         * @deprecated to be removed in Debezium 3.0, replaced by {{@link #NO_DATA}}
+         */
+        SCHEMA_ONLY("schema_only"),
 
         /**
          * Perform a snapshot of only the database schemas (without data) and then begin reading the binlog.
          * This should be used with care, but it is very useful when the change event consumers need only the changes
          * from the point in time the snapshot is made (and doesn't care about any state or changes prior to this point).
          */
-        SCHEMA_ONLY("schema_only", true, false, true, false, false),
+        NO_DATA("no_data"),
+
+        /**
+         * Perform a snapshot of only the database schemas (without data) and then begin reading the binlog at the current binlog position.
+         * This can be used for recovery only if the connector has existing offsets and the schema.history.internal.kafka.topic does not exist (deleted).
+         * This recovery option should be used with care as it assumes there have been no schema changes since the connector last stopped,
+         * otherwise some events during the gap may be processed with an incorrect schema and corrupted.
+         *
+         * @deprecated to be removed in Debezium 3.0, replaced by {{@link #RECOVERY}}
+         */
+        SCHEMA_ONLY_RECOVERY("schema_only_recovery"),
 
         /**
          * Perform a snapshot of only the database schemas (without data) and then begin reading the binlog at the current binlog position.
@@ -156,82 +180,33 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
          * This recovery option should be used with care as it assumes there have been no schema changes since the connector last stopped,
          * otherwise some events during the gap may be processed with an incorrect schema and corrupted.
          */
-        SCHEMA_ONLY_RECOVERY("schema_only_recovery", true, false, true, true, false),
+        RECOVERY("recovery"),
 
         /**
          * Never perform a snapshot and only read the binlog. This assumes the binlog contains all the history of those
          * databases and tables that will be captured.
          */
-        NEVER("never", false, false, true, false, false),
+        NEVER("never"),
 
         /**
          * Perform a snapshot and then stop before attempting to read the binlog.
          */
-        INITIAL_ONLY("initial_only", true, true, false, false, false);
+        INITIAL_ONLY("initial_only"),
+
+        /**
+         * Inject a custom snapshotter, which allows for more control over snapshots.
+         */
+        CUSTOM("custom");
 
         private final String value;
-        private final boolean includeSchema;
-        private final boolean includeData;
-        private final boolean shouldStream;
-        private final boolean shouldSnapshotOnSchemaError;
-        private final boolean shouldSnapshotOnDataError;
 
-        SnapshotMode(String value, boolean includeSchema, boolean includeData, boolean shouldStream, boolean shouldSnapshotOnSchemaError,
-                     boolean shouldSnapshotOnDataError) {
+        SnapshotMode(String value) {
             this.value = value;
-            this.includeSchema = includeSchema;
-            this.includeData = includeData;
-            this.shouldStream = shouldStream;
-            this.shouldSnapshotOnSchemaError = shouldSnapshotOnSchemaError;
-            this.shouldSnapshotOnDataError = shouldSnapshotOnDataError;
         }
 
         @Override
         public String getValue() {
             return value;
-        }
-
-        /**
-         * Whether this snapshotting mode should include the schema.
-         */
-        public boolean includeSchema() {
-            return includeSchema;
-        }
-
-        /**
-         * Whether this snapshotting mode should include the actual data or just the
-         * schema of captured tables.
-         */
-        public boolean includeData() {
-            return includeData;
-        }
-
-        /**
-         * Whether the snapshot mode is followed by streaming.
-         */
-        public boolean shouldStream() {
-            return shouldStream;
-        }
-
-        /**
-         * Whether the schema can be recovered if database schema history is corrupted.
-         */
-        public boolean shouldSnapshotOnSchemaError() {
-            return shouldSnapshotOnSchemaError;
-        }
-
-        /**
-         * Whether the snapshot should be re-executed when there is a gap in data stream.
-         */
-        public boolean shouldSnapshotOnDataError() {
-            return shouldSnapshotOnDataError;
-        }
-
-        /**
-         * Whether the snapshot should be executed.
-         */
-        public boolean shouldSnapshot() {
-            return includeSchema || includeData;
         }
 
         /**
@@ -361,7 +336,12 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
          * This mode will avoid using ANY table locks during the snapshot process.  This mode can only be used with SnapShotMode
          * set to schema_only or schema_only_recovery.
          */
-        NONE("none");
+        NONE("none"),
+
+        /**
+         * Inject a custom mode, which allows for more control over snapshot locking.
+         */
+        CUSTOM("custom");
 
         private final String value;
 
@@ -384,20 +364,6 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
 
         public boolean flushResetsIsolationLevel() {
             return !value.equals(MINIMAL_PERCONA.value);
-        }
-
-        /**
-        * Determine which flavour of MySQL locking to use.
-        *
-        * @return the correct SQL to obtain a global lock for the current mode
-        */
-        public String getLockStatement() {
-            if (value.equals(MINIMAL_PERCONA.value)) {
-                return "LOCK TABLES FOR BACKUP";
-            }
-            else {
-                return "FLUSH TABLES WITH READ LOCK";
-            }
         }
 
         /**
@@ -1009,6 +975,8 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
                     KEEP_ALIVE_INTERVAL_MS,
                     SNAPSHOT_MODE,
                     SNAPSHOT_LOCKING_MODE,
+                    SNAPSHOT_QUERY_MODE,
+                    SNAPSHOT_QUERY_MODE_CUSTOM_NAME,
                     SNAPSHOT_NEW_TABLES,
                     BIGINT_UNSIGNED_HANDLING_MODE,
                     TIME_PRECISION_MODE,
@@ -1042,8 +1010,6 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
      * The set of {@link Field}s defined as part of this configuration.
      */
     public static Field.Set ALL_FIELDS = Field.setOf(CONFIG_DEFINITION.all());
-
-    protected static Field.Set EXPOSED_FIELDS = ALL_FIELDS;
 
     protected static final Set<String> BUILT_IN_DB_NAMES = Collect.unmodifiableSet("mysql", "performance_schema", "sys", "information_schema");
 
@@ -1110,10 +1076,6 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
 
     public SnapshotLockingMode getSnapshotLockingMode() {
         return this.snapshotLockingMode;
-    }
-
-    public SnapshotNewTables getSnapshotNewTables() {
-        return snapshotNewTables;
     }
 
     private static int validateEventDeserializationFailureHandlingModeNotSet(Configuration config, Field field, ValidationOutput problems) {

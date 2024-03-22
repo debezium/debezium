@@ -49,7 +49,7 @@ public class PostgresMoneyIT extends AbstractConnectorTest {
         createTable();
 
         Configuration config = TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.NEVER)
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.NO_DATA)
                 .build();
         start(PostgresConnector.class, config);
         waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
@@ -74,7 +74,7 @@ public class PostgresMoneyIT extends AbstractConnectorTest {
         createTable();
 
         Configuration config = TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.NEVER)
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.NO_DATA)
                 .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, "string")
                 .build();
         start(PostgresConnector.class, config);
@@ -100,7 +100,7 @@ public class PostgresMoneyIT extends AbstractConnectorTest {
         createTable();
 
         Configuration config = TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.NEVER)
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.NO_DATA)
                 .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, "double")
                 .build();
         start(PostgresConnector.class, config);
@@ -126,7 +126,7 @@ public class PostgresMoneyIT extends AbstractConnectorTest {
         createTable();
 
         Configuration config = TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.NEVER)
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.NO_DATA)
                 .build();
         start(PostgresConnector.class, config);
         waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);

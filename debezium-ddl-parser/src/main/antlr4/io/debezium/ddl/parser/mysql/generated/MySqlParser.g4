@@ -548,6 +548,21 @@ partitionFunctionDefinition
       '(' uidList? ')'                                              #partitionFunctionKey // Optional uidList for MySQL only
     | RANGE ( '(' expression ')' | COLUMNS '(' uidList ')' )        #partitionFunctionRange
     | LIST ( '(' expression ')' | COLUMNS '(' uidList ')' )         #partitionFunctionList
+    | SYSTEM_TIME
+        ( expression | LIMIT expression )
+        ( STARTS ( TIMESTAMP timestampValue | timestampValue ) )?
+        AUTO?
+        partitionSystemVersionDefinitions?                          #partitionSystemVersion // MariaDB-specific
+    ;
+
+// MariaDB-specific
+partitionSystemVersionDefinitions
+    : '(' partitionSystemVersionDefinition (',' partitionSystemVersionDefinition)* ')'
+    ;
+
+// MariaDB-specific
+partitionSystemVersionDefinition
+    : PARTITION uid ( HISTORY | CURRENT )
     ;
 
 subpartitionFunctionDefinition
@@ -2829,7 +2844,7 @@ keywordsCanBeId
     | REPLICATE_DO_DB | REPLICATE_DO_TABLE | REPLICATE_IGNORE_DB | REPLICATE_IGNORE_TABLE | REPLICATE_REWRITE_DB
     | REPLICATE_WILD_DO_TABLE | REPLICATE_WILD_IGNORE_TABLE | REPLICATION | REPLICATION_APPLIER
     | REPLICATION_SLAVE_ADMIN | RESET | RESOURCE_GROUP_ADMIN | RESOURCE_GROUP_USER | RESUME | RETURNED_SQLSTATE
-    | RETURNS | REUSE | ROLE | ROLE_ADMIN | ROLLBACK | ROLLUP | ROTATE | ROW | ROWS | ROW_FORMAT | RTREE | S3
+    | RETURNING | RETURNS | REUSE | ROLE | ROLE_ADMIN | ROLLBACK | ROLLUP | ROTATE | ROW | ROWS | ROW_FORMAT | RTREE | S3
     | SAVEPOINT | SCHEDULE | SCHEMA_NAME | SECURITY | SECONDARY_ENGINE_ATTRIBUTE | SENSITIVE_VARIABLES_OBSERVER | SERIAL | SERVER | SESSION
     | SESSION_VARIABLES_ADMIN | SET_USER_ID | SHARE | SHARED | SHOW_ROUTINE | SIGNED | SIMPLE | SLAVE | SLOW | SKIP_QUERY_REWRITE
     | SNAPSHOT | SOCKET | SOME | SONAME | SOUNDS | SOURCE | SQL_AFTER_GTIDS | SQL_AFTER_MTS_GAPS | SQL_BEFORE_GTIDS

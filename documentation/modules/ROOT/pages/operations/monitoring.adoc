@@ -138,10 +138,10 @@ ifdef::product[]
 == Monitoring {prodname} on OpenShift
 
 If you are using {prodname} on OpenShift, you can obtain JMX metrics by opening a JMX port on `9999`.
-For more information, see link:{LinkStreamsOpenShift}#assembly-jmx-options-deployment-configuration-kafka[JMX Options] in {NameStreamsOpenShift}.
+For information about configuring JMX connection options, see the link:{LinkStreamsAPIReference}#type-KafkaJmxOptions-reference[KafkaJmxOptions schema reference] in the {NameStreamsAPIReference}.
 
 In addition, you can use Prometheus and Grafana to monitor the JMX metrics.
-For more information, see link:{LinkDeployStreamsOpenShift}/#assembly-metrics-str[Introducing Metrics to Kafka], in {NameDeployStreamsOpenShift}.
+For more information, see _Monitoring_ in link:{LinkStreamsOpenShiftOverview}#metrics-overview_str[{NameStreamsOpenShiftOverview}] and _Setting up metrics and dashboards_ in link:{LinkDeployManageStreamsOpenShift}#assembly-metrics-str[{NameDeployManageStreamsOpenShift}] .
 
 endif::product[]
 

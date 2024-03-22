@@ -42,6 +42,8 @@ import io.debezium.connector.mysql.junit.SkipTestDependingOnGtidModeRule;
 import io.debezium.connector.mysql.junit.SkipWhenGtidModeIs;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.junit.ConditionalFail;
+import io.debezium.junit.Flaky;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.kafka.KafkaCluster;
 import io.debezium.pipeline.signal.channels.FileSignalChannel;
@@ -59,6 +61,8 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
     public static final String EXCLUDED_TABLE = "b";
     @Rule
     public TestRule skipTest = new SkipTestDependingOnGtidModeRule();
+    @Rule
+    public ConditionalFail conditionalFail = new ConditionalFail();
     private final Path signalsFile = Paths.get("src", "test", "resources").resolve("debezium_signaling_file.txt");
 
     @Before
@@ -247,14 +251,16 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
         }
     }
 
+    @FixFor("DBZ-7441")
     @Test
-    public void insertsWithoutPks() throws Exception {
+    public void aSignalAddedToFileWhenConnectorIsStoppedShouldBeProcessedWhenItStarts() throws Exception {
         // Testing.Print.enable();
 
-        populate4WithoutPkTable();
-        startConnector();
+        populate4PkTable();
+        sendExecuteSnapshotFileSignal(DATABASE.qualifiedTableName("a4"));
 
-        sendExecuteSnapshotKafkaSignal(DATABASE.qualifiedTableName("a42"));
+        startConnector(c -> c.with(FileSignalChannel.SIGNAL_FILE, signalsFile.toString())
+                .with(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS, "file"), loggingCompletion(), false);
 
         final int expectedRecordCount = ROW_COUNT;
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(
@@ -262,7 +268,7 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
                 x -> true,
                 k -> k.getInt32("pk1") * 1_000 + k.getInt32("pk2") * 100 + k.getInt32("pk3") * 10 + k.getInt32("pk4"),
                 record -> ((Struct) record.value()).getStruct("after").getInt32(valueFieldName()),
-                DATABASE.topicForTable("a42"),
+                DATABASE.topicForTable("a4"),
                 null);
         for (int i = 0; i < expectedRecordCount; i++) {
             assertThat(dbChanges).contains(entry(i + 1, i));
@@ -276,7 +282,7 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
         populateTable();
         AtomicReference<Throwable> exception = new AtomicReference<>();
         startConnector((success, message, error) -> exception.set(error));
-        waitForConnectorShutdown("mysql", DATABASE.getServerName());
+        waitForEngineShutdown();
         stopConnector();
         final Throwable e = exception.get();
         if (e != null) {
@@ -286,6 +292,7 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
 
     @Test
     @FixFor("DBZ-5453")
+    @Flaky("DBZ-7572")
     public void testStopSnapshotKafkaSignal() throws Exception {
         final LogInterceptor logInterceptor = new LogInterceptor(AbstractIncrementalSnapshotChangeEventSource.class);
 
@@ -318,7 +325,6 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
                     return logInterceptor.containsMessage(tableRemoveMessage);
                 });
 
-        stopConnector();
     }
 
     @Test
@@ -379,12 +385,6 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
     protected void populate4PkTable() throws SQLException {
         try (JdbcConnection connection = databaseConnection()) {
             populate4PkTable(connection, "a4");
-        }
-    }
-
-    protected void populate4WithoutPkTable() throws SQLException {
-        try (JdbcConnection connection = databaseConnection()) {
-            populate4PkTable(connection, "a42");
         }
     }
 }

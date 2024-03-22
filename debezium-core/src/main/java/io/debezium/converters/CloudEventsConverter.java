@@ -24,6 +24,7 @@ import java.util.stream.Stream;
 import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
+import org.apache.kafka.connect.components.Versioned;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Schema.Type;
@@ -44,6 +45,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import io.debezium.Module;
 import io.debezium.annotation.Immutable;
 import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.Configuration;
@@ -85,7 +87,7 @@ import io.debezium.schema.SchemaNameAdjuster;
  * Since Kafka converters has not support headers yet, right now CloudEvents converter use structured mode as the
  * default.
  */
-public class CloudEventsConverter implements Converter {
+public class CloudEventsConverter implements Converter, Versioned {
 
     private static final String EXTENSION_NAME_PREFIX = "iodebezium";
     private static final String TX_ATTRIBUTE_PREFIX = "tx";
@@ -96,7 +98,7 @@ public class CloudEventsConverter implements Converter {
     private static final String CONFLUENT_AVRO_CONVERTER_CLASS = "io.confluent.connect.avro.AvroConverter";
     private static final String CONFLUENT_SCHEMA_REGISTRY_URL_CONFIG = "schema.registry.url";
 
-    private static String APICURIO_AVRO_CONVERTER_CLASS = "io.apicurio.registry.utils.converter.AvroConverter";
+    private static final String APICURIO_AVRO_CONVERTER_CLASS = "io.apicurio.registry.utils.converter.AvroConverter";
     private static final String APICURIO_SCHEMA_REGISTRY_URL_CONFIG = "apicurio.registry.url";
 
     /**
@@ -109,7 +111,7 @@ public class CloudEventsConverter implements Converter {
     private static Method CONVERT_TO_CONNECT_METHOD;
 
     @Immutable
-    private static Map<String, CloudEventsProvider> providers = new HashMap<>();
+    private static final Map<String, CloudEventsProvider> PROVIDERS;
 
     static {
         try {
@@ -135,7 +137,7 @@ public class CloudEventsConverter implements Converter {
             tmp.put(provider.getName(), provider);
         }
 
-        providers = Collections.unmodifiableMap(tmp);
+        PROVIDERS = Collections.unmodifiableMap(tmp);
     }
 
     private SerializerType ceSerializerType = withName(CloudEventsConverterConfig.CLOUDEVENTS_SERIALIZER_TYPE_DEFAULT);
@@ -167,6 +169,11 @@ public class CloudEventsConverter implements Converter {
 
     public CloudEventsConverter(Converter avroConverter) {
         this.avroConverter = avroConverter;
+    }
+
+    @Override
+    public String version() {
+        return Module.version();
     }
 
     @Override
@@ -335,7 +342,7 @@ public class CloudEventsConverter implements Converter {
      */
     private static CloudEventsProvider lookupCloudEventsProvider(Struct source) {
         String connectorType = source.getString(AbstractSourceInfo.DEBEZIUM_CONNECTOR_KEY);
-        CloudEventsProvider provider = providers.get(connectorType);
+        CloudEventsProvider provider = PROVIDERS.get(connectorType);
         if (provider != null) {
             return provider;
         }

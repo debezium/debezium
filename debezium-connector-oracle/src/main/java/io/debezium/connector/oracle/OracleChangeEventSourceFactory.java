@@ -19,6 +19,7 @@ import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.relational.TableId;
+import io.debezium.snapshot.SnapshotterService;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
 import io.debezium.util.Strings;
@@ -34,11 +35,12 @@ public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory<
     private final Configuration jdbcConfig;
     private final OracleTaskContext taskContext;
     private final AbstractOracleStreamingChangeEventSourceMetrics streamingMetrics;
+    private final SnapshotterService snapshotterService;
 
     public OracleChangeEventSourceFactory(OracleConnectorConfig configuration, MainConnectionProvidingConnectionFactory<OracleConnection> connectionFactory,
                                           ErrorHandler errorHandler, EventDispatcher<OraclePartition, TableId> dispatcher, Clock clock, OracleDatabaseSchema schema,
                                           Configuration jdbcConfig, OracleTaskContext taskContext,
-                                          AbstractOracleStreamingChangeEventSourceMetrics streamingMetrics) {
+                                          AbstractOracleStreamingChangeEventSourceMetrics streamingMetrics, SnapshotterService snapshotterService) {
         this.configuration = configuration;
         this.connectionFactory = connectionFactory;
         this.errorHandler = errorHandler;
@@ -48,12 +50,14 @@ public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory<
         this.jdbcConfig = jdbcConfig;
         this.taskContext = taskContext;
         this.streamingMetrics = streamingMetrics;
+        this.snapshotterService = snapshotterService;
     }
 
     @Override
     public SnapshotChangeEventSource<OraclePartition, OracleOffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener<OraclePartition> snapshotProgressListener,
                                                                                                         NotificationService<OraclePartition, OracleOffsetContext> notificationService) {
-        return new OracleSnapshotChangeEventSource(configuration, connectionFactory, schema, dispatcher, clock, snapshotProgressListener, notificationService);
+        return new OracleSnapshotChangeEventSource(configuration, connectionFactory, schema, dispatcher, clock, snapshotProgressListener, notificationService,
+                snapshotterService);
     }
 
     @Override
@@ -66,7 +70,8 @@ public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory<
                 schema,
                 taskContext,
                 jdbcConfig,
-                streamingMetrics);
+                streamingMetrics,
+                snapshotterService);
     }
 
     @Override

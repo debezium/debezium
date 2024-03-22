@@ -32,7 +32,7 @@ public class SqlServerSkipMessagesWithNoUpdateConfigIT extends AbstractConnector
     private SqlServerConnection connection;
 
     private final Configuration.Builder configBuilder = TestHelper.defaultConfig()
-            .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+            .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
             .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.skip_messages_test")
             .with(SqlServerConnectorConfig.COLUMN_INCLUDE_LIST, "dbo.skip_messages_test.id, dbo.skip_messages_test.white");
 
@@ -89,7 +89,7 @@ public class SqlServerSkipMessagesWithNoUpdateConfigIT extends AbstractConnector
     @FixFor("DBZ-2979")
     public void shouldSkipEventsWithNoChangeInIncludedColumnsWhenSkipEnabledWithExcludeConfig() throws Exception {
         Configuration config = TestHelper.defaultConfig()
-                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.skip_messages_test")
                 .with(SqlServerConnectorConfig.SKIP_MESSAGES_WITHOUT_CHANGE, true)
                 .with(SqlServerConnectorConfig.COLUMN_EXCLUDE_LIST, "dbo.skip_messages_test.black")

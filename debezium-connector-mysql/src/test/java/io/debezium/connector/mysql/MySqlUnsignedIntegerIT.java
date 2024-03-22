@@ -23,13 +23,13 @@ import org.junit.Test;
 import io.debezium.config.Configuration;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.util.Testing;
 
 /**
  * @author Omar Al-Safi
  */
-public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
+public class MySqlUnsignedIntegerIT extends AbstractAsyncEngineConnectorTest {
     private static final String PRECISION_PARAMETER_KEY = "connect.decimal.precision";
     private static final Schema BIGINT_PRECISE_SCHEMA = Decimal.builder(0).parameter(PRECISION_PARAMETER_KEY, "20").build();
 

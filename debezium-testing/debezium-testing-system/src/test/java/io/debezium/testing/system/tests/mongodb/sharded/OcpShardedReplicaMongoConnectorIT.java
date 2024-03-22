@@ -21,13 +21,14 @@ import io.debezium.testing.system.fixtures.connectors.ShardedReplicaMongoConnect
 import io.debezium.testing.system.fixtures.databases.ocp.OcpMongoSharded;
 import io.debezium.testing.system.fixtures.kafka.OcpKafka;
 import io.debezium.testing.system.fixtures.operator.OcpStrimziOperator;
-import io.debezium.testing.system.tools.databases.mongodb.OcpMongoShardedController;
+import io.debezium.testing.system.tools.databases.mongodb.sharded.OcpMongoShardedController;
 import io.debezium.testing.system.tools.kafka.ConnectorConfigBuilder;
 import io.debezium.testing.system.tools.kafka.KafkaConnectController;
 import io.debezium.testing.system.tools.kafka.KafkaController;
 
 import fixture5.FixtureExtension;
 import fixture5.annotations.Fixture;
+import freemarker.template.TemplateException;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Tag("acceptance")
@@ -48,15 +49,15 @@ public class OcpShardedReplicaMongoConnectorIT extends ShardedMongoTests {
     }
 
     @Test
-    public void shouldStreamInReplicaSetMode(OcpMongoShardedController dbController) throws IOException, InterruptedException {
+    public void shouldStreamInReplicaSetMode(OcpMongoShardedController dbController) throws IOException, InterruptedException, TemplateException {
         String topic = connectorConfig.getConnectorName() + ".inventory.customers";
-        assertions.assertTopicsExist(
-                connectorConfig.getConnectorName() + ".inventory.customers");
+        assertions.assertTopicsExist(topic, connectorConfig.getConnectorName() + ".inventory.products");
+        awaitAssert(() -> assertions.assertRecordsCount(topic, 4));
 
         insertCustomer(dbController, "Eve", "Sharded", "eshard@test.com", 1007);
 
         awaitAssert(() -> assertions.assertRecordsContain(topic, "eshard@test.com"));
-        awaitAssert(() -> assertions.assertMinimalRecordsCount(topic, 7));
+        awaitAssert(() -> assertions.assertMinimalRecordsCount(topic, 5));
 
         insertProduct(dbController, "replicaset product", "demonstrates that replicaset connector mode works", "12.5", 3);
         awaitAssert(() -> assertions.assertRecordsContain(connectorConfig.getConnectorName() + ".inventory.products", "replicaset product"));

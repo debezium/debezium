@@ -29,7 +29,7 @@ import io.debezium.connector.mysql.junit.SkipWhenDatabaseIs;
 import io.debezium.connector.mysql.junit.SkipWhenDatabaseIs.Type;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.util.Testing;
 
@@ -38,7 +38,7 @@ import io.debezium.util.Testing;
  */
 @SkipWhenDatabaseIs(value = Type.MYSQL, versions = @SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 7, reason = "JSON data type was not added until MySQL 5.7"))
 @SkipWhenDatabaseIs(value = Type.MARIADB, reason = "MariaDB does not support JSON natively, its treated as long text as an alias")
-public class MySqlConnectorJsonIT extends AbstractConnectorTest {
+public class MySqlConnectorJsonIT extends AbstractAsyncEngineConnectorTest {
 
     private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-json.txt").toAbsolutePath();
     private final UniqueDatabase DATABASE = new UniqueDatabase("jsonit", "json_test")

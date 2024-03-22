@@ -232,7 +232,10 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
 
         final XmlUnderConstruction xml = (XmlUnderConstruction) getConstructable(currentXmlDetails);
         try {
-            xml.add(new XmlFragment(event));
+            final XmlWriteEvent writeEvent = (XmlWriteEvent) event;
+            if (!Objects.isNull(writeEvent.getXml())) {
+                xml.add(new XmlFragment(writeEvent));
+            }
         }
         catch (DebeziumException exception) {
             LOGGER.warn("\tInvalid XML manipulation event: {} ; ignoring {} {}", exception, event.getEventType(), event);
@@ -769,12 +772,11 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
     }
 
     static class XmlFragment extends Fragment {
-        XmlFragment(final LogMinerEvent event) {
+        XmlFragment(final XmlWriteEvent event) {
             if (EventType.XML_WRITE != event.getEventType()) {
                 throw new IllegalArgumentException("can only construct XmlFragments from XML_WRITE events");
             }
-            final XmlWriteEvent writeEvent = (XmlWriteEvent) event;
-            this.data = writeEvent.getXml();
+            this.data = event.getXml();
         }
 
         XmlFragment(String data) {

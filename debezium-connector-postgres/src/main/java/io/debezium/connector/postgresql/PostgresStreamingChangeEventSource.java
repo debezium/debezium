@@ -119,6 +119,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
     @Override
     public void execute(ChangeEventSourceContext context, PostgresPartition partition, PostgresOffsetContext offsetContext)
             throws InterruptedException {
+
         if (!snapshotterService.getSnapshotter().shouldStream()) {
             LOGGER.info("Streaming is not enabled in configuration");
             return;
@@ -126,7 +127,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
 
         lsnFlushingAllowed = false;
 
-        // replication slot could exist at the time of starting Debezium so we will stream from the position in the slot
+        // replication slot could exist at the time of starting Debezium, so we will stream from the position in the slot
         // instead of the last position in the database
         boolean hasStartLsnStoredInContext = offsetContext != null;
 

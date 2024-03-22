@@ -56,6 +56,9 @@ import io.debezium.annotation.NotThreadSafe;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Field;
+import io.debezium.pipeline.source.snapshot.incremental.ChunkQueryBuilder;
+import io.debezium.pipeline.source.snapshot.incremental.DefaultChunkQueryBuilder;
+import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.Attribute;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
@@ -65,6 +68,7 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.TableFilter;
+import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.BoundedConcurrentHashMap;
 import io.debezium.util.BoundedConcurrentHashMap.Eviction;
 import io.debezium.util.BoundedConcurrentHashMap.EvictionListener;
@@ -87,7 +91,7 @@ public class JdbcConnection implements AutoCloseable {
     private final static Logger LOGGER = LoggerFactory.getLogger(JdbcConnection.class);
     private static final int CONNECTION_VALID_CHECK_TIMEOUT_IN_SEC = 3;
     private final Map<String, PreparedStatement> statementCache = new BoundedConcurrentHashMap<>(STATEMENT_CACHE_CAPACITY, 16, Eviction.LIRS,
-            new EvictionListener<String, PreparedStatement>() {
+            new EvictionListener<>() {
 
                 @Override
                 public void onEntryEviction(Map<String, PreparedStatement> evicted) {
@@ -155,6 +159,17 @@ public class JdbcConnection implements AutoCloseable {
     @FunctionalInterface
     public interface ResultSetExtractor<T> {
         T apply(ResultSet rs) throws SQLException;
+    }
+
+    @FunctionalInterface
+    public interface LogPositionValidator {
+
+        /**
+         * Validate the stored offset with the position available in the db log.
+         * @param offsetContext The current stored offset.
+         * @param config Connector configuration.
+         */
+        boolean validate(OffsetContext offsetContext, CommonConnectorConfig config);
     }
 
     /**
@@ -324,6 +339,8 @@ public class JdbcConnection implements AutoCloseable {
     private final String openingQuoteCharacter;
     private final String closingQuoteCharacter;
     private volatile Connection conn;
+
+    protected LogPositionValidator logPositionValidator;
 
     /**
      * Create a new instance with the given configuration and connection factory.
@@ -1167,13 +1184,13 @@ public class JdbcConnection implements AutoCloseable {
                     TableId tableId = new TableId(catalogName, schemaName, tableName);
                     if (tableFilter == null || tableFilter.isIncluded(tableId)) {
                         tableIds.add(tableId);
-                        attributesByTable.putAll(getAttributeDetails(tableId));
+                        attributesByTable.putAll(getAttributeDetails(tableId, tableType));
                     }
                 }
                 else {
                     TableId tableId = new TableId(catalogName, schemaName, tableName);
                     viewIds.add(tableId);
-                    attributesByTable.putAll(getAttributeDetails(tableId));
+                    attributesByTable.putAll(getAttributeDetails(tableId, tableType));
                 }
             }
         }
@@ -1262,7 +1279,7 @@ public class JdbcConnection implements AutoCloseable {
         return columnsByTable;
     }
 
-    protected Map<TableId, List<Attribute>> getAttributeDetails(TableId tableId) {
+    protected Map<TableId, List<Attribute>> getAttributeDetails(TableId tableId, String tableType) {
         // no-op, allows connectors to populate table attributes during relational table creation
         return Collections.emptyMap();
     }
@@ -1484,6 +1501,10 @@ public class JdbcConnection implements AutoCloseable {
         }
     }
 
+    public <T extends DataCollectionId> ChunkQueryBuilder<T> chunkQueryBuilder(RelationalDatabaseConnectorConfig connectorConfig) {
+        return new DefaultChunkQueryBuilder<T>(connectorConfig, this);
+    }
+
     public String buildSelectWithRowLimits(TableId tableId, int limit, String projection, Optional<String> condition,
                                            Optional<String> additionalCondition, String orderBy) {
         final StringBuilder sql = new StringBuilder("SELECT ");
@@ -1510,6 +1531,15 @@ public class JdbcConnection implements AutoCloseable {
                 .append(" LIMIT ")
                 .append(limit);
         return sql.toString();
+    }
+
+    /**
+     * Indicates how NULL values are sorted by default in an ORDER BY clause.  The ANSI standard doesn't really specify.
+     *
+     * @return true if NULL is sorted after non-NULL values; false if NULL is sorted before non-NULL values; empty if we don't know for this connector.
+     */
+    public Optional<Boolean> nullsSortLast() {
+        return Optional.empty();
     }
 
     /**
@@ -1598,14 +1628,16 @@ public class JdbcConnection implements AutoCloseable {
         return tableId.schema() + "." + tableId.table();
     }
 
-    public String buildReselectColumnQuery(TableId tableId, List<String> columns, List<String> keyColumns, Struct source) {
-        return String.format("SELECT %s FROM %s WHERE %s",
+    public Map<String, Object> reselectColumns(TableId tableId, List<String> columns, List<String> keyColumns, List<Object> keyValues, Struct source)
+            throws SQLException {
+        final String query = String.format("SELECT %s FROM %s WHERE %s",
                 columns.stream().map(this::quotedColumnIdString).collect(Collectors.joining(",")),
                 quotedTableIdString(tableId),
                 keyColumns.stream().map(key -> key + "=?").collect(Collectors.joining(" AND ")));
+        return reselectColumns(query, tableId, columns, keyValues);
     }
 
-    public Map<String, Object> reselectColumns(String query, TableId tableId, List<String> columns, List<Object> bindValues) throws SQLException {
+    protected Map<String, Object> reselectColumns(String query, TableId tableId, List<String> columns, List<Object> bindValues) throws SQLException {
         final Map<String, Object> results = new HashMap<>();
         prepareQuery(query, bindValues, (params, rs) -> {
             if (!rs.next()) {
@@ -1622,4 +1654,12 @@ public class JdbcConnection implements AutoCloseable {
         return results;
     }
 
+    public boolean isLogPositionAvailable(OffsetContext offsetContext, CommonConnectorConfig config) {
+
+        if (logPositionValidator == null) {
+            LOGGER.warn("Current JDBC connection implementation is not providing a log position validator implementation. The check will always be 'true'");
+            return true;
+        }
+        return logPositionValidator.validate(offsetContext, config);
+    }
 }

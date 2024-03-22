@@ -365,6 +365,8 @@ public class SchemaFactory {
             public Envelope build() {
                 builder.field(Envelope.FieldName.OPERATION, Envelope.OPERATION_REQUIRED ? Schema.STRING_SCHEMA : Schema.OPTIONAL_STRING_SCHEMA);
                 builder.field(Envelope.FieldName.TIMESTAMP, Schema.OPTIONAL_INT64_SCHEMA);
+                builder.field(Envelope.FieldName.TIMESTAMP_US, Schema.OPTIONAL_INT64_SCHEMA);
+                builder.field(Envelope.FieldName.TIMESTAMP_NS, Schema.OPTIONAL_INT64_SCHEMA);
                 builder.field(Envelope.FieldName.TRANSACTION, transactionBlockSchema());
                 checkFieldIsDefined(Envelope.FieldName.OPERATION);
                 checkFieldIsDefined(Envelope.FieldName.BEFORE);

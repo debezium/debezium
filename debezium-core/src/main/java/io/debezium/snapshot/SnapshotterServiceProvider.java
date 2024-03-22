@@ -5,8 +5,9 @@
  */
 package io.debezium.snapshot;
 
-import java.util.Optional;
+import java.util.List;
 import java.util.ServiceLoader;
+import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import io.debezium.DebeziumException;
@@ -45,22 +46,48 @@ public abstract class SnapshotterServiceProvider implements ServiceProvider<Snap
             snapshotMode = configuredSnapshotMode;
         }
 
-        Optional<Snapshotter> snapshotter = StreamSupport.stream(ServiceLoader.load(Snapshotter.class).spliterator(), false)
+        List<Snapshotter> snapshotters = StreamSupport.stream(ServiceLoader.load(Snapshotter.class).spliterator(), false)
                 .filter(s -> s.name().equals(snapshotMode))
-                .findAny();
+                .collect(Collectors.toList());
+
+        if (snapshotters.isEmpty()) {
+            throw new DebeziumException(String.format("Unable to find %s snapshotter. Please check your configuration.", snapshotMode));
+        }
+
+        if (snapshotters.size() > 1) {
+            throw new DebeziumException("Found multiple implementation for {} snapshotter. Please verify your configuration.");
+        }
 
         final SnapshotQuery snapshotQueryService = serviceRegistry.tryGetService(SnapshotQuery.class);
         final SnapshotLock snapshotLockService = serviceRegistry.tryGetService(SnapshotLock.class);
+        final Snapshotter snapshotter = snapshotters.get(0);
 
-        return snapshotter.map(s -> {
-            s.configure(configuration.asMap());
-            if (s instanceof BeanRegistryAware) {
-                ((BeanRegistryAware) s).injectBeanRegistry(beanRegistry);
-            }
-            return new SnapshotterService(s, snapshotQueryService, snapshotLockService);
-        })
-                .orElseThrow(() -> new DebeziumException(String.format("Unable to find %s snapshotter. Please check your configuration.", snapshotMode)));
+        return getSnapshotterService(configuration, snapshotter, beanRegistry, snapshotQueryService, snapshotLockService);
+    }
 
+    // This is required for DebeziumServer since it loads all connectors and until all modes will be moved into the core (if possible)
+    private boolean isForCurrentConnector(Configuration configuration, Snapshotter s) {
+
+        return s.getClass().getCanonicalName().contains(getConnectorClassPackage(configuration));
+    }
+
+    private String getConnectorClassPackage(Configuration config) {
+
+        try {
+            return Class.forName(config.getString("connector.class")).getPackageName();
+        }
+        catch (ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static SnapshotterService getSnapshotterService(Configuration configuration, Snapshotter s, BeanRegistry beanRegistry, SnapshotQuery snapshotQueryService,
+                                                            SnapshotLock snapshotLockService) {
+        s.configure(configuration.asMap());
+        if (s instanceof BeanRegistryAware) {
+            ((BeanRegistryAware) s).injectBeanRegistry(beanRegistry);
+        }
+        return new SnapshotterService(s, snapshotQueryService, snapshotLockService);
     }
 
     @Override

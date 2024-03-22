@@ -13,36 +13,27 @@ import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.common.config.ConfigDef;
-import org.apache.kafka.connect.connector.Task;
 import org.apache.kafka.connect.file.FileStreamSourceConnector;
 import org.apache.kafka.connect.header.ConnectHeaders;
 import org.apache.kafka.connect.header.Headers;
 import org.apache.kafka.connect.json.JsonDeserializer;
-import org.apache.kafka.connect.runtime.WorkerConfig;
 import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.apache.kafka.connect.storage.OffsetBackingStore;
 import org.apache.kafka.connect.transforms.Transformation;
 import org.apache.kafka.connect.transforms.predicates.Predicate;
-import org.apache.kafka.connect.util.Callback;
 import org.apache.kafka.connect.util.SafeObjectInputStream;
 import org.junit.Before;
 import org.junit.Test;
@@ -61,8 +52,8 @@ import io.debezium.engine.RecordChangeEvent;
 import io.debezium.engine.format.ChangeEventFormat;
 import io.debezium.engine.format.Json;
 import io.debezium.engine.format.JsonByteArray;
+import io.debezium.engine.format.SimpleString;
 import io.debezium.engine.spi.OffsetCommitPolicy;
-import io.debezium.util.Collect;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.Testing;
 import io.debezium.util.Throwables;
@@ -143,7 +134,7 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
     @Test
     public void verifyNonAsciiContentHandledCorrectly() throws Exception {
 
-        appendLinesToSource("Ñ ñ", NUMBER_OF_LINES);
+        linesAdded += DebeziumEngineTestUtils.appendLinesToSource(inputFile, "Ñ ñ", NUMBER_OF_LINES, linesAdded);
 
         final Properties props = new Properties();
         props.setProperty("name", "debezium-engine");
@@ -662,6 +653,68 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
     }
 
     @Test
+    public void shouldRunDebeziumEngineWithString() throws Exception {
+        // Add initial content to the file ...
+        appendLinesToSource(NUMBER_OF_LINES);
+
+        final Properties props = new Properties();
+        props.setProperty("name", "debezium-engine");
+        props.setProperty("connector.class", "org.apache.kafka.connect.file.FileStreamSourceConnector");
+        props.setProperty(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
+        props.setProperty("offset.flush.interval.ms", "0");
+        props.setProperty("file", TEST_FILE_PATH.toAbsolutePath().toString());
+        props.setProperty("topic", "topicX");
+        props.setProperty("converter.schemas.enable", "false");
+
+        CountDownLatch firstLatch = new CountDownLatch(1);
+        CountDownLatch allLatch = new CountDownLatch(6);
+
+        // create an engine with our custom class
+        final DebeziumEngine<ChangeEvent<String, String>> engine = DebeziumEngine.create(SimpleString.class, SimpleString.class)
+                .using(props)
+                .notifying((records, committer) -> {
+                    assertThat(records.size()).isGreaterThanOrEqualTo(NUMBER_OF_LINES);
+                    int groupCount = records.size() / NUMBER_OF_LINES;
+
+                    for (ChangeEvent<String, String> r : records) {
+                        assertThat(r.key()).isNull();
+                        // unlike Json, SimpleString does not wrap value in quotes
+                        assertThat(r.value()).startsWith("Generated line number ");
+
+                        committer.markProcessed(r);
+                    }
+
+                    committer.markBatchFinished();
+                    firstLatch.countDown();
+                    for (int i = 0; i < groupCount; i++) {
+                        allLatch.countDown();
+                    }
+                })
+                .using(this.getClass().getClassLoader())
+                .build();
+
+        ExecutorService exec = Executors.newFixedThreadPool(1);
+        exec.execute(() -> {
+            LoggingContext.forConnector(getClass().getSimpleName(), "", "engine");
+            engine.run();
+        });
+
+        firstLatch.await(5000, TimeUnit.MILLISECONDS);
+        assertThat(firstLatch.getCount()).isEqualTo(0);
+
+        for (int i = 0; i < 5; i++) {
+            // Add a few more lines, and then verify they are consumed ...
+            appendLinesToSource(NUMBER_OF_LINES);
+            Thread.sleep(10);
+        }
+        allLatch.await(5000, TimeUnit.MILLISECONDS);
+        assertThat(allLatch.getCount()).isEqualTo(0);
+
+        // Stop the connector ...
+        stopConnector();
+    }
+
+    @Test
     @FixFor("DBZ-5926")
     public void shouldRunDebeziumEngineWithMismatchedTypes() throws Exception {
         // Add initial content to the file ...
@@ -829,35 +882,13 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
     }
 
     protected void appendLinesToSource(int numberOfLines) throws IOException {
-        CharSequence[] lines = new CharSequence[numberOfLines];
-        for (int i = 0; i != numberOfLines; ++i) {
-            lines[i] = generateLine(linesAdded + i + 1);
-        }
-        java.nio.file.Files.write(inputFile.toPath(), Collect.arrayListOf(lines), UTF8, StandardOpenOption.APPEND);
-        linesAdded += numberOfLines;
-    }
-
-    protected void appendLinesToSource(String linePrefix, int numberOfLines) throws IOException {
-        CharSequence[] lines = new CharSequence[numberOfLines];
-        for (int i = 0; i != numberOfLines; ++i) {
-            lines[i] = generateLine(linePrefix, linesAdded + i + 1);
-        }
-        java.nio.file.Files.write(inputFile.toPath(), Collect.arrayListOf(lines), UTF8, StandardOpenOption.APPEND);
-        linesAdded += numberOfLines;
-    }
-
-    protected String generateLine(int lineNumber) {
-        return generateLine("Generated line number ", lineNumber);
-    }
-
-    protected String generateLine(String linePrefix, int lineNumber) {
-        return linePrefix + lineNumber;
+        linesAdded += DebeziumEngineTestUtils.appendLinesToSource(inputFile, numberOfLines, linesAdded);
     }
 
     protected void consumeLines(int numberOfLines) throws InterruptedException {
         consumeRecords(numberOfLines, 3, record -> {
             String line = record.value().toString();
-            assertThat(line).isEqualTo(generateLine(nextConsumedLineNumber));
+            assertThat(line).isEqualTo(DebeziumEngineTestUtils.generateLine(nextConsumedLineNumber));
             ++nextConsumedLineNumber;
         },
                 false);
@@ -888,75 +919,5 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
         @Override
         public void close() {
         }
-    }
-}
-
-class InterruptedConnector extends SimpleSourceConnector {
-
-    @Override
-    public Class<? extends Task> taskClass() {
-        return InterruptedTask.class;
-    }
-}
-
-class InterruptedTask extends SimpleSourceConnector.SimpleConnectorTask {
-
-    @Override
-    public List<SourceRecord> poll() throws InterruptedException {
-        throw new InterruptedException();
-    }
-}
-
-class InterruptingOffsetStore implements OffsetBackingStore {
-
-    @Override
-    public void start() {
-    }
-
-    @Override
-    public void stop() {
-    }
-
-    @Override
-    public Future<Map<ByteBuffer, ByteBuffer>> get(Collection<ByteBuffer> collection) {
-        // called by the offset reader. return null for no offsets stored.
-        return new CompletableFuture<Map<ByteBuffer, ByteBuffer>>() {
-            @Override
-            public Map<ByteBuffer, ByteBuffer> get(long timeout, TimeUnit unit) {
-                return new HashMap<ByteBuffer, ByteBuffer>();
-            }
-
-            @Override
-            public Map<ByteBuffer, ByteBuffer> get() {
-                return new HashMap<ByteBuffer, ByteBuffer>();
-            }
-        };
-    }
-
-    /**
-     * Implementation that throws InterruptedException when offset commits are called.
-     */
-    @Override
-    public Future<Void> set(Map<ByteBuffer, ByteBuffer> map, Callback<Void> callback) {
-        return new CompletableFuture<Void>() {
-            @Override
-            public Void get() throws InterruptedException {
-                throw new InterruptedException();
-            }
-
-            @Override
-            public Void get(long timeout, TimeUnit unit) throws InterruptedException {
-                throw new InterruptedException();
-            }
-        };
-    }
-
-    @Override
-    public void configure(WorkerConfig workerConfig) {
-    }
-
-    @Override
-    public Set<Map<String, Object>> connectorPartitions(String connectorName) {
-        return null;
     }
 }

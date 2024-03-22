@@ -56,6 +56,8 @@ The following example shows part of the structure of a typical {prodname} `UPDAT
 		...
 	},
 	"ts_ms" : "...",
+	"ts_us" : "...",
+	"ts_ns" : "...",
 	"before" : {
 		"field1" : "oldvalue1",
 		"field2" : "oldvalue2"

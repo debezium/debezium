@@ -53,7 +53,7 @@ import io.debezium.data.KeyValueStore.Collection;
 import io.debezium.data.SchemaChangeHistory;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.heartbeat.DatabaseHeartbeatImpl;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConnection;
@@ -69,7 +69,7 @@ import io.debezium.util.Testing;
  *
  */
 @SkipWhenDatabaseIs(value = Type.MYSQL, versions = @SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 6, reason = "DDL uses fractional second data types, not supported until MySQL 5.6"))
-public class StreamingSourceIT extends AbstractConnectorTest {
+public class StreamingSourceIT extends AbstractAsyncEngineConnectorTest {
 
     private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-binlog.txt").toAbsolutePath();
     private final UniqueDatabase DATABASE = new UniqueDatabase("logical_server_name", "connector_test_ro")
@@ -452,6 +452,66 @@ public class StreamingSourceIT extends AbstractConnectorTest {
         assertThat(c5Time.toNanos()).isEqualTo(-3020398999999000L);
         assertTrue(c5Time.isNegative());
         assertThat(c5Time).isEqualTo(Duration.ofHours(-838).minusMinutes(59).minusSeconds(58).minusNanos(999999000));
+
+        // '-00:20:38.000000'
+        long c6 = after.getInt64("c6");
+        Duration c6Time = Duration.ofNanos(c6 * 1_000);
+        Duration c6ExpectedTime = toDuration("-PT00H20M38.000000S");
+        assertEquals(c6ExpectedTime, c6Time);
+        assertEquals(c6ExpectedTime.toNanos(), c6Time.toNanos());
+        assertThat(c6Time.toNanos()).isEqualTo(-1238000000000L);
+        assertTrue(c6Time.isNegative());
+        assertThat(c6Time).isEqualTo(Duration.ofHours(0).negated().minusMinutes(20).minusSeconds(38).minusNanos(0));
+
+        // '-01:01:01.000001'
+        long c7 = after.getInt64("c7");
+        Duration c7Time = Duration.ofNanos(c7 * 1_000);
+        Duration c7ExpectedTime = toDuration("-PT01H01M01.000001S");
+        assertEquals(c7ExpectedTime, c7Time);
+        assertEquals(c7ExpectedTime.toNanos(), c7Time.toNanos());
+        assertThat(c7Time.toNanos()).isEqualTo(-3661000001000L);
+        assertTrue(c7Time.isNegative());
+        assertThat(c7Time).isEqualTo(Duration.ofHours(-1).minusMinutes(1).minusSeconds(1).minusNanos(1_000));
+
+        // '-01:01:01.000000'
+        long c8 = after.getInt64("c8");
+        Duration c8Time = Duration.ofNanos(c8 * 1_000);
+        Duration c8ExpectedTime = toDuration("-PT01H01M01.000000S");
+        assertEquals(c8ExpectedTime, c8Time);
+        assertEquals(c8ExpectedTime.toNanos(), c8Time.toNanos());
+        assertThat(c8Time.toNanos()).isEqualTo(-3661000000000L);
+        assertTrue(c8Time.isNegative());
+        assertThat(c8Time).isEqualTo(Duration.ofHours(-1).minusMinutes(1).minusSeconds(1).minusNanos(0));
+
+        // '-01:01:00.000000'
+        long c9 = after.getInt64("c9");
+        Duration c9Time = Duration.ofNanos(c9 * 1_000);
+        Duration c9ExpectedTime = toDuration("-PT01H01M00.000000S");
+        assertEquals(c9ExpectedTime, c9Time);
+        assertEquals(c9ExpectedTime.toNanos(), c9Time.toNanos());
+        assertThat(c9Time.toNanos()).isEqualTo(-3660000000000L);
+        assertTrue(c9Time.isNegative());
+        assertThat(c9Time).isEqualTo(Duration.ofHours(-1).minusMinutes(1).minusSeconds(0).minusNanos(0));
+
+        // '-01:00:00.000000'
+        long c10 = after.getInt64("c10");
+        Duration c10Time = Duration.ofNanos(c10 * 1_000);
+        Duration c10ExpectedTime = toDuration("-PT01H00M00.000000S");
+        assertEquals(c10ExpectedTime, c10Time);
+        assertEquals(c10ExpectedTime.toNanos(), c10Time.toNanos());
+        assertThat(c10Time.toNanos()).isEqualTo(-3600000000000L);
+        assertTrue(c10Time.isNegative());
+        assertThat(c10Time).isEqualTo(Duration.ofHours(-1).minusMinutes(0).minusSeconds(0).minusNanos(0));
+
+        // '-00:00:00.000000'
+        long c11 = after.getInt64("c11");
+        Duration c11Time = Duration.ofNanos(c11 * 1_000);
+        Duration c11ExpectedTime = toDuration("PT00H00M00.000000S");
+        assertEquals(c11ExpectedTime, c11Time);
+        assertEquals(c11ExpectedTime.toNanos(), c11Time.toNanos());
+        assertThat(c11Time.toNanos()).isEqualTo(0L);
+        assertTrue(c11Time.isZero());
+        assertThat(c11Time).isEqualTo(Duration.ofHours(0).minusMinutes(0).minusSeconds(0).minusNanos(0));
     }
 
     @Test(expected = ConnectException.class)
@@ -607,7 +667,7 @@ public class StreamingSourceIT extends AbstractConnectorTest {
         if (mode == null) {
             Awaitility.await().atMost(Duration.ofSeconds(waitTimeForRecords()))
                     .until(() -> logInterceptor.containsMessage("Error during binlog processing."));
-            waitForConnectorShutdown("mysql", DATABASE.getServerName());
+            waitForEngineShutdown();
         }
         else {
             waitForStreamingRunning("mysql", DATABASE.getServerName(), "streaming");

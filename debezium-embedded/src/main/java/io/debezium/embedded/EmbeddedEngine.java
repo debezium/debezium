@@ -27,7 +27,6 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.Config;
-import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectorContext;
 import org.apache.kafka.connect.connector.Task;
 import org.apache.kafka.connect.errors.RetriableException;
@@ -55,7 +54,6 @@ import org.slf4j.LoggerFactory;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
-import io.debezium.config.Field;
 import io.debezium.config.Instantiator;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.StopEngineException;
@@ -351,15 +349,8 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord>, Embed
         keyConverter.configure(internalConverterConfig, true);
         valueConverter = Instantiator.getInstance(JsonConverter.class.getName());
         valueConverter.configure(internalConverterConfig, false);
-
         transformations = new Transformations(config);
-
-        // Create the worker config, adding extra fields that are required for validation of a worker config
-        // but that are not used within the embedded engine (since the source records are never serialized) ...
-        Map<String, String> embeddedConfig = config.asMap(EmbeddedEngineConfig.ALL_FIELDS);
-        embeddedConfig.put(WorkerConfig.KEY_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
-        embeddedConfig.put(WorkerConfig.VALUE_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
-        workerConfig = new EmbeddedConfig(embeddedConfig);
+        workerConfig = new EmbeddedWorkerConfig(config.asMap(EmbeddedEngineConfig.ALL_FIELDS));
     }
 
     /**
@@ -450,7 +441,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord>, Embed
                     // Create source connector task
                     final List<Map<String, String>> taskConfigs = connector.taskConfigs(1);
                     final Class<? extends Task> taskClass = connector.taskClass();
-                    task = createSourceTask(connector, taskConfigs, taskClass);
+                    task = createSourceTask(taskConfigs, taskClass);
 
                     try {
                         // start source task
@@ -516,7 +507,14 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord>, Embed
 
     private Map<String, String> getConnectorConfig(final SourceConnector connector, final String connectorClassName) throws EmbeddedEngineRuntimeException {
         Map<String, String> connectorConfig = workerConfig.originalsStrings();
-        Config validatedConnectorConfig = connector.validate(connectorConfig);
+        Config validatedConnectorConfig = null;
+        try {
+            validatedConnectorConfig = connector.validate(connectorConfig);
+        }
+        catch (Exception ex) {
+            String msg = "Connector configuration is not valid: " + ex.getMessage();
+            failAndThrow(msg, ex);
+        }
         ConfigInfos configInfos = AbstractHerder.generateResult(connectorClassName, Collections.emptyMap(), validatedConnectorConfig.configValues(),
                 connector.config().groups());
         if (configInfos.errorCount() > 0) {
@@ -603,7 +601,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord>, Embed
         connector.initialize(context);
     }
 
-    private SourceTask createSourceTask(final SourceConnector connector, final List<Map<String, String>> taskConfigs, final Class<? extends Task> taskClass)
+    private SourceTask createSourceTask(final List<Map<String, String>> taskConfigs, final Class<? extends Task> taskClass)
             throws EmbeddedEngineRuntimeException, NoSuchMethodException, InvocationTargetException {
         if (taskConfigs.isEmpty()) {
             String msg = "Unable to start connector's task class '" + taskClass.getName() + "' with no task configuration";
@@ -1008,23 +1006,6 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord>, Embed
     private DelayStrategy delayStrategy(Configuration config) {
         return DelayStrategy.exponential(Duration.ofMillis(config.getInteger(EmbeddedEngineConfig.ERRORS_RETRY_DELAY_INITIAL_MS)),
                 Duration.ofMillis(config.getInteger(EmbeddedEngineConfig.ERRORS_RETRY_DELAY_MAX_MS)));
-    }
-
-    protected static class EmbeddedConfig extends WorkerConfig {
-        private static final ConfigDef CONFIG;
-
-        static {
-            ConfigDef config = baseConfigDef();
-            Field.group(config, "file", EmbeddedEngineConfig.OFFSET_STORAGE_FILE_FILENAME);
-            Field.group(config, "kafka", EmbeddedEngineConfig.OFFSET_STORAGE_KAFKA_TOPIC);
-            Field.group(config, "kafka", EmbeddedEngineConfig.OFFSET_STORAGE_KAFKA_PARTITIONS);
-            Field.group(config, "kafka", EmbeddedEngineConfig.OFFSET_STORAGE_KAFKA_REPLICATION_FACTOR);
-            CONFIG = config;
-        }
-
-        protected EmbeddedConfig(Map<String, String> props) {
-            super(CONFIG, props);
-        }
     }
 
     private class HandlerErrors {

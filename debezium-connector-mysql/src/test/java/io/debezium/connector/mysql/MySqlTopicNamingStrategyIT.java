@@ -22,7 +22,7 @@ import org.junit.Test;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
@@ -31,7 +31,7 @@ import io.debezium.schema.DefaultRegexTopicNamingStrategy;
 import io.debezium.schema.DefaultUnicodeTopicNamingStrategy;
 import io.debezium.util.Testing;
 
-public class MySqlTopicNamingStrategyIT extends AbstractConnectorTest {
+public class MySqlTopicNamingStrategyIT extends AbstractAsyncEngineConnectorTest {
 
     private static final String TABLE_NAME = "dbz4180";
     private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-comment.txt")
@@ -101,7 +101,7 @@ public class MySqlTopicNamingStrategyIT extends AbstractConnectorTest {
     public void testSpecifyByLogicalTableStrategy() throws SQLException, InterruptedException {
         String tables = DATABASE.qualifiedTableName("dbz_4180_00") + "," + DATABASE.qualifiedTableName("dbz_4180_01");
         config = DATABASE.defaultConfig()
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NO_DATA)
                 .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, tables)
                 .with(RelationalDatabaseConnectorConfig.INCLUDE_SCHEMA_CHANGES, "false")
                 .with(DefaultRegexTopicNamingStrategy.TOPIC_REGEX, "(.*)(dbz_4180)(.*)")
@@ -142,7 +142,7 @@ public class MySqlTopicNamingStrategyIT extends AbstractConnectorTest {
     @FixFor("DBZ-4180")
     public void testSpecifyTransactionStrategy() throws SQLException, InterruptedException {
         config = DATABASE.defaultConfig()
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NO_DATA)
                 .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName(TABLE_NAME))
                 .with(RelationalDatabaseConnectorConfig.INCLUDE_SCHEMA_CHANGES, "false")
                 .with(CommonConnectorConfig.PROVIDE_TRANSACTION_METADATA, "true")

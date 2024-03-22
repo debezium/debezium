@@ -13,14 +13,14 @@
   <name>Debezium system integration test-suite</name>
 
   <properties>
-    <version.fabric8.client>5.12.1</version.fabric8.client>
+    <version.fabric8.client>6.10.0</version.fabric8.client>
     <version.commons.codec>1.14</version.commons.codec>
-    <version.commons.compress>1.21</version.commons.compress>
-    <version.strimzi>0.28.0</version.strimzi>
+    <version.commons.compress>1.26.0</version.commons.compress>
+    <version.strimzi>0.40.0</version.strimzi>
     <version.strimzi.kafka>${version.kafka}</version.strimzi.kafka>
     <version.assertj>3.11.1</version.assertj>
     <version.apicurio>2.4.1.Final</version.apicurio>
-    <version.apicurio.model>2.3.1.Final</version.apicurio.model>
+    <version.apicurio.model>1.1.0</version.apicurio.model>
     <version.fixture5>0.1.0</version.fixture5>
 
     <product.build>false</product.build>
@@ -107,6 +107,10 @@
     <database.mongo.dbz.login.dbname>admin</database.mongo.dbz.login.dbname>
     <database.mongo.docker.desktop.ports>27017:27117</database.mongo.docker.desktop.ports>
     <database.mongo.docker.replica.size>1</database.mongo.docker.replica.size>
+
+    <!--Mongodb sharded configuration-->
+    <database.mongo.use.keyfile>true</database.mongo.use.keyfile>
+
 
     <!--DB2 configuration -->
     <database.db2.port>50000</database.db2.port>
@@ -410,6 +414,12 @@
       <groupId>org.testcontainers</groupId>
       <artifactId>oracle-xe</artifactId>
     </dependency>
+
+    <dependency>
+      <groupId>org.freemarker</groupId>
+      <artifactId>freemarker</artifactId>
+      <version>2.3.32</version>
+    </dependency>
   </dependencies>
 
   <profiles>
@@ -549,6 +559,9 @@
                 <test.database.mongo.dbz.login.dbname>${database.mongo.dbz.login.dbname}</test.database.mongo.dbz.login.dbname>
                 <test.database.mongo.docker.desktop.ports>${database.mongo.docker.desktop.ports}</test.database.mongo.docker.desktop.ports>
                 <test.database.mongo.docker.replica.size>${database.mongo.docker.replica.size}</test.database.mongo.docker.replica.size>
+
+                <!--Mongo sharded configuration-->
+                <test.database.mongo.use.keyfile>${database.mongo.use.keyfile}</test.database.mongo.use.keyfile>
 
                 <!--DB2 configuration-->
                 <test.database.db2.host>${database.db2.host}</test.database.db2.host>

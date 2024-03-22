@@ -31,7 +31,6 @@ import org.junit.BeforeClass;
 
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
@@ -280,7 +279,7 @@ public abstract class AbstractMongoConnectorIT extends AbstractConnectorTest {
     }
 
     protected MongoClient connect() {
-        return MongoClients.create(mongo.getConnectionString());
+        return TestHelper.connect(mongo);
     }
 
     private static boolean collectionExists(MongoDatabase database, String collectionName) {

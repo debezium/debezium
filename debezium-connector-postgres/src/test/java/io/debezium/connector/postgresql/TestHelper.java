@@ -262,18 +262,26 @@ public final class TestHelper {
     }
 
     public static JdbcConfiguration defaultJdbcConfig(String hostname, int port) {
+        return defaultJdbcConfigBuilder(hostname, port)
+                .build();
+    }
+
+    public static JdbcConfiguration.Builder defaultJdbcConfigBuilder(String hostname, int port) {
         return JdbcConfiguration.copy(Configuration.fromSystemProperties("database."))
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "dbserver1")
                 .withDefault(JdbcConfiguration.DATABASE, "postgres")
                 .withDefault(JdbcConfiguration.HOSTNAME, hostname)
                 .withDefault(JdbcConfiguration.PORT, port)
                 .withDefault(JdbcConfiguration.USER, "postgres")
-                .withDefault(JdbcConfiguration.PASSWORD, "postgres")
-                .build();
+                .withDefault(JdbcConfiguration.PASSWORD, "postgres");
     }
 
     public static JdbcConfiguration defaultJdbcConfig() {
         return defaultJdbcConfig("localhost", 5432);
+    }
+
+    public static JdbcConfiguration.Builder defaultJdbcConfigBuilder() {
+        return defaultJdbcConfigBuilder("localhost", 5432);
     }
 
     public static Configuration.Builder defaultConfig() {

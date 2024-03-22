@@ -272,6 +272,16 @@ Here are the details of the _value_ of the last event (formatted for readability
         "type": "int64",
         "optional": true,
         "field": "ts_ms"
+      },
+      {
+        "type": "int64",
+        "optional": true,
+        "field": "ts_us"
+      },
+      {
+        "type": "int64",
+        "optional": true,
+        "field": "ts_ns"
       }
     ],
     "optional": false,
@@ -301,7 +311,9 @@ Here are the details of the _value_ of the last event (formatted for readability
       "table": "customers"
     },
     "op": "r",
-    "ts_ms": 1486500577691
+    "ts_ms": 1486500577691,
+    "ts_us": 1486500577691547,
+    "ts_ns": 1486500577691547930
   }
 }
 ----

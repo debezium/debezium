@@ -35,8 +35,7 @@ import io.debezium.rest.model.MetricsDescriptor;
 @Path(DebeziumMySqlConnectorResource.BASE_PATH)
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-public class DebeziumMySqlConnectorResource
-        implements SchemaResource, ConnectionValidationResource<MySqlConnector>, FilterValidationResource<MySqlConnector>, MetricsResource {
+public class DebeziumMySqlConnectorResource implements SchemaResource, ConnectionValidationResource, FilterValidationResource, MetricsResource {
 
     public static final String BASE_PATH = "/debezium/mysql";
     public static final String VERSION_ENDPOINT = "/version";

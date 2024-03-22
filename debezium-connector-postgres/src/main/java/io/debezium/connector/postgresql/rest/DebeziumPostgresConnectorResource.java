@@ -35,8 +35,7 @@ import io.debezium.rest.model.MetricsDescriptor;
 @Path(DebeziumPostgresConnectorResource.BASE_PATH)
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-public class DebeziumPostgresConnectorResource
-        implements SchemaResource, ConnectionValidationResource<PostgresConnector>, FilterValidationResource<PostgresConnector>, MetricsResource {
+public class DebeziumPostgresConnectorResource implements SchemaResource, ConnectionValidationResource, FilterValidationResource, MetricsResource {
 
     public static final String BASE_PATH = "/debezium/postgres";
     public static final String VERSION_ENDPOINT = "/version";

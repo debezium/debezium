@@ -56,6 +56,7 @@ import io.debezium.pipeline.spi.Partition;
 import io.debezium.pipeline.spi.SnapshotResult;
 import io.debezium.relational.RelationalDatabaseConnectorConfig.SnapshotTablesRowCountOrder;
 import io.debezium.schema.SchemaChangeEvent;
+import io.debezium.snapshot.SnapshotterService;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
 import io.debezium.util.ColumnUtils;
@@ -85,12 +86,14 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     protected final EventDispatcher<P, TableId> dispatcher;
     protected final Clock clock;
     private final SnapshotProgressListener<P> snapshotProgressListener;
+    protected final SnapshotterService snapshotterService;
     protected Queue<JdbcConnection> connectionPool;
 
     public RelationalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig connectorConfig,
                                                MainConnectionProvidingConnectionFactory<? extends JdbcConnection> jdbcConnectionFactory,
                                                RelationalDatabaseSchema schema, EventDispatcher<P, TableId> dispatcher, Clock clock,
-                                               SnapshotProgressListener<P> snapshotProgressListener, NotificationService<P, O> notificationService) {
+                                               SnapshotProgressListener<P> snapshotProgressListener, NotificationService<P, O> notificationService,
+                                               SnapshotterService snapshotterService) {
         super(connectorConfig, snapshotProgressListener, notificationService);
         this.connectorConfig = connectorConfig;
         this.jdbcConnection = jdbcConnectionFactory.mainConnection();
@@ -99,6 +102,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         this.dispatcher = dispatcher;
         this.clock = clock;
         this.snapshotProgressListener = snapshotProgressListener;
+        this.snapshotterService = snapshotterService;
     }
 
     @Override
@@ -509,16 +513,22 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         }
     }
 
-    private Callable<Void> createDataEventsForTableCallable(ChangeEventSourceContext sourceContext, RelationalSnapshotContext<P, O> snapshotContext,
-                                                            SnapshotReceiver<P> snapshotReceiver, Table table, boolean firstTable, boolean lastTable, int tableOrder,
-                                                            int tableCount, String selectStatement, OptionalLong rowCount, Queue<JdbcConnection> connectionPool,
-                                                            Queue<O> offsets) {
+    protected Callable<Void> createDataEventsForTableCallable(ChangeEventSourceContext sourceContext, RelationalSnapshotContext<P, O> snapshotContext,
+                                                              SnapshotReceiver<P> snapshotReceiver, Table table, boolean firstTable, boolean lastTable, int tableOrder,
+                                                              int tableCount, String selectStatement, OptionalLong rowCount, Queue<JdbcConnection> connectionPool,
+                                                              Queue<O> offsets) {
         return () -> {
             JdbcConnection connection = connectionPool.poll();
             O offset = offsets.poll();
             try {
                 doCreateDataEventsForTable(sourceContext, snapshotContext, offset, snapshotReceiver, table, firstTable, lastTable, tableOrder, tableCount,
                         selectStatement, rowCount, connection);
+            }
+            catch (SQLException e) {
+                notificationService.initialSnapshotNotificationService().notifyCompletedTableWithError(snapshotContext.partition,
+                        snapshotContext.offset,
+                        table.id().identifier());
+                throw new ConnectException("Snapshotting of table " + table.id() + " failed", e);
             }
             finally {
                 offsets.add(offset);
@@ -528,11 +538,11 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         };
     }
 
-    private void doCreateDataEventsForTable(ChangeEventSourceContext sourceContext, RelationalSnapshotContext<P, O> snapshotContext, O offset,
-                                            SnapshotReceiver<P> snapshotReceiver, Table table,
-                                            boolean firstTable, boolean lastTable, int tableOrder, int tableCount, String selectStatement, OptionalLong rowCount,
-                                            JdbcConnection jdbcConnection)
-            throws InterruptedException {
+    protected void doCreateDataEventsForTable(ChangeEventSourceContext sourceContext, RelationalSnapshotContext<P, O> snapshotContext, O offset,
+                                              SnapshotReceiver<P> snapshotReceiver, Table table,
+                                              boolean firstTable, boolean lastTable, int tableOrder, int tableCount, String selectStatement, OptionalLong rowCount,
+                                              JdbcConnection jdbcConnection)
+            throws InterruptedException, SQLException {
 
         if (!sourceContext.isRunning()) {
             throw new InterruptedException("Interrupted while snapshotting table " + table.id());
@@ -590,12 +600,6 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
             snapshotProgressListener.dataCollectionSnapshotCompleted(snapshotContext.partition, table.id(), rows);
             notificationService.initialSnapshotNotificationService().notifyCompletedTableSuccessfully(snapshotContext.partition,
                     snapshotContext.offset, table.id().identifier(), rows, snapshotContext.capturedTables);
-        }
-        catch (SQLException e) {
-            notificationService.initialSnapshotNotificationService().notifyCompletedTableWithError(snapshotContext.partition,
-                    snapshotContext.offset,
-                    table.id().identifier());
-            throw new ConnectException("Snapshotting of table " + table.id() + " failed", e);
         }
     }
 

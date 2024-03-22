@@ -21,11 +21,13 @@ import org.slf4j.LoggerFactory;
 import com.mongodb.MongoCommandException;
 import com.mongodb.client.MongoClients;
 
+import io.debezium.junit.Flaky;
 import io.debezium.testing.testcontainers.util.DockerUtils;
 
 /**
  * @see <a href="https://issues.redhat.com/browse/DBZ-5857">DBZ-5857</a>
  */
+@Flaky("DBZ-7507")
 public class MongoDbReplicaSetAuthTest {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbReplicaSetAuthTest.class);
@@ -75,6 +77,7 @@ public class MongoDbReplicaSetAuthTest {
     }
 
     @Test
+    @Flaky("DBZ-7507")
     public void testCluster() {
         var noAuthConnectionString = mongo.getNoAuthConnectionString();
         LOGGER.info("Connecting to cluster without credentials: {}", noAuthConnectionString);

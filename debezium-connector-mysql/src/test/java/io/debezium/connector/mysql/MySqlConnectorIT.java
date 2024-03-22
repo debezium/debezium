@@ -6,6 +6,7 @@
 package io.debezium.connector.mysql;
 
 import static io.debezium.connector.mysql.MySqlConnectorConfig.isBuiltInDatabase;
+import static io.debezium.data.Envelope.FieldName.AFTER;
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static junit.framework.TestCase.assertEquals;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -48,8 +49,8 @@ import io.debezium.connector.mysql.MySqlTestConnection.MySqlVersion;
 import io.debezium.converters.CloudEventsConverterTest;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.embedded.EmbeddedEngine.CompletionResult;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.TemporalPrecisionMode;
@@ -68,10 +69,13 @@ import io.debezium.util.Testing;
  * @author Randall Hauch
  */
 @SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 6, reason = "DDL uses fractional second data types, not supported until MySQL 5.6")
-public class MySqlConnectorIT extends AbstractConnectorTest {
+public class MySqlConnectorIT extends AbstractAsyncEngineConnectorTest {
 
     private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-connect.txt").toAbsolutePath();
     private final UniqueDatabase DATABASE = new UniqueDatabase("myServer1", "connector_test")
+            .withDbHistoryPath(SCHEMA_HISTORY_PATH);
+
+    private final UniqueDatabase DATABASE_CUSTOM_SNAPSHOT = new UniqueDatabase("myServer1", "custom_snapshot")
             .withDbHistoryPath(SCHEMA_HISTORY_PATH);
     private final UniqueDatabase RO_DATABASE = new UniqueDatabase("myServer2", "connector_test_ro", DATABASE)
             .withDbHistoryPath(SCHEMA_HISTORY_PATH);
@@ -87,6 +91,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     public void beforeEach() {
         stopConnector();
         DATABASE.createAndInitialize();
+        DATABASE_CUSTOM_SNAPSHOT.createAndInitialize();
         RO_DATABASE.createAndInitialize();
         initializeConnectorTestFramework();
         Testing.Files.delete(SCHEMA_HISTORY_PATH);
@@ -839,7 +844,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         final String tables = String.format("%s.customers", DATABASE.getDatabaseName(), DATABASE.getDatabaseName());
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, tables)
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                 .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
                 .build();
@@ -875,7 +880,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, "no_" + DATABASE.getDatabaseName())
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                 .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
                 .build();
@@ -899,7 +904,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         final String tables = String.format("%s.migration_test", DATABASE.getDatabaseName(), DATABASE.getDatabaseName());
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, tables)
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                 .build();
 
@@ -967,7 +972,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         final String tables = String.format("%s.customers", DATABASE.getDatabaseName(), DATABASE.getDatabaseName());
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, tables)
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                 .build();
 
@@ -1005,7 +1010,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         final String tables = String.format("%s.customers", DATABASE.getDatabaseName(), DATABASE.getDatabaseName());
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, tables)
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                 .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
                 .build();
@@ -1044,7 +1049,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         final String tables = String.format("%s.customers,%s.orders", DATABASE.getDatabaseName(), DATABASE.getDatabaseName());
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, tables)
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                 .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, ".*")
                 .build();
@@ -2407,7 +2412,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     public void shouldEmitNoEventsForSkippedCreateOperations() throws Exception {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NO_DATA)
                 .with(MySqlConnectorConfig.SKIPPED_OPERATIONS, "c")
                 .build();
 
@@ -2447,7 +2452,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     public void shouldEmitNoEventsForSkippedUpdateAndDeleteOperations() throws Exception {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NO_DATA)
                 .with(MySqlConnectorConfig.TOMBSTONES_ON_DELETE, false)
                 .with(MySqlConnectorConfig.SKIPPED_OPERATIONS, "u,d")
                 .build();
@@ -2496,12 +2501,81 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
+    public void shouldNotUseOffsetWhenSnapshotIsAlways() throws Exception {
+
+        try {
+            config = DATABASE.defaultConfig()
+                    .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.ALWAYS)
+                    .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("always_snapshot"))
+                    .with(MySqlConnectorConfig.SNAPSHOT_MODE_TABLES, DATABASE.qualifiedTableName("always_snapshot"))
+                    .with(MySqlConnectorConfig.STORE_ONLY_CAPTURED_TABLES_DDL, true)
+                    .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                    .build();
+
+            try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+                try (JdbcConnection connection = db.connect()) {
+                    connection.execute(String.format("CREATE TABLE %s.`always_snapshot` ("
+                            + " id INT(11) PRIMARY KEY NOT NULL AUTO_INCREMENT,"
+                            + " `data` VARCHAR(50) NOT NULL);", DATABASE.getDatabaseName()));
+
+                    connection.execute(String.format("INSERT INTO %s.`always_snapshot` VALUES (1,'Test1');", DATABASE.getDatabaseName()));
+                    connection.execute(String.format("INSERT INTO %s.`always_snapshot` VALUES (2,'Test2');", DATABASE.getDatabaseName()));
+                }
+            }
+
+            start(MySqlConnector.class, config);
+            waitForStreamingRunning(DATABASE.getServerName());
+
+            int expectedRecordCount = 2;
+            SourceRecords sourceRecords = consumeRecordsByTopic(expectedRecordCount);
+            assertThat(sourceRecords.recordsForTopic(DATABASE.topicForTable("always_snapshot"))).hasSize(expectedRecordCount);
+            Struct struct = (Struct) ((Struct) sourceRecords.allRecordsInOrder().get(0).value()).get(AFTER);
+            assertEquals(1, struct.get("id"));
+            assertEquals("Test1", struct.get("data"));
+            struct = (Struct) ((Struct) sourceRecords.allRecordsInOrder().get(1).value()).get(AFTER);
+            assertEquals(2, struct.get("id"));
+            assertEquals("Test2", struct.get("data"));
+
+            stopConnector();
+
+            try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+                try (JdbcConnection connection = db.connect()) {
+
+                    connection.execute(String.format("DELETE FROM %s.`always_snapshot` WHERE id=1;", DATABASE.getDatabaseName()));
+                    connection.execute(String.format("INSERT INTO %s.`always_snapshot` VALUES (3,'Test3');", DATABASE.getDatabaseName()));
+                }
+            }
+
+            start(MySqlConnector.class, config);
+            waitForStreamingRunning(DATABASE.getServerName());
+            sourceRecords = consumeRecordsByTopic(expectedRecordCount);
+
+            // Check we get up-to-date data in the snapshot.
+            assertThat(sourceRecords.recordsForTopic(DATABASE.topicForTable("always_snapshot"))).hasSize(expectedRecordCount);
+            struct = (Struct) ((Struct) sourceRecords.allRecordsInOrder().get(0).value()).get(AFTER);
+            assertEquals(2, struct.get("id"));
+            assertEquals("Test2", struct.get("data"));
+            struct = (Struct) ((Struct) sourceRecords.allRecordsInOrder().get(1).value()).get(AFTER);
+            assertEquals(3, struct.get("id"));
+            assertEquals("Test3", struct.get("data"));
+        }
+        finally {
+            try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+                try (JdbcConnection connection = db.connect()) {
+
+                    connection.execute(String.format("DROP TABLE %s.`always_snapshot` ", DATABASE.getDatabaseName()));
+                }
+            }
+        }
+    }
+
+    @Test
     @FixFor("DBZ-3949")
     public void testDmlInChangeEvents() throws Exception {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("products"))
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NO_DATA)
                 .with(MySqlConnectorConfig.EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE, CommonConnectorConfig.EventProcessingFailureHandlingMode.FAIL)
                 .build();
 
@@ -2557,7 +2631,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     public void shouldNotSendTombstonesWhenNotSupportedByHandler() throws Exception {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NO_DATA)
                 .with(MySqlConnectorConfig.SKIPPED_OPERATIONS, "c")
                 .build();
 
@@ -2589,7 +2663,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     public void shouldEmitTruncateOperation() throws Exception {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with(MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE, SnapshotLockingMode.NONE)
                 .with(MySqlConnectorConfig.SKIPPED_OPERATIONS, "none")
                 .build();

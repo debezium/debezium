@@ -70,7 +70,6 @@ import org.slf4j.LoggerFactory;
 import io.debezium.config.Configuration;
 import io.debezium.config.Instantiator;
 import io.debezium.data.VerifyRecord;
-import io.debezium.embedded.EmbeddedEngine.EmbeddedConfig;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.function.BooleanConsumer;
 import io.debezium.junit.SkipTestRule;
@@ -405,7 +404,7 @@ public abstract class AbstractConnectorTest implements Testing {
         };
 
         // Create the connector ...
-        EmbeddedEngine.Builder builder = new EmbeddedEngine.EngineBuilder();
+        DebeziumEngine.Builder builder = createEngineBuilder();
         builder.using(config.asProperties())
                 .notifying(getConsumer(isStopRecord, recordArrivedListener, ignoreRecordsAfterStop))
                 .using(this.getClass().getClassLoader())
@@ -414,7 +413,7 @@ public abstract class AbstractConnectorTest implements Testing {
         if (changeConsumer != null) {
             builder.notifying(changeConsumer);
         }
-        engine = new TestingEmbeddedEngine((EmbeddedEngine) builder.build());
+        engine = createEngine(builder);
 
         // Submit the connector for asynchronous execution ...
         assertThat(executor).isNull();
@@ -434,6 +433,14 @@ public abstract class AbstractConnectorTest implements Testing {
                 fail("Interrupted while waiting for engine startup");
             }
         }
+    }
+
+    protected DebeziumEngine.Builder createEngineBuilder() {
+        return new EmbeddedEngine.EngineBuilder();
+    }
+
+    protected TestingDebeziumEngine createEngine(DebeziumEngine.Builder builder) {
+        return new TestingEmbeddedEngine((EmbeddedEngine) builder.build());
     }
 
     protected Consumer<SourceRecord> getConsumer(Predicate<SourceRecord> isStopRecord, Consumer<SourceRecord> recordArrivedListener, boolean ignoreRecordsAfterStop) {
@@ -980,7 +987,14 @@ public abstract class AbstractConnectorTest implements Testing {
      * Assert that there are no records to consume.
      */
     protected void assertNoRecordsToConsume() {
-        assertThat(consumedLines.isEmpty()).isTrue();
+        try {
+            assertThat(consumedLines.isEmpty()).isTrue();
+        }
+        catch (org.junit.ComparisonFailure e) {
+            System.out.println("---Assert Expected No Records, Found These---");
+            consumedLines.forEach(System.out::println);
+            throw e;
+        }
     }
 
     /**
@@ -1156,7 +1170,7 @@ public abstract class AbstractConnectorTest implements Testing {
         Map<String, String> embeddedConfig = config.asMap(EmbeddedEngineConfig.ALL_FIELDS);
         embeddedConfig.put(WorkerConfig.KEY_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
         embeddedConfig.put(WorkerConfig.VALUE_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
-        WorkerConfig workerConfig = new EmbeddedConfig(embeddedConfig);
+        WorkerConfig workerConfig = new EmbeddedWorkerConfig(embeddedConfig);
 
         FileOffsetBackingStore offsetStore = KafkaConnectUtil.fileOffsetBackingStore();
         offsetStore.configure(workerConfig);
@@ -1188,7 +1202,7 @@ public abstract class AbstractConnectorTest implements Testing {
         Map<String, String> embeddedConfig = config.asMap(EmbeddedEngineConfig.ALL_FIELDS);
         embeddedConfig.put(WorkerConfig.KEY_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
         embeddedConfig.put(WorkerConfig.VALUE_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
-        WorkerConfig workerConfig = new EmbeddedConfig(embeddedConfig);
+        WorkerConfig workerConfig = new EmbeddedWorkerConfig(embeddedConfig);
 
         FileOffsetBackingStore offsetStore = KafkaConnectUtil.fileOffsetBackingStore();
         offsetStore.configure(workerConfig);
@@ -1206,6 +1220,13 @@ public abstract class AbstractConnectorTest implements Testing {
             latch.await(10, TimeUnit.SECONDS);
             offsetStore.stop();
         }
+    }
+
+    public void waitForEngineShutdown() {
+        Awaitility.await()
+                .pollInterval(200, TimeUnit.MILLISECONDS)
+                .atMost(waitTimeForEngine(), TimeUnit.SECONDS)
+                .until(() -> !isEngineRunning.get());
     }
 
     @SuppressWarnings("unchecked")
@@ -1249,6 +1270,10 @@ public abstract class AbstractConnectorTest implements Testing {
         assertThat(change.getInt64("total_order")).isEqualTo(expectedTotalOrder);
         assertThat(change.getInt64("data_collection_order")).isEqualTo(expectedCollectionOrder);
         assertThat(offset.get("transaction_id")).isEqualTo(expectedTxId);
+    }
+
+    public static int waitTimeForEngine() {
+        return Integer.parseInt(System.getProperty(TEST_PROPERTY_PREFIX + "engine.waittime", "5"));
     }
 
     public static int waitTimeForRecords() {

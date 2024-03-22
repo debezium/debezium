@@ -42,7 +42,7 @@ import io.debezium.data.KeyValueStore.Collection;
 import io.debezium.data.SchemaChangeHistory;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.SkipTestRule;
@@ -59,7 +59,7 @@ import io.debezium.util.Testing;
  *
  */
 @SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 6, reason = "DDL uses fractional second data types, not supported until MySQL 5.6")
-public class SnapshotSourceIT extends AbstractConnectorTest {
+public class SnapshotSourceIT extends AbstractAsyncEngineConnectorTest {
 
     private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-snapshot.txt").toAbsolutePath();
     protected final UniqueDatabase DATABASE = new UniqueDatabase("logical_server_name", "connector_test_ro")
@@ -145,7 +145,7 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
                     .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, storeOnlyCapturedTables);
         }
         if (!data) {
-            builder.with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY);
+            builder.with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA);
         }
         config = builder.build();
 
@@ -523,6 +523,12 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
         assertThat(after.get("c3")).isEqualTo(toMicroSeconds("-PT733H0M0.001S"));
         assertThat(after.get("c4")).isEqualTo(toMicroSeconds("-PT1H59M59.001S"));
         assertThat(after.get("c5")).isEqualTo(toMicroSeconds("-PT838H59M58.999999S"));
+        assertThat(after.get("c6")).isEqualTo(toMicroSeconds("-PT00H20M38.000000S"));
+        assertThat(after.get("c7")).isEqualTo(toMicroSeconds("-PT01H01M01.000001S"));
+        assertThat(after.get("c8")).isEqualTo(toMicroSeconds("-PT01H01M01.000000S"));
+        assertThat(after.get("c9")).isEqualTo(toMicroSeconds("-PT01H01M00.000000S"));
+        assertThat(after.get("c10")).isEqualTo(toMicroSeconds("-PT01H00M00.000000S"));
+        assertThat(after.get("c11")).isEqualTo(toMicroSeconds("-PT00H00M00.000000S"));
     }
 
     private String productsTableName() throws SQLException {
@@ -614,11 +620,17 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
         assertThat(after.get("c3")).isEqualTo(toMicroSeconds("-PT733H0M0.001S"));
         assertThat(after.get("c4")).isEqualTo(toMicroSeconds("-PT1H59M59.001S"));
         assertThat(after.get("c5")).isEqualTo(toMicroSeconds("-PT838H59M58.999999S"));
+        assertThat(after.get("c6")).isEqualTo(toMicroSeconds("-PT00H20M38.000000S"));
+        assertThat(after.get("c7")).isEqualTo(toMicroSeconds("-PT01H01M01.000001S"));
+        assertThat(after.get("c8")).isEqualTo(toMicroSeconds("-PT01H01M01.000000S"));
+        assertThat(after.get("c9")).isEqualTo(toMicroSeconds("-PT01H01M00.000000S"));
+        assertThat(after.get("c10")).isEqualTo(toMicroSeconds("-PT01H00M00.000000S"));
+        assertThat(after.get("c11")).isEqualTo(toMicroSeconds("-PT00H00M00.000000S"));
     }
 
     @Test(expected = DebeziumException.class)
     public void shouldCreateSnapshotSchemaOnlyRecovery_exception() throws Exception {
-        config = simpleConfig().with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY_RECOVERY).build();
+        config = simpleConfig().with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.RECOVERY).build();
 
         // Start the connector ...
         AtomicReference<Throwable> exception = new AtomicReference<>();
@@ -649,7 +661,7 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
         assertThat(sourceRecords.allRecordsInOrder()).hasSize(recordCount);
         stopConnector();
 
-        builder.with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY_RECOVERY);
+        builder.with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.RECOVERY);
         config = builder.build();
         start(MySqlConnector.class, config);
 
@@ -823,7 +835,7 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
     @Test
     public void shouldCreateSnapshotSchemaOnly() throws Exception {
         config = simpleConfig()
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NO_DATA)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                 .with(Heartbeat.HEARTBEAT_INTERVAL, 300_000)
                 .build();

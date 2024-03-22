@@ -7,6 +7,7 @@ package io.debezium.connector.oracle.logminer;
 
 import static io.debezium.config.CommonConnectorConfig.SIGNAL_DATA_COLLECTION;
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOB_ENABLED;
+import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFFER_TYPE;
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_QUERY_FILTER_MODE;
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_USERNAME_EXCLUDE_LIST;
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_USERNAME_INCLUDE_LIST;
@@ -55,13 +56,14 @@ public class LogMinerQueryBuilderTest {
 
     private static final String LOG_MINER_QUERY_BASE = "SELECT SCN, SQL_REDO, OPERATION_CODE, TIMESTAMP, " +
             "XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, USERNAME, ROW_ID, ROLLBACK, RS_ID, STATUS, INFO, SSN, " +
-            "THREAD# FROM V$LOGMNR_CONTENTS " +
+            "THREAD#, DATA_OBJ#, DATA_OBJV#, DATA_OBJD# FROM V$LOGMNR_CONTENTS " +
             "WHERE SCN > ? AND SCN <= ?";
 
     private static final String PDB_PREDICATE = "SRC_CON_NAME = '${pdbName}'";
 
     private static final String OPERATION_CODES_LOB_ENABLED = "1,2,3,6,7,9,10,11,29,34,36,68,70,71,255";
-    private static final String OPERATION_CODES_LOB_DISABLED = "1,2,3,6,7,34,36,255";
+    private static final String OPERATION_CODES_LOB_DISABLED = "1,2,3,7,34,36,255";
+    private static final String OPERATION_CODES_LOB_DISABLED_AND_PERSISTENT_BUFFER = "1,2,3,6,7,34,36,255";
 
     private static final String OPERATION_CODES_PREDICATE = "(OPERATION_CODE IN (${operationCodes})${operationDdl})";
 
@@ -84,6 +86,24 @@ public class LogMinerQueryBuilderTest {
     @FixFor("DBZ-5648")
     public void testLogMinerQueryWithLobDisabled() {
         Configuration config = TestHelper.defaultConfig().build();
+        OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
+
+        String result = LogMinerQueryBuilder.build(connectorConfig);
+        assertThat(result).isEqualTo(getQueryFromTemplate(connectorConfig));
+
+        config = TestHelper.defaultConfig().with(PDB_NAME, "").build();
+        connectorConfig = new OracleConnectorConfig(config);
+
+        result = LogMinerQueryBuilder.build(connectorConfig);
+        assertThat(result).isEqualTo(getQueryFromTemplate(connectorConfig));
+    }
+
+    @Test
+    @FixFor("DBZ-7473")
+    public void testLogMinerQueryWithLobDisabledAndPersistentBuffer() {
+        Configuration config = TestHelper.defaultConfig()
+                .with(LOG_MINING_BUFFER_TYPE, OracleConnectorConfig.LogMiningBufferType.INFINISPAN_EMBEDDED)
+                .build();
         OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
 
         String result = LogMinerQueryBuilder.build(connectorConfig);
@@ -191,7 +211,10 @@ public class LogMinerQueryBuilderTest {
     }
 
     private String getOperationCodePredicate(OracleConnectorConfig config) {
-        final String codes = config.isLobEnabled() ? OPERATION_CODES_LOB_ENABLED : OPERATION_CODES_LOB_DISABLED;
+        final String codes = config.isLobEnabled() ? OPERATION_CODES_LOB_ENABLED
+                : (config.getLogMiningBufferType() == OracleConnectorConfig.LogMiningBufferType.MEMORY)
+                        ? OPERATION_CODES_LOB_DISABLED
+                        : OPERATION_CODES_LOB_DISABLED_AND_PERSISTENT_BUFFER;
         final String predicate = OPERATION_CODES_PREDICATE.replace("${operationCodes}", codes);
         return predicate.replace("${operationDdl}", config.storeOnlyCapturedTables() ? getOperationDdlPredicate() : "");
     }

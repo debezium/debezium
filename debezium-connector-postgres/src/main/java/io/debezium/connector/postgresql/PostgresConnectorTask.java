@@ -30,9 +30,8 @@ import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.PostgresConnection.PostgresValueConverterBuilder;
 import io.debezium.connector.postgresql.connection.PostgresDefaultValueConverter;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
+import io.debezium.connector.postgresql.snapshot.PostgresSnapshotLockProvider;
 import io.debezium.connector.postgresql.snapshot.PostgresSnapshotterServiceProvider;
-import io.debezium.connector.postgresql.snapshot.SnapshotLockProvider;
-import io.debezium.connector.postgresql.snapshot.SnapshotQueryProvider;
 import io.debezium.connector.postgresql.spi.SlotCreationResult;
 import io.debezium.connector.postgresql.spi.SlotState;
 import io.debezium.document.DocumentReader;
@@ -139,6 +138,8 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                     beanRegistryJdbcConnection.username(), e);
         }
 
+        validateAndLoadSchemaHistory(connectorConfig, jdbcConnection, previousOffsets, schema, snapshotter);
+
         LoggingContext.PreviousContext previousContext = taskContext.configureLoggingContext(CONTEXT_NAME);
         try {
             // Print out the server information
@@ -155,12 +156,9 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
 
             if (previousOffset == null) {
                 LOGGER.info("No previous offset found");
-                // if we have no initial offset, indicate that to Snapshotter by passing null
-                snapshotter.validate(false, false);
             }
             else {
                 LOGGER.info("Found previous offset {}", previousOffset);
-                snapshotter.validate(true, previousOffset.isSnapshotRunning());
             }
 
             SlotCreationResult slotCreatedInfo = null;
@@ -312,8 +310,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
     protected void registerServiceProviders(ServiceRegistry serviceRegistry) {
 
         super.registerServiceProviders(serviceRegistry);
-        serviceRegistry.registerServiceProvider(new SnapshotLockProvider());
-        serviceRegistry.registerServiceProvider(new SnapshotQueryProvider());
+        serviceRegistry.registerServiceProvider(new PostgresSnapshotLockProvider());
         serviceRegistry.registerServiceProvider(new PostgresSnapshotterServiceProvider());
     }
 
@@ -380,7 +377,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                 "SHOW wal_level",
                 connection.singleResultMapper(rs -> rs.getString("wal_level"), "Could not fetch wal_level"));
         if (!"logical".equals(walLevel)) {
-            // TODO here I don't have the snapshotter, it is not yet injected
+
             if (snapshotterService.getSnapshotter() != null && snapshotterService.getSnapshotter().shouldStream()) {
                 // Logical WAL_LEVEL is only necessary for CDC snapshotting
                 throw new SQLException("Postgres server wal_level property must be 'logical' but is: '" + walLevel + "'");

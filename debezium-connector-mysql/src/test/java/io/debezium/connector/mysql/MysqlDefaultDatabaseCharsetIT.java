@@ -18,10 +18,11 @@ import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.util.Testing;
 
-public class MysqlDefaultDatabaseCharsetIT extends AbstractConnectorTest {
+public class MysqlDefaultDatabaseCharsetIT extends AbstractAsyncEngineConnectorTest {
 
     private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-connect.txt").toAbsolutePath();
     private final UniqueDatabase DATABASE = new UniqueDatabase("myServer1", "db_default_charset", "utf8mb4")

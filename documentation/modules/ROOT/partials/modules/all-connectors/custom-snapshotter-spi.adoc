@@ -1,0 +1,149 @@
+For more advanced uses, you can fine-tune control of the snapshot by implementing one of the following interfaces:
+
+`io.debezium.snapshot.spi.Snapshotter`:: Controls whether the connector takes a snapshot.
+`io.debezium.snapshot.spi.SnapshotQuery`:: Controls how data is queried during a snapshot.
+`io.debezium.snapshot.spi.SnapshotLock`:: Controls whether the connector locks tables when taking a snapshot.
+
+
+[source,java,indent=0,subs="+attributes"]
+.io.debezium.snapshot.spi.Snapshotter interface. All built-in snapshot modes implement this interface.
+----
+/**
+ * {@link Snapshotter} is used to determine the following details about the snapshot process:
+ * <p>
+ * - Whether a snapshot occurs. <br>
+ * - Whether streaming continues during the snapshot. <br>
+ * - Whether the snapshot includes schema (if supported). <br>
+ * - Whether to snapshot data or schema following an error.
+ * <p>
+ * Although Debezium provides many default snapshot modes,
+ * to provide more advanced functionality, such as partial snapshots,
+ * you can customize implementation of the interface.
+ * For more information, see the documentation.
+ *
+ *
+ *
+ */
+@Incubating
+public interface Snapshotter extends Configurable {
+
+    /**
+     * @return the name of the snapshotter.
+     *
+     *
+     */
+    String name();
+
+    /**
+     * @param offsetExists is {@code true} when the connector has an offset context (i.e. restarted)
+     * @param snapshotInProgress is {@code true} when the connector is started, but a snapshot is already in progress
+     *
+     * @return {@code true} if the snapshotter should take a data snapshot
+     */
+    boolean shouldSnapshotData(boolean offsetExists, boolean snapshotInProgress);
+
+    /**
+     * @param offsetExists is {@code true} when the connector has an offset context (i.e. restarted)
+     * @param snapshotInProgress is {@code true} when the connector is started, but a snapshot is already in progress
+     *
+     * @return {@code true} if the snapshotter should take a schema snapshot
+     */
+    boolean shouldSnapshotSchema(boolean offsetExists, boolean snapshotInProgress);
+
+    /**
+     * @return {@code true} if the snapshotter should stream after taking a snapshot
+     */
+    boolean shouldStream();
+
+    /**
+     * @return {@code true} whether the schema can be recovered if database schema history is corrupted.
+     */
+    boolean shouldSnapshotOnSchemaError();
+
+    /**
+     * @return {@code true} whether the snapshot should be re-executed when there is a gap in data stream.
+     */
+    boolean shouldSnapshotOnDataError();
+
+    /**
+     *
+     * @return {@code true} if streaming should resume from the start of the snapshot
+     * transaction, or {@code false} for when a connector resumes and takes a snapshot,
+     * streaming should resume from where streaming previously left off.
+     */
+    default boolean shouldStreamEventsStartingFromSnapshot() {
+        return true;
+    }
+
+    /**
+     * Lifecycle hook called after the snapshot phase is successful.
+     */
+    default void snapshotCompleted() {
+        // no operation
+    }
+
+    /**
+     * Lifecycle hook called after the snapshot phase is aborted.
+     */
+    default void snapshotAborted() {
+        // no operation
+    }
+}
+----
+
+[source,java,indent=0,subs="+attributes"]
+.io.debezium.snapshot.spi.SnapshotQuery interface. All built-in snapshot query modes implement this interface.
+----
+/**
+ * {@link SnapshotQuery} is used to determine the query used during a data snapshot
+ *
+ * 
+ */
+public interface SnapshotQuery extends Configurable, Service {
+
+    /**
+     * @return the name of the snapshot lock.
+     *
+     *
+     */
+    String name();
+
+    /**
+     * Generate a valid query string for the specified table, or an empty {@link Optional}
+     * to skip snapshotting this table (but that table will still be streamed from)
+     *
+     * @param tableId the table to generate a query for
+     * @param snapshotSelectColumns the columns to be used in the snapshot select based on the column
+     *                              include/exclude filters
+     * @return a valid query string, or none to skip snapshotting this table
+     */
+    Optional<String> snapshotQuery(String tableId, List<String> snapshotSelectColumns);
+
+}
+----
+
+[source,java,indent=0,subs="+attributes"]
+.io.debezium.snapshot.spi.SnapshotLock interface. All built-in snapshot lock modes implement this interface.
+----
+/**
+ * {@link SnapshotLock} is used to determine the table lock mode used during schema snapshot
+ *
+ *
+ */
+public interface SnapshotLock extends Configurable, Service {
+
+    /**
+     * @return the name of the snapshot lock.
+     *
+     *
+     */
+    String name();
+
+    /**
+     * Returns a SQL statement for locking the given tables during snapshotting, if required by the specific snapshotter
+     * implementation.
+     */
+    Optional<String> tableLockingStatement(Duration lockTimeout, Set<String> tableIds);
+
+}
+----

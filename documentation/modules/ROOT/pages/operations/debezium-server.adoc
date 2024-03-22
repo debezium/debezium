@@ -379,7 +379,7 @@ By default the output is in JSON format but an arbitrary implementation of Kafka
 
 |[[debezium-format-key]]<<debezium-format-key, `debezium.format.key`>>
 |`json`
-|The name of the output format for key, one of `json`/`jsonbytearray`/`avro`/`protobuf`.
+|The name of the output format for key, one of `json`/`jsonbytearray`/`avro`/`protobuf`/`simplestring`/`binary`.
 
 |[[debezium-format-key-props]]<<debezium-format-key-props, `debezium.format.key.*`>>
 |
@@ -387,7 +387,7 @@ By default the output is in JSON format but an arbitrary implementation of Kafka
 
 |[[debezium-format-value]]<<debezium-format-value, `debezium.format.value`>>
 |`json`
-|The name of the output format for value, one of `json`/`jsonbytearray`/`avro`/`protobuf`/`cloudevents`.
+|The name of the output format for value, one of `json`/`jsonbytearray`/`avro`/`protobuf`/`cloudevents`/`simplestring`/`binary`.
 
 |[[debezium-format-value-props]]<<debezium-format-value-props, `debezium.format.value.*`>>
 |
@@ -620,15 +620,15 @@ This is not supported by Pub/Sub so a surrogate key must be used.
 |`10000000L`
 |Once the number of bytes in the batched request reaches this threshold, send all of the messages in a single call, even if neither the delay or message count thresholds have been exceeded yet.
 
-|[[flowControl-enabled]]<<flowControl-enabled, `debezium.sink.pubsub.flowControl.enabled`>>
+|[[flowcontrol-enabled]]<<flowcontrol-enabled, `debezium.sink.pubsub.flowcontrol.enabled`>>
 |`false`
 |When enabled, configures your publisher client with flow control to limit the rate of publish requests.
 
-|[[flowControl-max-outstanding-messages]]<<flowControl-max-outstanding-messages, `debezium.sink.pubsub.flowControl.max.outstanding.messages`>>
+|[[flowcontrol-max-outstanding-messages]]<<flowcontrol-max-outstanding-messages, `debezium.sink.pubsub.flowcontrol.max.outstanding.messages`>>
 |`Long.MAX_VALUE`
 |(Optional) If flow control enabled, the maxmium number of messages before messages are blocked from being published
 
-|[[flowControl-max-outstanding-bytes]]<<flowControl-max-outstanding-bytes, `debezium.sink.pubsub.flowControl.max.outstanding.bytes`>>
+|[[flowcontrol-max-outstanding-bytes]]<<flowcontrol-max-outstanding-bytes, `debezium.sink.pubsub.flowcontrol.max.outstanding.bytes`>>
 |`Long.MAX_VALUE`
 |(Optional) If flow control enabled, the maxmium number of bytes before messages are blocked from being published
 

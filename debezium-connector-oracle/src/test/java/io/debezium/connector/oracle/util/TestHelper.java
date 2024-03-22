@@ -31,9 +31,11 @@ import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleConnectorConfig.ConnectorAdapter;
 import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningBufferType;
+import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningStrategy;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.processor.infinispan.CacheProvider;
 import io.debezium.connector.oracle.rest.DebeziumOracleConnectorResourceIT;
+import io.debezium.embedded.async.AsyncEmbeddedEngine;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.storage.file.history.FileSchemaHistory;
 import io.debezium.storage.kafka.history.KafkaSchemaHistory;
@@ -193,7 +195,8 @@ public class TestHelper {
         return builder.with(CommonConnectorConfig.TOPIC_PREFIX, SERVER_NAME)
                 .with(OracleConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
                 .with(FileSchemaHistory.FILE_PATH, SCHEMA_HISTORY_PATH)
-                .with(OracleConnectorConfig.INCLUDE_SCHEMA_CHANGES, false);
+                .with(OracleConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .with(AsyncEmbeddedEngine.TASK_MANAGEMENT_TIMEOUT_MS, 90_000);
     }
 
     /**
@@ -534,6 +537,17 @@ public class TestHelper {
     public static ConnectorAdapter adapter() {
         final String s = System.getProperty(OracleConnectorConfig.CONNECTOR_ADAPTER.name());
         return (s == null || s.length() == 0) ? ConnectorAdapter.LOG_MINER : ConnectorAdapter.parse(s);
+    }
+
+    public static LogMiningStrategy logMiningStrategy() {
+        if (ConnectorAdapter.LOG_MINER.equals(adapter())) {
+            // This won't catch all use cases where the user overrides the default configuration in the test
+            // itself but generally this should be satisfactory for marker annotations based on static or
+            // CLI provided configurations.
+            Configuration configuration = TestHelper.defaultConfig().build();
+            return LogMiningStrategy.parse(configuration.getString(OracleConnectorConfig.LOG_MINING_STRATEGY));
+        }
+        return null;
     }
 
     /**

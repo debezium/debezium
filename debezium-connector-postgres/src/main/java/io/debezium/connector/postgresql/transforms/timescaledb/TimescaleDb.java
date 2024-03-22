@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.connect.components.Versioned;
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.header.Headers;
@@ -20,6 +21,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
+import io.debezium.connector.postgresql.Module;
 import io.debezium.connector.postgresql.SourceInfo;
 import io.debezium.data.Envelope;
 import io.debezium.relational.TableId;
@@ -37,7 +39,7 @@ import io.debezium.transforms.SmtManager;
  *
  * @param <R>
  */
-public class TimescaleDb<R extends ConnectRecord<R>> implements Transformation<R> {
+public class TimescaleDb<R extends ConnectRecord<R>> implements Transformation<R>, Versioned {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TimescaleDb.class);
 
@@ -148,6 +150,11 @@ public class TimescaleDb<R extends ConnectRecord<R>> implements Transformation<R
         catch (IOException e) {
             LOGGER.warn("Exception while closing the metadata manager", e);
         }
+    }
+
+    @Override
+    public String version() {
+        return Module.version();
     }
 
     @VisibleForTesting

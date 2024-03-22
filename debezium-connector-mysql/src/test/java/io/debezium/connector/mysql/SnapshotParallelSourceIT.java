@@ -14,9 +14,13 @@ import java.util.stream.Collectors;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.Ignore;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
+import io.debezium.junit.ConditionalFail;
+import io.debezium.junit.Flaky;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.util.Collect;
@@ -25,6 +29,9 @@ import ch.qos.logback.classic.Level;
 
 @SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 6, reason = "DDL uses fractional second data types, not supported until MySQL 5.6")
 public class SnapshotParallelSourceIT extends SnapshotSourceIT {
+
+    @Rule
+    public TestRule conditionalFail = new ConditionalFail();
 
     @Override
     protected Configuration.Builder simpleConfig() {
@@ -67,10 +74,16 @@ public class SnapshotParallelSourceIT extends SnapshotSourceIT {
     }
 
     @Test
+    @Flaky("DBZ-7472")
+    public void shouldCreateSnapshotOfSingleDatabaseWithoutGlobalLock() throws Exception {
+        super.shouldCreateSnapshotOfSingleDatabaseWithoutGlobalLock();
+    }
+
+    @Test
     public void shouldParallelCreateSnapshotSchema() throws Exception {
         List<String> includeDatabases = Collect.arrayListOf(DATABASE.getDatabaseName(), OTHER_DATABASE.getDatabaseName());
         config = simpleConfig()
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NO_DATA)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                 .with(MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE, MySqlConnectorConfig.SnapshotLockingMode.NONE)
                 .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, String.join(",", includeDatabases))

@@ -22,7 +22,7 @@ import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.data.Envelope;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.util.Testing;
 
@@ -34,7 +34,7 @@ import mil.nga.wkb.io.WkbGeometryReader;
  * @author Omar Al-Safi
  */
 @SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 6, reason = "Function ST_GeomFromText not added until MySQL 5.6")
-public class MySqlGeometryIT extends AbstractConnectorTest {
+public class MySqlGeometryIT extends AbstractAsyncEngineConnectorTest {
 
     private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-json.txt")
             .toAbsolutePath();

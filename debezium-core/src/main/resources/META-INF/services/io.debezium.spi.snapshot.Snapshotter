@@ -1,0 +1,8 @@
+io.debezium.snapshot.mode.AlwaysSnapshotter
+io.debezium.snapshot.mode.InitialSnapshotter
+io.debezium.snapshot.mode.InitialOnlySnapshotter
+io.debezium.snapshot.mode.NoDataSnapshotter
+io.debezium.snapshot.mode.RecoverySnapshotter
+io.debezium.snapshot.mode.WhenNeededSnapshotter
+io.debezium.snapshot.mode.NeverSnapshotter
+io.debezium.snapshot.mode.SchemaOnlySnapshotter

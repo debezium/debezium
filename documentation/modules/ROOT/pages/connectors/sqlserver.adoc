@@ -134,6 +134,7 @@ You can find more information about snapshots in the following sections:
 * xref:debezium-sqlserver-incremental-snapshots[]
 endif::product[]
 
+[[default-workflow-for-performing-an-initial-snapshot]]
 .Default workflow that the {prodname} SQL Server connector uses to perform an initial snapshot
 
 The following workflow lists the steps that {prodname} takes to create a snapshot.
@@ -188,6 +189,55 @@ After the snapshot process begins, if the process is interrupted due to connecto
 After the connector completes the initial snapshot, it continues streaming from the position that it read in Step 4 so that it does not miss any updates.
 
 If the connector stops again for any reason, after it restarts, it resumes streaming changes from where it previously left off.
+
+[id="sqlserver-connector-snapshot-mode-options"]
+.Settings for `snapshot.mode` connector configuration property
+[cols="30%a,70%a",options="header"]
+|===
+|Setting |Description
+
+|`always`
+|Perform snapshot on each connector start.
+After the snapshot completes, the connector begins to stream event records for subsequent database changes.
+
+|`initial`
+|The connector performs a database snapshot as described in the xref:default-workflow-for-performing-an-initial-snapshot[default workflow for creating an initial snapshot].
+After the snapshot completes, the connector begins to stream event records for subsequent database changes.
+
+|`initial_only`
+|The connector performs a database snapshot and stops before streaming any change event records, not allowing any subsequent change events to be captured.
+
+|`schema_only`
+|Deprecated, see `no_data`.
+
+|`no_data`
+|The connector captures the structure of all relevant tables, performing all the steps described in the xref:default-workflow-for-performing-an-initial-snapshot[default snapshot workflow], except that it does not create `READ` events to represent the data set at the point of the connector's start-up (Step 7.b).
+
+|`recovery`
+|Set this option to restore a database schema history topic that is lost or corrupted.
+After a restart, the connector runs a snapshot that rebuilds the topic from the source tables.
+You can also set the property to periodically prune a database schema history topic that experiences unexpected growth. +
++
+WARNING: Do not use this mode to perform a snapshot if schema changes were committed to the database after the last connector shutdown.
+
+|`when_needed`
+|After the connector starts, it performs a snapshot only if it detects one of the following circumstances:
+
+* It cannot detect any topic offsets.
+* A previously recorded offset specifies a log position that is not available on the server.
+
+ifdef::community[]
+|`custom`
+|The `custom` snapshot mode lets you inject your own implementation of the `io.debezium.spi.snapshot.Snapshotter` interface.
+Set the `snapshot.mode.custom.name` configuration property to the name provided by the `name()` method of your implementation.
+The name is specified on the classpath of your Kafka Connect cluster.
+If you use the {prodname} `EmbeddedEngine`, the name is included in the connector JAR file.
+For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
+endif::community[]
+
+|===
+
+For more information, see xref:sqlserver-property-snapshot-mode[`snapshot.mode`] in the table of connector configuration properties.
 
 // ModuleID: sqlserver-description-of-why-initial-snapshots-capture-the-schema-history-for-all-tables
 // Title: Description of why initial snapshots capture the schema history for all tables
@@ -389,9 +439,15 @@ include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snaps
 
 include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot-kafka.adoc[leveloffset=+1]
 
+ifdef::community[]
+[[connector-custom-snapshot]]
+=== Custom snapshotter SPI
+include::{partialsdir}/modules/all-connectors/custom-snapshotter-spi.adoc[leveloffset=+3]
+endif::community[]
+
 // Type: concept
 [id="sqlserver-blocking-snapshots"]
-==== Blocking snapshots
+=== Blocking snapshots
 
 include::{partialsdir}/modules/all-connectors/con-connector-blocking-snapshot.adoc[leveloffset=+3]
 
@@ -1050,6 +1106,16 @@ The following example shows the value portion of a change event that the connect
             "field": "ts_ms"
           },
           {
+            "type": "int64",
+            "optional": false,
+            "field": "ts_us"
+          },
+          {
+            "type": "int64",
+            "optional": false,
+            "field": "ts_ns"
+          },
+          {
             "type": "boolean",
             "optional": true,
             "default": false,
@@ -1099,6 +1165,16 @@ The following example shows the value portion of a change event that the connect
         "type": "int64",
         "optional": true,
         "field": "ts_ms"
+      },
+      {
+        "type": "int64",
+        "optional": true,
+        "field": "ts_us"
+      },
+      {
+        "type": "int64",
+        "optional": true,
+        "field": "ts_ns"
       }
     ],
     "optional": false,
@@ -1117,6 +1193,8 @@ The following example shows the value portion of a change event that the connect
       "connector": "sqlserver",
       "name": "server1",
       "ts_ms": 1559729468470,
+      "ts_us": 1559729468470000,
+      "ts_ns": 1559729468470000000,
       "snapshot": false,
       "db": "testDB",
       "schema": "dbo",
@@ -1126,7 +1204,9 @@ The following example shows the value portion of a change event that the connect
       "event_serial_no": "1"
     },
     "op": "c", // <9>
-    "ts_ms": 1559729471739 // <10>
+    "ts_ms": 1559729471739, // <10>
+    "ts_ms": 1559729471739876, // <10>
+    "ts_ms": 1559729471739876149 // <10>
   }
 }
 ----
@@ -1195,7 +1275,7 @@ a|Mandatory string that describes the type of operation that caused the connecto
 * `r` = read (applies to only snapshots)
 
 |10
-|`ts_ms`
+|`ts_ms`, `ts_us`, `ts_ns`
 a| Optional field that displays the time at which the connector processed the event.
 In the event message envelope, the time is based on the system clock in the JVM running the Kafka Connect task. +
  +
@@ -1231,6 +1311,8 @@ The value of a change event for an update in the sample `customers` table has th
       "connector": "sqlserver",
       "name": "server1",
       "ts_ms": 1559729995937,
+      "ts_us": 1559729995937000,
+      "ts_ns": 1559729995937000000,
       "snapshot": false,
       "db": "testDB",
       "schema": "dbo",
@@ -1240,7 +1322,9 @@ The value of a change event for an update in the sample `customers` table has th
       "event_serial_no": "2"
     },
     "op": "u", // <4>
-    "ts_ms": 1559729998706  // <5>
+    "ts_ms": 1559729998706,  // <5>
+    "ts_us": 1559729998706318,  // <5>
+    "ts_ns": 1559729998706318547  // <5>
   }
 }
 ----
@@ -1283,7 +1367,7 @@ Both operations share the same commit and change LSN and their event numbers are
 a|Mandatory string that describes the type of operation. In an _update_ event value, the `op` field value is `u`, signifying that this row changed because of an update.
 
 |5
-|`ts_ms`
+|`ts_ms`, `ts_us`, `ts_ns`
 a| Optional field that displays the time at which the connector processed the event.
 In the event message envelope, the time is based on the system clock in the JVM running the Kafka Connect task. +
  +
@@ -1320,6 +1404,8 @@ The value in a _delete_ change event has the same `schema` portion as _create_ a
       "connector": "sqlserver",
       "name": "server1",
       "ts_ms": 1559730445243,
+      "ts_us": 1559730445243000,
+      "ts_ns": 1559730445243000000,
       "snapshot": false,
       "db": "testDB",
       "schema": "dbo",
@@ -1329,7 +1415,9 @@ The value in a _delete_ change event has the same `schema` portion as _create_ a
       "event_serial_no": "1"
     },
     "op": "d", <4>
-    "ts_ms": 1559730450205 <5>
+    "ts_ms": 1559730450205, <5>
+    "ts_us": 1559730450205387, <5>
+    "ts_ns": 1559730450205387492  <5>
   }
 }
 ----
@@ -1364,7 +1452,7 @@ a|Mandatory field that describes the source metadata for the event. In a _delete
 a|Mandatory string that describes the type of operation. The `op` field value is `d`, signifying that this row was deleted.
 
 |5
-|`ts_ms`
+|`ts_ms`, `ts_us`, `ts_ns`
 a| Optional field that displays the time at which the connector processed the event.
 In the event message envelope, the time is based on the system clock in the JVM running the Kafka Connect task. +
  +
@@ -1472,6 +1560,8 @@ The following example shows what a typical message looks like:
   },
   "op": "c",
   "ts_ms": "1580390884335",
+  "ts_us": "1580390884335172",
+  "ts_ns": "1580390884335172574",
   "transaction": {
     "id": "00000025:00000d08:0025",
     "total_order": "1",
@@ -2095,10 +2185,10 @@ You then need to create the following custom resources (CRs):
 
 .Prerequisites
 
-* SQL Server is running and you completed the steps to {LinkDebeziumUserGuide}#setting-up-sql-server-for-use-with-the-debezium-sql-server-connector[set up SQL Server to work with a {prodname} connector].
+* SQL Server is running and you completed the steps to xref:setting-up-sql-server-for-use-with-the-debezium-sql-server-connector[set up SQL Server to work with a {prodname} connector].
 
 * {StreamsName} is deployed on OpenShift and is running Apache Kafka and Kafka Connect.
-  For more information, see link:{LinkDeployStreamsOpenShift}[{NameDeployStreamsOpenShift}]
+  For more information, see link:{LinkDeployManageStreamsOpenShift}[{NameDeployManageStreamsOpenShift}]
 
 * Podman or Docker is installed.
 
@@ -2759,9 +2849,89 @@ For example, +
 Once the snapshot is complete, the connector will continue reading change events from the database's redo logs.
 The following values are supported:
 
-* `initial`: Takes a snapshot of structure and data of captured tables; useful if topics should be populated with a complete representation of the data from the captured tables. +
-* `initial_only`: Takes a snapshot of structure and data like `initial` but instead does not transition into streaming changes once the snapshot has completed. +
-* `schema_only`: Takes a snapshot of the structure of captured tables only; useful if only changes happening from now onwards should be propagated to topics.
+`always`:: Perform snapshot on each connector start.
+After the snapshot completes, the connector begins to stream event records for subsequent database changes.
+
+`initial`:: The connector performs a database snapshot as described in the xref:default-workflow-for-performing-an-initial-snapshot[default workflow for creating an initial snapshot].
+After the snapshot completes, the connector begins to stream event records for subsequent database changes.
+
+`initial_only`:: The connector performs a database snapshot and stops before streaming any change event records, not allowing any subsequent change events to be captured.
+
+`schema_only`:: Deprecated, see `no_data`.
+
+`no_data`:: The connector captures the structure of all relevant tables, performing all the steps described in the xref:default-workflow-for-performing-an-initial-snapshot[default snapshot workflow], except that it does not create `READ` events to represent the data set at the point of the connector's start-up (Step 7.b).
+
+`recovery`:: Set this option to restore a database schema history topic that is lost or corrupted.
+After a restart, the connector runs a snapshot that rebuilds the topic from the source tables.
+You can also set the property to periodically prune a database schema history topic that experiences unexpected growth. +
++
+WARNING: Do not use this mode to perform a snapshot if schema changes were committed to the database after the last connector shutdown.
+
+`when_needed`:: After the connector starts, it performs a snapshot only if it detects one of the following circumstances:
+
+* It cannot detect any topic offsets.
+* A previously recorded offset specifies a log position that is not available on the server.
+
+ifdef::community[]
+`custom`:: The `custom` snapshot mode lets you inject your own implementation of the `io.debezium.spi.snapshot.Snapshotter` interface.
+Set the `snapshot.mode.custom.name` configuration property to the name provided by the `name()` method of your implementation.
+
+For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
+endif::community[]
+
+ifdef::community[]
+|[[sqlserver-property-snapshot-mode-custom-name]]<<sqlserver-property-snapshot-mode-custom-name, `+snapshot.mode.custom.name+`>>
+|No default
+|If `snapshot.mode` is set to `custom`, use this setting to specify the name of the custom implementation that is provided in the `name()` method that is defined in the 'io.debezium.spi.snapshot.Snapshotter' interface.
+After a connector restart, {prodname} calls the specified custom implementation to determine whether to perform a snapshot.
+For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
+endif::community[]
+
+|[[sqlserver-property-snapshot-locking-mode]]<<sqlserver-property-snapshot-locking-mode, `+snapshot.locking.mode+`>>
+|_exclusive_
+a|Controls whether and for how long the connector holds a table lock. Table locks prevent certain types of changes table operations from occurring while the connector performs a snapshot.
+You can set the following values:
+
+`exclusive`:: Controls how the connector holds locks on tables while performing the schema snapshot when `snapshot.isolation.mode` is `REPEATABLE_READ` or `EXCLUSIVE`. +
+The connector will hold a table lock for exclusive table access for just the initial portion of the snapshot
+while the database schemas and other metadata are being read. The remaining work in a snapshot involves selecting all rows from
+each table, and this is done using a flashback query that requires no locks. However, in some cases it may be desirable to avoid
+locks entirely which can be done by specifying `none`. This mode is only safe to use if no schema changes are happening while the
+snapshot is taken.
+
+`none`:: Prevents the connector from acquiring any table locks during the snapshot.
+Use this setting only if no schema changes might occur during the creation of the snapshot.
+
+ifdef::community[]
+`custom`:: The connector performs a snapshot according to the implementation specified by the xref:sqlserver-property-snapshot-locking-mode-custom-name[`snapshot.locking.mode.custom.name`] property, which is a custom implementation of the `io.debezium.spi.snapshot.SnapshotLock` interface.
+endif::community[]
+
+ifdef::community[]
+|[[sqlserver-property-snapshot-locking-mode-custom-name]]<<sqlserver-property-snapshot-locking-mode-custom-name, `+snapshot.locking.mode.custom.name+`>>
+|No default
+| When `snapshot.locking.mode` is set as `custom`, use this setting to specify the name of the custom implementation provided in the `name()` method that is defined by the 'io.debezium.spi.snapshot.SnapshotLock' interface.
+For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
+endif::community[]
+
+|[[sqlserver-property-snapshot-query-mode]]<<sqlserver-property-snapshot-query-mode, `+snapshot.query.mode+`>>
+|`select_all`
+|Specifies how the connector queries data while performing a snapshot. +
+Set one of the following options:
+
+`select_all`:: The connector performs a `select all` query by default, optionally adjusting the columns selected based on the column include and exclude list configurations.
+
+ifdef::community[]
+`custom`:: The connector performs a snapshot query according to the implementation specified by the xref:sqlserver-property-snapshot-snapshot-query-mode-custom-name[`snapshot.query.mode.custom.name`] property, which defines a custom implementation of the `io.debezium.spi.snapshot.SnapshotQuery` interface. +
+endif::community[]
+
+This setting enables you to manage snapshot content in a more flexible manner compared to using the xref:sqlserver-property-snapshot-select-statement-overrides[`snapshot.select.statement.overrides`] property.
+
+ifdef::community[]
+|[[sqlserver-property-snapshot-snapshot-query-mode-custom-name]]<<sqlserver-property-snapshot-query-mode-custom-name, `+snapshot.query.mode.custom.name+`>>
+|No default
+| When xref:sqlserver-property-snapshot-query-mode[`snapshot.query.mode`] is set to `custom`, use this setting to specify the name of the custom implementation provided in the `name()` method that is defined by the 'io.debezium.spi.snapshot.SnapshotQuery' interface.
+For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
+endif::community[]
 
 |[[sqlserver-property-snapshot-include-collection-list]]<<sqlserver-property-snapshot-include-collection-list, `+snapshot.include.collection.list+`>>
 | All tables specified in `table.include.list`
@@ -3033,7 +3203,16 @@ endif::product[]
 
 |[[sqlserver-property-errors-max-retires]]<<sqlserver-property-errors-max-retires, `errors.max.retries`>>
 |`-1`
-|The maximum number of retries on retriable errors (e.g. connection errors) before failing (-1 = no limit, 0 = disabled, > 0 = num of retries).
+|Specifies how the connector responds after an operation that results in a retriable error, such as a connection error. +
+Set one of the following options:
+
+`-1`:: No limit. The connector always restarts automatically, and retries the operation, regardless of the number of previous failures.
+
+`0`:: Disabled. The connector fails immediately, and never retries the operation.
+User intervention is required to restart the connector.
+
+`> 0`:: The connector restarts automatically until it reaches the specified maximum number of retries.
+After the next failure, the connector stops, and user intervention is required to restart it.
 
 |[[sqlserver-property-data-query-mode]]<<sqlserver-property-data-query-mode, `data.query.mode`>>
 |`function`

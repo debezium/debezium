@@ -46,12 +46,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.notification.channels.SinkNotificationChannel;
 import io.debezium.pipeline.notification.channels.jmx.JmxNotificationChannelMXBean;
 
-public abstract class AbstractNotificationsIT<T extends SourceConnector> extends AbstractConnectorTest {
+public abstract class AbstractNotificationsIT<T extends SourceConnector> extends AbstractAsyncEngineConnectorTest {
 
     protected abstract Class<T> connectorClass();
 
@@ -229,6 +229,7 @@ public abstract class AbstractNotificationsIT<T extends SourceConnector> extends
     }
 
     private void assertTableNotificationsSentToJmx(List<Notification> notifications, String tableName) {
+        // For debugging purposes
         Optional<Notification> tableNotification;
         tableNotification = notifications.stream()
                 .filter(v -> v.getType().equals("IN_PROGRESS") && v.getAdditionalData().containsValue(tableName))
@@ -250,6 +251,7 @@ public abstract class AbstractNotificationsIT<T extends SourceConnector> extends
     }
 
     private void assertTableNotificationsSentToTopic(List<SourceRecord> notifications, String tableName) {
+        // For debugging purposes
         Optional<Struct> tableNotification;
         tableNotification = notifications.stream()
                 .map(s -> ((Struct) s.value()))

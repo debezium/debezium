@@ -292,6 +292,49 @@ You can find more information about snapshots in the following sections:
 * xref:debezium-postgresql-incremental-snapshots[]
 endif::product[]
 
+[id="mongodb-connector-snapshot-mode-options"]
+.Settings for `snapshot.mode` connector configuration property
+[cols="30%a,70%a",options="header"]
+|===
+|Setting |Description
+
+|`always`
+|The connector performs a snapshot every time that it starts.
+After the snapshot completes, the connector begins to stream event records for subsequent database changes.
+
+|`initial`
+|The connector performs a database snapshot as described in the xref:default-workflow-for-performing-an-initial-snapshot[default workflow for creating an initial snapshot].
+After the snapshot completes, the connector begins to stream event records for subsequent database changes.
+
+|`initial_only`
+|The connector performs a database snapshot.
+After the snapshot completes, the connector stops, and does not stream event records for subsequent database changes.
+
+|`never`
+|Deprecated, see `no_data`.
+
+|`no_data`
+|The connector captures the structure of all relevant tables, performing all the steps described in the xref:default-workflow-for-performing-an-initial-snapshot[default snapshot workflow], except that it does not create `READ` events to represent the data set at the point of the connector's start-up (Step 7.b).
+
+|`when_needed`
+|After the connector starts, it performs a snapshot only if it detects one of the following circumstances:
+
+* It cannot detect any topic offsets.
+* A previously recorded offset specifies a log position that is not available on the server.
+
+ifdef::community[]
+|`custom`
+|The `custom` snapshot mode lets you inject your own implementation of the `io.debezium.spi.snapshot.Snapshotter` interface.
+Set the `snapshot.mode.custom.name` configuration property to the name provided by the `name()` method of your implementation.
+The name is specified on the classpath of your Kafka Connect cluster.
+If you use the {prodname} `EmbeddedEngine`, the name is included in the connector JAR file.
+For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
+endif::community[]
+
+|===
+
+For more information, see xref:mongodb-property-snapshot-mode[`snapshot.mode`] in the table of connector configuration properties.
+
 // Type: concept
 // ModuleID: debezium-mongodb-ad-hoc-snapshots
 [id="mongodb-ad-hoc-snapshots"]
@@ -314,17 +357,6 @@ Please consider using other types for the primary key when performing incrementa
 ====
 
 .Incremental snapshots for sharded clusters
-
-ifdef::product[]
-[IMPORTANT]
-====
-Incremental snapshots for sharded clusters is a Technology Preview feature for the {prodname} MongoDB connector.
-Technology Preview features are not supported with Red Hat production service-level agreements (SLAs) and might not be functionally complete;
-therefore, Red Hat does not recommend implementing any Technology Preview features in production environments.
-This Technology Preview feature provides early access to upcoming product innovations, enabling you to test functionality and provide feedback during the development process.
-For more information about support scope, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
-====
-endif::product[]
 
 To use incremental snapshots with sharded MongoDB clusters, you must set specific values for the following properties:
 
@@ -358,9 +390,15 @@ include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snaps
 ==== Using the Kafka signaling channel to stop an incremental snapshot
 include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot-kafka.adoc[leveloffset=+1]
 
+ifdef::community[]
+[[connector-custom-snapshot]]
+=== Custom snapshotter SPI
+include::{partialsdir}/modules/all-connectors/custom-snapshotter-spi.adoc[leveloffset=+3]
+endif::community[]
+
 // Type: concept
 [id="mongodb-blocking-snapshots"]
-==== Blocking snapshots
+=== Blocking snapshots
 
 include::{partialsdir}/modules/all-connectors/con-connector-blocking-snapshot.adoc[leveloffset=+3]
 
@@ -521,6 +559,8 @@ Following is an example of what a message looks like:
   },
   "op": "c",
   "ts_ms": "1580390884335",
+  "ts_us": "1580390884335486",
+  "ts_ns": "1580390884335486281",
   "transaction": {
     "id": "1462833718356672513",
     "total_order": "1",
@@ -769,6 +809,16 @@ The following example shows the value portion of a change event that the connect
               "field": "ts_ms"
             },
             {
+              "type": "int64",
+              "optional": false,
+              "field": "ts_us"
+            },
+            {
+              "type": "int64",
+              "optional": false,
+              "field": "ts_ns"
+            },
+            {
               "type": "boolean",
               "optional": true,
               "default": false,
@@ -813,6 +863,16 @@ The following example shows the value portion of a change event that the connect
           "type": "int64",
           "optional": true,
           "field": "ts_ms"
+        },
+        {
+          "type": "int64",
+          "optional": true,
+          "field": "ts_us"
+        },
+        {
+          "type": "int64",
+          "optional": true,
+          "field": "ts_ns"
         }
       ],
       "optional": false,
@@ -825,6 +885,8 @@ The following example shows the value portion of a change event that the connect
         "connector": "mongodb",
         "name": "fulfillment",
         "ts_ms": 1558965508000,
+        "ts_ms": 1558965508000000,
+        "ts_ms": 1558965508000000000,
         "snapshot": false,
         "db": "inventory",
         "rs": "rs0",
@@ -833,7 +895,9 @@ The following example shows the value portion of a change event that the connect
         "h": 1546547425148721999
       },
       "op": "c", // <8>
-      "ts_ms": 1558965515240 // <9>
+      "ts_ms": 1558965515240, // <9>
+      "ts_us": 1558965515240142, // <10>
+      "ts_ns": 1558965515240142879, // <11>
     }
   }
 ----
@@ -901,9 +965,20 @@ a|Mandatory string that describes the type of operation that caused the connecto
 
 |9
 |`ts_ms`
-a|Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.  +
+a|Optional field that displays the time at which the connector processed the event.
+The time is based on the system clock in the JVM running the Kafka Connect task.  +
  +
 In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
+
+|10
+|`ts_us`
+a|Optional field that displays the time at which the connector processed the event, in microseconds.
+The time is based on the system clock in the JVM running the Kafka Connect task.
+
+|9
+|`ts_ns`
+a|Optional field that displays the time at which the connector processed the event, in nanoseconds.
+The time is based on the system clock in the JVM running the Kafka Connect task.
 
 |===
 
@@ -933,6 +1008,8 @@ Here is an example of a change event value in an event that the connector genera
     "payload": {
       "op": "u", // <1>
       "ts_ms": 1465491461815, // <2>
+      "ts_us": 1465491461815698, // <2>
+      "ts_ns": 1465491461815698142, // <2>
       "before":"{\"_id\": {\"$numberLong\": \"1004\"},\"first_name\": \"unknown\",\"last_name\": \"Kretchmar\",\"email\": \"annek@noanswer.org\"}", // <3>
       "after":"{\"_id\": {\"$numberLong\": \"1004\"},\"first_name\": \"Anne Marie\",\"last_name\": \"Kretchmar\",\"email\": \"annek@noanswer.org\"}", // <4>
       "updateDescription": {
@@ -945,6 +1022,8 @@ Here is an example of a change event value in an event that the connector genera
         "connector": "mongodb",
         "name": "fulfillment",
         "ts_ms": 1558965508000,
+        "ts_us": 1558965508000000,
+        "ts_ns": 1558965508000000000,
         "snapshot": false,
         "db": "inventory",
         "rs": "rs0",
@@ -970,8 +1049,9 @@ Here is an example of a change event value in an event that the connector genera
 a|Mandatory string that describes the type of operation that caused the connector to generate the event. In this example, `u` indicates that the operation updated a document.
 
 |2
-|`ts_ms`
-a|Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.  +
+|`ts_ms`, `ts_us`, `ts_ns`
+a|Optional field that displays the time at which the connector processed the event.
+The time is based on the system clock in the JVM running the Kafka Connect task.  +
  +
 In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
 
@@ -1026,12 +1106,16 @@ The value in a _delete_ change event has the same `schema` portion as _create_ a
     "payload": {
       "op": "d", // <1>
       "ts_ms": 1465495462115, // <2>
+      "ts_us": 1465495462115748, // <2>
+      "ts_ns": 1465495462115748263, // <2>
       "before":"{\"_id\": {\"$numberLong\": \"1004\"},\"first_name\": \"Anne Marie\",\"last_name\": \"Kretchmar\",\"email\": \"annek@noanswer.org\"}",// <3>
       "source": { // <4>
         "version": "{debezium-version}",
         "connector": "mongodb",
         "name": "fulfillment",
         "ts_ms": 1558965508000,
+        "ts_us": 1558965508000000,
+        "ts_ns": 1558965508000000000,
         "snapshot": true,
         "db": "inventory",
         "rs": "rs0",
@@ -1053,8 +1137,9 @@ The value in a _delete_ change event has the same `schema` portion as _create_ a
 a|Mandatory string that describes the type of operation. The `op` field value is `d`, signifying that this document was deleted.
 
 |2
-|`ts_ms`
-a|Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.  +
+|`ts_ms`, `ts_us`. `ts_ns`
+a|Optional field that displays the time at which the connector processed the event.
+The time is based on the system clock in the JVM running the Kafka Connect task.  +
  +
 In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
 
@@ -1220,10 +1305,10 @@ You then create two custom resources (CRs):
 
 .Prerequisites
 
-* MongoDB is running and you completed the steps to {LinkDebeziumUserGuide}#setting-up-mongodb[set up MongoDB to work with a {prodname} connector].
+* MongoDB is running and you completed the steps to xref:setting-up-mongodb-to-work-with-debezium[set up MongoDB to work with a {prodname} connector].
 
 * {StreamsName} is deployed on OpenShift and is running Apache Kafka and Kafka Connect.
-  For more information, see link:{LinkDeployStreamsOpenShift}[{NameDeployStreamsOpenShift}].
+  For more information, see link:{LinkDeployManageStreamsOpenShift}[{NameDeployManageStreamsOpenShift}].
 
 * Podman or Docker is installed.
 
@@ -1348,8 +1433,9 @@ Optionally, you can set properties that filter out collections that are not need
 +
 The following example configures a {prodname} connector that connects to a MongoDB replica set `rs0` at port `27017` on `192.168.99.100`,
 and captures changes that occur in the `inventory` collection.
-`inventory-connector-{context}` is the logical name of the replica set.
+`inventory-connector-{context}` is the logical name of the replica set. +
 +
+=====================================================================
 .MongoDB `inventory-connector.yaml`
 [source,yaml,options="nowrap",subs="+attributes"]
 ----
@@ -1365,11 +1451,30 @@ apiVersion: {KafkaConnectApiVersion}
      topic.prefix: inventory-connector-{context} // <4>
      collection.include.list: inventory[.]* // <5>
 ----
-<1> The name that is used to register the connector with Kafka Connect.
-<2> The name of the MongoDB connector class.
-<3> The host addresses to use to connect to the MongoDB replica set.
-<4> The _logical name_ of the MongoDB replica set, which forms a namespace for generated events and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the Avro converter is used.
-<5> An optional list of regular expressions that match the collection namespaces (for example, <dbName>.<collectionName>) of all collections to be monitored.
+=====================================================================
++
+.Descriptions of settings in the MongoDB `inventory-connector.yaml` example
+[cols="1,7",options="header",subs="+attributes"]
+|===
+|Item |Description
+
+|1
+|The name that is used to register the connector with Kafka Connect.
+
+|2
+|The name of the MongoDB connector class.
+
+|3
+|The host addresses to use to connect to the MongoDB replica set.
+
+|4
+|The _logical name_ of the MongoDB replica set.
+The logical name forms a namespace for generated events, and is used in the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the Avro converter is used.
+
+|5
+|An optional list of regular expressions that match the collection namespaces (for example, __<dbName>.<collectionName>__) of all collections to be monitored.
+
+|===
 
 . Create your connector instance with Kafka Connect.
 For example, if you saved your `KafkaConnector` resource in the `inventory-connector.yaml` file, you would run the following command:
@@ -1651,6 +1756,7 @@ Messages do not include a field that represents the state of the document `befor
 `change_streams_update_full`:: `update` event messages include the full document.
 Messages do not include a `before` field that represents the state of the document before the update.
 The event message returns the full state of the document in the `after` field.
+Set xref:mongodb-property-capture-mode-full-update-type[capture.mode.full.update.type] to specify how the connector fetches full documents from the database.
 +
 [NOTE]
 ====
@@ -1662,6 +1768,7 @@ If a later update modifies the source document before the connector can retrieve
 
 `change_streams_update_full_with_pre_image`::
 `update` event event messages include the full document, and include a field that represents the state of the document `before` the change.
+Set xref:mongodb-property-capture-mode-full-update-type[capture.mode.full.update.type] to specify how the connector fetches full documents from the database.
 
 `change_streams_with_pre_image`::
 `update` events do not include the full document, but include a field that represents the state of the document `before` the change.
@@ -1745,6 +1852,23 @@ The following _advanced_ configuration properties have good defaults that will w
 |Property
 |Default
 |Description
+
+|[[mongodb-property-capture-mode-full-update-type]]<<mongodb-property-capture-mode-full-update-type, `+capture.mode.full.update.type+`>>
+|`lookup`
+|Specifies how the connector looks up the full value of an updated document when the xref:mongodb-property-capture-mode[`capture.mode`] is set retrieve full documents.
+The connector retrieves full documents when its `capture.mode` is set to one of the following options:
+
+* `change_streams_update_full`
+* `change_streams_update_full_with_pre-image`
+
+To use this option with a MongoDB change streams collection, you must configure the collection to https://www.mongodb.com/docs/manual/changeStreams/#change-streams-with-document-pre--and-post-images[return document pre- and post-images].
+Pre- and post-images for an operation are available only if the required configuration is in place before the operation occurs.
+
+Set this property to one of the following values:
+
+`lookup`:: The connector uses a separate lookup to fetch the updated full MongoDB document.
+`post_image`:: The connector uses MongoDB post images to populate events with the full MongoDB document.
+The database must be running MongoDB 6.0 or later to use this option.
 
 |[[mongodb-property-max-batch-size]]<<mongodb-property-max-batch-size, `+max.batch.size+`>>
 |`2048`
@@ -1844,15 +1968,45 @@ That is, the specified expression is matched against the entire name string of t
 |Positive integer value that specifies the maximum number of threads used to perform an intial sync of the collections in a replica set. Defaults to 1.
 
 |[[mongodb-property-snapshot-mode]]<<mongodb-property-snapshot-mode, `+snapshot.mode+`>>
-|`initial`
+|_initial_
 |Specifies the criteria for performing a snapshot when the connector starts.
 Set the property to one of the following values:
 
-`initial`::
-When the connector starts, if it does not detect a value in its offsets topic, it performs a snapshot of the database.
+`always`:: The connector performs a snapshot every time that it starts.
+The snapshot includes the structure and data of the captured tables.
+Specify this value to populate topics with a complete representation of the data from the captured tables every time that the connector starts.
+After the snapshot completes, the connector begins to stream event records for subsequent database changes.
 
-`never`::
-When the connector starts, it skips the snapshot process and immediately begins to stream change events for operations that the database records to the oplog.
+`initial`:: The connector performs a database snapshot as described in the xref:default-workflow-for-performing-an-initial-snapshot[default workflow for creating an initial snapshot].
+After the snapshot completes, the connector begins to stream event records for subsequent database changes.
+
+`initial_only`:: The connector performs a database a snapshot only when no offsets have been recorded for the logical server name.
+After the snapshot completes, the connector stops.
+It does not transition to streaming event records for subsequent database changes.
+
+`never`:: Deprecated, see `no_data`.
+
+`no_data`:: The connector runs a snapshot that captures the structure of all relevant tables, performing all the steps described in the xref:default-workflow-for-performing-an-initial-snapshot[default snapshot workflow], except that it does not create `READ` events to represent the data set at the point of the connector's start-up (Step 7.b).
+
+`when_needed`:: After the connector starts, it performs a snapshot only if it detects one of the following circumstances:
+
+* It cannot detect any topic offsets.
+* A previously recorded offset specifies a log position that is not available on the server.
+
+ifdef::community[]
+`custom`:: The `custom` snapshot mode lets you inject your own implementation of the `io.debezium.spi.snapshot.Snapshotter` interface.
+Set the `snapshot.mode.custom.name` configuration property to the name provided by the `name()` method of your implementation.
+
+For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
+endif::community[]
+
+ifdef::community[]
+|[[mongodb-property-snapshot-mode-custom-name]]<<mongodb-property-snapshot-mode-custom-name, `+snapshot.mode.custom.name+`>>
+|No default
+|If `snapshot.mode` is set to `custom`, use this setting to specify the name of the custom implementation that is provided in the `name()` method that is defined in the 'io.debezium.spi.snapshot.Snapshotter' interface.
+After a connector restart, {prodname} calls the specified custom implementation to determine whether to perform a snapshot.
+For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
+endif::community[]
 
 |[[mongodb-property-provide-transaction-metadata]]<<mongodb-property-provide-transaction-metadata, `+provide.transaction.metadata+`>>
 |`false`
@@ -1963,9 +2117,7 @@ endif::community[]
 Increasing the chunk size provides greater efficiency, because the snapshot runs fewer snapshot queries of a greater size.
 However, larger chunk sizes also require more memory to buffer the snapshot data.
 Adjust the chunk size to a value that provides the best performance in your environment. +
-ifdef::product[]
-Incremental snapshots is a Technology Preview feature for the {prodname} MongoDB connector.
-endif::product[]
+
 
 |[[mongodb-property-incremental-snapshot-watermarking-strategy]]<<mongodb-property-incremental-snapshot-watermarking-strategy, `+incremental.snapshot.watermarking.strategy+`>>
 |`insert_insert`
@@ -2013,7 +2165,16 @@ For example, if the topic prefix is `fulfillment`, the default topic name is `fu
 
 |[[mongodb-property-errors-max-retires]]<<mongodb-property-errors-max-retires, `errors.max.retries`>>
 |`-1`
-|The maximum number of retries on retriable errors (e.g. connection errors) before failing (-1 = no limit, 0 = disabled, > 0 = num of retries).
+|Specifies how the connector responds after an operation that results in a retriable error, such as a connection error. +
+Set one of the following options:
+
+`-1`:: No limit. The connector always restarts automatically, and retries the operation, regardless of the number of previous failures.
+
+`0`:: Disabled. The connector fails immediately, and never retries the operation.
+User intervention is required to restart the connector.
+
+`> 0`:: The connector restarts automatically until it reaches the specified maximum number of retries.
+After the next failure, the connector stops, and user intervention is required to restart it.
 
 |===
 

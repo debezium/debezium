@@ -25,8 +25,8 @@ import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.connector.postgresql.TestHelper;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.testing.testcontainers.ImageNames;
-import io.debezium.util.Testing;
 
 public class TimescaleDbDatabaseTest extends AbstractConnectorTest {
 
@@ -51,9 +51,14 @@ public class TimescaleDbDatabaseTest extends AbstractConnectorTest {
 
     @Before
     public void prepareDatabase() throws Exception {
+
         Startables.deepStart(timescaleDbContainer).join();
+        JdbcConfiguration.Builder jdbcConfig = TestHelper.defaultJdbcConfigBuilder();
+        jdbcConfig.with(JdbcConfiguration.HOSTNAME, timescaleDbContainer.getHost());
+        jdbcConfig.with(JdbcConfiguration.PORT, timescaleDbContainer.getMappedPort(5432));
+
         connection = new PostgresConnection(
-                TestHelper.defaultJdbcConfig(timescaleDbContainer.getHost(), timescaleDbContainer.getMappedPort(5432)), TestHelper.CONNECTION_TEST);
+                jdbcConfig.build(), TestHelper.CONNECTION_TEST);
         dropPublication(connection);
         connection.execute(
                 "DROP TABLE IF EXISTS conditions",
@@ -64,7 +69,7 @@ public class TimescaleDbDatabaseTest extends AbstractConnectorTest {
         config = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.HOSTNAME, timescaleDbContainer.getHost())
                 .with(PostgresConnectorConfig.PORT, timescaleDbContainer.getMappedPort(5432))
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with(PostgresConnectorConfig.PLUGIN_NAME, PostgresConnectorConfig.LogicalDecoder.PGOUTPUT)
                 .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "_timescaledb_internal")
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
@@ -92,7 +97,7 @@ public class TimescaleDbDatabaseTest extends AbstractConnectorTest {
 
     @Test
     public void shouldTransformChunks() throws Exception {
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         start(PostgresConnector.class, config);
         waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
@@ -110,7 +115,7 @@ public class TimescaleDbDatabaseTest extends AbstractConnectorTest {
 
     @Test
     public void shouldTransformAggregates() throws Exception {
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         start(PostgresConnector.class, config);
         waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
@@ -140,7 +145,7 @@ public class TimescaleDbDatabaseTest extends AbstractConnectorTest {
 
     @Test
     public void shouldTransformCompressedChunks() throws Exception {
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         start(PostgresConnector.class, config);
         waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);

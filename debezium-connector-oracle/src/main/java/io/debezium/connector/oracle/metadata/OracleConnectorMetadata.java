@@ -16,7 +16,7 @@ public class OracleConnectorMetadata implements ConnectorMetadata {
 
     @Override
     public ConnectorDescriptor getConnectorDescriptor() {
-        return new ConnectorDescriptor("oracle", "Debezium Oracle Connector", OracleConnector.class.getName(), Module.version());
+        return new ConnectorDescriptor(OracleConnector.class.getName(), Module.version());
     }
 
     @Override
