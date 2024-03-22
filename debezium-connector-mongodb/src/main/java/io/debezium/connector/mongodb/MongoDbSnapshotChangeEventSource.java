@@ -138,7 +138,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
         }
 
         if (offsetExists && !previousOffset.isSnapshotRunning()) {
-            LOGGER.info("A previous offset indicating a completed snapshot has been found. Neither schema nor data will be snapshotted.");
+            LOGGER.info("A previous offset indicating a completed snapshot has been found.");
         }
 
         boolean shouldSnapshotSchema = snapshotter.shouldSnapshotSchema(offsetExists, snapshotInProgress);
