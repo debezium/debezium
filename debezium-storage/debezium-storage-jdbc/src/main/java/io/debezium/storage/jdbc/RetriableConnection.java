@@ -52,16 +52,8 @@ public class RetriableConnection implements AutoCloseable {
             createConnection();
         }
         catch (SQLException e) {
-            LOGGER.error("Unable to create connection. It will be re-attempted during its first use: " + e.getMessage(), e);
-            if (conn != null) {
-                try {
-                    conn.close();
-                }
-                catch (Exception ex) {
-                    // ignore
-                }
-                conn = null;
-            }
+            LOGGER.error("Unable to create connection. It will be re-attempted during its first use: {}", e.getMessage(), e);
+            close();
         }
     }
 
@@ -72,7 +64,15 @@ public class RetriableConnection implements AutoCloseable {
 
     @Override
     public void close() throws SQLException {
-        conn.close();
+        if (isConnectionCreated()) {
+            try {
+                conn.close();
+            }
+            catch (Exception e) {
+                LOGGER.warn("Exception while closing connection", e);
+            }
+        }
+        conn = null;
     }
 
     public boolean isConnectionCreated() {
@@ -107,14 +107,14 @@ public class RetriableConnection implements AutoCloseable {
             throws SQLException {
         int attempt = 1;
         while (true) {
-            if (conn == null) {
+            if (!isConnectionCreated()) {
                 LOGGER.debug("Trying to reconnect (attempt {}).", attempt);
                 try {
                     createConnection();
                 }
                 catch (SQLException e) {
-                    LOGGER.error("SQL Exception while trying to reconnect: " + e.getMessage(), e);
-                    conn = null;
+                    LOGGER.error("SQL Exception while trying to reconnect: {}", e.getMessage(), e);
+                    close();
                     if (attempt >= maxRetryCount) {
                         throw e;
                     }
@@ -145,14 +145,7 @@ public class RetriableConnection implements AutoCloseable {
                         // ignore
                     }
                 }
-                try {
-                    conn.close();
-                }
-                catch (Exception ex) {
-                    // ignore
-                }
-                conn = null;
-
+                close();
             }
         }
     }
