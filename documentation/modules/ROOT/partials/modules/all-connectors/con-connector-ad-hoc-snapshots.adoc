@@ -77,6 +77,18 @@ endif::[]
 
 |===
 
+[WARNING]
+====
+*SQL Server collations*
+
+When SQL Server is configured with a collation whose sorting is not compatible with unicode's sorting algorithm (i.e. https://learn.microsoft.com/en-us/sql/relational-databases/collations/collation-and-unicode-support?view=sql-server-ver16#SQL-collations[SQL_* collations]) it is possible for data to be skipped when an adhoc snapshot is run.
+This can happen when the primary key column(s) are character based, not unicode, and the connection property `sendStringParametersAsUnicode` default value of `true` is used.
+
+To ensure records are not missed, disable sending string parameters as unicode by setting the value of  the `database.sendStringParametersAsUnicode` property in connector configuration to `false`.
+Debezium follows the recommendations in SQL Server's https://learn.microsoft.com/en-us/sql/connect/jdbc/setting-the-connection-properties?view=sql-server-ver16[setting connection properties] documentation about this property, so that unicode and non-unicode columns are supported when it is set to `false`.
+
+====
+
 .Triggering an ad hoc incremental snapshot
 
 You initiate an ad hoc incremental snapshot by adding an entry with the `execute-snapshot` signal type to the signaling {data-collection}.
