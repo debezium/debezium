@@ -96,13 +96,15 @@ public class JdbcOffsetBackingStore implements OffsetBackingStore {
     private void initializeTable() throws SQLException {
         conn.executeWithRetry(conn -> {
             DatabaseMetaData dbMeta = conn.getMetaData();
-            ResultSet tableExists = dbMeta.getTables(null, null, config.getTableName(), null);
-
-            if (tableExists.next()) {
-                return;
+            try (ResultSet tableExists = dbMeta.getTables(null, null, config.getTableName(), null)) {
+                if (tableExists.next()) {
+                    return;
+                }
             }
             LOGGER.info("Creating table {} to store offset", config.getTableName());
-            conn.prepareStatement(config.getTableCreate()).execute();
+            try (var ps = conn.prepareStatement(config.getTableCreate())) {
+                ps.execute();
+            }
         }, "checking / creating table", false);
     }
 
@@ -139,12 +141,14 @@ public class JdbcOffsetBackingStore implements OffsetBackingStore {
         try {
             ConcurrentHashMap<String, String> tmpData = new ConcurrentHashMap<>();
             conn.executeWithRetry(conn -> {
-                Statement stmt = conn.createStatement();
-                ResultSet rs = stmt.executeQuery(config.getTableSelect());
-                while (rs.next()) {
-                    String key = rs.getString("offset_key");
-                    String val = rs.getString("offset_val");
-                    tmpData.put(key, val);
+                try (
+                        Statement stmt = conn.createStatement();
+                        ResultSet rs = stmt.executeQuery(config.getTableSelect())) {
+                    while (rs.next()) {
+                        String key = rs.getString("offset_key");
+                        String val = rs.getString("offset_val");
+                        tmpData.put(key, val);
+                    }
                 }
                 data = tmpData;
             }, "loading offset data", false);

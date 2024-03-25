@@ -79,7 +79,7 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
         super.start();
         lock.write(() -> {
             if (running.compareAndSet(false, true)) {
-                if (!conn.isConnectionCreated()) {
+                if (!conn.isOpen()) {
                     throw new IllegalStateException("Database connection must be set before it is started");
                 }
                 try {
@@ -117,14 +117,15 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
                     List<String> substrings = split(line, 65000);
                     int partSeq = 0;
                     for (String dataPart : substrings) {
-                        PreparedStatement sql = conn.prepareStatement(config.getTableInsert());
-                        sql.setString(1, UUID.randomUUID().toString());
-                        sql.setString(2, dataPart);
-                        sql.setInt(3, partSeq);
-                        sql.setTimestamp(4, currentTs);
-                        sql.setInt(5, recordInsertSeq.incrementAndGet());
-                        sql.executeUpdate();
-                        partSeq++;
+                        try (PreparedStatement sql = conn.prepareStatement(config.getTableInsert())) {
+                            sql.setString(1, UUID.randomUUID().toString());
+                            sql.setString(2, dataPart);
+                            sql.setInt(3, partSeq);
+                            sql.setTimestamp(4, currentTs);
+                            sql.setInt(5, recordInsertSeq.incrementAndGet());
+                            sql.executeUpdate();
+                            partSeq++;
+                        }
                     }
                     conn.commit();
                 }, "store history record", true);
@@ -163,18 +164,19 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
             try {
                 if (exists()) {
                     conn.executeWithRetry(conn -> {
-                        Statement stmt = conn.createStatement();
-                        ResultSet rs = stmt.executeQuery(config.getTableSelect());
+                        try (
+                                Statement stmt = conn.createStatement();
+                                ResultSet rs = stmt.executeQuery(config.getTableSelect())) {
+                            while (rs.next()) {
+                                String historyData = rs.getString("history_data");
 
-                        while (rs.next()) {
-                            String historyData = rs.getString("history_data");
-
-                            if (historyData.isEmpty() == false) {
-                                try {
-                                    records.accept(new HistoryRecord(reader.read(historyData)));
-                                }
-                                catch (IOException e) {
-                                    throw new DebeziumException(e);
+                                if (historyData.isEmpty() == false) {
+                                    try {
+                                        records.accept(new HistoryRecord(reader.read(historyData)));
+                                    }
+                                    catch (IOException e) {
+                                        throw new DebeziumException(e);
+                                    }
                                 }
                             }
                         }
@@ -198,12 +200,13 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
                 DatabaseMetaData dbMeta = conn.getMetaData();
 
                 String databaseName = config.getDatabaseName();
-                ResultSet tableExists = dbMeta.getTables(databaseName,
-                        null, config.getTableName(), null);
-                if (tableExists.next()) {
-                    exists = true;
+                try (ResultSet tableExists = dbMeta.getTables(databaseName,
+                        null, config.getTableName(), null)) {
+                    if (tableExists.next()) {
+                        exists = true;
+                    }
+                    return exists;
                 }
-                return exists;
             }, "history storage exists", false);
         }
         catch (SQLException e) {
@@ -221,12 +224,14 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
         try {
             return conn.executeWithRetry(conn -> {
                 boolean isExists = false;
-                Statement stmt = conn.createStatement();
-                ResultSet rs = stmt.executeQuery(config.getTableDataExistsSelect());
-                while (rs.next()) {
-                    isExists = true;
+                try (
+                        Statement stmt = conn.createStatement();
+                        ResultSet rs = stmt.executeQuery(config.getTableDataExistsSelect());) {
+                    while (rs.next()) {
+                        isExists = true;
+                    }
+                    return isExists;
                 }
-                return isExists;
             }, "history records exist check", false);
         }
         catch (SQLException e) {
@@ -249,14 +254,16 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
         try {
             conn.executeWithRetry(conn -> {
                 DatabaseMetaData dbMeta = conn.getMetaData();
-                ResultSet tableExists = dbMeta.getTables(null, null, config.getTableName(), null);
-
-                if (tableExists.next()) {
-                    return;
+                try (ResultSet tableExists = dbMeta.getTables(null, null, config.getTableName(), null)) {
+                    if (tableExists.next()) {
+                        return;
+                    }
+                    LOG.info("Creating table {} to store database history", config.getTableName());
+                    try (var ps = conn.prepareStatement(config.getTableCreate())) {
+                        ps.execute();
+                        LOG.info("Created table in given database...");
+                    }
                 }
-                LOG.info("Creating table {} to store database history", config.getTableName());
-                conn.prepareStatement(config.getTableCreate()).execute();
-                LOG.info("Created table in given database...");
             }, "initialize storage", false);
         }
         catch (SQLException e) {
