@@ -5,9 +5,9 @@
  */
 package io.debezium.testing.system.fixtures.databases.ocp;
 
-import io.debezium.testing.system.assertions.JdbcAssertions;
 import org.junit.jupiter.api.extension.ExtensionContext;
 
+import io.debezium.testing.system.assertions.JdbcAssertions;
 import io.debezium.testing.system.tools.ConfigProperties;
 import io.debezium.testing.system.tools.databases.mysql.MySqlController;
 import io.debezium.testing.system.tools.databases.mysql.OcpMySqlDeployer;

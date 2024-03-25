@@ -189,7 +189,6 @@ public class OcpKafkaController implements KafkaController {
         return kafkaProducerProps;
     }
 
-
     private File getKafkaCaCertificate() throws IOException {
         // get kafka cluster ca secret
         Secret secret = ocp.secrets().inNamespace(project).withName(KAFKA_CERT_SECRET).get();
