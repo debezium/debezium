@@ -2,6 +2,73 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.6.0.CR1
+March 25th 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12423730)
+
+### New features since 2.6.0.Beta1
+
+* Add XML support for OpenLogReplicator [DBZ-6896](https://issues.redhat.com/browse/DBZ-6896)
+* Use TRACE level log for Debezium Server in build time [DBZ-7369](https://issues.redhat.com/browse/DBZ-7369)
+* Implement Versioned interfaces in Transformation and Converter plugins [DBZ-7618](https://issues.redhat.com/browse/DBZ-7618)
+* Performance Issue in Cassandra Connector [DBZ-7622](https://issues.redhat.com/browse/DBZ-7622)
+* Provide partition mode to guarantee order of events in same partition [DBZ-7631](https://issues.redhat.com/browse/DBZ-7631)
+* Support empty debezium.sink.redis.user and debezium.sink.redis.password [DBZ-7646](https://issues.redhat.com/browse/DBZ-7646)
+
+
+### Breaking changes since 2.6.0.Beta1
+
+* Deploying Debezium for the first time, it not captures the schema of all tables in the database. [DBZ-7593](https://issues.redhat.com/browse/DBZ-7593)
+* Switch ts_ms from BEGIN timestamp to COMMIT timestamp for row events [DBZ-7628](https://issues.redhat.com/browse/DBZ-7628)
+* Bump MySQL driver from 8.0.33 to 8.3.0 [DBZ-7652](https://issues.redhat.com/browse/DBZ-7652)
+
+
+### Fixes since 2.6.0.Beta1
+
+* Log Mining Processor advances SCN incorrectly if LogMiner query returns no rows [DBZ-6679](https://issues.redhat.com/browse/DBZ-6679)
+* Oracle connector unable to find SCN after Exadata maintenance updates [DBZ-7389](https://issues.redhat.com/browse/DBZ-7389)
+* Oracle LOB requery on Primary Key change does not work for all column types [DBZ-7458](https://issues.redhat.com/browse/DBZ-7458)
+* Incorrect value of TIME(n) replicate from MySQL if the original value is negative [DBZ-7594](https://issues.redhat.com/browse/DBZ-7594)
+* Re-select Post Processor not working for complex types [DBZ-7596](https://issues.redhat.com/browse/DBZ-7596)
+* Null instead of toast placeholder written for binary types when "hex" mode configured [DBZ-7599](https://issues.redhat.com/browse/DBZ-7599)
+* Poor snapshot performance during schema snapshot DDL processing [DBZ-7608](https://issues.redhat.com/browse/DBZ-7608)
+* Re-select post processor performance [DBZ-7611](https://issues.redhat.com/browse/DBZ-7611)
+* Uncaught exception during config validation in Engine [DBZ-7614](https://issues.redhat.com/browse/DBZ-7614)
+* Enhanced event timestamp precision combined with ExtractNewRecordState not working [DBZ-7615](https://issues.redhat.com/browse/DBZ-7615)
+* Incremental snapshot query doesn't honor message.key.columns order [DBZ-7617](https://issues.redhat.com/browse/DBZ-7617)
+* Metric ScnFreezeCount never increases [DBZ-7619](https://issues.redhat.com/browse/DBZ-7619)
+* JDBC connector does not process ByteBuffer field value [DBZ-7620](https://issues.redhat.com/browse/DBZ-7620)
+* Cassandra can have misaligned Jackson dependencies [DBZ-7629](https://issues.redhat.com/browse/DBZ-7629)
+* Numerci value without mantissa cannot be parsed [DBZ-7643](https://issues.redhat.com/browse/DBZ-7643)
+* Missing test annotation in PostgresConnectorIT [DBZ-7649](https://issues.redhat.com/browse/DBZ-7649)
+* Update QOSDK and Quarkus to fix vcs-url annotation  CVE [DBZ-7664](https://issues.redhat.com/browse/DBZ-7664)
+* MySQL connector fails to parse DDL with RETURNING keyword [DBZ-7666](https://issues.redhat.com/browse/DBZ-7666)
+* Schema history comparator doesn't handle SERVER_ID_KEY and TIMESTAMP_KEY properly [DBZ-7690](https://issues.redhat.com/browse/DBZ-7690)
+* Duplicate envar generated in operator bundle [DBZ-7703](https://issues.redhat.com/browse/DBZ-7703)
+
+
+### Other changes since 2.6.0.Beta1
+
+* debezium-connector-jdbc occurred  java.sql.SQLException: ORA-01461: can bind a LONG value only [DBZ-6900](https://issues.redhat.com/browse/DBZ-6900)
+* Align snapshot modes for MongoDB [DBZ-7304](https://issues.redhat.com/browse/DBZ-7304)
+* Align snapshot modes for DB2 [DBZ-7305](https://issues.redhat.com/browse/DBZ-7305)
+* Align all snapshot mode on all connectors [DBZ-7308](https://issues.redhat.com/browse/DBZ-7308)
+* Remove LogMiner continuous mining configuration option [DBZ-7610](https://issues.redhat.com/browse/DBZ-7610)
+* Update Quarkus Outbox to Quarkus 3.8.2 [DBZ-7623](https://issues.redhat.com/browse/DBZ-7623)
+* Upgrade Debezium Server to Quarkus 3.2.10 [DBZ-7624](https://issues.redhat.com/browse/DBZ-7624)
+* MongoDbReplicaSet and MongoDbShardedCluster should not create a new network for each builder instance by default [DBZ-7626](https://issues.redhat.com/browse/DBZ-7626)
+* Remove forgotten lombok code from system tests [DBZ-7634](https://issues.redhat.com/browse/DBZ-7634)
+* Add JDBC connector to artifact server image preparation [DBZ-7644](https://issues.redhat.com/browse/DBZ-7644)
+* Revert removal of Oracle LogMiner continuous mining [DBZ-7645](https://issues.redhat.com/browse/DBZ-7645)
+* Add documentation for MongoDB capture.mode.full.update.type property [DBZ-7647](https://issues.redhat.com/browse/DBZ-7647)
+* Fix MySQL image fetch for tests [DBZ-7651](https://issues.redhat.com/browse/DBZ-7651)
+* RedisSchemaHistoryIT continually fails [DBZ-7654](https://issues.redhat.com/browse/DBZ-7654)
+* Upgrade Quarkus Outbox Extension to Quarkus 3.8.3 [DBZ-7656](https://issues.redhat.com/browse/DBZ-7656)
+* Bump SQL Server test image to SQL Server 2022 [DBZ-7657](https://issues.redhat.com/browse/DBZ-7657)
+* Upgrade Debezium Server to Quarkus 3.2.11.Final [DBZ-7662](https://issues.redhat.com/browse/DBZ-7662)
+* Exclude jcl-over-slf4j dependency [DBZ-7665](https://issues.redhat.com/browse/DBZ-7665)
+
+
+
 ## 2.6.0.Beta1
 March 6th 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12423016)
 
