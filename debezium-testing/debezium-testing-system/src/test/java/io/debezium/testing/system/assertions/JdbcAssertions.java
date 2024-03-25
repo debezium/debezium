@@ -11,10 +11,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.SQLException;
 
-import io.debezium.testing.system.tools.databases.SqlDatabaseClient;
-import io.debezium.testing.system.tools.databases.SqlDatabaseController;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import io.debezium.testing.system.tools.databases.SqlDatabaseClient;
+import io.debezium.testing.system.tools.databases.SqlDatabaseController;
 
 public class JdbcAssertions {
     SqlDatabaseController databaseController;
