@@ -64,7 +64,7 @@ public class RetriableConnection implements AutoCloseable {
 
     @Override
     public void close() throws SQLException {
-        if (isConnectionCreated()) {
+        if (isOpen()) {
             try {
                 conn.close();
             }
@@ -75,8 +75,15 @@ public class RetriableConnection implements AutoCloseable {
         conn = null;
     }
 
-    public boolean isConnectionCreated() {
-        return conn != null;
+    public boolean isOpen() {
+        try {
+            return conn != null && !conn.isClosed();
+        }
+        catch (SQLException e) {
+            LOGGER.warn("Exception while checking connection", e);
+            conn = null;
+        }
+        return false;
     }
 
     /**
@@ -107,7 +114,7 @@ public class RetriableConnection implements AutoCloseable {
             throws SQLException {
         int attempt = 1;
         while (true) {
-            if (!isConnectionCreated()) {
+            if (!isOpen()) {
                 LOGGER.debug("Trying to reconnect (attempt {}).", attempt);
                 try {
                     createConnection();
