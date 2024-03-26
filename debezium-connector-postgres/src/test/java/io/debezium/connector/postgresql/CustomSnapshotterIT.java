@@ -27,6 +27,8 @@ import io.debezium.custom.snapshotter.CustomTestSnapshot;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.junit.logging.LogInterceptor;
+import io.debezium.pipeline.ChangeEventSourceCoordinator;
 
 public class CustomSnapshotterIT extends AbstractConnectorTest {
 
@@ -39,7 +41,6 @@ public class CustomSnapshotterIT extends AbstractConnectorTest {
             "CREATE TABLE s1.a (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
             "CREATE TABLE s2.a (pk SERIAL, aa integer, bb varchar(20), PRIMARY KEY(pk));";
     private static final String SETUP_TABLES_STMT = CREATE_TABLES_STMT + INSERT_STMT;
-    private PostgresConnector connector;
 
     @Rule
     public final TestRule skipName = new SkipTestDependingOnDecoderPluginNameRule();
@@ -64,6 +65,7 @@ public class CustomSnapshotterIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-1082")
     public void shouldAllowForCustomSnapshot() throws InterruptedException {
+
         TestHelper.execute(SETUP_TABLES_STMT);
         Configuration config = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.CUSTOM.getValue())
@@ -117,5 +119,66 @@ public class CustomSnapshotterIT extends AbstractConnectorTest {
         VerifyRecord.isValidRead(s1recs.get(1), PK_FIELD, 2);
         VerifyRecord.isValidRead(s2recs.get(0), PK_FIELD, 1);
         VerifyRecord.isValidRead(s2recs.get(1), PK_FIELD, 2);
+    }
+
+    @Test
+    public void shouldAllowStreamOnlyByConfigurationBasedSnapshot() throws InterruptedException {
+
+        TestHelper.execute(SETUP_TABLES_STMT);
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.CONFIGURATION_BASED)
+                .with(CommonConnectorConfig.SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_DATA, false)
+                .with(CommonConnectorConfig.SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_SCHEMA, false)
+                .with(CommonConnectorConfig.SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_STREAM, true)
+                .with(PostgresConnectorConfig.SNAPSHOT_QUERY_MODE_CUSTOM_NAME, CustomTestSnapshot.class.getName())
+                .build();
+
+        start(PostgresConnector.class, config);
+        assertConnectorIsRunning();
+
+        assertNoRecordsToConsume();
+
+        TestHelper.execute(INSERT_STMT);
+        SourceRecords actualRecords = consumeRecordsByTopic(2);
+
+        List<SourceRecord> s1recs = actualRecords.recordsForTopic(topicName("s1.a"));
+        List<SourceRecord> s2recs = actualRecords.recordsForTopic(topicName("s2.a"));
+        assertThat(s1recs.size()).isEqualTo(1);
+        assertThat(s2recs.size()).isEqualTo(1);
+        SourceRecord record = s1recs.get(0);
+        VerifyRecord.isValidInsert(record, PK_FIELD, 2);
+        record = s2recs.get(0);
+        VerifyRecord.isValidInsert(record, PK_FIELD, 2);
+        stopConnector();
+    }
+
+    @Test
+    public void shouldNotAllowStreamByConfigurationBasedSnapshot() {
+
+        LogInterceptor logInterceptor = new LogInterceptor(ChangeEventSourceCoordinator.class);
+
+        TestHelper.execute(SETUP_TABLES_STMT);
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.CONFIGURATION_BASED)
+                .with(CommonConnectorConfig.SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_DATA, false)
+                .with(CommonConnectorConfig.SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_SCHEMA, false)
+                .with(CommonConnectorConfig.SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_STREAM, false)
+                .with(PostgresConnectorConfig.SNAPSHOT_QUERY_MODE_CUSTOM_NAME, CustomTestSnapshot.class.getName())
+                .build();
+
+        start(PostgresConnector.class, config);
+        assertConnectorIsRunning();
+
+        assertNoRecordsToConsume();
+
+        TestHelper.execute(INSERT_STMT);
+
+        assertNoRecordsToConsume();
+
+        waitForConnectorShutdown("postgres", TestHelper.TEST_SERVER);
+
+        assertThat(logInterceptor.containsMessage("Streaming is disabled for snapshot mode configuration_based")).isTrue();
+
+        stopConnector();
     }
 }

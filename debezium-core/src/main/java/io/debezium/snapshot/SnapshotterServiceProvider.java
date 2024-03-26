@@ -65,13 +65,14 @@ public class SnapshotterServiceProvider implements ServiceProvider<SnapshotterSe
         return getSnapshotterService(configuration, snapshotter, beanRegistry, snapshotQueryService, snapshotLockService);
     }
 
-    private static SnapshotterService getSnapshotterService(Configuration configuration, Snapshotter s, BeanRegistry beanRegistry, SnapshotQuery snapshotQueryService,
+    private static SnapshotterService getSnapshotterService(Configuration configuration, Snapshotter snapshotter, BeanRegistry beanRegistry,
+                                                            SnapshotQuery snapshotQueryService,
                                                             SnapshotLock snapshotLockService) {
-        s.configure(configuration.asMap());
-        if (s instanceof BeanRegistryAware) {
-            ((BeanRegistryAware) s).injectBeanRegistry(beanRegistry);
+        if (snapshotter instanceof BeanRegistryAware) {
+            ((BeanRegistryAware) snapshotter).injectBeanRegistry(beanRegistry);
         }
-        return new SnapshotterService(s, snapshotQueryService, snapshotLockService);
+        snapshotter.configure(configuration.asMap());
+        return new SnapshotterService(snapshotter, snapshotQueryService, snapshotLockService);
     }
 
     @Override

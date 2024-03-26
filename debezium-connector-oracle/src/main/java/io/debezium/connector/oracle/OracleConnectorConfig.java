@@ -1040,6 +1040,11 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         WHEN_NEEDED("when_needed"),
 
         /**
+         * Allows over snapshots by setting connectors properties prefixed with 'snapshot.mode.configuration.based'.
+         */
+        CONFIGURATION_BASED("configuration_based"),
+
+        /**
          * Inject a custom snapshotter, which allows for more control over snapshots.
          */
         CUSTOM("custom");
