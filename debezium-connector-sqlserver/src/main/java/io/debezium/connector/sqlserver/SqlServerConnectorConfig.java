@@ -97,7 +97,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         WHEN_NEEDED("when_needed"),
 
         /**
-         * Allows over snapshots by setting connectors properties prefixed with 'snapshot.mode.configuration.based'.
+         * Allows control over snapshots by setting connectors properties prefixed with 'snapshot.mode.configuration.based'.
          */
         CONFIGURATION_BASED("configuration_based"),
 
