@@ -31,10 +31,7 @@ import fixture5.annotations.Fixture;
 import freemarker.template.TemplateException;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-@Tag("acceptance")
-@Tag("mongo")
-@Tag("openshift")
-@Tag("mongo-sharded")
+@Tag("mongo-sharded-replicaset")
 @Fixture(OcpClient.class)
 @Fixture(OcpStrimziOperator.class)
 @Fixture(OcpKafka.class)
