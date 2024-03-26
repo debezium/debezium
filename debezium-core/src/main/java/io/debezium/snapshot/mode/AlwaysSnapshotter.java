@@ -28,7 +28,7 @@ public class AlwaysSnapshotter extends BeanAwareSnapshotter implements Snapshott
 
     @Override
     public boolean shouldSnapshotData(boolean offsetExists, boolean snapshotInProgress) {
-        // for ALWAYS snapshot mode don't use exiting offset to have up-to-date SCN
+
         LOGGER.info("Snapshot mode is set to ALWAYS, not checking exiting offset.");
         return true;
     }

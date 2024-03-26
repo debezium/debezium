@@ -195,6 +195,11 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
         INITIAL_ONLY("initial_only"),
 
         /**
+         * Allows over snapshots by setting connectors properties prefixed with 'snapshot.mode.configuration.based'.
+         */
+        CONFIGURATION_BASED("configuration_based"),
+
+        /**
          * Inject a custom snapshotter, which allows for more control over snapshots.
          */
         CUSTOM("custom");
