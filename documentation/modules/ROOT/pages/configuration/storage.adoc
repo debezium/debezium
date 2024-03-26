@@ -1,0 +1,186 @@
+[id="storing-debezium-state"]
+= Storing state of a {prodname} connector
+ifdef::community[]
+:toc:
+:toc-placement: macro
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+
+toc::[]
+
+== Overview
+endif::community[]
+
+Debezium connectors require a persistent storage to keep their state between restarts.
+All connectors requires a store for the offsets.
+In addition to it some of the connectors (MySQL, SQL Server, Db2, Oracle) require an additional storage to record the history of schema evolution, so-called internal schema history.
+
+The offset store is provided automatically for the deployments inside the Kafka Connect runtime:
+
+* Kafka offset store for Kafka Connect distributed
+* File offset store for Kafka Connect standalone
+
+If a connector is run either in xref:development/engine.adoc[Debezium Engine] or xref:operations/embedded.adoc[Debezium Server] then the offset store must be explicitly configured.
+The internal schema history is configured in all cases via connector configuration options.
+
+
+== Kafka
+=== Offset Store
+=== Internal schema history store
+
+
+== File
+=== Offset Store
+=== Internal schema history store
+
+
+== Memory
+=== Offset Store
+=== Internal schema history store
+
+
+== JDBC
+The store uses arbitrary relational database to store the data for which an approriate link:https://en.wikipedia.org/wiki/JDBC_driver[JDBC driver] is provided.
+Either the source source database can be used as the storage or any other database.
+
+The users either use the default pre-configured DML and DDL statements or can override them with thier own either for database dialect compatibility or to tailor them to their use case/
+
+
+=== Offset Store
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[jdbc-offset-type]]<<jdbc-offset-type, `offset.storage`>>
+|
+|Must be set to `io.debezium.storage.jdbc.offset.JdbcOffsetBackingStore`.
+
+|[[jdbc-offset-url]]<<jdbc-offset-url, `offset.storage.jdbc.url`>>
+|No default
+|JDBC driver connection string to connect to the database.
+
+|[[jdbc-offset-user]]<<jdbc-offset-user, `offset.storage.jdbc.user`>>
+|No default
+|(Optional) Username of the database which will be used to access the database storage.
+
+|[[jdbc-offset-password]]<<jdbc-offset-password, `offset.storage.jdbc.password`>>
+|No default
+|(Optional) Password of the database which will be used to access the database storage.
+
+|[[jdbc-offset-table-name]]<<jdbc-offset-table-name, `offset.storage.jdbc.offset.table.name`>>
+|`debezium_offset_storage`
+|The name of the table to which the offsets will be stored.
+
+|[[jdbc-offset-table-ddl]]<<jdbc-offset-table-ddl, `offset.storage.jdbc.offset.table.ddl`>>
+|link:https://raw.githubusercontent.com/debezium/debezium/main/debezium-storage/debezium-storage-jdbc/src/main/java/io/debezium/storage/jdbc/offset/JdbcOffsetBackingStoreConfig.java[source code]
+|DDL statement to create the offset table.
+
+|[[jdbc-offset-table-select]]<<jdbc-offset-table-select, `offset.storage.jdbc.offset.table.select`>>
+|link:https://raw.githubusercontent.com/debezium/debezium/main/debezium-storage/debezium-storage-jdbc/src/main/java/io/debezium/storage/jdbc/offset/JdbcOffsetBackingStoreConfig.java[source code]
+|DML statement to read offsets stored from the table.
+
+|[[jdbc-offset-table-insert]]<<jdbc-offset-table-insert, `offset.storage.jdbc.offset.table.insert`>>
+|link:https://raw.githubusercontent.com/debezium/debezium/main/debezium-storage/debezium-storage-jdbc/src/main/java/io/debezium/storage/jdbc/offset/JdbcOffsetBackingStoreConfig.java[source code]
+|DML statement to write offsets to the table.
+
+|[[jdbc-offset-table-delete]]<<jdbc-offset-table-delete, `offset.storage.jdbc.offset.table.delete`>>
+|link:https://raw.githubusercontent.com/debezium/debezium/main/debezium-storage/debezium-storage-jdbc/src/main/java/io/debezium/storage/jdbc/offset/JdbcOffsetBackingStoreConfig.java[source code]
+|DML statement to remove offsets from the table.
+
+|===
+
+
+=== Internal schema history store
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[jdbc-history-type]]<<jdbc-history-type, `schema.history.internal`>>
+|
+|Must be set to `io.debezium.storage.jdbc.history.JdbcSchemaHistory`.
+
+|[[jdbc-history-schema-history-url]]<<jdbc-history-schema-history-url, `schema.history.internal.jdbc.url`>>
+|No default
+|JDBC driver connection string to connect to the database.
+
+|[[jdbc-history-schema-history-user]]<<jdbc-history-schema-history-user, `schema.history.internal.jdbc.user`>>
+|No default
+|(Optional) Username of the database which will be used to access the database storage.
+
+|[[jdbc-history-schema-history-password]]<<jdbc-history-schema-history-password, `schema.history.internal.jdbc.password`>>
+|No default
+|(Optional) Password of the database which will be used to access the database storage.
+
+|[[jdbc-history-schema-history-table-name]]<<jdbc-history-schema-history-table-name, `schema.history.internal.jdbc.schema.history.table.name`>>
+|`debezium_database_history`
+|The name of the table to which the history will be stored.
+
+|[[jdbc-history-schema-history-table-ddl]]<<jdbc-history-schema-history-table-ddl, `schema.history.internal.jdbc.schema.history.table.ddl`>>
+|link:https://raw.githubusercontent.com/debezium/debezium/main/debezium-storage/debezium-storage-jdbc/src/main/java/io/debezium/storage/jdbc/history/JdbcSchemaHistoryConfig.java[source code]
+|The DDL statement used to create the storage table.
+
+|[[jdbc-history-schema-history-table-select]]<<jdbc-history-schema-history-table-select, `schema.history.internal.jdbc.schema.history.table.select`>>
+|link:https://raw.githubusercontent.com/debezium/debezium/main/debezium-storage/debezium-storage-jdbc/src/main/java/io/debezium/storage/jdbc/history/JdbcSchemaHistoryConfig.java[source code]
+|The `SELECT` statement to read the internal schema history form the table.
+
+|[[jdbc-history-schema-history-table-exists-select]]<<jdbc-history-schema-history-table-exists-select, `schema.history.internal.jdbc.schema.history.table.exists.select`>>
+|link:https://raw.githubusercontent.com/debezium/debezium/main/debezium-storage/debezium-storage-jdbc/src/main/java/io/debezium/storage/jdbc/history/JdbcSchemaHistoryConfig.java[source code]
+|The `SELECT` statement to check the existence of the storage table.
+
+|[[jdbc-history-schema-history-table-insert]]<<jdbc-history-schema-history-table-insert, `schema.history.internal.jdbc.schema.history.table.insert`>>
+|link:https://raw.githubusercontent.com/debezium/debezium/main/debezium-storage/debezium-storage-jdbc/src/main/java/io/debezium/storage/jdbc/history/JdbcSchemaHistoryConfig.java[source code]
+|The `INSERT` statement to record the schema history to the table.
+
+|===
+
+== Redis
+=== Offset Store
+=== Internal schema history store
+
+== S3
+The store uses link:https://aws.amazon.com/s3/[Amazon S3] object storage service.
+It is typically used when Debezium is deployed in link:https://aws.amazon.com/msk/[Amazon Mnagaed Streaming] service.
+
+=== Internal schema history store
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[s3-history-type]]<<s3-history-type, `schema.history.internal`>>
+|
+|Must be set to `io.debezium.storage.s3.history.S3SchemaHistory`.
+
+|[[s3-history-access.key.id]]<<s3-history-access.key.id, `schema.history.internal.s3.access.key.id`>>
+|No default
+|(Optional) An identifier of the key used for the static authentication.
+
+|[[s3-history-secret-access-key]]<<s3-history-secret-access-key, `schema.history.internal.s3.secret.access.key`>>
+|No default
+|(Optional) The secret used for the static authentication.
+
+|[[s3-history-region-name]]<<s3-history-region-name, `schema.history.internal.s3.region.name`>>
+|No default
+|(Optional) A region name in which the S3 service is provided.
+
+|[[s3-history-bucket-name]]<<s3-history-bucket-name, `schema.history.internal.s3.bucket.name`>>
+|No default
+|A name of the bucket used to store the schema history.
+
+|[[s3-history-object-name]]<<s3-history-object-name, `schema.history.internal.s3.object.name`>>
+|No default
+|A name of the key under which the schema history is stored.
+
+|[[s3-history-endpoint]]<<s3-history-endpoint, `schema.history.internal.s3.endpoint`>>
+|No default
+|(Optional) A custom URL used to access S3 service.
+
+|===
