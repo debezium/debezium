@@ -2999,7 +2999,7 @@ endif::product[]
 |[[mysql-property-database-jdbc-driver]]<<mysql-property-database-jdbc-driver, `+database.jdbc.driver+`>>
 |com.mysql.cj.jdbc.Driver
 |The driver class name to use. This can be useful when using an alternative driver to the one packaged with the connector.
-For information about how to connect {prodhame} to MariaDB, see xref:mysql-mariadb-support[Using the connector with a MariaDB database].
+For information about how to connect {prodname} to MariaDB, see xref:mysql-mariadb-support[Using the connector with a MariaDB database].
 
 ifdef::product[]
 [IMPORTANT]
