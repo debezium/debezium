@@ -323,6 +323,11 @@ After the snapshot completes, the connector stops, and does not stream event rec
 * A previously recorded offset specifies a log position that is not available on the server.
 
 ifdef::community[]
+|`configuration_based`
+|The `configuration_based` snapshot mode allows control over snapshots by setting connectors properties prefixed with 'snapshot.mode.configuration.based'.
+endif::community[]
+
+ifdef::community[]
 |`custom`
 |The `custom` snapshot mode lets you inject your own implementation of the `io.debezium.spi.snapshot.Snapshotter` interface.
 Set the `snapshot.mode.custom.name` configuration property to the name provided by the `name()` method of your implementation.
@@ -1994,10 +1999,44 @@ It does not transition to streaming event records for subsequent database change
 * A previously recorded offset specifies a log position that is not available on the server.
 
 ifdef::community[]
+`configuration_based`:: The `configuration_based` snapshot mode allows control over snapshots by setting connectors properties prefixed with 'snapshot.mode.configuration.based'.
+endif::community[]
+
+ifdef::community[]
 `custom`:: The `custom` snapshot mode lets you inject your own implementation of the `io.debezium.spi.snapshot.Snapshotter` interface.
 Set the `snapshot.mode.custom.name` configuration property to the name provided by the `name()` method of your implementation.
 
 For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
+endif::community[]
+
+ifdef::community[]
+|[[mongodb-property-snapshot-mode-configuration-based-snapshot-data]]<<mongodb-property-configuration-based-snapshot-data, `+snapshot.mode.configuration.based.snapshot.data+`>>
+|false
+|When `snapshot.mode` is set as `configuration_based`, this setting permits to specify whenever the data should be snapshotted or not.
+endif::community[]
+
+ifdef::community[]
+|[[mongodb-property-snapshot-mode-configuration-based-snapshot-schema]]<<mongodb-property-configuration-based-snapshot-schema, `+snapshot.mode.configuration.based.snapshot.schema+`>>
+|false
+|When `snapshot.mode` is set as `configuration_based`, this setting permits to specify whenever the schema should be snapshotted or not.
+endif::community[]
+
+ifdef::community[]
+|[[mongodb-property-snapshot-mode-configuration-based-start-stream]]<<mongodb-property-configuration-based-start-stream, `+snapshot.mode.configuration.based.start.stream+`>>
+|false
+|When `snapshot.mode` is set as `configuration_based`, this setting permits to specify whenever the stream should start or not after snapshot.
+endif::community[]
+
+ifdef::community[]
+|[[mongodb-property-snapshot-mode-configuration-based-snapshot-on-schema-error]]<<mongodb-property-configuration-based-snapshot-on-schema-error, `+snapshot.mode.configuration.based.snapshot.on.schema.error+`>>
+|false
+|When `snapshot.mode` is set as `configuration_based`, this setting permits to specify whenever the schema should be snapshotted or not in case schema history topic is missing.
+endif::community[]
+
+ifdef::community[]
+|[[mongodb-property-snapshot-mode-configuration-based-snapshot-on-data-error]]<<mongodb-property-configuration-based-snapshot-on-data-error, `+snapshot.mode.configuration.based.snapshot.on.data.error+`>>
+|false
+|When `snapshot.mode` is set as `configuration_based`, this setting permits to specify whenever the data should be snapshotted or not in case data is no more present on db log.
 endif::community[]
 
 ifdef::community[]
