@@ -195,6 +195,11 @@ Use this snapshot mode only when you know that all data of interest is still ref
 * A previously recorded offset specifies a log position that is not available on the server.
 
 ifdef::community[]
+|`configuration_based`
+|The `configuration_based` snapshot mode allows control over snapshots by setting connectors properties prefixed with 'snapshot.mode.configuration.based'.
+endif::community[]
+
+ifdef::community[]
 |`custom`
 |The `custom` snapshot mode lets you inject your own implementation of the `io.debezium.spi.snapshot.Snapshotter` interface.
 Set the `snapshot.mode.custom.name` configuration property to the name provided by the `name()` method of your implementation.
@@ -3305,10 +3310,44 @@ Use this snapshot mode only when you know all data of interest is still reflecte
 * A previously recorded offset specifies a log position that is not available on the server.
 
 ifdef::community[]
+`configuration_based`:: The `configuration_based` snapshot mode allows control over snapshots by setting connectors properties prefixed with 'snapshot.mode.configuration.based'.
+endif::community[]
+
+ifdef::community[]
 `custom`:: The connector performs a snapshot according to the implementation specified by the xref:postgresql-property-snapshot-mode-custom-name[`snapshot.mode.custom.name`] property, which defines a custom implementation of the `io.debezium.spi.snapshot.Snapshotter` interface.
 endif::community[]
 
 For more information, see the xref:#postgresql-connector-snapshot-mode-options[table of `snapshot.mode` options].
+
+ifdef::community[]
+|[[postgresql-property-snapshot-mode-configuration-based-snapshot-data]]<<postgresql-property-configuration-based-snapshot-data, `+snapshot.mode.configuration.based.snapshot.data+`>>
+|false
+|When `snapshot.mode` is set as `configuration_based`, this setting permits to specify whenever the data should be snapshotted or not.
+endif::community[]
+
+ifdef::community[]
+|[[postgresql-property-snapshot-mode-configuration-based-snapshot-schema]]<<postgresql-property-configuration-based-snapshot-schema, `+snapshot.mode.configuration.based.snapshot.schema+`>>
+|false
+|When `snapshot.mode` is set as `configuration_based`, this setting permits to specify whenever the schema should be snapshotted or not.
+endif::community[]
+
+ifdef::community[]
+|[[postgresql-property-snapshot-mode-configuration-based-start-stream]]<<postgresql-property-configuration-based-start-stream, `+snapshot.mode.configuration.based.start.stream+`>>
+|false
+|When `snapshot.mode` is set as `configuration_based`, this setting permits to specify whenever the stream should start or not after snapshot.
+endif::community[]
+
+ifdef::community[]
+|[[postgresql-property-snapshot-mode-configuration-based-snapshot-on-schema-error]]<<postgresql-property-configuration-based-snapshot-on-schema-error, `+snapshot.mode.configuration.based.snapshot.on.schema.error+`>>
+|false
+|When `snapshot.mode` is set as `configuration_based`, this setting permits to specify whenever the schema should be snapshotted or not in case schema history topic is missing.
+endif::community[]
+
+ifdef::community[]
+|[[postgresql-property-snapshot-mode-configuration-based-snapshot-on-data-error]]<<postgresql-property-configuration-based-snapshot-on-data-error, `+snapshot.mode.configuration.based.snapshot.on.data.error+`>>
+|false
+|When `snapshot.mode` is set as `configuration_based`, this setting permits to specify whenever the data should be snapshotted or not in case data is no more present on db log.
+endif::community[]
 
 ifdef::community[]
 |[[postgresql-property-snapshot-mode-custom-name]]<<postgresql-property-snapshot-mode-custom-name, `+snapshot.mode.custom.name+`>>
