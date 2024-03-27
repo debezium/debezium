@@ -284,6 +284,29 @@ public abstract class AbstractConnectorConnection extends JdbcConnection {
     }
 
     /**
+     * Determines whether the binlog format used by the database server is {@code binlog_row_image='NOBLOB'}.
+     *
+     * @return {@code true} if the {@code binlog_row_image} is set to {@code NOBLOB}, {@code false} otherwise
+     */
+    public boolean isBinlogRowImageNoblob() {
+        try {
+            final String rowImage = queryAndMap("SHOW GLOBAL VARIABLES LIKE 'binlog_row_image'", rs -> {
+                if (rs.next()) {
+                    return rs.getString(2);
+                }
+                // This setting was introduced in MySQL 5.6+ with default of 'FULL'.
+                // For older versions, assume 'FULL'.
+                return "FULL";
+            });
+            LOGGER.debug("binlog_row_image={}", rowImage);
+            return "NOBLOB".equalsIgnoreCase(rowImage);
+        }
+        catch (SQLException e) {
+            throw new DebeziumException("Unexpected error while connecting to the database and looking at BINLOG_ROW_IMAGE mode: ", e);
+        }
+    }
+
+    /**
      * Determine whether the database server has the row-level binlog enabled.
      *
      * @return {@code true} if the server's {@code binlog_format} is set to {@code ROW}, {@code false} otherwise

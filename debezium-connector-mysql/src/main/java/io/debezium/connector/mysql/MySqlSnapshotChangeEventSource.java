@@ -370,13 +370,53 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
                     .filter(id -> !delayedSchemaSnapshotTables.contains(id))
                     .collect(Collectors.toList());
         }
+
+        // Get binlog_row_image mode
+        final String[] binlogRowImage = {null};
+        connection.query("SHOW VARIABLES LIKE \'binlog_row_image\';", rs -> {
+            if (rs.next()) {
+                binlogRowImage[0] = rs.getString("Value");
+            }
+        });
         for (TableId tableId : realTablesToRead) {
             connection.query("SHOW CREATE TABLE " + quote(tableId), rs -> {
                 if (rs.next()) {
-                    addSchemaEvent(snapshotContext, tableId.catalog(), rs.getString(2));
+                    final String createStatment = rs.getString(2);
+
+                    // If binlog_row_image=noblob is set, it will exclude text/blob columns from the create query.
+                    final String mode = binlogRowImage[0];
+                    if ("NOBLOB".equals(mode)) {
+                        final String removedTextAndBlobColumns = removeTextAndBlobColumns(createStatment);
+                        addSchemaEvent(snapshotContext, tableId.catalog(), removedTextAndBlobColumns);
+                    }
+                    else {
+                        addSchemaEvent(snapshotContext, tableId.catalog(), createStatment);
+                    }
                 }
             });
         }
+    }
+
+    private static String removeTextAndBlobColumns(String createTableQuery) {
+        // Split queries into lines
+        final String[] lines = createTableQuery.split("\\n");
+        final StringBuilder modifiedQuery = new StringBuilder();
+
+        for (String line : lines) {
+            // Check each line to see if it contains TEXT or BLOB
+            if (!line.trim().toLowerCase().contains(" blob") && !line.trim().toLowerCase().contains(" text")) {
+                modifiedQuery.append(line).append('\n');
+            }
+        }
+
+        // The process of removing the last comma (only if present)
+        String resultQuery = modifiedQuery.toString().trim();
+        if (resultQuery.lastIndexOf(',') == resultQuery.length() - 1) {
+            resultQuery = resultQuery.substring(0, resultQuery.length() - 1) + '\n';
+        }
+
+        // Add the query closure back in
+        return resultQuery + ';';
     }
 
     private void createSchemaEventsForTables(RelationalSnapshotContext<MySqlPartition, MySqlOffsetContext> snapshotContext,

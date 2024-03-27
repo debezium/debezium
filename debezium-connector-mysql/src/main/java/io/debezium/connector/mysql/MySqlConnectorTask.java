@@ -340,10 +340,10 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
                         + "binlog_format=ROW and restart the connector.");
             }
 
-            if (!connection.isBinlogRowImageFull()) {
-                throw new DebeziumException("The MySQL server is not configured to use a FULL binlog_row_image, which is "
+            if (!connection.isBinlogRowImageFull() && !connection.isBinlogRowImageNoblob()) {
+                throw new DebeziumException("The MySQL server is not configured to use a FULL or NOBLOB binlog_row_image, which is "
                         + "required for this connector to work properly. Change the MySQL configuration to use a "
-                        + "binlog_row_image=FULL and restart the connector.");
+                        + "binlog_row_image=FULL|NOBLOB and restart the connector.");
             }
         }
     }
