@@ -74,6 +74,11 @@ public abstract class CommonConnectorConfig {
     protected SnapshotQueryMode snapshotQueryMode;
     protected String snapshotQueryModeCustomName;
     protected String snapshotLockingModeCustomName;
+    protected final boolean snapshotModeConfigurationBasedSnapshotData;
+    protected final boolean snapshotModeConfigurationBasedSnapshotSchema;
+    protected final boolean snapshotModeConfigurationBasedStream;
+    protected final boolean snapshotModeConfigurationBasedSnapshotOnSchemaError;
+    protected final boolean snapshotModeConfigurationBasedSnapshotOnDataError;
 
     /**
      * The set of predefined versions e.g. for source struct maker version
@@ -983,6 +988,61 @@ public abstract class CommonConnectorConfig {
                     "When 'snapshot.query.mode' is set as custom, this setting must be set to specify a the name of the custom implementation provided in the 'name()' method. "
                             + "The implementations must implement the 'SnapshotterQuery' interface and is called to determine how to build queries during snapshot.");
 
+    public static final Field SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_DATA = Field.create("snapshot.mode.configuration.based.snapshot.data")
+            .withDisplayName("Snapshot mode property based snapshot data")
+            .withType(Type.BOOLEAN)
+            .withDefault(false)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 17))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .optional()
+            .withDescription(
+                    "When 'snapshot.mode' is set as configuration_based, this setting permits to specify whenever the data should be snapshotted or not.");
+
+    public static final Field SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_SCHEMA = Field.create("snapshot.mode.configuration.based.snapshot.schema")
+            .withDisplayName("Snapshot mode property based snapshot schema")
+            .withType(Type.BOOLEAN)
+            .withDefault(false)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 18))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .optional()
+            .withDescription(
+                    "When 'snapshot.mode' is set as configuration_based, this setting permits to specify whenever the schema should be snapshotted or not.");
+
+    public static final Field SNAPSHOT_MODE_CONFIGURATION_BASED_START_STREAM = Field.create("snapshot.mode.configuration.based.start.stream")
+            .withDisplayName("Snapshot mode property based start stream")
+            .withType(Type.BOOLEAN)
+            .withDefault(false)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 19))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .optional()
+            .withDescription(
+                    "When 'snapshot.mode' is set as configuration_based, this setting permits to specify whenever the stream should start or not after snapshot.");
+
+    public static final Field SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_ON_SCHEMA_ERROR = Field.create("snapshot.mode.configuration.based.snapshot.on.schema.error")
+            .withDisplayName("Snapshot mode property based snapshot on schema error")
+            .withType(Type.BOOLEAN)
+            .withDefault(false)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 20))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .optional()
+            .withDescription(
+                    "When 'snapshot.mode' is set as configuration_based, this setting permits to specify whenever the schema should be snapshotted or not in case of error.");
+
+    public static final Field SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_ON_DATA_ERROR = Field.create("snapshot.mode.configuration.based.snapshot.on.data.error")
+            .withDisplayName("Snapshot mode property based snapshot on data error")
+            .withType(Type.BOOLEAN)
+            .withDefault(false)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 21))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .optional()
+            .withDescription(
+                    "When 'snapshot.mode' is set as configuration_based, this setting permits to specify whenever the data should be snapshotted or not in case of error.");
+
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
             .connector(
                     EVENT_PROCESSING_FAILURE_HANDLING_MODE,
@@ -997,6 +1057,11 @@ public abstract class CommonConnectorConfig {
                     SNAPSHOT_FETCH_SIZE,
                     SNAPSHOT_MAX_THREADS,
                     SNAPSHOT_MODE_CUSTOM_NAME,
+                    SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_DATA,
+                    SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_SCHEMA,
+                    SNAPSHOT_MODE_CONFIGURATION_BASED_START_STREAM,
+                    SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_ON_SCHEMA_ERROR,
+                    SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_ON_DATA_ERROR,
                     RETRIABLE_RESTART_WAIT,
                     QUERY_FETCH_SIZE,
                     MAX_RETRIES_ON_ERROR,
@@ -1103,6 +1168,11 @@ public abstract class CommonConnectorConfig {
         this.snapshotLockingModeCustomName = config.getString(SNAPSHOT_LOCKING_MODE_CUSTOM_NAME, "");
         this.snapshotQueryMode = SnapshotQueryMode.parse(config.getString(SNAPSHOT_QUERY_MODE), SNAPSHOT_QUERY_MODE.defaultValueAsString());
         this.snapshotQueryModeCustomName = config.getString(SNAPSHOT_QUERY_MODE_CUSTOM_NAME, "");
+        this.snapshotModeConfigurationBasedSnapshotData = config.getBoolean(SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_DATA);
+        this.snapshotModeConfigurationBasedSnapshotSchema = config.getBoolean(SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_SCHEMA);
+        this.snapshotModeConfigurationBasedStream = config.getBoolean(SNAPSHOT_MODE_CONFIGURATION_BASED_START_STREAM);
+        this.snapshotModeConfigurationBasedSnapshotOnSchemaError = config.getBoolean(SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_ON_SCHEMA_ERROR);
+        this.snapshotModeConfigurationBasedSnapshotOnDataError = config.getBoolean(SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_ON_DATA_ERROR);
 
         this.signalingDataCollectionId = !Strings.isNullOrBlank(this.signalingDataCollection)
                 ? TableId.parse(this.signalingDataCollection)
@@ -1436,6 +1506,26 @@ public abstract class CommonConnectorConfig {
 
     public String snapshotLockingModeCustomName() {
         return this.snapshotLockingModeCustomName;
+    }
+
+    public boolean snapshotModeConfigurationBasedSnapshotData() {
+        return this.snapshotModeConfigurationBasedSnapshotData;
+    }
+
+    public boolean snapshotModeConfigurationBasedSnapshotSchema() {
+        return this.snapshotModeConfigurationBasedSnapshotSchema;
+    }
+
+    public boolean snapshotModeConfigurationBasedStream() {
+        return this.snapshotModeConfigurationBasedStream;
+    }
+
+    public boolean snapshotModeConfigurationBasedSnapshotOnSchemaError() {
+        return this.snapshotModeConfigurationBasedSnapshotOnSchemaError;
+    }
+
+    public boolean snapshotModeConfigurationBasedSnapshotOnDataError() {
+        return this.snapshotModeConfigurationBasedSnapshotOnDataError;
     }
 
     public SnapshotQueryMode snapshotQueryMode() {
