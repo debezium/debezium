@@ -228,7 +228,7 @@ WARNING: Do not use this mode to perform a snapshot if schema changes were commi
 
 ifdef::community[]
 |`configuration_based`
-|The `configuration_based` snapshot mode allows control over snapshots by setting connectors properties prefixed with 'snapshot.mode.configuration.based'.
+|Set the snapshot mode to `configuration_based` to control snapshot behavior through the set of connector properties that have the prefix 'snapshot.mode.configuration.based'.
 endif::community[]
 
 ifdef::community[]
@@ -2888,7 +2888,7 @@ WARNING: Do not use this mode to perform a snapshot if schema changes were commi
 * A previously recorded offset specifies a log position that is not available on the server.
 
 ifdef::community[]
-`configuration_based`:: The `configuration_based` snapshot mode allows control over snapshots by setting connectors properties prefixed with 'snapshot.mode.configuration.based'.
+`configuration_based`:: With this option, you control snapshot behavior through a set of connector properties that have the prefix 'snapshot.mode.configuration.based'.
 endif::community[]
 
 ifdef::community[]
@@ -2901,25 +2901,25 @@ endif::community[]
 ifdef::community[]
 |[[sqlserver-property-snapshot-mode-configuration-based-snapshot-data]]<<sqlserver-property-configuration-based-snapshot-data, `+snapshot.mode.configuration.based.snapshot.data+`>>
 |false
-|When `snapshot.mode` is set as `configuration_based`, this setting permits to specify whenever the data should be snapshotted or not.
+|If the `snapshot.mode` is set to `configuration_based`, set this property to specify whether the connector includes table data when it performs a snapshot.
 endif::community[]
 
 ifdef::community[]
 |[[sqlserver-property-snapshot-mode-configuration-based-snapshot-schema]]<<sqlserver-property-configuration-based-snapshot-schema, `+snapshot.mode.configuration.based.snapshot.schema+`>>
 |false
-|When `snapshot.mode` is set as `configuration_based`, this setting permits to specify whenever the schema should be snapshotted or not.
+|If the `snapshot.mode` is set to `configuration_based`, set this property to specify whether the connector includes the table schema when it performs a snapshot.
 endif::community[]
 
 ifdef::community[]
 |[[sqlserver-property-snapshot-mode-configuration-based-start-stream]]<<sqlserver-property-configuration-based-start-stream, `+snapshot.mode.configuration.based.start.stream+`>>
 |false
-|When `snapshot.mode` is set as `configuration_based`, this setting permits to specify whenever the stream should start or not after snapshot.
+|If the `snapshot.mode` is set to `configuration_based`, set this property to specify whether the connector begins to stream change events after a snapshot completes.
 endif::community[]
 
 ifdef::community[]
 |[[sqlserver-property-snapshot-mode-configuration-based-snapshot-on-schema-error]]<<sqlserver-property-configuration-based-snapshot-on-schema-error, `+snapshot.mode.configuration.based.snapshot.on.schema.error+`>>
 |false
-|When `snapshot.mode` is set as `configuration_based`, this setting permits to specify whenever the schema should be snapshotted or not in case schema history topic is missing.
+|If the `snapshot.mode` is set to `configuration_based`, set this property to specify whether the connector includes table schema in a snapshot if the schema history topic is not available.
 endif::community[]
 
 ifdef::community[]
