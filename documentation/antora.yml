@@ -8,7 +8,7 @@ nav:
 
 asciidoc:
   attributes:
-    debezium-version: '2.5.3.Final'
+    debezium-version: '2.5.4.Final'
     debezium-kafka-version: '3.6.1'
     debezium-docker-label: '2.4'
     DockerKafkaConnect: registry.redhat.io/amq7/amq-streams-kafka-28-rhel8:1.8.0

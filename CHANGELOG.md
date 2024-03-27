@@ -2,6 +2,35 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.5.4.Final
+March 27th 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12424855)
+
+### New features since 2.5.3.Final
+
+None
+
+
+### Breaking changes since 2.5.3.Final
+
+None
+
+
+### Fixes since 2.5.3.Final
+
+* Full incremental snapshot on SQL Server Table skipping block of 36 records [DBZ-7359](https://issues.redhat.com/browse/DBZ-7359)
+* ReselectColumnsPostProcessor filter not use exclude predicate [DBZ-7437](https://issues.redhat.com/browse/DBZ-7437)
+* Update QOSDK and Quarkus to fix vcs-url annotation  CVE [DBZ-7664](https://issues.redhat.com/browse/DBZ-7664)
+* MySQL connector fails to parse DDL with RETURNING keyword [DBZ-7666](https://issues.redhat.com/browse/DBZ-7666)
+* Schema history comparator doesn't handle SERVER_ID_KEY and TIMESTAMP_KEY properly [DBZ-7690](https://issues.redhat.com/browse/DBZ-7690)
+
+
+### Other changes since 2.5.3.Final
+
+* Add documentation for MongoDB capture.mode.full.update.type property [DBZ-7647](https://issues.redhat.com/browse/DBZ-7647)
+* Exclude jcl-over-slf4j dependency [DBZ-7665](https://issues.redhat.com/browse/DBZ-7665)
+
+
+
 ## 2.5.3.Final
 March 19th 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12423535)
 
