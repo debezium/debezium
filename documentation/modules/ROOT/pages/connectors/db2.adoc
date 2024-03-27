@@ -2754,7 +2754,8 @@ endif::community[]
 ifdef::community[]
 |[[db2-property-snapshot-mode-configuration-based-snapshot-on-data-error]]<<db2-property-configuration-based-snapshot-on-data-error, `+snapshot.mode.configuration.based.snapshot.on.data.error+`>>
 |false
-|When `snapshot.mode` is set as `configuration_based`, this setting permits to specify whenever the data should be snapshotted or not in case data is no more present on db log.
+|If the `snapshot.mode` is set to `configuration_based`, this property specifies whether the connector attempts to snapshot table data if it does not find the last committed offset in the transaction log. +
+Set the value to `true` to instruct the connector to perform a new snapshot.
 endif::community[]
 
 ifdef::community[]
