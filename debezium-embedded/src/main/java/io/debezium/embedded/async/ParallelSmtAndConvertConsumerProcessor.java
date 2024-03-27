@@ -43,15 +43,9 @@ public class ParallelSmtAndConvertConsumerProcessor<R> extends AbstractRecordPro
         final List<Future<R>> recordFutures = new ArrayList<>(records.size());
         records.stream().forEachOrdered(r -> recordFutures.add(recordService.submit(new ProcessingCallables.TransformAndConvertRecord(r, transformations, convertor))));
 
-        LOGGER.trace("Waiting for the batch to finish processing.");
-        final List<R> convertedRecords = new ArrayList<>(recordFutures.size());
-        for (Future<R> f : recordFutures) {
-            convertedRecords.add(f.get()); // we need the whole batch, eventually wait forever
-        }
-
         LOGGER.trace("Calling user consumer.");
         for (int i = 0; i < records.size(); i++) {
-            consumer.accept(convertedRecords.get(i));
+            consumer.accept(recordFutures.get(i).get());
             committer.markProcessed(records.get(i));
         }
 
