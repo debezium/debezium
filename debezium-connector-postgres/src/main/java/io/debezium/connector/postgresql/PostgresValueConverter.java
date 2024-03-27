@@ -304,7 +304,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
             default:
                 if (oidValue == typeRegistry.geometryOid()) {
-                    return Geometry.builder();
+                    return Geometry.builder(column.name());
                 }
                 else if (oidValue == typeRegistry.geographyOid()) {
                     return Geography.builder();
@@ -313,7 +313,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
                     return SchemaBuilder.string();
                 }
                 else if (oidValue == typeRegistry.geometryArrayOid()) {
-                    return SchemaBuilder.array(Geometry.builder().optional().build());
+                    return SchemaBuilder.array(Geometry.builder(column.name()).optional().build());
                 }
                 else if (oidValue == typeRegistry.hstoreOid()) {
                     return hstoreSchema();

@@ -190,7 +190,7 @@ public class PostgresSchemaIT {
             Arrays.stream(testTables).forEach(tableId -> assertKeySchema(tableId, "pk", SchemaBuilder.int32().defaultValue(0).build()));
 
             assertTableSchema("public.postgis_table", "p, ml",
-                    Geometry.builder().optional().build(), Geography.builder().optional().build());
+                    Geometry.builder("p").optional().build(), Geography.builder().optional().build());
         }
     }
 

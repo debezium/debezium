@@ -881,7 +881,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
     }
 
     protected List<SchemaAndValueField> schemaAndValuesForPostgisTypes() {
-        Schema geomSchema = Geometry.builder().optional().build();
+        Schema geomSchema = Geometry.builder("p").optional().build();
         Schema geogSchema = Geography.builder().optional().build();
         return Arrays.asList(
                 // geometries are encoded here as HexEWKB
@@ -895,21 +895,33 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
     }
 
     protected List<SchemaAndValueField> schemaAndValuesForPostgisArrayTypes() {
-        Schema geomSchema = Geometry.builder()
+        Schema gaSchema = Geometry.builder("ga")
+                .optional()
+                .build();
+        Schema gaanSchema = Geometry.builder("gaan")
                 .optional()
                 .build();
 
-        List<Struct> values = Arrays.asList(
+        List<Struct> gaValues = Arrays.asList(
                 // 'GEOMETRYCOLLECTION EMPTY'::postgis.geometry
-                Geometry.createValue(geomSchema, DatatypeConverter.parseHexBinary("010700000000000000"), null),
+                Geometry.createValue(gaSchema, DatatypeConverter.parseHexBinary("010700000000000000"), null),
                 // 'POLYGON((166.51 -46.64, 178.52 -46.64, 178.52 -34.45, 166.51 -34.45, 166.51 -46.64))'::postgis.geometry
-                Geometry.createValue(geomSchema, DatatypeConverter.parseHexBinary(
+                Geometry.createValue(gaSchema, DatatypeConverter.parseHexBinary(
                         "01030000000100000005000000B81E85EB51D0644052B81E85EB5147C0713D0AD7A350664052B81E85EB5147C0713D0AD7A35066409A999999993941C0B81E85EB51D064409A999999993941C0B81E85EB51D0644052B81E85EB5147C0"),
                         null));
+
+        List<Struct> gaanValues = Arrays.asList(
+                // 'GEOMETRYCOLLECTION EMPTY'::postgis.geometry
+                Geometry.createValue(gaSchema, DatatypeConverter.parseHexBinary("010700000000000000"), null),
+                // 'POLYGON((166.51 -46.64, 178.52 -46.64, 178.52 -34.45, 166.51 -34.45, 166.51 -46.64))'::postgis.geometry
+                Geometry.createValue(gaSchema, DatatypeConverter.parseHexBinary(
+                        "01030000000100000005000000B81E85EB51D0644052B81E85EB5147C0713D0AD7A350664052B81E85EB5147C0713D0AD7A35066409A999999993941C0B81E85EB51D064409A999999993941C0B81E85EB51D0644052B81E85EB5147C0"),
+                        null));
+
         return Arrays.asList(
                 // geometries are encoded here as HexEWKB
-                new SchemaAndValueField("ga", SchemaBuilder.array(geomSchema).optional().build(), values),
-                new SchemaAndValueField("gann", SchemaBuilder.array(geomSchema).build(), values));
+                new SchemaAndValueField("ga", SchemaBuilder.array(gaSchema).optional().build(), gaValues),
+                new SchemaAndValueField("gann", SchemaBuilder.array(gaanSchema).build(), gaanValues));
     }
 
     protected List<SchemaAndValueField> schemasAndValuesForQuotedTypes() {

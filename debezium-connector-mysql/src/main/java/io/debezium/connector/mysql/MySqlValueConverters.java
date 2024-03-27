@@ -211,7 +211,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
                 || matches(typeName, "MULTILINESTRING")
                 || matches(typeName, "MULTIPOLYGON")
                 || isGeometryCollection(typeName)) {
-            return io.debezium.data.geometry.Geometry.builder();
+            return io.debezium.data.geometry.Geometry.builder(column.name());
         }
         if (matches(typeName, "YEAR")) {
             return Year.builder();

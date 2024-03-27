@@ -70,7 +70,7 @@ public class VerifyRecord {
         void assertEquals(String pathToField, Object actualValue, Object expectedValue);
     }
 
-    private static final String APICURIO_URL = "http://localhost:8080/apis/registry/v2";
+    public static final String APICURIO_URL = "http://localhost:8080/apis/registry/v2";
 
     private static final JsonConverter keyJsonConverter = new JsonConverter();
     private static final JsonConverter valueJsonConverter = new JsonConverter();
@@ -78,13 +78,13 @@ public class VerifyRecord {
     private static final JsonDeserializer valueJsonDeserializer = new JsonDeserializer();
 
     private static final boolean useApicurio = isApucurioAvailable();
-    private static Converter avroKeyConverter;
-    private static Converter avroValueConverter;
+    private static final Converter avroKeyConverter;
+    private static final Converter avroValueConverter;
 
     static {
         if (useApicurio) {
-            avroKeyConverter = new io.apicurio.registry.utils.converter.AvroConverter();
-            avroValueConverter = new io.apicurio.registry.utils.converter.AvroConverter();
+            avroKeyConverter = new io.apicurio.registry.utils.converter.AvroConverter<>();
+            avroValueConverter = new io.apicurio.registry.utils.converter.AvroConverter<>();
         }
         else {
             MockSchemaRegistryClient schemaRegistry = new MockSchemaRegistryClient();
@@ -111,7 +111,7 @@ public class VerifyRecord {
             config.put("schema.registry.url", "http://fake-url");
         }
 
-        avroKeyConverter.configure(config, false);
+        avroKeyConverter.configure(config, true);
         avroValueConverter.configure(config, false);
     }
 
@@ -529,13 +529,20 @@ public class VerifyRecord {
     public static void assertConnectSchemasAreEqual(String fieldName, Schema actual, Schema expected) {
         if (!areConnectSchemasEqual(actual, expected)) {
             // first try failing with an assertion message that shows the actual difference
-            assertThat(SchemaUtil.asString(actual)).describedAs("field name: " + fieldName).isEqualTo(SchemaUtil.asString(expected));
+            String actualSchemaString = SchemaUtil.asString(actual);
+            String expectedSchemaString = SchemaUtil.asString(expected);
+            if (fieldName != null) {
+                assertThat(actualSchemaString).describedAs("field name: " + fieldName).isEqualTo(expectedSchemaString);
+            }
+            else {
+                assertThat(actualSchemaString).isEqualTo(expectedSchemaString);
+            }
 
             // compare schema parameters
             assertThat(actual.parameters()).describedAs("field '" + fieldName + "' parameters").isEqualTo(expected.parameters());
 
             // fall-back just in case (e.g. differences of element schemas of arrays)
-            fail("field '" + fieldName + "': " + SchemaUtil.asString(actual) + " was not equal to " + SchemaUtil.asString(expected));
+            fail("field '" + fieldName + "': " + actualSchemaString + " was not equal to " + expectedSchemaString);
         }
     }
 
@@ -1126,7 +1133,7 @@ public class VerifyRecord {
         if (schema1 == schema2) {
             return true;
         }
-        if (schema1 == null && schema2 != null || schema1 != null && schema2 == null) {
+        if (schema1 == null || schema2 == null) {
             return false;
         }
         if (schema1.getClass() != schema2.getClass()) {
@@ -1190,7 +1197,6 @@ public class VerifyRecord {
             boolean equal = Objects.equals(field1.index(), field2.index()) &&
                     Objects.equals(field1.name(), field2.name()) &&
                     areConnectSchemasEqual(field1.schema(), field2.schema());
-
             if (!equal) {
                 return false;
             }

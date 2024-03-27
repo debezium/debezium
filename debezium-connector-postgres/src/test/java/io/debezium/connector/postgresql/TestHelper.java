@@ -267,7 +267,7 @@ public final class TestHelper {
     }
 
     public static JdbcConfiguration.Builder defaultJdbcConfigBuilder(String hostname, int port) {
-        return JdbcConfiguration.copy(Configuration.fromSystemProperties("database."))
+        return JdbcConfiguration.copy(Configuration.fromSystemProperties(CommonConnectorConfig.DATABASE_CONFIG_PREFIX))
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "dbserver1")
                 .withDefault(JdbcConfiguration.DATABASE, "postgres")
                 .withDefault(JdbcConfiguration.HOSTNAME, hostname)

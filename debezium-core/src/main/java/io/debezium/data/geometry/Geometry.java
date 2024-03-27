@@ -33,9 +33,9 @@ public class Geometry {
      *
      * @return the schema builder
      */
-    public static SchemaBuilder builder() {
+    public static SchemaBuilder builder(String columnName) {
         return SchemaBuilder.struct()
-                .name(LOGICAL_NAME)
+                .name(LOGICAL_NAME + "__" + columnName) // temporary fix for DBZ-6964
                 .version(1)
                 .doc("Geometry")
                 .optional()
@@ -47,10 +47,10 @@ public class Geometry {
      * Returns a {@link SchemaBuilder} for a Geometry field, with all other default Schema settings.
      *
      * @return the schema
-     * @see #builder()
+     * @see #builder(String columnName)
      */
-    public static Schema schema() {
-        return builder().build();
+    public static Schema schema(String columnName) {
+        return builder(columnName).build();
     }
 
     /**

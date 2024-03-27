@@ -169,7 +169,7 @@ public class JdbcSinkDataTypesConverter implements CustomConverter<SchemaBuilder
                     return null;
                 }
                 else if (field.hasDefaultValue()) {
-                    return (String) field.defaultValue();
+                    return field.defaultValue();
                 }
                 return "";
             }
@@ -177,10 +177,10 @@ public class JdbcSinkDataTypesConverter implements CustomConverter<SchemaBuilder
                 return new String((byte[]) value, StandardCharsets.UTF_8);
             }
             else if (value instanceof Number) {
-                return ((Number) value).toString();
+                return value.toString();
             }
             else if (value instanceof String) {
-                return (String) value;
+                return value;
             }
             LOGGER.warn("Cannot convert '{}' to STRING", value.getClass());
             return "";

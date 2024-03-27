@@ -163,6 +163,11 @@
                 <artifactId>apicurio-registry-utils-converter</artifactId>
                 <version>${version.apicurio}</version>
             </dependency>
+            <dependency>
+                <groupId>io.apicurio</groupId>
+                <artifactId>apicurio-registry-client</artifactId>
+                <version>${version.apicurio}</version>
+            </dependency>
 
             <dependency>
                 <groupId>org.antlr</groupId>
