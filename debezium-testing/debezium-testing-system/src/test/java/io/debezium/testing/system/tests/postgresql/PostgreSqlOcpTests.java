@@ -39,11 +39,11 @@ public abstract class PostgreSqlOcpTests extends PostgreSqlTests {
 
         String topic = connector.getDbServerName() + ".inventory.customers";
 
-        awaitAssert(() -> assertions.assertRecordsCount(topic, 7));
+        awaitAssert(() -> assertions.assertRecordsCount(topic, 8));
 
         insertCustomer(primaryController, "Arnold", "Test", "atest@test.com");
 
-        awaitAssert(() -> assertions.assertRecordsCount(topic, 8));
+        awaitAssert(() -> assertions.assertRecordsCount(topic, 9));
         awaitAssert(() -> assertions.assertRecordsContain(topic, "atest@test.com"));
     }
 }
