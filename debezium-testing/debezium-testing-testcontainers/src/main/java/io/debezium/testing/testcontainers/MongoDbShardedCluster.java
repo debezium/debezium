@@ -7,8 +7,7 @@ package io.debezium.testing.testcontainers;
 
 import static io.debezium.testing.testcontainers.MongoDbContainer.router;
 import static io.debezium.testing.testcontainers.MongoDbReplicaSet.configServerReplicaSet;
-import static io.debezium.testing.testcontainers.MongoDbReplicaSet.replicaSet;
-import static io.debezium.testing.testcontainers.util.DockerUtils.logDockerDesktopBanner;
+import static io.debezium.testing.testcontainers.util.DockerUtils.logContainerVMBanner;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
@@ -119,7 +118,7 @@ public class MongoDbShardedCluster implements MongoDbDeployment {
         this.configServers = createConfigServers();
         this.routers = createRouters();
 
-        logDockerDesktopBanner(LOGGER, getHostNames(), builder.skipDockerDesktopLogWarning);
+        logContainerVMBanner(LOGGER, getHostNames(), builder.skipDockerDesktopLogWarning);
     }
 
     /**
