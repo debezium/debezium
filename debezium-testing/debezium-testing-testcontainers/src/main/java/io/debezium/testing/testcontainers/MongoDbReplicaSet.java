@@ -5,7 +5,7 @@
  */
 package io.debezium.testing.testcontainers;
 
-import static io.debezium.testing.testcontainers.util.DockerUtils.logDockerDesktopBanner;
+import static io.debezium.testing.testcontainers.util.DockerUtils.logContainerVMBanner;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.joining;
 import static org.awaitility.Awaitility.await;
@@ -190,7 +190,7 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
             members.add(mongoDbContainer);
         }
 
-        logDockerDesktopBanner(LOGGER, getHostNames(), builder.skipDockerDesktopLogWarning);
+        logContainerVMBanner(LOGGER, getHostNames(), builder.skipDockerDesktopLogWarning);
     }
 
     public String getName() {
