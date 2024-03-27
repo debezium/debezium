@@ -12,6 +12,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
 
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,8 +39,7 @@ public class OcpMongoShardedController implements MongoDatabaseController {
         this.project = project;
         try {
             insertDataScript = Paths.get(getClass().getResource(OcpMongoShardedConstants.INSERT_MONGOS_DATA_SCRIPT_LOC).toURI());
-        }
-        catch (URISyntaxException e) {
+        } catch (URISyntaxException e) {
             throw new RuntimeException(e);
         }
     }
@@ -89,19 +89,26 @@ public class OcpMongoShardedController implements MongoDatabaseController {
         try {
             // fill test data, create debezium user
             mongo.executeMongoSh(String.join("\n", Files.readAllLines(insertDataScript)));
-            mongo.executeMongoSh(MongoShardedUtil.createDebeziumUserCommand(ConfigProperties.DATABASE_MONGO_DBZ_USERNAME, ConfigProperties.DATABASE_MONGO_DBZ_PASSWORD));
-        }
-        catch (IOException | TemplateException e) {
+            if (mongo.getUseTls()) {
+                mongo.executeMongoSh(MongoShardedUtil.createCertUserCommand(OcpMongoCertGenerator.CLIENT_SUBJECT));
+            } else {
+                mongo.executeMongoSh(MongoShardedUtil.createDebeziumUserCommand(ConfigProperties.DATABASE_MONGO_DBZ_USERNAME, ConfigProperties.DATABASE_MONGO_DBZ_PASSWORD));
+            }
+        } catch (IOException | TemplateException e) {
             throw new RuntimeException(e);
         }
 
         // each shard has to have debezium user created for replica_set connection type
         mongo.getShardReplicaSets().forEach(rs -> {
             try {
-                rs.executeMongosh(MongoShardedUtil.createDebeziumUserCommand(ConfigProperties.DATABASE_MONGO_DBZ_USERNAME, ConfigProperties.DATABASE_MONGO_DBZ_PASSWORD),
-                        true);
-            }
-            catch (IOException | TemplateException e) {
+                if (mongo.getUseTls()) {
+                    rs.executeMongosh(MongoShardedUtil.createCertUserCommand(OcpMongoCertGenerator.CLIENT_SUBJECT),
+                            false);
+                } else {
+                    rs.executeMongosh(MongoShardedUtil.createDebeziumUserCommand(ConfigProperties.DATABASE_MONGO_DBZ_USERNAME, ConfigProperties.DATABASE_MONGO_DBZ_PASSWORD),
+                            false);
+                }
+            } catch (IOException | TemplateException e) {
                 throw new RuntimeException(e);
             }
         });

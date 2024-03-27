@@ -25,6 +25,7 @@ import io.fabric8.kubernetes.api.model.ServiceBuilder;
 import io.fabric8.kubernetes.api.model.ServicePortBuilder;
 import io.fabric8.kubernetes.api.model.ServiceSpecBuilder;
 import io.fabric8.kubernetes.api.model.VolumeBuilder;
+import io.fabric8.kubernetes.api.model.VolumeMountBuilder;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.api.model.apps.DeploymentBuilder;
 import io.fabric8.kubernetes.api.model.apps.DeploymentSpecBuilder;
@@ -62,11 +63,15 @@ public class OcpConfigServerModelProvider {
                                         .build())
                                 .withSpec(new PodSpecBuilder()
                                         .withVolumes(new VolumeBuilder()
-                                                .withName("volume-" + name)
                                                 .withEmptyDir(new EmptyDirVolumeSource())
+                                                .withName("volume-" + name)
                                                 .build())
                                         .withContainers(new ContainerBuilder()
                                                 .withName("mongo")
+                                                .withVolumeMounts(new VolumeMountBuilder()
+                                                        .withName("volume-" + name)
+                                                        .withMountPath("/data/db")
+                                                        .build())
                                                 .withReadinessProbe(new ProbeBuilder()
                                                         .withExec(new ExecActionBuilder()
                                                                 .withCommand("mongosh", "localhost:" + OcpMongoShardedConstants.MONGO_CONFIG_PORT)
