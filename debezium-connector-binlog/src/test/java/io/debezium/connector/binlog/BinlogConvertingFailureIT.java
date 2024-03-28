@@ -362,7 +362,7 @@ public abstract class BinlogConvertingFailureIT<C extends SourceConnector> exten
 
         if (!replicaIsMaster) {
             // if it has replica, also apply the DDL because master didn't record DDL at binlog
-            try (BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName())) {
+            try (BinlogTestConnection db = getTestReplicaDatabaseConnection(DATABASE.getDatabaseName())) {
                 try (JdbcConnection connection = db.connect()) {
                     connection.execute("SET SQL_LOG_BIN=OFF;");
                     connection.execute(ddl);

@@ -128,4 +128,14 @@ public abstract class BinlogTestConnection extends JdbcConnection {
                 .withDatabase(databaseName)
                 .with("characterEncoding", "utf8");
     }
+
+    protected static JdbcConfiguration.Builder getReplicaJdbcConfig(String databaseName) {
+        return JdbcConfiguration.copy(
+                Configuration.fromSystemProperties("database.replica.")
+                        .merge(Configuration.fromSystemProperties(DRIVER_CONFIG_PREFIX)
+                                .merge(Configuration.fromSystemProperties(DATABASE_CONFIG_PREFIX))))
+                .withDatabase(databaseName)
+                .with("characterEncoding", "utf8");
+    }
+
 }

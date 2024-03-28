@@ -95,10 +95,14 @@ public class MariaDbTestConnection extends BinlogTestConnection {
      * @param urlProperties url properties
      * @return the connection instance; never null
      */
-
     public static MariaDbTestConnection forTestDatabase(String databaseName, Map<String, Object> urlProperties) {
         final JdbcConfiguration.Builder builder = getDefaultJdbcConfig(databaseName);
         urlProperties.forEach(builder::with);
         return new MariaDbTestConnection(builder.build());
     }
+
+    public static MariaDbTestConnection forTestReplicaDatabase(String databaseName) {
+        return new MariaDbTestConnection(getReplicaJdbcConfig(databaseName).build());
+    }
+
 }
