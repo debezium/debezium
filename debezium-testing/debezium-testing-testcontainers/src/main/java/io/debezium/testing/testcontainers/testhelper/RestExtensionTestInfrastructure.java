@@ -45,6 +45,7 @@ public class RestExtensionTestInfrastructure {
         SQLSERVER,
         MONGODB,
         ORACLE,
+        MARIADB,
         NONE
     }
 

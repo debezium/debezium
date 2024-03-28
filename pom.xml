@@ -179,6 +179,8 @@
         <module>debezium-connector-mongodb</module>
         <module>debezium-connector-sqlserver</module>
         <module>debezium-connector-oracle</module>
+        <module>debezium-connector-binlog</module>
+        <module>debezium-connector-mariadb</module>
         <module>debezium-microbenchmark-engine</module>
         <module>debezium-microbenchmark</module>
         <module>debezium-microbenchmark-oracle</module>
