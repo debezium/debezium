@@ -176,6 +176,10 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
          */
         INITIAL_ONLY("initial_only"),
         /**
+         * Allows control over snapshots by setting connectors properties prefixed with 'snapshot.mode.configuration.based'.
+         */
+        CONFIGURATION_BASED("configuration_based"),
+        /**
          * Inject a custom snapshotter, which allows for more control over snapshots.
          */
         CUSTOM("custom");
@@ -499,7 +503,7 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
                     + "may expose tables or fields explicitly excluded or masked by including the original SQL "
                     + "statement in the change event. For this reason the default value is 'false'.");
 
-    public static final Field SNAPSHOT_MODE = Field.create("snapshot.mode")
+    public static final Field SNAPSHOT_MODE = Field.create(SNAPSHOT_MODE_PROPERTY_NAME)
             .withDisplayName("Snapshot mode")
             .withEnum(SnapshotMode.class, SnapshotMode.INITIAL)
             .withWidth(ConfigDef.Width.SHORT)
@@ -727,7 +731,7 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
     /**
      * @return which snapshot mode the connector intends to use
      */
-    public SnapshotMode getSnapshotMode() {
+    public EnumeratedValue getSnapshotMode() {
         return snapshotMode;
     }
 

@@ -134,7 +134,7 @@ public class MariaDbConnectorConfig extends BinlogConnectorConfig {
         }
     }
 
-    public static final Field SNAPSHOT_LOCKING_MODE = Field.create("snapshot.locking.mode")
+    public static final Field SNAPSHOT_LOCKING_MODE = Field.create(SNAPSHOT_LOCKING_MODE_PROPERTY_NAME)
             .withDisplayName("Snapshot locking mode")
             .withEnum(SnapshotLockingMode.class, SnapshotLockingMode.MINIMAL)
             .withImportance(Importance.LOW)
