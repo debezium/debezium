@@ -154,7 +154,7 @@ public abstract class OracleTests extends ConnectorTest {
 
         insertCustomer(dbController, "Eaton", "Beaver", "ebeaver@test.com");
 
-        String topic = connectorConfig.getDbServerName() + ".inventory.customers";
+        String topic = connectorConfig.getDbServerName() + ".DEBEZIUM.CUSTOMERS";
         awaitAssert(() -> assertions.assertRecordsCount(topic, 8));
         awaitAssert(() -> assertions.assertRecordIsUnwrapped(topic, 1));
     }
