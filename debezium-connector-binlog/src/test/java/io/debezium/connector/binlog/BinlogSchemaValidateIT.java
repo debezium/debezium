@@ -400,7 +400,7 @@ public abstract class BinlogSchemaValidateIT<C extends SourceConnector> extends 
 
         if (!replicaIsMaster) {
             // if has replica, also apply DDL because master didn't record DDL at binlog
-            try (BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName())) {
+            try (BinlogTestConnection db = getTestReplicaDatabaseConnection(DATABASE.getDatabaseName())) {
                 try (JdbcConnection connection = db.connect()) {
                     connection.execute("SET SQL_LOG_BIN=OFF;");
                     connection.execute(ddl);

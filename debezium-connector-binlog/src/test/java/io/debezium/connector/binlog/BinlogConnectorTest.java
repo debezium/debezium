@@ -19,5 +19,7 @@ public interface BinlogConnectorTest<C extends SourceConnector> {
 
     BinlogTestConnection getTestDatabaseConnection(String databaseName);
 
+    BinlogTestConnection getTestReplicaDatabaseConnection(String databaseName);
+
     boolean isMariaDb();
 }
