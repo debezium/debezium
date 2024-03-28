@@ -7,7 +7,11 @@ package io.debezium.connector.binlog.util;
 
 import static org.junit.Assert.assertNotNull;
 
+import java.io.IOException;
+import java.net.URI;
 import java.net.URL;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -17,6 +21,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -158,10 +163,10 @@ public abstract class UniqueDatabase {
         assertNotNull("Cannot locate " + ddlFile, ddlTestFile);
         try {
             try (JdbcConnection connection = forTestDatabase(DEFAULT_DATABASE, urlProperties)) {
-                final List<String> statements = Arrays.stream(
+                final List<String> statements = readFileContents(ddlTestFile.toURI(), (data) -> Arrays.stream(
                         Stream.concat(
                                 Arrays.stream(charset != null ? CREATE_DATABASE_WITH_CHARSET_DDL : CREATE_DATABASE_DDL),
-                                Files.readAllLines(Paths.get(ddlTestFile.toURI())).stream())
+                                data)
                                 .map(String::trim)
                                 .filter(x -> !x.startsWith("--") && !x.isEmpty())
                                 .map(x -> {
@@ -171,12 +176,44 @@ public abstract class UniqueDatabase {
                                 .map(this::convertSQL)
                                 .collect(Collectors.joining("\n")).split(";"))
                         .map(x -> x.replace("$$", ";"))
-                        .collect(Collectors.toList());
+                        .collect(Collectors.toList()));
                 connection.execute(statements.toArray(new String[statements.size()]));
             }
         }
         catch (final Exception e) {
             throw new IllegalStateException(e);
+        }
+    }
+
+    /**
+     * Supports reading the contents of the SQL file, regardless if its bundled in a jar or not.
+     *
+     * @param uri the file URI
+     * @param handler the handler to receive the file contents
+     * @return the contents
+     * @throws IOException if there was an error reading the file contents
+     */
+    private List<String> readFileContents(URI uri, Function<Stream<String>, List<String>> handler) throws IOException {
+        if ("jar".equals(uri.getScheme())) {
+            // Open the JAR file
+            String[] parts = uri.toString().split("!");
+            URI jarUri = URI.create(parts[0]);
+            try (FileSystem fs = FileSystems.newFileSystem(jarUri, Collections.emptyMap())) {
+                try {
+                    return handler.apply(Files.readAllLines(fs.getPath(parts[1])).stream());
+                }
+                catch (IOException e) {
+                    throw new IOException("Failed to read contents", e);
+                }
+            }
+            catch (IOException e) {
+                throw new IOException("Failed to open file system", e);
+            }
+        }
+        else {
+            // Read from the file system
+            Path path = Paths.get(uri);
+            return handler.apply(Files.readAllLines(path).stream());
         }
     }
 
