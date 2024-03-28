@@ -89,7 +89,7 @@ Here's an example of code that configures and runs an embedded xref:{link-mysql-
     props.setProperty("name", "engine");
     props.setProperty("connector.class", "io.debezium.connector.mysql.MySqlConnector");
     props.setProperty("offset.storage", "org.apache.kafka.connect.storage.FileOffsetBackingStore");
-    props.setProperty("offset.storage.file.filename", "/tmp/offsets.dat");
+    props.setProperty("offset.storage.file.filename", "/path/to/storage/offsets.dat");
     props.setProperty("offset.flush.interval.ms", "60000");
     /* begin connector properties */
     props.setProperty("database.hostname", "localhost");
@@ -98,10 +98,8 @@ Here's an example of code that configures and runs an embedded xref:{link-mysql-
     props.setProperty("database.password", "mysqlpw");
     props.setProperty("database.server.id", "85744");
     props.setProperty("topic.prefix", "my-app-connector");
-    props.setProperty("schema.history.internal",
-          "io.debezium.storage.file.history.FileSchemaHistory");
-    props.setProperty("schema.history.internal.file.filename",
-          "/path/to/storage/schemahistory.dat");
+    props.setProperty("schema.history.internal", "io.debezium.storage.file.history.FileSchemaHistory");
+    props.setProperty("schema.history.internal.file.filename", "/path/to/storage/schemahistory.dat");
     
     // Create the engine with this configuration ...
     try (DebeziumEngine<ChangeEvent<String, String>> engine = DebeziumEngine.create(Json.class)
@@ -128,8 +126,8 @@ Let's look into this code in more detail, starting with the first few lines that
     props.setProperty("name", "engine");
     props.setProperty("connector.class", "io.debezium.connector.mysql.MySqlConnector");
     props.setProperty("offset.storage", "org.apache.kafka.connect.storage.FileOffsetBackingStore");
-    props.setProperty("offset.storage.file.filename", "/tmp/offsets.dat");
-    props.setProperty("offset.flush.interval.ms", 60000);
+    props.setProperty("offset.storage.file.filename", "/path/to/storage/offsets.dat");
+    props.setProperty("offset.flush.interval.ms", "60000");
 ----
 
 This creates a new standard `Properties` object to set several fields required by the engine regardless of which connector is being used.
@@ -153,10 +151,8 @@ The next few lines define the fields that are specific to the connector (documen
     props.setProperty("database.password", "mysqlpw")
     props.setProperty("database.server.id", "85744")
     props.setProperty("topic.prefix", "my-app-connector")
-    props.setProperty("schema.history.internal",
-          "io.debezium.storage.file.history.FileSchemaHistory")
-    props.setProperty("schema.history.internal.file.filename",
-          "/path/to/storage/schemahistory.dat")
+    props.setProperty("schema.history.internal", "io.debezium.storage.file.history.FileSchemaHistory")
+    props.setProperty("schema.history.internal.file.filename", "/path/to/storage/schemahistory.dat")
 ----
 
 Here, we set the name of the host machine and port number where the MySQL database server is running, and we define the username and password that will be used to connect to the MySQL database.
@@ -245,8 +241,8 @@ If your application needs to wait for the engine to completely stop before exiti
 
 Alternatively you can register `CompletionCallback` while creating `DebeziumEngine` as a callback to be informed when the engine terminates.
 
-Recall that when the JVM shuts down, it only waits for daemon threads.
-Therefore, if your application exits, be sure to wait for completion of the engine or alternatively run the engine on a daemon thread.
+Recall that when the JVM shuts down, it only waits for non-daemon threads.
+Therefore, if your application exits, be sure to wait for completion of the engine when you run the engine on a daemon thread.
 
 Your application should always properly stop the engine to ensure graceful and complete shutdown and that each source record is sent to the application exactly one time.
 For example, do not rely upon shutting down the `ExecutorService`, since that interrupts the running threads.
@@ -270,7 +266,7 @@ Allowed values are:
 * `Json.class` - the header values are encoded as `JSON` strings
 * `JsonByteArray.class` - the header values are formatted as `JSON` and encoded as UTF-8 byte arrays
 
-Internally, the engine uses the appropriate Kafka Connect converter implementation to which the conversion is delegated.
+Internally, the engine uses the appropriate Kafka Connect or Apicurio converter implementation to which the conversion is delegated.
 The converter can be parametrized using engine properties to modify its behaviour.
 
 An example of `JSON` output format is
