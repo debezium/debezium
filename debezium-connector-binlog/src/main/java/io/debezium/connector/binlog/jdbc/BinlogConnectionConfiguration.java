@@ -106,7 +106,7 @@ public abstract class BinlogConnectionConfiguration implements ConnectionConfigu
     public abstract String getUrlPattern();
 
     protected Configuration.Builder getDatabaseConfiguration(Configuration configuration) {
-        return configuration.edit().with(BinlogConnectorConfig.PORT, BinlogConnectorConfig.PORT.defaultValue());
+        return configuration.edit().withDefault(BinlogConnectorConfig.PORT, BinlogConnectorConfig.PORT.defaultValue());
     }
 
     protected JdbcConfiguration getJdbcConfiguration(Configuration configuration) {
