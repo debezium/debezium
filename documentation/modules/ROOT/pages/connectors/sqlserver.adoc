@@ -354,14 +354,16 @@ include::{partialsdir}/modules/all-connectors/con-connector-ad-hoc-snapshots.ado
 [id="sqlserver-incremental-snapshots"]
 === Incremental snapshots
 
+.SQL Server collations
 [WARNING]
 ====
-*SQL Server collations*
+Each SQL Server server or database is configured to use a specific https://learn.microsoft.com/en-us/sql/relational-databases/collations/collation-and-unicode-support?view=sql-server-ver16#Collation_Defn[collation], which determines how character data is stored, sorted, compared, and displayed.
+The sorting rules for some collation sets, such as the https://learn.microsoft.com/en-us/sql/relational-databases/collations/collation-and-unicode-support?view=sql-server-ver16#SQL-collations[SQL Server collations (SQL_*)] are not compatible with the Unicode sorting algorithm.
+In some cases, the incompatible sorting rules can lead to lost data when the connector runs an ad hoc snapshot.
+For example, if SQL Server is configured to send strings as Unicode (that is, the connection property `sendStringParametersAsUnicode` is set to `true`), the connector can skip records during the snapshot.
+To protect against lost data during an ad hoc snapshot, set the value of the `driver.sendStringParametersAsUnicode` connection string property to `false`.
 
-When SQL Server is configured with a collation whose sorting is not compatible with unicode's sorting algorithm (i.e. https://learn.microsoft.com/en-us/sql/relational-databases/collations/collation-and-unicode-support?view=sql-server-ver16#SQL-collations[SQL_* collations]) it is possible for data to be skipped when an adhoc snapshot is run.
-This can happen when the primary key column(s) are character based, not unicode, and the connection property `sendStringParametersAsUnicode` default value of `true` is used.
-To ensure records are not missed, disable sending string parameters as unicode by setting the value of  the `database.sendStringParametersAsUnicode` property in connector configuration to `false`.
-Debezium follows the recommendations in SQL Server's https://learn.microsoft.com/en-us/sql/connect/jdbc/setting-the-connection-properties?view=sql-server-ver16[setting connection properties] documentation about this property, so that unicode and non-unicode columns are supported when it is set to `false`.
+For more information about using the `sendStringParametersAsUnicode` property, see the https://learn.microsoft.com/en-us/sql/connect/jdbc/setting-the-connection-properties?view=sql-server-ver16[SQL Server connection properties documentation].
 ====
 
 include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+1]
