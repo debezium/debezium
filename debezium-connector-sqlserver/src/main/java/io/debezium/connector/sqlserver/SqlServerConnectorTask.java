@@ -105,7 +105,7 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
 
         final SnapshotterService snapshotterService = connectorConfig.getServiceRegistry().tryGetService(SnapshotterService.class);
 
-        validateAndLoadSchemaHistory(connectorConfig, metadataConnection, offsets, schema,
+        validateAndLoadSchemaHistory(connectorConfig, metadataConnection::validateLogPosition, offsets, schema,
                 snapshotterService.getSnapshotter());
 
         taskContext = new SqlServerTaskContext(connectorConfig, schema);
