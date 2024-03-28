@@ -25,6 +25,7 @@ jobs:
     outputs:
       common-changed: ${{ steps.changed-files-common.outputs.any_changed }}
       mongodb-changed: ${{ steps.changed-files-mongodb.outputs.any_changed }}
+      mariadb-changed: ${{ steps.changed-files-mariadb.outputs.any_changed }}
       mysql-changed: ${{ steps.changed-files-mysql.outputs.any_changed }}
       postgresql-changed: ${{ steps.changed-files-postgresql.outputs.any_changed }}
       oracle-changed: ${{ steps.changed-files-oracle.outputs.any_changed }}
@@ -79,6 +80,14 @@ jobs:
         with:
           files: |
             debezium-connector-mysql/**
+
+      - name: Get modified files (MariaDB)
+        id: changed-files-mariadb
+        uses: tj-actions/changed-files@v43.0.0
+        with:
+          files: |
+            debezium-connector-mariadb/**
+            debezium-connector-binlog/**
 
       - name: Get modified files (PostgreSQL)
         id: changed-files-postgresql
@@ -295,12 +304,12 @@ jobs:
     strategy:
       # Runs each combination concurrently
       matrix:
-        profile: [ 'mysql-ci', 'mysql-ci-gtids' ]
+        profile: [ 'mariadb-ci', 'mariadb-ci-gtids' ]
       fail-fast: false
     name: "MariaDB - ${{ matrix.profile }}"
     needs: [ check_style, file_changes ]
     runs-on: ubuntu-latest
-    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mysql-changed == 'true' || needs.file_changes.outputs.mysql-ddl-parser-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' }}
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mariadb-changed == 'true' || needs.file_changes.outputs.mysql-ddl-parser-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' }}
     steps:
       - name: Checkout Action
         uses: actions/checkout@v4

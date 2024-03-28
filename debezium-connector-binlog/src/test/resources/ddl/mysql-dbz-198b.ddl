@@ -1,0 +1,12 @@
+CREATE PROCEDURE p()
+  BEGIN
+    DECLARE v INT DEFAULT 1;
+
+    CASE v
+      WHEN 2 THEN SELECT v;
+      WHEN 3 THEN SELECT 0;
+      ELSE
+        BEGIN
+        END;
+    END CASE;
+  END;

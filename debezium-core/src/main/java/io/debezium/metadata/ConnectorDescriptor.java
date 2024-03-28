@@ -53,6 +53,8 @@ public class ConnectorDescriptor {
                 return "postgres";
             case "io.debezium.connector.sqlserver.SqlServerConnector":
                 return "sqlserver";
+            case "io.debezium.connector.mariadb.MariaDbConnector":
+                return "mariadb";
             default:
                 throw new RuntimeException("Unsupported connector type with className: \"" + className + "\"");
         }
@@ -70,6 +72,8 @@ public class ConnectorDescriptor {
                 return "Debezium PostgreSQL Connector";
             case "io.debezium.connector.sqlserver.SqlServerConnector":
                 return "Debezium SQLServer Connector";
+            case "io.debezium.connector.mariadb.MariaDbConnector":
+                return "Debezium MariaDB Connector";
             default:
                 throw new RuntimeException("Unsupported connector type with className: \"" + className + "\"");
         }
