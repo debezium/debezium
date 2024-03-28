@@ -58,7 +58,6 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Field;
 import io.debezium.pipeline.source.snapshot.incremental.ChunkQueryBuilder;
 import io.debezium.pipeline.source.snapshot.incremental.DefaultChunkQueryBuilder;
-import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.Attribute;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
@@ -159,17 +158,6 @@ public class JdbcConnection implements AutoCloseable {
     @FunctionalInterface
     public interface ResultSetExtractor<T> {
         T apply(ResultSet rs) throws SQLException;
-    }
-
-    @FunctionalInterface
-    public interface LogPositionValidator {
-
-        /**
-         * Validate the stored offset with the position available in the db log.
-         * @param offsetContext The current stored offset.
-         * @param config Connector configuration.
-         */
-        boolean validate(OffsetContext offsetContext, CommonConnectorConfig config);
     }
 
     /**
@@ -339,8 +327,6 @@ public class JdbcConnection implements AutoCloseable {
     private final String openingQuoteCharacter;
     private final String closingQuoteCharacter;
     private volatile Connection conn;
-
-    protected LogPositionValidator logPositionValidator;
 
     /**
      * Create a new instance with the given configuration and connection factory.
@@ -1652,14 +1638,5 @@ public class JdbcConnection implements AutoCloseable {
             }
         });
         return results;
-    }
-
-    public boolean isLogPositionAvailable(OffsetContext offsetContext, CommonConnectorConfig config) {
-
-        if (logPositionValidator == null) {
-            LOGGER.warn("Current JDBC connection implementation is not providing a log position validator implementation. The check will always be 'true'");
-            return true;
-        }
-        return logPositionValidator.validate(offsetContext, config);
     }
 }

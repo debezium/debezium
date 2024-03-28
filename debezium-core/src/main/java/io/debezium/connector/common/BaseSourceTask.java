@@ -35,7 +35,7 @@ import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
-import io.debezium.jdbc.JdbcConnection;
+import io.debezium.function.LogPositionValidator;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.notification.channels.NotificationChannel;
 import io.debezium.pipeline.signal.channels.SignalChannelReader;
@@ -68,7 +68,8 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
     private static final Duration MAX_POLL_PERIOD_IN_MILLIS = Duration.ofMillis(TimeUnit.HOURS.toMillis(1));
     private Configuration config;
 
-    protected void validateAndLoadSchemaHistory(CommonConnectorConfig config, JdbcConnection jdbcConnection, Offsets<P, O> previousOffsets, DatabaseSchema schema,
+    protected void validateAndLoadSchemaHistory(CommonConnectorConfig config, LogPositionValidator logPositionValidator, Offsets<P, O> previousOffsets,
+                                                DatabaseSchema schema,
                                                 Snapshotter snapshotter) {
 
         for (Map.Entry<P, O> previousOffset : previousOffsets) {
@@ -99,7 +100,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             }
             else {
 
-                boolean logPositionAvailable = jdbcConnection.isLogPositionAvailable(offset, config);
+                boolean logPositionAvailable = isLogPositionAvailable(logPositionValidator, offset, config);
 
                 if (schema.isHistorized() && !((HistorizedDatabaseSchema) schema).historyExists()) {
 
@@ -144,6 +145,15 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
                 }
             }
         }
+    }
+
+    public boolean isLogPositionAvailable(LogPositionValidator logPositionValidator, OffsetContext offsetContext, CommonConnectorConfig config) {
+
+        if (logPositionValidator == null) {
+            LOGGER.warn("Current JDBC connection implementation is not providing a log position validator implementation. The check will always be 'true'");
+            return true;
+        }
+        return logPositionValidator.validate(offsetContext, config);
     }
 
     public enum State {

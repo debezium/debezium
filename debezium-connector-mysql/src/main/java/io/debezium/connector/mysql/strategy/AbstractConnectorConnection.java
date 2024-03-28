@@ -61,7 +61,6 @@ public abstract class AbstractConnectorConnection extends JdbcConnection {
         super(configuration.config(), configuration.factory(), QUOTED_CHARACTER, QUOTED_CHARACTER);
         this.connectionConfig = configuration;
         this.fieldReader = fieldReader;
-        this.logPositionValidator = this::validateLogPosition;
     }
 
     @Override
