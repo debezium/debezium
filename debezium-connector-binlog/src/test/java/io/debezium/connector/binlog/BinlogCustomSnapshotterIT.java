@@ -96,28 +96,25 @@ public abstract class BinlogCustomSnapshotterIT<C extends SourceConnector> exten
         VerifyRecord.isValidInsert(record, pkField, 2);
         stopConnector();
 
-        // TODO Maybe it can be enabled when DBZ-7308 is done.
-        /*
-         * config = DATABASE_CUSTOM_SNAPSHOT.defaultConfig()
-         * .with(CommonConnectorConfig.SNAPSHOT_MODE, SnapshotMode.CUSTOM.getValue())
-         * .with(CommonConnectorConfig.SNAPSHOT_MODE_CUSTOM_NAME, CustomTestSnapshot.class.getName())
-         * .with(CommonConnectorConfig.SNAPSHOT_QUERY_MODE, CommonConnectorConfig.SnapshotQueryMode.CUSTOM)
-         * .with(CommonConnectorConfig.SNAPSHOT_QUERY_MODE_CUSTOM_NAME, CustomTestSnapshot.class.getName())
-         * .build();
-         *
-         * start(getConnectorClass(), config);
-         * assertConnectorIsRunning();
-         * actualRecords = consumeRecordsByTopic(4);
-         *
-         * s1recs = actualRecords.recordsForTopic(DATABASE_CUSTOM_SNAPSHOT.topicForTable("a"));
-         * s2recs = actualRecords.recordsForTopic(DATABASE_CUSTOM_SNAPSHOT.topicForTable("b"));
-         * assertThat(s1recs.size()).isEqualTo(2);
-         * assertThat(s2recs.size()).isEqualTo(2);
-         * VerifyRecord.isValidRead(s1recs.get(0), pkField, 1);
-         * VerifyRecord.isValidRead(s1recs.get(1), pkField, 2);
-         * VerifyRecord.isValidRead(s2recs.get(0), pkField, 1);
-         * VerifyRecord.isValidRead(s2recs.get(1), pkField, 2);
-         */
+        config = DATABASE_CUSTOM_SNAPSHOT.defaultConfig()
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.CUSTOM.getValue())
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE_CUSTOM_NAME, BinlogConnectorConfig.class.getName())
+                .with(BinlogConnectorConfig.SNAPSHOT_QUERY_MODE, BinlogConnectorConfig.SnapshotQueryMode.CUSTOM)
+                .with(BinlogConnectorConfig.SNAPSHOT_QUERY_MODE_CUSTOM_NAME, getCustomSnapshotClassName())
+                .build();
+
+        start(getConnectorClass(), config);
+        assertConnectorIsRunning();
+        actualRecords = consumeRecordsByTopic(12);
+
+        s1recs = actualRecords.recordsForTopic(DATABASE_CUSTOM_SNAPSHOT.topicForTable("a"));
+        s2recs = actualRecords.recordsForTopic(DATABASE_CUSTOM_SNAPSHOT.topicForTable("b"));
+        assertThat(s1recs.size()).isEqualTo(2);
+        assertThat(s2recs.size()).isEqualTo(2);
+        VerifyRecord.isValidRead(s1recs.get(0), pkField, 1);
+        VerifyRecord.isValidRead(s1recs.get(1), pkField, 2);
+        VerifyRecord.isValidRead(s2recs.get(0), pkField, 1);
+        VerifyRecord.isValidRead(s2recs.get(1), pkField, 2);
     }
 
     protected abstract String getCustomSnapshotClassName();

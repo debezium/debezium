@@ -51,7 +51,7 @@ public class MariaDbConnectorIT extends BinlogConnectorIT<MariaDbConnector, Mari
 
     @Override
     protected void assertSnapshotLockingModeIsNone(Configuration config) {
-        assertThat(new MariaDbConnectorConfig(config).getSnapshotLockingMode()).isEqualTo(SnapshotLockingMode.NONE);
+        assertThat(new MariaDbConnectorConfig(config).getSnapshotLockingMode().get()).isEqualTo(SnapshotLockingMode.NONE);
     }
 
     @Override

@@ -166,10 +166,6 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
 
     @Override
     public void execute(ChangeEventSourceContext context, P partition, O offsetContext) throws InterruptedException {
-        if (!snapshotterService.getSnapshotter().shouldStream()) {
-            LOGGER.info("Streaming is disabled for snapshot mode {}", snapshotterService.getSnapshotter().name());
-            return;
-        }
         if (!(snapshotterService.getSnapshotter() instanceof NeverSnapshotter)) {
             taskContext.getSchema().assureNonEmptySchema();
         }
