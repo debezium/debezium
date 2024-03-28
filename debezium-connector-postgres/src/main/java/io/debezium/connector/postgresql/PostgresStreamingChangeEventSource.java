@@ -82,6 +82,11 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
     private Lsn lastCompletelyProcessedLsn;
     private PostgresOffsetContext effectiveOffset;
 
+    /**
+     * For DEBUGGING
+     */
+    private OptionalLong lastTxnidForWhichCommitSeen = OptionalLong.empty();
+
     public PostgresStreamingChangeEventSource(PostgresConnectorConfig connectorConfig, Snapshotter snapshotter,
                                               PostgresConnection connection, PostgresEventDispatcher<TableId> dispatcher, ErrorHandler errorHandler, Clock clock,
                                               PostgresSchema schema, PostgresTaskContext taskContext, ReplicationConnection replicationConnection) {
@@ -262,6 +267,17 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
 
         // Tx BEGIN/END event
         if (message.isTransactionalMessage()) {
+            LOGGER.debug("Processing COMMIT with end LSN {} and txnid {}", lsn, message.getTransactionId());
+
+            OptionalLong currentTxnid = message.getTransactionId();
+            if (lastTxnidForWhichCommitSeen.isPresent() && currentTxnid.isPresent()) {
+                long delta = currentTxnid.getAsLong() - lastTxnidForWhichCommitSeen.getAsLong();
+                if (delta > 1) {
+                    LOGGER.warn("Skipped {} transactions between {} and {}, possible data loss ?", delta, lastTxnidForWhichCommitSeen, currentTxnid);
+                }
+            }
+            lastTxnidForWhichCommitSeen = currentTxnid;
+
             if (!connectorConfig.shouldProvideTransactionMetadata()) {
                 LOGGER.trace("Received transactional message {}", message);
                 // Don't skip on BEGIN message as it would flush LSN for the whole transaction
