@@ -98,7 +98,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
 
         OracleOffsetContext previousOffset = previousOffsets.getTheOnlyOffset();
 
-        validateAndLoadSchemaHistory(connectorConfig, jdbcConnection, previousOffsets, schema, snapshotterService.getSnapshotter());
+        validateAndLoadSchemaHistory(connectorConfig, jdbcConnection::validateLogPosition, previousOffsets, schema, snapshotterService.getSnapshotter());
 
         taskContext = new OracleTaskContext(connectorConfig, schema);
 

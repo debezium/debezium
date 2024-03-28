@@ -140,7 +140,6 @@ public class SqlServerConnection extends JdbcConnection {
                                boolean useSingleDatabase) {
         super(config.getJdbcConfig(), createConnectionFactory(config.getJdbcConfig(), useSingleDatabase), OPENING_QUOTING_CHARACTER, CLOSING_QUOTING_CHARACTER);
 
-        this.logPositionValidator = this::validateLogPosition;
         defaultValueConverter = new SqlServerDefaultValueConverter(this::connection, valueConverters);
         this.queryFetchSize = config.getQueryFetchSize();
 

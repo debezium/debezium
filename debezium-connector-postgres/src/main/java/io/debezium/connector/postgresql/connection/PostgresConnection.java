@@ -105,8 +105,6 @@ public class PostgresConnection extends JdbcConnection {
     public PostgresConnection(JdbcConfiguration config, PostgresValueConverterBuilder valueConverterBuilder, String connectionUsage) {
         super(addDefaultSettings(config, connectionUsage), FACTORY, PostgresConnection::validateServerVersion, "\"", "\"");
 
-        this.logPositionValidator = this::validateLogPosition;
-
         if (Objects.isNull(valueConverterBuilder)) {
             this.typeRegistry = null;
             this.defaultValueConverter = null;
@@ -131,7 +129,6 @@ public class PostgresConnection extends JdbcConnection {
                 PostgresConnection::validateServerVersion,
                 "\"", "\"");
 
-        this.logPositionValidator = this::validateLogPosition;
         if (Objects.isNull(typeRegistry)) {
             this.typeRegistry = null;
             this.defaultValueConverter = null;
