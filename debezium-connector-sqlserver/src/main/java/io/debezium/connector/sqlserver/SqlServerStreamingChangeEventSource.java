@@ -8,7 +8,6 @@ package io.debezium.connector.sqlserver;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -445,7 +444,10 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
         final List<SqlServerChangeTable> tables = new ArrayList<>();
         for (List<SqlServerChangeTable> captures : includeListChangeTables.values()) {
             SqlServerChangeTable currentTable = captures.get(0);
-            if (captures.size() > 1) {
+
+            // Get changes from table with multiple CDC instances,
+            // and it must be table that have already been captured schema.
+            if (captures.size() > 1 && schema.tableFor(currentTable.getSourceTableId()) != null) {
                 SqlServerChangeTable futureTable;
                 if (captures.get(0).getStartLsn().compareTo(captures.get(1).getStartLsn()) < 0) {
                     futureTable = captures.get(1);
@@ -459,31 +461,13 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                 tables.add(futureTable);
                 LOGGER.info("Multiple capture instances present for the same table: {} and {}", currentTable, futureTable);
             }
-            if (schema.tableFor(currentTable.getSourceTableId()) == null) {
-                LOGGER.info("Table {} is new to be monitored by capture instance {}", currentTable.getSourceTableId(), currentTable.getCaptureInstance());
-                // We need to read the source table schema - nullability information cannot be obtained from change table
-                // There might be no start LSN in the new change table at this time so current timestamp is used
-                offsetContext.event(
-                        currentTable.getSourceTableId(),
-                        Instant.now());
-                dispatcher.dispatchSchemaChangeEvent(
-                        partition,
-                        offsetContext,
-                        currentTable.getSourceTableId(),
-                        new SqlServerSchemaChangeEventEmitter(
-                                partition,
-                                offsetContext,
-                                currentTable,
-                                dataConnection.getTableSchemaFromTable(databaseName, currentTable),
-                                schema,
-                                SchemaChangeEventType.CREATE));
-            }
 
-            // If a column was renamed, then the old capture instance had been dropped and a new one
-            // created. In consequence, a table with out-dated schema might be assigned here.
-            // A proper value will be set when migration happens.
-            currentTable.setSourceTable(schema.tableFor(currentTable.getSourceTableId()));
-            tables.add(currentTable);
+            // Check whether the table has been captured schema or not.
+            // We only need to get changes for table that have already been captured schema.
+            if (schema.tableFor(currentTable.getSourceTableId()) != null) {
+                currentTable.setSourceTable(schema.tableFor(currentTable.getSourceTableId()));
+                tables.add(currentTable);
+            }
         }
 
         return tables.toArray(new SqlServerChangeTable[tables.size()]);

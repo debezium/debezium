@@ -67,9 +67,8 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void addTable() throws Exception {
+    public void addAlreadyExistTable() throws Exception {
         final int RECORDS_PER_TABLE = 5;
-        final int TABLES = 2;
         final int ID_START = 10;
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
@@ -81,34 +80,22 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
 
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
             final int id = ID_START + i;
-            connection.execute(
-                    "INSERT INTO tablea VALUES(" + id + ", 'a')");
-            connection.execute(
-                    "INSERT INTO tableb VALUES(" + id + ", 'b')");
+            connection.execute("INSERT INTO tablea VALUES(" + id + ", 'a')");
         }
 
-        SourceRecords records = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
+        SourceRecords records = consumeRecordsByTopic(RECORDS_PER_TABLE);
         assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
-        assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
 
         // Enable CDC for already existing table
         TestHelper.enableTableCdc(connection, "tablec");
-
-        // CDC for newly added table
-        connection.execute(
-                "CREATE TABLE tabled (id int primary key, cold varchar(30))");
-        TestHelper.enableTableCdc(connection, "tabled");
 
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
             final int id = ID_START + i;
             connection.execute(
                     "INSERT INTO tablec VALUES(" + id + ", 'c')");
-            connection.execute(
-                    "INSERT INTO tabled VALUES(" + id + ", 'd')");
         }
-        records = consumeRecordsByTopic(RECORDS_PER_TABLE * 2);
+        records = consumeRecordsByTopic(RECORDS_PER_TABLE);
         assertThat(records.recordsForTopic("server1.testDB1.dbo.tablec")).hasSize(RECORDS_PER_TABLE);
-        assertThat(records.recordsForTopic("server1.testDB1.dbo.tabled")).hasSize(RECORDS_PER_TABLE);
         records.recordsForTopic("server1.testDB1.dbo.tablec").forEach(record -> {
             assertSchemaMatchesStruct(
                     (Struct) ((Struct) record.value()).get("after"),
@@ -119,16 +106,40 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
                             .field("colc", Schema.OPTIONAL_STRING_SCHEMA)
                             .build());
         });
-        records.recordsForTopic("server1.testDB1.dbo.tabled").forEach(record -> {
-            assertSchemaMatchesStruct(
-                    (Struct) ((Struct) record.value()).get("after"),
-                    SchemaBuilder.struct()
-                            .optional()
-                            .name("server1.testDB1.dbo.tabled.Value")
-                            .field("id", Schema.INT32_SCHEMA)
-                            .field("cold", Schema.OPTIONAL_STRING_SCHEMA)
-                            .build());
-        });
+    }
+
+    @Test
+    @FixFor("DBZ-7697")
+    public void addNewlyTable() throws Exception {
+        final int RECORDS_PER_TABLE = 5;
+        final int ID_START = 10;
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                .build();
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+        TestHelper.waitForSnapshotToBeCompleted();
+
+        for (int i = 0; i < RECORDS_PER_TABLE; i++) {
+            final int id = ID_START + i;
+            connection.execute("INSERT INTO tablea VALUES(" + id + ", 'a')");
+        }
+
+        SourceRecords records = consumeRecordsByTopic(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
+
+        // CDC for newly added table
+        connection.execute(
+                "CREATE TABLE tabled (id int primary key, cold varchar(30))");
+        TestHelper.enableTableCdc(connection, "tabled");
+
+        for (int i = 0; i < RECORDS_PER_TABLE; i++) {
+            final int id = ID_START + i;
+            connection.execute("INSERT INTO tabled VALUES(" + id + ", 'd')");
+        }
+        records = consumeRecordsByTopic(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tabled")).isNull();
     }
 
     @Test
