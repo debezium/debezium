@@ -50,12 +50,11 @@ public class TransactionMonitor {
     private final String topicName;
     private final BlockingConsumer<SourceRecord> sender;
     private final CommonConnectorConfig connectorConfig;
-
-    // Following properties are kept for backward compatibility with connectors that override TransactionMonitor
-    protected final Schema transactionKeySchema;
-    protected final String DEBEZIUM_TRANSACTION_ID_KEY = TransactionStructMaker.DEBEZIUM_TRANSACTION_KEY;
-
     private final TransactionStructMaker transactionStructMaker;
+
+    // Following instance variables are kept for backward compatibility with connectors that override TransactionMonitor
+    protected final Schema transactionKeySchema;
+    protected final String DEBEZIUM_TRANSACTION_ID_KEY = TransactionStructMaker.DEBEZIUM_TRANSACTION_ID_KEY;
 
     public TransactionMonitor(CommonConnectorConfig connectorConfig, EventMetadataProvider eventMetadataProvider,
                               SchemaNameAdjuster schemaNameAdjuster, BlockingConsumer<SourceRecord> sender,
