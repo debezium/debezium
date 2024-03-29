@@ -277,27 +277,27 @@ jobs:
 #          maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
 #          version-mongo-server: ${{ matrix.version-mongo-server }}
 
-#  # Approx 40m each
-#  build_mysql:
-#    strategy:
-#      # Runs each combination concurrently
-#      matrix:
-#        profile: [ "mysql-ci", "mysql-ci-gtids", "mysql-ci-percona", "mysql-ci-ssl" ]
-#        version-mysql-server: [ "8.0", "8.2" ]
-#      fail-fast: false
-#    name: "MySQL ${{ matrix.version-mysql-server }} - ${{ matrix.profile }}"
-#    needs: [ check_style, file_changes ]
-#    runs-on: ubuntu-latest
-#    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mysql-changed == 'true' || needs.file_changes.outputs.mysql-ddl-parser-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' }}
-#    steps:
-#      - name: Checkout Action
-#        uses: actions/checkout@v4
-#
-#      - uses: ./.github/actions/build-debezium-mysql
-#        with:
-#          maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
-#          version-mysql-server: ${{ matrix.version-mysql-server }}
-#          profile: ${{ matrix.profile }}
+  # Approx 40m each
+  build_mysql:
+    strategy:
+      # Runs each combination concurrently
+      matrix:
+        profile: [ "mysql-ci", "mysql-ci-gtids", "mysql-ci-percona", "mysql-ci-ssl" ]
+        version-mysql-server: [ "8.0", "8.2" ]
+      fail-fast: false
+    name: "MySQL ${{ matrix.version-mysql-server }} - ${{ matrix.profile }}"
+    needs: [ check_style, file_changes ]
+    runs-on: ubuntu-latest
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mysql-changed == 'true' || needs.file_changes.outputs.mysql-ddl-parser-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' }}
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v4
+
+      - uses: ./.github/actions/build-debezium-mysql
+        with:
+          maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+          version-mysql-server: ${{ matrix.version-mysql-server }}
+          profile: ${{ matrix.profile }}
 
   # Approx 40m each
   build_mariadb:
