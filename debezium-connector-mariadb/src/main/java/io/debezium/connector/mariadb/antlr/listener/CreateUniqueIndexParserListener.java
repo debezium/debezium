@@ -11,8 +11,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.mariadb.antlr.MariaDbAntlrDdlParser;
-import io.debezium.ddl.parser.mysql.generated.MySqlParser;
-import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
+import io.debezium.ddl.parser.mariadb.generated.MariaDBParser;
+import io.debezium.ddl.parser.mariadb.generated.MariaDBParserBaseListener;
 import io.debezium.relational.TableEditor;
 import io.debezium.relational.TableId;
 import io.debezium.text.ParsingException;
@@ -22,7 +22,7 @@ import io.debezium.text.ParsingException;
  *
  * @author Chris Cranford
  */
-public class CreateUniqueIndexParserListener extends MySqlParserBaseListener {
+public class CreateUniqueIndexParserListener extends MariaDBParserBaseListener {
 
     private final static Logger LOG = LoggerFactory.getLogger(AlterTableParserListener.class);
 
@@ -33,7 +33,7 @@ public class CreateUniqueIndexParserListener extends MySqlParserBaseListener {
     }
 
     @Override
-    public void enterCreateIndex(MySqlParser.CreateIndexContext ctx) {
+    public void enterCreateIndex(MariaDBParser.CreateIndexContext ctx) {
         if (ctx.UNIQUE() != null) {
             TableId tableId = parser.parseQualifiedTableId(ctx.tableName().fullId());
             if (!parser.getTableFilter().isIncluded(tableId)) {

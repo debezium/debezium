@@ -18,8 +18,8 @@ import org.slf4j.LoggerFactory;
 import io.debezium.antlr.AntlrDdlParser;
 import io.debezium.antlr.DataTypeResolver;
 import io.debezium.connector.mariadb.antlr.MariaDbAntlrDdlParser;
-import io.debezium.ddl.parser.mysql.generated.MySqlParser;
-import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
+import io.debezium.ddl.parser.mariadb.generated.MariaDBParser;
+import io.debezium.ddl.parser.mariadb.generated.MariaDBParserBaseListener;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.TableEditor;
@@ -31,7 +31,7 @@ import io.debezium.util.Strings;
  *
  * @author Chris Cranford
  */
-public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
+public class ColumnDefinitionParserListener extends MariaDBParserBaseListener {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ColumnDefinitionParserListener.class);
 
@@ -70,7 +70,7 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
     }
 
     @Override
-    public void enterColumnDefinition(MySqlParser.ColumnDefinitionContext ctx) {
+    public void enterColumnDefinition(MariaDBParser.ColumnDefinitionContext ctx) {
         uniqueColumn = false;
         optionalColumn = new AtomicReference<>();
         resolveColumnDataType(ctx.dataType());
@@ -82,7 +82,7 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
     }
 
     @Override
-    public void exitColumnDefinition(MySqlParser.ColumnDefinitionContext ctx) {
+    public void exitColumnDefinition(MariaDBParser.ColumnDefinitionContext ctx) {
         if (optionalColumn.get() != null) {
             columnEditor.optional(optionalColumn.get().booleanValue());
         }
@@ -99,13 +99,13 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
     }
 
     @Override
-    public void enterUniqueKeyColumnConstraint(MySqlParser.UniqueKeyColumnConstraintContext ctx) {
+    public void enterUniqueKeyColumnConstraint(MariaDBParser.UniqueKeyColumnConstraintContext ctx) {
         uniqueColumn = true;
         super.enterUniqueKeyColumnConstraint(ctx);
     }
 
     @Override
-    public void enterPrimaryKeyColumnConstraint(MySqlParser.PrimaryKeyColumnConstraintContext ctx) {
+    public void enterPrimaryKeyColumnConstraint(MariaDBParser.PrimaryKeyColumnConstraintContext ctx) {
         // this rule will be parsed only if no primary key is set in a table
         // otherwise the statement can't be executed due to multiple primary key error
         optionalColumn.set(Boolean.FALSE);
@@ -115,7 +115,7 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
     }
 
     @Override
-    public void enterCommentColumnConstraint(MySqlParser.CommentColumnConstraintContext ctx) {
+    public void enterCommentColumnConstraint(MariaDBParser.CommentColumnConstraintContext ctx) {
         if (!parser.skipComments()) {
             if (ctx.STRING_LITERAL() != null) {
                 columnEditor.comment(parser.withoutQuotes(ctx.STRING_LITERAL().getText()));
@@ -125,31 +125,31 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
     }
 
     @Override
-    public void enterNullNotnull(MySqlParser.NullNotnullContext ctx) {
+    public void enterNullNotnull(MariaDBParser.NullNotnullContext ctx) {
         optionalColumn.set(Boolean.valueOf(ctx.NOT() == null));
         super.enterNullNotnull(ctx);
     }
 
     @Override
-    public void enterAutoIncrementColumnConstraint(MySqlParser.AutoIncrementColumnConstraintContext ctx) {
+    public void enterAutoIncrementColumnConstraint(MariaDBParser.AutoIncrementColumnConstraintContext ctx) {
         columnEditor.autoIncremented(true);
         columnEditor.generated(true);
         super.enterAutoIncrementColumnConstraint(ctx);
     }
 
     @Override
-    public void enterSerialDefaultColumnConstraint(MySqlParser.SerialDefaultColumnConstraintContext ctx) {
+    public void enterSerialDefaultColumnConstraint(MariaDBParser.SerialDefaultColumnConstraintContext ctx) {
         serialColumn();
         super.enterSerialDefaultColumnConstraint(ctx);
     }
 
-    private void resolveColumnDataType(MySqlParser.DataTypeContext dataTypeContext) {
+    private void resolveColumnDataType(MariaDBParser.DataTypeContext dataTypeContext) {
         String charsetName = null;
         DataType dataType = dataTypeResolver.resolveDataType(dataTypeContext);
 
-        if (dataTypeContext instanceof MySqlParser.StringDataTypeContext) {
+        if (dataTypeContext instanceof MariaDBParser.StringDataTypeContext) {
             // Same as LongVarcharDataTypeContext but with dimension handling
-            MySqlParser.StringDataTypeContext stringDataTypeContext = (MySqlParser.StringDataTypeContext) dataTypeContext;
+            MariaDBParser.StringDataTypeContext stringDataTypeContext = (MariaDBParser.StringDataTypeContext) dataTypeContext;
 
             if (stringDataTypeContext.lengthOneDimension() != null) {
                 Integer length = parseLength(stringDataTypeContext.lengthOneDimension().decimalLiteral().getText());
@@ -158,30 +158,30 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
 
             charsetName = parser.extractCharset(stringDataTypeContext.charsetName(), stringDataTypeContext.collationName());
         }
-        else if (dataTypeContext instanceof MySqlParser.LongVarcharDataTypeContext) {
+        else if (dataTypeContext instanceof MariaDBParser.LongVarcharDataTypeContext) {
             // Same as StringDataTypeContext but without dimension handling
-            MySqlParser.LongVarcharDataTypeContext longVarcharTypeContext = (MySqlParser.LongVarcharDataTypeContext) dataTypeContext;
+            MariaDBParser.LongVarcharDataTypeContext longVarcharTypeContext = (MariaDBParser.LongVarcharDataTypeContext) dataTypeContext;
 
             charsetName = parser.extractCharset(longVarcharTypeContext.charsetName(), longVarcharTypeContext.collationName());
         }
-        else if (dataTypeContext instanceof MySqlParser.NationalStringDataTypeContext) {
-            MySqlParser.NationalStringDataTypeContext nationalStringDataTypeContext = (MySqlParser.NationalStringDataTypeContext) dataTypeContext;
+        else if (dataTypeContext instanceof MariaDBParser.NationalStringDataTypeContext) {
+            MariaDBParser.NationalStringDataTypeContext nationalStringDataTypeContext = (MariaDBParser.NationalStringDataTypeContext) dataTypeContext;
 
             if (nationalStringDataTypeContext.lengthOneDimension() != null) {
                 Integer length = parseLength(nationalStringDataTypeContext.lengthOneDimension().decimalLiteral().getText());
                 columnEditor.length(length);
             }
         }
-        else if (dataTypeContext instanceof MySqlParser.NationalVaryingStringDataTypeContext) {
-            MySqlParser.NationalVaryingStringDataTypeContext nationalVaryingStringDataTypeContext = (MySqlParser.NationalVaryingStringDataTypeContext) dataTypeContext;
+        else if (dataTypeContext instanceof MariaDBParser.NationalVaryingStringDataTypeContext) {
+            MariaDBParser.NationalVaryingStringDataTypeContext nationalVaryingStringDataTypeContext = (MariaDBParser.NationalVaryingStringDataTypeContext) dataTypeContext;
 
             if (nationalVaryingStringDataTypeContext.lengthOneDimension() != null) {
                 Integer length = parseLength(nationalVaryingStringDataTypeContext.lengthOneDimension().decimalLiteral().getText());
                 columnEditor.length(length);
             }
         }
-        else if (dataTypeContext instanceof MySqlParser.DimensionDataTypeContext) {
-            MySqlParser.DimensionDataTypeContext dimensionDataTypeContext = (MySqlParser.DimensionDataTypeContext) dataTypeContext;
+        else if (dataTypeContext instanceof MariaDBParser.DimensionDataTypeContext) {
+            MariaDBParser.DimensionDataTypeContext dimensionDataTypeContext = (MariaDBParser.DimensionDataTypeContext) dataTypeContext;
 
             Integer length = null;
             Integer scale = null;
@@ -190,17 +190,17 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
             }
 
             if (dimensionDataTypeContext.lengthTwoDimension() != null) {
-                List<MySqlParser.DecimalLiteralContext> decimalLiterals = dimensionDataTypeContext.lengthTwoDimension().decimalLiteral();
+                List<MariaDBParser.DecimalLiteralContext> decimalLiterals = dimensionDataTypeContext.lengthTwoDimension().decimalLiteral();
                 length = parseLength(decimalLiterals.get(0).getText());
                 scale = Integer.valueOf(decimalLiterals.get(1).getText());
             }
 
             if (dimensionDataTypeContext.lengthTwoOptionalDimension() != null) {
-                List<MySqlParser.DecimalLiteralContext> decimalLiterals = dimensionDataTypeContext.lengthTwoOptionalDimension().decimalLiteral();
+                List<MariaDBParser.DecimalLiteralContext> decimalLiterals = dimensionDataTypeContext.lengthTwoOptionalDimension().decimalLiteral();
                 if (decimalLiterals.get(0).REAL_LITERAL() != null) {
                     String[] digits = DOT.split(decimalLiterals.get(0).getText());
                     if (Strings.isNullOrEmpty(digits[0]) || Integer.valueOf(digits[0]) == 0) {
-                        // Set default value 10 according mysql engine
+                        // Set default value 10 according mariadb engine
                         length = 10;
                     }
                     else {
@@ -222,8 +222,8 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
                 columnEditor.scale(scale);
             }
         }
-        else if (dataTypeContext instanceof MySqlParser.CollectionDataTypeContext) {
-            MySqlParser.CollectionDataTypeContext collectionDataTypeContext = (MySqlParser.CollectionDataTypeContext) dataTypeContext;
+        else if (dataTypeContext instanceof MariaDBParser.CollectionDataTypeContext) {
+            MariaDBParser.CollectionDataTypeContext collectionDataTypeContext = (MariaDBParser.CollectionDataTypeContext) dataTypeContext;
             if (collectionDataTypeContext.charsetName() != null) {
                 charsetName = collectionDataTypeContext.charsetName().getText();
             }
@@ -242,7 +242,7 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
 
         if (dataTypeName.equals("ENUM") || dataTypeName.equals("SET")) {
             // type expression has to be set, because the value converter needs to know the enum or set options
-            MySqlParser.CollectionDataTypeContext collectionDataTypeContext = (MySqlParser.CollectionDataTypeContext) dataTypeContext;
+            MariaDBParser.CollectionDataTypeContext collectionDataTypeContext = (MariaDBParser.CollectionDataTypeContext) dataTypeContext;
 
             List<String> collectionOptions = collectionDataTypeContext.collectionOptions().collectionOption().stream()
                     .map(AntlrDdlParser::getText)

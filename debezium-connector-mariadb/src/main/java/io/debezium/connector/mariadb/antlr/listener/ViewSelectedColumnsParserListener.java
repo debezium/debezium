@@ -12,8 +12,8 @@ import java.util.List;
 import java.util.Map;
 
 import io.debezium.connector.mariadb.antlr.MariaDbAntlrDdlParser;
-import io.debezium.ddl.parser.mysql.generated.MySqlParser;
-import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
+import io.debezium.ddl.parser.mariadb.generated.MariaDBParser;
+import io.debezium.ddl.parser.mariadb.generated.MariaDBParserBaseListener;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableEditor;
@@ -24,7 +24,7 @@ import io.debezium.relational.TableId;
  *
  * @author Chris Cranford
  */
-public class ViewSelectedColumnsParserListener extends MySqlParserBaseListener {
+public class ViewSelectedColumnsParserListener extends MariaDBParserBaseListener {
 
     private final MariaDbAntlrDdlParser parser;
     private final TableEditor tableEditor;
@@ -42,7 +42,7 @@ public class ViewSelectedColumnsParserListener extends MySqlParserBaseListener {
     }
 
     @Override
-    public void exitQuerySpecification(MySqlParser.QuerySpecificationContext ctx) {
+    public void exitQuerySpecification(MariaDBParser.QuerySpecificationContext ctx) {
         if (ctx.fromClause() != null) {
             parseQuerySpecification(ctx.selectElements());
         }
@@ -50,7 +50,7 @@ public class ViewSelectedColumnsParserListener extends MySqlParserBaseListener {
     }
 
     @Override
-    public void exitQuerySpecificationNointo(MySqlParser.QuerySpecificationNointoContext ctx) {
+    public void exitQuerySpecificationNointo(MariaDBParser.QuerySpecificationNointoContext ctx) {
         if (ctx.fromClause() != null) {
             parseQuerySpecification(ctx.selectElements());
         }
@@ -58,7 +58,7 @@ public class ViewSelectedColumnsParserListener extends MySqlParserBaseListener {
     }
 
     @Override
-    public void exitAtomTableItem(MySqlParser.AtomTableItemContext ctx) {
+    public void exitAtomTableItem(MariaDBParser.AtomTableItemContext ctx) {
         parser.runIfNotNull(() -> {
             parseAtomTableItem(ctx, tableByAlias);
         }, tableEditor);
@@ -66,7 +66,7 @@ public class ViewSelectedColumnsParserListener extends MySqlParserBaseListener {
     }
 
     @Override
-    public void exitSubqueryTableItem(MySqlParser.SubqueryTableItemContext ctx) {
+    public void exitSubqueryTableItem(MariaDBParser.SubqueryTableItemContext ctx) {
         parser.runIfNotNull(() -> {
             // parsing subselect
             String tableAlias = parser.parseName(ctx.uid());
@@ -77,15 +77,15 @@ public class ViewSelectedColumnsParserListener extends MySqlParserBaseListener {
         super.exitSubqueryTableItem(ctx);
     }
 
-    private void parseQuerySpecification(MySqlParser.SelectElementsContext selectElementsContext) {
+    private void parseQuerySpecification(MariaDBParser.SelectElementsContext selectElementsContext) {
         parser.runIfNotNull(() -> {
             selectTableEditor = parseSelectElements(selectElementsContext);
         }, tableEditor);
     }
 
-    private void parseAtomTableItem(MySqlParser.TableSourceItemContext ctx, Map<TableId, Table> tableByAlias) {
-        if (ctx instanceof MySqlParser.AtomTableItemContext) {
-            MySqlParser.AtomTableItemContext atomTableItemContext = (MySqlParser.AtomTableItemContext) ctx;
+    private void parseAtomTableItem(MariaDBParser.TableSourceItemContext ctx, Map<TableId, Table> tableByAlias) {
+        if (ctx instanceof MariaDBParser.AtomTableItemContext) {
+            MariaDBParser.AtomTableItemContext atomTableItemContext = (MariaDBParser.AtomTableItemContext) ctx;
 
             TableId tableId = parser.parseQualifiedTableId(atomTableItemContext.tableName().fullId());
 
@@ -103,7 +103,7 @@ public class ViewSelectedColumnsParserListener extends MySqlParserBaseListener {
         }
     }
 
-    private TableEditor parseSelectElements(MySqlParser.SelectElementsContext ctx) {
+    private TableEditor parseSelectElements(MariaDBParser.SelectElementsContext ctx) {
         TableEditor table = Table.editor();
         if (ctx.star != null) {
             tableByAlias.keySet().forEach(tableId -> {
@@ -112,14 +112,14 @@ public class ViewSelectedColumnsParserListener extends MySqlParserBaseListener {
         }
         else {
             ctx.selectElement().forEach(selectElementContext -> {
-                if (selectElementContext instanceof MySqlParser.SelectStarElementContext) {
-                    TableId tableId = parser.parseQualifiedTableId(((MySqlParser.SelectStarElementContext) selectElementContext).fullId());
+                if (selectElementContext instanceof MariaDBParser.SelectStarElementContext) {
+                    TableId tableId = parser.parseQualifiedTableId(((MariaDBParser.SelectStarElementContext) selectElementContext).fullId());
                     Table selectedTable = tableByAlias.get(tableId);
                     table.addColumns(selectedTable.columns());
                 }
-                else if (selectElementContext instanceof MySqlParser.SelectColumnElementContext) {
-                    MySqlParser.SelectColumnElementContext selectColumnElementContext = (MySqlParser.SelectColumnElementContext) selectElementContext;
-                    MySqlParser.FullColumnNameContext fullColumnNameContext = selectColumnElementContext.fullColumnName();
+                else if (selectElementContext instanceof MariaDBParser.SelectColumnElementContext) {
+                    MariaDBParser.SelectColumnElementContext selectColumnElementContext = (MariaDBParser.SelectColumnElementContext) selectElementContext;
+                    MariaDBParser.FullColumnNameContext fullColumnNameContext = selectColumnElementContext.fullColumnName();
 
                     String schemaName = parser.currentSchema();
                     String tableName = null;
@@ -161,12 +161,12 @@ public class ViewSelectedColumnsParserListener extends MySqlParserBaseListener {
         return table;
     }
 
-    private MySqlParser.TableSourceItemContext getTableSourceItemContext(MySqlParser.TableSourceContext tableSourceContext) {
-        if (tableSourceContext instanceof MySqlParser.TableSourceBaseContext) {
-            return ((MySqlParser.TableSourceBaseContext) tableSourceContext).tableSourceItem();
+    private MariaDBParser.TableSourceItemContext getTableSourceItemContext(MariaDBParser.TableSourceContext tableSourceContext) {
+        if (tableSourceContext instanceof MariaDBParser.TableSourceBaseContext) {
+            return ((MariaDBParser.TableSourceBaseContext) tableSourceContext).tableSourceItem();
         }
-        else if (tableSourceContext instanceof MySqlParser.TableSourceNestedContext) {
-            return ((MySqlParser.TableSourceNestedContext) tableSourceContext).tableSourceItem();
+        else if (tableSourceContext instanceof MariaDBParser.TableSourceNestedContext) {
+            return ((MariaDBParser.TableSourceNestedContext) tableSourceContext).tableSourceItem();
         }
         return null;
     }

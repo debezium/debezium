@@ -15,6 +15,7 @@ import java.util.stream.Collectors;
 
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.misc.Interval;
 import org.antlr.v4.runtime.tree.ParseTree;
 
 import io.debezium.antlr.AntlrDdlParser;
@@ -24,10 +25,12 @@ import io.debezium.connector.binlog.jdbc.BinlogSystemVariables;
 import io.debezium.connector.mariadb.antlr.listener.MariaDbAntlrDdlParserListener;
 import io.debezium.connector.mariadb.charset.CharsetMappingResolver;
 import io.debezium.connector.mariadb.jdbc.MariaDbValueConverters;
-import io.debezium.ddl.parser.mysql.generated.MySqlLexer;
-import io.debezium.ddl.parser.mysql.generated.MySqlParser;
-import io.debezium.ddl.parser.mysql.generated.MySqlParser.CharsetNameContext;
-import io.debezium.ddl.parser.mysql.generated.MySqlParser.CollationNameContext;
+import io.debezium.ddl.parser.mariadb.generated.MariaDBLexer;
+import io.debezium.ddl.parser.mariadb.generated.MariaDBParser;
+import io.debezium.ddl.parser.mariadb.generated.MariaDBParser.CharsetNameContext;
+import io.debezium.ddl.parser.mariadb.generated.MariaDBParser.CollationNameContext;
+import io.debezium.ddl.parser.mariadb.generated.MariaDBParser.RenameTableClauseContext;
+import io.debezium.ddl.parser.mariadb.generated.MariaDBParser.RenameTableContext;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.SystemVariables;
@@ -40,7 +43,7 @@ import io.debezium.relational.Tables;
  *
  * @author Chris Cranford
  */
-public class MariaDbAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser> {
+public class MariaDbAntlrDdlParser extends AntlrDdlParser<MariaDBLexer, MariaDBParser> {
 
     private final ConcurrentHashMap<String, String> charsetNameForDatabase = new ConcurrentHashMap<>();
     private final MariaDbValueConverters converters;
@@ -67,7 +70,7 @@ public class MariaDbAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParse
     }
 
     @Override
-    protected ParseTree parseTree(MySqlParser parser) {
+    protected ParseTree parseTree(MariaDBParser parser) {
         return parser.root();
     }
 
@@ -77,13 +80,13 @@ public class MariaDbAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParse
     }
 
     @Override
-    protected MySqlLexer createNewLexerInstance(CharStream charStreams) {
-        return new MySqlLexer(charStreams);
+    protected MariaDBLexer createNewLexerInstance(CharStream charStreams) {
+        return new MariaDBLexer(charStreams);
     }
 
     @Override
-    protected MySqlParser createNewParserInstance(CommonTokenStream commonTokenStream) {
-        return new MySqlParser(commonTokenStream);
+    protected MariaDBParser createNewParserInstance(CommonTokenStream commonTokenStream) {
+        return new MariaDBParser(commonTokenStream);
     }
 
     @Override
@@ -99,128 +102,128 @@ public class MariaDbAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParse
     @Override
     protected DataTypeResolver initializeDataTypeResolver() {
         DataTypeResolver.Builder dataTypeResolverBuilder = new DataTypeResolver.Builder();
-        dataTypeResolverBuilder.registerDataTypes(MySqlParser.StringDataTypeContext.class.getCanonicalName(), Arrays.asList(
-                new DataTypeResolver.DataTypeEntry(Types.CHAR, MySqlParser.CHAR),
-                new DataTypeResolver.DataTypeEntry(Types.VARCHAR, MySqlParser.CHAR, MySqlParser.VARYING),
-                new DataTypeResolver.DataTypeEntry(Types.VARCHAR, MySqlParser.VARCHAR),
-                new DataTypeResolver.DataTypeEntry(Types.VARCHAR, MySqlParser.TINYTEXT),
-                new DataTypeResolver.DataTypeEntry(Types.VARCHAR, MySqlParser.TEXT),
-                new DataTypeResolver.DataTypeEntry(Types.VARCHAR, MySqlParser.MEDIUMTEXT),
-                new DataTypeResolver.DataTypeEntry(Types.VARCHAR, MySqlParser.LONGTEXT),
-                new DataTypeResolver.DataTypeEntry(Types.VARCHAR, MySqlParser.LONG),
-                new DataTypeResolver.DataTypeEntry(Types.NCHAR, MySqlParser.NCHAR),
-                new DataTypeResolver.DataTypeEntry(Types.NVARCHAR, MySqlParser.NCHAR, MySqlParser.VARYING),
-                new DataTypeResolver.DataTypeEntry(Types.NVARCHAR, MySqlParser.NVARCHAR),
-                new DataTypeResolver.DataTypeEntry(Types.CHAR, MySqlParser.CHAR, MySqlParser.BINARY),
-                new DataTypeResolver.DataTypeEntry(Types.VARCHAR, MySqlParser.VARCHAR, MySqlParser.BINARY),
-                new DataTypeResolver.DataTypeEntry(Types.VARCHAR, MySqlParser.TINYTEXT, MySqlParser.BINARY),
-                new DataTypeResolver.DataTypeEntry(Types.VARCHAR, MySqlParser.TEXT, MySqlParser.BINARY),
-                new DataTypeResolver.DataTypeEntry(Types.VARCHAR, MySqlParser.MEDIUMTEXT, MySqlParser.BINARY),
-                new DataTypeResolver.DataTypeEntry(Types.VARCHAR, MySqlParser.LONGTEXT, MySqlParser.BINARY),
-                new DataTypeResolver.DataTypeEntry(Types.NCHAR, MySqlParser.NCHAR, MySqlParser.BINARY),
-                new DataTypeResolver.DataTypeEntry(Types.NVARCHAR, MySqlParser.NVARCHAR, MySqlParser.BINARY),
-                new DataTypeResolver.DataTypeEntry(Types.CHAR, MySqlParser.CHARACTER),
-                new DataTypeResolver.DataTypeEntry(Types.VARCHAR, MySqlParser.CHARACTER, MySqlParser.VARYING)));
+        dataTypeResolverBuilder.registerDataTypes(MariaDBParser.StringDataTypeContext.class.getCanonicalName(), Arrays.asList(
+                new DataTypeResolver.DataTypeEntry(Types.CHAR, MariaDBParser.CHAR),
+                new DataTypeResolver.DataTypeEntry(Types.VARCHAR, MariaDBParser.CHAR, MariaDBParser.VARYING),
+                new DataTypeResolver.DataTypeEntry(Types.VARCHAR, MariaDBParser.VARCHAR),
+                new DataTypeResolver.DataTypeEntry(Types.VARCHAR, MariaDBParser.TINYTEXT),
+                new DataTypeResolver.DataTypeEntry(Types.VARCHAR, MariaDBParser.TEXT),
+                new DataTypeResolver.DataTypeEntry(Types.VARCHAR, MariaDBParser.MEDIUMTEXT),
+                new DataTypeResolver.DataTypeEntry(Types.VARCHAR, MariaDBParser.LONGTEXT),
+                new DataTypeResolver.DataTypeEntry(Types.VARCHAR, MariaDBParser.LONG),
+                new DataTypeResolver.DataTypeEntry(Types.NCHAR, MariaDBParser.NCHAR),
+                new DataTypeResolver.DataTypeEntry(Types.NVARCHAR, MariaDBParser.NCHAR, MariaDBParser.VARYING),
+                new DataTypeResolver.DataTypeEntry(Types.NVARCHAR, MariaDBParser.NVARCHAR),
+                new DataTypeResolver.DataTypeEntry(Types.CHAR, MariaDBParser.CHAR, MariaDBParser.BINARY),
+                new DataTypeResolver.DataTypeEntry(Types.VARCHAR, MariaDBParser.VARCHAR, MariaDBParser.BINARY),
+                new DataTypeResolver.DataTypeEntry(Types.VARCHAR, MariaDBParser.TINYTEXT, MariaDBParser.BINARY),
+                new DataTypeResolver.DataTypeEntry(Types.VARCHAR, MariaDBParser.TEXT, MariaDBParser.BINARY),
+                new DataTypeResolver.DataTypeEntry(Types.VARCHAR, MariaDBParser.MEDIUMTEXT, MariaDBParser.BINARY),
+                new DataTypeResolver.DataTypeEntry(Types.VARCHAR, MariaDBParser.LONGTEXT, MariaDBParser.BINARY),
+                new DataTypeResolver.DataTypeEntry(Types.NCHAR, MariaDBParser.NCHAR, MariaDBParser.BINARY),
+                new DataTypeResolver.DataTypeEntry(Types.NVARCHAR, MariaDBParser.NVARCHAR, MariaDBParser.BINARY),
+                new DataTypeResolver.DataTypeEntry(Types.CHAR, MariaDBParser.CHARACTER),
+                new DataTypeResolver.DataTypeEntry(Types.VARCHAR, MariaDBParser.CHARACTER, MariaDBParser.VARYING)));
 
-        dataTypeResolverBuilder.registerDataTypes(MySqlParser.NationalStringDataTypeContext.class.getCanonicalName(), Arrays.asList(
-                new DataTypeResolver.DataTypeEntry(Types.NVARCHAR, MySqlParser.NATIONAL, MySqlParser.VARCHAR).setSuffixTokens(MySqlParser.BINARY),
-                new DataTypeResolver.DataTypeEntry(Types.NCHAR, MySqlParser.NATIONAL, MySqlParser.CHARACTER).setSuffixTokens(MySqlParser.BINARY),
-                new DataTypeResolver.DataTypeEntry(Types.NCHAR, MySqlParser.NATIONAL, MySqlParser.CHAR).setSuffixTokens(MySqlParser.BINARY),
-                new DataTypeResolver.DataTypeEntry(Types.NVARCHAR, MySqlParser.NCHAR, MySqlParser.VARCHAR).setSuffixTokens(MySqlParser.BINARY)));
+        dataTypeResolverBuilder.registerDataTypes(MariaDBParser.NationalStringDataTypeContext.class.getCanonicalName(), Arrays.asList(
+                new DataTypeResolver.DataTypeEntry(Types.NVARCHAR, MariaDBParser.NATIONAL, MariaDBParser.VARCHAR).setSuffixTokens(MariaDBParser.BINARY),
+                new DataTypeResolver.DataTypeEntry(Types.NCHAR, MariaDBParser.NATIONAL, MariaDBParser.CHARACTER).setSuffixTokens(MariaDBParser.BINARY),
+                new DataTypeResolver.DataTypeEntry(Types.NCHAR, MariaDBParser.NATIONAL, MariaDBParser.CHAR).setSuffixTokens(MariaDBParser.BINARY),
+                new DataTypeResolver.DataTypeEntry(Types.NVARCHAR, MariaDBParser.NCHAR, MariaDBParser.VARCHAR).setSuffixTokens(MariaDBParser.BINARY)));
 
-        dataTypeResolverBuilder.registerDataTypes(MySqlParser.NationalVaryingStringDataTypeContext.class.getCanonicalName(), Arrays.asList(
-                new DataTypeResolver.DataTypeEntry(Types.NVARCHAR, MySqlParser.NATIONAL, MySqlParser.CHAR, MySqlParser.VARYING),
-                new DataTypeResolver.DataTypeEntry(Types.NVARCHAR, MySqlParser.NATIONAL, MySqlParser.CHARACTER, MySqlParser.VARYING)));
+        dataTypeResolverBuilder.registerDataTypes(MariaDBParser.NationalVaryingStringDataTypeContext.class.getCanonicalName(), Arrays.asList(
+                new DataTypeResolver.DataTypeEntry(Types.NVARCHAR, MariaDBParser.NATIONAL, MariaDBParser.CHAR, MariaDBParser.VARYING),
+                new DataTypeResolver.DataTypeEntry(Types.NVARCHAR, MariaDBParser.NATIONAL, MariaDBParser.CHARACTER, MariaDBParser.VARYING)));
 
-        dataTypeResolverBuilder.registerDataTypes(MySqlParser.DimensionDataTypeContext.class.getCanonicalName(), Arrays.asList(
-                new DataTypeResolver.DataTypeEntry(Types.SMALLINT, MySqlParser.TINYINT)
-                        .setSuffixTokens(MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL),
-                new DataTypeResolver.DataTypeEntry(Types.SMALLINT, MySqlParser.INT1)
-                        .setSuffixTokens(MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL),
-                new DataTypeResolver.DataTypeEntry(Types.SMALLINT, MySqlParser.SMALLINT)
-                        .setSuffixTokens(MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL),
-                new DataTypeResolver.DataTypeEntry(Types.SMALLINT, MySqlParser.INT2)
-                        .setSuffixTokens(MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL),
-                new DataTypeResolver.DataTypeEntry(Types.INTEGER, MySqlParser.MEDIUMINT)
-                        .setSuffixTokens(MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL),
-                new DataTypeResolver.DataTypeEntry(Types.INTEGER, MySqlParser.INT3)
-                        .setSuffixTokens(MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL),
-                new DataTypeResolver.DataTypeEntry(Types.INTEGER, MySqlParser.MIDDLEINT)
-                        .setSuffixTokens(MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL),
-                new DataTypeResolver.DataTypeEntry(Types.INTEGER, MySqlParser.INT)
-                        .setSuffixTokens(MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL),
-                new DataTypeResolver.DataTypeEntry(Types.INTEGER, MySqlParser.INTEGER)
-                        .setSuffixTokens(MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL),
-                new DataTypeResolver.DataTypeEntry(Types.INTEGER, MySqlParser.INT4)
-                        .setSuffixTokens(MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL),
-                new DataTypeResolver.DataTypeEntry(Types.BIGINT, MySqlParser.BIGINT)
-                        .setSuffixTokens(MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL),
-                new DataTypeResolver.DataTypeEntry(Types.BIGINT, MySqlParser.INT8)
-                        .setSuffixTokens(MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL),
-                new DataTypeResolver.DataTypeEntry(Types.REAL, MySqlParser.REAL)
-                        .setSuffixTokens(MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL),
-                new DataTypeResolver.DataTypeEntry(Types.DOUBLE, MySqlParser.DOUBLE)
-                        .setSuffixTokens(MySqlParser.PRECISION, MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL),
-                new DataTypeResolver.DataTypeEntry(Types.DOUBLE, MySqlParser.FLOAT8)
-                        .setSuffixTokens(MySqlParser.PRECISION, MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL),
-                new DataTypeResolver.DataTypeEntry(Types.FLOAT, MySqlParser.FLOAT)
-                        .setSuffixTokens(MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL),
-                new DataTypeResolver.DataTypeEntry(Types.FLOAT, MySqlParser.FLOAT4)
-                        .setSuffixTokens(MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL),
-                new DataTypeResolver.DataTypeEntry(Types.DECIMAL, MySqlParser.DECIMAL)
-                        .setSuffixTokens(MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL)
+        dataTypeResolverBuilder.registerDataTypes(MariaDBParser.DimensionDataTypeContext.class.getCanonicalName(), Arrays.asList(
+                new DataTypeResolver.DataTypeEntry(Types.SMALLINT, MariaDBParser.TINYINT)
+                        .setSuffixTokens(MariaDBParser.SIGNED, MariaDBParser.UNSIGNED, MariaDBParser.ZEROFILL),
+                new DataTypeResolver.DataTypeEntry(Types.SMALLINT, MariaDBParser.INT1)
+                        .setSuffixTokens(MariaDBParser.SIGNED, MariaDBParser.UNSIGNED, MariaDBParser.ZEROFILL),
+                new DataTypeResolver.DataTypeEntry(Types.SMALLINT, MariaDBParser.SMALLINT)
+                        .setSuffixTokens(MariaDBParser.SIGNED, MariaDBParser.UNSIGNED, MariaDBParser.ZEROFILL),
+                new DataTypeResolver.DataTypeEntry(Types.SMALLINT, MariaDBParser.INT2)
+                        .setSuffixTokens(MariaDBParser.SIGNED, MariaDBParser.UNSIGNED, MariaDBParser.ZEROFILL),
+                new DataTypeResolver.DataTypeEntry(Types.INTEGER, MariaDBParser.MEDIUMINT)
+                        .setSuffixTokens(MariaDBParser.SIGNED, MariaDBParser.UNSIGNED, MariaDBParser.ZEROFILL),
+                new DataTypeResolver.DataTypeEntry(Types.INTEGER, MariaDBParser.INT3)
+                        .setSuffixTokens(MariaDBParser.SIGNED, MariaDBParser.UNSIGNED, MariaDBParser.ZEROFILL),
+                new DataTypeResolver.DataTypeEntry(Types.INTEGER, MariaDBParser.MIDDLEINT)
+                        .setSuffixTokens(MariaDBParser.SIGNED, MariaDBParser.UNSIGNED, MariaDBParser.ZEROFILL),
+                new DataTypeResolver.DataTypeEntry(Types.INTEGER, MariaDBParser.INT)
+                        .setSuffixTokens(MariaDBParser.SIGNED, MariaDBParser.UNSIGNED, MariaDBParser.ZEROFILL),
+                new DataTypeResolver.DataTypeEntry(Types.INTEGER, MariaDBParser.INTEGER)
+                        .setSuffixTokens(MariaDBParser.SIGNED, MariaDBParser.UNSIGNED, MariaDBParser.ZEROFILL),
+                new DataTypeResolver.DataTypeEntry(Types.INTEGER, MariaDBParser.INT4)
+                        .setSuffixTokens(MariaDBParser.SIGNED, MariaDBParser.UNSIGNED, MariaDBParser.ZEROFILL),
+                new DataTypeResolver.DataTypeEntry(Types.BIGINT, MariaDBParser.BIGINT)
+                        .setSuffixTokens(MariaDBParser.SIGNED, MariaDBParser.UNSIGNED, MariaDBParser.ZEROFILL),
+                new DataTypeResolver.DataTypeEntry(Types.BIGINT, MariaDBParser.INT8)
+                        .setSuffixTokens(MariaDBParser.SIGNED, MariaDBParser.UNSIGNED, MariaDBParser.ZEROFILL),
+                new DataTypeResolver.DataTypeEntry(Types.REAL, MariaDBParser.REAL)
+                        .setSuffixTokens(MariaDBParser.SIGNED, MariaDBParser.UNSIGNED, MariaDBParser.ZEROFILL),
+                new DataTypeResolver.DataTypeEntry(Types.DOUBLE, MariaDBParser.DOUBLE)
+                        .setSuffixTokens(MariaDBParser.PRECISION, MariaDBParser.SIGNED, MariaDBParser.UNSIGNED, MariaDBParser.ZEROFILL),
+                new DataTypeResolver.DataTypeEntry(Types.DOUBLE, MariaDBParser.FLOAT8)
+                        .setSuffixTokens(MariaDBParser.PRECISION, MariaDBParser.SIGNED, MariaDBParser.UNSIGNED, MariaDBParser.ZEROFILL),
+                new DataTypeResolver.DataTypeEntry(Types.FLOAT, MariaDBParser.FLOAT)
+                        .setSuffixTokens(MariaDBParser.SIGNED, MariaDBParser.UNSIGNED, MariaDBParser.ZEROFILL),
+                new DataTypeResolver.DataTypeEntry(Types.FLOAT, MariaDBParser.FLOAT4)
+                        .setSuffixTokens(MariaDBParser.SIGNED, MariaDBParser.UNSIGNED, MariaDBParser.ZEROFILL),
+                new DataTypeResolver.DataTypeEntry(Types.DECIMAL, MariaDBParser.DECIMAL)
+                        .setSuffixTokens(MariaDBParser.SIGNED, MariaDBParser.UNSIGNED, MariaDBParser.ZEROFILL)
                         .setDefaultLengthScaleDimension(10, 0),
-                new DataTypeResolver.DataTypeEntry(Types.DECIMAL, MySqlParser.DEC)
-                        .setSuffixTokens(MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL)
+                new DataTypeResolver.DataTypeEntry(Types.DECIMAL, MariaDBParser.DEC)
+                        .setSuffixTokens(MariaDBParser.SIGNED, MariaDBParser.UNSIGNED, MariaDBParser.ZEROFILL)
                         .setDefaultLengthScaleDimension(10, 0),
-                new DataTypeResolver.DataTypeEntry(Types.DECIMAL, MySqlParser.FIXED)
-                        .setSuffixTokens(MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL)
+                new DataTypeResolver.DataTypeEntry(Types.DECIMAL, MariaDBParser.FIXED)
+                        .setSuffixTokens(MariaDBParser.SIGNED, MariaDBParser.UNSIGNED, MariaDBParser.ZEROFILL)
                         .setDefaultLengthScaleDimension(10, 0),
-                new DataTypeResolver.DataTypeEntry(Types.NUMERIC, MySqlParser.NUMERIC)
-                        .setSuffixTokens(MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL)
+                new DataTypeResolver.DataTypeEntry(Types.NUMERIC, MariaDBParser.NUMERIC)
+                        .setSuffixTokens(MariaDBParser.SIGNED, MariaDBParser.UNSIGNED, MariaDBParser.ZEROFILL)
                         .setDefaultLengthScaleDimension(10, 0),
-                new DataTypeResolver.DataTypeEntry(Types.BIT, MySqlParser.BIT)
+                new DataTypeResolver.DataTypeEntry(Types.BIT, MariaDBParser.BIT)
                         .setDefaultLengthDimension(1),
-                new DataTypeResolver.DataTypeEntry(Types.TIME, MySqlParser.TIME),
-                new DataTypeResolver.DataTypeEntry(Types.TIMESTAMP_WITH_TIMEZONE, MySqlParser.TIMESTAMP),
-                new DataTypeResolver.DataTypeEntry(Types.TIMESTAMP, MySqlParser.DATETIME),
-                new DataTypeResolver.DataTypeEntry(Types.BINARY, MySqlParser.BINARY),
-                new DataTypeResolver.DataTypeEntry(Types.VARBINARY, MySqlParser.VARBINARY),
-                new DataTypeResolver.DataTypeEntry(Types.BLOB, MySqlParser.BLOB),
-                new DataTypeResolver.DataTypeEntry(Types.INTEGER, MySqlParser.YEAR)));
+                new DataTypeResolver.DataTypeEntry(Types.TIME, MariaDBParser.TIME),
+                new DataTypeResolver.DataTypeEntry(Types.TIMESTAMP_WITH_TIMEZONE, MariaDBParser.TIMESTAMP),
+                new DataTypeResolver.DataTypeEntry(Types.TIMESTAMP, MariaDBParser.DATETIME),
+                new DataTypeResolver.DataTypeEntry(Types.BINARY, MariaDBParser.BINARY),
+                new DataTypeResolver.DataTypeEntry(Types.VARBINARY, MariaDBParser.VARBINARY),
+                new DataTypeResolver.DataTypeEntry(Types.BLOB, MariaDBParser.BLOB),
+                new DataTypeResolver.DataTypeEntry(Types.INTEGER, MariaDBParser.YEAR)));
 
-        dataTypeResolverBuilder.registerDataTypes(MySqlParser.SimpleDataTypeContext.class.getCanonicalName(), Arrays.asList(
-                new DataTypeResolver.DataTypeEntry(Types.DATE, MySqlParser.DATE),
-                new DataTypeResolver.DataTypeEntry(Types.BLOB, MySqlParser.TINYBLOB),
-                new DataTypeResolver.DataTypeEntry(Types.BLOB, MySqlParser.MEDIUMBLOB),
-                new DataTypeResolver.DataTypeEntry(Types.BLOB, MySqlParser.LONGBLOB),
-                new DataTypeResolver.DataTypeEntry(Types.BOOLEAN, MySqlParser.BOOL),
-                new DataTypeResolver.DataTypeEntry(Types.BOOLEAN, MySqlParser.BOOLEAN),
-                new DataTypeResolver.DataTypeEntry(Types.BIGINT, MySqlParser.SERIAL)));
+        dataTypeResolverBuilder.registerDataTypes(MariaDBParser.SimpleDataTypeContext.class.getCanonicalName(), Arrays.asList(
+                new DataTypeResolver.DataTypeEntry(Types.DATE, MariaDBParser.DATE),
+                new DataTypeResolver.DataTypeEntry(Types.BLOB, MariaDBParser.TINYBLOB),
+                new DataTypeResolver.DataTypeEntry(Types.BLOB, MariaDBParser.MEDIUMBLOB),
+                new DataTypeResolver.DataTypeEntry(Types.BLOB, MariaDBParser.LONGBLOB),
+                new DataTypeResolver.DataTypeEntry(Types.BOOLEAN, MariaDBParser.BOOL),
+                new DataTypeResolver.DataTypeEntry(Types.BOOLEAN, MariaDBParser.BOOLEAN),
+                new DataTypeResolver.DataTypeEntry(Types.BIGINT, MariaDBParser.SERIAL)));
 
-        dataTypeResolverBuilder.registerDataTypes(MySqlParser.CollectionDataTypeContext.class.getCanonicalName(), Arrays.asList(
-                new DataTypeResolver.DataTypeEntry(Types.CHAR, MySqlParser.ENUM).setSuffixTokens(MySqlParser.BINARY),
-                new DataTypeResolver.DataTypeEntry(Types.CHAR, MySqlParser.SET).setSuffixTokens(MySqlParser.BINARY)));
+        dataTypeResolverBuilder.registerDataTypes(MariaDBParser.CollectionDataTypeContext.class.getCanonicalName(), Arrays.asList(
+                new DataTypeResolver.DataTypeEntry(Types.CHAR, MariaDBParser.ENUM).setSuffixTokens(MariaDBParser.BINARY),
+                new DataTypeResolver.DataTypeEntry(Types.CHAR, MariaDBParser.SET).setSuffixTokens(MariaDBParser.BINARY)));
 
-        dataTypeResolverBuilder.registerDataTypes(MySqlParser.SpatialDataTypeContext.class.getCanonicalName(), Arrays.asList(
-                new DataTypeResolver.DataTypeEntry(Types.OTHER, MySqlParser.GEOMETRYCOLLECTION),
-                new DataTypeResolver.DataTypeEntry(Types.OTHER, MySqlParser.GEOMCOLLECTION),
-                new DataTypeResolver.DataTypeEntry(Types.OTHER, MySqlParser.LINESTRING),
-                new DataTypeResolver.DataTypeEntry(Types.OTHER, MySqlParser.MULTILINESTRING),
-                new DataTypeResolver.DataTypeEntry(Types.OTHER, MySqlParser.MULTIPOINT),
-                new DataTypeResolver.DataTypeEntry(Types.OTHER, MySqlParser.MULTIPOLYGON),
-                new DataTypeResolver.DataTypeEntry(Types.OTHER, MySqlParser.POINT),
-                new DataTypeResolver.DataTypeEntry(Types.OTHER, MySqlParser.POLYGON),
-                new DataTypeResolver.DataTypeEntry(Types.OTHER, MySqlParser.JSON),
-                new DataTypeResolver.DataTypeEntry(Types.OTHER, MySqlParser.GEOMETRY)));
+        dataTypeResolverBuilder.registerDataTypes(MariaDBParser.SpatialDataTypeContext.class.getCanonicalName(), Arrays.asList(
+                new DataTypeResolver.DataTypeEntry(Types.OTHER, MariaDBParser.GEOMETRYCOLLECTION),
+                new DataTypeResolver.DataTypeEntry(Types.OTHER, MariaDBParser.GEOMCOLLECTION),
+                new DataTypeResolver.DataTypeEntry(Types.OTHER, MariaDBParser.LINESTRING),
+                new DataTypeResolver.DataTypeEntry(Types.OTHER, MariaDBParser.MULTILINESTRING),
+                new DataTypeResolver.DataTypeEntry(Types.OTHER, MariaDBParser.MULTIPOINT),
+                new DataTypeResolver.DataTypeEntry(Types.OTHER, MariaDBParser.MULTIPOLYGON),
+                new DataTypeResolver.DataTypeEntry(Types.OTHER, MariaDBParser.POINT),
+                new DataTypeResolver.DataTypeEntry(Types.OTHER, MariaDBParser.POLYGON),
+                new DataTypeResolver.DataTypeEntry(Types.OTHER, MariaDBParser.JSON),
+                new DataTypeResolver.DataTypeEntry(Types.OTHER, MariaDBParser.GEOMETRY)));
 
-        dataTypeResolverBuilder.registerDataTypes(MySqlParser.LongVarbinaryDataTypeContext.class.getCanonicalName(), Arrays.asList(
-                new DataTypeResolver.DataTypeEntry(Types.BLOB, MySqlParser.LONG)
-                        .setSuffixTokens(MySqlParser.VARBINARY)));
+        dataTypeResolverBuilder.registerDataTypes(MariaDBParser.LongVarbinaryDataTypeContext.class.getCanonicalName(), Arrays.asList(
+                new DataTypeResolver.DataTypeEntry(Types.BLOB, MariaDBParser.LONG)
+                        .setSuffixTokens(MariaDBParser.VARBINARY)));
 
-        dataTypeResolverBuilder.registerDataTypes(MySqlParser.LongVarcharDataTypeContext.class.getCanonicalName(), Arrays.asList(
-                new DataTypeResolver.DataTypeEntry(Types.VARCHAR, MySqlParser.LONG)
-                        .setSuffixTokens(MySqlParser.VARCHAR)));
+        dataTypeResolverBuilder.registerDataTypes(MariaDBParser.LongVarcharDataTypeContext.class.getCanonicalName(), Arrays.asList(
+                new DataTypeResolver.DataTypeEntry(Types.VARCHAR, MariaDBParser.LONG)
+                        .setSuffixTokens(MariaDBParser.VARCHAR)));
 
         return dataTypeResolverBuilder.build();
     }
@@ -235,23 +238,23 @@ public class MariaDbAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParse
     }
 
     /**
-     * Parse a name from {@link MySqlParser.UidContext}.
+     * Parse a name from {@link MariaDBParser.UidContext}.
      *
      * @param uidContext uid context
      * @return name without quotes.
      */
-    public String parseName(MySqlParser.UidContext uidContext) {
+    public String parseName(MariaDBParser.UidContext uidContext) {
         return withoutQuotes(uidContext);
     }
 
     /**
-     * Parse qualified table identification from {@link MySqlParser.FullIdContext}.
+     * Parse qualified table identification from {@link MariaDBParser.FullIdContext}.
      * {@link MariaDbAntlrDdlParser#currentSchema()} will be used if definition of schema name is not part of the context.
      *
      * @param fullIdContext full id context.
      * @return qualified {@link TableId}.
      */
-    public TableId parseQualifiedTableId(MySqlParser.FullIdContext fullIdContext) {
+    public TableId parseQualifiedTableId(MariaDBParser.FullIdContext fullIdContext) {
         final char[] fullTableName = fullIdContext.getText().toCharArray();
         StringBuilder component = new StringBuilder();
         String dbName = null;
@@ -296,16 +299,16 @@ public class MariaDbAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParse
     }
 
     /**
-     * Parse column names for primary index from {@link MySqlParser.IndexColumnNamesContext}. This method will update
+     * Parse column names for primary index from {@link MariaDBParser.IndexColumnNamesContext}. This method will update
      * column to be not optional and set primary key column names to table.
      *
      * @param indexColumnNamesContext primary key index column names context.
      * @param tableEditor editor for table where primary key index is parsed.
      */
-    public void parsePrimaryIndexColumnNames(MySqlParser.IndexColumnNamesContext indexColumnNamesContext, TableEditor tableEditor) {
+    public void parsePrimaryIndexColumnNames(MariaDBParser.IndexColumnNamesContext indexColumnNamesContext, TableEditor tableEditor) {
         List<String> pkColumnNames = indexColumnNamesContext.indexColumnName().stream()
                 .map(indexColumnNameContext -> {
-                    // MySQL does not allow a primary key to have nullable columns, so let's make sure we model that correctly ...
+                    // MariaDB does not allow a primary key to have nullable columns, so let's make sure we model that correctly ...
                     String columnName;
                     if (indexColumnNameContext.uid() != null) {
                         columnName = parseName(indexColumnNameContext.uid());
@@ -332,13 +335,13 @@ public class MariaDbAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParse
     }
 
     /**
-     * Parse column names for unique index from {@link MySqlParser.IndexColumnNamesContext}. This method will set
+     * Parse column names for unique index from {@link MariaDBParser.IndexColumnNamesContext}. This method will set
      * unique key column names to table if there are no optional.
      *
      * @param indexColumnNamesContext unique key index column names context.
      * @param tableEditor editor for table where primary key index is parsed.
      */
-    public void parseUniqueIndexColumnNames(MySqlParser.IndexColumnNamesContext indexColumnNamesContext, TableEditor tableEditor) {
+    public void parseUniqueIndexColumnNames(MariaDBParser.IndexColumnNamesContext indexColumnNamesContext, TableEditor tableEditor) {
         List<Column> indexColumns = getIndexColumns(indexColumnNamesContext, tableEditor);
         if (indexColumns.stream().filter(col -> Objects.isNull(col) || col.isOptional()).count() > 0) {
             logger.warn("Skip to set unique index columns {} to primary key which including optional columns", indexColumns);
@@ -355,11 +358,11 @@ public class MariaDbAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParse
      * @param tableEditor editor for table where unique index is parsed.
      * @return true if the index is to be included; false otherwise.
      */
-    public boolean isTableUniqueIndexIncluded(MySqlParser.IndexColumnNamesContext indexColumnNamesContext, TableEditor tableEditor) {
+    public boolean isTableUniqueIndexIncluded(MariaDBParser.IndexColumnNamesContext indexColumnNamesContext, TableEditor tableEditor) {
         return getIndexColumns(indexColumnNamesContext, tableEditor).stream().filter(Objects::isNull).count() == 0;
     }
 
-    private List<Column> getIndexColumns(MySqlParser.IndexColumnNamesContext indexColumnNamesContext, TableEditor tableEditor) {
+    private List<Column> getIndexColumns(MariaDBParser.IndexColumnNamesContext indexColumnNamesContext, TableEditor tableEditor) {
         return indexColumnNamesContext.indexColumnName().stream()
                 .map(indexColumnNameContext -> {
                     String columnName;
@@ -468,5 +471,20 @@ public class MariaDbAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParse
         }
 
         return charsetName;
+    }
+
+    /**
+     * Signal an alter table event to ddl changes listener.
+     *
+     * @param id         the table identifier; may not be null
+     * @param previousId the previous name of the view if it was renamed, or null if it was not renamed
+     * @param ctx        the start of the statement; may not be null
+     */
+    public void signalAlterTable(TableId id, TableId previousId, RenameTableClauseContext ctx) {
+        final RenameTableContext parent = (RenameTableContext) ctx.getParent();
+        Interval interval = new Interval(ctx.getParent().start.getStartIndex(),
+                parent.renameTableClause().get(0).start.getStartIndex() - 1);
+        String prefix = ctx.getParent().start.getInputStream().getText(interval);
+        signalAlterTable(id, previousId, prefix + getText(ctx));
     }
 }

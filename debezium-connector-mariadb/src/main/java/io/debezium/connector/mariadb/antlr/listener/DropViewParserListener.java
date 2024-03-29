@@ -6,15 +6,15 @@
 package io.debezium.connector.mariadb.antlr.listener;
 
 import io.debezium.connector.mariadb.antlr.MariaDbAntlrDdlParser;
-import io.debezium.ddl.parser.mysql.generated.MySqlParser;
-import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
+import io.debezium.ddl.parser.mariadb.generated.MariaDBParser;
+import io.debezium.ddl.parser.mariadb.generated.MariaDBParserBaseListener;
 
 /**
  * Parser listener for parsing DROP VIEW statements.
  *
  * @author Chris Cranford
  */
-public class DropViewParserListener extends MySqlParserBaseListener {
+public class DropViewParserListener extends MariaDBParserBaseListener {
 
     private final MariaDbAntlrDdlParser parser;
 
@@ -23,7 +23,7 @@ public class DropViewParserListener extends MySqlParserBaseListener {
     }
 
     @Override
-    public void enterDropView(MySqlParser.DropViewContext ctx) {
+    public void enterDropView(MariaDBParser.DropViewContext ctx) {
         if (!parser.skipViews()) {
             ctx.fullId().stream().map(parser::parseQualifiedTableId).forEach(tableId -> {
                 parser.databaseTables().removeTable(tableId);

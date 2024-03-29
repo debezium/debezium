@@ -6,15 +6,15 @@
 package io.debezium.connector.mariadb.antlr.listener;
 
 import io.debezium.connector.mariadb.antlr.MariaDbAntlrDdlParser;
-import io.debezium.ddl.parser.mysql.generated.MySqlParser;
-import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
+import io.debezium.ddl.parser.mariadb.generated.MariaDBParser;
+import io.debezium.ddl.parser.mariadb.generated.MariaDBParserBaseListener;
 
 /**
  * Parser listener for DROP DATABASE statements.
  *
  * @author Chris Cranford
  */
-public class DropDatabaseParserListener extends MySqlParserBaseListener {
+public class DropDatabaseParserListener extends MariaDBParserBaseListener {
 
     private final MariaDbAntlrDdlParser parser;
 
@@ -23,7 +23,7 @@ public class DropDatabaseParserListener extends MySqlParserBaseListener {
     }
 
     @Override
-    public void enterDropDatabase(MySqlParser.DropDatabaseContext ctx) {
+    public void enterDropDatabase(MariaDBParser.DropDatabaseContext ctx) {
         String databaseName = parser.parseName(ctx.uid());
         parser.databaseTables().removeTablesForDatabase(databaseName);
         parser.charsetNameForDatabase().remove(databaseName);

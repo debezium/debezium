@@ -116,6 +116,22 @@
                                 </goals>
                             </execution>
                             <execution>
+                                <id>MariaDB</id>
+                                <configuration>
+                                    <verbose>false</verbose>
+                                    <showTree>false</showTree>
+                                    <entryPoint>root</entryPoint>
+                                    <grammarName>MariaDB</grammarName>
+                                    <packageName>io.debezium.ddl.parser.mariadb.generated</packageName>
+                                    <caseInsensitiveType>UPPER</caseInsensitiveType>
+                                    <exampleFiles>src/test/resources/mariadb/examples</exampleFiles>
+                                    <enabled>${antlr.tests.enabled}</enabled>
+                                </configuration>
+                                <goals>
+                                    <goal>test</goal>
+                                </goals>
+                            </execution>
+                            <execution>
                                 <id>Oracle</id>
                                 <configuration>
                                     <verbose>false</verbose>

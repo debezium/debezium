@@ -7,9 +7,9 @@ package io.debezium.connector.mariadb.antlr.listener;
 
 import java.util.concurrent.atomic.AtomicReference;
 
-import io.debezium.ddl.parser.mysql.generated.MySqlParser.CurrentTimestampContext;
-import io.debezium.ddl.parser.mysql.generated.MySqlParser.DefaultValueContext;
-import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
+import io.debezium.ddl.parser.mariadb.generated.MariaDBParser.CurrentTimestampContext;
+import io.debezium.ddl.parser.mariadb.generated.MariaDBParser.DefaultValueContext;
+import io.debezium.ddl.parser.mariadb.generated.MariaDBParserBaseListener;
 import io.debezium.relational.ColumnEditor;
 
 /**
@@ -17,7 +17,7 @@ import io.debezium.relational.ColumnEditor;
  *
  * @author Chris Cranford
  */
-public class DefaultValueParserListener extends MySqlParserBaseListener {
+public class DefaultValueParserListener extends MariaDBParserBaseListener {
 
     private final ColumnEditor columnEditor;
     private final AtomicReference<Boolean> optionalColumn;

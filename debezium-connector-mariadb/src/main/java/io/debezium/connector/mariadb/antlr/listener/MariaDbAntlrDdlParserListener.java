@@ -18,8 +18,8 @@ import org.antlr.v4.runtime.tree.TerminalNode;
 import io.debezium.antlr.AntlrDdlParserListener;
 import io.debezium.antlr.ProxyParseTreeListenerUtil;
 import io.debezium.connector.mariadb.antlr.MariaDbAntlrDdlParser;
-import io.debezium.ddl.parser.mysql.generated.MySqlParser;
-import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
+import io.debezium.ddl.parser.mariadb.generated.MariaDBParser;
+import io.debezium.ddl.parser.mariadb.generated.MariaDBParserBaseListener;
 import io.debezium.text.ParsingException;
 
 /**
@@ -33,7 +33,7 @@ import io.debezium.text.ParsingException;
  *
  * @author Chris Cranford
  */
-public class MariaDbAntlrDdlParserListener extends MySqlParserBaseListener implements AntlrDdlParserListener {
+public class MariaDbAntlrDdlParserListener extends MariaDBParserBaseListener implements AntlrDdlParserListener {
 
     private final List<ParseTreeListener> listeners = new CopyOnWriteArrayList<>();
     private final Collection<ParsingException> errors = new ArrayList<>();
@@ -99,7 +99,7 @@ public class MariaDbAntlrDdlParserListener extends MySqlParserBaseListener imple
     }
 
     @Override
-    public void enterRoutineBody(MySqlParser.RoutineBodyContext ctx) {
+    public void enterRoutineBody(MariaDBParser.RoutineBodyContext ctx) {
         // this is a grammar rule for BEGIN ... END part of statements. Skip it.
         skipNodes = true;
     }

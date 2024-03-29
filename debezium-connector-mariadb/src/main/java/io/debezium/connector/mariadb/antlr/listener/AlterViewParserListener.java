@@ -11,8 +11,8 @@ import org.antlr.v4.runtime.tree.ParseTreeListener;
 
 import io.debezium.antlr.AntlrDdlParser;
 import io.debezium.connector.mariadb.antlr.MariaDbAntlrDdlParser;
-import io.debezium.ddl.parser.mysql.generated.MySqlParser;
-import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
+import io.debezium.ddl.parser.mariadb.generated.MariaDBParser;
+import io.debezium.ddl.parser.mariadb.generated.MariaDBParserBaseListener;
 import io.debezium.relational.Column;
 import io.debezium.relational.TableEditor;
 import io.debezium.relational.TableId;
@@ -23,7 +23,7 @@ import io.debezium.text.ParsingException;
  *
  * @author Chris Cranford
  */
-public class AlterViewParserListener extends MySqlParserBaseListener {
+public class AlterViewParserListener extends MariaDBParserBaseListener {
 
     private final MariaDbAntlrDdlParser parser;
     private final List<ParseTreeListener> listeners;
@@ -37,7 +37,7 @@ public class AlterViewParserListener extends MySqlParserBaseListener {
     }
 
     @Override
-    public void enterAlterView(MySqlParser.AlterViewContext ctx) {
+    public void enterAlterView(MariaDBParser.AlterViewContext ctx) {
         if (!parser.skipViews()) {
             TableId tableId = parser.parseQualifiedTableId(ctx.fullId());
 
@@ -61,7 +61,7 @@ public class AlterViewParserListener extends MySqlParserBaseListener {
     }
 
     @Override
-    public void exitAlterView(MySqlParser.AlterViewContext ctx) {
+    public void exitAlterView(MariaDBParser.AlterViewContext ctx) {
         parser.runIfNotNull(() -> {
             tableEditor.addColumns(selectColumnsListener.getSelectedColumns());
             // Make sure that the table's character set has been set ...

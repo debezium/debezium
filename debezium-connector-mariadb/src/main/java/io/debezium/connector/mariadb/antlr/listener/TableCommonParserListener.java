@@ -10,8 +10,8 @@ import java.util.List;
 import org.antlr.v4.runtime.tree.ParseTreeListener;
 
 import io.debezium.connector.mariadb.antlr.MariaDbAntlrDdlParser;
-import io.debezium.ddl.parser.mysql.generated.MySqlParser;
-import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
+import io.debezium.ddl.parser.mariadb.generated.MariaDBParser;
+import io.debezium.ddl.parser.mariadb.generated.MariaDBParserBaseListener;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.TableEditor;
@@ -21,7 +21,7 @@ import io.debezium.relational.TableEditor;
  *
  * @author Chris Cranford
  */
-public class TableCommonParserListener extends MySqlParserBaseListener {
+public class TableCommonParserListener extends MariaDBParserBaseListener {
 
     protected final MariaDbAntlrDdlParser parser;
     protected final List<ParseTreeListener> listeners;
@@ -35,16 +35,10 @@ public class TableCommonParserListener extends MySqlParserBaseListener {
     }
 
     @Override
-    public void enterColumnDeclaration(MySqlParser.ColumnDeclarationContext ctx) {
+    public void enterColumnDeclaration(MariaDBParser.ColumnDeclarationContext ctx) {
         parser.runIfNotNull(() -> {
-            MySqlParser.FullColumnNameContext fullColumnNameContext = ctx.fullColumnName();
-            List<MySqlParser.DottedIdContext> dottedIdContextList = fullColumnNameContext.dottedId();
-            MySqlParser.UidContext uidContext = fullColumnNameContext.uid();
-            if (!dottedIdContextList.isEmpty()) {
-                uidContext = dottedIdContextList.get(dottedIdContextList.size() - 1).uid();
-            }
-
-            String columnName = parser.parseName(uidContext);
+            MariaDBParser.UidContext fullColumnNameContext = ctx.uid();
+            String columnName = parser.parseName(fullColumnNameContext);
             ColumnEditor columnEditor = Column.editor().name(columnName);
             if (columnDefinitionListener == null) {
                 columnDefinitionListener = new ColumnDefinitionParserListener(tableEditor, columnEditor, parser, listeners);
@@ -58,7 +52,7 @@ public class TableCommonParserListener extends MySqlParserBaseListener {
     }
 
     @Override
-    public void exitColumnDeclaration(MySqlParser.ColumnDeclarationContext ctx) {
+    public void exitColumnDeclaration(MariaDBParser.ColumnDeclarationContext ctx) {
         parser.runIfNotNull(() -> {
             tableEditor.addColumn(columnDefinitionListener.getColumn());
         }, tableEditor, columnDefinitionListener);
@@ -66,7 +60,7 @@ public class TableCommonParserListener extends MySqlParserBaseListener {
     }
 
     @Override
-    public void enterPrimaryKeyTableConstraint(MySqlParser.PrimaryKeyTableConstraintContext ctx) {
+    public void enterPrimaryKeyTableConstraint(MariaDBParser.PrimaryKeyTableConstraintContext ctx) {
         parser.runIfNotNull(() -> {
             parser.parsePrimaryIndexColumnNames(ctx.indexColumnNames(), tableEditor);
         }, tableEditor);
@@ -74,7 +68,7 @@ public class TableCommonParserListener extends MySqlParserBaseListener {
     }
 
     @Override
-    public void enterUniqueKeyTableConstraint(MySqlParser.UniqueKeyTableConstraintContext ctx) {
+    public void enterUniqueKeyTableConstraint(MariaDBParser.UniqueKeyTableConstraintContext ctx) {
         parser.runIfNotNull(() -> {
             if (!tableEditor.hasPrimaryKey() && parser.isTableUniqueIndexIncluded(ctx.indexColumnNames(), tableEditor)) {
                 parser.parseUniqueIndexColumnNames(ctx.indexColumnNames(), tableEditor);
