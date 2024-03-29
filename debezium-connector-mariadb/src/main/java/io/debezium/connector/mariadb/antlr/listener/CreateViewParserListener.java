@@ -10,8 +10,8 @@ import java.util.List;
 import org.antlr.v4.runtime.tree.ParseTreeListener;
 
 import io.debezium.connector.mariadb.antlr.MariaDbAntlrDdlParser;
-import io.debezium.ddl.parser.mysql.generated.MySqlParser;
-import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
+import io.debezium.ddl.parser.mariadb.generated.MariaDBParser;
+import io.debezium.ddl.parser.mariadb.generated.MariaDBParserBaseListener;
 import io.debezium.relational.Column;
 import io.debezium.relational.TableEditor;
 
@@ -20,7 +20,7 @@ import io.debezium.relational.TableEditor;
  *
  * @author Chris Cranford
  */
-public class CreateViewParserListener extends MySqlParserBaseListener {
+public class CreateViewParserListener extends MariaDBParserBaseListener {
 
     private final MariaDbAntlrDdlParser parser;
     private final List<ParseTreeListener> listeners;
@@ -34,7 +34,7 @@ public class CreateViewParserListener extends MySqlParserBaseListener {
     }
 
     @Override
-    public void enterCreateView(MySqlParser.CreateViewContext ctx) {
+    public void enterCreateView(MariaDBParser.CreateViewContext ctx) {
         if (!parser.skipViews()) {
             tableEditor = parser.databaseTables().editOrCreateTable(parser.parseQualifiedTableId(ctx.fullId()));
             // create new columns just with specified name for now
@@ -50,7 +50,7 @@ public class CreateViewParserListener extends MySqlParserBaseListener {
     }
 
     @Override
-    public void exitCreateView(MySqlParser.CreateViewContext ctx) {
+    public void exitCreateView(MariaDBParser.CreateViewContext ctx) {
         parser.runIfNotNull(() -> {
             tableEditor.addColumns(selectColumnsListener.getSelectedColumns());
             // Make sure that the table's character set has been set ...

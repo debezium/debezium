@@ -6,8 +6,8 @@
 package io.debezium.connector.mariadb.antlr.listener;
 
 import io.debezium.connector.mariadb.antlr.MariaDbAntlrDdlParser;
-import io.debezium.ddl.parser.mysql.generated.MySqlParser;
-import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
+import io.debezium.ddl.parser.mariadb.generated.MariaDBParser;
+import io.debezium.ddl.parser.mariadb.generated.MariaDBParserBaseListener;
 import io.debezium.relational.TableId;
 
 /**
@@ -15,7 +15,7 @@ import io.debezium.relational.TableId;
  *
  * @author Chris Cranford
  */
-public class TruncateTableParserListener extends MySqlParserBaseListener {
+public class TruncateTableParserListener extends MariaDBParserBaseListener {
 
     private final MariaDbAntlrDdlParser parser;
 
@@ -24,7 +24,7 @@ public class TruncateTableParserListener extends MySqlParserBaseListener {
     }
 
     @Override
-    public void enterTruncateTable(MySqlParser.TruncateTableContext ctx) {
+    public void enterTruncateTable(MariaDBParser.TruncateTableContext ctx) {
         TableId tableId = parser.parseQualifiedTableId(ctx.tableName().fullId());
 
         // Be aware the legacy parser is not signaling truncate events

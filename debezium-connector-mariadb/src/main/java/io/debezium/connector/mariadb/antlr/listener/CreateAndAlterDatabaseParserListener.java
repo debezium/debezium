@@ -7,15 +7,15 @@ package io.debezium.connector.mariadb.antlr.listener;
 
 import io.debezium.connector.binlog.jdbc.BinlogSystemVariables;
 import io.debezium.connector.mariadb.antlr.MariaDbAntlrDdlParser;
-import io.debezium.ddl.parser.mysql.generated.MySqlParser;
-import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
+import io.debezium.ddl.parser.mariadb.generated.MariaDBParser;
+import io.debezium.ddl.parser.mariadb.generated.MariaDBParserBaseListener;
 
 /**
  * Parser listener for CREATE DATABASE and ALTER DATABASE statements.
  *
  * @author Chris Cranford
  */
-public class CreateAndAlterDatabaseParserListener extends MySqlParserBaseListener {
+public class CreateAndAlterDatabaseParserListener extends MariaDBParserBaseListener {
 
     private final MariaDbAntlrDdlParser parser;
     private String databaseName;
@@ -25,25 +25,25 @@ public class CreateAndAlterDatabaseParserListener extends MySqlParserBaseListene
     }
 
     @Override
-    public void enterCreateDatabase(MySqlParser.CreateDatabaseContext ctx) {
+    public void enterCreateDatabase(MariaDBParser.CreateDatabaseContext ctx) {
         databaseName = parser.parseName(ctx.uid());
         super.enterCreateDatabase(ctx);
     }
 
     @Override
-    public void exitCreateDatabase(MySqlParser.CreateDatabaseContext ctx) {
+    public void exitCreateDatabase(MariaDBParser.CreateDatabaseContext ctx) {
         parser.signalCreateDatabase(databaseName, ctx);
         super.exitCreateDatabase(ctx);
     }
 
     @Override
-    public void enterAlterSimpleDatabase(MySqlParser.AlterSimpleDatabaseContext ctx) {
+    public void enterAlterSimpleDatabase(MariaDBParser.AlterSimpleDatabaseContext ctx) {
         databaseName = ctx.uid() == null ? parser.currentSchema() : parser.parseName(ctx.uid());
         super.enterAlterSimpleDatabase(ctx);
     }
 
     @Override
-    public void enterCreateDatabaseOption(MySqlParser.CreateDatabaseOptionContext ctx) {
+    public void enterCreateDatabaseOption(MariaDBParser.CreateDatabaseOptionContext ctx) {
         String charsetName = parser.extractCharset(ctx.charsetName(), ctx.collationName());
         if (ctx.charsetName() != null) {
             if ("DEFAULT".equalsIgnoreCase(charsetName)) {

@@ -16,7 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.mariadb.antlr.MariaDbAntlrDdlParser;
-import io.debezium.ddl.parser.mysql.generated.MySqlParser;
+import io.debezium.ddl.parser.mariadb.generated.MariaDBParser;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.TableId;
@@ -44,7 +44,7 @@ public class AlterTableParserListener extends TableCommonParserListener {
     }
 
     @Override
-    public void enterAlterTable(MySqlParser.AlterTableContext ctx) {
+    public void enterAlterTable(MariaDBParser.AlterTableContext ctx) {
         final TableId tableId = parser.parseQualifiedTableId(ctx.tableName().fullId());
         if (parser.databaseTables().forTable(tableId) == null) {
             LOG.debug("Ignoring ALTER TABLE statement for non-captured table {}", tableId);
@@ -59,7 +59,7 @@ public class AlterTableParserListener extends TableCommonParserListener {
     }
 
     @Override
-    public void exitAlterTable(MySqlParser.AlterTableContext ctx) {
+    public void exitAlterTable(MariaDBParser.AlterTableContext ctx) {
         parser.runIfNotNull(() -> {
             listeners.remove(columnDefinitionListener);
             parser.databaseTables().overwriteTable(tableEditor.create());
@@ -70,7 +70,7 @@ public class AlterTableParserListener extends TableCommonParserListener {
     }
 
     @Override
-    public void enterAlterByAddColumn(MySqlParser.AlterByAddColumnContext ctx) {
+    public void enterAlterByAddColumn(MariaDBParser.AlterByAddColumnContext ctx) {
         parser.runIfNotNull(() -> {
             String columnName = parser.parseName(ctx.uid(0));
             ColumnEditor columnEditor = Column.editor().name(columnName);
@@ -81,7 +81,7 @@ public class AlterTableParserListener extends TableCommonParserListener {
     }
 
     @Override
-    public void exitAlterByAddColumn(MySqlParser.AlterByAddColumnContext ctx) {
+    public void exitAlterByAddColumn(MariaDBParser.AlterByAddColumnContext ctx) {
         parser.runIfNotNull(() -> {
             Column column = columnDefinitionListener.getColumn();
             tableEditor.addColumn(column);
@@ -100,11 +100,11 @@ public class AlterTableParserListener extends TableCommonParserListener {
     }
 
     @Override
-    public void enterAlterByAddColumns(MySqlParser.AlterByAddColumnsContext ctx) {
+    public void enterAlterByAddColumns(MariaDBParser.AlterByAddColumnsContext ctx) {
         // multiple columns are added. Initialize a list of column editors for them
         parser.runIfNotNull(() -> {
             columnEditors = new ArrayList<>(ctx.uid().size());
-            for (MySqlParser.UidContext uidContext : ctx.uid()) {
+            for (MariaDBParser.UidContext uidContext : ctx.uid()) {
                 String columnName = parser.parseName(uidContext);
                 columnEditors.add(Column.editor().name(columnName));
             }
@@ -115,7 +115,7 @@ public class AlterTableParserListener extends TableCommonParserListener {
     }
 
     @Override
-    public void exitColumnDefinition(MySqlParser.ColumnDefinitionContext ctx) {
+    public void exitColumnDefinition(MariaDBParser.ColumnDefinitionContext ctx) {
         parser.runIfNotNull(() -> {
             if (columnEditors != null) {
                 // column editor list is not null when a multiple columns are parsed in one statement
@@ -136,7 +136,7 @@ public class AlterTableParserListener extends TableCommonParserListener {
     }
 
     @Override
-    public void exitAlterByAddColumns(MySqlParser.AlterByAddColumnsContext ctx) {
+    public void exitAlterByAddColumns(MariaDBParser.AlterByAddColumnsContext ctx) {
         parser.runIfNotNull(() -> {
             columnEditors.forEach(columnEditor -> tableEditor.addColumn(columnEditor.create()));
             listeners.remove(columnDefinitionListener);
@@ -145,12 +145,12 @@ public class AlterTableParserListener extends TableCommonParserListener {
     }
 
     @Override
-    public void enterAlterByChangeColumn(MySqlParser.AlterByChangeColumnContext ctx) {
+    public void enterAlterByChangeColumn(MariaDBParser.AlterByChangeColumnContext ctx) {
         parser.runIfNotNull(() -> {
             String oldColumnName = parser.parseName(ctx.oldColumn);
             Column existingColumn = tableEditor.columnWithName(oldColumnName);
             if (existingColumn != null) {
-                // DBZ-771 unset previously set default value, as it's not kept by MySQL; for any column modifications a new
+                // DBZ-771 unset previously set default value, as it's not kept by MariaDB; for any column modifications a new
                 // default value (which could be the same) has to be provided by the column_definition which we'll parse later
                 // on; only in 8.0 (not yet supported by this parser) columns can be renamed without repeating the full column
                 // definition; so in fact it's arguably not correct to use edit() on the existing column to begin with, but
@@ -174,7 +174,7 @@ public class AlterTableParserListener extends TableCommonParserListener {
     }
 
     @Override
-    public void exitAlterByChangeColumn(MySqlParser.AlterByChangeColumnContext ctx) {
+    public void exitAlterByChangeColumn(MariaDBParser.AlterByChangeColumnContext ctx) {
         parser.runIfNotNull(() -> {
             Column column = columnDefinitionListener.getColumn();
             tableEditor.addColumn(column);
@@ -195,7 +195,7 @@ public class AlterTableParserListener extends TableCommonParserListener {
     }
 
     @Override
-    public void enterAlterByModifyColumn(MySqlParser.AlterByModifyColumnContext ctx) {
+    public void enterAlterByModifyColumn(MariaDBParser.AlterByModifyColumnContext ctx) {
         parser.runIfNotNull(() -> {
             String columnName = parser.parseName(ctx.uid(0));
             Column existingColumn = tableEditor.columnWithName(columnName);
@@ -214,7 +214,7 @@ public class AlterTableParserListener extends TableCommonParserListener {
     }
 
     @Override
-    public void exitAlterByModifyColumn(MySqlParser.AlterByModifyColumnContext ctx) {
+    public void exitAlterByModifyColumn(MariaDBParser.AlterByModifyColumnContext ctx) {
         parser.runIfNotNull(() -> {
             Column column = columnDefinitionListener.getColumn();
             tableEditor.addColumn(column);
@@ -232,7 +232,7 @@ public class AlterTableParserListener extends TableCommonParserListener {
     }
 
     @Override
-    public void enterAlterByDropColumn(MySqlParser.AlterByDropColumnContext ctx) {
+    public void enterAlterByDropColumn(MariaDBParser.AlterByDropColumnContext ctx) {
         parser.runIfNotNull(() -> {
             tableEditor.removeColumn(parser.parseName(ctx.uid()));
         }, tableEditor);
@@ -240,7 +240,7 @@ public class AlterTableParserListener extends TableCommonParserListener {
     }
 
     @Override
-    public void enterAlterByRename(MySqlParser.AlterByRenameContext ctx) {
+    public void enterAlterByRename(MariaDBParser.AlterByRenameContext ctx) {
         parser.runIfNotNull(() -> {
             final TableId newTableId = ctx.uid() != null
                     ? parser.resolveTableId(parser.currentSchema(), parser.parseName(ctx.uid()))
@@ -253,7 +253,7 @@ public class AlterTableParserListener extends TableCommonParserListener {
     }
 
     @Override
-    public void enterAlterByChangeDefault(MySqlParser.AlterByChangeDefaultContext ctx) {
+    public void enterAlterByChangeDefault(MariaDBParser.AlterByChangeDefaultContext ctx) {
         parser.runIfNotNull(() -> {
             String columnName = parser.parseName(ctx.uid());
             Column column = tableEditor.columnWithName(columnName);
@@ -273,7 +273,7 @@ public class AlterTableParserListener extends TableCommonParserListener {
     }
 
     @Override
-    public void exitAlterByChangeDefault(MySqlParser.AlterByChangeDefaultContext ctx) {
+    public void exitAlterByChangeDefault(MariaDBParser.AlterByChangeDefaultContext ctx) {
         parser.runIfNotNull(() -> {
             tableEditor.updateColumn(defaultValueColumnEditor.create());
             listeners.remove(defaultValueListener);
@@ -283,7 +283,7 @@ public class AlterTableParserListener extends TableCommonParserListener {
     }
 
     @Override
-    public void enterAlterByAddPrimaryKey(MySqlParser.AlterByAddPrimaryKeyContext ctx) {
+    public void enterAlterByAddPrimaryKey(MariaDBParser.AlterByAddPrimaryKeyContext ctx) {
         parser.runIfNotNull(() -> {
             parser.parsePrimaryIndexColumnNames(ctx.indexColumnNames(), tableEditor);
         }, tableEditor);
@@ -291,7 +291,7 @@ public class AlterTableParserListener extends TableCommonParserListener {
     }
 
     @Override
-    public void enterAlterByDropPrimaryKey(MySqlParser.AlterByDropPrimaryKeyContext ctx) {
+    public void enterAlterByDropPrimaryKey(MariaDBParser.AlterByDropPrimaryKeyContext ctx) {
         parser.runIfNotNull(() -> {
             tableEditor.setPrimaryKeyNames(new ArrayList<>());
         }, tableEditor);
@@ -299,7 +299,7 @@ public class AlterTableParserListener extends TableCommonParserListener {
     }
 
     @Override
-    public void enterAlterByAddUniqueKey(MySqlParser.AlterByAddUniqueKeyContext ctx) {
+    public void enterAlterByAddUniqueKey(MariaDBParser.AlterByAddUniqueKeyContext ctx) {
         parser.runIfNotNull(() -> {
             if (!tableEditor.hasPrimaryKey() && parser.isTableUniqueIndexIncluded(ctx.indexColumnNames(), tableEditor)) {
                 // this may eventually get overwritten by a real PK
@@ -310,12 +310,12 @@ public class AlterTableParserListener extends TableCommonParserListener {
     }
 
     @Override
-    public void enterAlterByRenameColumn(MySqlParser.AlterByRenameColumnContext ctx) {
+    public void enterAlterByRenameColumn(MariaDBParser.AlterByRenameColumnContext ctx) {
         parser.runIfNotNull(() -> {
             String oldColumnName = parser.parseName(ctx.oldColumn);
             Column existingColumn = tableEditor.columnWithName(oldColumnName);
             if (existingColumn != null) {
-                // DBZ-771 unset previously set default value, as it's not kept by MySQL; for any column modifications a new
+                // DBZ-771 unset previously set default value, as it's not kept by MariaDB; for any column modifications a new
                 // default value (which could be the same) has to be provided by the column_definition which we'll parse later
                 // on; only in 8.0 (not yet supported by this parser) columns can be renamed without repeating the full column
                 // definition; so in fact it's arguably not correct to use edit() on the existing column to begin with, but
@@ -335,7 +335,7 @@ public class AlterTableParserListener extends TableCommonParserListener {
     }
 
     @Override
-    public void exitAlterByRenameColumn(MySqlParser.AlterByRenameColumnContext ctx) {
+    public void exitAlterByRenameColumn(MariaDBParser.AlterByRenameColumnContext ctx) {
         parser.runIfNotNull(() -> {
             Column column = columnDefinitionListener.getColumn();
             tableEditor.addColumn(column);
@@ -349,7 +349,7 @@ public class AlterTableParserListener extends TableCommonParserListener {
     }
 
     @Override
-    public void enterTableOptionComment(MySqlParser.TableOptionCommentContext ctx) {
+    public void enterTableOptionComment(MariaDBParser.TableOptionCommentContext ctx) {
         if (!parser.skipComments()) {
             parser.runIfNotNull(() -> {
                 if (ctx.COMMENT() != null) {

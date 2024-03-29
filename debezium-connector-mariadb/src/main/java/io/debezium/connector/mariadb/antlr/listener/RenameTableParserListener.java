@@ -9,8 +9,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.mariadb.antlr.MariaDbAntlrDdlParser;
-import io.debezium.ddl.parser.mysql.generated.MySqlParser;
-import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
+import io.debezium.ddl.parser.mariadb.generated.MariaDBParser;
+import io.debezium.ddl.parser.mariadb.generated.MariaDBParserBaseListener;
 import io.debezium.relational.TableId;
 
 /**
@@ -18,7 +18,7 @@ import io.debezium.relational.TableId;
  *
  * @author Chris Cranford
  */
-public class RenameTableParserListener extends MySqlParserBaseListener {
+public class RenameTableParserListener extends MariaDBParserBaseListener {
 
     private final static Logger LOG = LoggerFactory.getLogger(RenameTableParserListener.class);
 
@@ -29,7 +29,7 @@ public class RenameTableParserListener extends MySqlParserBaseListener {
     }
 
     @Override
-    public void enterRenameTableClause(MySqlParser.RenameTableClauseContext ctx) {
+    public void enterRenameTableClause(MariaDBParser.RenameTableClauseContext ctx) {
         TableId oldTable = parser.parseQualifiedTableId(ctx.tableName(0).fullId());
         TableId newTable = parser.parseQualifiedTableId(ctx.tableName(1).fullId());
         if (parser.getTableFilter().isIncluded(oldTable) && !parser.getTableFilter().isIncluded(newTable)) {

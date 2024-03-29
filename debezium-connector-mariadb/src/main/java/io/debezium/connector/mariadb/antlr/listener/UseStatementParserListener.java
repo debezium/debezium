@@ -8,8 +8,8 @@ package io.debezium.connector.mariadb.antlr.listener;
 import io.debezium.connector.binlog.jdbc.BinlogSystemVariables;
 import io.debezium.connector.binlog.jdbc.BinlogSystemVariables.BinlogScope;
 import io.debezium.connector.mariadb.antlr.MariaDbAntlrDdlParser;
-import io.debezium.ddl.parser.mysql.generated.MySqlParser;
-import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
+import io.debezium.ddl.parser.mariadb.generated.MariaDBParser;
+import io.debezium.ddl.parser.mariadb.generated.MariaDBParserBaseListener;
 
 /**
  * Parser listener that parses USE statements.<p></p>
@@ -18,7 +18,7 @@ import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
  *
  * @author Chris Cranford
  */
-public class UseStatementParserListener extends MySqlParserBaseListener {
+public class UseStatementParserListener extends MariaDBParserBaseListener {
 
     private final MariaDbAntlrDdlParser parser;
 
@@ -27,7 +27,7 @@ public class UseStatementParserListener extends MySqlParserBaseListener {
     }
 
     @Override
-    public void enterUseStatement(MySqlParser.UseStatementContext ctx) {
+    public void enterUseStatement(MariaDBParser.UseStatementContext ctx) {
         String dbName = parser.parseName(ctx.uid());
         parser.setCurrentSchema(dbName);
 

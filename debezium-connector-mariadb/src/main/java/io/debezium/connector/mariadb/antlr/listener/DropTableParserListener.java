@@ -8,8 +8,8 @@ package io.debezium.connector.mariadb.antlr.listener;
 import org.antlr.v4.runtime.misc.Interval;
 
 import io.debezium.connector.mariadb.antlr.MariaDbAntlrDdlParser;
-import io.debezium.ddl.parser.mysql.generated.MySqlParser;
-import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
+import io.debezium.ddl.parser.mariadb.generated.MariaDBParser;
+import io.debezium.ddl.parser.mariadb.generated.MariaDBParserBaseListener;
 import io.debezium.relational.TableId;
 
 /**
@@ -17,7 +17,7 @@ import io.debezium.relational.TableId;
  *
  * @author Chris Cranford
  */
-public class DropTableParserListener extends MySqlParserBaseListener {
+public class DropTableParserListener extends MariaDBParserBaseListener {
 
     private final MariaDbAntlrDdlParser parser;
 
@@ -26,7 +26,7 @@ public class DropTableParserListener extends MySqlParserBaseListener {
     }
 
     @Override
-    public void enterDropTable(MySqlParser.DropTableContext ctx) {
+    public void enterDropTable(MariaDBParser.DropTableContext ctx) {
         Interval interval = new Interval(ctx.start.getStartIndex(), ctx.tables().start.getStartIndex() - 1);
         String prefix = ctx.start.getInputStream().getText(interval);
         ctx.tables().tableName().forEach(tableNameContext -> {

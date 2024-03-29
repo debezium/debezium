@@ -8,15 +8,15 @@ package io.debezium.connector.mariadb.antlr.listener;
 import io.debezium.connector.binlog.jdbc.BinlogSystemVariables;
 import io.debezium.connector.binlog.jdbc.BinlogSystemVariables.BinlogScope;
 import io.debezium.connector.mariadb.antlr.MariaDbAntlrDdlParser;
-import io.debezium.ddl.parser.mysql.generated.MySqlParser;
-import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
+import io.debezium.ddl.parser.mariadb.generated.MariaDBParser;
+import io.debezium.ddl.parser.mariadb.generated.MariaDBParserBaseListener;
 
 /**
  * Parser listener for parsing SET statements, which define system variables.
  *
  * @author Chris Cranford
  */
-public class SetStatementParserListener extends MySqlParserBaseListener {
+public class SetStatementParserListener extends MariaDBParserBaseListener {
 
     private final MariaDbAntlrDdlParser parser;
 
@@ -25,12 +25,12 @@ public class SetStatementParserListener extends MySqlParserBaseListener {
     }
 
     @Override
-    public void enterSetVariable(MySqlParser.SetVariableContext ctx) {
+    public void enterSetVariable(MariaDBParser.SetVariableContext ctx) {
         // If you set multiple system variables, the most recent GLOBAL or SESSION modifier in the statement
         // is used for following assignments that have no modifier specified.
         BinlogScope scope = null;
         for (int i = 0; i < ctx.variableClause().size(); i++) {
-            MySqlParser.VariableClauseContext variableClauseContext = ctx.variableClause(i);
+            MariaDBParser.VariableClauseContext variableClauseContext = ctx.variableClause(i);
             String variableName;
             if (variableClauseContext.uid() == null) {
                 if (variableClauseContext.GLOBAL_ID() == null) {
@@ -88,10 +88,10 @@ public class SetStatementParserListener extends MySqlParserBaseListener {
     }
 
     @Override
-    public void enterSetCharset(MySqlParser.SetCharsetContext ctx) {
+    public void enterSetCharset(MariaDBParser.SetCharsetContext ctx) {
         String charsetName = ctx.charsetName() != null ? parser.withoutQuotes(ctx.charsetName()) : parser.currentDatabaseCharset();
         // Sets variables according to documentation at
-        // https://dev.mysql.com/doc/refman/8.2/en/set-character-set.html
+        // https://mariadb.com/kb/en/set-character-set/
         // Using default scope for these variables, because this type of set statement you cannot specify
         // the scope manually
         parser.systemVariables().setVariable(BinlogScope.SESSION, BinlogSystemVariables.CHARSET_NAME_CLIENT, charsetName);
@@ -102,10 +102,10 @@ public class SetStatementParserListener extends MySqlParserBaseListener {
     }
 
     @Override
-    public void enterSetNames(MySqlParser.SetNamesContext ctx) {
+    public void enterSetNames(MariaDBParser.SetNamesContext ctx) {
         String charsetName = ctx.charsetName() != null ? parser.withoutQuotes(ctx.charsetName()) : parser.currentDatabaseCharset();
         // Sets variables according to documentation at
-        // https://dev.mysql.com/doc/refman/8.2/en/set-names.html
+        // https://mariadb.com/kb/en/set-names/
         // Using default scope for these variables, because this type of set statement you cannot specify
         // the scope manually
         parser.systemVariables().setVariable(BinlogScope.SESSION, BinlogSystemVariables.CHARSET_NAME_CLIENT, charsetName);

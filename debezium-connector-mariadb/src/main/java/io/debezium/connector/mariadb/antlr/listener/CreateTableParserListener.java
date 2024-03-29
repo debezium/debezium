@@ -11,7 +11,7 @@ import java.util.stream.Collectors;
 import org.antlr.v4.runtime.tree.ParseTreeListener;
 
 import io.debezium.connector.mariadb.antlr.MariaDbAntlrDdlParser;
-import io.debezium.ddl.parser.mysql.generated.MySqlParser;
+import io.debezium.ddl.parser.mariadb.generated.MariaDBParser;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -28,7 +28,7 @@ public class CreateTableParserListener extends TableCommonParserListener {
     }
 
     @Override
-    public void enterColumnCreateTable(MySqlParser.ColumnCreateTableContext ctx) {
+    public void enterColumnCreateTable(MariaDBParser.ColumnCreateTableContext ctx) {
         TableId tableId = parser.parseQualifiedTableId(ctx.tableName().fullId());
         if (parser.databaseTables().forTable(tableId) == null) {
             tableEditor = parser.databaseTables().editOrCreateTable(tableId);
@@ -37,7 +37,7 @@ public class CreateTableParserListener extends TableCommonParserListener {
     }
 
     @Override
-    public void exitColumnCreateTable(MySqlParser.ColumnCreateTableContext ctx) {
+    public void exitColumnCreateTable(MariaDBParser.ColumnCreateTableContext ctx) {
         parser.runIfNotNull(() -> {
             // Make sure that the table's character set has been set ...
             if (!tableEditor.hasDefaultCharsetName()) {
@@ -65,7 +65,7 @@ public class CreateTableParserListener extends TableCommonParserListener {
     }
 
     @Override
-    public void exitCopyCreateTable(MySqlParser.CopyCreateTableContext ctx) {
+    public void exitCopyCreateTable(MariaDBParser.CopyCreateTableContext ctx) {
         TableId tableId = parser.parseQualifiedTableId(ctx.tableName(0).fullId());
         TableId originalTableId = parser.parseQualifiedTableId(ctx.tableName(1).fullId());
         Table original = parser.databaseTables().forTable(originalTableId);
@@ -77,7 +77,7 @@ public class CreateTableParserListener extends TableCommonParserListener {
     }
 
     @Override
-    public void enterTableOptionCharset(MySqlParser.TableOptionCharsetContext ctx) {
+    public void enterTableOptionCharset(MariaDBParser.TableOptionCharsetContext ctx) {
         parser.runIfNotNull(() -> {
             if (ctx.charsetName() != null) {
                 tableEditor.setDefaultCharsetName(parser.withoutQuotes(ctx.charsetName()));
@@ -87,7 +87,7 @@ public class CreateTableParserListener extends TableCommonParserListener {
     }
 
     @Override
-    public void enterTableOptionComment(MySqlParser.TableOptionCommentContext ctx) {
+    public void enterTableOptionComment(MariaDBParser.TableOptionCommentContext ctx) {
         if (!parser.skipComments()) {
             parser.runIfNotNull(() -> {
                 if (ctx.COMMENT() != null) {
