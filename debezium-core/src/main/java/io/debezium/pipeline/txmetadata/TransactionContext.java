@@ -35,10 +35,10 @@ public class TransactionContext {
             + TransactionStructMaker.DEBEZIUM_TRANSACTION_DATA_COLLECTION_ORDER_KEY + "_";
     private static final int OFFSET_TABLE_COUNT_PREFIX_LENGTH = OFFSET_TABLE_COUNT_PREFIX.length();
 
-    protected String transactionId = null;
-    protected final Map<String, Long> perTableEventCount = new HashMap<>();
-    protected final Map<String, Long> viewPerTableEventCount = Collections.unmodifiableMap(perTableEventCount);
-    protected long totalEventCount = 0;
+    public String transactionId = null;
+    public final Map<String, Long> perTableEventCount = new HashMap<>();
+    public final Map<String, Long> viewPerTableEventCount = Collections.unmodifiableMap(perTableEventCount);
+    public long totalEventCount = 0;
 
     private void reset() {
         transactionId = null;

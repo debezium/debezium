@@ -17,7 +17,6 @@ import org.apache.kafka.connect.data.Struct;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
-import io.debezium.spi.schema.DataCollectionId;
 
 public abstract class AbstractTransactionStructMaker implements TransactionStructMaker {
 
@@ -32,9 +31,8 @@ public abstract class AbstractTransactionStructMaker implements TransactionStruc
     }
 
     @Override
-    public Struct prepareTxStruct(OffsetContext offsetContext, DataCollectionId source) {
+    public Struct prepareTxStruct(OffsetContext offsetContext, long dataCollectionEventOrder, Struct value) {
         TransactionContext transactionContext = offsetContext.getTransactionContext();
-        final long dataCollectionEventOrder = transactionContext.event(source);
         final Struct txStruct = new Struct(getTransactionBlockSchema());
         txStruct.put(DEBEZIUM_TRANSACTION_ID_KEY, transactionContext.getTransactionId());
         txStruct.put(DEBEZIUM_TRANSACTION_TOTAL_ORDER_KEY, transactionContext.getTotalEventCount());
