@@ -1148,6 +1148,10 @@ Users are supposed to implement their own customized commit log transfer class i
 |false
 |Determines whether or not the CommitLogProcessor should re-process error commit logs.
 
+|[[cassandra-property-event-order-guarantee-mode]]<<cassandra-property-event-order-guarantee-mode, `event.order.guarantee.mode`>>
+|COMMITLOG_FILE
+|Specifies how to ensure the order of change events. Each option indicates which property is used for hashing. Events sharing the same hash value maintain their order. It is recommended to use 'PARTITION_VALUES' to align the hashing strategy with messages in Kafka. Must be one of 'COMMITLOG_FILE', or 'PARTITION_VALUES'.
+
 |[[cassandra-property-converters]]<<cassandra-property-converters, `converters`>>
 |No default
 |Enumerates a comma-separated list of the symbolic names of the {link-prefix}:{link-custom-converters}#custom-converters[custom converter] instances that the connector can use.
