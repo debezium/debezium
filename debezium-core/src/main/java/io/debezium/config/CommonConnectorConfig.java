@@ -722,9 +722,10 @@ public abstract class CommonConnectorConfig {
     public static final Field PROVIDE_ORDERED_TRANSACTION_METADATA = Field.create("provide.ordered.transaction.metadata")
             .withDisplayName("Provide ordered transaction meatadata")
             .withType(Type.BOOLEAN)
-            .withDefault(false)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 19))
             .withWidth(Width.SHORT)
-            .withImportance(ConfigDef.Importance.LOW)
+            .withDefault(Boolean.FALSE)
+            .withImportance(Importance.LOW)
             .withDescription(
                     "Whether to provide order metadata on transactions");
 

@@ -38,7 +38,7 @@ public class MongoDbConnectorTest {
             assertThat(key.importance).isEqualTo(expected.importance());
             assertThat(key.documentation).isEqualTo(expected.description());
             assertThat(key.type).isEqualTo(expected.type());
-            if (expected.type() == Type.CLASS) {
+            if (expected.type() == Type.CLASS && expected.defaultValue() != null) {
                 assertThat(((Class<?>) key.defaultValue).getName()).isEqualTo((String) expected.defaultValue());
             }
             else if (expected.type() == ConfigDef.Type.LIST && key.defaultValue != null) {
