@@ -98,8 +98,8 @@ public abstract class BinlogCustomSnapshotterIT<C extends SourceConnector> exten
 
         config = DATABASE_CUSTOM_SNAPSHOT.defaultConfig()
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.CUSTOM.getValue())
-                .with(BinlogConnectorConfig.SNAPSHOT_MODE_CUSTOM_NAME, BinlogConnectorConfig.class.getName())
-                .with(BinlogConnectorConfig.SNAPSHOT_QUERY_MODE, BinlogConnectorConfig.SnapshotQueryMode.CUSTOM)
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE_CUSTOM_NAME, getCustomSnapshotClassName())
+                .with(BinlogConnectorConfig.SNAPSHOT_QUERY_MODE, CommonConnectorConfig.SnapshotQueryMode.CUSTOM)
                 .with(BinlogConnectorConfig.SNAPSHOT_QUERY_MODE_CUSTOM_NAME, getCustomSnapshotClassName())
                 .build();
 
