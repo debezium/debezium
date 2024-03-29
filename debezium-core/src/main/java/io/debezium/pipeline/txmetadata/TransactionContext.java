@@ -94,6 +94,11 @@ public class TransactionContext {
         transactionId = transactionInfo.getTransactionId();
     }
 
+    public void beginTransaction(String transactionId) {
+        // Needed for backward compatibility where other connectors directly call/interact with beginTransaction
+        beginTransaction(new BasicTransactionInfo(transactionId));
+    }
+
     public void endTransaction() {
         reset();
     }
