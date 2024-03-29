@@ -33,7 +33,9 @@ import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.connection.pgoutput.PgOutputMessageDecoder;
 import io.debezium.connector.postgresql.connection.pgproto.PgProtoMessageDecoder;
+import io.debezium.connector.postgresql.pipeline.txmetadata.PostgresTransactionStructMaker;
 import io.debezium.jdbc.JdbcConfiguration;
+import io.debezium.pipeline.txmetadata.TransactionStructMaker;
 import io.debezium.relational.ColumnFilterMode;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
@@ -962,6 +964,9 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     public static final Field SOURCE_INFO_STRUCT_MAKER = CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER
             .withDefault(PostgresSourceInfoStructMaker.class.getName());
 
+    public static final Field TRANSACTION_STRUCT_MAKER = CommonConnectorConfig.TRANSACTION_STRUCT_MAKER
+            .withDefault(PostgresTransactionStructMaker.class.getName());
+
     private final LogicalDecodingMessageFilter logicalDecodingMessageFilter;
     private final HStoreHandlingMode hStoreHandlingMode;
     private final IntervalHandlingMode intervalHandlingMode;
@@ -1112,6 +1117,11 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     @Override
     protected SourceInfoStructMaker<? extends AbstractSourceInfo> getSourceInfoStructMaker(Version version) {
         return getSourceInfoStructMaker(SOURCE_INFO_STRUCT_MAKER, Module.name(), Module.version(), this);
+    }
+
+    @Override
+    public TransactionStructMaker getTransactionStructMaker() {
+        return getTransactionStructMaker(TRANSACTION_STRUCT_MAKER);
     }
 
     private static final ConfigDefinition CONFIG_DEFINITION = RelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
