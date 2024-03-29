@@ -19,6 +19,7 @@ CREATE USER 'jim' @localhost IDENTIFIED BY '123';
 create table new_t  (like t1);
 create table log_table(row varchar(512));
 create table log_table(row character(512));
+create table new_t (c national char);
 create table ships(name varchar(255), class_id int, id int);
 create table ships_guns(guns_id int, ship_id int);
 create table guns(id int, power decimal(7,2), callibr decimal(10,3));
