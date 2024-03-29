@@ -128,12 +128,10 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
             try {
                 // MySQL sometimes considers some local files as databases (see DBZ-164),
                 // so we will simply try each one and ignore the problematic ones ...
-                LOGGER.info("Showing tables in database {}", quote(dbName));
                 connection.query("SHOW FULL TABLES IN " + quote(dbName) + " where Table_Type = 'BASE TABLE'", rs -> {
                     while (rs.next()) {
                         TableId id = new TableId(dbName, null, rs.getString(1));
                         tableIds.add(id);
-                        LOGGER.info("\tFound {}", id);
                     }
                 });
                 readableDatabaseNames.add(dbName);
