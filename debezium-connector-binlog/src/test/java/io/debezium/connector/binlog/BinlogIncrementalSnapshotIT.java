@@ -256,7 +256,7 @@ public abstract class BinlogIncrementalSnapshotIT<C extends SourceConnector>
         final int batchSize = 10;
         try (JdbcConnection connection = databaseConnection()) {
             connection.setAutoCommit(false);
-            ((BinlogTestConnection) connection).setBinlogCompressionOn();
+            ((BinlogTestConnection) connection).setBinlogRowQueryEventsOn();
             for (int i = 0; i < ROW_COUNT; i++) {
                 connection.executeWithoutCommitting(
                         String.format("UPDATE %s SET aa = aa + 2000 WHERE pk > %s AND pk <= %s", tableName(),
