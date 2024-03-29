@@ -34,8 +34,8 @@ public class CustomTestSnapshot extends SelectAllSnapshotQuery implements Snapsh
 
     @Override
     public void injectBeanRegistry(BeanRegistry beanRegistry) {
-        Offsets<MariaDbPartition, MariaDbOffsetContext> mySqlOffsetContext = beanRegistry.lookupByName(StandardBeanNames.OFFSETS, Offsets.class);
-        hasState = mySqlOffsetContext.getTheOnlyOffset() != null;
+        Offsets<MariaDbPartition, MariaDbOffsetContext> mariaDbOffsetContext = beanRegistry.lookupByName(StandardBeanNames.OFFSETS, Offsets.class);
+        hasState = mariaDbOffsetContext.getTheOnlyOffset() != null;
     }
 
     @Override
