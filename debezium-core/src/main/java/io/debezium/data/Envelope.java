@@ -174,6 +174,16 @@ public final class Envelope {
         }
 
         /**
+         * Define the {@link Schema} used in the {@link FieldName#TRANSACTION} field.
+         *
+         * @param transactionSchema the schema of the {@link FieldName#TRANSACTION} field; may not be null
+         * @return this builder so methods can be chained; never null
+         */
+        default Builder withTransaction(Schema transactionSchema) {
+            return withSchema(transactionSchema, FieldName.TRANSACTION);
+        }
+
+        /**
          * Define the {@link Schema} used for an arbitrary field in the envelope.
          *
          * @param fieldNames the names of the fields that this schema should be used with; may not be null

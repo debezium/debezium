@@ -30,15 +30,15 @@ import io.debezium.spi.schema.DataCollectionId;
 @NotThreadSafe
 public class TransactionContext {
 
-    private static final String OFFSET_TRANSACTION_ID = TransactionMonitor.DEBEZIUM_TRANSACTION_KEY + "_" + TransactionMonitor.DEBEZIUM_TRANSACTION_ID_KEY;
-    private static final String OFFSET_TABLE_COUNT_PREFIX = TransactionMonitor.DEBEZIUM_TRANSACTION_KEY + "_"
-            + TransactionMonitor.DEBEZIUM_TRANSACTION_DATA_COLLECTION_ORDER_KEY + "_";
+    public static final String OFFSET_TRANSACTION_ID = TransactionStructMaker.DEBEZIUM_TRANSACTION_KEY + "_" + TransactionStructMaker.DEBEZIUM_TRANSACTION_ID_KEY;
+    private static final String OFFSET_TABLE_COUNT_PREFIX = TransactionStructMaker.DEBEZIUM_TRANSACTION_KEY + "_"
+            + TransactionStructMaker.DEBEZIUM_TRANSACTION_DATA_COLLECTION_ORDER_KEY + "_";
     private static final int OFFSET_TABLE_COUNT_PREFIX_LENGTH = OFFSET_TABLE_COUNT_PREFIX.length();
 
-    private String transactionId = null;
-    private final Map<String, Long> perTableEventCount = new HashMap<>();
-    private final Map<String, Long> viewPerTableEventCount = Collections.unmodifiableMap(perTableEventCount);
-    private long totalEventCount = 0;
+    protected String transactionId = null;
+    protected final Map<String, Long> perTableEventCount = new HashMap<>();
+    protected final Map<String, Long> viewPerTableEventCount = Collections.unmodifiableMap(perTableEventCount);
+    protected long totalEventCount = 0;
 
     private void reset() {
         transactionId = null;
@@ -89,9 +89,9 @@ public class TransactionContext {
         return totalEventCount;
     }
 
-    public void beginTransaction(String txId) {
+    public void beginTransaction(TransactionInfo transactionInfo) {
         reset();
-        transactionId = txId;
+        transactionId = transactionInfo.getTransactionId();
     }
 
     public void endTransaction() {
