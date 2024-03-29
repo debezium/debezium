@@ -33,6 +33,7 @@ import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.mapping.ColumnMapper;
 import io.debezium.relational.mapping.ColumnMappers;
 import io.debezium.schema.FieldNameSelector.FieldNamer;
+import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Loggings;
@@ -60,6 +61,7 @@ public class TableSchemaBuilder {
     private final ValueConverterProvider valueConverterProvider;
     private final DefaultValueConverter defaultValueConverter;
     private final Schema sourceInfoSchema;
+    private final Schema transactionSchema;
     private final FieldNamer<Column> fieldNamer;
     private final CustomConverterRegistry customConverterRegistry;
     private final boolean multiPartitionMode;
@@ -82,6 +84,18 @@ public class TableSchemaBuilder {
                 customConverterRegistry, sourceInfoSchema, fieldNamer, multiPartitionMode, null);
     }
 
+    public TableSchemaBuilder(ValueConverterProvider valueConverterProvider,
+                              SchemaNameAdjuster schemaNameAdjuster,
+                              CustomConverterRegistry customConverterRegistry,
+                              Schema sourceInfoSchema,
+                              Schema transactionSchema,
+                              FieldNamer<Column> fieldNamer,
+                              boolean multiPartitionMode) {
+        this(valueConverterProvider, null, schemaNameAdjuster,
+                customConverterRegistry, sourceInfoSchema, transactionSchema, fieldNamer,
+                multiPartitionMode, null);
+    }
+
     /**
      * Create a new instance of the builder.
      *
@@ -100,6 +114,19 @@ public class TableSchemaBuilder {
                 customConverterRegistry, sourceInfoSchema, fieldNamer, multiPartitionMode, null);
     }
 
+    public TableSchemaBuilder(ValueConverterProvider valueConverterProvider,
+                              DefaultValueConverter defaultValueConverter,
+                              SchemaNameAdjuster schemaNameAdjuster,
+                              CustomConverterRegistry customConverterRegistry,
+                              Schema sourceInfoSchema,
+                              FieldNamer<Column> fieldNamer,
+                              boolean multiPartitionMode,
+                              EventConvertingFailureHandlingMode eventConvertingFailureHandlingMode) {
+        this(valueConverterProvider, defaultValueConverter, schemaNameAdjuster,
+                customConverterRegistry, sourceInfoSchema, SchemaFactory.get().transactionBlockSchema(),
+                fieldNamer, multiPartitionMode, eventConvertingFailureHandlingMode);
+    }
+
     /**
      * Create a new instance of the builder.
      *
@@ -114,6 +141,7 @@ public class TableSchemaBuilder {
                               SchemaNameAdjuster schemaNameAdjuster,
                               CustomConverterRegistry customConverterRegistry,
                               Schema sourceInfoSchema,
+                              Schema transactionSchema,
                               FieldNamer<Column> fieldNamer,
                               boolean multiPartitionMode,
                               EventConvertingFailureHandlingMode eventConvertingFailureHandlingMode) {
@@ -122,6 +150,7 @@ public class TableSchemaBuilder {
         this.defaultValueConverter = Optional.ofNullable(defaultValueConverter)
                 .orElse(DefaultValueConverter.passthrough());
         this.sourceInfoSchema = sourceInfoSchema;
+        this.transactionSchema = transactionSchema;
         this.fieldNamer = fieldNamer;
         this.customConverterRegistry = customConverterRegistry;
         this.multiPartitionMode = multiPartitionMode;
@@ -183,6 +212,7 @@ public class TableSchemaBuilder {
                 .withName(schemaNameAdjuster.adjust(envelopSchemaName))
                 .withRecord(valSchema)
                 .withSource(sourceInfoSchema)
+                .withTransaction(transactionSchema)
                 .build();
 
         // Create the generators ...

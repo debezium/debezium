@@ -39,6 +39,8 @@ import io.debezium.pipeline.spi.ChangeRecordEmitter.Receiver;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.pipeline.spi.SchemaChangeEventEmitter;
+import io.debezium.pipeline.txmetadata.BasicTransactionInfo;
+import io.debezium.pipeline.txmetadata.TransactionInfo;
 import io.debezium.pipeline.txmetadata.TransactionMonitor;
 import io.debezium.processors.PostProcessorRegistry;
 import io.debezium.processors.spi.PostProcessor;
@@ -349,7 +351,11 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
     }
 
     public void dispatchTransactionStartedEvent(P partition, String transactionId, OffsetContext offset, Instant timestamp) throws InterruptedException {
-        transactionMonitor.transactionStartedEvent(partition, transactionId, offset, timestamp);
+        dispatchTransactionStartedEvent(partition, new BasicTransactionInfo(transactionId), offset, timestamp);
+    }
+
+    public void dispatchTransactionStartedEvent(P partition, TransactionInfo transactionInfo, OffsetContext offset, Instant timestamp) throws InterruptedException {
+        transactionMonitor.transactionStartedEvent(partition, transactionInfo, offset, timestamp);
         if (incrementalSnapshotChangeEventSource != null) {
             incrementalSnapshotChangeEventSource.processTransactionStartedEvent(partition, offset);
         }

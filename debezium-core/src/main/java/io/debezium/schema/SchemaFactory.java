@@ -23,7 +23,7 @@ import io.debezium.data.VariableScaleDecimal;
 import io.debezium.data.Xml;
 import io.debezium.heartbeat.HeartbeatImpl;
 import io.debezium.pipeline.notification.Notification;
-import io.debezium.pipeline.txmetadata.TransactionMonitor;
+import io.debezium.pipeline.txmetadata.TransactionStructMaker;
 import io.debezium.relational.history.ConnectTableChangeSerializer;
 import io.debezium.relational.history.HistoryRecord;
 
@@ -50,11 +50,11 @@ public class SchemaFactory {
     private static final String TRANSACTION_METADATA_KEY_SCHEMA_NAME = "io.debezium.connector.common.TransactionMetadataKey";
     private static final int TRANSACTION_METADATA_KEY_SCHEMA_VERSION = 1;
 
-    private static final String TRANSACTION_METADATA_VALUE_SCHEMA_NAME = "io.debezium.connector.common.TransactionMetadataValue";
-    private static final int TRANSACTION_METADATA_VALUE_SCHEMA_VERSION = 1;
+    protected static final String TRANSACTION_METADATA_VALUE_SCHEMA_NAME = "io.debezium.connector.common.TransactionMetadataValue";
+    protected static final int TRANSACTION_METADATA_VALUE_SCHEMA_VERSION = 1;
 
-    private static final String TRANSACTION_BLOCK_SCHEMA_NAME = "event.block";
-    private static final int TRANSACTION_BLOCK_SCHEMA_VERSION = 1;
+    protected static final String TRANSACTION_BLOCK_SCHEMA_NAME = "event.block";
+    protected static final int TRANSACTION_BLOCK_SCHEMA_VERSION = 1;
 
     private static final String TRANSACTION_EVENT_COUNT_COLLECTION_SCHEMA_NAME = "event.collection";
     private static final int TRANSACTION_EVENT_COUNT_COLLECTION_SCHEMA_VERSION = 1;
@@ -134,9 +134,9 @@ public class SchemaFactory {
         return SchemaBuilder.struct().optional()
                 .name(TRANSACTION_BLOCK_SCHEMA_NAME)
                 .version(TRANSACTION_BLOCK_SCHEMA_VERSION)
-                .field(TransactionMonitor.DEBEZIUM_TRANSACTION_ID_KEY, Schema.STRING_SCHEMA)
-                .field(TransactionMonitor.DEBEZIUM_TRANSACTION_TOTAL_ORDER_KEY, Schema.INT64_SCHEMA)
-                .field(TransactionMonitor.DEBEZIUM_TRANSACTION_DATA_COLLECTION_ORDER_KEY, Schema.INT64_SCHEMA)
+                .field(TransactionStructMaker.DEBEZIUM_TRANSACTION_ID_KEY, Schema.STRING_SCHEMA)
+                .field(TransactionStructMaker.DEBEZIUM_TRANSACTION_TOTAL_ORDER_KEY, Schema.INT64_SCHEMA)
+                .field(TransactionStructMaker.DEBEZIUM_TRANSACTION_DATA_COLLECTION_ORDER_KEY, Schema.INT64_SCHEMA)
                 .build();
     }
 
@@ -144,8 +144,8 @@ public class SchemaFactory {
         return SchemaBuilder.struct().optional()
                 .name(TRANSACTION_EVENT_COUNT_COLLECTION_SCHEMA_NAME)
                 .version(TRANSACTION_EVENT_COUNT_COLLECTION_SCHEMA_VERSION)
-                .field(TransactionMonitor.DEBEZIUM_TRANSACTION_COLLECTION_KEY, Schema.STRING_SCHEMA)
-                .field(TransactionMonitor.DEBEZIUM_TRANSACTION_EVENT_COUNT_KEY, Schema.INT64_SCHEMA)
+                .field(TransactionStructMaker.DEBEZIUM_TRANSACTION_COLLECTION_KEY, Schema.STRING_SCHEMA)
+                .field(TransactionStructMaker.DEBEZIUM_TRANSACTION_EVENT_COUNT_KEY, Schema.INT64_SCHEMA)
                 .build();
     }
 
@@ -153,7 +153,7 @@ public class SchemaFactory {
         return SchemaBuilder.struct()
                 .name(adjuster.adjust(TRANSACTION_METADATA_KEY_SCHEMA_NAME))
                 .version(TRANSACTION_METADATA_KEY_SCHEMA_VERSION)
-                .field(TransactionMonitor.DEBEZIUM_TRANSACTION_ID_KEY, Schema.STRING_SCHEMA)
+                .field(TransactionStructMaker.DEBEZIUM_TRANSACTION_ID_KEY, Schema.STRING_SCHEMA)
                 .build();
     }
 
@@ -161,12 +161,12 @@ public class SchemaFactory {
         return SchemaBuilder.struct()
                 .name(adjuster.adjust(TRANSACTION_METADATA_VALUE_SCHEMA_NAME))
                 .version(TRANSACTION_METADATA_VALUE_SCHEMA_VERSION)
-                .field(TransactionMonitor.DEBEZIUM_TRANSACTION_STATUS_KEY, Schema.STRING_SCHEMA)
-                .field(TransactionMonitor.DEBEZIUM_TRANSACTION_ID_KEY, Schema.STRING_SCHEMA)
-                .field(TransactionMonitor.DEBEZIUM_TRANSACTION_EVENT_COUNT_KEY, Schema.OPTIONAL_INT64_SCHEMA)
-                .field(TransactionMonitor.DEBEZIUM_TRANSACTION_DATA_COLLECTIONS_KEY,
+                .field(TransactionStructMaker.DEBEZIUM_TRANSACTION_STATUS_KEY, Schema.STRING_SCHEMA)
+                .field(TransactionStructMaker.DEBEZIUM_TRANSACTION_ID_KEY, Schema.STRING_SCHEMA)
+                .field(TransactionStructMaker.DEBEZIUM_TRANSACTION_EVENT_COUNT_KEY, Schema.OPTIONAL_INT64_SCHEMA)
+                .field(TransactionStructMaker.DEBEZIUM_TRANSACTION_DATA_COLLECTIONS_KEY,
                         SchemaBuilder.array(transactionEventCountPerDataCollectionSchema()).optional().build())
-                .field(TransactionMonitor.DEBEZIUM_TRANSACTION_TS_MS, Schema.INT64_SCHEMA)
+                .field(TransactionStructMaker.DEBEZIUM_TRANSACTION_TS_MS, Schema.INT64_SCHEMA)
                 .build();
     }
 
@@ -367,7 +367,9 @@ public class SchemaFactory {
                 builder.field(Envelope.FieldName.TIMESTAMP, Schema.OPTIONAL_INT64_SCHEMA);
                 builder.field(Envelope.FieldName.TIMESTAMP_US, Schema.OPTIONAL_INT64_SCHEMA);
                 builder.field(Envelope.FieldName.TIMESTAMP_NS, Schema.OPTIONAL_INT64_SCHEMA);
-                builder.field(Envelope.FieldName.TRANSACTION, transactionBlockSchema());
+                if (builder.field(Envelope.FieldName.TRANSACTION) == null) {
+                    builder.field(Envelope.FieldName.TRANSACTION, transactionBlockSchema());
+                }
                 checkFieldIsDefined(Envelope.FieldName.OPERATION);
                 checkFieldIsDefined(Envelope.FieldName.BEFORE);
                 checkFieldIsDefined(Envelope.FieldName.AFTER);
