@@ -47,7 +47,7 @@ import io.debezium.heartbeat.HeartbeatImpl;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.notification.channels.SinkNotificationChannel;
 import io.debezium.pipeline.txmetadata.BasicTransactionStructMaker;
-import io.debezium.pipeline.txmetadata.TransactionOrderMetadata;
+import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.pipeline.txmetadata.TransactionStructMaker;
 import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.TableId;
@@ -719,16 +719,6 @@ public abstract class CommonConnectorConfig {
             .withDescription("Enables transaction metadata extraction together with event counting")
             .withDefault(Boolean.FALSE);
 
-    public static final Field PROVIDE_ORDERED_TRANSACTION_METADATA = Field.create("provide.ordered.transaction.metadata")
-            .withDisplayName("Provide ordered transaction meatadata")
-            .withType(Type.BOOLEAN)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 19))
-            .withWidth(Width.SHORT)
-            .withDefault(Boolean.FALSE)
-            .withImportance(Importance.LOW)
-            .withDescription(
-                    "Whether to provide order metadata on transactions");
-
     public static final Field TRANSACTION_STRUCT_MAKER = Field.create("transaction.struct.maker")
             .withDisplayName("Make transaction struct & schema")
             .withType(Type.CLASS)
@@ -738,11 +728,12 @@ public abstract class CommonConnectorConfig {
             .withDescription(
                     "Class to make transaction struct & schema");
 
-    public static final Field TRANSACTION_ORDER_METADATA_FIELD = Field.create("transaction.ordered.metadata")
+    public static final Field TRANSACTION_CONTEXT = Field.create("transaction.context")
             .withDisplayName("Class to provide ordered transaction metadata")
             .withType(Type.CLASS)
             .withWidth(Width.MEDIUM)
             .withImportance(ConfigDef.Importance.LOW)
+            .withDefault(TransactionContext.class.getName())
             .withDescription(
                     "Class to provide order metadata on transactions");
 
@@ -1092,7 +1083,6 @@ public abstract class CommonConnectorConfig {
                     POLL_INTERVAL_MS,
                     MAX_QUEUE_SIZE_IN_BYTES,
                     PROVIDE_TRANSACTION_METADATA,
-                    PROVIDE_ORDERED_TRANSACTION_METADATA,
                     SKIPPED_OPERATIONS,
                     SNAPSHOT_DELAY_MS,
                     SNAPSHOT_MODE_TABLES,
@@ -1121,7 +1111,7 @@ public abstract class CommonConnectorConfig {
                     TOPIC_NAMING_STRATEGY,
                     NOTIFICATION_ENABLED_CHANNELS,
                     SinkNotificationChannel.NOTIFICATION_TOPIC,
-                    TRANSACTION_ORDER_METADATA_FIELD,
+                    TRANSACTION_CONTEXT,
                     TRANSACTION_STRUCT_MAKER,
                     CUSTOM_METRIC_TAGS)
             .create();
@@ -1145,10 +1135,9 @@ public abstract class CommonConnectorConfig {
     private final String snapshotModeCustomName;
     private final Integer queryFetchSize;
     private final SourceInfoStructMaker<? extends AbstractSourceInfo> sourceInfoStructMaker;
-    private final TransactionOrderMetadata transactionOrderMetadata;
+    private final TransactionContext transactionContext;
     private final TransactionStructMaker transactionStructMaker;
     private final boolean shouldProvideTransactionMetadata;
-    private final boolean shouldProvideOrderedTransactionMetadata;
     private final EventProcessingFailureHandlingMode eventProcessingFailureHandlingMode;
     private final CustomConverterRegistry customConverterRegistry;
     private final BinaryHandlingMode binaryHandlingMode;
@@ -1198,10 +1187,9 @@ public abstract class CommonConnectorConfig {
         this.fieldNameAdjustmentMode = FieldNameAdjustmentMode.parse(config.getString(FIELD_NAME_ADJUSTMENT_MODE));
         this.eventConvertingFailureHandlingMode = EventConvertingFailureHandlingMode.parse(config.getString(EVENT_CONVERTING_FAILURE_HANDLING_MODE));
         this.sourceInfoStructMaker = getSourceInfoStructMaker(Version.V2);
-        this.transactionOrderMetadata = getTransactionOrderMetadata();
+        this.transactionContext = getTransactionContext();
         this.transactionStructMaker = getTransactionStructMaker();
         this.shouldProvideTransactionMetadata = config.getBoolean(PROVIDE_TRANSACTION_METADATA);
-        this.shouldProvideOrderedTransactionMetadata = config.getBoolean(PROVIDE_ORDERED_TRANSACTION_METADATA);
         this.eventProcessingFailureHandlingMode = EventProcessingFailureHandlingMode.parse(config.getString(EVENT_PROCESSING_FAILURE_HANDLING_MODE));
         this.customConverterRegistry = new CustomConverterRegistry(getCustomConverters());
         this.binaryHandlingMode = BinaryHandlingMode.parse(config.getString(BINARY_HANDLING_MODE));
@@ -1352,10 +1340,6 @@ public abstract class CommonConnectorConfig {
         return shouldProvideTransactionMetadata;
     }
 
-    public boolean shouldProvideOrderedTransactionMetadata() {
-        return shouldProvideOrderedTransactionMetadata;
-    }
-
     public boolean skipMessagesWithoutChange() {
         return skipMessagesWithoutChange;
     }
@@ -1420,8 +1404,8 @@ public abstract class CommonConnectorConfig {
         return (SourceInfoStructMaker<T>) sourceInfoStructMaker;
     }
 
-    public TransactionOrderMetadata getTransactionOrderMetadata() {
-        return getTransactionOrderMetadata(TRANSACTION_ORDER_METADATA_FIELD);
+    public TransactionContext getTransactionContext() {
+        return getTransactionContext(TRANSACTION_CONTEXT);
     }
 
     public TransactionStructMaker getTransactionStructMaker() {
@@ -1705,13 +1689,7 @@ public abstract class CommonConnectorConfig {
 
     public TransactionStructMaker getTransactionStructMaker(Field transactionStructMakerField) {
         final TransactionStructMaker transactionStructMaker;
-        if (!shouldProvideOrderedTransactionMetadata) {
-            // for backward compatibility, return the normal one
-            transactionStructMaker = config.getInstance(TRANSACTION_STRUCT_MAKER, BasicTransactionStructMaker.class);
-        }
-        else {
-            transactionStructMaker = config.getInstance(transactionStructMakerField, TransactionStructMaker.class);
-        }
+        transactionStructMaker = config.getInstance(transactionStructMakerField, TransactionStructMaker.class);
         transactionStructMaker.setSchemaNameAdjuster(schemaNameAdjuster());
         if (transactionStructMaker == null) {
             throw new DebeziumException("Unable to instantiate the transaction struct maker class " + TRANSACTION_STRUCT_MAKER);
@@ -1719,15 +1697,11 @@ public abstract class CommonConnectorConfig {
         return transactionStructMaker;
     }
 
-    public TransactionOrderMetadata getTransactionOrderMetadata(Field transactionOrderMetadataField) {
-        if (!shouldProvideOrderedTransactionMetadata) {
-            // for backward compatibility, if the setting is disabled we won't use this anyway
-            return null;
+    public TransactionContext getTransactionContext(Field transactionContextField) {
+        final TransactionContext transactionContext = config.getInstance(transactionContextField, TransactionContext.class);
+        if (transactionContext == null) {
+            throw new DebeziumException("Unable to instantiate the transaction ordered metadata class " + transactionContextField);
         }
-        final TransactionOrderMetadata transactionOrderMetadata = config.getInstance(transactionOrderMetadataField, TransactionOrderMetadata.class);
-        if (transactionOrderMetadata == null) {
-            throw new DebeziumException("Unable to instantiate the transaction ordered metadata class " + TRANSACTION_ORDER_METADATA_FIELD);
-        }
-        return transactionOrderMetadata;
+        return transactionContext;
     }
 }

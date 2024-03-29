@@ -12,7 +12,6 @@ import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.schema.SchemaNameAdjuster;
-import io.debezium.spi.schema.DataCollectionId;
 
 public interface TransactionStructMaker {
     String DEBEZIUM_TRANSACTION_KEY = "transaction";
@@ -27,7 +26,7 @@ public interface TransactionStructMaker {
 
     void setSchemaNameAdjuster(SchemaNameAdjuster adjuster);
 
-    Struct prepareTxStruct(OffsetContext offsetContext, DataCollectionId source);
+    Struct prepareTxStruct(OffsetContext offsetContext, long dataCollectionEventOrder, Struct value);
 
     Struct prepareTxEndValue(OffsetContext offsetContext, Instant timestamp);
 

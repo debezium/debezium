@@ -51,6 +51,10 @@ public class TransactionMonitor {
     private final BlockingConsumer<SourceRecord> sender;
     private final CommonConnectorConfig connectorConfig;
 
+    // Following properties are kept for backward compatibility with connectors that override TransactionMonitor
+    protected final Schema transactionKeySchema;
+    protected final String DEBEZIUM_TRANSACTION_ID_KEY = TransactionStructMaker.DEBEZIUM_TRANSACTION_KEY;
+
     private final TransactionStructMaker transactionStructMaker;
 
     public TransactionMonitor(CommonConnectorConfig connectorConfig, EventMetadataProvider eventMetadataProvider,
@@ -59,6 +63,7 @@ public class TransactionMonitor {
         Objects.requireNonNull(eventMetadataProvider);
 
         transactionStructMaker = connectorConfig.getTransactionStructMaker();
+        transactionKeySchema = transactionStructMaker.getTransactionKeySchema();
 
         this.topicName = topicName;
         this.eventMetadataProvider = eventMetadataProvider;
@@ -118,25 +123,46 @@ public class TransactionMonitor {
         beginTransaction(partition, offset, timestamp);
     }
 
+    protected Struct prepareTxKey(OffsetContext offsetContext) {
+        final Struct key = transactionStructMaker.prepareTxKey(offsetContext);
+        return key;
+    }
+
+    protected Struct prepareTxBeginValue(OffsetContext offsetContext, Instant timestamp) {
+        final Struct value = transactionStructMaker.prepareTxBeginValue(offsetContext, timestamp);
+        return value;
+    }
+
+    protected Struct prepareTxEndValue(OffsetContext offsetContext, Instant timestamp) {
+        final Struct value = transactionStructMaker.prepareTxEndValue(offsetContext, timestamp);
+        return value;
+    }
+
+    protected Struct prepareTxStruct(OffsetContext offsetContext, long dataCollectionEventOrder, Struct value) {
+        final Struct txStruct = transactionStructMaker.prepareTxStruct(offsetContext, dataCollectionEventOrder, value);
+        return txStruct;
+    }
+
     private void transactionEvent(OffsetContext offsetContext, DataCollectionId source, Struct value) {
+        final long dataCollectionEventOrder = offsetContext.getTransactionContext().event(source);
         if (value == null) {
             LOGGER.debug("Event with key {} without value. Cannot enrich source block.");
             return;
         }
-        final Struct txStruct = transactionStructMaker.prepareTxStruct(offsetContext, source);
+        final Struct txStruct = prepareTxStruct(offsetContext, dataCollectionEventOrder, value);
         value.put(Envelope.FieldName.TRANSACTION, txStruct);
     }
 
     private void beginTransaction(Partition partition, OffsetContext offsetContext, Instant timestamp) throws InterruptedException {
-        final Struct key = transactionStructMaker.prepareTxKey(offsetContext);
-        final Struct value = transactionStructMaker.prepareTxBeginValue(offsetContext, timestamp);
+        final Struct key = prepareTxKey(offsetContext);
+        final Struct value = prepareTxBeginValue(offsetContext, timestamp);
         sender.accept(new SourceRecord(partition.getSourcePartition(), offsetContext.getOffset(),
                 topicName, null, key.schema(), key, value.schema(), value));
     }
 
     private void endTransaction(Partition partition, OffsetContext offsetContext, Instant timestamp) throws InterruptedException {
-        final Struct key = transactionStructMaker.prepareTxKey(offsetContext);
-        final Struct value = transactionStructMaker.prepareTxEndValue(offsetContext, timestamp);
+        final Struct key = prepareTxKey(offsetContext);
+        final Struct value = prepareTxEndValue(offsetContext, timestamp);
         sender.accept(new SourceRecord(partition.getSourcePartition(), offsetContext.getOffset(),
                 topicName, null, key.schema(), key, value.schema(), value));
     }
