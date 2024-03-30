@@ -25,9 +25,9 @@ import io.debezium.antlr.AntlrDdlParser;
 import io.debezium.antlr.AntlrDdlParserListener;
 import io.debezium.antlr.DataTypeResolver;
 import io.debezium.antlr.DataTypeResolver.DataTypeEntry;
-import io.debezium.connector.mysql.MySqlSystemVariables;
-import io.debezium.connector.mysql.MySqlValueConverters;
+import io.debezium.connector.binlog.jdbc.BinlogSystemVariables;
 import io.debezium.connector.mysql.antlr.listener.MySqlAntlrDdlParserListener;
+import io.debezium.connector.mysql.jdbc.MySqlValueConverters;
 import io.debezium.ddl.parser.mysql.generated.MySqlLexer;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser.CharsetNameContext;
@@ -67,7 +67,7 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
     public MySqlAntlrDdlParser(boolean throwErrorsFromTreeWalk, boolean includeViews, boolean includeComments,
                                MySqlValueConverters converters, TableFilter tableFilter) {
         super(throwErrorsFromTreeWalk, includeViews, includeComments);
-        systemVariables = new MySqlSystemVariables();
+        systemVariables = new BinlogSystemVariables();
         this.converters = converters;
         this.tableFilter = tableFilter;
     }
@@ -94,7 +94,7 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
 
     @Override
     protected SystemVariables createNewSystemVariablesInstance() {
-        return new MySqlSystemVariables();
+        return new BinlogSystemVariables();
     }
 
     @Override
@@ -382,9 +382,9 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
      * @return the name of the character set for the current database, or null if not known ...
      */
     public String currentDatabaseCharset() {
-        String charsetName = systemVariables.getVariable(MySqlSystemVariables.CHARSET_NAME_DATABASE);
+        String charsetName = systemVariables.getVariable(BinlogSystemVariables.CHARSET_NAME_DATABASE);
         if (charsetName == null || "DEFAULT".equalsIgnoreCase(charsetName)) {
-            charsetName = systemVariables.getVariable(MySqlSystemVariables.CHARSET_NAME_SERVER);
+            charsetName = systemVariables.getVariable(BinlogSystemVariables.CHARSET_NAME_SERVER);
         }
         return charsetName;
     }

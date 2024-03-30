@@ -5,28 +5,17 @@
  */
 package io.debezium.connector.mysql;
 
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.connector.Task;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import io.debezium.DebeziumException;
-import io.debezium.annotation.Immutable;
 import io.debezium.config.Configuration;
-import io.debezium.connector.common.RelationalBaseSourceConnector;
-import io.debezium.connector.mysql.strategy.AbstractConnectorConnection;
-import io.debezium.connector.mysql.strategy.ConnectorAdapter;
-import io.debezium.relational.RelationalDatabaseConnectorConfig;
-import io.debezium.relational.TableId;
+import io.debezium.connector.binlog.BinlogConnector;
+import io.debezium.connector.mysql.jdbc.MySqlConnection;
+import io.debezium.connector.mysql.jdbc.MySqlConnectionConfiguration;
+import io.debezium.connector.mysql.jdbc.MySqlFieldReaderResolver;
 
 /**
  * A Kafka Connect source connector that creates tasks that read the MySQL binary log and generate the corresponding
@@ -38,12 +27,7 @@ import io.debezium.relational.TableId;
  *
  * @author Randall Hauch
  */
-public class MySqlConnector extends RelationalBaseSourceConnector {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(MySqlConnector.class);
-
-    @Immutable
-    private Map<String, String> properties;
+public class MySqlConnector extends BinlogConnector<MySqlConnectorConfig> {
 
     public MySqlConnector() {
     }
@@ -54,26 +38,8 @@ public class MySqlConnector extends RelationalBaseSourceConnector {
     }
 
     @Override
-    public void start(Map<String, String> props) {
-        this.properties = Collections.unmodifiableMap(new HashMap<>(props));
-    }
-
-    @Override
     public Class<? extends Task> taskClass() {
-        return io.debezium.connector.mysql.MySqlConnectorTask.class;
-    }
-
-    @Override
-    public List<Map<String, String>> taskConfigs(int maxTasks) {
-        if (maxTasks > 1) {
-            throw new IllegalArgumentException("Only a single connector task may be started");
-        }
-
-        return Collections.singletonList(properties);
-    }
-
-    @Override
-    public void stop() {
+        return MySqlConnectorTask.class;
     }
 
     @Override
@@ -82,66 +48,19 @@ public class MySqlConnector extends RelationalBaseSourceConnector {
     }
 
     @Override
-    protected void validateConnection(Map<String, ConfigValue> configValues, Configuration config) {
-        ConfigValue adapterValue = configValues.get(MySqlConnectorConfig.CONNECTOR_ADAPTER.name());
-        ConfigValue hostnameValue = configValues.get(RelationalDatabaseConnectorConfig.HOSTNAME.name());
-
-        ConnectorAdapter adapter = adapter(config);
-        if (adapter == null) {
-            LOGGER.error("Failed to resolve connection adapter.");
-            adapterValue.addErrorMessage("Failed to resolve the connector's connection adapter.");
-            return;
-        }
-
-        // Try to connect to the database ...
-        try (AbstractConnectorConnection connection = adapter.createConnection(config)) {
-            try {
-                connection.connect();
-                connection.execute("SELECT version()");
-                LOGGER.info("Successfully tested connection for {} with user '{}'", connection.connectionString(), connection.connectionConfig().username());
-            }
-            catch (SQLException e) {
-                LOGGER.error("Failed testing connection for {} with user '{}'", connection.connectionString(), connection.connectionConfig().username(), e);
-                hostnameValue.addErrorMessage("Unable to connect: " + e.getMessage());
-            }
-        }
-        catch (SQLException e) {
-            LOGGER.error("Unexpected error shutting down the database connection", e);
-        }
-    }
-
-    @Override
     protected Map<String, ConfigValue> validateAllFields(Configuration config) {
         return config.validate(MySqlConnectorConfig.ALL_FIELDS);
     }
 
-    private static ConnectorAdapter adapter(Configuration config) {
-        // todo: find a better way to handle this
-        return new MySqlConnectorConfig(config).getConnectorAdapter();
+    @Override
+    protected MySqlConnection createConnection(Configuration config, MySqlConnectorConfig connectorConfig) {
+        return new MySqlConnection(
+                new MySqlConnectionConfiguration(config),
+                MySqlFieldReaderResolver.resolve(connectorConfig));
     }
 
-    @SuppressWarnings("unchecked")
     @Override
-    public List<TableId> getMatchingCollections(Configuration config) {
-        final MySqlConnectorConfig connectorConfig = new MySqlConnectorConfig(config);
-        try (AbstractConnectorConnection connection = adapter(config).createConnection(config)) {
-            final List<TableId> tables = new ArrayList<>();
-
-            final List<String> databaseNames = connection.availableDatabases();
-
-            for (String databaseName : databaseNames) {
-                if (!connectorConfig.getTableFilters().databaseFilter().test(databaseName)) {
-                    continue;
-                }
-                tables.addAll(
-                        connection.readTableNames(databaseName, null, null, new String[]{ "TABLE" }).stream()
-                                .filter(tableId -> connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId))
-                                .collect(Collectors.toList()));
-            }
-            return tables;
-        }
-        catch (SQLException e) {
-            throw new DebeziumException(e);
-        }
+    protected MySqlConnectorConfig createConnectorConfig(Configuration config) {
+        return new MySqlConnectorConfig(config);
     }
 }

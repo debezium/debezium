@@ -6,71 +6,8 @@
 
 package io.debezium.connector.mysql;
 
-import java.nio.file.Path;
-import java.sql.SQLException;
-import java.util.List;
-import java.util.stream.Collectors;
+import io.debezium.connector.binlog.BinlogNotificationsIT;
 
-import org.junit.After;
-import org.junit.Before;
+public class NotificationsIT extends BinlogNotificationsIT<MySqlConnector> implements MySqlCommon {
 
-import io.debezium.config.Configuration;
-import io.debezium.pipeline.notification.AbstractNotificationsIT;
-import io.debezium.util.Testing;
-
-public class NotificationsIT extends AbstractNotificationsIT<MySqlConnector> {
-
-    protected static final String SERVER_NAME = "is_test";
-    protected final UniqueDatabase DATABASE = new UniqueDatabase(SERVER_NAME, "incremental_snapshot-test").withDbHistoryPath(SCHEMA_HISTORY_PATH);
-    protected static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-is.txt")
-            .toAbsolutePath();
-
-    @Before
-    public void before() throws SQLException {
-        stopConnector();
-        DATABASE.createAndInitialize();
-        initializeConnectorTestFramework();
-        Testing.Files.delete(SCHEMA_HISTORY_PATH);
-    }
-
-    @After
-    public void after() {
-        try {
-            stopConnector();
-        }
-        finally {
-            Testing.Files.delete(SCHEMA_HISTORY_PATH);
-        }
-    }
-
-    protected List<String> collections() {
-        return List.of("a", "b", "c", "a4",
-                "a42", "a_dt", "a_date", "debezium_signal").stream().map(tbl -> String.format("%s.%s", DATABASE.getDatabaseName(), tbl)).collect(Collectors.toList());
-    }
-
-    @Override
-    protected Class<MySqlConnector> connectorClass() {
-        return MySqlConnector.class;
-    }
-
-    @Override
-    protected Configuration.Builder config() {
-        return DATABASE.defaultConfig()
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL.getValue());
-    }
-
-    @Override
-    protected String connector() {
-        return "mysql";
-    }
-
-    @Override
-    protected String server() {
-        return DATABASE.getServerName();
-    }
-
-    @Override
-    protected String snapshotStatusResult() {
-        return "COMPLETED";
-    }
 }

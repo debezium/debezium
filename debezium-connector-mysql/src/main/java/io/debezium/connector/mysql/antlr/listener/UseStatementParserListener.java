@@ -6,7 +6,7 @@
 
 package io.debezium.connector.mysql.antlr.listener;
 
-import io.debezium.connector.mysql.MySqlSystemVariables;
+import io.debezium.connector.binlog.jdbc.BinlogSystemVariables;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
@@ -34,7 +34,7 @@ public class UseStatementParserListener extends MySqlParserBaseListener {
         // system variables. We replicate that behavior here (or the variable we care about) so that these variables are always
         // right for the current database.
         String charsetForDb = parser.charsetNameForDatabase().get(dbName);
-        parser.systemVariables().setVariable(MySqlSystemVariables.MySqlScope.SESSION, MySqlSystemVariables.CHARSET_NAME_DATABASE, charsetForDb);
+        parser.systemVariables().setVariable(BinlogSystemVariables.BinlogScope.SESSION, BinlogSystemVariables.CHARSET_NAME_DATABASE, charsetForDb);
 
         // Signal that the variable was set ...
         parser.signalUseDatabase(ctx);

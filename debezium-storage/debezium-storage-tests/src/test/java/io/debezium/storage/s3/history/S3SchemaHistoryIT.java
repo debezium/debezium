@@ -28,10 +28,10 @@ import com.adobe.testing.s3mock.testcontainers.S3MockContainer;
 
 import io.debezium.config.Configuration;
 import io.debezium.document.DocumentReader;
-import io.debezium.relational.history.AbstractSchemaHistoryTest;
 import io.debezium.relational.history.HistoryRecord;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.relational.history.SchemaHistoryListener;
+import io.debezium.storage.AbstractSchemaHistoryTest;
 
 import software.amazon.awssdk.auth.credentials.AnonymousCredentialsProvider;
 import software.amazon.awssdk.core.sync.ResponseTransformer;
