@@ -37,6 +37,13 @@ public class MySqlConnectionConfiguration extends BinlogConnectionConfiguration 
     }
 
     @Override
+    protected Configuration.Builder getDatabaseConfiguration(Configuration configuration) {
+        Configuration.Builder builder = super.getDatabaseConfiguration(configuration);
+        builder.withDefault(MySqlConnectorConfig.JDBC_PROTOCOL, MySqlConnectorConfig.JDBC_PROTOCOL.defaultValue());
+        return builder;
+    }
+
+    @Override
     public String getUrlPattern() {
         return URL_PATTERN;
     }
