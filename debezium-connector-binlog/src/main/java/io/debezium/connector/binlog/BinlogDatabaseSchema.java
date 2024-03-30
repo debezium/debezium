@@ -16,8 +16,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.pipeline.spi.OffsetContext;
-import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.DefaultValueConverter;
 import io.debezium.relational.HistorizedRelationalDatabaseSchema;
 import io.debezium.relational.RelationalTableFilters;
@@ -48,7 +46,7 @@ import io.debezium.util.Strings;
  *
  * @author Chris Cranford
  */
-public abstract class BinlogDatabaseSchema<P extends Partition, O extends OffsetContext, V extends ValueConverterProvider, D extends DefaultValueConverter>
+public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends BinlogOffsetContext<?>, V extends ValueConverterProvider, D extends DefaultValueConverter>
         extends HistorizedRelationalDatabaseSchema {
 
     private final static Logger LOGGER = LoggerFactory.getLogger(BinlogDatabaseSchema.class);
@@ -277,7 +275,9 @@ public abstract class BinlogDatabaseSchema<P extends Partition, O extends Offset
      * @param tableIds set of table identifiers
      * @param changeTime the time the event happened
      */
-    protected abstract void handleTableEvent(O offset, String databaseName, Set<TableId> tableIds, Instant changeTime);
+    protected void handleTableEvent(O offset, String databaseName, Set<TableId> tableIds, Instant changeTime) {
+        offset.tableEvent(databaseName, tableIds, changeTime);
+    }
 
     /**
      * Update offsets based on a database-specific event.
@@ -286,7 +286,9 @@ public abstract class BinlogDatabaseSchema<P extends Partition, O extends Offset
      * @param databaseName the database name
      * @param changeTime the time the event happened
      */
-    protected abstract void handleDatabaseEvent(O offset, String databaseName, Instant changeTime);
+    protected void handleDatabaseEvent(O offset, String databaseName, Instant changeTime) {
+        offset.databaseEvent(databaseName, changeTime);
+    }
 
     /**
      * Discards any currently-cached schemas and rebuild using filters

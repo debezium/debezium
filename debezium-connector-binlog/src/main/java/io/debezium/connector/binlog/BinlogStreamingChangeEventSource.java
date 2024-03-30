@@ -18,7 +18,6 @@ import java.security.cert.X509Certificate;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
@@ -50,7 +49,6 @@ import com.github.shyiko.mysql.binlog.event.EventData;
 import com.github.shyiko.mysql.binlog.event.EventHeader;
 import com.github.shyiko.mysql.binlog.event.EventHeaderV4;
 import com.github.shyiko.mysql.binlog.event.EventType;
-import com.github.shyiko.mysql.binlog.event.GtidEventData;
 import com.github.shyiko.mysql.binlog.event.QueryEventData;
 import com.github.shyiko.mysql.binlog.event.RotateEventData;
 import com.github.shyiko.mysql.binlog.event.RowsQueryEventData;
@@ -357,6 +355,10 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         metrics.onGtidChange(gtid);
     }
 
+    protected boolean isGtidModeEnabled() {
+        return isGtidModeEnabled;
+    }
+
     // todo: perhaps refactor back out to a binary log configurator instance?
     protected BinaryLogClient createBinaryLogClient(BinlogTaskContext<?> taskContext,
                                                     BinlogConnectorConfig connectorConfig,
@@ -516,26 +518,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         metrics.setMilliSecondsBehindSource(ts);
     }
 
-    // todo: make abstract for MySQL
-    protected void setEventTimestamp(Event event, long eventTs) {
-        if (eventTimestamp == null || !isGtidModeEnabled) {
-            // Fallback to second resolution event timestamps
-            eventTimestamp = Instant.ofEpochMilli(eventTs);
-        }
-        else if (event.getHeader().getEventType() == EventType.GTID) {
-            // Prefer higher resolution replication timestamps from MySQL 8 GTID events, if possible
-            GtidEventData gtidEvent = unwrapData(event);
-            final long gtidEventTs = gtidEvent.getOriginalCommitTimestamp();
-            if (gtidEventTs != 0) {
-                // >= MySQL 8.0.1, prefer the higher resolution replication timestamp
-                eventTimestamp = Instant.EPOCH.plus(gtidEventTs, ChronoUnit.MICROS);
-            }
-            else {
-                // Fallback to second resolution event timestamps
-                eventTimestamp = Instant.ofEpochMilli(eventTs);
-            }
-        }
-    }
+    protected abstract void setEventTimestamp(Event event, long eventTs);
 
     protected void ignoreEvent(O offsetContext, Event event) {
         LOGGER.trace("Ignoring event due to missing handler: {}", event);

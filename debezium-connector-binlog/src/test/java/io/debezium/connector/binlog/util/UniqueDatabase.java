@@ -237,12 +237,6 @@ public abstract class UniqueDatabase {
                 .with(BinlogConnectorConfig.PASSWORD, "snapperpass");
 
         builder = applyConnectorDefaultJdbcConfiguration(builder);
-        /*
-         * .with(MySqlConnectorConfig.JDBC_PROTOCOL, System.getProperty("database.protocol",
-         * MySqlConnectorConfig.JDBC_PROTOCOL.defaultValueAsString()))
-         * .with(MySqlConnectorConfig.JDBC_DRIVER, System.getProperty("database.jdbc.driver",
-         * MySqlConnectorConfig.JDBC_DRIVER.defaultValueAsString()))
-         */
 
         String sslMode = System.getProperty("database.ssl.mode", "preferred");
 

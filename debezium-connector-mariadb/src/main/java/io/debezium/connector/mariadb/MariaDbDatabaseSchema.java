@@ -5,9 +5,6 @@
  */
 package io.debezium.connector.mariadb;
 
-import java.time.Instant;
-import java.util.Set;
-
 import io.debezium.connector.binlog.BinlogConnectorConfig;
 import io.debezium.connector.binlog.BinlogDatabaseSchema;
 import io.debezium.connector.mariadb.antlr.MariaDbAntlrDdlParser;
@@ -46,13 +43,4 @@ public class MariaDbDatabaseSchema extends BinlogDatabaseSchema<MariaDbPartition
                 getTableFilter());
     }
 
-    @Override
-    protected void handleTableEvent(MariaDbOffsetContext offset, String databaseName, Set<TableId> tableIds, Instant changeTime) {
-        offset.tableEvent(databaseName, tableIds, changeTime);
-    }
-
-    @Override
-    protected void handleDatabaseEvent(MariaDbOffsetContext offset, String databaseName, Instant changeTime) {
-        offset.databaseEvent(databaseName, changeTime);
-    }
 }

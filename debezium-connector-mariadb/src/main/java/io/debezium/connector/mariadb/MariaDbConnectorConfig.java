@@ -176,10 +176,11 @@ public class MariaDbConnectorConfig extends BinlogConnectorConfig {
             .excluding(
                     BinlogConnectorConfig.GTID_SOURCE_INCLUDES,
                     BinlogConnectorConfig.GTID_SOURCE_EXCLUDES)
+            .connector(SNAPSHOT_LOCKING_MODE)
             .events(
                     GTID_SOURCE_INCLUDES,
                     GTID_SOURCE_EXCLUDES,
-                    SNAPSHOT_LOCKING_MODE)
+                    SOURCE_INFO_STRUCT_MAKER)
             .create();
 
     protected static ConfigDef configDef() {
