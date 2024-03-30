@@ -9,6 +9,7 @@ import java.util.function.Predicate;
 
 import io.debezium.annotation.VisibleForTesting;
 import io.debezium.connector.binlog.BinlogOffsetContext;
+import io.debezium.connector.binlog.BinlogSourceInfo;
 import io.debezium.connector.binlog.gtid.GtidSet;
 import io.debezium.connector.binlog.gtid.GtidSetFactory;
 import io.debezium.document.Document;
@@ -142,15 +143,19 @@ public abstract class BinlogHistoryRecordComparator extends HistoryRecordCompara
      * @param document the document to inspect, should not be null
      * @return the global transaction identifier set as a string
      */
-    protected abstract String getGtidSet(Document document);
+    protected String getGtidSet(Document document) {
+        return document.getString(BinlogOffsetContext.GTID_SET_KEY);
+    }
 
     /**
-     * Get the server unique identifer.
+     * Get the server unique identifier.
      *
      * @param document the document to inspect, should not be null
-     * @return the unique server identifer
+     * @return the unique server identifier
      */
-    protected abstract int getServerId(Document document);
+    protected int getServerId(Document document) {
+        return document.getInteger(BinlogSourceInfo.SERVER_ID_KEY, 0);
+    }
 
     /**
      * Get whether the event is part of the connector's snapshot phase.
@@ -158,7 +163,9 @@ public abstract class BinlogHistoryRecordComparator extends HistoryRecordCompara
      * @param document the document to inspect, should not be null
      * @return true if its part of the snapshot, false otherwise
      */
-    protected abstract boolean isSnapshot(Document document);
+    protected boolean isSnapshot(Document document) {
+        return document.has(BinlogSourceInfo.SNAPSHOT_KEY);
+    }
 
     /**
      * Get the timestamp.
@@ -166,7 +173,9 @@ public abstract class BinlogHistoryRecordComparator extends HistoryRecordCompara
      * @param document the document to inspect, should not be null
      * @return the timestamp value
      */
-    protected abstract long getTimestamp(Document document);
+    protected long getTimestamp(Document document) {
+        return document.getLong(BinlogSourceInfo.TIMESTAMP_KEY, 0);
+    }
 
     /**
      * Get the binlog file name.
@@ -174,7 +183,9 @@ public abstract class BinlogHistoryRecordComparator extends HistoryRecordCompara
      * @param document the document to inspect, should not be null
      * @return the binlog file name value
      */
-    protected abstract BinlogFileName getBinlogFileName(Document document);
+    protected BinlogFileName getBinlogFileName(Document document) {
+        return BinlogFileName.of(document.getString(BinlogSourceInfo.BINLOG_FILENAME_OFFSET_KEY));
+    }
 
     /**
      * Get the binlog position.
@@ -182,7 +193,9 @@ public abstract class BinlogHistoryRecordComparator extends HistoryRecordCompara
      * @param document the document to inspect, should not be null
      * @return the binlog position value
      */
-    protected abstract int getBinlogPosition(Document document);
+    protected int getBinlogPosition(Document document) {
+        return document.getInteger(BinlogSourceInfo.BINLOG_POSITION_OFFSET_KEY, -1);
+    }
 
     /**
      * Get the number of events to skip.
@@ -190,7 +203,9 @@ public abstract class BinlogHistoryRecordComparator extends HistoryRecordCompara
      * @param document the document to inspect, should not be null
      * @return the binlog number of events to skip value
      */
-    protected abstract int getEventsToSkip(Document document);
+    protected int getEventsToSkip(Document document) {
+        return document.getInteger(BinlogOffsetContext.EVENTS_TO_SKIP_OFFSET_KEY, 0);
+    }
 
     /**
      * Get the binlog row in event value.
@@ -198,7 +213,9 @@ public abstract class BinlogHistoryRecordComparator extends HistoryRecordCompara
      * @param document the document to inspect, should not be null
      * @return the binlog row in event value
      */
-    protected abstract int getBinlogRowInEvent(Document document);
+    protected int getBinlogRowInEvent(Document document) {
+        return document.getInteger(BinlogSourceInfo.BINLOG_ROW_IN_EVENT_OFFSET_KEY, -1);
+    }
 
     protected static class BinlogFileName implements Comparable<BinlogFileName> {
         private final String baseName;

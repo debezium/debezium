@@ -274,47 +274,6 @@ public abstract class BinlogSnapshotSourceIT<C extends SourceConnector> extends 
         assertThat(customer.get("email")).isEqualTo("sally.thomas@acme.com");
     }
 
-    // todo: move this to MySQL variant only?
-    // @Test
-    // @SkipWhenDatabaseIs(value = SkipWhenDatabaseIs.Type.MYSQL, reason = "Only applies to Percona")
-    // @SkipWhenDatabaseIs(value = SkipWhenDatabaseIs.Type.MARIADB, reason = "Only applies to Percona")
-    // public void snapshotWithBackupLocksShouldNotWaitForReads() throws Exception {
-    // config = simpleConfig()
-    // .with(BinlogConnectorConfig.USER, "cloud")
-    // .with(BinlogConnectorConfig.PASSWORD, "cloudpass")
-    // .with(BinlogConnectorConfig.SNAPSHOT_LOCKING_MODE, BinlogConnectorConfig.SnapshotLockingMode.MINIMAL_PERCONA)
-    // .build();
-    //
-    // final BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName());
-    // final JdbcConnection connection = db.connect();
-    // final CountDownLatch latch = new CountDownLatch(1);
-    // Thread t = new Thread() {
-    // @Override
-    // public void run() {
-    // try {
-    // connection.executeWithoutCommitting("SELECT *, SLEEP(20) FROM products_on_hand WHERE product_id=101");
-    // latch.countDown();
-    // }
-    // catch (Exception e) {
-    // // Do nothing.
-    // }
-    // }
-    // };
-    // t.start();
-    //
-    // latch.await(10, TimeUnit.SECONDS);
-    // // Start the connector ...
-    // start(getConnectorClass(), config);
-    // waitForSnapshotToBeCompleted(getConnectorName(), DATABASE.getServerName());
-    //
-    // // Poll for records ...
-    // // Testing.Print.enable();
-    // final int recordCount = 9 + 9 + 4 + 5 + 1;
-    // SourceRecords sourceRecords = consumeRecordsByTopic(recordCount);
-    // assertThat(sourceRecords.allRecordsInOrder()).hasSize(recordCount);
-    // connection.connection().close();
-    // }
-
     @Test
     @FixFor("DBZ-2456")
     public void shouldCreateSnapshotSelectively() throws Exception {
@@ -543,7 +502,7 @@ public abstract class BinlogSnapshotSourceIT<C extends SourceConnector> extends 
         assertThat(after.get("c11")).isEqualTo(toMicroSeconds("-PT00H00M00.000000S"));
     }
 
-    private String productsTableName() throws SQLException {
+    protected String productsTableName() throws SQLException {
         try (BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName())) {
             return db.isTableIdCaseSensitive() ? "products" : "Products";
         }
@@ -897,7 +856,7 @@ public abstract class BinlogSnapshotSourceIT<C extends SourceConnector> extends 
         assertThat(heartbeatRecord.sourceOffset().get("snapshot")).isNull();
     }
 
-    private long toMicroSeconds(String duration) {
+    protected long toMicroSeconds(String duration) {
         return Duration.parse(duration).toNanos() / 1_000;
     }
 }

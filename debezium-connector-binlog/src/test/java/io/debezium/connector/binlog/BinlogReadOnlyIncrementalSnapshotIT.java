@@ -35,11 +35,9 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.TestRule;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
-import io.debezium.connector.binlog.junit.SkipTestDependingOnGtidModeRule;
 import io.debezium.connector.binlog.junit.SkipWhenGtidModeIs;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
@@ -54,16 +52,12 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.util.Collect;
 import io.debezium.util.Testing;
 
-@SkipWhenGtidModeIs(value = SkipWhenGtidModeIs.GtidMode.OFF, reason = "Read only connection requires GTID_MODE to be ON")
 public abstract class BinlogReadOnlyIncrementalSnapshotIT<C extends SourceConnector> extends BinlogIncrementalSnapshotIT<C> {
 
     private static KafkaCluster kafka;
     private static final int PARTITION_NO = 0;
     public static final String EXCLUDED_TABLE = "b";
     private final Path signalsFile = Paths.get("src", "test", "resources").resolve("debezium_signaling_file.txt");
-
-    @Rule
-    public TestRule skipTest = new SkipTestDependingOnGtidModeRule();
 
     @Rule
     public ConditionalFail conditionalFail = new ConditionalFail();

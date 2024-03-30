@@ -40,7 +40,6 @@ import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.signal.SignalProcessor;
-import io.debezium.pipeline.signal.channels.KafkaSignalChannel;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaFactory;
@@ -274,6 +273,7 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     protected Long getReadOnlyIncrementalSnapshotSignalOffset(MariaDbOffsetContext previousOffset) {
         return ((MariaDbReadOnlyIncrementalSnapshotContext<TableId>) previousOffset.getIncrementalSnapshotContext()).getSignalOffset();
     }
@@ -292,16 +292,4 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
         return new MariaDbFieldReader(connectorConfig);
     }
 
-    private void resetOffset(MariaDbConnectorConfig connectorConfig, MariaDbOffsetContext previousOffset,
-                             SignalProcessor<MariaDbPartition, MariaDbOffsetContext> signalProcessor) {
-        boolean isKafkaChannelEnabled = connectorConfig.getEnabledChannels().contains(KafkaSignalChannel.CHANNEL_NAME);
-        if (previousOffset != null && isKafkaChannelEnabled && connectorConfig.isReadOnlyConnection()) {
-            KafkaSignalChannel kafkaSignal = signalProcessor.getSignalChannel(KafkaSignalChannel.class);
-            Long signalOffset = getReadOnlyIncrementalSnapshotSignalOffset(previousOffset);
-            if (signalOffset != null) {
-                LOGGER.info("Resetting Kafka Signal offset to {}", signalOffset);
-                kafkaSignal.reset(signalOffset);
-            }
-        }
-    }
 }

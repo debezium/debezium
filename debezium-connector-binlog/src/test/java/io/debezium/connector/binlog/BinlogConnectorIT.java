@@ -105,6 +105,10 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
         }
     }
 
+    protected UniqueDatabase getDatabase() {
+        return DATABASE;
+    }
+
     /**
      * Verifies that the connector doesn't run with an invalid configuration. This does not actually connect to the MySQL server.
      */
@@ -125,44 +129,6 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
         });
         assertConnectorNotRunning();
     }
-
-    // todo: move these to MySQL only
-
-    // @Test
-    // public void shouldNotStartWithUnknownJdbcDriver() {
-    // config = DATABASE.defaultConfig()
-    // .with(MySqlConnectorConfig.JDBC_DRIVER, "foo.bar")
-    // .build();
-    //
-    // final AtomicBoolean successResult = new AtomicBoolean();
-    // final AtomicReference<String> message = new AtomicReference<>();
-    // start(getConnectorClass(), config, (success, msg, error) -> {
-    // successResult.set(success);
-    // message.set(msg);
-    // });
-    //
-    // assertThat(successResult.get()).isEqualTo(false);
-    // assertThat(message.get()).contains("java.lang.ClassNotFoundException: foo.bar");
-    // assertConnectorNotRunning();
-    // }
-    //
-    // @Test
-    // public void shouldNotStartWithWrongProtocol() {
-    // config = DATABASE.defaultConfig()
-    // .with(MySqlConnectorConfig.JDBC_PROTOCOL, "foo:bar")
-    // .build();
-    //
-    // final AtomicBoolean successResult = new AtomicBoolean();
-    // final AtomicReference<String> message = new AtomicReference<>();
-    // start(getConnectorClass(), config, (success, msg, error) -> {
-    // successResult.set(success);
-    // message.set(msg);
-    // });
-    //
-    // assertThat(successResult.get()).isEqualTo(false);
-    // assertThat(message.get()).contains("Unable to obtain a JDBC connection");
-    // assertConnectorNotRunning();
-    // }
 
     @Test
     public void shouldFailToValidateInvalidConfiguration() {
@@ -203,9 +169,6 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
         assertNoConfigurationErrors(result, BinlogConnectorConfig.SCHEMA_HISTORY);
         assertNoConfigurationErrors(result, BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES);
         assertNoConfigurationErrors(result, BinlogConnectorConfig.SNAPSHOT_MODE);
-        // todo: push these to MySQL override
-        // assertNoConfigurationErrors(result, BinlogConnectorConfig.SNAPSHOT_LOCKING_MODE);
-        // assertNoConfigurationErrors(result, BinlogConnectorConfig.SNAPSHOT_NEW_TABLES);
         assertNoConfigurationErrors(result, BinlogConnectorConfig.SSL_MODE);
         assertNoConfigurationErrors(result, BinlogConnectorConfig.SSL_KEYSTORE);
         assertNoConfigurationErrors(result, BinlogConnectorConfig.SSL_KEYSTORE_PASSWORD);
@@ -243,9 +206,6 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
         validateConfigField(result, BinlogConnectorConfig.SCHEMA_HISTORY, "io.debezium.storage.kafka.history.KafkaSchemaHistory");
         validateConfigField(result, BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, Boolean.TRUE);
         validateConfigField(result, BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL);
-        // todo: push to MySQL variant
-        // validateConfigField(result, MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE, SnapshotLockingMode.MINIMAL);
-        // validateConfigField(result, MySqlConnectorConfig.SNAPSHOT_NEW_TABLES, SnapshotNewTables.OFF);
         validateConfigField(result, BinlogConnectorConfig.SSL_MODE, SecureConnectionMode.PREFERRED);
         validateConfigField(result, BinlogConnectorConfig.SSL_KEYSTORE, null);
         validateConfigField(result, BinlogConnectorConfig.SSL_KEYSTORE_PASSWORD, null);
