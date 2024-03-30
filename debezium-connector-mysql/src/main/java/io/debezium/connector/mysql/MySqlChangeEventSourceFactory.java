@@ -11,7 +11,7 @@ import java.util.function.Function;
 import org.apache.kafka.connect.source.SourceRecord;
 
 import io.debezium.connector.base.ChangeEventQueue;
-import io.debezium.connector.mysql.strategy.AbstractConnectorConnection;
+import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
@@ -33,7 +33,7 @@ import io.debezium.util.Strings;
 public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<MySqlPartition, MySqlOffsetContext> {
 
     private final MySqlConnectorConfig configuration;
-    private final MainConnectionProvidingConnectionFactory<AbstractConnectorConnection> connectionFactory;
+    private final MainConnectionProvidingConnectionFactory<BinlogConnectorConnection> connectionFactory;
     private final ErrorHandler errorHandler;
     private final EventDispatcher<MySqlPartition, TableId> dispatcher;
     private final Clock clock;
@@ -48,7 +48,7 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
 
     private final SnapshotterService snapshotterService;
 
-    public MySqlChangeEventSourceFactory(MySqlConnectorConfig configuration, MainConnectionProvidingConnectionFactory<AbstractConnectorConnection> connectionFactory,
+    public MySqlChangeEventSourceFactory(MySqlConnectorConfig configuration, MainConnectionProvidingConnectionFactory<BinlogConnectorConnection> connectionFactory,
                                          ErrorHandler errorHandler, EventDispatcher<MySqlPartition, TableId> dispatcher, Clock clock, MySqlDatabaseSchema schema,
                                          MySqlTaskContext taskContext, MySqlStreamingChangeEventSourceMetrics streamingMetrics,
                                          ChangeEventQueue<DataChangeEvent> queue, SnapshotterService snapshotterService) {
@@ -113,7 +113,7 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
 
         if (configuration.isReadOnlyConnection()) {
             if (connectionFactory.mainConnection().isGtidModeEnabled()) {
-                return Optional.of(configuration.getConnectorAdapter().createIncrementalSnapshotChangeEventSource(
+                return Optional.of(new MySqlReadOnlyIncrementalSnapshotChangeEventSource(
                         configuration,
                         connectionFactory.mainConnection(),
                         dispatcher,

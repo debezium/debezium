@@ -28,10 +28,10 @@ import com.azure.storage.blob.BlobServiceClientBuilder;
 
 import io.debezium.config.Configuration;
 import io.debezium.document.DocumentReader;
-import io.debezium.relational.history.AbstractSchemaHistoryTest;
 import io.debezium.relational.history.HistoryRecord;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.relational.history.SchemaHistoryListener;
+import io.debezium.storage.AbstractSchemaHistoryTest;
 
 public class AzureBlobSchemaHistoryIT extends AbstractSchemaHistoryTest {
 
