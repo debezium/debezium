@@ -8,14 +8,18 @@ package io.debezium.connector.mongodb;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.bson.BsonTimestamp;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,6 +55,16 @@ import io.debezium.util.SchemaNameAdjuster;
 public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition, MongoDbOffsetContext> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbConnectorTask.class);
+
+    private static final Comparator<Map<String, Object>> OFFSET_COMPARATOR = (a, b) -> {
+        BsonTimestamp aTimestamp = new BsonTimestamp(
+                SourceInfo.intOffsetValue(a, SourceInfo.TIMESTAMP),
+                SourceInfo.intOffsetValue(a, SourceInfo.ORDER));
+        BsonTimestamp bTimestamp = new BsonTimestamp(
+                SourceInfo.intOffsetValue(b, SourceInfo.TIMESTAMP),
+                SourceInfo.intOffsetValue(b, SourceInfo.ORDER));
+        return aTimestamp.compareTo(bTimestamp);
+    };
 
     private static final String CONTEXT_NAME = "mongodb-connector-task";
 
@@ -190,14 +204,119 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
         return MongoDbConnectorConfig.ALL_FIELDS;
     }
 
+    private static Map<String, String> clonePartitionWithMultiTaskFields(
+                                                                         Map<String, String> partition,
+                                                                         int generation,
+                                                                         int taskId,
+                                                                         int taskCount) {
+        return new SourceInfo.PartitionBuilder()
+                .serverName(partition.get(SourceInfo.SERVER_ID_KEY))
+                .rsName(partition.get(SourceInfo.REPLICA_SET_NAME))
+                .taskId(taskId)
+                .multiTaskGen(generation)
+                .maxTasks(taskCount)
+                .multiTaskEnabled(true)
+                .build();
+    }
+
+    private static Map<String, String> clonePartitionWithoutMultiTaskFields(Map<String, String> partition) {
+        return new SourceInfo.PartitionBuilder()
+                .serverName(partition.get(SourceInfo.SERVER_ID_KEY))
+                .rsName(partition.get(SourceInfo.REPLICA_SET_NAME))
+                .multiTaskEnabled(false)
+                .build();
+    }
+
     private MongoDbOffsetContext getPreviousOffset(MongoDbConnectorConfig connectorConfig, ReplicaSets replicaSets) {
         MongoDbOffsetContext.Loader loader = new MongoDbOffsetContext.Loader(connectorConfig, replicaSets, taskContext.getMongoTaskId());
         Collection<Map<String, String>> partitions = loader.getPartitions();
 
         Map<Map<String, String>, Map<String, Object>> offsets = context.offsetStorageReader().offsets(partitions);
+        if (!connectorConfig.getMultiTaskEnabled() || offsets.values().stream().anyMatch(Objects::isNull)) {
+            final int prevGen = connectorConfig.getMultiTaskPrevGen();
+
+            // Identify partitions/replsets without saved offsets in current generation then fetch all previous
+            // offsets for those partitions
+            Collection<Map<String, String>> prevPartitions;
+            Map<Map<String, String>, Map<String, Object>> prevOffsets;
+            if (prevGen < 0) {
+                // There is no previous generation, fetch non-multitask offsets
+                prevPartitions = offsets.entrySet().stream()
+                        .filter(entry -> Objects.isNull(entry.getValue()))
+                        .map(Map.Entry::getKey)
+                        .map(MongoDbConnectorTask::clonePartitionWithoutMultiTaskFields)
+                        .collect(Collectors.toList());
+                prevOffsets = context.offsetStorageReader().offsets(prevPartitions);
+            }
+            else {
+                Stream<Map.Entry<Map<String, String>, Map<String, Object>>> partitionStream = offsets.entrySet().stream();
+                // Do not filter if multi-task is disabled (existing offsets may be out of date)
+                if (connectorConfig.getMultiTaskEnabled()) {
+                    partitionStream = partitionStream
+                            .filter(entry -> Objects.isNull(entry.getValue()));
+                }
+                prevPartitions = partitionStream.map(Map.Entry::getKey)
+                        .flatMap(partition -> IntStream.range(0, connectorConfig.getMultiTaskPrevMaxTasks())
+                                .mapToObj(taskId -> clonePartitionWithMultiTaskFields(
+                                        partition,
+                                        prevGen,
+                                        taskId,
+                                        connectorConfig.getMultiTaskPrevMaxTasks())))
+                        .collect(Collectors.toList());
+
+                prevOffsets = context.offsetStorageReader().offsets(prevPartitions);
+                if (prevOffsets.values().stream().anyMatch(Objects::isNull)) {
+                    // previous generation is missing offsets
+                    List<Map<String, String>> missingPartitions = prevOffsets.entrySet().stream()
+                            .filter(entry -> Objects.isNull(entry.getValue()))
+                            .map(Map.Entry::getKey)
+                            .collect(Collectors.toList());
+                    LOGGER.error("Previous generation {} is missing offsets for {}", prevGen, missingPartitions);
+                    throw new IllegalStateException("Couldn't find saved offsets");
+                }
+            }
+
+            // Group offsets by partition
+            Map<Map<String, String>, List<Map<String, Object>>> offsetGroups = prevOffsets
+                    .entrySet()
+                    .stream()
+                    .filter(offset -> Objects.nonNull(offset.getValue()))
+                    .collect(Collectors.groupingBy(
+                            entry -> clonePartitionWithoutMultiTaskFields(entry.getKey()),
+                            Collectors.mapping(Map.Entry::getValue, Collectors.toList())));
+
+            LOGGER.info("Missing offsets for {} in current generation {}, filling in offsets from {}",
+                    offsetGroups.keySet(),
+                    connectorConfig.getMultiTaskGen(),
+                    prevGen >= 0 ? "generation " + prevGen : "non-multitask offsets");
+
+            for (Map.Entry<Map<String, String>, List<Map<String, Object>>> offsetGroup : offsetGroups.entrySet()) {
+                // Reduce offsets to the oldest for each partition
+                Map<String, Object> oldest = offsetGroup.getValue().stream()
+                        .min(OFFSET_COMPARATOR)
+                        .get(); // stream is never empty, all values in stream are non-null
+
+                // Set offset in current generation
+                Map<String, String> partition = new SourceInfo.PartitionBuilder()
+                        .serverName(offsetGroup.getKey().get(SourceInfo.SERVER_ID_KEY))
+                        .rsName(offsetGroup.getKey().get(SourceInfo.REPLICA_SET_NAME))
+                        .taskId(taskContext.getMongoTaskId())
+                        .multiTaskGen(connectorConfig.getMultiTaskGen())
+                        .maxTasks(connectorConfig.getMaxTasks())
+                        .multiTaskEnabled(connectorConfig.getMultiTaskEnabled())
+                        .build();
+
+                // Take the newest of existing offset and previous generation's oldest
+                if (offsets.get(partition) == null || OFFSET_COMPARATOR.compare(offsets.get(partition), oldest) < 0) {
+                    offsets.put(partition, oldest);
+                    LOGGER.info("added offset {} = {} from generation {}", partition, oldest, prevGen);
+                }
+            }
+        }
+
         if (offsets != null && !offsets.values().stream().filter(Objects::nonNull).collect(Collectors.toList()).isEmpty()) {
             MongoDbOffsetContext offsetContext = loader.loadOffsets(offsets);
-            logger.info("Found previous offsets {}", offsetContext);
+            LOGGER.info("Found previous offsets {}", offsetContext);
             return offsetContext;
         }
         else {

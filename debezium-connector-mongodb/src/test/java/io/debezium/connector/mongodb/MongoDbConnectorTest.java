@@ -128,6 +128,7 @@ public class MongoDbConnectorTest {
                         .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
                         .with(MongoDbConnectorConfig.HOSTS, "rs1/")
                         .with(MongoDbConnectorConfig.MONGODB_MULTI_TASK_ENABLED, true)
+                        .with(MongoDbConnectorConfig.MONGODB_MULTI_TASK_GEN, 0)
                         .build()
                         .asMap());
 

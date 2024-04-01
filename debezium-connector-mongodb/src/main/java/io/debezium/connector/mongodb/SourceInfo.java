@@ -295,22 +295,67 @@ public final class SourceInfo extends BaseSourceInfo {
             throw new IllegalArgumentException("Replica set name may not be null");
         }
 
-        return sourcePartitionsByReplicaSetName.computeIfAbsent(replicaSetName, rsName -> {
+        return sourcePartitionsByReplicaSetName.computeIfAbsent(replicaSetName, rsName -> new PartitionBuilder()
+                .serverName(serverName())
+                .rsName(rsName)
+                .taskId(this.taskId)
+                .multiTaskGen(this.multiTaskGen)
+                .maxTasks(this.maxTasks)
+                .multiTaskEnabled(this.multiTaskEnabled)
+                .build());
+    }
+
+    protected static class PartitionBuilder {
+        String serverName, rsName, taskId, multiTaskGen, maxTasks;
+        boolean multiTaskEnabled = false;
+
+        public PartitionBuilder() {
+        }
+
+        public PartitionBuilder serverName(String serverName) {
+            this.serverName = serverName;
+            return this;
+        }
+
+        public PartitionBuilder rsName(String rsName) {
+            this.rsName = rsName;
+            return this;
+        }
+
+        public PartitionBuilder taskId(int taskId) {
+            this.taskId = String.valueOf(taskId);
+            return this;
+        }
+
+        public PartitionBuilder multiTaskGen(int multiTaskGen) {
+            this.multiTaskGen = String.valueOf(multiTaskGen);
+            return this;
+        }
+
+        public PartitionBuilder maxTasks(int maxTasks) {
+            this.maxTasks = String.valueOf(maxTasks);
+            return this;
+        }
+
+        public PartitionBuilder multiTaskEnabled(boolean multiTaskEnabled) {
+            this.multiTaskEnabled = multiTaskEnabled;
+            return this;
+        }
+
+        protected Map<String, String> build() {
             // To ensure backwards compatability, only set new key values when multitask enabled.
-            if (this.multiTaskEnabled) {
+            if (multiTaskEnabled) {
                 return Collect.hashMapOf(
-                        SERVER_ID_KEY, serverName(),
+                        SERVER_ID_KEY, serverName,
                         REPLICA_SET_NAME, rsName,
-                        TASK_ID_KEY, String.valueOf(this.taskId),
-                        MULTI_TASK_GEN_KEY, String.valueOf(this.multiTaskGen),
-                        TASK_COUNT_KEY, String.valueOf(this.maxTasks));
+                        TASK_ID_KEY, taskId,
+                        MULTI_TASK_GEN_KEY, multiTaskGen,
+                        TASK_COUNT_KEY, maxTasks);
             }
-            else {
-                return Collect.hashMapOf(
-                        SERVER_ID_KEY, serverName(),
-                        REPLICA_SET_NAME, rsName);
-            }
-        });
+            return Collect.hashMapOf(
+                    SERVER_ID_KEY, serverName,
+                    REPLICA_SET_NAME, rsName);
+        }
     }
 
     /**
@@ -634,7 +679,7 @@ public final class SourceInfo extends BaseSourceInfo {
         return !initialSyncReplicaSets.isEmpty();
     }
 
-    private static int intOffsetValue(Map<String, ?> values, String key) {
+    protected static int intOffsetValue(Map<String, ?> values, String key) {
         Object obj = values.get(key);
         if (obj == null) {
             return 0;

@@ -776,6 +776,24 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withValidation(Field::isInteger)
             .withDescription("Define multi-task generation to be enabled on MongoDB instance");
 
+    public static final Field MONGODB_MULTI_TASK_PREV_TASKS = Field.create("mongodb.multi.prev.tasks.max")
+            .withDisplayName("Mongo DB previous multi-task generation task count")
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDefault(1)
+            .withValidation(Field::isPositiveInteger)
+            .withDescription("Maximum number of tasks allowed in the previous generation");
+
+    public static final Field MONGODB_MULTI_TASK_PREV_GEN = Field.create("mongodb.multi.prev.gen")
+            .withDisplayName("Mongo DB previous multi-task generation")
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDefault(-1)
+            .withValidation(Field::isInteger, MongoDbConnectorConfig::validateMultiTaskPrevGen)
+            .withDescription("Previous multi-task generation that was enabled on MongoDB instance");
+
     private static final ConfigDefinition CONFIG_DEFINITION = CommonConnectorConfig.CONFIG_DEFINITION.edit()
             .name("MongoDB")
             .type(
@@ -801,7 +819,9 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                     SSL_ALLOW_INVALID_HOSTNAMES,
                     CURSOR_MAX_AWAIT_TIME_MS,
                     MONGODB_MULTI_TASK_ENABLED,
-                    MONGODB_MULTI_TASK_GEN)
+                    MONGODB_MULTI_TASK_GEN,
+                    MONGODB_MULTI_TASK_PREV_TASKS,
+                    MONGODB_MULTI_TASK_PREV_GEN)
             .events(
                     DATABASE_WHITELIST,
                     DATABASE_INCLUDE_LIST,
@@ -851,6 +871,10 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
     private final int multiTaskGen;
 
+    private final int multiTaskPrevMaxTasks;
+
+    private final int multiTaskPrevGen;
+
     private final FiltersMatchMode filtersMatchMode;
 
     public MongoDbConnectorConfig(Configuration config) {
@@ -877,6 +901,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
         this.multiTaskEnabled = config.getBoolean(MongoDbConnectorConfig.MONGODB_MULTI_TASK_ENABLED, false);
         this.multiTaskGen = config.getInteger(MongoDbConnectorConfig.MONGODB_MULTI_TASK_GEN, -1);
+        this.multiTaskPrevMaxTasks = config.getInteger(MongoDbConnectorConfig.MONGODB_MULTI_TASK_PREV_TASKS, 1);
+        this.multiTaskPrevGen = config.getInteger(MongoDbConnectorConfig.MONGODB_MULTI_TASK_PREV_GEN, -1);
     }
 
     private static int validateHosts(Configuration config, Field field, ValidationOutput problems) {
@@ -976,6 +1002,24 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         return 0;
     }
 
+    private static int validateMultiTaskPrevGen(Configuration config, Field field, ValidationOutput problems) {
+        if (!config.getBoolean(MONGODB_MULTI_TASK_ENABLED)) {
+            return 0;
+        }
+        int prevGen = config.getInteger(MONGODB_MULTI_TASK_PREV_GEN);
+        int currentGen = config.getInteger(MONGODB_MULTI_TASK_GEN);
+        if (prevGen >= currentGen) {
+            problems.accept(MONGODB_MULTI_TASK_PREV_GEN, true,
+                    String.format(
+                            "current multi-task generation must be greater than previous multi-task generation. " +
+                                    "received %s and %s as current and previous generations respectively",
+                            currentGen,
+                            prevGen));
+            return 1;
+        }
+        return 0;
+    }
+
     public SnapshotMode getSnapshotMode() {
         return snapshotMode;
     }
@@ -1036,6 +1080,14 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
     public int getMultiTaskGen() {
         return multiTaskGen;
+    }
+
+    public int getMultiTaskPrevMaxTasks() {
+        return multiTaskPrevMaxTasks;
+    }
+
+    public int getMultiTaskPrevGen() {
+        return multiTaskPrevGen;
     }
 
     @Override

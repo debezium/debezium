@@ -93,6 +93,7 @@ public class MongoDbMultiTaskConnectorIT extends AbstractMongoConnectorIT {
         final int numUpdates = 35;
         config = config.edit()
                 .with(TASKS_MAX, 1)
+                .with(MongoDbConnectorConfig.MONGODB_MULTI_TASK_GEN, 0)
                 .build();
         start(MongoDbConnector.class, config);
         waitForStreamingRunning("mongodb", "mongo");
@@ -164,6 +165,7 @@ public class MongoDbMultiTaskConnectorIT extends AbstractMongoConnectorIT {
         final int defaultTaskId = 0;
         config = config.edit()
                 .with(TASKS_MAX, numTasks)
+                .with(MongoDbConnectorConfig.MONGODB_MULTI_TASK_GEN, 0)
                 .build();
         start(MongoDbConnector.class, config);
         waitForStreamingRunning("mongodb", "mongo", defaultTaskId);
