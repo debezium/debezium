@@ -65,18 +65,10 @@ endif::community[]
 
 ifdef::product[]
 
-[IMPORTANT]
-====
-Use of the {prodname} MySQL connector with MariaDB is a Technology Preview feature only.
-Technology Preview features are not supported with Red{nbsp}Hat production service level agreements (SLAs) and might not be functionally complete.
-Red{nbsp}Hat does not recommend using them in production.
-These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
-For more information about the support scope of Red{nbsp}Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
-====
-
 Details are in the following topics:
 
 * xref:mysql-topologies-supported-by-debezium-connectors[]
+* xref:supplemental-configuration-for-connecting-debezium-to-mariadb[
 * xref:how-debezium-mysql-connectors-handle-database-schema-changes[]
 * xref:how-debezium-mysql-connectors-expose-database-schema-changes[]
 * xref:how-debezium-mysql-connectors-perform-database-snapshots[]
