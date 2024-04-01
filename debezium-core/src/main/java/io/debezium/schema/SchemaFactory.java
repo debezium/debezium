@@ -50,8 +50,8 @@ public class SchemaFactory {
     private static final String TRANSACTION_METADATA_KEY_SCHEMA_NAME = "io.debezium.connector.common.TransactionMetadataKey";
     private static final int TRANSACTION_METADATA_KEY_SCHEMA_VERSION = 1;
 
-    protected static final String TRANSACTION_METADATA_VALUE_SCHEMA_NAME = "io.debezium.connector.common.TransactionMetadataValue";
-    protected static final int TRANSACTION_METADATA_VALUE_SCHEMA_VERSION = 1;
+    private static final String TRANSACTION_METADATA_VALUE_SCHEMA_NAME = "io.debezium.connector.common.TransactionMetadataValue";
+    private static final int TRANSACTION_METADATA_VALUE_SCHEMA_VERSION = 1;
 
     protected static final String TRANSACTION_BLOCK_SCHEMA_NAME = "event.block";
     protected static final int TRANSACTION_BLOCK_SCHEMA_VERSION = 1;
