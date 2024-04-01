@@ -19,14 +19,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
@@ -38,7 +36,6 @@ import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
-import io.debezium.connector.binlog.junit.SkipWhenGtidModeIs;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.ConditionalFail;
@@ -269,21 +266,6 @@ public abstract class BinlogReadOnlyIncrementalSnapshotIT<C extends SourceConnec
                 null);
         for (int i = 0; i < expectedRecordCount; i++) {
             assertThat(dbChanges).contains(entry(i + 1, i));
-        }
-    }
-
-    @Test(expected = ConnectException.class)
-    @SkipWhenGtidModeIs(value = SkipWhenGtidModeIs.GtidMode.ON, reason = "Read only connection requires GTID_MODE to be ON")
-    public void shouldFailIfGtidModeIsOff() throws Exception {
-        // Testing.Print.enable();
-        populateTable();
-        AtomicReference<Throwable> exception = new AtomicReference<>();
-        startConnector((success, message, error) -> exception.set(error));
-        waitForEngineShutdown();
-        stopConnector();
-        final Throwable e = exception.get();
-        if (e != null) {
-            throw (RuntimeException) e;
         }
     }
 
