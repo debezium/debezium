@@ -9,6 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
 import org.junit.Test;
 
 import io.debezium.pipeline.txmetadata.TransactionMonitor;
@@ -35,6 +36,25 @@ public class EnvelopeTest {
         assertOptionalField(env, Envelope.FieldName.SOURCE, Schema.OPTIONAL_INT64_SCHEMA);
         assertRequiredField(env, Envelope.FieldName.OPERATION, Schema.STRING_SCHEMA);
         assertOptionalField(env, Envelope.FieldName.TRANSACTION, TransactionMonitor.TRANSACTION_BLOCK_SCHEMA);
+    }
+
+    @Test
+    public void shouldBuildWithCustomTransactionSchema() {
+        Envelope env = Envelope.defineSchema()
+                .withName("someName")
+                .withRecord(Schema.OPTIONAL_STRING_SCHEMA)
+                .withSource(Schema.OPTIONAL_INT64_SCHEMA)
+                .withTransaction(SchemaBuilder.STRING_SCHEMA)
+                .build();
+        assertThat(env.schema()).isNotNull();
+        assertThat(env.schema().name()).isEqualTo("someName");
+        assertThat(env.schema().doc()).isNull();
+        assertThat(env.schema().version()).isEqualTo(2);
+        assertOptionalField(env, Envelope.FieldName.AFTER, Schema.OPTIONAL_STRING_SCHEMA);
+        assertOptionalField(env, Envelope.FieldName.BEFORE, Schema.OPTIONAL_STRING_SCHEMA);
+        assertOptionalField(env, Envelope.FieldName.SOURCE, Schema.OPTIONAL_INT64_SCHEMA);
+        assertRequiredField(env, Envelope.FieldName.OPERATION, Schema.STRING_SCHEMA);
+        assertRequiredField(env, Envelope.FieldName.TRANSACTION, SchemaBuilder.STRING_SCHEMA);
     }
 
     protected void assertRequiredField(Envelope env, String fieldName, Schema expectedSchema) {
