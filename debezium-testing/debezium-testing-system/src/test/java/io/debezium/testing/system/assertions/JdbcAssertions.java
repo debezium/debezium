@@ -34,7 +34,7 @@ public class JdbcAssertions {
                 return rs.getInt(1);
             }
             catch (SQLException e) {
-                throw new RuntimeException(e);
+                throw new AssertionError(e);
             }
         });
         assertThat(databaseCount).withFailMessage("Expecting table '%s' to have <%d> rows but it had <%d>.", table, expectedCount, databaseCount)
@@ -49,7 +49,7 @@ public class JdbcAssertions {
                 return rs.next();
             }
             catch (SQLException e) {
-                throw new RuntimeException(e);
+                throw new AssertionError(e);
             }
         });
         assertThat(containsContent).withFailMessage("Table '%s' does not contain row with column '%s' containing <%s>.", table, column, content).isTrue();
