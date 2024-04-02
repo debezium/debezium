@@ -57,6 +57,8 @@ public abstract class AbstractBlockingSnapshotTest extends AbstractSnapshotTest 
     @Override
     protected abstract String tableName();
 
+    protected abstract String escapedTableDataCollectionId();
+
     @Override
     protected abstract String connector();
 
@@ -202,7 +204,7 @@ public abstract class AbstractBlockingSnapshotTest extends AbstractSnapshotTest 
         SourceRecords consumedRecordsByTopic = consumeRecordsByTopic(ROW_COUNT * 2, 10);
         assertRecordsFromSnapshotAndStreamingArePresent(ROW_COUNT * 2, consumedRecordsByTopic);
 
-        sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey("", "", BLOCKING, "\\\"s1\\\".\\\"a\\\"");
+        sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey("", "", BLOCKING, escapedTableDataCollectionId());
 
         waitForLogMessage("Snapshot completed", AbstractSnapshotChangeEventSource.class);
 

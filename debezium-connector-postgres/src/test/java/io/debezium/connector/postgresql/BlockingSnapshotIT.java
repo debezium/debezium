@@ -113,6 +113,11 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
     }
 
     @Override
+    protected String escapedTableDataCollectionId() {
+        return "\\\"s1\\\".\\\"a\\\"";
+    }
+
+    @Override
     protected String connector() {
         return "postgres";
     }
