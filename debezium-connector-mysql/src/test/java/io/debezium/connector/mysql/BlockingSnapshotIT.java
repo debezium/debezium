@@ -138,6 +138,11 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
     }
 
     @Override
+    protected String escapedTableDataCollectionId() {
+        return String.format("\\\\\"%s\\\\\".\\\\\"%s\\\\\"", tableNameId().catalog(), tableNameId().table());
+    }
+
+    @Override
     protected String signalTableNameSanitized() {
         return DATABASE.qualifiedTableName("debezium_signal");
     }

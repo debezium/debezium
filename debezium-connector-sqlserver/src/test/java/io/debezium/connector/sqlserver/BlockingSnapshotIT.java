@@ -89,6 +89,11 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
     }
 
     @Override
+    protected String escapedTableDataCollectionId() {
+        return "\\\"testDB1\\\".\\\"dbo\\\".\\\"a\\\"";
+    }
+
+    @Override
     protected Configuration.Builder config() {
         return TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SqlServerConnectorConfig.SnapshotMode.INITIAL)
