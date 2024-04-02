@@ -864,6 +864,71 @@ The following example shows a typical transaction event message:
 }
 ----
 
+[[oracle-logminer-mining-strategies]]
+=== LogMiner Mining Strategies
+
+Entries in the Oracle redo logs do not store the original SQL statements that users submit to make DML changes.
+Instead, a redo entry holds a set of change vectors and a set of object identifiers that represent the tablespace, table, and columns related to these vectors.
+In other words, redo log entries don't include the names of the schemas, tables, or columns affected by DML changes.
+
+The {prodname} Oracle connector uses the xref:oracle-property-log-mining-strategy[`log.mining.strategy`] configuration property to control how Oracle LogMiner handles the lookup of the object identifiers in the change vectors.
+In certain situations, one log mining strategy might prove more reliable than another with regard to schema changes.
+However, before you choose a log mining strategy, it's important to consider the implications it might have on performance and overhead.
+
+==== Writing the data dictionary to redo logs
+
+The default mining strategy is called `redo_log_catalog`.
+In this strategy, the database flushes a copy of the data dictionary to the redo logs immediately after each redo log switch.
+This is the most reliable strategy for tracking schema changes that are interwoven with data changes, because Oracle LogMiner has a way to interpolate between the starting and ending data dictionary states across a series of change vectors.
+
+However, the `redo_log_catalog` mode is also the most expensive, because it requires several key steps to function.
+First, this mode requires the data dictionary to be flushed to the redo logs after every log switch.
+Flushing the logs after each switch can quickly consume valuable space in the archive log, and the high volume of archive logs might exceed the number that database administrators prepared for.
+If you intend to use this mode, coordinate with your database administrators to ensure that the database is configured appropriately.
+
+[IMPORTANT]
+====
+If you configure the connector to use the `redo_log_catalog` mode, do not use multiple {prodname} Oracle connectors to capture changes from the same logical database.
+====
+
+==== Using the online catalog directly
+
+The next strategy mode, `online_catalog`, works differently from the `redo_log_catalog` mode.
+When the strategy is set to `online_catalog`, the database never flushes the data dictionary to the redo logs.
+Instead, Oracle LogMiner always uses the most current data dictionary state to perform comparisons.
+By always using the current dictionary, and eliminating flushing to the redo logs, this strategy requires less overhead, and operates more efficiently.
+However, these benefits are offset by the inability to parse interwoven schema changes and data changes.
+As a result, this strategy can sometimes result in event failures.
+
+If LogMiner was unable to reconstruct the SQL reliability after a schema change, check the redo logs for evidence.
+Look for references to tables with names like `OBJ# 123456` (where the number is the table's object identifier), or for columns with names like `COL1` or `COL2`.
+When you configure the connector to use the `online_catalog` strategy, take steps to ensure that the table schema and its indices remain static and free from change.
+If the {prodname} connector is configured to use the `online_catalog` mode, and you must apply a schema change, perform the following steps:
+
+1. Wait for the connector to capture all existing data changes (DML).
+2. Perform the schema (DDL) change, and then wait for the connector to capture the change.
+3. Resume data changes (DML) on the table.
+
+Following this procedure helps to ensure that Oracle LogMiner can safely reconstruct the SQL for all data changes.
+
+ifdef::community[]
+==== Hybrid approach
+
+This is a new, experimental strategy that can be enabled by setting the strategy to `hybrid`.
+The goal of this strategy is to provide the reliability of the `redo_log_catalog` strategy with the performance and low overhead of the `online_catalog` strategy, without incurring the disadvantages of either strategy.
+
+The `hybrid` strategy works by primarily operating in the `online_catalog` mode, meaning that the {prodname} Oracle connector first delegates event reconstruction to Oracle LogMiner.
+If Oracle LogMiner successfully reconstructs the SQL, {prodname} processes the event normally, as if it were configured to use the `online_catalog` strategy.
+If the connector detects that Oracle LogMiner could not reconstruct the SQL, the connector attempts to reconstruct the SQL directly by using the schema history for that table object.
+The connector reports a failure only if both Oracle LogMiner and the connector are unable to reconstruct the SQL.
+
+[IMPORTANT]
+====
+You cannot use the `hybrid` mining strategy if the xref:oracle-property-lob-enabled[`lob.enabled`] property is set to `true`.
+If you require streaming `CLOB`, `BLOB`, or `XML` data, only the `online_catalog` or `redo_log_catalog` strategies can be used.
+====
+endif::community[]
+
 [[oracle-logminer-query-modes]]
 === Query Modes
 
