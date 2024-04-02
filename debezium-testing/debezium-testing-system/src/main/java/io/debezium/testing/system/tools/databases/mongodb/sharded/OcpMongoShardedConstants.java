@@ -26,5 +26,8 @@ public class OcpMongoShardedConstants {
     public final static String CREATE_CERT_USER_TEMPLATE = "create-dbz-user-x509.js";
     public final static String CREATE_DBZ_USER_TEMPLATE = "create-dbz-user.js";
     public final static String INSERT_MONGOS_DATA_SCRIPT_LOC = "/database-resources/mongodb/sharded/insert-mongos-data.js";
-    public final static String KEYFILE_PATH_IN_CONTAINER = "/etc/mongodb.keyfile";
+    public static final String KEYFILE_CONFIGMAP_NAME = "mongo-keyfile";
+    public final static String KEYFILE_LOCATION_IN_CONTAINER = "/data/keyfile/";
+    public static final String KEYFILE_FILENAME_IN_CONTAINER = "mongodb.keyfile";
+
 }

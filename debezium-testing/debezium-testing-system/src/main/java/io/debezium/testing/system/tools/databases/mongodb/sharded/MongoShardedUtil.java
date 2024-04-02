@@ -83,6 +83,31 @@ public class MongoShardedUtil {
      * @param deployment
      */
     public static void addKeyFileToDeployment(Deployment deployment) {
+        String keyFileVolume = "keyfile-vol";
+
+        deployment.
+                getSpec()
+                .getTemplate()
+                .getSpec()
+                .getVolumes()
+                .add(new VolumeBuilder()
+                        .withName(keyFileVolume)
+                        .withConfigMap(new ConfigMapVolumeSourceBuilder()
+                                .withDefaultMode(0600)
+                                .withName(OcpMongoShardedConstants.KEYFILE_CONFIGMAP_NAME)
+                                .build())
+                        .build());
+        deployment
+                .getSpec()
+                .getTemplate()
+                .getSpec()
+                .getContainers()
+                .get(0)
+                .getVolumeMounts()
+                .add(new VolumeMountBuilder()
+                        .withName(keyFileVolume)
+                        .withMountPath(OcpMongoShardedConstants.KEYFILE_LOCATION_IN_CONTAINER)
+                        .build());
         deployment
                 .getSpec()
                 .getTemplate()
@@ -90,8 +115,8 @@ public class MongoShardedUtil {
                 .getContainers()
                 .get(0)
                 .getCommand()
-                .addAll(List.of("--clusterAuthMode", "keyFile",
-                        "--keyFile", OcpMongoShardedConstants.KEYFILE_PATH_IN_CONTAINER));
+                .addAll(List.of("--keyFile", OcpMongoShardedConstants.KEYFILE_LOCATION_IN_CONTAINER + OcpMongoShardedConstants.KEYFILE_FILENAME_IN_CONTAINER));
+
     }
 
     /**

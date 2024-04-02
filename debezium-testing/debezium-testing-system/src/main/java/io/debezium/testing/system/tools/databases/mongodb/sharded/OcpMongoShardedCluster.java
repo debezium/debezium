@@ -11,6 +11,11 @@ import static io.debezium.testing.system.tools.databases.mongodb.sharded.MongoSh
 import static org.awaitility.Awaitility.await;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -18,6 +23,9 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import io.fabric8.kubernetes.api.model.ConfigMap;
+import io.fabric8.kubernetes.api.model.ConfigMapBuilder;
+import io.fabric8.kubernetes.api.model.ObjectMetaBuilder;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -65,6 +73,24 @@ public class OcpMongoShardedCluster implements Startable {
 
         if (useTls && useInternalAuth) {
             throw new IllegalStateException("Cannot deploy mongo with both tls and keyfile internal auth");
+        }
+
+        if(useInternalAuth) {
+            String internalKey;
+            try {
+                Path keyFile = Paths.get(getClass().getResource("/database-resources/mongodb/mongodb.keyfile").toURI());
+                internalKey = Files.readString(keyFile);
+            } catch (URISyntaxException | IOException e) {
+                throw new RuntimeException(e);
+            }
+
+            ConfigMap map = new ConfigMapBuilder()
+                    .withMetadata(new ObjectMetaBuilder()
+                            .withName(OcpMongoShardedConstants.KEYFILE_CONFIGMAP_NAME)
+                            .build())
+                    .withData(Map.of("mongodb.keyfile", internalKey))
+                    .build();
+            ocp.configMaps().inNamespace(project).createOrReplace(map);
         }
 
         // deploy mongo components

@@ -5,6 +5,7 @@
  */
 package io.debezium.testing.system.tools.databases.mongodb.sharded;
 
+import io.fabric8.kubernetes.client.dsl.internal.BaseOperation;
 import org.testcontainers.lifecycle.Startable;
 
 import io.debezium.testing.system.tools.OpenShiftUtils;
