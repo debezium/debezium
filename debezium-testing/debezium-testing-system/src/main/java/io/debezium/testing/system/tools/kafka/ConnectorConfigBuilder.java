@@ -79,7 +79,25 @@ public class ConnectorConfigBuilder {
         return this;
     }
 
-    public ConnectorConfigBuilder addUnwrapSMT() {
+    public ConnectorConfigBuilder addJdbcUnwrapSMT() {
+        addUnwrapSMT();
+        config.put("transforms.unwrap.type", "io.debezium.transforms.ExtractNewRecordState");
+        config.put("transforms.unwrap.drop.tombstones", "false");
+        config.put("transforms.unwrap.delete.handling.mode", "rewrite");
+        config.put("transforms.unwrap.add.fields", "table,lsn");
+        return this;
+    }
+
+    public ConnectorConfigBuilder addMongoUnwrapSMT() {
+        addUnwrapSMT();
+        config.put("transforms.unwrap.type", "io.debezium.connector.mongodb.transforms.ExtractNewDocumentState");
+        config.put("transforms.unwrap.drop.tombstones", "false");
+        config.put("transforms.unwrap.delete.handling.mode", "drop");
+        config.put("transforms.unwrap.add.fields", "collection");
+        return this;
+    }
+
+    private ConnectorConfigBuilder addUnwrapSMT() {
         String current = config.get("transforms").toString();
         if (current.isEmpty()) {
             config.put("transforms", "unwrap");
@@ -87,10 +105,7 @@ public class ConnectorConfigBuilder {
         else {
             config.put("transforms", current + ",unwrap");
         }
-        config.put("transforms.unwrap.type", "io.debezium.transforms.ExtractNewRecordState");
-        config.put("transforms.unwrap.drop.tombstones", "false");
-        config.put("transforms.unwrap.delete.handling.mode", "rewrite");
-        config.put("transforms.unwrap.add.fields", "table,lsn");
+
         return this;
     }
 
