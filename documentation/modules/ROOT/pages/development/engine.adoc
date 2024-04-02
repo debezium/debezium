@@ -21,10 +21,12 @@ They still want the same data change events, but prefer to have the connectors s
 This `debezium-api` module defines a small API that allows an application to easily configure and run {prodname} connectors using {prodname} Engine.
 
 Beginning with the 2.6.0 release, {prodname} provides two implementations of the `DebeziumEngine` interface.
-The older one, `EmbeddedEngine`, processes all records sequentially and allows to run on one task for given connector.
+The older `EmbeddedEngine` implementation runs a single connector that uses only one task.
+The connector emits all records sequentially.
+ 
 This the default implementation.
 Beginning with the 2.6.0 release, a new `AsyncEmbeddedEngine` implementation is available.
-This implementation processes records in multiple threads, and can run multiple tasks, if the connector supports it (currently only the connectors for SQL Server and MongoDB support running multiple tasks within a single connector).
+This implementation also runs only a single connector, but it can process records in multiple threads, and run multiple tasks, if the connector supports it (currently only the connectors for SQL Server and MongoDB support running multiple tasks within a single connector).
 Because both of these engines implement the same interface and share the same API, the code examples that follow are valid for either engine.
 Both implementations also support the same configuration options.
 However, the new `AsyncEmbeddedEngine` provides a couple of new configuration options for setting up and fine-tuning parallel processing.

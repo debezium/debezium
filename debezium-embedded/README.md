@@ -6,4 +6,4 @@ Not every application needs this level of fault tolerance and reliability, and t
 
 This `debezium-embedded` module defines a small library that allows an application to easily configure and run Debezium connectors.
 
-For the guidance how to embed `DebeziumEngine` into your application, possible configuration options and other details, please see [the corresponding part of the Debezium documentation](https://debezium.io/documentation/reference/stable/development/engine.html). 
+For information about how to embed `DebeziumEngine` into your application, descriptions of the available configuration options, and other details, see the [Debezium Engine documentation](https://debezium.io/documentation/reference/stable/development/engine.html). 
