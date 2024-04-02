@@ -729,13 +729,13 @@ public abstract class CommonConnectorConfig {
                     "Class to make transaction struct & schema");
 
     public static final Field TRANSACTION_CONTEXT = Field.create("transaction.context")
-            .withDisplayName("Class to provide ordered transaction metadata")
+            .withDisplayName("Provides metadata on transactions")
             .withType(Type.CLASS)
             .withWidth(Width.MEDIUM)
             .withImportance(ConfigDef.Importance.LOW)
             .withDefault(TransactionContext.class.getName())
             .withDescription(
-                    "Class to provide order metadata on transactions");
+                    "Class to provide transaction metadata");
 
     public static final Field EVENT_PROCESSING_FAILURE_HANDLING_MODE = Field.create("event.processing.failure.handling.mode")
             .withDisplayName("Event deserialization failure handling")
@@ -1700,7 +1700,7 @@ public abstract class CommonConnectorConfig {
     public TransactionContext getTransactionContext(Field transactionContextField) {
         final TransactionContext transactionContext = config.getInstance(transactionContextField, TransactionContext.class);
         if (transactionContext == null) {
-            throw new DebeziumException("Unable to instantiate the transaction ordered metadata class " + transactionContextField);
+            throw new DebeziumException("Unable to instantiate the transaction context class " + transactionContextField);
         }
         return transactionContext;
     }
