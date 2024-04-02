@@ -2,6 +2,48 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.6.0.Final
+April 2nd 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12425282)
+
+### New features since 2.6.0.CR1
+
+* Add documentation for Cassandra conncetor event.order.guarantee.mode property [DBZ-7720](https://issues.redhat.com/browse/DBZ-7720)
+
+
+### Breaking changes since 2.6.0.CR1
+
+None
+
+
+### Fixes since 2.6.0.CR1
+
+* JDBC Storage does not support connection recovery [DBZ-7258](https://issues.redhat.com/browse/DBZ-7258)
+* Full incremental snapshot on SQL Server Table skipping block of 36 records [DBZ-7359](https://issues.redhat.com/browse/DBZ-7359)
+* Snapshot skipping records [DBZ-7585](https://issues.redhat.com/browse/DBZ-7585)
+* AsyncEmbeddedEngine doesn't shut down threads properly [DBZ-7661](https://issues.redhat.com/browse/DBZ-7661)
+* RedisSchemaHistoryIT fails randomly [DBZ-7692](https://issues.redhat.com/browse/DBZ-7692)
+* RedisSchemaHistoryIT#testRedisConnectionRetry can run into infinite retry loop [DBZ-7701](https://issues.redhat.com/browse/DBZ-7701)
+* Fix system tests error when using Kafka 3.6.0 or less. [DBZ-7708](https://issues.redhat.com/browse/DBZ-7708)
+* Adjust fakeDNS starting to work both on Docker Desktop and Podman Desktop [DBZ-7711](https://issues.redhat.com/browse/DBZ-7711)
+* Fix mysql and postgresql system test assert failures [DBZ-7713](https://issues.redhat.com/browse/DBZ-7713)
+* Fix errors when runing system testsuite with mysql and jdbc tests together [DBZ-7714](https://issues.redhat.com/browse/DBZ-7714)
+* whitespace in filename of debezium-connector-ibmi [DBZ-7721](https://issues.redhat.com/browse/DBZ-7721)
+
+
+### Other changes since 2.6.0.CR1
+
+* Create Debezium design document for new implementation of DebeziumEngine [DBZ-7073](https://issues.redhat.com/browse/DBZ-7073)
+* Provide a generic snapshot mode configurable via connector properties [DBZ-7497](https://issues.redhat.com/browse/DBZ-7497)
+* Create JDBC sink connector system tests [DBZ-7592](https://issues.redhat.com/browse/DBZ-7592)
+* Bump up versions of dependencies in system testsuite [DBZ-7630](https://issues.redhat.com/browse/DBZ-7630)
+* Align snapshot modes for Informix [DBZ-7699](https://issues.redhat.com/browse/DBZ-7699)
+* Add tag for system test mongodb sharded replica_set mode [DBZ-7706](https://issues.redhat.com/browse/DBZ-7706)
+* Remove unneeded records copying from RecordProcessors [DBZ-7710](https://issues.redhat.com/browse/DBZ-7710)
+* Example-mongodb image - fix init script for images with base mongo:6.0 [DBZ-7712](https://issues.redhat.com/browse/DBZ-7712)
+* Remove dependency for mysql-connector test-jar in Redis tests [DBZ-7723](https://issues.redhat.com/browse/DBZ-7723)
+
+
+
 ## 2.6.0.CR1
 March 25th 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12423730)
 
