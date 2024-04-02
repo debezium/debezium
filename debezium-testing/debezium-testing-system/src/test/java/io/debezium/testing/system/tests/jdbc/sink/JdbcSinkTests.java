@@ -5,7 +5,7 @@
  */
 package io.debezium.testing.system.tests.jdbc.sink;
 
-import static io.debezium.testing.system.assertions.KafkaAssertions.awaitAssert;
+import static io.debezium.testing.system.assertions.JdbcAssertions.awaitAssert;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.charset.StandardCharsets;

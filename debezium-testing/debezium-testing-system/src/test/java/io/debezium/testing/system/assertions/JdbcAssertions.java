@@ -7,10 +7,14 @@ package io.debezium.testing.system.assertions;
 
 import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_MYSQL_PASSWORD;
 import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_MYSQL_USERNAME;
+import static io.debezium.testing.system.tools.WaitConditions.scaled;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 
 import java.sql.SQLException;
+import java.util.concurrent.TimeUnit;
 
+import org.awaitility.core.ThrowingRunnable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,6 +24,14 @@ import io.debezium.testing.system.tools.databases.SqlDatabaseController;
 public class JdbcAssertions {
     SqlDatabaseController databaseController;
     Logger LOGGER = LoggerFactory.getLogger(JdbcAssertions.class);
+
+    public static void awaitAssert(ThrowingRunnable assertion) {
+        await()
+                .pollDelay(5, TimeUnit.SECONDS)
+                .pollInterval(10, TimeUnit.SECONDS)
+                .atMost(scaled(1), TimeUnit.MINUTES)
+                .untilAsserted(assertion);
+    }
 
     public JdbcAssertions(SqlDatabaseController databaseController) {
         this.databaseController = databaseController;
