@@ -153,7 +153,7 @@ public abstract class PostgreSqlTests extends ConnectorTest {
     @Order(90)
     public void shouldExtractNewRecordState(SqlDatabaseController dbController) throws Exception {
         connectController.undeployConnector(connectorConfig.getConnectorName());
-        connectorConfig = connectorConfig.addUnwrapSMT();
+        connectorConfig = connectorConfig.addJdbcUnwrapSMT();
         connectController.deployConnector(connectorConfig);
 
         insertCustomer(dbController, "Eaton", "Beaver", "ebeaver@test.com");

@@ -59,4 +59,15 @@ public class AvroKafkaAssertions implements KafkaAssertions<byte[], byte[]> {
             assertThat(matchingCount).withFailMessage("Topic '%s' does not contain enough transformed messages.", topic).isEqualTo(amount);
         }
     }
+
+    @Override
+    public void assertDocumentIsUnwrapped(String topic, int amount) {
+        try (Consumer<byte[], byte[]> consumer = getConsumer()) {
+            consumer.subscribe(Collections.singleton(topic));
+            consumer.seekToBeginning(consumer.assignment());
+            ConsumerRecords<byte[], byte[]> records = consumer.poll(Duration.of(15, ChronoUnit.SECONDS));
+            long matchingCount = StreamSupport.stream(records.records(topic).spliterator(), false).filter(r -> r.value() != null && r.value().length < 80).count();
+            assertThat(matchingCount).withFailMessage("Topic '%s' does not contain enough transformed messages.", topic).isEqualTo(amount);
+        }
+    }
 }
