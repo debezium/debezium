@@ -2446,7 +2446,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         // should be no more records
         assertNoRecordsToConsume();
 
-        final String message = "Streaming is not enabled in current configuration";
+        final String message = "Streaming is disabled for snapshot mode initial_only";
         stopConnector(value -> assertThat(logInterceptor.containsMessage(message)).isTrue());
     }
 
