@@ -34,6 +34,7 @@ import org.awaitility.Awaitility;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.EqualityCheck;
 import io.debezium.junit.SkipWhenConnectorUnderTest;
@@ -183,6 +184,36 @@ public abstract class AbstractBlockingSnapshotTest extends AbstractSnapshotTest 
                 .collect(Collectors.toList());
 
         assertDdl(ddls);
+    }
+
+    @Test
+    @FixFor("DBZ-7718")
+    public void executeBlockingSnapshotWithEscapedCollectionName() throws Exception {
+        // Testing.Print.enable();
+
+        populateTable();
+
+        startConnectorWithSnapshot(x -> mutableConfig(false, false));
+
+        waitForSnapshotToBeCompleted(connector(), server(), task(), database());
+
+        insertRecords(ROW_COUNT, ROW_COUNT);
+
+        SourceRecords consumedRecordsByTopic = consumeRecordsByTopic(ROW_COUNT * 2, 10);
+        assertRecordsFromSnapshotAndStreamingArePresent(ROW_COUNT * 2, consumedRecordsByTopic);
+
+        sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey("", "", BLOCKING, "\\\"s1\\\".\\\"a\\\"");
+
+        waitForLogMessage("Snapshot completed", AbstractSnapshotChangeEventSource.class);
+
+        signalingRecords = 1;
+
+        assertRecordsFromSnapshotAndStreamingArePresent((ROW_COUNT * 2), consumeRecordsByTopic((ROW_COUNT * 2) + signalingRecords, 10));
+
+        insertRecords(ROW_COUNT, ROW_COUNT * 2);
+
+        assertStreamingRecordsArePresent(ROW_COUNT, consumeRecordsByTopic(ROW_COUNT, 10));
+
     }
 
     protected int expectedDdlsCount() {
