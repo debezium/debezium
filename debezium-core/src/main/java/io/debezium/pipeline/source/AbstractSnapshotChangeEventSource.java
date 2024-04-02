@@ -9,6 +9,7 @@ import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -27,6 +28,7 @@ import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.pipeline.spi.SnapshotResult;
+import io.debezium.relational.TableId;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
@@ -129,8 +131,13 @@ public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O e
         else {
             return allDataCollections.stream()
                     .filter(dataCollectionId -> snapshotAllowedDataCollections.stream()
-                            .anyMatch(s -> s.matcher(dataCollectionId.identifier()).matches()));
+                            .anyMatch(tableNameMatcher(dataCollectionId)));
         }
+    }
+
+    private static <T extends DataCollectionId> Predicate<Pattern> tableNameMatcher(T dataCollectionId) {
+        return s -> s.matcher(dataCollectionId.identifier()).matches() ||
+                s.matcher(((TableId) dataCollectionId).toDoubleQuotedString()).matches();
     }
 
     /**
