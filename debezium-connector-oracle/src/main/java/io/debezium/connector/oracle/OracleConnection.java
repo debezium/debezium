@@ -809,8 +809,10 @@ public class OracleConnection extends JdbcConnection {
                             threadBuilder = threadBuilder.lastRedoSequenceNumber(rs.getLong("LAST_REDO_SEQUENCE#"))
                                     .lastRedoBlock(rs.getLong("LAST_REDO_BLOCK"))
                                     .lastRedoScn(readScnColumnAsScn(rs, "LAST_REDO_CHANGE#"))
-                                    .lastRedoTime(readTimestampAsInstant(rs, "LAST_REDO_TIME"))
-                                    .conId(rs.getLong("CON_ID"));
+                                    .lastRedoTime(readTimestampAsInstant(rs, "LAST_REDO_TIME"));
+                        }
+                        if (getOracleVersion().getMajor() >= 12) {
+                            threadBuilder = threadBuilder.conId(rs.getLong("CON_ID"));
                         }
                         builder = threadBuilder.build();
                     }
