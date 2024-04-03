@@ -57,6 +57,15 @@ public class TransactionContext {
         return offset;
     }
 
+    /**
+     * Instance method to allow for overriding by custom transaction contexts.
+     * @param offsets Offsets to load
+     * @return TransactionContext instance with loaded offsets
+     */
+    public TransactionContext newTransactionContextFromOffsets(Map<String, ?> offsets) {
+        return TransactionContext.load(offsets);
+    }
+
     @SuppressWarnings("unchecked")
     public static TransactionContext load(Map<String, ?> offsets) {
         final Map<String, Object> o = (Map<String, Object>) offsets;
