@@ -2420,7 +2420,8 @@ Without these grants, the connector cannot operate.
 |===
 
 // Type: concept
-// Title: Support for Oracle standby databases
+// Title: Running the connector with an Oracle standby database
+// ModuleID: running-the-connector-with-an-oracle-standby-database
 [id="support-for-oracle-standby-databases"]
 === Standby databases
 ifdef::product[]
