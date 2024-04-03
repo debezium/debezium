@@ -23,12 +23,12 @@ This `debezium-api` module defines a small API that allows an application to eas
 Beginning with the 2.6.0 release, {prodname} provides two implementations of the `DebeziumEngine` interface.
 The older `EmbeddedEngine` implementation runs a single connector that uses only one task.
 The connector emits all records sequentially.
+ This the default implementation.
  
-This the default implementation.
 Beginning with the 2.6.0 release, a new `AsyncEmbeddedEngine` implementation is available.
 This implementation also runs only a single connector, but it can process records in multiple threads, and run multiple tasks, if the connector supports it (currently only the connectors for SQL Server and MongoDB support running multiple tasks within a single connector).
 Because both of these engines implement the same interface and share the same API, the code examples that follow are valid for either engine.
-Both implementations also support the same configuration options.
+Both implementations support the same configuration options.
 However, the new `AsyncEmbeddedEngine` provides a couple of new configuration options for setting up and fine-tuning parallel processing.
 For information about these new configuration options, see the xref:async-engine-properties[Asynchronous Engine Properties].
 To learn more about the motivation behind development of the `AsyncEmbeddedEngine` and about its implementation details, see the https://github.com/debezium/debezium-design-documents/blob/main/DDD-7.md[Asynchronous Embedded Engine design document].
@@ -262,7 +262,7 @@ For example, do not rely upon shutting down the `ExecutorService`, since that in
 Although the `DebeziumEngine` will indeed terminate when its thread is interrupted, the engine may not terminate cleanly, and when your application is restarted it may see some of the same source records that it had processed just prior to the shutdown.
 
 As mentioned earlier, there are two implementations of the `DebeziumEngine` interface.
-The two implementations use the same API and the preceding code sample is valid for both versions.
+The two implementations use the same API, and the preceding code sample is valid for both versions.
 The only exception is the creation of the `DebeziumEngine` instance.
 As was also mentioned in the introduction, by default, the `EmbeddedEngine` implementation is used.
 Therefore, the method `DebeziumEngine.create(Json.class)` results internally in the use of the `EmbeddedEngine` instance.
