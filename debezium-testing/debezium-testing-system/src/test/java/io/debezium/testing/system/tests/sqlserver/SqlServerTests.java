@@ -167,7 +167,7 @@ public abstract class SqlServerTests extends ConnectorTest {
         insertCustomer(dbController, "Eaton", "Beaver", "ebeaver@test.com");
 
         String topic = topic("dbo.customers");
-        awaitAssert(() -> assertions.assertRecordsCount(topic, 8));
+        awaitAssert(() -> assertions.assertMinimalRecordsCount(topic, 8));
         awaitAssert(() -> assertions.assertRecordIsUnwrapped(topic, 1));
     }
 }

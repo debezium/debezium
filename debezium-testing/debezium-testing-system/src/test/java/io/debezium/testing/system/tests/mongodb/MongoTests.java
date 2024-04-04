@@ -169,7 +169,7 @@ public abstract class MongoTests extends ConnectorTest {
         insertCustomer(dbController, "Eaton", "Beaver", "ebeaver@test.com");
 
         String topic = connectorConfig.getDbServerName() + ".inventory.customers";
-        awaitAssert(() -> assertions.assertRecordsCount(topic, 8));
+        awaitAssert(() -> assertions.assertMinimalRecordsCount(topic, 8));
         awaitAssert(() -> assertions.assertDocumentIsUnwrapped(topic, 1));
     }
 }

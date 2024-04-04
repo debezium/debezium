@@ -24,7 +24,6 @@ spec:
               protocol: TCP
           resources: {}
           imagePullPolicy: Always
-          restartPolicy: Always
           livenessProbe:
             initialDelaySeconds: 30
             tcpSocket:
