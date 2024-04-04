@@ -80,7 +80,7 @@ public class RedisConnection {
         Jedis client;
         try {
             client = new Jedis(address, DefaultJedisClientConfig.builder().database(this.dbIndex).connectionTimeoutMillis(this.connectionTimeout)
-                    .socketTimeoutMillis(this.socketTimeout).ssl(this.sslEnabled).build());
+                    .socketTimeoutMillis(this.socketTimeout).ssl(this.sslEnabled).user(this.user).password(this.password).build());
 
             if (!Strings.isNullOrEmpty(this.user)) {
                 client.auth(this.user, this.password);
