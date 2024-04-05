@@ -9,9 +9,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import io.debezium.annotation.ConnectorSpecific;
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.connector.sqlserver.SqlServerConnector;
 import io.debezium.snapshot.spi.SnapshotQuery;
 
+@ConnectorSpecific(connector = SqlServerConnector.class)
 public class SelectAllSnapshotQuery implements SnapshotQuery {
 
     @Override

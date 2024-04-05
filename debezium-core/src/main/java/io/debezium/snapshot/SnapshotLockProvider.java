@@ -5,9 +5,15 @@
  */
 package io.debezium.snapshot;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.ServiceLoader;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.bean.StandardBeanNames;
@@ -25,7 +31,22 @@ import io.debezium.snapshot.spi.SnapshotLock;
  *
  * @author Mario Fiore Vitale
  */
-public class SnapshotLockProvider implements ServiceProvider<SnapshotLock> {
+public class SnapshotLockProvider extends AbstractSnapshotProvider implements ServiceProvider<SnapshotLock> {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(SnapshotLockProvider.class);
+
+    final List<SnapshotLock> snapshotLockImplementations;
+
+    public SnapshotLockProvider() {
+
+        this.snapshotLockImplementations = StreamSupport.stream(ServiceLoader.load(SnapshotLock.class).spliterator(), false)
+                .collect(Collectors.toList());
+    }
+
+    public SnapshotLockProvider(List<SnapshotLock> snapshotLockImplementations) {
+
+        this.snapshotLockImplementations = snapshotLockImplementations;
+    }
 
     @Override
     public SnapshotLock createService(Configuration configuration, ServiceRegistry serviceRegistry) {
@@ -37,23 +58,38 @@ public class SnapshotLockProvider implements ServiceProvider<SnapshotLock> {
         final String snapshotLockingModeCustomName = commonConnectorConfig.snapshotLockingModeCustomName();
 
         String snapshotLockMode;
+        Predicate<SnapshotLock> byNameAndConnectorFilter;
+        Predicate<SnapshotLock> byNameFilter;
+
         if ("custom".equals(configuredSnapshotLockingMode) && !snapshotLockingModeCustomName.isEmpty()) {
             snapshotLockMode = snapshotLockingModeCustomName;
+            byNameAndConnectorFilter = byNameFilter = snapshotLockImplementation -> snapshotLockImplementation.name().equals(snapshotLockMode);
         }
         else {
             snapshotLockMode = configuredSnapshotLockingMode;
+            byNameFilter = snapshotLockImplementation -> snapshotLockImplementation.name().equals(snapshotLockMode);
+            byNameAndConnectorFilter = byNameFilter.and(snapshotLockImplementation -> isForCurrentConnector(configuration, snapshotLockImplementation.getClass()));
         }
 
-        Optional<SnapshotLock> snapshotLock = StreamSupport.stream(ServiceLoader.load(SnapshotLock.class).spliterator(), false)
-                .filter(s -> s.name().equalsIgnoreCase(snapshotLockMode))
+        Optional<? extends SnapshotLock> snapshotLock = snapshotLockImplementations.stream()
+                .filter(byNameAndConnectorFilter)
                 .findAny();
 
-        return snapshotLock.map(s -> {
-            s.configure(configuration.asMap());
-            if (s instanceof BeanRegistryAware) {
-                ((BeanRegistryAware) s).injectBeanRegistry(beanRegistry);
+        if (snapshotLock.isEmpty()) { // Fallback on generic implementation
+            snapshotLock = snapshotLockImplementations.stream()
+                    .filter(byNameFilter)
+                    .findAny();
+            snapshotLock.ifPresent(lockImpl -> LOGGER.warn("Found a not connector specific implementation {} for lock mode {}",
+                    lockImpl.getClass().getName(),
+                    snapshotLockMode));
+        }
+
+        return snapshotLock.map(snapshotLockImpl -> {
+            snapshotLockImpl.configure(configuration.asMap());
+            if (snapshotLockImpl instanceof BeanRegistryAware) {
+                ((BeanRegistryAware) snapshotLockImpl).injectBeanRegistry(beanRegistry);
             }
-            return s;
+            return snapshotLockImpl;
         })
                 .orElseThrow(() -> new DebeziumException(String.format("Unable to find %s snapshot lock mode. Please check your configuration.", snapshotLockMode)));
 

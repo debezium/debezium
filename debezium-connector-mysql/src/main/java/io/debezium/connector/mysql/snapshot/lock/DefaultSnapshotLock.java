@@ -8,6 +8,10 @@ package io.debezium.connector.mysql.snapshot.lock;
 import java.time.Duration;
 import java.util.Optional;
 
+import io.debezium.annotation.ConnectorSpecific;
+import io.debezium.connector.mysql.MySqlConnector;
+
+@ConnectorSpecific(connector = MySqlConnector.class)
 public abstract class DefaultSnapshotLock {
     public Optional<String> tableLockingStatement(Duration lockTimeout, String tableId) {
         return Optional.of("FLUSH TABLES WITH READ LOCK");

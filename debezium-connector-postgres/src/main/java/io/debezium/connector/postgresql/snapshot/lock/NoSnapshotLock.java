@@ -9,9 +9,12 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
 
+import io.debezium.annotation.ConnectorSpecific;
+import io.debezium.connector.postgresql.PostgresConnector;
 import io.debezium.connector.postgresql.PostgresConnectorConfig;
 import io.debezium.snapshot.spi.SnapshotLock;
 
+@ConnectorSpecific(connector = PostgresConnector.class)
 public class NoSnapshotLock implements SnapshotLock {
 
     @Override

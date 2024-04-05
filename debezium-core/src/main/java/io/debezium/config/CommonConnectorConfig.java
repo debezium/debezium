@@ -1528,7 +1528,7 @@ public abstract class CommonConnectorConfig {
         return this.snapshotModeConfigurationBasedSnapshotOnDataError;
     }
 
-    public SnapshotQueryMode snapshotQueryMode() {
+    public EnumeratedValue snapshotQueryMode() {
         return this.snapshotQueryMode;
     }
 
