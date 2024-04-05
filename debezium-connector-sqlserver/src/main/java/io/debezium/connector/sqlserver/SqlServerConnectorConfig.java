@@ -47,7 +47,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
 
     public static final String MAX_TRANSACTIONS_PER_ITERATION_CONFIG_NAME = "max.iteration.transactions";
     protected static final int DEFAULT_PORT = 1433;
-    protected static final int DEFAULT_MAX_TRANSACTIONS_PER_ITERATION = 0;
+    protected static final int DEFAULT_MAX_TRANSACTIONS_PER_ITERATION = 500;
     private static final String READ_ONLY_INTENT = "ReadOnly";
     private static final String APPLICATION_INTENT_KEY = "database.applicationIntent";
     private static final int DEFAULT_QUERY_FETCH_SIZE = 10_000;

@@ -3187,10 +3187,10 @@ No entry is created for the signal to close the snapshot window.
 Set this option to prevent rapid growth of the signaling data collection.
 
 |[[sqlserver-property-max-iteration-transactions]]<<sqlserver-property-max-iteration-transactions, `+max.iteration.transactions+`>>
-|0
+|500
 |Specifies the maximum number of transactions per iteration to be used to reduce the memory footprint when streaming changes from multiple tables in a database.
-When set to `0` (the default), the connector uses the current maximum LSN as the range to fetch changes from.
-When set to a value greater than zero, the connector uses the n-th LSN specified by this setting as the range to fetch changes from.
+When set to `0`, the connector uses the current maximum LSN as the range to fetch changes from.
+When set to a value greater than zero, the connector uses the n-th LSN specified by this setting as the range to fetch changes from. Defaults to 500.
 
 |[[sqlserver-property-incremental-snapshot-option-recompile]]<<sqlserver-property-incremental-snapshot-option-recompile, `+incremental.snapshot.option.recompile+`>>
 |`false`
