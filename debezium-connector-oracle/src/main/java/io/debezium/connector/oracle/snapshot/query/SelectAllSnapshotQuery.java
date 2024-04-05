@@ -9,14 +9,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import io.debezium.annotation.ConnectorSpecific;
 import io.debezium.bean.StandardBeanNames;
 import io.debezium.bean.spi.BeanRegistry;
 import io.debezium.bean.spi.BeanRegistryAware;
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.connector.oracle.OracleConnector;
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.snapshot.spi.SnapshotQuery;
 
+@ConnectorSpecific(connector = OracleConnector.class)
 public class SelectAllSnapshotQuery implements SnapshotQuery, BeanRegistryAware {
 
     private BeanRegistry beanRegistry;

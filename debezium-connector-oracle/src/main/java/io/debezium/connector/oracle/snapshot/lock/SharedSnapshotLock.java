@@ -9,9 +9,12 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
 
+import io.debezium.annotation.ConnectorSpecific;
+import io.debezium.connector.oracle.OracleConnector;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.snapshot.spi.SnapshotLock;
 
+@ConnectorSpecific(connector = OracleConnector.class)
 public class SharedSnapshotLock implements SnapshotLock {
 
     @Override

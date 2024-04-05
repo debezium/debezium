@@ -9,9 +9,12 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
 
+import io.debezium.annotation.ConnectorSpecific;
+import io.debezium.connector.mysql.MySqlConnector;
 import io.debezium.connector.mysql.MySqlConnectorConfig;
 import io.debezium.snapshot.spi.SnapshotLock;
 
+@ConnectorSpecific(connector = MySqlConnector.class)
 public class NoneSnapshotLock implements SnapshotLock {
 
     @Override

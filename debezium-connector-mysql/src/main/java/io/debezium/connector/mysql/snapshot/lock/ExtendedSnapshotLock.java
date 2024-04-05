@@ -7,9 +7,12 @@ package io.debezium.connector.mysql.snapshot.lock;
 
 import java.util.Map;
 
+import io.debezium.annotation.ConnectorSpecific;
+import io.debezium.connector.mysql.MySqlConnector;
 import io.debezium.connector.mysql.MySqlConnectorConfig;
 import io.debezium.snapshot.spi.SnapshotLock;
 
+@ConnectorSpecific(connector = MySqlConnector.class)
 public class ExtendedSnapshotLock extends DefaultSnapshotLock implements SnapshotLock {
 
     @Override
