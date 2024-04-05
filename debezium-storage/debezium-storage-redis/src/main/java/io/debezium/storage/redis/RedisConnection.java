@@ -14,6 +14,7 @@ import io.debezium.DebeziumException;
 import io.debezium.util.Strings;
 
 import redis.clients.jedis.DefaultJedisClientConfig;
+import redis.clients.jedis.DefaultJedisClientConfig.Builder;
 import redis.clients.jedis.HostAndPort;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.exceptions.JedisConnectionException;
@@ -79,19 +80,24 @@ public class RedisConnection {
 
         Jedis client;
         try {
-            client = new Jedis(address, DefaultJedisClientConfig.builder().database(this.dbIndex).connectionTimeoutMillis(this.connectionTimeout)
-                    .socketTimeoutMillis(this.socketTimeout).ssl(this.sslEnabled).build());
+            Builder configBuilder = DefaultJedisClientConfig.builder()
+                    .database(this.dbIndex)
+                    .connectionTimeoutMillis(this.connectionTimeout)
+                    .socketTimeoutMillis(this.socketTimeout)
+                    .ssl(this.sslEnabled);
 
             if (!Strings.isNullOrEmpty(this.user)) {
-                client.auth(this.user, this.password);
+                configBuilder = configBuilder.user(this.user);
             }
-            else if (!Strings.isNullOrEmpty(this.password)) {
-                client.auth(this.password);
+
+            if (!Strings.isNullOrEmpty(this.password)) {
+                configBuilder = configBuilder.password(this.password);
             }
-            else {
-                // make sure that client is connected
-                client.ping();
-            }
+
+            client = new Jedis(address, configBuilder.build());
+
+            // make sure that client is connected
+            client.ping();
 
             try {
                 client.clientSetname(clientName);
