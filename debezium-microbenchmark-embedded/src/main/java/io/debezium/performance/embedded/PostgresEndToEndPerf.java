@@ -86,7 +86,7 @@ public class PostgresEndToEndPerf {
         protected BlockingQueue<EmbeddedEngineChangeEvent> consumedLines;
         protected AtomicInteger count = new AtomicInteger(0);
 
-        @Param({ "1000", "10000", "100000", "1000000" })
+        @Param({ "100000", "1000000" })
         public int eventCount;
 
         public abstract String getBaseTableName();
@@ -310,8 +310,14 @@ public class PostgresEndToEndPerf {
 
     @State(Scope.Thread)
     public static class AsyncEngineEndToEndPerfTest extends DebeziumEndToEndPerfTest {
+        @Param({ "1", "2", "4", "8", "16" })
+        public int threadCount;
+
+        @Param({ "ORDERED", "UNORDERED" })
+        public String processingOrder;
+
         public String getBaseTableName() {
-            return BASE_TABLE_NAME + "_async";
+            return BASE_TABLE_NAME + "_async" + "_" + threadCount + "_" + processingOrder;
         }
 
         public DebeziumEngine createEngine() {
@@ -320,8 +326,8 @@ public class PostgresEndToEndPerf {
                     // .with(EmbeddedEngineConfig.WAIT_FOR_COMPLETION_BEFORE_INTERRUPT_MS, CommonConnectorConfig.EXECUTOR_SHUTDOWN_TIMEOUT_SEC)
                     .with(AsyncEngineConfig.RECORD_PROCESSING_SHUTDOWN_TIMEOUT_MS, 100)
                     .with(AsyncEngineConfig.TASK_MANAGEMENT_TIMEOUT_MS, 5000)
-                    // .with(AsyncEngineConfig.RECORD_PROCESSING_THREADS, 1)
-                    // .with(AsyncEngineConfig.RECORD_PROCESSING_ORDER, "UNORDERED")
+                    .with(AsyncEngineConfig.RECORD_PROCESSING_THREADS, threadCount)
+                    .with(AsyncEngineConfig.RECORD_PROCESSING_ORDER, processingOrder)
                     .build();
             Properties configProps = addSmtConfig(config);
 
