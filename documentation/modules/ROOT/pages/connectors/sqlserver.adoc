@@ -2348,13 +2348,12 @@ spec:
     database.port: 1433 // <4>
     database.user: debezium // <5>
     database.password: dbz // <6>
-    database.names: testDB1,testDB2 // <7>
-    topic.prefix: inventory-connector-{context} // <8>
-    table.include.list: dbo.customers // <9>
-    schema.history.internal.kafka.bootstrap.servers: my-cluster-kafka-bootstrap:9092 // <10>
-    schema.history.internal.kafka.topic: schemahistory.fullfillment // <11>
-    database.ssl.truststore: path/to/trust-store // <12>
-    database.ssl.truststore.password: password-for-trust-store <13>
+    topic.prefix: inventory-connector-{context} // <7>
+    table.include.list: dbo.customers // <8>
+    schema.history.internal.kafka.bootstrap.servers: my-cluster-kafka-bootstrap:9092 // <9>
+    schema.history.internal.kafka.topic: schemahistory.fullfillment // <10>
+    database.ssl.truststore: path/to/trust-store // <11>
+    database.ssl.truststore.password: password-for-trust-store <12>
 ----
 +
 .Descriptions of connector configuration settings
@@ -2381,25 +2380,22 @@ spec:
 |The password for the SQL Server user.
 
 |7
-|The name of the database to capture changes from.
-
-|8
 |The topic prefix for the SQL Server instance/cluster, which forms a namespace and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the {link-prefix}:{link-avro-serialization}#avro-serialization[Avro converter] is used.
 
-|9
+|8
 |The connector captures changes from the `dbo.customers` table only.
 
-|10
+|9
 |The list of Kafka brokers that this connector will use to write and recover DDL statements to the database schema history topic.
 
-|11
+|10
 |The name of the database schema history topic where the connector will write and recover DDL statements. This topic is for internal use only and should not be used by consumers.
 
-|12
+|11
 |The path to the SSL truststore that stores the server's signer certificates.
 This property is required unless database encryption is disabled (`database.encrypt=false`).
 
-|13
+|12
 |The SSL truststore password.
 This property is required unless database encryption is disabled (`database.encrypt=false`).
 
