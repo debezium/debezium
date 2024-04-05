@@ -799,7 +799,7 @@ public class OracleValueConverters extends JdbcValueConverters {
      * @param hexToRawValue the hex-to-raw string, optionally wrapped by the function call, never {@code null}
      * @return the hex-to-raw argument, never {@code null}.
      */
-    private String getHexToRawHexString(String hexToRawValue) {
+    public static String getHexToRawHexString(String hexToRawValue) {
         if (isHexToRawFunctionCall(hexToRawValue)) {
             return hexToRawValue.substring(10, hexToRawValue.length() - 2);
         }
@@ -812,7 +812,7 @@ public class OracleValueConverters extends JdbcValueConverters {
      * @param value the value to inspect and validate, may be {@code null}
      * @return true if the value is a {@code HEXTORAW} function call; false otherwise.
      */
-    private boolean isHexToRawFunctionCall(String value) {
+    public static boolean isHexToRawFunctionCall(String value) {
         return value != null && value.startsWith(HEXTORAW_FUNCTION_START) && value.endsWith(HEXTORAW_FUNCTION_END);
     }
 
