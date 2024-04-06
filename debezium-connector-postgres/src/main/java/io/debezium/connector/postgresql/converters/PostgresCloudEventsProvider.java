@@ -9,7 +9,6 @@ import io.debezium.connector.postgresql.Module;
 import io.debezium.converters.recordandmetadata.RecordAndMetadata;
 import io.debezium.converters.spi.CloudEventsMaker;
 import io.debezium.converters.spi.CloudEventsProvider;
-import io.debezium.converters.spi.RecordParser;
 import io.debezium.converters.spi.SerializerType;
 
 /**
@@ -24,12 +23,8 @@ public class PostgresCloudEventsProvider implements CloudEventsProvider {
     }
 
     @Override
-    public RecordParser createParser(RecordAndMetadata recordAndMetadata) {
-        return new PostgresRecordParser(recordAndMetadata);
-    }
-
-    @Override
-    public CloudEventsMaker createMaker(RecordParser parser, SerializerType contentType, String dataSchemaUriBase, String cloudEventsSchemaName) {
-        return new PostgresCloudEventsMaker(parser, contentType, dataSchemaUriBase, cloudEventsSchemaName);
+    public CloudEventsMaker createMaker(RecordAndMetadata recordAndMetadata, SerializerType dataContentType, String dataSchemaUriBase,
+                                        String cloudEventsSchemaName) {
+        return new PostgresCloudEventsMaker(recordAndMetadata, dataContentType, dataSchemaUriBase, cloudEventsSchemaName);
     }
 }
