@@ -59,7 +59,6 @@ import io.debezium.converters.recordandmetadata.RecordAndMetadataHeaderImpl;
 import io.debezium.converters.spi.CloudEventsMaker;
 import io.debezium.converters.spi.CloudEventsProvider;
 import io.debezium.converters.spi.CloudEventsValidator;
-import io.debezium.converters.spi.RecordParser;
 import io.debezium.converters.spi.SerializerType;
 import io.debezium.data.Envelope;
 import io.debezium.pipeline.txmetadata.TransactionMonitor;
@@ -293,9 +292,7 @@ public class CloudEventsConverter implements Converter, Versioned {
             recordAndMetadata = new RecordAndMetadataHeaderImpl(record, schema, headers, metadataSource, jsonHeaderConverter);
         }
 
-        RecordParser parser = provider.createParser(recordAndMetadata);
-
-        CloudEventsMaker maker = provider.createMaker(parser, dataSerializerType,
+        CloudEventsMaker maker = provider.createMaker(recordAndMetadata, dataSerializerType,
                 (schemaRegistryUrls == null) ? null : String.join(",", schemaRegistryUrls), cloudEventsSchemaName);
 
         if (ceSerializerType == SerializerType.JSON) {
@@ -303,7 +300,7 @@ public class CloudEventsConverter implements Converter, Versioned {
                 // JSON - JSON (with schema in data)
                 if (enableJsonSchemas) {
                     SchemaBuilder dummy = SchemaBuilder.struct();
-                    SchemaAndValue cloudEvent = convertToCloudEventsFormat(parser, maker, dummy, null, new Struct(dummy));
+                    SchemaAndValue cloudEvent = convertToCloudEventsFormat(recordAndMetadata, maker, dummy, null, new Struct(dummy));
 
                     // need to create a JSON node with schema + payload first
                     byte[] data = jsonDataConverter.fromConnectData(topic, maker.ceDataAttributeSchema(), maker.ceDataAttribute());
@@ -320,19 +317,19 @@ public class CloudEventsConverter implements Converter, Versioned {
                 }
                 // JSON - JSON (without schema); can just use the regular JSON converter for the entire event
                 else {
-                    SchemaAndValue cloudEvent = convertToCloudEventsFormat(parser, maker, maker.ceDataAttributeSchema(), null, maker.ceDataAttribute());
+                    SchemaAndValue cloudEvent = convertToCloudEventsFormat(recordAndMetadata, maker, maker.ceDataAttributeSchema(), null, maker.ceDataAttribute());
                     return jsonCloudEventsConverter.fromConnectData(topic, cloudEvent.schema(), cloudEvent.value());
                 }
             }
             // JSON - Avro; need to convert "data" to Avro first
             else {
-                SchemaAndValue cloudEvent = convertToCloudEventsFormatWithDataAsAvro(topic, parser, maker);
+                SchemaAndValue cloudEvent = convertToCloudEventsFormatWithDataAsAvro(topic, recordAndMetadata, maker);
                 return jsonCloudEventsConverter.fromConnectData(topic, cloudEvent.schema(), cloudEvent.value());
             }
         }
         // Avro - Avro; need to convert "data" to Avro first
         else {
-            SchemaAndValue cloudEvent = convertToCloudEventsFormatWithDataAsAvro(topic + DATA_SCHEMA_SUFFIX, parser, maker);
+            SchemaAndValue cloudEvent = convertToCloudEventsFormatWithDataAsAvro(topic + DATA_SCHEMA_SUFFIX, recordAndMetadata, maker);
             return avroConverter.fromConnectData(topic, cloudEvent.schema(), cloudEvent.value());
         }
     }
@@ -363,12 +360,12 @@ public class CloudEventsConverter implements Converter, Versioned {
     /**
      * Creates a CloudEvents wrapper, converting the "data" to Avro.
      */
-    private SchemaAndValue convertToCloudEventsFormatWithDataAsAvro(String topic, RecordParser parser, CloudEventsMaker maker) {
+    private SchemaAndValue convertToCloudEventsFormatWithDataAsAvro(String topic, RecordAndMetadata recordAndMetadata, CloudEventsMaker maker) {
         Schema dataSchemaType = Schema.BYTES_SCHEMA;
         byte[] serializedData = avroConverter.fromConnectData(topic, maker.ceDataAttributeSchema(), maker.ceDataAttribute());
         String dataSchemaUri = maker.ceDataschemaUri(getSchemaIdFromAvroMessage(serializedData));
 
-        return convertToCloudEventsFormat(parser, maker, dataSchemaType, dataSchemaUri, serializedData);
+        return convertToCloudEventsFormat(recordAndMetadata, maker, dataSchemaType, dataSchemaUri, serializedData);
     }
 
     /**
@@ -484,10 +481,11 @@ public class CloudEventsConverter implements Converter, Versioned {
         }
     }
 
-    private SchemaAndValue convertToCloudEventsFormat(RecordParser parser, CloudEventsMaker maker, Schema dataSchemaType, String dataSchema, Object serializedData) {
-        Struct source = parser.source();
-        Schema sourceSchema = parser.source().schema();
-        final Struct transaction = parser.transaction();
+    private SchemaAndValue convertToCloudEventsFormat(RecordAndMetadata recordAndMetadata, CloudEventsMaker maker, Schema dataSchemaType, String dataSchema,
+                                                      Object serializedData) {
+        Struct source = recordAndMetadata.source();
+        Schema sourceSchema = recordAndMetadata.source().schema();
+        final Struct transaction = recordAndMetadata.transaction();
 
         // construct schema of CloudEvents envelope
         CESchemaBuilder ceSchemaBuilder = defineSchema()
@@ -514,8 +512,8 @@ public class CloudEventsConverter implements Converter, Versioned {
 
         Schema ceSchema = ceSchemaBuilder.build();
 
-        String ceId = this.metadataSource.id() == MetadataSourceValue.GENERATE ? maker.ceId() : parser.id();
-        String ceType = this.metadataSource.type() == MetadataSourceValue.GENERATE ? maker.ceType() : parser.type();
+        String ceId = this.metadataSource.id() == MetadataSourceValue.GENERATE ? maker.ceId() : recordAndMetadata.id();
+        String ceType = this.metadataSource.type() == MetadataSourceValue.GENERATE ? maker.ceType() : recordAndMetadata.type();
 
         // construct value of CloudEvents Envelope
         CEValueBuilder ceValueBuilder = withValue(ceSchema)
@@ -531,7 +529,7 @@ public class CloudEventsConverter implements Converter, Versioned {
         }
 
         if (this.extensionAttributesEnable) {
-            ceValueBuilder.withValue(adjustExtensionName(Envelope.FieldName.OPERATION), parser.op());
+            ceValueBuilder.withValue(adjustExtensionName(Envelope.FieldName.OPERATION), recordAndMetadata.operation());
             ceValueFromStruct(source, sourceSchema, ceValueBuilder, CloudEventsConverter::adjustExtensionName);
             if (transaction != null) {
                 ceValueFromStruct(transaction, TransactionMonitor.TRANSACTION_BLOCK_SCHEMA, ceValueBuilder, CloudEventsConverter::txExtensionName);
