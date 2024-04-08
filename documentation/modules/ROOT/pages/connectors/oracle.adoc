@@ -47,6 +47,7 @@ Information and procedures for using a {prodname} Oracle connector are organized
   * xref:descriptions-of-debezium-oracle-connector-data-change-events[]
   * xref:how-debezium-oracle-connectors-map-data-types[]
   * xref:setting-up-oracle-to-work-with-debezium[]
+  * xref:debezium-oracle-connector-converters[]
   * xref:deployment-of-debezium-oracle-connectors[]
   * xref:descriptions-of-debezium-oracle-connector-configuration-properties[]
   * xref:monitoring-debezium-oracle-connector-performance[]
@@ -2174,6 +2175,73 @@ For example, if a `DATE` column is defined with the default value of `TO_DATE('2
 If a temporal type uses the `SYSDATE` constant to represent the default value, the connector will resolve this based on whether the column is defined as `NOT NULL` or `NULL`.
 If the column is nullable, no default value will be set; however, if the column isn't nullable then the default value will be resolved as either `0` (for `DATE` or `TIMESTAMP(n)` data types) or `1970-01-01T00:00:00Z` (for `TIMESTAMP WITH TIME ZONE` or `TIMESTAMP WITH LOCAL TIME ZONE` data types).
 The default value type will be numeric except if the column is a `TIMESTAMP WITH TIME ZONE` or `TIMESTAMP WITH LOCAL TIME ZONE` in which case its emitted as a string.
+
+[[debezium-oracle-connector-converters]]
+== Custom converters
+
+By default, the {prodname} Oracle connector provides several `CustomConverter` implementations specific to Oracle data types.
+These custom converters provide alternative mappings for specific data types based on the connector configuration.
+To add a `CustomConverter` to the connector, follow the instructions in the link:../development/converters.adoc[Custom Converters documentation].
+
+=== `NUMBER(1)` to Boolean
+
+Beginning with version 23, Oracle database provides a `BOOLEAN` logical data type.
+In earlier versions, the database simulates a `BOOLEAN` type by using a `NUMBER(1)` data type, constrained with a value of `0` for false, or a value of `1` for true.
+
+By default, when {prodname} emits change events for source columns that use the `NUMBER(1)` data type, it converts the data to the `INT8` literal type.
+If the default mapping for `NUMBER(1)` data types does not meet your needs, you can configure the connector to use the logical `BOOL` type when it emits these columns by configuring the `NumberOneToBooleanConverter`, as shown in the following example:
+
+.Example: `NumberOneToBooleanConverter` configuration
+[source]
+----
+converters=number-to-boolean
+converters.number-to-boolean.type=io.debezium.connector.oracle.converters.NumberOneToBooleanConverter
+converters.number-to-boolean.selector=.*.MY_TABLE.DATA
+----
+
+In the preceding example, the `selector` property is optional.
+The `selector` property specifies a regular expression that designates which tables or columns the converter applies to.
+If you omit the `selector` property, when {prodname} emits an event, every column with the `NUMBER(1)` data type is converted to a field that uses the logical `BOOL` type.
+
+=== `NUMBER` To Zero Scale
+
+Oracle supports creating `NUMBER` based columns with negative scale, that is, `NUMBER(-2)`.
+Not all systems can process negative scale values, so these values can result in processing problems in your pipeline.
+For example, because Apache Avro does not support these values, problems can occur if {prodname} converts events to Avro format.
+Similarly, downstream consumers that do not support these values can also encounter errors.
+
+.Example configuration
+[source]
+----
+converters=number-zero-scale
+converters.number-zero-scale.type=io.debezium.connector.oracle.converters.NumberToZeroScaleConverter
+converters.number-zero-scale.decimal.mode=precise
+----
+
+In the preceding example, the `decimal.mode` property specifies how the connector emits decimal values.
+This property is optional.
+If you omit the `decimal.mode` property, the converter defaults to using the `PRECISE` decimal handling mode.
+
+=== `RAW` to String
+
+Although Oracle recommends against the use of certain data types, such as `RAW`, legacy systems might continue to use such types.
+By default, {prodname} emits `RAW` column types as logical `BYTES`, a type that enables the storage of binary or text-based data.
+
+In some cases, `RAW` columns might store character data as a series of bytes.
+To facilitate consumption by consumers, you can configure {prodname} to use the `RawToStringConverter`.
+The `RawToStringConverter` provides a way to easily target such `RAW` columns and emit values as strings, rather than bytes.
+The following example shows how to add the `RawToStringConverter` to the connector configuration:
+
+.Example: `RawToStringConverter` configuration
+[source]
+----
+converters=raw-to-string
+converters.raw-to-string.type=io.debezium.connector.oracle.converters.RawToStringConverter
+converters.raw-to-string.selector=.*.MY_TABLE.DATA
+----
+
+In the preceding example, the `selector` property enables you to define a regular expression that specifies the tables or columns that the converter processes.
+If you omit the `selector` property, the converter maps all `RAW` column types to logical `STRING` field types.
 
 // Type: assembly
 // ModuleID: setting-up-oracle-to-work-with-debezium
