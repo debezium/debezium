@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.performance.embedded;
+package io.debezium.performance.engine;
 
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
@@ -289,12 +289,12 @@ public class PostgresEndToEndPerf {
     @State(Scope.Thread)
     public static class EmbeddedEngineEndToEndPerfTest extends DebeziumEndToEndPerfTest {
         public String getBaseTableName() {
-            return BASE_TABLE_NAME + "_embedded";
+            return BASE_TABLE_NAME + "_engine";
         }
 
         public DebeziumEngine createEngine() {
             Configuration config = defaultConnectorConfig()
-                    .with(PostgresConnectorConfig.SLOT_NAME, "embedded_" + eventCount)
+                    .with(PostgresConnectorConfig.SLOT_NAME, "engine_" + eventCount)
                     // .with(EmbeddedEngineConfig.WAIT_FOR_COMPLETION_BEFORE_INTERRUPT_MS, CommonConnectorConfig.EXECUTOR_SHUTDOWN_TIMEOUT_SEC)
                     .build();
             Properties configProps = addSmtConfig(config);
