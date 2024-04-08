@@ -369,12 +369,12 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
 
         void add(List<DataCollection<T>> dataCollectionIds) {
             this.dataCollectionsToSnapshot.addAll(dataCollectionIds);
-            this.dataCollectionsToSnapshotJson = jsonString();
+            this.dataCollectionsToSnapshotJson = computeJsonString();
         }
 
         DataCollection<T> getNext() {
             DataCollection<T> nextDataCollection = this.dataCollectionsToSnapshot.poll();
-            this.dataCollectionsToSnapshotJson = jsonString();
+            this.dataCollectionsToSnapshotJson = computeJsonString();
             return nextDataCollection;
         }
 
@@ -397,26 +397,27 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
 
         public boolean remove(List<DataCollection<T>> toRemove) {
             boolean removed = this.dataCollectionsToSnapshot.removeAll(toRemove);
-            this.dataCollectionsToSnapshotJson = jsonString();
+            this.dataCollectionsToSnapshotJson = computeJsonString();
             return removed;
         }
 
         public String dataCollectionsAsJsonString() {
-            return this.dataCollectionsToSnapshotJson;
-        }
-
-        public Queue<DataCollection<T>> getDataCollectionsToSnapshot() {
-            return this.dataCollectionsToSnapshot;
-        }
-
-        private String jsonString() {
-            // TODO Handle non-standard table ids containing dots, commas etc.
 
             if (!Strings.isNullOrEmpty(dataCollectionsToSnapshotJson)) {
                 // A cached value to improve performance since this method is called in the "store"
                 // that is called during events processing
                 return dataCollectionsToSnapshotJson;
             }
+
+            return computeJsonString();
+        }
+
+        public Queue<DataCollection<T>> getDataCollectionsToSnapshot() {
+            return this.dataCollectionsToSnapshot;
+        }
+
+        private String computeJsonString() {
+            // TODO Handle non-standard table ids containing dots, commas etc.
 
             try {
                 List<LinkedHashMap<String, String>> dataCollectionsMap = dataCollectionsToSnapshot.stream()

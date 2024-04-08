@@ -21,6 +21,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiPredicate;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.clients.producer.KafkaProducer;
@@ -333,7 +334,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         // there shouldn't be any snapshot records
         assertNoRecordsToConsume();
 
-        sendAdHocSnapshotSignal();
+        sendAdHocSnapshotSignal("s1.a", "s1.b");
 
         final int expectedRecordCount = ROW_COUNT;
         final AtomicInteger recordCounter = new AtomicInteger();
@@ -351,6 +352,64 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
                 });
         for (int i = 0; i < expectedRecordCount; i++) {
             assertThat(dbChanges).contains(entry(i + 1, i));
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-7716")
+    public void whenSnapshotMultipleTableAndCorrectorRestartsThenOnlyNotAlreadyProcessedTableMustBeProcessed() throws Exception {
+        // Testing.Print.enable();
+
+        populateTables();
+        final Configuration config = config()
+                .build();
+        startAndConsumeTillEnd(connectorClass(), config);
+        waitForConnectorToStart();
+
+        waitForAvailableRecords(1, TimeUnit.SECONDS);
+        // there shouldn't be any snapshot records
+        assertNoRecordsToConsume();
+
+        sendAdHocSnapshotSignal(tableNames().toArray(new String[0]));
+
+        final int expectedRecordCount = ROW_COUNT * 2;
+        final AtomicInteger recordCounter = new AtomicInteger();
+        final AtomicBoolean restarted = new AtomicBoolean();
+
+        List<SourceRecord> dbChanges = new ArrayList<>();
+        consumeRecordsUntil((i, r) -> recordCounter.addAndGet(1) == expectedRecordCount,
+                (recordsConsumed, record) -> "",
+                5,
+                record -> {
+                    if (topicNames().contains(record.topic())) { // We want to exclude the changed from signal table
+                        dbChanges.add(record);
+                        if (!record.topic().contains(topicName()) &&
+                                recordCounter.addAndGet(1) > 250
+                                && !restarted.get()) {
+                            stopConnector();
+                            assertConnectorNotRunning();
+
+                            start(connectorClass(), config);
+                            waitForConnectorToStart();
+                            restarted.set(true);
+                        }
+                    }
+                },
+                false);
+
+        Map<String, List<SourceRecord>> recordsByTopic = dbChanges.stream().collect(Collectors.groupingBy(SourceRecord::topic,
+                Collectors.mapping(Function.identity(), Collectors.toList())));
+
+        Map<Integer, Integer> dbChangesA = recordsByTopic.get(topicNames().get(0)).stream()
+                .collect(Collectors.toMap(r -> ((Struct) r.key()).getInt32(pkFieldName()),
+                        record -> ((Struct) record.value()).getStruct("after").getInt32(valueFieldName())));
+        Map<Integer, Integer> dbChangesB = recordsByTopic.get(topicNames().get(1)).stream()
+                .collect(Collectors.toMap(r -> ((Struct) r.key()).getInt32(pkFieldName()),
+                        record -> ((Struct) record.value()).getStruct("after").getInt32(valueFieldName())));
+
+        for (int i = 0; i < expectedRecordCount / 2; i++) {
+            assertThat(dbChangesA).contains(entry(i + 1, i));
+            assertThat(dbChangesB).contains(entry(i + 1, i));
         }
     }
 
