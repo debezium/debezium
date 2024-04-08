@@ -40,6 +40,7 @@ Information and procedures for using a {prodname} MySQL connector are organized 
 * xref:how-debezium-mysql-connectors-work[]
 * xref:descriptions-of-debezium-mysql-connector-data-change-events[]
 * xref:how-debezium-mysql-connectors-map-data-types[]
+* xref:debezium-mysql-connector-converters[]
 * xref:setting-up-mysql-to-run-a-debezium-connector[]
 * xref:deployment-of-debezium-mysql-connectors[]
 * xref:monitoring-debezium-mysql-connector-performance[]
@@ -2199,6 +2200,64 @@ Contains a structure with two fields:
 * `wkb (BYTES)`: binary representation of the geometry object encoded in the Well-Known-Binary (wkb) format. See the link:https://www.opengeospatial.org/standards/sfa[Open Geospatial Consortium] for more details.
 
 |===
+
+[[debezium-mysql-connector-converters]]
+== Custom converters
+
+By default, the {prodname} MySQL connector provides several `CustomConverter` implementations for MySQL data types.
+These custom converters provide alternative mappings for specific data types based on the connector configuration.
+To add a `CustomConverter` to the connector, follow the instructions in the link:../development/converters.adoc[Custom Converters documentation].
+
+=== `TINYINT(1)` to Boolean
+
+By default, during a connector snapshot, the {prodname} MySQL connector obtains column types from the JDBC driver, which assigns the `TINYINT(1)` type to `BOOLEAN` columns.
+{prodname} then uses these JDBC column types to define the schema for the snapshot events.
+After the connector transitions from the snapshot to the streaming phase, the change event schema that results from the default mapping can lead to inconsistent mappings for `BOOLEAN` columns.
+To help ensure that MySQL emits `BOOLEAN` columns uniformly, you can apply the custom  `TinyIntOneToBooleanConverter`, as shown in the following configuration example.
+
+.Example: `TinyIntOneToBooleanConverter` configuration
+[source]
+----
+converters=tinyint-one-to-boolean
+converters.tinyint-one-to-boolean.type=io.debezium.connector.mysql.converters.TinyIntOneToBooleanConverter
+converters.tinyint-one-to-boolean.selector=.*.MY_TABLE.DATA
+converters.tinyint-one-to-boolean.length.checker=false
+----
+
+In the preceding example, the `selector` and `length.checker` properties are optional.
+By default, the converter checks that `TINYINT` data types conform to a length of `1`.
+If `length.checker` to `false`, the converter does not explicitly confirm that the `TINYINT` data type conforms to a length of `1`.
+The `selector` designates the tables or columns to convert, based on the supplied regular expression.
+If you omit the `selector` property, the converter maps all `TINYINT` columns to logical `BOOL` field types.
+If you do not configure a `selector` option, and you want to map `TINYINT` columns to `TINYINT(1)`, omit the `length.checker` property, or set its value to `true`.
+
+=== JDBC sink data types
+
+If you integrate the {prodname} JDBC sink connector with a {prodname} MySQL source connector, the MYSQL connector emits some column attributes differently during the snapshot and streaming phases.
+For the JDBC sink connector to consistently consume changes from both the snapshot and streaming phase, you must include the `JdbcSinkDataTypesConverter` converter as part of the MySQL source connector configuration, as shown in the following example:
+
+.Example: `JdbcSinkDataTypesConverter` configuration
+[source]
+----
+converters=jdbc-sink
+converters.jdbc-sink.type=io.debezium.connector.mysql.converters.JdbcSinkDataTypesConverter
+converters.jdbc-sink.selector.boolean=.*.MY_TABLE.BOOL_COL
+converters.jdbc-sink.selector.real=.*.MY_TABLE.REAL_COL
+converters.jdbc-sink.selector.string=.*.MY_TABLE.STRING_COL
+converters.jdbc-sink.treat.real.as.double=true
+----
+
+In the preceding example, the `selector.*` and `treat.real.as.double` configuration properties are optional.
+
+The `selector.*` properties specify comma-separated lists of regular expressions that specify which tables and columns that the converter applies to.
+By default, the converter applies the following rules apply to all Boolean, real, and string-based column data types, across all tables:
+
+* `BOOLEAN` data types are always emitted as `INT16` logical types, with `1` representing `true` and `0` representing `false`
+* `REAL` data types are always emitted as `FLOAT64` logical types.
+* String-based columns always include the `__debezium.source.column.character_set` schema parameter that contains the column's character set.
+
+For each data type, you can configure a selector rule to override the default scope and apply the selector to specific tables and columns only.
+For example, to set the scope of the Boolean converter, add the following rule to the connector configuration, as in the preceding example: `converters.jdbc-sink.selector.boolean=.*.MY_TABLE.BOOL_COL`
 
 // Type: assembly
 // ModuleID: setting-up-mysql-to-run-a-debezium-connector
