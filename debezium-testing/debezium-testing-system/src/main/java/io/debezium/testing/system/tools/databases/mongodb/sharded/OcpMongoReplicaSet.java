@@ -49,16 +49,16 @@ public class OcpMongoReplicaSet implements Startable {
     private final OpenShiftUtils ocpUtil;
     private final String project;
     private final boolean useKeyfile;
-    private final boolean useTsl;
+    private final boolean useTls;
     private final int shardNum;
     private final List<OcpMongoReplicaSetMember> members;
 
     public OcpMongoReplicaSet(String name, boolean configServer, int memberCount, String rootUserName, String rootPassword, OpenShiftClient ocp, String project,
-                              boolean useKeyfile, boolean useTsl, int shardNum) {
+                              boolean useKeyfile, boolean useTls, int shardNum) {
         this.name = name;
         this.configServer = configServer;
         this.memberCount = memberCount;
-        this.useTsl = useTsl;
+        this.useTls = useTls;
         this.authRequired = false;
         this.rootUserName = rootUserName;
         this.rootPassword = rootPassword;
@@ -111,7 +111,7 @@ public class OcpMongoReplicaSet implements Startable {
         if (useKeyfile) {
             members.forEach(m -> MongoShardedUtil.addKeyFileToDeployment(m.getDeployment()));
         }
-        if (ConfigProperties.DATABASE_MONGO_USE_TLS) {
+        if (useTls) {
             members.forEach(m -> MongoShardedUtil.addCertificatesToDeployment(m.getDeployment()));
         }
 
@@ -229,7 +229,7 @@ public class OcpMongoReplicaSet implements Startable {
         private String project;
         private boolean useKeyfile;
         private int shardNum;
-        private boolean useTsl;
+        private boolean useTls;
 
         private OcpMongoReplicaSetBuilder() {
         }
@@ -274,8 +274,8 @@ public class OcpMongoReplicaSet implements Startable {
             return this;
         }
 
-        public OcpMongoReplicaSetBuilder withUseTsl(boolean useTsl) {
-            this.useTsl = useTsl;
+        public OcpMongoReplicaSetBuilder withUseTls(boolean useTls) {
+            this.useTls = useTls;
             return this;
         }
 
@@ -285,7 +285,7 @@ public class OcpMongoReplicaSet implements Startable {
         }
 
         public OcpMongoReplicaSet build() {
-            return new OcpMongoReplicaSet(name, configServer, memberCount, rootUserName, rootPassword, ocp, project, useKeyfile, useTsl , shardNum);
+            return new OcpMongoReplicaSet(name, configServer, memberCount, rootUserName, rootPassword, ocp, project, useKeyfile, useTls, shardNum);
         }
     }
 }

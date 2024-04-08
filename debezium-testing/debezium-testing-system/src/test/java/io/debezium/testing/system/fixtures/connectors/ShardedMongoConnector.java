@@ -31,7 +31,6 @@ public class ShardedMongoConnector extends ConnectorFixture<OcpMongoShardedContr
         }
         else {
             return new ConnectorFactories(kafkaController).shardedMongo(dbController, connectorName);
-
         }
     }
 }
