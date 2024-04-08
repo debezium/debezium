@@ -58,7 +58,7 @@ public class OcpMongoShardedDeployer implements Deployer<OcpMongoShardedControll
                 .withReplicaCount(replicaCount)
                 .withShardKeys(shardKeys)
                 .withUseInternalAuth(useKeyfile)
-                .withUseTsl(useTls)
+                .withUseTls(useTls)
                 .withRootUser(rootUserName, rootPassword)
                 .withShardKeys(shardKeys)
                 .build();
