@@ -284,6 +284,7 @@ jobs:
         with:
           repository: debezium/debezium-connector-cassandra
           path: cassandra
+          ref: ${{ github.ref_name }}
 
       - uses: ./core/.github/actions/setup-java
 
@@ -313,6 +314,7 @@ jobs:
         with:
           repository: debezium/debezium-connector-db2
           path: db2
+          ref: ${{ github.ref_name }}
 
       - uses: ./core/.github/actions/setup-java
 
@@ -342,6 +344,7 @@ jobs:
         with:
           repository: debezium/debezium-connector-informix
           path: informix
+          ref: ${{ github.ref_name }}
 
       - uses: ./core/.github/actions/setup-java
 
@@ -370,6 +373,7 @@ jobs:
         with:
           repository: debezium/debezium-connector-ibmi
           path: ibmi
+          ref: ${{ github.ref_name }}
 
       - uses: ./core/.github/actions/setup-java
 
@@ -399,6 +403,7 @@ jobs:
         with:
           repository: debezium/debezium-connector-vitess
           path: vitess
+          ref: ${{ github.ref_name }}
 
       - uses: ./core/.github/actions/setup-java
 
@@ -428,6 +433,7 @@ jobs:
         with:
           repository: debezium/debezium-connector-spanner
           path: spanner
+          ref: ${{ github.ref_name }}
 
       - uses: ./core/.github/actions/setup-java
 
@@ -457,6 +463,7 @@ jobs:
         with:
           repository: debezium/debezium-connector-jdbc
           path: jdbc
+          ref: ${{ github.ref_name }}
 
       - uses: ./core/.github/actions/setup-java
 
@@ -486,6 +493,7 @@ jobs:
         with:
           repository: debezium/debezium-server
           path: server
+          ref: ${{ github.ref_name }}
 
       - uses: ./core/.github/actions/setup-java
 
