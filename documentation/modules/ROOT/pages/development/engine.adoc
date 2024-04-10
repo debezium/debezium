@@ -528,9 +528,9 @@ The default is a periodic commity policy based upon time intervals.
 
 |`record.processing.threads`
 |The number of available cores.
-|The number of threads to use for processing CDC records. 
-The default value is the number of available machine cores, with an upper limit of 16 threads.
-If you want to use all available threads without any limitation, use the `AVAILABLE_CORES` placeholder.
+|The number of threads to use for processing CDC records.
+If you want to use all available cores on given machine, you can use the `AVAILABLE_CORES` placeholder.
+If the value is not specified, threads are created as needed, using Java https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/concurrent/Executors.html#newCachedThreadPool()[cached thread pool].
 
 |`record.processing.shutdown.timeout.ms`
 |1000

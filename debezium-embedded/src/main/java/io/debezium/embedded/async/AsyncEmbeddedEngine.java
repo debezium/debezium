@@ -148,7 +148,13 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
 
         // Create thread pools for executing tasks and record pipelines.
         taskService = Executors.newFixedThreadPool(this.config.getInteger(ConnectorConfig.TASKS_MAX_CONFIG, () -> 1));
-        recordService = Executors.newFixedThreadPool(computeRecordThreads(this.config.getString(AsyncEmbeddedEngine.RECORD_PROCESSING_THREADS)));
+        final String processingThreads = this.config.getString(AsyncEmbeddedEngine.RECORD_PROCESSING_THREADS);
+        if (processingThreads == null || processingThreads.isBlank()) {
+            recordService = Executors.newCachedThreadPool();
+        }
+        else {
+            recordService = Executors.newFixedThreadPool(computeRecordThreads(processingThreads));
+        }
 
         // Validate provided config and prepare Kafka worker config needed for Kafka stuff, like e.g. OffsetStore.
         if (!this.config.validateAndRecord(AsyncEngineConfig.CONNECTOR_FIELDS, LOGGER::error)) {
