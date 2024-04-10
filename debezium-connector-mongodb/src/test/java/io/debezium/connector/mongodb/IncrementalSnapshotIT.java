@@ -228,6 +228,20 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
                                 + "}\"}") });
     }
 
+    protected void sendAdHocSnapshotSignalWithAdditionalConditions(Map<String, String> additionalConditions, String... dataCollectionIds) throws SQLException {
+        final String conditions = additionalConditions.entrySet().stream()
+                .map(e -> String.format("{\"data-collection\": \"%s\", \"filter\": \"%s\"}", e.getKey(), e.getValue())).collect(
+                        Collectors.joining(","));
+        final String dataCollectionIdsList = Arrays.stream(dataCollectionIds)
+                .map(x -> "\"" + x + "\"")
+                .collect(Collectors.joining(", "));
+        insertDocuments("dbA", "signals",
+                Document.parse("{\"type\": \"execute-snapshot\", \"payload\": {"
+                        + "\"type\": \"INCREMENTAL\","
+                        + "\"data-collections\": [" + dataCollectionIdsList + "],"
+                        + "\"additional-conditions\": [" + conditions + "]}}"));
+    }
+
     protected void sendAdHocSnapshotSignal() throws SQLException {
         sendAdHocSnapshotSignal(fullDataCollectionName());
     }
@@ -808,6 +822,31 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
         }
 
         assertCloseEventCount(closeEventCount -> assertThat(closeEventCount).isZero());
+    }
+
+    @Test
+    public void executeIncrementalSnapshotWithAdditionalCondition() throws Exception {
+        // Testing.Print.enable();
+
+        final LogInterceptor interceptor = new LogInterceptor(MongoDbIncrementalSnapshotChangeEventSource.class);
+        populateDataCollection(dataCollectionNames().get(1));
+        startConnector();
+        waitForConnectorToStart();
+
+        waitForStreamingRunning("mongodb", "mongo1", getStreamingNamespace(), "0");
+
+        sendAdHocSnapshotSignalWithAdditionalConditions(
+                Map.of(fullDataCollectionNames().get(1), "{ aa: { $lt: 250 } }"),
+                fullDataCollectionNames().get(1));
+
+        final int expectedRecordCount = 250;
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount, topicNames().get(1));
+        for (int i = 0; i < expectedRecordCount; i++) {
+            assertThat(dbChanges).contains(entry(i + 1, i));
+        }
+
+        assertThat(interceptor.containsMessage("No data returned by the query, incremental snapshotting of table 'dbA.c2' finished")).isTrue();
+        assertCloseEventCount(closeEventCount -> assertThat(closeEventCount).isNotZero());
     }
 
     private void assertCloseEventCount(Consumer<Long> consumer) {
