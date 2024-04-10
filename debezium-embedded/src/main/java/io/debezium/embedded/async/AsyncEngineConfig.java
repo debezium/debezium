@@ -18,16 +18,13 @@ import io.debezium.embedded.EmbeddedEngineConfig;
 public interface AsyncEngineConfig extends EmbeddedEngineConfig {
 
     int AVAILABLE_CORES = Runtime.getRuntime().availableProcessors();
-    int RECORD_PROCESSING_THREADS_CAP = 16;
 
     /**
      * An optional field that specifies the number of threads to be used for processing CDC records.
      */
     Field RECORD_PROCESSING_THREADS = Field.create("record.processing.threads")
-            .withDescription("The number of threads to be used for processing CDC records. The default is number of available machine cores with upper "
-                    + "limit of " + RECORD_PROCESSING_THREADS_CAP + " threads. If you want to use all available thread without any limitation, use 'AVAILABLE_CORES' "
-                    + "placeholder.")
-            .withDefault(AVAILABLE_CORES);
+            .withDescription("The number of threads to be used for processing CDC records. If you want to use all available threads, you can use "
+                    + "'AVAILABLE_CORES' placeholder.");
 
     /**
      * An optional field that specifies maximum time in ms to wait for submitted records to finish processing when the task shut down is called.

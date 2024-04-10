@@ -988,12 +988,10 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
 
     /**
      * Determines the size of the thread pool which will be used for processing records. The value can be either number (provided as a {@code String} value) or
-     * a predefined placeholder from {@link ProcessingCores} enumeration. If the number of threads is provided as a number, it will be eventually limited to
-     * {@code AsyncEngineConfig.RECORD_PROCESSING_THREADS_CAP} to avoid possible overhead with too many context switches on a beefy machines with many cores, but
-     * running many other tasks.
+     * a predefined placeholder from {@link ProcessingCores} enumeration.
      *
      * @param recordProcessingThreads Requested number of processing threads as a {@code String}. It can be a number or predefined placeholder.
-     * @return Either requested number of threads or minimum of {@code AsyncEngineConfig.RECORD_PROCESSING_THREADS_CAP} and {@code AsyncEngineConfig.AVAILABLE_CORES}.
+     * @return Requested number of threads.
      */
     private int computeRecordThreads(final String recordProcessingThreads) {
         // First check if it's some our placeholder constant.
@@ -1007,9 +1005,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         if (cores <= 0) {
             throw new IllegalArgumentException("Number of cores cannot be negative or zero!");
         }
-
-        // Now we apply processor cap. As we provide all available cores as the default value, we eventually reduce the value now.
-        return Math.min(cores, AsyncEngineConfig.RECORD_PROCESSING_THREADS_CAP);
+        return cores;
     }
 
     /**
