@@ -48,6 +48,7 @@ import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.source.snapshot.incremental.ChunkQueryBuilder;
 import io.debezium.pipeline.source.snapshot.incremental.RowValueConstructorChunkQueryBuilder;
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
@@ -826,7 +827,7 @@ public class PostgresConnection extends JdbcConnection {
         return new TableId(null, schemaName, tableName);
     }
 
-    public boolean validateLogPosition(OffsetContext offset, CommonConnectorConfig config) {
+    public boolean validateLogPosition(Partition partition, OffsetContext offset, CommonConnectorConfig config) {
 
         final Lsn storedLsn = ((PostgresOffsetContext) offset).lastCommitLsn();
         final String slotName = ((PostgresConnectorConfig) config).slotName();

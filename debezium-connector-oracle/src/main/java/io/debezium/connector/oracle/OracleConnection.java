@@ -39,6 +39,7 @@ import io.debezium.connector.oracle.logminer.SqlUtils;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.Attribute;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
@@ -419,7 +420,7 @@ public class OracleConnection extends JdbcConnection {
         return Optional.of(Scn.valueOf(oldestScn));
     }
 
-    public boolean validateLogPosition(OffsetContext offset, CommonConnectorConfig config) {
+    public boolean validateLogPosition(Partition partition, OffsetContext offset, CommonConnectorConfig config) {
 
         final Duration archiveLogRetention = ((OracleConnectorConfig) config).getArchiveLogRetention();
         final String archiveDestinationName = ((OracleConnectorConfig) config).getArchiveLogDestinationName();
