@@ -58,6 +58,11 @@
             <groupId>org.infinispan.protostream</groupId>
             <artifactId>protostream-processor</artifactId>
         </dependency>
+        <!-- Dependencies for NLS for Internationalization support -->
+        <dependency>
+            <groupId>com.oracle.database.nls</groupId>
+            <artifactId>orai18n</artifactId>
+        </dependency>
         <!-- Dependencies needed for XML support -->
         <dependency>
             <groupId>com.oracle.database.xml</groupId>

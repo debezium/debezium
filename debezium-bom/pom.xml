@@ -229,6 +229,11 @@
                 <version>${version.oracle.driver}</version>
             </dependency>
             <dependency>
+                <groupId>com.oracle.database.nls</groupId>
+                <artifactId>orai18n</artifactId>
+                <version>${version.oracle.driver}</version>
+            </dependency>
+            <dependency>
                 <groupId>com.oracle.database.xml</groupId>
                 <artifactId>xdb</artifactId>
                 <version>${version.oracle.driver}</version>
