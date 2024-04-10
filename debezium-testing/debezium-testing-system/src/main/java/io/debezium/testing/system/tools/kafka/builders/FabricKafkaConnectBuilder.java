@@ -185,7 +185,7 @@ public class FabricKafkaConnectBuilder extends
     }
 
     /**
-     * Mount truststore and keystore configmaps to external configuration path with same folder names as configmap names
+     * Mount truststore and keystore configMaps to external configuration path with same folder names as configMap names
      * @return
      */
     public FabricKafkaConnectBuilder withMongoCerts() {

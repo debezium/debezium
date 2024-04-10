@@ -122,22 +122,22 @@ public class ConnectorConfigBuilder {
         return addOperationRouter(op, targetTopicName, serverName + ".*\\." + tableName);
     }
 
-    public ConnectorConfigBuilder addMongoTlsParams() {
-        this
-                .put("mongodb.ssl.enabled", true)
-                .put("mongodb.ssl.keystore",
-                        "/opt/kafka/external-configuration/" + OcpMongoCertGenerator.KEYSTORE_CONFIGMAP + "/" + OcpMongoCertGenerator.KEYSTORE_SUBPATH)
-                .put("mongodb.ssl.keystore.password", CertUtil.KEYSTORE_PASSWORD)
-                .put("mongodb.ssl.truststore",
-                        "/opt/kafka/external-configuration/" + OcpMongoCertGenerator.TRUSTSTORE_CONFIGMAP + "/" + OcpMongoCertGenerator.TRUSTSTORE_SUBPATH)
-                .put("mongodb.ssl.truststore.password", CertUtil.KEYSTORE_PASSWORD);
-        return this;
-    }
-
-    public ConnectorConfigBuilder addMongoPasswordAuthParams() {
-        this
-                .put("mongodb.user", ConfigProperties.DATABASE_MONGO_DBZ_USERNAME)
-                .put("mongodb.password", ConfigProperties.DATABASE_MONGO_DBZ_PASSWORD);
+    public ConnectorConfigBuilder addMongoDbzUser() {
+        if (ConfigProperties.DATABASE_MONGO_USE_TLS) {
+            this
+                    .put("mongodb.ssl.enabled", true)
+                    .put("mongodb.ssl.keystore",
+                            "/opt/kafka/external-configuration/" + OcpMongoCertGenerator.KEYSTORE_CONFIGMAP + "/" + OcpMongoCertGenerator.KEYSTORE_SUBPATH)
+                    .put("mongodb.ssl.keystore.password", CertUtil.KEYSTORE_PASSWORD)
+                    .put("mongodb.ssl.truststore",
+                            "/opt/kafka/external-configuration/" + OcpMongoCertGenerator.TRUSTSTORE_CONFIGMAP + "/" + OcpMongoCertGenerator.TRUSTSTORE_SUBPATH)
+                    .put("mongodb.ssl.truststore.password", CertUtil.KEYSTORE_PASSWORD);
+        }
+        else {
+            this
+                    .put("mongodb.user", ConfigProperties.DATABASE_MONGO_DBZ_USERNAME)
+                    .put("mongodb.password", ConfigProperties.DATABASE_MONGO_DBZ_PASSWORD);
+        }
         return this;
     }
 

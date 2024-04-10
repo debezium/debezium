@@ -95,7 +95,7 @@ public class MongoShardedUtil {
     }
 
     /**
-     * Modify the mongodb deployment object to mount server and ca certificates (from configmap, name is set by constant) and use them
+     * Modify the mongodb deployment object to mount server and ca certificates (from configMap, name is set by constant) and use them
      * in mongodb deployment for internal and client authentication.
      * Mutually exclusive with using keyfile for internal auth
      * @param deployment
