@@ -827,6 +827,66 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     }
 
     @Test
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 6, reason = "Pre-image support in Change Stream is officially released in Mongo 6.0.")
+    public void shouldThrowErrorForOversizedEventsWithoutOversizeHandlingMode() throws InterruptedException {
+        final LogInterceptor logInterceptor = new LogInterceptor(MongoDbStreamingChangeEventSource.class);
+
+        final var collName = "large";
+        final var dbName = "dbit";
+
+        config = TestHelper.getConfiguration(mongo).edit()
+                .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.NO_DATA)
+                .with(MongoDbConnectorConfig.CAPTURE_MODE, MongoDbConnectorConfig.CaptureMode.CHANGE_STREAMS_UPDATE_FULL_WITH_PRE_IMAGE)
+                .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, dbName + "." + collName)
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
+                .build();
+
+        // Set up the replication context for connections ...
+        context = new MongoDbTaskContext(config);
+
+        // Cleanup database
+        TestHelper.cleanDatabase(mongo, "dbit");
+
+        // Enable pre images
+        try (var client = connect()) {
+            MongoDatabase db1 = client.getDatabase(dbName);
+            CreateCollectionOptions options = new CreateCollectionOptions();
+            options.changeStreamPreAndPostImagesOptions(new ChangeStreamPreAndPostImagesOptions(true));
+            db1.createCollection(collName, options);
+        }
+
+        // Before starting the connector, add data to the databases ...
+        var docId = 0;
+        var beforeValue = String.join("", Collections.nCopies(16 * 1024 * 1024 - 1024, "a"));
+        var expectedBeforeDocument = new Document("_id", docId).append("value", beforeValue);
+        insertDocuments("dbit", collName, expectedBeforeDocument);
+
+        // Start the connector ...
+        start(MongoDbConnector.class, config);
+        waitForStreamingRunning("mongodb", "mongo");
+
+        // Update document
+        var afterValue = String.join("", Collections.nCopies(16 * 1024 * 1024 - 1024, "b"));
+        try (var client = connect()) {
+            MongoDatabase db1 = client.getDatabase(dbName);
+            MongoCollection<Document> coll = db1.getCollection(collName);
+
+            // Insert the document with a generated ID ...
+            var updateDocument = new Document("$set", new Document("value", afterValue));
+            updateDocument(dbName, collName, new Document("_id", docId), updateDocument);
+        }
+
+        // Consume records
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.allRecordsInOrder().size()).isEqualTo(0);
+
+        // Stop the connector and check for error message
+        stopConnector(value -> assertThat(logInterceptor.containsErrorMessage("Error while reading change stream")).isTrue());
+
+    }
+
+    @Test
     @SkipWhenDatabaseVersion(check = LESS_THAN, major = 4, minor = 4, reason = "$bsonSize aggregation operator support is officially released in Mongo 4.4.")
     public void shouldSkipOversizedEvents() throws InterruptedException, IOException {
         // Use the DB configuration to define the connector's configuration ...
