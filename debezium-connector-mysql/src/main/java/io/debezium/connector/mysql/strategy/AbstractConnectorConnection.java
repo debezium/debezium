@@ -28,6 +28,7 @@ import io.debezium.connector.mysql.MySqlOffsetContext;
 import io.debezium.connector.mysql.MySqlSystemVariables;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -491,7 +492,7 @@ public abstract class AbstractConnectorConnection extends JdbcConnection {
 
     protected abstract GtidSet createGtidSet(String gtids);
 
-    public boolean validateLogPosition(OffsetContext offset, CommonConnectorConfig config) {
+    public boolean validateLogPosition(Partition partition, OffsetContext offset, CommonConnectorConfig config) {
 
         final String gtidSet = ((MySqlOffsetContext) offset).gtidSet();
         final String binlogFilename = ((MySqlOffsetContext) offset).getSource().binlogFilename();
