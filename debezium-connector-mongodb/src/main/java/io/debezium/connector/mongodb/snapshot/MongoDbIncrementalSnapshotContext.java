@@ -20,6 +20,7 @@ import java.util.Optional;
 import java.util.Queue;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -234,12 +235,25 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
     @SuppressWarnings("unchecked")
     public List<DataCollection<T>> addDataCollectionNamesToSnapshot(String correlationId, List<String> dataCollectionIds, List<AdditionalCondition> additionalCondition,
                                                                     String surrogateKey) {
+        LOGGER.trace("Adding data collections names {} to snapshot", dataCollectionIds);
         final List<DataCollection<T>> newDataCollectionIds = dataCollectionIds.stream()
-                .map(x -> new DataCollection<T>((T) CollectionId.parse(x)))
+                .map(buildDataCollection(additionalCondition, surrogateKey))
                 .filter(x -> x.getId() != null) // Remove collections with incorrectly formatted name
                 .collect(Collectors.toList());
         addTablesIdsToSnapshot(newDataCollectionIds);
+        this.correlationId = correlationId;
         return newDataCollectionIds;
+    }
+
+    private Function<String, DataCollection<T>> buildDataCollection(List<AdditionalCondition> additionalCondition, String surrogateKey) {
+        return expandedCollectionName -> {
+            String filter = additionalCondition.stream()
+                    .filter(condition -> condition.getDataCollection().matcher(expandedCollectionName).matches())
+                    .map(AdditionalCondition::getFilter)
+                    .findFirst()
+                    .orElse("");
+            return new DataCollection<T>((T) CollectionId.parse(expandedCollectionName), filter, surrogateKey);
+        };
     }
 
     @Override
