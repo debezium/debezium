@@ -106,20 +106,7 @@ public class ConnectorFactories {
                 .put("task.max", 1)
                 .put("mongodb.connection.string", controller.getPublicDatabaseUrl())
                 .put("mongodb.connection.mode", "sharded")
-                .addMongoPasswordAuthParams()
-                .addOperationRouterForTable("u", "customers");
-        return cb;
-    }
-
-    public ConnectorConfigBuilder shardedMongoWithTls(MongoDatabaseController controller, String connectorName) {
-        ConnectorConfigBuilder cb = new ConnectorConfigBuilder(connectorName);
-        cb
-                .put("topic.prefix", connectorName)
-                .put("connector.class", "io.debezium.connector.mongodb.MongoDbConnector")
-                .put("task.max", 1)
-                .put("mongodb.connection.string", controller.getPublicDatabaseUrl())
-                .put("mongodb.connection.mode", "sharded")
-                .addMongoTlsParams()
+                .addMongoDbzUser()
                 .addOperationRouterForTable("u", "customers");
         return cb;
     }
@@ -134,22 +121,7 @@ public class ConnectorFactories {
                 .put("task.max", 4)
                 .put("mongodb.connection.string", controller.getPublicDatabaseUrl())
                 .put("mongodb.connection.mode", "replica_set")
-                .addMongoPasswordAuthParams()
-                .addOperationRouterForTable("u", "customers");
-        return cb;
-    }
-
-    public ConnectorConfigBuilder shardedReplicaMongoWithTls(MongoDatabaseController controller, String connectorName) {
-
-        // String connectionUrl =;
-        ConnectorConfigBuilder cb = new ConnectorConfigBuilder(connectorName);
-        cb
-                .put("topic.prefix", connectorName)
-                .put("connector.class", "io.debezium.connector.mongodb.MongoDbConnector")
-                .put("task.max", 4)
-                .put("mongodb.connection.string", controller.getPublicDatabaseUrl())
-                .put("mongodb.connection.mode", "replica_set")
-                .addMongoTlsParams()
+                .addMongoDbzUser()
                 .addOperationRouterForTable("u", "customers");
         return cb;
     }

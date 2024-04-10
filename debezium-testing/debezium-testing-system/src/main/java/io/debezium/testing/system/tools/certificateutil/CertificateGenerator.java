@@ -7,10 +7,10 @@ package io.debezium.testing.system.tools.certificateutil;
 
 import java.io.IOException;
 import java.math.BigInteger;
-import java.security.GeneralSecurityException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.KeyStore;
+import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.Security;
 import java.security.cert.CertificateException;
@@ -55,7 +55,7 @@ public class CertificateGenerator {
     }
 
     /**
-     * generate CA certificate and all leaf certificates specified in certSpecs attribute
+     * Generates CA certificate and all leaf certificates specified in {@link CertificateGenerator#certSpecs} attribute
      * @throws Exception
      */
     public void generate() throws Exception {
@@ -75,7 +75,7 @@ public class CertificateGenerator {
 
     /**
      * Generates keystore containing a leaf private key and its certificate chain. Usable for keystore/truststore generation
-     * keystore password set by constant in CertUtil class
+     * keystore password set by constant in {@link CertUtil} class
      * @param leafName
      * @return
      * @throws Exception
@@ -104,7 +104,7 @@ public class CertificateGenerator {
         return ca;
     }
 
-    private CertificateWrapper generateCa() throws IOException {
+    private CertificateWrapper generateCa() throws IOException, NoSuchAlgorithmException {
         Security.addProvider(new BouncyCastleProvider());
         KeyPair keyPair = generateKeyPair();
 
@@ -148,7 +148,7 @@ public class CertificateGenerator {
                 .build();
     }
 
-    private CertificateWrapper genLeafCert(CertificateWrapperBuilder builder) throws OperatorCreationException {
+    private CertificateWrapper genLeafCert(CertificateWrapperBuilder builder) throws OperatorCreationException, NoSuchAlgorithmException {
         KeyPair keyPair = generateKeyPair();
 
         long notBefore = System.currentTimeMillis();
@@ -186,15 +186,10 @@ public class CertificateGenerator {
         return converter.getCertificate(holder);
     }
 
-    private KeyPair generateKeyPair() {
-        try {
-            KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance(PRIVATE_KEY_ALGORITHM);
-            keyPairGenerator.initialize(PRIVATE_KEY_SIZE, new SecureRandom());
-            return keyPairGenerator.generateKeyPair();
-        }
-        catch (GeneralSecurityException var2) {
-            throw new AssertionError(var2);
-        }
+    private KeyPair generateKeyPair() throws NoSuchAlgorithmException {
+        KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance(PRIVATE_KEY_ALGORITHM);
+        keyPairGenerator.initialize(PRIVATE_KEY_SIZE, new SecureRandom());
+        return keyPairGenerator.generateKeyPair();
     }
 
 }

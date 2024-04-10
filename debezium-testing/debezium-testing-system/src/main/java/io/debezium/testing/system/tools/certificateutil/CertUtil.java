@@ -31,10 +31,10 @@ public class CertUtil {
 
     /**
      * Uploads a string data as configMap to ocp cluster
-     * @param project namespace, where to create the configmap
+     * @param project namespace, where to create the configMap
      * @param data content of a file in configMap
      * @param configMapName config map name
-     * @param fileNameInConfigMap filename in configmap
+     * @param fileNameInConfigMap filename in configMap
      * @param ocp ocp client
      */
     public static void stringToConfigMap(String project, String data, String configMapName, String fileNameInConfigMap, OpenShiftClient ocp) {
@@ -49,10 +49,10 @@ public class CertUtil {
 
     /**
      * Converts keystore to base64 string and uploads as configMap to ocp cluster
-     * @param project namespace, where to create the configmap
-     * @param keyStore keystore object to be saved in configmap
-     * @param configMapName config map name
-     * @param fileNameInConfigMap filename in configmap
+     * @param project namespace, where to create the configMap
+     * @param keyStore keystore object to be saved in configMap
+     * @param configMapName configMap name
+     * @param fileNameInConfigMap filename in configMap
      * @param ocp ocp client
      */
     public static void keystoreToConfigMap(String project, KeyStore keyStore, String configMapName, String fileNameInConfigMap, OpenShiftClient ocp)
@@ -85,6 +85,13 @@ public class CertUtil {
         return sw.toString();
     }
 
+    /**
+     * exports certificate from holder to base64 string
+     * @param holder
+     * @return
+     * @throws CertificateException
+     * @throws IOException
+     */
     public static String exportToBase64PEMString(X509CertificateHolder holder) throws CertificateException, IOException {
         return exportToBase64PEMString(convertHolderToCert(holder));
     }
