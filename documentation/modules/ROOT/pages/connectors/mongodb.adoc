@@ -356,9 +356,11 @@ include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot
 
 [WARNING]
 ====
-Incremental snapshots requires the primary key to be stably ordered. However, `String` may not guarantees stable ordering as encodings and special characters
-can lead to unexpected behaviour (https://www.mongodb.com/docs/manual/reference/bson-types/#ref-sort-string-internationalization-id3/[Mongo sort `String`]).
-Please consider using other types for the primary key when performing incremental snapshots.
+Incremental snapshots require that the primary key for each table is stably ordered.
+Because `String` fields can include special characters, and are subject to different encodings, string-based primary keys do not lend themselves to sorting in a consistent and predictable order.
+When performing incremental snapshots, it's best to set the primary key to a data type other than `String`.
+
+For more information about BSON string types in MongoDB, see the https://www.mongodb.com/docs/manual/reference/bson-types/#string/[MongoDB documentation]).
 ====
 
 .Incremental snapshots for sharded clusters
