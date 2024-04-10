@@ -3260,8 +3260,11 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
     }
 
     private void purgeDatabaseLogs() throws SQLException {
-        connection.execute("ALTER DATABASE testDB1 SET RECOVERY SIMPLE");
-        connection.execute("DBCC SHRINKFILE (testDB1, 1)");
+
+        TestHelper.disableTableCdc(connection, "tablea");
+        TestHelper.disableTableCdc(connection, "tableb");
+
+        TestHelper.enableTableCdc(connection, "tablea");
     }
 
     private void shouldStopRetriableRestartsAtConfiguredMaximum(SqlRunnable scenario) throws Exception {
