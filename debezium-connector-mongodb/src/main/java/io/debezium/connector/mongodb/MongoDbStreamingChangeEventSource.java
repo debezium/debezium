@@ -12,6 +12,7 @@ import org.bson.BsonString;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.mongodb.MongoException;
 import com.mongodb.client.ChangeStreamIterable;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
@@ -117,6 +118,10 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                     return;
                 }
             }
+        }
+        catch (MongoException e) {
+            LOGGER.error("Error while reading change stream", e);
+            errorHandler.setProducerThrowable(e);
         }
     }
 

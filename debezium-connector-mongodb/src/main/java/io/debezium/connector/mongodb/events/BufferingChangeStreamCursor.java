@@ -22,6 +22,8 @@ import org.bson.BsonDocument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.mongodb.MongoChangeStreamException;
+import com.mongodb.MongoException;
 import com.mongodb.ServerAddress;
 import com.mongodb.ServerCursor;
 import com.mongodb.client.ChangeStreamIterable;
@@ -225,15 +227,23 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
 
         private Optional<ResumableChangeStreamEvent<TResult>> fetchEvent(MongoChangeStreamCursor<ChangeStreamDocument<TResult>> cursor) {
             var beforeEventPollTime = clock.currentTimeAsInstant();
-            var document = cursor.tryNext();
+            ChangeStreamDocument<TResult> document;
+            try {
+                document = cursor.tryNext();
+            }
+            catch (MongoException e) {
+                running.set(false);
+                throw new MongoChangeStreamException("Error while fetching change stream event" + e.getMessage());
+            }
             metrics.onSourceEventPolled(document, clock, beforeEventPollTime);
             throttleIfNeeded(document);
 
             // Only create resumable event if we have either document or cursor resume token
             // Cursor resume token may be `null` in case of issues like SERVER-63772, and situations called out in the Javadocs:
             // > resume token [...] can be null if the cursor has either not been iterated yet, or the cursor is closed.
+            ChangeStreamDocument<TResult> finalDocument = document;
             return Optional.<ResumableChangeStreamEvent<TResult>> empty()
-                    .or(() -> Optional.ofNullable(document).map(ResumableChangeStreamEvent::new))
+                    .or(() -> Optional.ofNullable(finalDocument).map(ResumableChangeStreamEvent::new))
                     .or(() -> Optional.ofNullable(cursor.getResumeToken()).map(ResumableChangeStreamEvent::new));
         }
 
@@ -297,8 +307,18 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
     @Override
     public ResumableChangeStreamEvent<TResult> tryNext() {
         var event = pollWithDelay();
-        if (event != null) {
-            lastResumeToken = event.resumeToken;
+        try {
+            if (event != null) {
+                lastResumeToken = event.resumeToken;
+            }
+            else {
+                if (!fetcher.isRunning() && fetcher.isEmpty()) {
+                    throw new MongoChangeStreamException("Failed to fetch event from change stream cursor, cursor is closed");
+                }
+            }
+        }
+        catch (MongoException e) {
+            throw new MongoException(e.getMessage());
         }
         return event;
     }
