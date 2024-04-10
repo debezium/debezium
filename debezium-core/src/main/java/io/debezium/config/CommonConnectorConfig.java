@@ -1044,7 +1044,7 @@ public abstract class CommonConnectorConfig {
             .withDescription(
                     "When 'snapshot.mode' is set as configuration_based, this setting permits to specify whenever the data should be snapshotted or not in case of error.");
 
-    public static final Field LOG_POSITION_CHECK_ENABLED = Field.create("log.position.check.enable")
+    public static final Field LOG_POSITION_CHECK_ENABLED = Field.createInternal("log.position.check.enable")
             .withDisplayName("Enable/Disable log position check")
             .withType(Type.BOOLEAN)
             .withDefault(true)
