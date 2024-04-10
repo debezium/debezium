@@ -79,6 +79,7 @@ public abstract class CommonConnectorConfig {
     protected final boolean snapshotModeConfigurationBasedStream;
     protected final boolean snapshotModeConfigurationBasedSnapshotOnSchemaError;
     protected final boolean snapshotModeConfigurationBasedSnapshotOnDataError;
+    protected final boolean isLogPositionCheckEnabled;
 
     /**
      * The set of predefined versions e.g. for source struct maker version
@@ -1043,6 +1044,16 @@ public abstract class CommonConnectorConfig {
             .withDescription(
                     "When 'snapshot.mode' is set as configuration_based, this setting permits to specify whenever the data should be snapshotted or not in case of error.");
 
+    public static final Field LOG_POSITION_CHECK_ENABLED = Field.create("log.position.check.enable")
+            .withDisplayName("Enable/Disable log position check")
+            .withType(Type.BOOLEAN)
+            .withDefault(true)
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 30))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .optional()
+            .withDescription("When enabled the connector checks if the position stored in the offset is still available in the log");
+
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
             .connector(
                     EVENT_PROCESSING_FAILURE_HANDLING_MODE,
@@ -1065,7 +1076,8 @@ public abstract class CommonConnectorConfig {
                     RETRIABLE_RESTART_WAIT,
                     QUERY_FETCH_SIZE,
                     MAX_RETRIES_ON_ERROR,
-                    INCREMENTAL_SNAPSHOT_WATERMARKING_STRATEGY)
+                    INCREMENTAL_SNAPSHOT_WATERMARKING_STRATEGY,
+                    LOG_POSITION_CHECK_ENABLED)
             .events(
                     CUSTOM_CONVERTERS,
                     CUSTOM_POST_PROCESSORS,
@@ -1173,6 +1185,7 @@ public abstract class CommonConnectorConfig {
         this.snapshotModeConfigurationBasedStream = config.getBoolean(SNAPSHOT_MODE_CONFIGURATION_BASED_START_STREAM);
         this.snapshotModeConfigurationBasedSnapshotOnSchemaError = config.getBoolean(SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_ON_SCHEMA_ERROR);
         this.snapshotModeConfigurationBasedSnapshotOnDataError = config.getBoolean(SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_ON_DATA_ERROR);
+        this.isLogPositionCheckEnabled = config.getBoolean(LOG_POSITION_CHECK_ENABLED);
 
         this.signalingDataCollectionId = !Strings.isNullOrBlank(this.signalingDataCollection)
                 ? TableId.parse(this.signalingDataCollection)
@@ -1526,6 +1539,10 @@ public abstract class CommonConnectorConfig {
 
     public boolean snapshotModeConfigurationBasedSnapshotOnDataError() {
         return this.snapshotModeConfigurationBasedSnapshotOnDataError;
+    }
+
+    public boolean isLogPositionCheckEnabled() {
+        return isLogPositionCheckEnabled;
     }
 
     public EnumeratedValue snapshotQueryMode() {

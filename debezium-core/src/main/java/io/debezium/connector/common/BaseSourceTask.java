@@ -100,8 +100,6 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             }
             else {
 
-                boolean logPositionAvailable = isLogPositionAvailable(logPositionValidator, offset, config);
-
                 if (schema.isHistorized() && !((HistorizedDatabaseSchema) schema).historyExists()) {
 
                     LOGGER.warn("Database schema history was not found but was expected");
@@ -121,23 +119,28 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
                     }
                 }
 
-                if (!logPositionAvailable && !offset.isSnapshotRunning()) {
-                    LOGGER.warn("Last recorded offset is no longer available on the server.");
+                if (config.isLogPositionCheckEnabled()) {
 
-                    if (snapshotter.shouldSnapshotOnDataError()) {
+                    boolean logPositionAvailable = isLogPositionAvailable(logPositionValidator, partition, offset, config);
 
-                        LOGGER.info("The last recorded offset is no longer available but we are in {} snapshot mode. " +
-                                "Attempting to snapshot data to fill the gap.",
-                                snapshotter.name());
+                    if (!logPositionAvailable && !offset.isSnapshotRunning()) {
+                        LOGGER.warn("Last recorded offset is no longer available on the server.");
 
-                        previousOffsets.resetOffset(previousOffsets.getTheOnlyPartition());
+                        if (snapshotter.shouldSnapshotOnDataError()) {
 
-                        return;
+                            LOGGER.info("The last recorded offset is no longer available but we are in {} snapshot mode. " +
+                                    "Attempting to snapshot data to fill the gap.",
+                                    snapshotter.name());
+
+                            previousOffsets.resetOffset(previousOffsets.getTheOnlyPartition());
+
+                            return;
+                        }
+
+                        LOGGER.warn("The connector is trying to read redo log starting at " + offset + ", but this is no longer "
+                                + "available on the server. Reconfigure the connector to use a snapshot when needed if you want to recover. " +
+                                "If not the connector will streaming from the last available position in the log");
                     }
-
-                    LOGGER.warn("The connector is trying to read redo log starting at " + offset + ", but this is no longer "
-                            + "available on the server. Reconfigure the connector to use a snapshot when needed if you want to recover. " +
-                            "If not the connector will streaming from the last available position in the log");
                 }
 
                 if (schema.isHistorized()) {
@@ -147,13 +150,13 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
         }
     }
 
-    public boolean isLogPositionAvailable(LogPositionValidator logPositionValidator, OffsetContext offsetContext, CommonConnectorConfig config) {
+    public boolean isLogPositionAvailable(LogPositionValidator logPositionValidator, Partition partition, OffsetContext offsetContext, CommonConnectorConfig config) {
 
         if (logPositionValidator == null) {
             LOGGER.warn("Current JDBC connection implementation is not providing a log position validator implementation. The check will always be 'true'");
             return true;
         }
-        return logPositionValidator.validate(offsetContext, config);
+        return logPositionValidator.validate(partition, offsetContext, config);
     }
 
     public enum State {
