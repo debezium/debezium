@@ -22,7 +22,6 @@ import org.bson.BsonDocument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.mongodb.MongoChangeStreamException;
 import com.mongodb.MongoException;
 import com.mongodb.ServerAddress;
 import com.mongodb.ServerCursor;
@@ -227,13 +226,13 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
 
         private Optional<ResumableChangeStreamEvent<TResult>> fetchEvent(MongoChangeStreamCursor<ChangeStreamDocument<TResult>> cursor) {
             var beforeEventPollTime = clock.currentTimeAsInstant();
-            ChangeStreamDocument<TResult> document;
+            ChangeStreamDocument<TResult> document = null;
             try {
                 document = cursor.tryNext();
             }
             catch (MongoException e) {
                 running.set(false);
-                throw new MongoChangeStreamException("Error while fetching change stream event" + e.getMessage());
+                LOGGER.error("Error while fetching change stream event", e);
             }
             metrics.onSourceEventPolled(document, clock, beforeEventPollTime);
             throttleIfNeeded(document);
@@ -307,18 +306,13 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
     @Override
     public ResumableChangeStreamEvent<TResult> tryNext() {
         var event = pollWithDelay();
-        try {
-            if (event != null) {
-                lastResumeToken = event.resumeToken;
-            }
-            else {
-                if (!fetcher.isRunning() && fetcher.isEmpty()) {
-                    throw new MongoChangeStreamException("Failed to fetch event from change stream cursor, cursor is closed");
-                }
-            }
+        if (event != null) {
+            lastResumeToken = event.resumeToken;
         }
-        catch (MongoException e) {
-            throw new MongoException(e.getMessage());
+        else {
+            if (!fetcher.isRunning() && fetcher.isEmpty()) {
+                throw new MongoException("Fetcher thread has stopped and buffer is empty");
+            }
         }
         return event;
     }
