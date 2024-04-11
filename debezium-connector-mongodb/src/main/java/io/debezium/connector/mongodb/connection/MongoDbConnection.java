@@ -208,11 +208,11 @@ public final class MongoDbConnection implements AutoCloseable {
 
                 try (var ignored = stream.cursor()) {
                     LOGGER.info("Valid resume token present, so no snapshot will be performed'");
-                    return false;
+                    return true;
                 }
                 catch (MongoCommandException | MongoChangeStreamException e) {
                     LOGGER.info("Invalid resume token present, snapshot will be performed'");
-                    return true;
+                    return false;
                 }
             });
         }
