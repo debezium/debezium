@@ -22,7 +22,6 @@ import org.bson.BsonDocument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.mongodb.MongoException;
 import com.mongodb.ServerAddress;
 import com.mongodb.ServerCursor;
 import com.mongodb.client.ChangeStreamIterable;
@@ -128,6 +127,7 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
         private final DelayStrategy throttler;
         private final AtomicBoolean running;
         private final AtomicReference<MongoChangeStreamCursor<ChangeStreamDocument<TResult>>> cursorRef;
+        private final AtomicReference<Throwable> error;
         private final MongoDbStreamingChangeEventSourceMetrics metrics;
         private final Clock clock;
         private int noMessageIterations = 0;
@@ -145,6 +145,7 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
             this.running = new AtomicBoolean(false);
             this.cursorRef = new AtomicReference<>(null);
             this.queue = new ConcurrentLinkedQueue<>();
+            this.error = new AtomicReference<>(null);
         }
 
         public EventFetcher(ChangeStreamIterable<TResult> stream,
@@ -164,6 +165,24 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
             return running.get();
         }
 
+        /**
+         * Indicates whether an error occurred during event fetching
+         *
+         * @return true if error occurred, false otherwise
+         */
+        public boolean hasError() {
+            return error.get() != null;
+        }
+
+        /**
+         * Returns error that occurred during event fetching
+         *
+         * @return error or null if no error occurred
+         */
+        public Throwable getError() {
+            return error.get();
+        }
+
         @Override
         public void close() {
             running.set(false);
@@ -171,7 +190,13 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
 
         public ResumableChangeStreamEvent<TResult> poll() {
             var event = queue.poll();
-            if (event != null) {
+            if (event == null) {
+                if (hasError()) {
+                    close();
+                    throw new DebeziumException("Unable to fetch change stream events", getError());
+                }
+            }
+            else {
                 capacity.release();
             }
             return event;
@@ -199,7 +224,8 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
                 noMessageIterations = 0;
                 fetchEvents(cursor);
             }
-            catch (InterruptedException e) {
+            catch (Throwable e) {
+                error.set(e);
                 throw new DebeziumException("Fetcher thread interrupted", e);
             }
             finally {
@@ -226,23 +252,15 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
 
         private Optional<ResumableChangeStreamEvent<TResult>> fetchEvent(MongoChangeStreamCursor<ChangeStreamDocument<TResult>> cursor) {
             var beforeEventPollTime = clock.currentTimeAsInstant();
-            ChangeStreamDocument<TResult> document = null;
-            try {
-                document = cursor.tryNext();
-            }
-            catch (MongoException e) {
-                running.set(false);
-                LOGGER.error("Error while fetching change stream event", e);
-            }
+            var document = cursor.tryNext();
             metrics.onSourceEventPolled(document, clock, beforeEventPollTime);
             throttleIfNeeded(document);
 
             // Only create resumable event if we have either document or cursor resume token
             // Cursor resume token may be `null` in case of issues like SERVER-63772, and situations called out in the Javadocs:
             // > resume token [...] can be null if the cursor has either not been iterated yet, or the cursor is closed.
-            ChangeStreamDocument<TResult> finalDocument = document;
             return Optional.<ResumableChangeStreamEvent<TResult>> empty()
-                    .or(() -> Optional.ofNullable(finalDocument).map(ResumableChangeStreamEvent::new))
+                    .or(() -> Optional.ofNullable(document).map(ResumableChangeStreamEvent::new))
                     .or(() -> Optional.ofNullable(cursor.getResumeToken()).map(ResumableChangeStreamEvent::new));
         }
 
@@ -308,11 +326,6 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
         var event = pollWithDelay();
         if (event != null) {
             lastResumeToken = event.resumeToken;
-        }
-        else {
-            if (!fetcher.isRunning() && fetcher.isEmpty()) {
-                throw new MongoException("Fetcher thread has stopped and buffer is empty");
-            }
         }
         return event;
     }
