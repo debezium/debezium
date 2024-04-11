@@ -9,12 +9,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.Test;
 
-public class BasicTransactionInfoTest {
+public class DefaultTransactionInfoTest {
 
     @Test
     public void testGetId() {
         String expectedId = "id";
-        BasicTransactionInfo info = new BasicTransactionInfo(expectedId);
+        DefaultTransactionInfo info = new DefaultTransactionInfo(expectedId);
         assertThat(info.getTransactionId()).isEqualTo(expectedId);
     }
 

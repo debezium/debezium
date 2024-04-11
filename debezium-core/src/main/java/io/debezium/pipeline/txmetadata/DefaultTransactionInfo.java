@@ -5,11 +5,11 @@
  */
 package io.debezium.pipeline.txmetadata;
 
-public class BasicTransactionInfo implements TransactionInfo {
+public class DefaultTransactionInfo implements TransactionInfo {
 
     private final String transactionId;
 
-    public BasicTransactionInfo(String transactionId) {
+    public DefaultTransactionInfo(String transactionId) {
         this.transactionId = transactionId;
     }
 

@@ -5,6 +5,17 @@
  */
 package io.debezium.pipeline.txmetadata;
 
+/**
+ * An interface for containing all metadata needed to for {@link TransactionContext} to
+ * process the transaction. At least needs to provide transaction ID, can add additional
+ * transaction metadata for tracking with a connector-specific subclass of {@link TransactionContext}.
+ */
 public interface TransactionInfo {
+
+    /**
+     * Return the string representation of the transaction ID.
+     *
+     * @return String of transaction ID
+     */
     String getTransactionId();
 }

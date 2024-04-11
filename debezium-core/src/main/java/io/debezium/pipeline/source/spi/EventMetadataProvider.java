@@ -11,7 +11,7 @@ import java.util.Map;
 import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.pipeline.spi.OffsetContext;
-import io.debezium.pipeline.txmetadata.BasicTransactionInfo;
+import io.debezium.pipeline.txmetadata.DefaultTransactionInfo;
 import io.debezium.pipeline.txmetadata.TransactionInfo;
 import io.debezium.spi.schema.DataCollectionId;
 
@@ -50,6 +50,6 @@ public interface EventMetadataProvider {
     }
 
     default TransactionInfo getTransactionInfo(DataCollectionId source, OffsetContext offset, Object key, Struct value) {
-        return new BasicTransactionInfo(getTransactionId(source, offset, key, value));
+        return new DefaultTransactionInfo(getTransactionId(source, offset, key, value));
     }
 }

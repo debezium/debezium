@@ -123,22 +123,22 @@ public class TransactionMonitor {
     }
 
     protected Struct prepareTxKey(OffsetContext offsetContext) {
-        final Struct key = transactionStructMaker.prepareTxKey(offsetContext);
+        final Struct key = transactionStructMaker.buildTransactionKey(offsetContext);
         return key;
     }
 
     protected Struct prepareTxBeginValue(OffsetContext offsetContext, Instant timestamp) {
-        final Struct value = transactionStructMaker.prepareTxBeginValue(offsetContext, timestamp);
+        final Struct value = transactionStructMaker.buildBeginTransactionValue(offsetContext, timestamp);
         return value;
     }
 
     protected Struct prepareTxEndValue(OffsetContext offsetContext, Instant timestamp) {
-        final Struct value = transactionStructMaker.prepareTxEndValue(offsetContext, timestamp);
+        final Struct value = transactionStructMaker.buildEndTransactionValue(offsetContext, timestamp);
         return value;
     }
 
     protected Struct prepareTxStruct(OffsetContext offsetContext, long dataCollectionEventOrder, Struct value) {
-        final Struct txStruct = transactionStructMaker.prepareTxStruct(offsetContext, dataCollectionEventOrder, value);
+        final Struct txStruct = transactionStructMaker.addTransactionBlock(offsetContext, dataCollectionEventOrder, value);
         return txStruct;
     }
 
