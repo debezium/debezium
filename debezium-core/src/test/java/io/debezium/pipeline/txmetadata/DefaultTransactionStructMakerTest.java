@@ -10,22 +10,23 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.apache.kafka.connect.data.Schema;
 import org.junit.Test;
 
+import io.debezium.config.Configuration;
 import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
 
-public class BasicTransactionStructMakerTest {
+public class DefaultTransactionStructMakerTest {
 
     @Test
     public void getTransactionBlockSchema() {
-        Schema expectedSchema = BasicTransactionStructMaker.TRANSACTION_BLOCK_SCHEMA;
-        BasicTransactionStructMaker transactionStructMaker = new BasicTransactionStructMaker();
+        Schema expectedSchema = DefaultTransactionStructMaker.TRANSACTION_BLOCK_SCHEMA;
+        DefaultTransactionStructMaker transactionStructMaker = new DefaultTransactionStructMaker(Configuration.empty());
         assertThat(transactionStructMaker.getTransactionBlockSchema()).isEqualTo(expectedSchema);
     }
 
     @Test
     public void getEventCountPerDataCollectionSchema() {
         Schema expectedSchema = AbstractTransactionStructMaker.EVENT_COUNT_PER_DATA_COLLECTION_SCHEMA;
-        BasicTransactionStructMaker transactionStructMaker = new BasicTransactionStructMaker();
+        DefaultTransactionStructMaker transactionStructMaker = new DefaultTransactionStructMaker(Configuration.empty());
         assertThat(transactionStructMaker.getEventCountPerDataCollectionSchema()).isEqualTo(expectedSchema);
     }
 
@@ -33,8 +34,7 @@ public class BasicTransactionStructMakerTest {
     public void getTransactionKeySchema() {
         SchemaNameAdjuster adjuster = SchemaNameAdjuster.NO_OP;
         Schema expectedSchema = SchemaFactory.get().transactionKeySchema(adjuster);
-        BasicTransactionStructMaker transactionStructMaker = new BasicTransactionStructMaker();
-        transactionStructMaker.setSchemaNameAdjuster(adjuster);
+        DefaultTransactionStructMaker transactionStructMaker = new DefaultTransactionStructMaker(Configuration.empty());
         assertThat(transactionStructMaker.getTransactionKeySchema()).isEqualTo(expectedSchema);
     }
 
@@ -42,8 +42,7 @@ public class BasicTransactionStructMakerTest {
     public void getTransactionValueSchema() {
         SchemaNameAdjuster adjuster = SchemaNameAdjuster.NO_OP;
         Schema expectedSchema = SchemaFactory.get().transactionValueSchema(adjuster);
-        BasicTransactionStructMaker transactionStructMaker = new BasicTransactionStructMaker();
-        transactionStructMaker.setSchemaNameAdjuster(adjuster);
+        DefaultTransactionStructMaker transactionStructMaker = new DefaultTransactionStructMaker(Configuration.empty());
         assertThat(transactionStructMaker.getTransactionValueSchema()).isEqualTo(expectedSchema);
     }
 }

@@ -46,7 +46,7 @@ import io.debezium.heartbeat.HeartbeatErrorHandler;
 import io.debezium.heartbeat.HeartbeatImpl;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.notification.channels.SinkNotificationChannel;
-import io.debezium.pipeline.txmetadata.BasicTransactionStructMaker;
+import io.debezium.pipeline.txmetadata.DefaultTransactionStructMaker;
 import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.pipeline.txmetadata.TransactionStructMaker;
 import io.debezium.relational.CustomConverterRegistry;
@@ -724,7 +724,7 @@ public abstract class CommonConnectorConfig {
             .withType(Type.CLASS)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.LOW)
-            .withDefault(BasicTransactionStructMaker.class.getName())
+            .withDefault(DefaultTransactionStructMaker.class.getName())
             .withDescription(
                     "Class to make transaction struct & schema");
 
@@ -1689,8 +1689,7 @@ public abstract class CommonConnectorConfig {
 
     public TransactionStructMaker getTransactionStructMaker(Field transactionStructMakerField) {
         final TransactionStructMaker transactionStructMaker;
-        transactionStructMaker = config.getInstance(transactionStructMakerField, TransactionStructMaker.class);
-        transactionStructMaker.setSchemaNameAdjuster(schemaNameAdjuster());
+        transactionStructMaker = config.getInstance(transactionStructMakerField, TransactionStructMaker.class, config);
         if (transactionStructMaker == null) {
             throw new DebeziumException("Unable to instantiate the transaction struct maker class " + TRANSACTION_STRUCT_MAKER);
         }

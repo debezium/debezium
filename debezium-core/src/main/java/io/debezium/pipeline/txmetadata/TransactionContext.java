@@ -35,10 +35,11 @@ public class TransactionContext {
             + TransactionStructMaker.DEBEZIUM_TRANSACTION_DATA_COLLECTION_ORDER_KEY + "_";
     private static final int OFFSET_TABLE_COUNT_PREFIX_LENGTH = OFFSET_TABLE_COUNT_PREFIX.length();
 
-    public String transactionId = null;
-    public final Map<String, Long> perTableEventCount = new HashMap<>();
-    public final Map<String, Long> viewPerTableEventCount = Collections.unmodifiableMap(perTableEventCount);
-    public long totalEventCount = 0;
+    private String transactionId = null;
+
+    private final Map<String, Long> perTableEventCount = new HashMap<>();
+    private final Map<String, Long> viewPerTableEventCount = Collections.unmodifiableMap(perTableEventCount);
+    private long totalEventCount = 0;
 
     private void reset() {
         transactionId = null;
@@ -98,6 +99,18 @@ public class TransactionContext {
         return totalEventCount;
     }
 
+    public void setTransactionId(String transactionId) {
+        this.transactionId = transactionId;
+    }
+
+    public void putPerTableEventCount(Map<String, Long> perTableEventCount) {
+        this.perTableEventCount.putAll(perTableEventCount);
+    }
+
+    public void setTotalEventCount(long totalEventCount) {
+        this.totalEventCount = totalEventCount;
+    }
+
     public void beginTransaction(TransactionInfo transactionInfo) {
         reset();
         transactionId = transactionInfo.getTransactionId();
@@ -105,7 +118,7 @@ public class TransactionContext {
 
     public void beginTransaction(String transactionId) {
         // Needed for backward compatibility where other connectors directly call/interact with beginTransaction
-        beginTransaction(new BasicTransactionInfo(transactionId));
+        beginTransaction(new DefaultTransactionInfo(transactionId));
     }
 
     public void endTransaction() {

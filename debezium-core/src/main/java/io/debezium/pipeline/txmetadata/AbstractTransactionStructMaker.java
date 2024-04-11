@@ -5,6 +5,8 @@
  */
 package io.debezium.pipeline.txmetadata;
 
+import static io.debezium.config.CommonConnectorConfig.SCHEMA_NAME_ADJUSTMENT_MODE;
+
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -14,6 +16,8 @@ import java.util.Set;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 
+import io.debezium.config.CommonConnectorConfig;
+import io.debezium.config.Configuration;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
@@ -24,14 +28,14 @@ public abstract class AbstractTransactionStructMaker implements TransactionStruc
     protected Schema transactionKeySchema;
     protected Schema transactionValueSchema;
 
-    @Override
-    public void setSchemaNameAdjuster(SchemaNameAdjuster adjuster) {
+    public AbstractTransactionStructMaker(Configuration config) {
+        SchemaNameAdjuster adjuster = CommonConnectorConfig.SchemaNameAdjustmentMode.parse(config.getString(SCHEMA_NAME_ADJUSTMENT_MODE)).createAdjuster();
         transactionKeySchema = SchemaFactory.get().transactionKeySchema(adjuster);
         transactionValueSchema = SchemaFactory.get().transactionValueSchema(adjuster);
     }
 
     @Override
-    public Struct prepareTxStruct(OffsetContext offsetContext, long dataCollectionEventOrder, Struct value) {
+    public Struct addTransactionBlock(OffsetContext offsetContext, long dataCollectionEventOrder, Struct value) {
         TransactionContext transactionContext = offsetContext.getTransactionContext();
         final Struct txStruct = new Struct(getTransactionBlockSchema());
         txStruct.put(DEBEZIUM_TRANSACTION_ID_KEY, transactionContext.getTransactionId());
@@ -41,7 +45,7 @@ public abstract class AbstractTransactionStructMaker implements TransactionStruc
     }
 
     @Override
-    public Struct prepareTxEndValue(OffsetContext offsetContext, Instant timestamp) {
+    public Struct buildEndTransactionValue(OffsetContext offsetContext, Instant timestamp) {
         TransactionContext transactionContext = offsetContext.getTransactionContext();
         final Struct value = new Struct(getTransactionValueSchema());
         value.put(DEBEZIUM_TRANSACTION_STATUS_KEY, TransactionStatus.END.name());
@@ -63,7 +67,7 @@ public abstract class AbstractTransactionStructMaker implements TransactionStruc
     }
 
     @Override
-    public Struct prepareTxBeginValue(OffsetContext offsetContext, Instant timestamp) {
+    public Struct buildBeginTransactionValue(OffsetContext offsetContext, Instant timestamp) {
         TransactionContext transactionContext = offsetContext.getTransactionContext();
         final Struct value = new Struct(getTransactionValueSchema());
         value.put(DEBEZIUM_TRANSACTION_STATUS_KEY, TransactionStatus.BEGIN.name());
@@ -73,7 +77,7 @@ public abstract class AbstractTransactionStructMaker implements TransactionStruc
     }
 
     @Override
-    public Struct prepareTxKey(OffsetContext offsetContext) {
+    public Struct buildTransactionKey(OffsetContext offsetContext) {
         TransactionContext transactionContext = offsetContext.getTransactionContext();
         final Struct key = new Struct(getTransactionKeySchema());
         key.put(DEBEZIUM_TRANSACTION_ID_KEY, transactionContext.getTransactionId());

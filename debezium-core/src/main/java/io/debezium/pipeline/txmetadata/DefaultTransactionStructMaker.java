@@ -7,10 +7,16 @@ package io.debezium.pipeline.txmetadata;
 
 import org.apache.kafka.connect.data.Schema;
 
+import io.debezium.config.Configuration;
 import io.debezium.schema.SchemaFactory;
 
-public class BasicTransactionStructMaker extends AbstractTransactionStructMaker implements TransactionStructMaker {
+public class DefaultTransactionStructMaker extends AbstractTransactionStructMaker implements TransactionStructMaker {
+
     public static final Schema TRANSACTION_BLOCK_SCHEMA = SchemaFactory.get().transactionBlockSchema();
+
+    public DefaultTransactionStructMaker(Configuration config) {
+        super(config);
+    }
 
     @Override
     public Schema getTransactionBlockSchema() {

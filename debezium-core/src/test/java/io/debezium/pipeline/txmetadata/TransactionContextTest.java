@@ -21,7 +21,7 @@ public class TransactionContextTest {
     public void testGetTransactionId() {
         TransactionContext context = new TransactionContext();
         String txId = "foo";
-        TransactionInfo info = new BasicTransactionInfo(txId);
+        TransactionInfo info = new DefaultTransactionInfo(txId);
         context.beginTransaction(info);
         assertThat(context.getTransactionId()).isEqualTo(txId);
     }
@@ -30,7 +30,7 @@ public class TransactionContextTest {
     public void store() {
         TransactionContext context = new TransactionContext();
         String txId = "foo";
-        TransactionInfo info = new BasicTransactionInfo(txId);
+        TransactionInfo info = new DefaultTransactionInfo(txId);
         context.beginTransaction(info);
         Map offsets = new HashMap();
         Map actualOffsets = context.store(offsets);
@@ -49,7 +49,7 @@ public class TransactionContextTest {
     public void isTransactionInProgress() {
         TransactionContext context = new TransactionContext();
         String txId = "foo";
-        TransactionInfo info = new BasicTransactionInfo(txId);
+        TransactionInfo info = new DefaultTransactionInfo(txId);
         context.beginTransaction(info);
         assertThat(context.isTransactionInProgress()).isEqualTo(true);
         context.endTransaction();
@@ -60,7 +60,7 @@ public class TransactionContextTest {
     public void getTotalEventCount() {
         TransactionContext context = new TransactionContext();
         String txId = "foo";
-        TransactionInfo info = new BasicTransactionInfo(txId);
+        TransactionInfo info = new DefaultTransactionInfo(txId);
         context.beginTransaction(info);
         assertThat(context.getTotalEventCount()).isEqualTo(0);
         context.event(new TableId("catalog", "schema", "table"));
@@ -71,7 +71,7 @@ public class TransactionContextTest {
     public void endTransaction() {
         TransactionContext context = new TransactionContext();
         String txId = "foo";
-        TransactionInfo info = new BasicTransactionInfo(txId);
+        TransactionInfo info = new DefaultTransactionInfo(txId);
         context.beginTransaction(info);
         assertThat(context.getTransactionId()).isEqualTo(txId);
         context.endTransaction();
@@ -82,7 +82,7 @@ public class TransactionContextTest {
     public void getPerTableEventCount() {
         TransactionContext context = new TransactionContext();
         String txId = "foo";
-        TransactionInfo info = new BasicTransactionInfo(txId);
+        TransactionInfo info = new DefaultTransactionInfo(txId);
         context.beginTransaction(info);
         assertThat(context.getTotalEventCount()).isEqualTo(0);
         DataCollectionId id1 = new TableId("catalog", "schema", "table1");
@@ -98,7 +98,7 @@ public class TransactionContextTest {
     @Test
     public void testToString() {
         TransactionContext context = new TransactionContext();
-        TransactionInfo info = new BasicTransactionInfo("foo");
+        TransactionInfo info = new DefaultTransactionInfo("foo");
         context.beginTransaction(info);
         assertThat(context.toString()).isEqualTo("TransactionContext [currentTransactionId=foo, perTableEventCount={}, totalEventCount=0]");
     }
