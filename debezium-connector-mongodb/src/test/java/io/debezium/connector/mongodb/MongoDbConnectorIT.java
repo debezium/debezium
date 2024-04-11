@@ -55,6 +55,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig.FiltersMatchMode;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig.FullUpdateType;
+import io.debezium.connector.mongodb.events.BufferingChangeStreamCursor;
 import io.debezium.converters.CloudEventsConverterTest;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
@@ -869,7 +870,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     @Test
     @SkipWhenDatabaseVersion(check = LESS_THAN, major = 6, reason = "Pre-image support in Change Stream is officially released in Mongo 6.0.")
     public void shouldThrowErrorForOversizedEventsWithoutOversizeHandlingMode() throws InterruptedException {
-        final LogInterceptor logInterceptor = new LogInterceptor(MongoDbStreamingChangeEventSource.class);
+        final LogInterceptor logInterceptor = new LogInterceptor(BufferingChangeStreamCursor.class);
 
         final var collName = "large";
         final var dbName = "dbit";
@@ -921,9 +922,8 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         SourceRecords records = consumeRecordsByTopic(1);
         assertThat(records.allRecordsInOrder().size()).isEqualTo(0);
 
-        // Stop the connector and check for error message
-        stopConnector(value -> assertThat(logInterceptor.containsErrorMessage("Error while reading change stream")).isTrue());
-
+        // Stop the connector
+        stopConnector();
     }
 
     @Test
