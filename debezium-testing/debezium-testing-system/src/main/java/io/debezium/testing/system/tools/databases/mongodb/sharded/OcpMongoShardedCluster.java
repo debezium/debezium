@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import io.debezium.testing.system.tools.databases.mongodb.sharded.componentproviders.OcpConfigServerModelProvider;
 import io.fabric8.kubernetes.api.model.ConfigMap;
 import io.fabric8.kubernetes.api.model.ConfigMapBuilder;
 import io.fabric8.kubernetes.api.model.ObjectMetaBuilder;
@@ -118,12 +119,6 @@ public class OcpMongoShardedCluster implements Startable {
         configServerReplicaSet.stop();
         mongosRouter.stop();
         isRunning = false;
-    }
-
-    public void waitForStopped() {
-        shardReplicaSets.parallelStream().forEach(OcpMongoReplicaSet::waitForStopped);
-        configServerReplicaSet.waitForStopped();
-        mongosRouter.waitForStopped();
     }
 
     /**

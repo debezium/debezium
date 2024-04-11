@@ -44,10 +44,6 @@ public class OcpMongoDeploymentManager implements Startable {
         ocpUtils.scaleDeploymentToZero(deployment);
     }
 
-    public void waitForStopped() {
-        ocpUtils.waitForDeploymentToScaleDown(deployment);
-    }
-
     public String getHostname() {
         return service.getMetadata().getName() + "." + project + ".svc.cluster.local";
     }

@@ -158,10 +158,6 @@ public class OcpMongoReplicaSet implements Startable {
         return shardNum;
     }
 
-    public void waitForStopped() {
-        members.parallelStream().forEach(OcpMongoDeploymentManager::waitForStopped);
-    }
-
     /**
      * execute mongosh command/script on node number 0 (member 0 should always be primary)
      * @param command
