@@ -51,6 +51,7 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BufferingChangeStreamCursor.class);
     public static final int THROTTLE_NO_MESSAGE_BEFORE_PAUSE = 5;
+    public static final int FETCHER_SHUTDOWN_TIMEOUT = 30;
 
     private final EventFetcher<TResult> fetcher;
     private final ExecutorService executor;
@@ -298,7 +299,7 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
 
         return new BufferingChangeStreamCursor<>(
                 new EventFetcher<>(stream, config.getMaxBatchSize(), metrics, clock, config.getPollInterval()),
-                Threads.newFixedThreadPool(MongoDbConnector.class, taskContext.getServerName(), "replicator-buffer", 1),
+                Threads.newFixedThreadPool(MongoDbConnector.class, taskContext.getServerName(), "replicator-fetcher", 1),
                 config.getPollInterval());
     }
 
@@ -398,5 +399,12 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
     public void close() {
         fetcher.close();
         executor.shutdown();
+        try {
+            LOGGER.info("Awaiting fetcher thread termination");
+            executor.awaitTermination(FETCHER_SHUTDOWN_TIMEOUT, TimeUnit.SECONDS);
+        }
+        catch (InterruptedException e) {
+            LOGGER.warn("Interrupted while waiting for fetcher thread shutdown");
+        }
     }
 }
