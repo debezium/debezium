@@ -8,6 +8,7 @@ package io.debezium.connector.oracle.logminer.processor.infinispan;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.Iterator;
@@ -389,6 +390,71 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
             dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
 
             return endScn;
+        }
+    }
+
+    @Override
+    public void abandonTransactions(Duration retention) throws InterruptedException {
+        if (!Duration.ZERO.equals(retention)) {
+            Optional<Scn> lastScnToAbandonTransactions = getLastScnToAbandon(jdbcConnection, retention);
+            if (lastScnToAbandonTransactions.isPresent()) {
+                Scn thresholdScn = lastScnToAbandonTransactions.get();
+                Scn smallestScn = getTransactionCacheMinimumScn();
+                if (!smallestScn.isNull() && thresholdScn.compareTo(smallestScn) >= 0) {
+                    boolean first = true;
+                    Iterator<Map.Entry<String, InfinispanTransaction>> iterator = getTransactionCache().entrySet().iterator();
+                    try {
+                        while (iterator.hasNext()) {
+                            Map.Entry<String, InfinispanTransaction> entry = iterator.next();
+                            if (entry.getValue().getStartScn().compareTo(thresholdScn) <= 0) {
+                                if (first) {
+                                    LOGGER.warn("All transactions with SCN <= {} will be abandoned.", thresholdScn);
+                                    if (LOGGER.isDebugEnabled()) {
+                                        try (Stream<String> s = getTransactionCache().keySet().stream()) {
+                                            LOGGER.debug("List of transactions in the cache before transactions being abandoned: [{}]",
+                                                    s.collect(Collectors.joining(",")));
+                                        }
+                                    }
+                                    first = false;
+                                }
+                                LOGGER.warn("Transaction {} (start SCN {}, change time {}, redo thread {}, {} events) is being abandoned.",
+                                        entry.getKey(), entry.getValue().getStartScn(), entry.getValue().getChangeTime(),
+                                        entry.getValue().getRedoThreadId(), entry.getValue().getNumberOfEvents());
+
+                                cleanupAfterTransactionRemovedFromCache(entry.getValue(), true);
+                                iterator.remove();
+
+                                metrics.addAbandonedTransactionId(entry.getKey());
+                                metrics.setActiveTransactionCount(transactionCacheSize());
+                            }
+                        }
+                    }
+                    finally {
+                        if (iterator instanceof CloseableIterator) {
+                            ((CloseableIterator<Map.Entry<String, InfinispanTransaction>>) iterator).close();
+                        }
+                    }
+                    if (LOGGER.isDebugEnabled()) {
+                        try (Stream<String> s = transactionCacheKeys().stream()) {
+                            LOGGER.debug("List of transactions in the cache after transactions being abandoned: [{}]",
+                                    s.collect(Collectors.joining(",")));
+                        }
+                    }
+
+                    // Update the oldest scn metric are transaction abandonment
+                    final Optional<InfinispanTransaction> oldestTransaction = getOldestTransactionInCache();
+                    if (oldestTransaction.isPresent()) {
+                        final InfinispanTransaction transaction = oldestTransaction.get();
+                        metrics.setOldestScnDetails(transaction.getStartScn(), transaction.getChangeTime());
+                    }
+                    else {
+                        metrics.setOldestScnDetails(Scn.NULL, null);
+                    }
+
+                    offsetContext.setScn(thresholdScn);
+                }
+                dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
+            }
         }
     }
 

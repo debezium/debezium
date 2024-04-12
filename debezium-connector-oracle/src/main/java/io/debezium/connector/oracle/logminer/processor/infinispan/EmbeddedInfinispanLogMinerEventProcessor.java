@@ -10,9 +10,12 @@ import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFF
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFFER_INFINISPAN_CACHE_SCHEMA_CHANGES;
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS;
 
+import java.util.Collection;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 
 import org.infinispan.Cache;
 import org.infinispan.commons.api.BasicCache;
@@ -109,6 +112,41 @@ public class EmbeddedInfinispanLogMinerEventProcessor extends AbstractInfinispan
     @Override
     public BasicCache<String, InfinispanTransaction> getTransactionCache() {
         return transactionCache;
+    }
+
+    @Override
+    protected Collection<InfinispanTransaction> transactionCacheValues() {
+        return transactionCache.values();
+    }
+
+    @Override
+    protected InfinispanTransaction transactionCacheGet(String key) {
+        return transactionCache.get(key);
+    }
+
+    @Override
+    protected void transactionCachePut(String key, InfinispanTransaction value) {
+        transactionCache.put(key, value);
+    }
+
+    @Override
+    protected int transactionCacheSize() {
+        return transactionCache.size();
+    }
+
+    @Override
+    protected boolean transactionCacheContainsKey(String key) {
+        return transactionCache.containsKey(key);
+    }
+
+    @Override
+    protected Set<String> transactionCacheKeys() {
+        return transactionCache.keySet();
+    }
+
+    @Override
+    protected Iterator transactionCacheIterator() {
+        return transactionCache.entrySet().iterator();
     }
 
     @Override

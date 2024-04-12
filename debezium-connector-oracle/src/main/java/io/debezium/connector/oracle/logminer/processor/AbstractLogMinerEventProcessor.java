@@ -13,6 +13,7 @@ import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -25,7 +26,6 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.infinispan.commons.util.CloseableIterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -192,7 +192,19 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
      * Returns the {@code TransactionCache} implementation.
      * @return the transaction cache, never {@code null}
      */
-    protected abstract Map<String, T> getTransactionCache();
+    protected abstract Collection<T> transactionCacheValues();
+
+    protected abstract T transactionCacheGet(String key);
+
+    protected abstract void transactionCachePut(String key, T value);
+
+    protected abstract int transactionCacheSize();
+
+    protected abstract boolean transactionCacheContainsKey(String key);
+
+    protected abstract Set<String> transactionCacheKeys();
+
+    protected abstract Iterator transactionCacheIterator();
 
     /**
      * Creates a new transaction based on the supplied {@code START} event.
@@ -260,7 +272,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
 
                 if (metrics.getNumberOfActiveTransactions() > 0 && LOGGER.isDebugEnabled()) {
                     // This is wrapped in try-with-resources specifically for Infinispan performance
-                    try (Stream<T> stream = getTransactionCache().values().stream()) {
+                    try (Stream<T> stream = transactionCacheValues().stream()) {
                         LOGGER.debug("All active transactions: {}",
                                 stream.map(t -> t.getTransactionId() + " (" + t.getStartScn() + ")")
                                         .collect(Collectors.joining(",")));
@@ -353,35 +365,8 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
             // DDL events get filtered inside the DDL handler
             // We do the non-DDL ones here to cover multiple switch handlers in one place.
             if (!EventType.DDL.equals(row.getEventType()) && !tableFilter.isIncluded(row.getTableId())) {
-                if (isUsingHybridStrategy()) {
-                    if (!isTableLookupByObjectIdRequired(row)) {
-                        LOGGER.trace("Skipping change associated with table '{}' which does not match filters.", row.getTableId());
-                        return;
-                    }
-                    // Special use case where the table has been dropped and purged, and we are processing an
-                    // old event for the table that comes prior to the drop.
-                    LOGGER.info("Found DML for dropped table in history with object-id based table name {}.", row.getTableId().table());
-                    for (TableId tableId : schema.tableIds()) {
-                        LOGGER.info("Processing table id '{}'", tableId);
-                        Table table = schema.tableFor(tableId);
-                        for (Attribute attribute : table.attributes()) {
-                            LOGGER.info("Attribute {} with value {}", attribute.name(), attribute.value());
-                        }
-                        Attribute attribute = table.attributeWithName("OBJECT_ID");
-                        if (attribute != null) {
-                            LOGGER.info("Found table '{}' with object id {}", table.id(), attribute.asLong());
-                        }
-                        if (attribute != null && attribute.asLong().equals(row.getObjectId())) {
-                            LOGGER.info("Table lookup resolved to '{}'", table.id());
-                            row.setTableId(table.id());
-                            break;
-                        }
-                    }
-                }
-                if (!tableFilter.isIncluded(row.getTableId())) {
-                    LOGGER.trace("Skipping change associated with table '{}' which does not match filters.", row.getTableId());
-                    return;
-                }
+                LOGGER.trace("Skipping change associated with table '{}' which does not match filters.", row.getTableId());
+                return;
             }
         }
 
@@ -445,10 +430,10 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
      */
     protected void handleStart(LogMinerEventRow row) {
         final String transactionId = row.getTransactionId();
-        final T transaction = getTransactionCache().get(transactionId);
+        final T transaction = transactionCacheGet(transactionId);
         if (transaction == null && !isRecentlyProcessed(transactionId)) {
-            getTransactionCache().put(transactionId, createTransaction(row));
-            metrics.setActiveTransactionCount(getTransactionCache().size());
+            transactionCachePut(transactionId, createTransaction(row));
+            metrics.setActiveTransactionCount(transactionCacheSize());
         }
         else if (transaction != null && !isRecentlyProcessed(transactionId)) {
             LOGGER.trace("Transaction {} is not yet committed and START event detected.", transactionId);
@@ -490,7 +475,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                             transactionId, offsetContext.getCommitScn(), commitScn, lastCommittedScn);
                 }
                 cleanupAfterTransactionRemovedFromCache(transaction, false);
-                metrics.setActiveTransactionCount(getTransactionCache().size());
+                metrics.setActiveTransactionCount(transactionCacheSize());
             }
             return;
         }
@@ -597,7 +582,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         if (transaction != null) {
             finalizeTransactionCommit(transactionId, commitScn);
             cleanupAfterTransactionRemovedFromCache(transaction, false);
-            metrics.setActiveTransactionCount(getTransactionCache().size());
+            metrics.setActiveTransactionCount(transactionCacheSize());
         }
 
         metrics.incrementCommittedTransactionCount();
@@ -723,10 +708,10 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
      * @param row the result set row
      */
     protected void handleRollback(LogMinerEventRow row) {
-        if (getTransactionCache().containsKey(row.getTransactionId())) {
+        if (transactionCacheContainsKey(row.getTransactionId())) {
             LOGGER.debug("Transaction {} was rolled back.", row.getTransactionId());
             finalizeTransactionRollback(row.getTransactionId(), row.getScn());
-            metrics.setActiveTransactionCount(getTransactionCache().size());
+            metrics.setActiveTransactionCount(transactionCacheSize());
         }
         else {
             LOGGER.debug("Transaction {} not found in cache, no events to rollback.", row.getTransactionId());
@@ -789,7 +774,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
             counters.ddlCount++;
             final TableId tableId = row.getTableId();
 
-            final int activeTransactions = getTransactionCache().size();
+            final int activeTransactions = transactionCacheSize();
             boolean advanceLowerScnBoundary = false;
             if (activeTransactions == 0) {
                 // The DDL isn't wrapped in a transaction, fast-forward the lower boundary
@@ -1540,71 +1525,6 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         metrics.incrementOversizedTransactionCount();
     }
 
-    @Override
-    public void abandonTransactions(Duration retention) throws InterruptedException {
-        if (!Duration.ZERO.equals(retention)) {
-            Optional<Scn> lastScnToAbandonTransactions = getLastScnToAbandon(jdbcConnection, retention);
-            if (lastScnToAbandonTransactions.isPresent()) {
-                Scn thresholdScn = lastScnToAbandonTransactions.get();
-                Scn smallestScn = getTransactionCacheMinimumScn();
-                if (!smallestScn.isNull() && thresholdScn.compareTo(smallestScn) >= 0) {
-                    boolean first = true;
-                    Iterator<Map.Entry<String, T>> iterator = getTransactionCache().entrySet().iterator();
-                    try {
-                        while (iterator.hasNext()) {
-                            Map.Entry<String, T> entry = iterator.next();
-                            if (entry.getValue().getStartScn().compareTo(thresholdScn) <= 0) {
-                                if (first) {
-                                    LOGGER.warn("All transactions with SCN <= {} will be abandoned.", thresholdScn);
-                                    if (LOGGER.isDebugEnabled()) {
-                                        try (Stream<String> s = getTransactionCache().keySet().stream()) {
-                                            LOGGER.debug("List of transactions in the cache before transactions being abandoned: [{}]",
-                                                    s.collect(Collectors.joining(",")));
-                                        }
-                                    }
-                                    first = false;
-                                }
-                                LOGGER.warn("Transaction {} (start SCN {}, change time {}, redo thread {}, {} events) is being abandoned.",
-                                        entry.getKey(), entry.getValue().getStartScn(), entry.getValue().getChangeTime(),
-                                        entry.getValue().getRedoThreadId(), entry.getValue().getNumberOfEvents());
-
-                                cleanupAfterTransactionRemovedFromCache(entry.getValue(), true);
-                                iterator.remove();
-
-                                metrics.addAbandonedTransactionId(entry.getKey());
-                                metrics.setActiveTransactionCount(getTransactionCache().size());
-                            }
-                        }
-                    }
-                    finally {
-                        if (iterator instanceof CloseableIterator) {
-                            ((CloseableIterator<Map.Entry<String, T>>) iterator).close();
-                        }
-                    }
-                    if (LOGGER.isDebugEnabled()) {
-                        try (Stream<String> s = getTransactionCache().keySet().stream()) {
-                            LOGGER.debug("List of transactions in the cache after transactions being abandoned: [{}]",
-                                    s.collect(Collectors.joining(",")));
-                        }
-                    }
-
-                    // Update the oldest scn metric are transaction abandonment
-                    final Optional<T> oldestTransaction = getOldestTransactionInCache();
-                    if (oldestTransaction.isPresent()) {
-                        final T transaction = oldestTransaction.get();
-                        metrics.setOldestScnDetails(transaction.getStartScn(), transaction.getChangeTime());
-                    }
-                    else {
-                        metrics.setOldestScnDetails(Scn.NULL, null);
-                    }
-
-                    offsetContext.setScn(thresholdScn);
-                }
-                dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
-            }
-        }
-    }
-
     /**
      * Calculates the SCN as a watermark to abandon for long running transactions.
      * The criteria is do not let the offset SCN expire from archives older the specified retention hours.
@@ -1654,7 +1574,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                 getLastProcessedScnChangeTime(), retention.toMinutes());
 
         Scn calculatedLastScn = Scn.NULL;
-        for (Transaction transaction : getTransactionCache().values()) {
+        for (Transaction transaction : transactionCacheValues()) {
             final Instant changeTime = transaction.getChangeTime();
             final long diffMinutes = Duration.between(getLastProcessedScnChangeTime(), changeTime).abs().toMinutes();
             if (diffMinutes > 0 && diffMinutes > retention.toMinutes()) {

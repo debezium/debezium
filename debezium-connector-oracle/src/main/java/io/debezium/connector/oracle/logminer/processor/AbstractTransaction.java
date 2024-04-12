@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.oracle.logminer.processor;
 
+import java.io.Serializable;
 import java.time.Instant;
 import java.util.Objects;
 
@@ -15,7 +16,9 @@ import io.debezium.connector.oracle.Scn;
  *
  * @author Chris Cranford
  */
-public abstract class AbstractTransaction implements Transaction {
+public abstract class AbstractTransaction implements Transaction, Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     private static final String UNKNOWN = "UNKNOWN";
 
