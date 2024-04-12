@@ -192,7 +192,6 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
             var event = queue.poll();
             if (event == null) {
                 if (hasError()) {
-                    close();
                     throw new DebeziumException("Unable to fetch change stream events", getError());
                 }
             }
@@ -224,9 +223,13 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
                 noMessageIterations = 0;
                 fetchEvents(cursor);
             }
+            catch (InterruptedException e) {
+                LOGGER.error("Fetcher thread interrupted", e);
+                throw new DebeziumException("Fetcher thread interrupted", e);
+            }
             catch (Throwable e) {
                 error.set(e);
-                throw new DebeziumException("Fetcher thread interrupted", e);
+                LOGGER.error("Fetcher thread has failed", e);
             }
             finally {
                 cursorRef.set(null);
@@ -317,6 +320,7 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
     }
 
     public BufferingChangeStreamCursor<TResult> start() {
+        LOGGER.info("Fetcher submitted for execution: {} @ {}", fetcher, executor);
         executor.submit(fetcher);
         return this;
     }

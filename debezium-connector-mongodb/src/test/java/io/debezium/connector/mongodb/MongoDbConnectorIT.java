@@ -871,6 +871,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     @SkipWhenDatabaseVersion(check = LESS_THAN, major = 6, reason = "Pre-image support in Change Stream is officially released in Mongo 6.0.")
     public void shouldThrowErrorForOversizedEventsWithoutOversizeHandlingMode() throws InterruptedException {
         final LogInterceptor logInterceptor = new LogInterceptor(BufferingChangeStreamCursor.class);
+        final LogInterceptor logInterceptor2 = new LogInterceptor(MongoDbStreamingChangeEventSource.class);
 
         final var collName = "large";
         final var dbName = "dbit";
@@ -921,6 +922,9 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         // Consume records
         SourceRecords records = consumeRecordsByTopic(1);
         assertThat(records.allRecordsInOrder().size()).isEqualTo(0);
+
+        logInterceptor.containsErrorMessage("Fetcher thread has failed");
+        logInterceptor2.containsErrorMessage("Error while reading change stream");
 
         // Stop the connector
         stopConnector();
