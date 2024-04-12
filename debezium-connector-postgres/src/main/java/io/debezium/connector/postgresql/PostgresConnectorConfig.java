@@ -1123,6 +1123,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     USER,
                     PASSWORD,
                     DATABASE_NAME,
+                    QUERY_TIMEOUT_MS,
                     PLUGIN_NAME,
                     SLOT_NAME,
                     PUBLICATION_NAME,

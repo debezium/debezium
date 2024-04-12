@@ -256,7 +256,7 @@ public class TestHelper {
     /**
      * Returns a configuration builder based on the test schema and user account settings.
      */
-    private static Configuration.Builder testConfig() {
+    public static Configuration.Builder testConfig() {
         JdbcConfiguration jdbcConfiguration = testJdbcConfig();
         Configuration.Builder builder = Configuration.create();
 
@@ -308,6 +308,15 @@ public class TestHelper {
      */
     public static OracleConnection testConnection() {
         Configuration config = testConfig().build();
+        Configuration jdbcConfig = config.subset(DATABASE_PREFIX, true);
+        return createConnection(config, JdbcConfiguration.adapt(jdbcConfig), false);
+    }
+
+    /**
+     * Return a test connection that is suitable for performing test database changes in tests.
+     */
+    public static OracleConnection testConnection(Configuration config) {
+
         Configuration jdbcConfig = config.subset(DATABASE_PREFIX, true);
         return createConnection(config, JdbcConfiguration.adapt(jdbcConfig), false);
     }
