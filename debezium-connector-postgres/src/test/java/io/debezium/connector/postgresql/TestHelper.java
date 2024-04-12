@@ -142,6 +142,16 @@ public final class TestHelper {
     }
 
     /**
+     * Obtain a default DB connection.
+     *
+     * @param jdbcConfiguration jdbc configuration to use
+     * @return the PostgresConnection instance; never null
+     */
+    public static PostgresConnection create(JdbcConfiguration jdbcConfiguration) {
+        return new PostgresConnection(jdbcConfiguration, CONNECTION_TEST);
+    }
+
+    /**
      * Obtain a DB connection providing type registry.
      *
      * @return the PostgresConnection instance; never null

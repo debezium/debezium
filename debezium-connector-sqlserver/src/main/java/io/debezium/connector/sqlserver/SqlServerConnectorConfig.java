@@ -486,6 +486,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                     PORT,
                     USER,
                     PASSWORD,
+                    QUERY_TIMEOUT_MS,
                     INSTANCE)
             .connector(
                     SNAPSHOT_MODE,

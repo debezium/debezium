@@ -327,6 +327,7 @@ public class JdbcConnection implements AutoCloseable {
     private final String openingQuoteCharacter;
     private final String closingQuoteCharacter;
     private volatile Connection conn;
+    private final int queryTimeout;
 
     /**
      * Create a new instance with the given configuration and connection factory.
@@ -356,6 +357,7 @@ public class JdbcConnection implements AutoCloseable {
         this.openingQuoteCharacter = openingQuotingChar;
         this.closingQuoteCharacter = closingQuotingChar;
         this.conn = null;
+        this.queryTimeout = (int) config.getQueryTimeout().toSeconds();
     }
 
     /**
@@ -433,7 +435,11 @@ public class JdbcConnection implements AutoCloseable {
      */
     public JdbcConnection execute(Operations operations) throws SQLException {
         Connection conn = connection();
-        try (Statement statement = conn.createStatement();) {
+        try (Statement statement = conn.createStatement()) {
+            statement.setQueryTimeout(queryTimeout);
+            if (LOGGER.isTraceEnabled()) {
+                LOGGER.trace("Executing query with {}s timeout", queryTimeout);
+            }
             operations.apply(statement);
             commit();
         }
@@ -536,9 +542,10 @@ public class JdbcConnection implements AutoCloseable {
      */
     public JdbcConnection query(String query, StatementFactory statementFactory, ResultSetConsumer resultConsumer) throws SQLException {
         Connection conn = connection();
-        try (Statement statement = statementFactory.createStatement(conn);) {
+        try (Statement statement = statementFactory.createStatement(conn)) {
+            statement.setQueryTimeout(queryTimeout);
             if (LOGGER.isTraceEnabled()) {
-                LOGGER.trace("running '{}'", query);
+                LOGGER.trace("running '{}' with {}s timeout", query, queryTimeout);
             }
             try (ResultSet resultSet = statement.executeQuery(query);) {
                 if (resultConsumer != null) {
@@ -624,9 +631,10 @@ public class JdbcConnection implements AutoCloseable {
     public <T> T queryAndMap(String query, StatementFactory statementFactory, ResultSetMapper<T> mapper) throws SQLException {
         Objects.requireNonNull(mapper, "Mapper must be provided");
         Connection conn = connection();
-        try (Statement statement = statementFactory.createStatement(conn);) {
+        try (Statement statement = statementFactory.createStatement(conn)) {
+            statement.setQueryTimeout(queryTimeout);
             if (LOGGER.isTraceEnabled()) {
-                LOGGER.trace("running '{}'", query);
+                LOGGER.trace("running '{}' with {}s timeout", query, queryTimeout);
             }
             try (ResultSet resultSet = statement.executeQuery(query);) {
                 return mapper.apply(resultSet);
@@ -637,9 +645,10 @@ public class JdbcConnection implements AutoCloseable {
     public JdbcConnection queryWithBlockingConsumer(String query, StatementFactory statementFactory, BlockingResultSetConsumer resultConsumer)
             throws SQLException, InterruptedException {
         Connection conn = connection();
-        try (Statement statement = statementFactory.createStatement(conn);) {
+        try (Statement statement = statementFactory.createStatement(conn)) {
+            statement.setQueryTimeout(queryTimeout);
             if (LOGGER.isTraceEnabled()) {
-                LOGGER.trace("running '{}'", query);
+                LOGGER.trace("running '{}' with {}s timeout", query, queryTimeout);
             }
             try (ResultSet resultSet = statement.executeQuery(query);) {
                 if (resultConsumer != null) {
@@ -679,7 +688,11 @@ public class JdbcConnection implements AutoCloseable {
             throws SQLException, InterruptedException {
         final PreparedStatement statement = createPreparedStatement(preparedQueryString);
         preparer.accept(statement);
-        try (ResultSet resultSet = statement.executeQuery();) {
+        statement.setQueryTimeout(queryTimeout);
+        if (LOGGER.isTraceEnabled()) {
+            LOGGER.trace("Executing '{}' with {}s timeout", preparedQueryString, queryTimeout);
+        }
+        try (ResultSet resultSet = statement.executeQuery()) {
             if (resultConsumer != null) {
                 resultConsumer.accept(resultSet);
             }
@@ -757,7 +770,10 @@ public class JdbcConnection implements AutoCloseable {
         if (preparer != null) {
             preparer.accept(statement);
         }
-        LOGGER.trace("Executing statement '{}'", stmt);
+        statement.setQueryTimeout(queryTimeout);
+        if (LOGGER.isTraceEnabled()) {
+            LOGGER.trace("Executing statement '{}' with {}s timeout", stmt, queryTimeout);
+        }
         statement.execute();
         return this;
     }
@@ -1426,7 +1442,12 @@ public class JdbcConnection implements AutoCloseable {
         return statementCache.computeIfAbsent(preparedQueryString, query -> {
             try {
                 LOGGER.trace("Inserting prepared statement '{}' removed from the cache", query);
-                return connection().prepareStatement(query);
+                PreparedStatement preparedStatement = connection().prepareStatement(query);
+                preparedStatement.setQueryTimeout(queryTimeout);
+                if (LOGGER.isTraceEnabled()) {
+                    LOGGER.trace("PreparedStatement '{}' with {}s timeout", preparedQueryString, queryTimeout);
+                }
+                return preparedStatement;
             }
             catch (SQLException e) {
                 throw new ConnectException(e);
@@ -1447,9 +1468,10 @@ public class JdbcConnection implements AutoCloseable {
             throw new DebeziumException("Cannot execute without committing because auto-commit is enabled");
         }
         try (Statement statement = conn.createStatement()) {
+            statement.setQueryTimeout(queryTimeout);
             for (String stmt : statements) {
                 if (LOGGER.isTraceEnabled()) {
-                    LOGGER.trace("Executing statement {}", stmt);
+                    LOGGER.trace("Executing statement '{}' with {}s timeout", stmt, queryTimeout);
                 }
                 statement.execute(stmt);
             }
@@ -1534,6 +1556,10 @@ public class JdbcConnection implements AutoCloseable {
     public Statement readTableStatement(CommonConnectorConfig connectorConfig, OptionalLong tableSize) throws SQLException {
         int fetchSize = connectorConfig.getSnapshotFetchSize();
         final Statement statement = connection().createStatement(); // the default cursor is FORWARD_ONLY
+        statement.setQueryTimeout(queryTimeout);
+        if (LOGGER.isTraceEnabled()) {
+            LOGGER.trace("Created Statement with {}s timeout", queryTimeout);
+        }
         statement.setFetchSize(fetchSize);
         return statement;
     }
@@ -1544,6 +1570,10 @@ public class JdbcConnection implements AutoCloseable {
     public PreparedStatement readTablePreparedStatement(CommonConnectorConfig connectorConfig, String sql, OptionalLong tableSize) throws SQLException {
         int fetchSize = connectorConfig.getSnapshotFetchSize();
         final PreparedStatement statement = connection().prepareStatement(sql); // the default cursor is FORWARD_ONLY
+        statement.setQueryTimeout(queryTimeout);
+        if (LOGGER.isTraceEnabled()) {
+            LOGGER.trace("PreparedStatement '{}' with {}s timeout", sql, queryTimeout);
+        }
         statement.setFetchSize(fetchSize);
         return statement;
     }

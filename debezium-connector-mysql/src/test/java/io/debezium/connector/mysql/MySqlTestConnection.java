@@ -41,12 +41,30 @@ public class MySqlTestConnection extends BinlogTestConnection {
 
     /**
      * Obtain a connection instance to the named test replica database.
-     * if no replica, obtain same connection with {@link #forTestDatabase(String) forTestDatabase}
+     * if no replica, obtain same connection with {@link #forTestDatabase(String, int) forTestDatabase}
      * @param databaseName the name of the test replica database
      * @return the MySQLConnection instance; never null
      */
     public static MySqlTestConnection forTestReplicaDatabase(String databaseName) {
         return new MySqlTestConnection(getReplicaJdbcConfig(databaseName).build());
+    }
+
+    /**
+     * Obtain a connection instance to the named test database.
+     *
+     *
+     * @param databaseName the name of the test database
+     * @param queryTimeout
+     * @return the MySQLConnection instance; never null
+     */
+
+    public static MySqlTestConnection forTestDatabase(String databaseName, int queryTimeout) {
+        return new MySqlTestConnection(JdbcConfiguration.copy(
+                Configuration.fromSystemProperties(DATABASE_CONFIG_PREFIX).merge(Configuration.fromSystemProperties(DRIVER_CONFIG_PREFIX)))
+                .withDatabase(databaseName)
+                .withQueryTimeoutMs(queryTimeout)
+                .with("characterEncoding", "utf8")
+                .build());
     }
 
     /**

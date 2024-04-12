@@ -7,6 +7,7 @@
 package io.debezium.connector.sqlserver;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -26,6 +27,7 @@ import org.awaitility.Awaitility;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.config.Configuration;
 import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcValueConverters;
@@ -579,6 +581,22 @@ public class SqlServerConnectionIT {
         TestHelper.createTestDatabases(TestHelper.TEST_DATABASE_1, TestHelper.TEST_DATABASE_2);
         try (SqlServerConnection connection = TestHelper.multiPartitionTestConnection()) {
             assertThat(connection.connection().getCatalog()).isEqualTo("master");
+        }
+    }
+
+    @Test
+    public void whenQueryTakesMoreThenConfiguredQueryTimeoutAnExceptionMustBeThrown() throws SQLException {
+
+        TestHelper.createTestDatabase();
+        Configuration config = TestHelper.defaultConnectorConfig()
+                .with("database.query.timeout.ms", "1000").build();
+
+        try (SqlServerConnection conn = TestHelper.testConnection(config)) {
+            conn.connect();
+
+            assertThatThrownBy(() -> conn.execute("WAITFOR DELAY '00:01'"))
+                    .isInstanceOf(SQLException.class)
+                    .hasMessage("The query has timed out.");
         }
     }
 

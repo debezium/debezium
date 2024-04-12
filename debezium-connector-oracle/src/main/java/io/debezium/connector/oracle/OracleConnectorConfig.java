@@ -645,6 +645,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     USER,
                     PASSWORD,
                     DATABASE_NAME,
+                    QUERY_TIMEOUT_MS,
                     PDB_NAME,
                     XSTREAM_SERVER_NAME,
                     SNAPSHOT_MODE,
