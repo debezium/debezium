@@ -20,6 +20,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.HashSet;
@@ -49,6 +50,7 @@ import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.ChangeStreamPreAndPostImagesOptions;
 import com.mongodb.client.model.CreateCollectionOptions;
 import com.mongodb.client.model.InsertOneOptions;
+import com.mongodb.client.model.UpdateOneModel;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -888,7 +890,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         context = new MongoDbTaskContext(config);
 
         // Cleanup database
-        TestHelper.cleanDatabase(mongo, "dbit");
+        TestHelper.cleanDatabase(mongo, dbName);
 
         // Enable pre images
         try (var client = connect()) {
@@ -898,36 +900,42 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
             db1.createCollection(collName, options);
         }
 
-        // Before starting the connector, add data to the databases ...
-        var docId = 0;
-        var beforeValue = String.join("", Collections.nCopies(16 * 1024 * 1024 - 1024, "a"));
-        var expectedBeforeDocument = new Document("_id", docId).append("value", beforeValue);
-        insertDocuments("dbit", collName, expectedBeforeDocument);
-
         // Start the connector ...
         start(MongoDbConnector.class, config);
         waitForStreamingRunning("mongodb", "mongo");
 
-        // Update document
-        var afterValue = String.join("", Collections.nCopies(16 * 1024 * 1024 - 1024, "b"));
+        // Add some data to the databases ...
+        Document doc1 = new Document("_id", 0).append("value", "a");
+        Document doc2 = new Document("_id", 1).append("value", "b");
+        insertDocuments(dbName, collName, doc1, doc2);
+
+        // Add an oversized document
+        Document doc3 = new Document("_id", 2).append("value", String.join("", Collections.nCopies(16 * 1024 * 1024 - 1024, "c")));
+        insertDocuments(dbName, collName, doc3);
+
+        // Bulk update documents
         try (var client = connect()) {
             MongoDatabase db1 = client.getDatabase(dbName);
             MongoCollection<Document> coll = db1.getCollection(collName);
 
-            // Insert the document with a generated ID ...
-            var updateDocument = new Document("$set", new Document("value", afterValue));
-            updateDocument(dbName, collName, new Document("_id", docId), updateDocument);
+            // Update the documents
+            coll.bulkWrite(Arrays.asList(
+                    new UpdateOneModel<>(new Document("_id", 0), new Document("$set", new Document("value", "aa"))),
+                    new UpdateOneModel<>(new Document("_id", 1), new Document("$set", new Document("value", "bb"))),
+                    new UpdateOneModel<>(new Document("_id", 2),
+                            new Document("$set", new Document("value", String.join("", Collections.nCopies(16 * 1024 * 1024 - 1024, "d")))))));
         }
 
         // Consume records
-        SourceRecords records = consumeRecordsByTopic(1);
-        assertThat(records.allRecordsInOrder().size()).isEqualTo(0);
-
-        logInterceptor.containsErrorMessage("Fetcher thread has failed");
-        logInterceptor2.containsErrorMessage("Error while reading change stream");
+        SourceRecords records = consumeRecordsByTopic(3);
+        records.topics().forEach(System.out::println);
+        assertThat(records.recordsForTopic("mongo.dbit.large").size()).isEqualTo(3);
 
         // Stop the connector
-        stopConnector();
+        stopConnector(value -> {
+            logInterceptor.containsErrorMessage("Fetcher thread has failed");
+            logInterceptor2.containsErrorMessage("Error while reading change stream");
+        });
     }
 
     @Test
