@@ -928,7 +928,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
 
         // Consume records
         SourceRecords records = consumeRecordsByTopic(3);
-        records.topics().forEach(System.out::println);
+        Testing.print(records.recordsForTopic("mongo.dbit.large"));
         assertThat(records.recordsForTopic("mongo.dbit.large").size()).isEqualTo(3);
 
         // Stop the connector
