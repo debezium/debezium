@@ -85,8 +85,8 @@ public class MongoShardedUtil {
     public static void addKeyFileToDeployment(Deployment deployment) {
         final String keyFileVolume = "keyfile-vol";
 
-        deployment.
-                getSpec()
+        deployment
+                .getSpec()
                 .getTemplate()
                 .getSpec()
                 .getVolumes()

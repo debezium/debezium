@@ -5,7 +5,6 @@
  */
 package io.debezium.testing.system.tools.databases.mongodb.sharded;
 
-import io.fabric8.kubernetes.client.dsl.internal.BaseOperation;
 import org.testcontainers.lifecycle.Startable;
 
 import io.debezium.testing.system.tools.OpenShiftUtils;
@@ -35,7 +34,7 @@ public class OcpMongoDeploymentManager implements Startable {
 
     @Override
     public void start() {
-//        ocp.resource(deployment).delete();
+        // ocp.resource(deployment).delete();
         deployment = ocp.resource(deployment).serverSideApply();
         service = ocp.resource(service).serverSideApply();
     }

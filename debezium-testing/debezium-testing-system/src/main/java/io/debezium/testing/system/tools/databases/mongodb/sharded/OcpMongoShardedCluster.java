@@ -12,7 +12,6 @@ import static org.awaitility.Awaitility.await;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -23,10 +22,6 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import io.debezium.testing.system.tools.databases.mongodb.sharded.componentproviders.OcpConfigServerModelProvider;
-import io.fabric8.kubernetes.api.model.ConfigMap;
-import io.fabric8.kubernetes.api.model.ConfigMapBuilder;
-import io.fabric8.kubernetes.api.model.ObjectMetaBuilder;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -37,6 +32,9 @@ import io.debezium.testing.system.tools.ConfigProperties;
 import io.debezium.testing.system.tools.OpenShiftUtils;
 import io.debezium.testing.system.tools.databases.mongodb.sharded.componentproviders.OcpMongosModelProvider;
 import io.debezium.testing.system.tools.databases.mongodb.sharded.componentproviders.OcpShardModelProvider;
+import io.fabric8.kubernetes.api.model.ConfigMap;
+import io.fabric8.kubernetes.api.model.ConfigMapBuilder;
+import io.fabric8.kubernetes.api.model.ObjectMetaBuilder;
 import io.fabric8.openshift.client.OpenShiftClient;
 
 import freemarker.template.TemplateException;
@@ -76,7 +74,7 @@ public class OcpMongoShardedCluster implements Startable {
             throw new IllegalStateException("Cannot deploy mongo with both tls and keyfile internal auth");
         }
 
-        if(useInternalAuth) {
+        if (useInternalAuth) {
             String internalKey;
             try {
                 Path keyFile = Paths.get(getClass().getResource("/database-resources/mongodb/mongodb.keyfile").toURI());
@@ -85,13 +83,14 @@ public class OcpMongoShardedCluster implements Startable {
                 throw new RuntimeException(e);
             }
 
+            LOGGER.info("creating keyfile configmap in " + project);
             ConfigMap map = new ConfigMapBuilder()
                     .withMetadata(new ObjectMetaBuilder()
                             .withName(OcpMongoShardedConstants.KEYFILE_CONFIGMAP_NAME)
                             .build())
                     .withData(Map.of("mongodb.keyfile", internalKey))
                     .build();
-            ocp.configMaps().inNamespace(project).createOrReplace(map);
+            ocp.resource(map).create();
         }
 
         // deploy mongo components
