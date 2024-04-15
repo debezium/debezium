@@ -35,8 +35,9 @@ public class OcpMongoDeploymentManager implements Startable {
 
     @Override
     public void start() {
-        deployment = ocp.apps().deployments().inNamespace(project).createOrReplace(deployment);
-        service = ocp.services().inNamespace(project).createOrReplace(service);
+//        ocp.resource(deployment).delete();
+        deployment = ocp.resource(deployment).serverSideApply();
+        service = ocp.resource(service).serverSideApply();
     }
 
     @Override
