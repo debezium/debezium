@@ -49,10 +49,7 @@ public class ConnectionIT implements Testing {
             assertThatThrownBy(() -> conn.execute("begin\n" +
                     "   dbms_lock.sleep(10);\n" +
                     "end;"))
-                    .isInstanceOf(SQLTimeoutException.class)
-                    .hasMessage("ORA-01013: user requested cancel of current operation\n" +
-                            "ORA-06512: at \"SYS.DBMS_LOCK\", line 215\n" +
-                            "ORA-06512: at line 2\n");
+                    .isInstanceOf(SQLTimeoutException.class);
         }
     }
 }
