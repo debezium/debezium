@@ -61,7 +61,7 @@ public class TransactionMonitor {
                               String topicName) {
         Objects.requireNonNull(eventMetadataProvider);
 
-        transactionStructMaker = connectorConfig.getTransactionStructMaker();
+        transactionStructMaker = connectorConfig.getTransactionMetadataFactory().getTransactionStructMaker();
         transactionKeySchema = transactionStructMaker.getTransactionKeySchema();
 
         this.topicName = topicName;
