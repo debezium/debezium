@@ -470,6 +470,16 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
             .withDescription("Interval for connection checking if keep alive thread is used, given in milliseconds "
                     + "Defaults to 1 minute (60,000 ms).");
 
+    public static final Field USE_NONGRACEFUL_DISCONNECT = Field.create("use.nongraceful.disconnect")
+            .withDisplayName("Use Non-graceful Disconnect")
+            .withType(ConfigDef.Type.BOOLEAN)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 4))
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.MEDIUM)
+            .withDefault(false)
+            .withDescription("Whether to use `socket.setSoLinger(true, 0)` when BinaryLogClient"
+                    + " keepalive thread triggers a disconnect for a stale connection.");
+
     public static final Field ROW_COUNT_FOR_STREAMING_RESULT_SETS = Field.create("min.row.count.to.stream.results")
             .withDisplayName("Stream result set of size")
             .withType(ConfigDef.Type.INT)
@@ -676,6 +686,7 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
                     CONNECTION_TIMEOUT_MS,
                     KEEP_ALIVE,
                     KEEP_ALIVE_INTERVAL_MS,
+                    USE_NONGRACEFUL_DISCONNECT,
                     SNAPSHOT_MODE,
                     SNAPSHOT_QUERY_MODE,
                     SNAPSHOT_QUERY_MODE_CUSTOM_NAME,
@@ -960,5 +971,9 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
             return 1;
         }
         return 0;
+    }
+
+    public boolean usesNonGracefulDisconnect() {
+        return config.getBoolean(USE_NONGRACEFUL_DISCONNECT);
     }
 }

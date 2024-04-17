@@ -382,6 +382,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
                 client.setSslSocketFactory(sslSocketFactory);
             }
         }
+        client.setUseNonGracefulDisconnect(connectorConfig.usesNonGracefulDisconnect());
 
         configureReplicaCompatibility(client);
 
