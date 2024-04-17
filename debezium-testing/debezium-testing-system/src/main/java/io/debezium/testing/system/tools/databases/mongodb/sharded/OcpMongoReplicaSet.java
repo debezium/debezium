@@ -73,8 +73,8 @@ public class OcpMongoReplicaSet implements Startable {
                 .map(i -> {
                     if (configServer) {
                         return OcpMongoReplicaSetMember.builder()
-                                .withDeployment(OcpConfigServerModelProvider.configServerDeployment(i))
-                                .withService(OcpConfigServerModelProvider.configServerService(i))
+                                .withDeployment(OcpConfigServerModelProvider.configServerDeployment(i, project))
+                                .withService(OcpConfigServerModelProvider.configServerService(i, project))
                                 .withServiceUrl(getConfigServerServiceName(i))
                                 .withOcp(ocp)
                                 .withProject(project)
@@ -83,8 +83,8 @@ public class OcpMongoReplicaSet implements Startable {
                     }
                     else {
                         return OcpMongoReplicaSetMember.builder()
-                                .withDeployment(OcpShardModelProvider.shardDeployment(shardNum, i))
-                                .withService(OcpShardModelProvider.shardService(shardNum, i))
+                                .withDeployment(OcpShardModelProvider.shardDeployment(shardNum, i, project))
+                                .withService(OcpShardModelProvider.shardService(shardNum, i, project))
                                 .withServiceUrl(getShardReplicaServiceName(i))
                                 .withOcp(ocp)
                                 .withProject(project)
@@ -125,12 +125,12 @@ public class OcpMongoReplicaSet implements Startable {
         // Initialize the configured replica set to contain all the cluster's members
         LOGGER.info("[{}] Initializing replica set...", name);
         try {
-            var output = executeMongosh(getInitRsCommand(), false);
+            var output = executeMongosh(getInitRsCommand(), true);
             if (!output.getStdOut().contains("is primary result:  true")) {
                 throw new IllegalStateException("Replicaset initialization failed" + output);
             }
             if (StringUtils.isNotEmpty(rootUserName) && StringUtils.isNotEmpty(rootPassword)) {
-                executeMongosh(createRootUserCommand(rootUserName, rootPassword), false);
+                executeMongosh(createRootUserCommand(rootUserName, rootPassword), true);
                 authRequired = true;
             }
             // set small cleanup delay so mongo doesn't wait 15 minutes for shard removal

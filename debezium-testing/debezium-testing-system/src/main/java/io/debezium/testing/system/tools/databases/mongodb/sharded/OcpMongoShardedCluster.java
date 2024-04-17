@@ -40,7 +40,7 @@ import io.fabric8.openshift.client.OpenShiftClient;
 import freemarker.template.TemplateException;
 
 /**
- * Mongo sharded cluster containing config server replica set, one or more shard replica sets and a mongos router
+ * Mongo sharded cluster consisting of config server replica set, one or more shard replica sets and a mongos router
  */
 public class OcpMongoShardedCluster implements Startable {
     private static final Logger LOGGER = LoggerFactory.getLogger(OcpMongoShardedCluster.class);
@@ -79,18 +79,20 @@ public class OcpMongoShardedCluster implements Startable {
             try {
                 Path keyFile = Paths.get(getClass().getResource("/database-resources/mongodb/mongodb.keyfile").toURI());
                 internalKey = Files.readString(keyFile);
-            } catch (URISyntaxException | IOException e) {
+            }
+            catch (URISyntaxException | IOException e) {
                 throw new RuntimeException(e);
             }
 
-            LOGGER.info("creating keyfile configmap in " + project);
+            LOGGER.info("creating keyfile configmap");
             ConfigMap map = new ConfigMapBuilder()
                     .withMetadata(new ObjectMetaBuilder()
                             .withName(OcpMongoShardedConstants.KEYFILE_CONFIGMAP_NAME)
+                            .withNamespace(project)
                             .build())
                     .withData(Map.of("mongodb.keyfile", internalKey))
                     .build();
-            ocp.resource(map).create();
+            ocp.resource(map).serverSideApply();
         }
 
         // deploy mongo components
@@ -252,8 +254,8 @@ public class OcpMongoShardedCluster implements Startable {
     }
 
     private void deployMongos() {
-        mongosRouter = new OcpMongoDeploymentManager(OcpMongosModelProvider.mongosDeployment(configServerReplicaSet.getReplicaSetFullName()),
-                OcpMongosModelProvider.mongosService(), null, ocp, project);
+        mongosRouter = new OcpMongoDeploymentManager(OcpMongosModelProvider.mongosDeployment(configServerReplicaSet.getReplicaSetFullName(), project),
+                OcpMongosModelProvider.mongosService(project), null, ocp, project);
         if (useInternalAuth) {
             MongoShardedUtil.addKeyFileToDeployment(mongosRouter.getDeployment());
         }

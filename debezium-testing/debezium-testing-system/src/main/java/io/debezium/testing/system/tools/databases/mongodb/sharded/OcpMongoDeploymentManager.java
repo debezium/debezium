@@ -5,6 +5,8 @@
  */
 package io.debezium.testing.system.tools.databases.mongodb.sharded;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testcontainers.lifecycle.Startable;
 
 import io.debezium.testing.system.tools.OpenShiftUtils;
@@ -16,6 +18,9 @@ import io.fabric8.openshift.client.OpenShiftClient;
  * Abstraction for a single mongo machine that you can start, stop and connect to using hostname
  */
 public class OcpMongoDeploymentManager implements Startable {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(OcpMongoDeploymentManager.class);
+
     private Deployment deployment;
     private Service service;
     private final String serviceUrl;
@@ -34,7 +39,14 @@ public class OcpMongoDeploymentManager implements Startable {
 
     @Override
     public void start() {
-        // ocp.resource(deployment).delete();
+        if (!ocp.pods()
+                .inNamespace(project)
+                .withLabels(deployment.getMetadata().getLabels())
+                .list()
+                .getItems()
+                .isEmpty()) {
+            ocpUtils.scaleDeploymentToZero(deployment);
+        }
         deployment = ocp.resource(deployment).serverSideApply();
         service = ocp.resource(service).serverSideApply();
     }

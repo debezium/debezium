@@ -29,5 +29,4 @@ public class OcpMongoShardedConstants {
     public static final String KEYFILE_CONFIGMAP_NAME = "mongo-keyfile";
     public final static String KEYFILE_LOCATION_IN_CONTAINER = "/data/keyfile/";
     public static final String KEYFILE_FILENAME_IN_CONTAINER = "mongodb.keyfile";
-
 }
