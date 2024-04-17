@@ -413,30 +413,6 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             }
         }
 
-        if (multiTaskEnabled) {
-            int taskId = taskContext.getMongoTaskId();
-            int taskCount = connectorConfig.getMaxTasks();
-            LOGGER.info("getServerSideFilters - multi task filter for taskId {} taskCount {}", taskId, taskCount);
-
-            // Distribution of events to tasks when multi task is enabled
-            // Leverage wall time timestamps as the property to distribute events
-            // Ensure that we do not skip events if wall time is not present default then to task 0.
-            // The following pipelines includes if (wallTime % taskCount == taskId)
-            // https://www.mongodb.com/docs/v6.0/reference/change-events/create/
-            Bson pipeline = new Document("$expr",
-                    new Document("$eq",
-                            Arrays.asList(
-                                    new Document("$mod",
-                                            Arrays.asList(
-                                                new Document("$ifNull",
-                                                    Arrays.asList(new Document("$toLong", "$wallTime"),
-                                                0)),
-                                            taskCount)),
-                                    taskId)));
-
-            filters.add(pipeline);
-        }
-
         Bson result = Aggregates.match(Filters.and(filters));
         return result;
     }
@@ -451,8 +427,23 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                 taskCount);
         final ReplicaSetOffsetContext rsOffsetContext = offsetContext.getReplicaSetOffsetContext(replicaSet);
 
-        final BsonTimestamp oplogStart = rsOffsetContext.lastOffsetTimestamp();
         final OptionalLong txOrder = rsOffsetContext.lastOffsetTxOrder();
+        BsonTimestamp oplogStart = rsOffsetContext.lastOffsetTimestamp();
+        MultiTaskOffsetHandler multiTaskOffsetHandler = new MultiTaskOffsetHandler(); // Default behavior is benign
+
+        if (multiTaskEnabled) {
+            multiTaskOffsetHandler = new MultiTaskOffsetHandler(oplogStart, connectorConfig.getMultiTaskHopSeconds(), connectorConfig.getMaxTasks(),
+                    taskContext.getMongoTaskId());
+
+            LOGGER.info("Setting offset for stepwise taskId '{}'/'{}' start '{}' stop '{}'. From last offset '{}'",
+                    multiTaskOffsetHandler.taskId,
+                    multiTaskOffsetHandler.taskCount,
+                    multiTaskOffsetHandler.optimizedOplogStart,
+                    multiTaskOffsetHandler.oplogStop,
+                    oplogStart);
+
+            oplogStart = multiTaskOffsetHandler.optimizedOplogStart;
+        }
 
         ReplicaSetOplogContext oplogContext = new ReplicaSetOplogContext(rsPartition, rsOffsetContext, primaryClient, replicaSet);
 
@@ -473,37 +464,99 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         if (taskContext.getCaptureMode().isIncludePreImage()) {
             rsChangeStream.fullDocumentBeforeChange(FullDocumentBeforeChange.WHEN_AVAILABLE);
         }
-        if (rsOffsetContext.lastResumeToken() != null) {
-            LOGGER.info("Resuming streaming from token '{}'", rsOffsetContext.lastResumeToken());
-
-            final BsonDocument doc = new BsonDocument();
-            doc.put("_data", new BsonString(rsOffsetContext.lastResumeToken()));
-            rsChangeStream.resumeAfter(doc);
-        }
-        else {
-            LOGGER.info("Resume token not available, starting streaming from time '{}'", oplogStart);
-            rsChangeStream.startAtOperationTime(oplogStart);
-        }
 
         if (connectorConfig.getCursorMaxAwaitTime() > 0) {
             rsChangeStream.maxAwaitTime(connectorConfig.getCursorMaxAwaitTime(), TimeUnit.MILLISECONDS);
         }
 
-        try (MongoCursor<ChangeStreamDocument<BsonDocument>> cursor = rsChangeStream.iterator()) {
-            // In Replicator, this used cursor.hasNext() but this is a blocking call and I observed that this can
-            // delay the shutdown of the connector by up to 15 seconds or longer. By introducing a Metronome, we
-            // can respond to the stop request much faster and without much overhead.
-            Metronome pause = Metronome.sleeper(Duration.ofMillis(500), clock);
-            while (context.isRunning()) {
-                // Use tryNext which will return null if no document is yet available from the cursor.
-                // In this situation if not document is available, we'll pause.
-                final ChangeStreamDocument<BsonDocument> event = cursor.tryNext();
+        do {
+            if (!multiTaskOffsetHandler.enabled && rsOffsetContext.lastResumeToken() != null) {
+                LOGGER.info("Resuming streaming from token '{}'", rsOffsetContext.lastResumeToken());
 
-                if (event != null) {
-                    LOGGER.trace("Arrived Change Stream event: {}", event);
+                final BsonDocument doc = new BsonDocument();
+                doc.put("_data", new BsonString(rsOffsetContext.lastResumeToken()));
+                rsChangeStream.resumeAfter(doc);
+            }
+            else {
+                rsChangeStream.startAtOperationTime(oplogStart);
+            }
 
-                    oplogContext.getOffset().changeStreamEvent(event, txOrder);
-                    if (shouldFilterStripeAudit(oplogContext, event, (e) -> serialization.getDocumentIdChangeStream(e.getDocumentKey()))) {
+            try (MongoCursor<ChangeStreamDocument<BsonDocument>> cursor = rsChangeStream.iterator()) {
+                // In Replicator, this used cursor.hasNext() but this is a blocking call and I observed that this can
+                // delay the shutdown of the connector by up to 15 seconds or longer. By introducing a Metronome, we
+                // can respond to the stop request much faster and without much overhead.
+                Metronome pause = Metronome.sleeper(Duration.ofMillis(500), clock);
+                while (context.isRunning()) {
+                    // Use tryNext which will return null if no document is yet available from the cursor.
+                    // In this situation if not document is available, we'll pause.
+                    final ChangeStreamDocument<BsonDocument> event = cursor.tryNext();
+
+                    if (event != null) {
+                        LOGGER.trace("Arrived Change Stream event: {}", event);
+
+                        oplogContext.getOffset().changeStreamEvent(event, txOrder);
+
+                        if (multiTaskOffsetHandler.enabled) {
+                            // Validate if we should do an offset stop
+                            // Retrieve the timestamp from the Change Stream event using the "clusterTime" field
+                            // Convert the timestamp to seconds using the getTime() method
+                            BsonTimestamp timestamp = event.getClusterTime();
+
+                            // TODO ensure this is not rounded up, only rounded down
+                            // Compare seconds to ensure that milliseconds are not missed
+                            if (timestamp.getTime() >= multiTaskOffsetHandler.oplogStop.getTime()) {
+                                LOGGER.debug("Stop offset found {} compared to offsetStop {}", timestamp.getTime(), multiTaskOffsetHandler.oplogStop.getTime());
+                                break;
+                            }
+                        }
+
+                        if (shouldFilterStripeAudit(oplogContext, event, (e) -> serialization.getDocumentIdChangeStream(e.getDocumentKey()))) {
+                            try {
+                                dispatcher.dispatchHeartbeatEvent(oplogContext.getPartition(), oplogContext.getOffset());
+                            }
+                            catch (InterruptedException e) {
+                                LOGGER.info("Replicator thread is interrupted");
+                                Thread.currentThread().interrupt();
+                                return;
+                            }
+                            continue;
+                        }
+
+                        if (!this.connectorConfig.getMultiTaskEnabled() && connectorConfig.getStreamingShards() > 0) {
+                            if (event.getClusterTime() != null && event.getClusterTime().getValue() % connectorConfig.getStreamingShards() != shardId) {
+                                LOGGER.debug("shard id doesn't match, skip change stream event {}:{}", shardId, event.getClusterTime().getValue());
+                                continue;
+                            }
+                            else {
+                                LOGGER.debug("shard id match, process stream event {}:{}", shardId, event.getClusterTime().getValue());
+                            }
+                        }
+
+                        oplogContext.getOffset().getOffset();
+                        CollectionId collectionId = new CollectionId(
+                                replicaSet.replicaSetName(),
+                                event.getNamespace().getDatabaseName(),
+                                event.getNamespace().getCollectionName());
+
+                        if (!this.taskContext.filters().isNoneMatchMode() ||
+                                (taskContext.filters().databaseFilter().test(event.getDatabaseName()) &&
+                                        taskContext.filters().collectionFilter().test(collectionId))) {
+                            try {
+                                dispatcher.dispatchDataChangeEvent(
+                                        oplogContext.getPartition(),
+                                        collectionId,
+                                        new MongoDbChangeStreamChangeRecordEmitter(
+                                                oplogContext.getPartition(),
+                                                oplogContext.getOffset(),
+                                                clock,
+                                                event));
+                            }
+                            catch (Exception e) {
+                                errorHandler.setProducerThrowable(e);
+                                return;
+                            }
+                        }
+
                         try {
                             dispatcher.dispatchHeartbeatEvent(oplogContext.getPartition(), oplogContext.getOffset());
                         }
@@ -512,63 +565,22 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                             Thread.currentThread().interrupt();
                             return;
                         }
-                        continue;
                     }
-
-                    if (!this.connectorConfig.getMultiTaskEnabled() && connectorConfig.getStreamingShards() > 0) {
-                        if (event.getClusterTime() != null && event.getClusterTime().getValue() % connectorConfig.getStreamingShards() != shardId) {
-                            LOGGER.debug("shard id doesn't match, skip change stream event {}:{}", shardId, event.getClusterTime().getValue());
-                            continue;
-                        }
-                        else {
-                            LOGGER.debug("shard id match, process stream event {}:{}", shardId, event.getClusterTime().getValue());
-                        }
-                    }
-
-                    oplogContext.getOffset().getOffset();
-                    CollectionId collectionId = new CollectionId(
-                            replicaSet.replicaSetName(),
-                            event.getNamespace().getDatabaseName(),
-                            event.getNamespace().getCollectionName());
-
-                    if (!this.taskContext.filters().isNoneMatchMode() ||
-                            (taskContext.filters().databaseFilter().test(event.getDatabaseName()) &&
-                                    taskContext.filters().collectionFilter().test(collectionId))) {
+                    else {
                         try {
-                            dispatcher.dispatchDataChangeEvent(
-                                    oplogContext.getPartition(),
-                                    collectionId,
-                                    new MongoDbChangeStreamChangeRecordEmitter(
-                                            oplogContext.getPartition(),
-                                            oplogContext.getOffset(),
-                                            clock,
-                                            event));
+                            pause.pause();
                         }
-                        catch (Exception e) {
-                            errorHandler.setProducerThrowable(e);
+                        catch (InterruptedException e) {
                             return;
                         }
                     }
-
-                    try {
-                        dispatcher.dispatchHeartbeatEvent(oplogContext.getPartition(), oplogContext.getOffset());
-                    }
-                    catch (InterruptedException e) {
-                        LOGGER.info("Replicator thread is interrupted");
-                        Thread.currentThread().interrupt();
-                        return;
-                    }
-                }
-                else {
-                    try {
-                        pause.pause();
-                    }
-                    catch (InterruptedException e) {
-                        break;
-                    }
                 }
             }
-        }
+
+            // This outer do/while loop is only leveraged by whe multiTaskOffsetHandler is enabled to handle offset orchestration across tasks.
+            multiTaskOffsetHandler = multiTaskOffsetHandler.nextHop();
+        } while (multiTaskOffsetHandler.enabled && context.isRunning());
+
     }
 
     private boolean isStartPositionInOplog(BsonTimestamp startTime, MongoCollection<RawBsonDocument> oplog) {

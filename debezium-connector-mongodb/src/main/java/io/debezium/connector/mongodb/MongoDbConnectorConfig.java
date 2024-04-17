@@ -794,6 +794,15 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withValidation(Field::isInteger, MongoDbConnectorConfig::validateMultiTaskPrevGen)
             .withDescription("Previous multi-task generation that was enabled on MongoDB instance");
 
+    public static final Field MONGODB_MULTI_TASK_HOP_SECONDS = Field.create("mongodb.multi.hop.sec")
+            .withDisplayName("Mongo DB previous multi-task hop seconds")
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDefault(10)
+            .withValidation(Field::isPositiveInteger)
+            .withDescription("Mongo DB previous multi-task hop seconds");
+
     private static final ConfigDefinition CONFIG_DEFINITION = CommonConnectorConfig.CONFIG_DEFINITION.edit()
             .name("MongoDB")
             .type(
@@ -821,7 +830,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                     MONGODB_MULTI_TASK_ENABLED,
                     MONGODB_MULTI_TASK_GEN,
                     MONGODB_MULTI_TASK_PREV_TASKS,
-                    MONGODB_MULTI_TASK_PREV_GEN)
+                    MONGODB_MULTI_TASK_PREV_GEN,
+                    MONGODB_MULTI_TASK_HOP_SECONDS)
             .events(
                     DATABASE_WHITELIST,
                     DATABASE_INCLUDE_LIST,
@@ -875,6 +885,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
     private final int multiTaskPrevGen;
 
+    private final int multiTaskHopSeconds;
+
     private final FiltersMatchMode filtersMatchMode;
 
     public MongoDbConnectorConfig(Configuration config) {
@@ -903,6 +915,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         this.multiTaskGen = config.getInteger(MongoDbConnectorConfig.MONGODB_MULTI_TASK_GEN, -1);
         this.multiTaskPrevMaxTasks = config.getInteger(MongoDbConnectorConfig.MONGODB_MULTI_TASK_PREV_TASKS, 1);
         this.multiTaskPrevGen = config.getInteger(MongoDbConnectorConfig.MONGODB_MULTI_TASK_PREV_GEN, -1);
+        this.multiTaskHopSeconds = config.getInteger(MongoDbConnectorConfig.MONGODB_MULTI_TASK_HOP_SECONDS, 10);
     }
 
     private static int validateHosts(Configuration config, Field field, ValidationOutput problems) {
@@ -993,6 +1006,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         if (!config.getBoolean(field)) {
             return 0;
         }
+
         String hosts = config.getString(HOSTS);
         if (ReplicaSets.parse(hosts).replicaSetCount() > 1) {
             problems.accept(MONGODB_MULTI_TASK_ENABLED, true,
@@ -1088,6 +1102,10 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
     public int getMultiTaskPrevGen() {
         return multiTaskPrevGen;
+    }
+
+    public int getMultiTaskHopSeconds() {
+        return multiTaskHopSeconds;
     }
 
     @Override
