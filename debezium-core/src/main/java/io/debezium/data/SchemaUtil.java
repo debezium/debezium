@@ -177,6 +177,9 @@ public class SchemaUtil {
                         break;
                     default:
                 }
+                if (schema.parameters() != null) {
+                    appendAdditional("parameters", schema.parameters());
+                }
                 sb.append('}');
             }
             else if (obj instanceof Struct) {

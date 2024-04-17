@@ -30,3 +30,16 @@ CREATE TABLE dbz_507_geometry (
 );
 INSERT INTO dbz_507_geometry VALUES (1, ST_GeomFromText('POINT(1 1)', 4326), ST_GeomFromText('LINESTRING(0 0, 1 1)', 3187), ST_GeomFromText('POLYGON((0 0, 1 1, 1 0, 0 0))'), ST_GeomFromText('GEOMETRYCOLLECTION(POINT(1 1), LINESTRING(0 0, 1 1))', 4326));
 INSERT INTO dbz_507_geometry VALUES (2, ST_GeomFromText('LINESTRING(0 0, 1 1)'), NULL, NULL, NULL);
+
+CREATE TABLE dbz_6964_geometry (
+    id INT NOT NULL,
+    geom GEOMETRY,
+    geom2 GEOMETRY,
+    linestring LINESTRING,
+    polygon POLYGON,
+    collection GEOMETRYCOLLECTION,
+    PRIMARY KEY (id)
+);
+
+INSERT INTO dbz_6964_geometry VALUES (1, ST_GeomFromText('POINT(1 1)', 4326), ST_GeomFromText('POINT(2 2)', 4326), ST_GeomFromText('LINESTRING(0 0, 1 1)', 3187), ST_GeomFromText('POLYGON((0 0, 1 1, 1 0, 0 0))'), ST_GeomFromText('GEOMETRYCOLLECTION(POINT(1 1), LINESTRING(0 0, 1 1))', 4326));
+INSERT INTO dbz_6964_geometry VALUES (2, ST_GeomFromText('LINESTRING(0 0, 1 1)'), ST_GeomFromText('LINESTRING(1 1, 2 2)'), NULL, NULL, NULL);
