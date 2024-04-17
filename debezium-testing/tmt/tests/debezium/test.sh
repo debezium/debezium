@@ -43,6 +43,9 @@ then
     -Ddatabase.hostname=0.0.0.0                 \
     -Ddatabase.admin.hostname=0.0.0.0           \
     -Ddatabase.port=1521  \
+    --no-transfer-progress \
+    -Dorg.slf4j.simpleLogger.showDateTime=true \
+    -Dorg.slf4j.simpleLogger.dateTimeFormat=HH:mm:ss,SSS \
     -Dinstantclient.dir=${ORACLE_ARTIFACT_DIR}     \
     -Ddatabase.user="c##dbzuser"                  \
     -Dinsecure.repositories=WARN                \
