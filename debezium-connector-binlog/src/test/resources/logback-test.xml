@@ -16,12 +16,6 @@
     <logger name="io.debezium" level="info" additivity="false">
         <appender-ref ref="CONSOLE" />
     </logger>
-    <logger name="io.debezium.connector.mariadb.MariaDbSnapshotChangeEventSource" level="debug" additivity="false">
-        <appender-ref ref="CONSOLE" />
-    </logger>
-    <logger name="io.debezium.connector.binlog.BinlogSnapshotChangeEventSource" level="debug" additivity="false">
-        <appender-ref ref="CONSOLE" />
-    </logger>
     <logger
         name="io.debezium.embedded.EmbeddedWorkerConfig"
         level="warn" additivity="false">
