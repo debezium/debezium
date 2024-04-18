@@ -33,6 +33,11 @@ public interface MySqlCommon extends BinlogConnectorTest<MySqlConnector> {
     }
 
     @Override
+    default BinlogTestConnection getTestDatabaseConnection(String databaseName, int queryTimeout) {
+        return MySqlTestConnection.forTestDatabase(databaseName, queryTimeout);
+    }
+
+    @Override
     default BinlogTestConnection getTestReplicaDatabaseConnection(String databaseName) {
         return MySqlTestConnection.forTestReplicaDatabase(databaseName);
     }

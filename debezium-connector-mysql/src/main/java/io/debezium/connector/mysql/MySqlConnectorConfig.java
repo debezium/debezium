@@ -208,8 +208,7 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
                     BinlogConnectorConfig.GTID_SOURCE_EXCLUDES)
             .type(
                     JDBC_DRIVER,
-                    JDBC_PROTOCOL,
-                    QUERY_TIMEOUT_MS,)
+                    JDBC_PROTOCOL)
             .connector(SNAPSHOT_LOCKING_MODE)
             .events(
                     GTID_SOURCE_INCLUDES,

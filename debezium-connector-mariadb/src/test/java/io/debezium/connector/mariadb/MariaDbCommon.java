@@ -34,6 +34,11 @@ public interface MariaDbCommon extends BinlogConnectorTest<MariaDbConnector> {
     }
 
     @Override
+    default BinlogTestConnection getTestDatabaseConnection(String databaseName, int queryTimeout) {
+        return MariaDbTestConnection.forTestDatabase(databaseName, queryTimeout);
+    }
+
+    @Override
     default BinlogTestConnection getTestReplicaDatabaseConnection(String databaseName) {
         return MariaDbTestConnection.forTestReplicaDatabase(databaseName);
     }

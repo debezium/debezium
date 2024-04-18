@@ -91,6 +91,21 @@ public class MariaDbTestConnection extends BinlogTestConnection {
     /**
      * Obtain a connection instance to the named test database.
      *
+     *
+     * @param databaseName the name of the test database
+     * @param queryTimeout the seconds to wait for query execution
+     * @return the connection instance; never null
+     */
+
+    public static MariaDbTestConnection forTestDatabase(String databaseName, int queryTimeout) {
+        return new MariaDbTestConnection(getDefaultJdbcConfig(databaseName)
+                .withQueryTimeoutMs(queryTimeout)
+                .build());
+    }
+
+    /**
+     * Obtain a connection instance to the named test database.
+     *
      * @param databaseName the name of the test database
      * @param urlProperties url properties
      * @return the connection instance; never null
