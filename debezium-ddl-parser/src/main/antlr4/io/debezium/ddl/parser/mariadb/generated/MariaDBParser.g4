@@ -170,6 +170,7 @@ compoundStatement
     | iterateStatement
     | returnStatement
     | cursorStatement
+    | withClause dmlStatement
     ;
 
 administrationStatement
