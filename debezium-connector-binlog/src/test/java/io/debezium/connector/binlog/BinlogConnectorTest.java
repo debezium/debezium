@@ -19,6 +19,8 @@ public interface BinlogConnectorTest<C extends SourceConnector> {
 
     BinlogTestConnection getTestDatabaseConnection(String databaseName);
 
+    BinlogTestConnection getTestDatabaseConnection(String databaseName, int queryTimeout);
+
     BinlogTestConnection getTestReplicaDatabaseConnection(String databaseName);
 
     boolean isMariaDb();

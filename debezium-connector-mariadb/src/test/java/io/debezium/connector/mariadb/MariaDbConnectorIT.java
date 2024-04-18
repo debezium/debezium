@@ -68,4 +68,10 @@ public class MariaDbConnectorIT extends BinlogConnectorIT<MariaDbConnector, Mari
     protected void assertBinlogPosition(long offsetPosition, long beforeInsertsPosition) {
         assertThat(offsetPosition).isGreaterThanOrEqualTo(beforeInsertsPosition);
     }
+
+    @Override
+    protected String getExpectedQuery(String statement) {
+
+        return "SET STATEMENT max_statement_time=600 FOR " + statement;
+    }
 }

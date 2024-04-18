@@ -664,6 +664,7 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
                     PORT,
                     USER,
                     PASSWORD,
+                    QUERY_TIMEOUT_MS,
                     ON_CONNECT_STATEMENTS,
                     SERVER_ID,
                     SERVER_ID_OFFSET,

@@ -106,6 +106,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
     private static final Logger LOGGER = LoggerFactory.getLogger(BinlogStreamingChangeEventSource.class);
 
     private static final String KEEPALIVE_THREAD_NAME = "blc-keepalive";
+    private static final String SET_STATEMENT_REGEX = "SET STATEMENT .* FOR";
 
     private final BinaryLogClient client;
     private final BinlogStreamingChangeEventSourceMetrics<?, P> metrics;
@@ -701,7 +702,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
             return;
         }
 
-        String upperCasedStatementBegin = Strings.getBegin(sql, 7).toUpperCase();
+        String upperCasedStatementBegin = Strings.getBegin(removeSetStatement(sql), 7).toUpperCase();
 
         if (upperCasedStatementBegin.startsWith("XA ")) {
             // This is an XA transaction, and we currently ignore these and do nothing ...
@@ -748,6 +749,10 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         catch (InterruptedException e) {
             LOGGER.info("Processing interrupted");
         }
+    }
+
+    private String removeSetStatement(String sql) {
+        return sql.replaceAll(SET_STATEMENT_REGEX, "").trim();
     }
 
     /**

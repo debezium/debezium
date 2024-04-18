@@ -54,16 +54,13 @@ public class MySqlTestConnection extends BinlogTestConnection {
      *
      *
      * @param databaseName the name of the test database
-     * @param queryTimeout
+     * @param queryTimeout the seconds to wait for query execution
      * @return the MySQLConnection instance; never null
      */
 
     public static MySqlTestConnection forTestDatabase(String databaseName, int queryTimeout) {
-        return new MySqlTestConnection(JdbcConfiguration.copy(
-                Configuration.fromSystemProperties(DATABASE_CONFIG_PREFIX).merge(Configuration.fromSystemProperties(DRIVER_CONFIG_PREFIX)))
-                .withDatabase(databaseName)
+        return new MySqlTestConnection(getDefaultJdbcConfig(databaseName)
                 .withQueryTimeoutMs(queryTimeout)
-                .with("characterEncoding", "utf8")
                 .build());
     }
 

@@ -1749,7 +1749,7 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
         // Should have been an insert with query parsed.
         validate(sourceRecord);
         assertInsert(sourceRecord, "id", 110);
-        assertSourceQuery(sourceRecord, insertSqlStatement);
+        assertSourceQuery(sourceRecord, getExpectedQuery(insertSqlStatement));
     }
 
     /**
@@ -1805,7 +1805,7 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
         // Should have been an insert with query parsed.
         validate(sourceRecord1);
         assertInsert(sourceRecord1, "id", 110);
-        assertSourceQuery(sourceRecord1, insertSqlStatement1);
+        assertSourceQuery(sourceRecord1, getExpectedQuery(insertSqlStatement1));
 
         // Grab second event
         final SourceRecord sourceRecord2 = records.recordsForTopic(DATABASE.topicForTable(tableName)).get(1);
@@ -1813,7 +1813,7 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
         // Should have been an insert with query parsed.
         validate(sourceRecord2);
         assertInsert(sourceRecord2, "id", 111);
-        assertSourceQuery(sourceRecord2, insertSqlStatement2);
+        assertSourceQuery(sourceRecord2, getExpectedQuery(insertSqlStatement2));
     }
 
     /**
@@ -1867,7 +1867,7 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
         // Should have been an insert with query parsed.
         validate(sourceRecord1);
         assertInsert(sourceRecord1, "id", 110);
-        assertSourceQuery(sourceRecord1, insertSqlStatement);
+        assertSourceQuery(sourceRecord1, getExpectedQuery(insertSqlStatement));
 
         // Grab second event
         final SourceRecord sourceRecord2 = records.recordsForTopic(DATABASE.topicForTable(tableName)).get(1);
@@ -1875,7 +1875,7 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
         // Should have been an insert with query parsed.
         validate(sourceRecord2);
         assertInsert(sourceRecord2, "id", 111);
-        assertSourceQuery(sourceRecord2, insertSqlStatement);
+        assertSourceQuery(sourceRecord2, getExpectedQuery(insertSqlStatement));
     }
 
     /**
@@ -1927,7 +1927,7 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
         // Should have been a delete with query parsed.
         validate(sourceRecord);
         assertDelete(sourceRecord, "order_number", 10001);
-        assertSourceQuery(sourceRecord, deleteSqlStatement);
+        assertSourceQuery(sourceRecord, getExpectedQuery(deleteSqlStatement));
     }
 
     /**
@@ -1979,7 +1979,7 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
         // Should have been a delete with query parsed.
         validate(sourceRecord1);
         assertDelete(sourceRecord1, "order_number", 10002);
-        assertSourceQuery(sourceRecord1, deleteSqlStatement);
+        assertSourceQuery(sourceRecord1, getExpectedQuery(deleteSqlStatement));
 
         // Validate second event.
         final SourceRecord sourceRecord2 = records.recordsForTopic(DATABASE.topicForTable(tableName)).get(1);
@@ -1987,7 +1987,7 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
         // Should have been a delete with query parsed.
         validate(sourceRecord2);
         assertDelete(sourceRecord2, "order_number", 10004);
-        assertSourceQuery(sourceRecord2, deleteSqlStatement);
+        assertSourceQuery(sourceRecord2, getExpectedQuery(deleteSqlStatement));
     }
 
     /**
@@ -2039,7 +2039,7 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
         // Should have been a delete with query parsed.
         validate(sourceRecord);
         assertUpdate(sourceRecord, "id", 109);
-        assertSourceQuery(sourceRecord, updateSqlStatement);
+        assertSourceQuery(sourceRecord, getExpectedQuery(updateSqlStatement));
     }
 
     /**
@@ -2091,7 +2091,7 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
         // Should have been a delete with query parsed.
         validate(sourceRecord1);
         assertUpdate(sourceRecord1, "order_number", 10001);
-        assertSourceQuery(sourceRecord1, updateSqlStatement);
+        assertSourceQuery(sourceRecord1, getExpectedQuery(updateSqlStatement));
 
         // Validate second event
         final SourceRecord sourceRecord2 = records.recordsForTopic(DATABASE.topicForTable(tableName)).get(1);
@@ -2099,7 +2099,7 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
         // Should have been a delete with query parsed.
         validate(sourceRecord2);
         assertUpdate(sourceRecord2, "order_number", 10004);
-        assertSourceQuery(sourceRecord2, updateSqlStatement);
+        assertSourceQuery(sourceRecord2, getExpectedQuery(updateSqlStatement));
     }
 
     /**
@@ -2108,7 +2108,7 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
      */
     @Test
     @FixFor("DBZ-1234")
-    public void shouldFailToValidateAdaptivePrecisionMode() throws InterruptedException {
+    public void shouldFailToValidateAdaptivePrecisionMode() {
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NEVER)
@@ -2650,6 +2650,11 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
         assertThat(changeEvents.size()).isEqualTo(2);
 
         stopConnector();
+    }
+
+    protected String getExpectedQuery(String statement) {
+
+        return statement;
     }
 
     private static class NoTombStonesHandler implements DebeziumEngine.ChangeConsumer<SourceRecord> {
