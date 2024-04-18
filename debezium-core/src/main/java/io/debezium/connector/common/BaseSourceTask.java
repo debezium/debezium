@@ -92,7 +92,8 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
 
             if (offset.isSnapshotRunning()) {
                 // The last offset was an incomplete snapshot and now the snapshot was disabled
-                if (!snapshotter.shouldSnapshotData(true, true)) {
+                if (!snapshotter.shouldSnapshotData(true, true) &&
+                        !snapshotter.shouldSnapshotSchema(true, true)) {
                     // No snapshots are allowed
                     throw new DebeziumException("The connector previously stopped while taking a snapshot, but now the connector is configured "
                             + "to never allow snapshots. Reconfigure the connector to use snapshots initially or when needed.");
@@ -123,7 +124,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
 
                     boolean logPositionAvailable = isLogPositionAvailable(logPositionValidator, partition, offset, config);
 
-                    if (!logPositionAvailable && !offset.isSnapshotRunning()) {
+                    if (!logPositionAvailable) {
                         LOGGER.warn("Last recorded offset is no longer available on the server.");
 
                         if (snapshotter.shouldSnapshotOnDataError()) {
