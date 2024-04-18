@@ -1874,6 +1874,15 @@ Pre- and post-images for an operation are available only if the required configu
 Set this property to one of the following values:
 
 `lookup`:: The connector uses a separate lookup to fetch the updated full MongoDB document.
+
+[WARNING]
+====
+If the lookup process fails to retrieve a document, it cannot populate the full document to the `after` state in the event payload.
+In such a situation, the connector emits an event message that contains a `null` value in the `after` field.
+
+Failed lookups can occur because a delete operation removed the document immediately after it was created, or because a change to the sharding key results in the document being moved to a different location.
+Sharding key changes can result when you modify any of the properties that make up the key.
+====
 `post_image`:: The connector uses MongoDB post images to populate events with the full MongoDB document.
 The database must be running MongoDB 6.0 or later to use this option.
 
