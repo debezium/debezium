@@ -733,6 +733,97 @@ END
 #end
 
 #begin
+-- delimiter //
+CREATE DEFINER=`reportwriter`@`%` PROCEDURE `sp_ds_DAL_TX_Impoundment`(IN pDateFrom datetime, IN pDateTo datetime)
+BEGIN
+
+    SET @goliveDate = '2023-05-02 02:00:00';
+    set @pRegion = 'DAL-TX';
+-- set @pDateFrom = '2023-02-01 00:00:00';
+-- set @pDateTo = '2023-03-10 00:00:00';
+    set @pDateFrom = pDateFrom;
+    set @pDateTo = pDateTo;
+
+    set @contractAmount = 21.03;
+
+with
+Temp1 as
+(
+    select l.code                                                            as lotCode
+         , fi.Id                                                             AS FeeItemID
+         , fi.unitBillingPrice                                               as billingPrice
+         , eq.equipmentClass
+         , a.customerCode
+         , v.impoundStatus
+         , tc.companyCode                                                    AS impoundCompany
+         , b.companyCode                                                     AS towOperator
+         , v.id                                                              AS vehicleId
+         , re.reasoncode
+         , v.towReferenceNumber
+
+         , fn_CalculateTimeZoneOffset(regionCode, v.clearedDate, 'DISPLAY')  AS towDate
+         , fn_CalculateTimeZoneOffset(regionCode, v.releaseDate, 'DISPLAY')  AS releaseDate
+         , fn_CalculateTimeZoneOffset(regionCode, fi.createdDate, 'DISPLAY') AS feeDate
+
+         , f.code
+         , fi.totalBillingPricePretax
+
+    from ims_vehicle v
+             join ref_region r
+                  on v.regionId = r.regionId
+
+             INNER JOIN ims_fee_event fe ON v.id = fe.vehicleId
+             INNER JOIN ims_fee_item fi ON fe.id = fi.feeEventId
+             INNER JOIN ims_fee f ON fi.feeId = f.id
+             INNER JOIN ims_fee_category fc ON f.feeCategoryEnumCode = fc.enumcode
+
+             INNER JOIN ref_customer a ON v.accountId = a.customerId
+             INNER JOIN ref_reason re ON v.reasonId = re.reasonId
+             INNER JOIN ref_tow_company tc ON v.currentImpoundOperatorId = tc.towCompanyId
+
+             JOIN ref_tow_company b ON v.towOperatorId = b.towCompanyId
+             left join ref_lot l on v.currentLotId = l.id
+             join ref_equipment eq
+                  on v.equipmentId = eq.id
+
+    where r.regionCode = @pRegion
+      and v.releaseDate >= @pDateFrom
+      and v.releaseDate < @pDateTo
+      and v.clearedDate >= @goliveDate
+      and b.companyCode != 'ART-DAL-TX'
+      and v.impoundStatus = 'RELEASED'
+)
+
+    select lotCode
+         , Temp1.vehicleId         as "Vehicle ID"
+         , towReferenceNumber      as "Tow Reference Number"
+         , equipmentClass          as "Class"
+         , impoundStatus           as "Status"
+         , customerCode            as "Customer"
+         , impoundCompany          as "Impound Company"
+         , towOperator             as "Tow Operator"
+         , towDate                 as "Tow Date"
+         , releaseDate             as "Release Date"
+         , billingPrice            as "Auto Pound Authorized Fee"
+
+         , billingPrice - @contractAmount   as "rev threshold"
+
+-- ,DATEDIFF(s.timeTo, s.timeFrom) as "Storage Days"
+         , null                    as "Storage Days"
+         , null                    as timeFrom
+         , null                    as timeTo
+         , billingPrice            as "Authorized Impoundment Fee"
+
+         , (billingPrice - @contractAmount)/2 + @contractAmount as "rev share amount"
+    from Temp1
+
+    where code in ('ImpoundmentFee')
+      and lotCode like '%PEAKA%';
+
+END; -- //-- delimiter ;
+#end
+
+#begin
 CREATE DEFINER=`PEUSER`@`%` PROCEDURE `SANDBOX`.`TEST_UNION`( )
 BEGIN
 SELECT ID ,SUM(COL_1) AS SUM_COL_1

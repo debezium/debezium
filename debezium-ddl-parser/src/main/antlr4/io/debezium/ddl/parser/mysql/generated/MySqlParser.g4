@@ -104,6 +104,7 @@ compoundStatement
     | caseStatement | ifStatement | leaveStatement
     | loopStatement | repeatStatement | whileStatement
     | iterateStatement | returnStatement | cursorStatement
+    | withStatement dmlStatement
     ;
 
 administrationStatement
