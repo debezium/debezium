@@ -5,6 +5,7 @@
  */
 package io.debezium.embedded.async;
 
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.Future;
 import java.util.function.Consumer;
@@ -40,18 +41,16 @@ public class ParallelSmtAndConvertConsumerProcessor<R> extends AbstractRecordPro
     public void processRecords(final List<SourceRecord> records) throws Exception {
         LOGGER.debug("Thread {} is submitting {} records for processing.", Thread.currentThread().getName(), records.size());
         final Future<R>[] recordFutures = new Future[records.size()];
-        int i = 0;
-        for (SourceRecord r : records) {
-            recordFutures[i] = recordService.submit(new ProcessingCallables.TransformAndConvertRecord(r, transformations, convertor));
-            i++;
+        Iterator<SourceRecord> recordsIterator = records.iterator();
+        for (int i = 0; recordsIterator.hasNext(); i++) {
+            recordFutures[i] = recordService.submit(new ProcessingCallables.TransformAndConvertRecord(recordsIterator.next(), transformations, convertor));
         }
 
         LOGGER.trace("Calling user consumer.");
-        i = 0;
-        for (SourceRecord r : records) {
+        recordsIterator = records.iterator();
+        for (int i = 0; recordsIterator.hasNext(); i++) {
             consumer.accept(recordFutures[i].get());
-            committer.markProcessed(r);
-            i++;
+            committer.markProcessed(recordsIterator.next());
         }
 
         LOGGER.trace("Marking batch as finished.");
