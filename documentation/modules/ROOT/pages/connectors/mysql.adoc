@@ -3920,6 +3920,10 @@ Set one of the following options:
 `fail`::  An exception reports that conversion failed because the data type of the field did not match the schema type, and indicates that it might be necessary to restart the connector in `schema _only_recovery` mode to enable a successful conversion.
 `warn`:: The connector writes a `null` value to the event field for the column that failed conversion, writes a message to the warning log . +
 `skip`::  The connector writes a `null` value to the event field for the column that failed conversion, and writes a message to the debug log.
+
+|[[mysql-property-database-query-timeout-ms]]<<mysql-property-database-query-timeout-ms, `database.query.timeout.ms`>>
+|`600000`
+|Time to wait for a query to execute, given in milliseconds. Defaults to 600 seconds (600,000 ms); zero means there is no limit.
 |===
 
 [id="debezium-mysql-connector-database-history-configuration-properties"]
