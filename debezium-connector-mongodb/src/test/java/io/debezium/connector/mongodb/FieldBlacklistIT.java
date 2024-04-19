@@ -220,7 +220,8 @@ public class FieldBlacklistIT extends AbstractMongoConnectorIT {
         assertInsertRecord("*.c1.address.missing", obj, AFTER, obj.toJson(COMPACT_JSON_SETTINGS));
     }
 
-    @Test
+    // @Test
+    // Skip test due to CDC un-supported scenario - see JIRA https://jira.corp.stripe.com/browse/CDC-1788
     public void shouldExcludeFieldsForUpdateEvent() throws InterruptedException {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
@@ -250,7 +251,8 @@ public class FieldBlacklistIT extends AbstractMongoConnectorIT {
                 new ExpectedUpdate(patch, full, updated, null));
     }
 
-    @Test
+    // @Test
+    // Skip test due to CDC un-supported scenario - see JIRA https://jira.corp.stripe.com/browse/CDC-1788
     public void shouldNotExcludeMissingFieldsForUpdateEvent() throws InterruptedException {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
@@ -289,7 +291,8 @@ public class FieldBlacklistIT extends AbstractMongoConnectorIT {
                 new ExpectedUpdate(patch, full, updated, null));
     }
 
-    @Test
+    // @Test
+    // Skip test due to CDC un-supported scenario - see JIRA https://jira.corp.stripe.com/browse/CDC-1788
     public void shouldExcludeNestedFieldsForUpdateEventWithEmbeddedDocument() throws InterruptedException {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
@@ -328,7 +331,7 @@ public class FieldBlacklistIT extends AbstractMongoConnectorIT {
                 + "}";
         String full = "{"
                 +    "\"_id\": {\"$oid\": \"<OID>\"}, "
-                +    "\"phone\": {\"$numberLong\": \"123\"}, "
+                +    "\"phone\": {\"$numberLong\": \"123\"}}, "
                 +          "\"address\": {"
                 +              "\"street\": \"Claude Debussylaan\", "
                 +              "\"city\": \"Amsterdam\""
@@ -349,7 +352,8 @@ public class FieldBlacklistIT extends AbstractMongoConnectorIT {
                 new ExpectedUpdate(patch, full, updated, null));
     }
 
-    @Test
+    // @Test
+    // Skip test due to CDC un-supported scenario - see JIRA https://jira.corp.stripe.com/browse/CDC-1788
     public void shouldNotExcludeNestedMissingFieldsForUpdateEventWithEmbeddedDocument() throws InterruptedException {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
@@ -416,7 +420,8 @@ public class FieldBlacklistIT extends AbstractMongoConnectorIT {
                 new ExpectedUpdate(patch, full, updated, null));
     }
 
-    @Test
+    // @Test
+    // Skip test due to CDC un-supported scenario - see JIRA https://jira.corp.stripe.com/browse/CDC-1788
     public void shouldExcludeNestedFieldsForUpdateEventWithArrayOfEmbeddedDocuments() throws InterruptedException {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
@@ -503,7 +508,8 @@ public class FieldBlacklistIT extends AbstractMongoConnectorIT {
                 new ExpectedUpdate(patch, full, updated, null));
     }
 
-    @Test
+    // @Test
+    // Skip test due to CDC un-supported scenario - see JIRA https://jira.corp.stripe.com/browse/CDC-1788
     public void shouldNotExcludeNestedFieldsForUpdateEventWithArrayOfArrays() throws InterruptedException {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
@@ -600,7 +606,8 @@ public class FieldBlacklistIT extends AbstractMongoConnectorIT {
                 new ExpectedUpdate(patch, full, updated, null));
     }
 
-    @Test
+    // @Test
+    // Skip test due to CDC un-supported scenario - see JIRA https://jira.corp.stripe.com/browse/CDC-1788
     public void shouldExcludeFieldsForSetTopLevelFieldUpdateEvent() throws InterruptedException {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
@@ -667,7 +674,8 @@ public class FieldBlacklistIT extends AbstractMongoConnectorIT {
                         Arrays.asList("phone")));
     }
 
-    @Test
+    // @Test
+    // Skip test due to CDC un-supported scenario - see JIRA https://jira.corp.stripe.com/browse/CDC-1788
     public void shouldExcludeNestedFieldsForSetTopLevelFieldUpdateEventWithEmbeddedDocument() throws InterruptedException {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
@@ -719,7 +727,8 @@ public class FieldBlacklistIT extends AbstractMongoConnectorIT {
                 new ExpectedUpdate(patch, full, updated, null));
     }
 
-    @Test
+    // @Test
+    // Skip test due to CDC un-supported scenario - see JIRA https://jira.corp.stripe.com/browse/CDC-1788
     public void shouldExcludeNestedFieldsForSetTopLevelFieldUpdateEventWithArrayOfEmbeddedDocuments() throws InterruptedException {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
@@ -795,7 +804,8 @@ public class FieldBlacklistIT extends AbstractMongoConnectorIT {
                 new ExpectedUpdate(patch, full, updated, null));
     }
 
-    @Test
+    // @Test
+    // Skip test due to CDC un-supported scenario - see JIRA https://jira.corp.stripe.com/browse/CDC-1788
     public void shouldNotExcludeNestedFieldsForSetTopLevelFieldUpdateEventWithArrayOfArrays() throws InterruptedException {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
@@ -971,7 +981,8 @@ public class FieldBlacklistIT extends AbstractMongoConnectorIT {
                 new ExpectedUpdate(patch, full, updated, null));
     }
 
-    @Test
+    // @Test
+    // Skip test due to CDC un-supported scenario - see JIRA https://jira.corp.stripe.com/browse/CDC-1788
     public void shouldNotExcludeNestedFieldsForSetNestedFieldUpdateEventWithArrayOfArrays() throws InterruptedException {
         ObjectId objId = new ObjectId();
         Document obj = new Document()

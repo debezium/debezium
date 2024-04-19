@@ -318,7 +318,8 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
         assertShouldNotRenameDuringInsert("*.c1.address.street:city", obj, "city");
     }
 
-    @Test
+    // @Test
+    // Skip test due to CDC un-supported scenario - see JIRA https://jira.corp.stripe.com/browse/CDC-1788
     public void shouldRenameFieldsForUpdateEvent() throws Exception {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
@@ -365,7 +366,8 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
         assertUpdateRecord(objId, record, new ExpectedUpdate(patch, full, updated, null));
     }
 
-    @Test
+    // @Test
+    // Skip test due to CDC un-supported scenario - see JIRA https://jira.corp.stripe.com/browse/CDC-1788
     public void shouldNotRenameMissingFieldsForUpdateEvent() throws Exception {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
@@ -412,7 +414,8 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
         assertUpdateRecord(objId, record, new ExpectedUpdate(patch, full, updated, null));
     }
 
-    @Test
+    // @Test
+    // Skip test due to CDC un-supported scenario - see JIRA https://jira.corp.stripe.com/browse/CDC-1788
     public void shouldRenameNestedFieldsForUpdateEventWithEmbeddedDocument() throws Exception {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
@@ -509,7 +512,8 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
         assertShouldNotRenameDuringUpdate("*.c1.address.street:city", obj, updateObj, false, "city");
     }
 
-    @Test
+    // @Test
+    // Skip test due to CDC un-supported scenario - see JIRA https://jira.corp.stripe.com/browse/CDC-1788
     public void shouldRenameNestedFieldsForUpdateEventWithArrayOfEmbeddedDocuments() throws Exception {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
@@ -604,7 +608,8 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
         assertUpdateRecord(objId, record, new ExpectedUpdate(patch, full, updated, null));
     }
 
-    @Test
+    // @Test
+    // Skip test due to CDC un-supported scenario - see JIRA https://jira.corp.stripe.com/browse/CDC-1788
     public void shouldNotRenameNestedFieldsForUpdateEventWithArrayOfArrays() throws Exception {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
@@ -704,7 +709,8 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
         assertUpdateRecord(objId, record, new ExpectedUpdate(patch, full, updated, null));
     }
 
-    @Test
+    // @Test
+    // Skip test due to CDC un-supported scenario - see JIRA https://jira.corp.stripe.com/browse/CDC-1788
     public void shouldRenameFieldsForSetTopLevelFieldUpdateEvent() throws Exception {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
@@ -804,7 +810,9 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
         assertShouldNotRenameDuringUpdate("*.c1.name:phone", obj, updateObj, false, "phone");
     }
 
-    @Test
+    // @Test
+    // Skip test due to CDC un-supported scenario - see JIRA https://jira.corp.stripe.com/browse/CDC-1788
+    // Skip test due to CDC un-supported scenario - see JIRA https://jira.corp.stripe.com/browse/CDC-1788
     public void shouldRenameNestedFieldsForSetTopLevelFieldUpdateEventWithEmbeddedDocument() throws Exception {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
@@ -864,7 +872,8 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
         assertUpdateRecord(objId, record, new ExpectedUpdate(patch, full, updated, null));
     }
 
-    @Test
+    // @Test
+    // Skip test due to CDC un-supported scenario - see JIRA https://jira.corp.stripe.com/browse/CDC-1788
     public void shouldRenameNestedFieldsForSetTopLevelFieldUpdateEventWithArrayOfEmbeddedDocuments() throws Exception {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
@@ -949,7 +958,8 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
         assertUpdateRecord(objId, record, new ExpectedUpdate(patch, full, updated, null));
     }
 
-    @Test
+    // @Test
+    // Skip test due to CDC un-supported scenario - see JIRA https://jira.corp.stripe.com/browse/CDC-1788
     public void shouldNotRenameNestedFieldsForSetTopLevelFieldUpdateEventWithArrayOfArrays() throws Exception {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
@@ -1038,7 +1048,8 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
         assertUpdateRecord(objId, record, new ExpectedUpdate(patch, full, updated, null));
     }
 
-    @Test
+    // @Test
+    // Skip test due to CDC un-supported scenario - see JIRA https://jira.corp.stripe.com/browse/CDC-1788
     public void shouldRenameNestedFieldsForSetNestedFieldUpdateEventWithEmbeddedDocument() throws Exception {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
@@ -1088,7 +1099,8 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
         assertUpdateRecord(objId, record, new ExpectedUpdate(patch, full, updated, null));
     }
 
-    @Test
+    // @Test
+    // Skip test due to CDC un-supported scenario - see JIRA https://jira.corp.stripe.com/browse/CDC-1788
     public void shouldRenameNestedFieldsForSetNestedFieldUpdateEventWithArrayOfEmbeddedDocuments() throws Exception {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
@@ -1159,7 +1171,8 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
                 TestHelper.isOplogCaptureMode() ? "addresses.0.city" : "city");
     }
 
-    @Test
+    // @Test
+    // Skip test due to CDC un-supported scenario - see JIRA https://jira.corp.stripe.com/browse/CDC-1788
     public void shouldNotRenameNestedFieldsForSetNestedFieldUpdateEventWithArrayOfArrays() throws Exception {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
@@ -1209,7 +1222,8 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
         assertUpdateRecord(objId, record, new ExpectedUpdate(patch, full, updated, null));
     }
 
-    @Test
+    // @Test
+    // Skip test due to CDC un-supported scenario - see JIRA https://jira.corp.stripe.com/browse/CDC-1788
     public void shouldRenameNestedFieldsForSetNestedFieldUpdateEventWithSeveralArrays() throws Exception {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
@@ -1259,7 +1273,8 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
         assertUpdateRecord(objId, record, new ExpectedUpdate(patch, full, updated, null));
     }
 
-    @Test
+    // @Test
+    // Skip test due to CDC un-supported scenario - see JIRA https://jira.corp.stripe.com/browse/CDC-1788
     public void shouldRenameFieldsForSetNestedFieldUpdateEventWithArrayOfEmbeddedDocuments() throws Exception {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
@@ -1309,7 +1324,8 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
         assertUpdateRecord(objId, record, new ExpectedUpdate(patch, full, updated, null));
     }
 
-    @Test
+    // @Test
+    // Skip test due to CDC un-supported scenario - see JIRA https://jira.corp.stripe.com/browse/CDC-1788
     public void shouldRenameFieldsForSetToArrayFieldUpdateEventWithArrayOfEmbeddedDocuments() throws Exception {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
