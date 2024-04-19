@@ -239,7 +239,11 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
         if (context != null && context.currentDataCollectionId() != null) {
             Optional<String> surrogateKey = context.currentDataCollectionId().getSurrogateKey();
             if (surrogateKey.isPresent()) {
-                return Collections.singletonList(table.columnWithName(surrogateKey.get()));
+                Column column = table.columnWithName(surrogateKey.get());
+                if (column == null) {
+                    throw new IllegalArgumentException("Surrogate key \"" + surrogateKey.get() + "\" doesn't exist in table \"" + table.id() + "\"");
+                }
+                return Collections.singletonList(column);
             }
         }
         return getKeyMapper().getKeyKolumns(table);
