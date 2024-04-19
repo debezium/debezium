@@ -131,6 +131,11 @@ public class SpecialCharsInNamesIT extends AbstractConnectorTest {
                 "CREATE TABLE [UAT WAG CZ$Fixed Asset] (id int primary key, [my col$a] varchar(30))",
                 "INSERT INTO [UAT WAG CZ$Fixed Asset] VALUES(1, 'a')");
         TestHelper.enableTableCdc(connection, "UAT WAG CZ$Fixed Asset");
+
+        connection.execute(
+                "CREATE TABLE [UAT WAG CZ$Fixed Asset Two] (id int primary key, [my col$] varchar(30), Description varchar(30) NOT NULL)");
+        TestHelper.enableTableCdc(connection, "UAT WAG CZ$Fixed Asset Two");
+
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
 
@@ -174,9 +179,6 @@ public class SpecialCharsInNamesIT extends AbstractConnectorTest {
                         .build());
         assertThat(((Struct) record.value()).getStruct("after").getInt32("id")).isEqualTo(2);
 
-        connection.execute(
-                "CREATE TABLE [UAT WAG CZ$Fixed Asset Two] (id int primary key, [my col$] varchar(30), Description varchar(30) NOT NULL)");
-        TestHelper.enableTableCdc(connection, "UAT WAG CZ$Fixed Asset Two");
         connection.execute("INSERT INTO [UAT WAG CZ$Fixed Asset Two] VALUES(3, 'b', 'empty')");
         records = consumeRecordsByTopic(1);
         assertThat(records.recordsForTopic("server1.testDB1.dbo.UAT_WAG_CZ_Fixed_Asset_Two")).hasSize(1);

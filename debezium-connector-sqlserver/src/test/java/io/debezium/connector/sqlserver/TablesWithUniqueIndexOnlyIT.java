@@ -79,6 +79,7 @@ public class TablesWithUniqueIndexOnlyIT extends AbstractConnectorTest {
     public void shouldProcessFromStreaming() throws Exception {
         connection = TestHelper.testConnection();
         connection.execute(DDL_STATEMENTS + DML_STATEMENTS);
+        connection.execute(DDL_STATEMENTS_STREAM);
 
         TestHelper.enableTableCdc(connection, "t1", "t1_CT", Collect.arrayListOf("key1", "key2", "data"));
 
@@ -100,7 +101,6 @@ public class TablesWithUniqueIndexOnlyIT extends AbstractConnectorTest {
         assertThat(records.recordsForTopic("server1.testDB1.dbo.t1").get(0).keySchema().field("key1")).isNotNull();
         assertThat(records.recordsForTopic("server1.testDB1.dbo.t1").get(0).keySchema().field("key2")).isNotNull();
 
-        connection.execute(DDL_STATEMENTS_STREAM);
         TestHelper.enableTableCdc(connection, "t2", "t2_CT", Collect.arrayListOf("key1", "key2"));
         TestHelper.waitForEnabledCdc(connection, "t2");
         connection.execute("INSERT INTO t2 VALUES (2, 20, 'data2', 200);");

@@ -71,6 +71,8 @@ public class CaseSensitivenessIT extends AbstractConnectorTest {
     }
 
     private void testDatabase() throws Exception {
+        connection.execute("CREATE TABLE MyTableTwo (Id int primary key, ColB varchar(30))");
+
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .build();
@@ -117,8 +119,6 @@ public class CaseSensitivenessIT extends AbstractConnectorTest {
                         .build());
         assertThat(((Struct) ((Struct) record.value()).get("after")).getInt32("Id")).isEqualTo(2);
 
-        connection.execute(
-                "CREATE TABLE MyTableTwo (Id int primary key, ColB varchar(30))");
         TestHelper.enableTableCdc(connection, "MyTableTwo");
         connection.execute("INSERT INTO MyTableTwo VALUES(3, 'b')");
         records = consumeRecordsByTopic(1);

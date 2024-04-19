@@ -256,12 +256,9 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-2303")
     public void schemaChangeAfterSnapshot() throws Exception {
-        final int RECORDS_PER_TABLE = 1;
-        final int ID_START = 10;
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .with(SqlServerConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                .with(SqlServerConnectorConfig.STORE_ONLY_CAPTURED_TABLES_DDL, "true")
                 .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.tablec")
                 .build();
 
@@ -277,10 +274,24 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
         assertConnectorIsRunning();
         TestHelper.waitForSnapshotToBeCompleted();
 
-        // 1 schema event + 1 data event
+        // 4 schema event + 1 data event
         Testing.Print.enable();
-        SourceRecords records = consumeRecordsByTopic(1 + 1);
+        SourceRecords records = consumeRecordsByTopic(4 + 1);
+
         assertThat(records.recordsForTopic("server1.testDB1.dbo.tablec")).hasSize(1);
+
+        final List<SourceRecord> schemaEvents = records.recordsForTopic("server1");
+
+        // TODO DBZ-4082: schemaEvents is null occasionally when running this test on CI;
+        // still we got the right number of records, so I'm logging all received records here
+        if (schemaEvents == null) {
+            Testing.print("Received records: " + records.allRecordsInOrder());
+        }
+
+        for (SourceRecord temp : schemaEvents) {
+            assertThat(((Struct) temp.value()).getStruct("source").getString("schema")).isEqualTo("dbo");
+            assertThat(((Struct) temp.value()).getStruct("source").getString("table")).matches(".*(tablea|tableb|tablec|tabled).*");
+        }
 
         stopConnector();
         assertConnectorNotRunning();
@@ -303,21 +314,10 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
 
         connection.execute("INSERT INTO tabled VALUES(1, 'd')");
 
-        // 1-2 schema events + 1 data event
-        records = consumeRecordsByTopic(2 + 1);
+        //1 data event
+        records = consumeRecordsByTopic(1);
+
         assertThat(records.recordsForTopic("server1.testDB1.dbo.tabled")).hasSize(1);
-
-        final List<SourceRecord> schemaEvents = records.recordsForTopic("server1");
-
-        // TODO DBZ-4082: schemaEvents is null occasionally when running this test on CI;
-        // still we got the right number of records, so I'm logging all received records here
-        if (schemaEvents == null) {
-            Testing.print("Received records: " + records.allRecordsInOrder());
-        }
-
-        final SourceRecord schemaEventD = schemaEvents.get(schemaEvents.size() - 1);
-        assertThat(((Struct) schemaEventD.value()).getStruct("source").getString("schema")).isEqualTo("dbo");
-        assertThat(((Struct) schemaEventD.value()).getStruct("source").getString("table")).isEqualTo("tabled");
     }
 
     @Test

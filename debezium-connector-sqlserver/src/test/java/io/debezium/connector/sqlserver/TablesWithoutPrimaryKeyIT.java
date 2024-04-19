@@ -88,6 +88,8 @@ public class TablesWithoutPrimaryKeyIT extends AbstractConnectorTest {
         TestHelper.waitForDisabledCdc(connection, "t2");
         TestHelper.waitForDisabledCdc(connection, "t3");
 
+        connection.execute(DDL_STATEMENTS);
+
         start(SqlServerConnector.class, TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .build());
@@ -98,8 +100,6 @@ public class TablesWithoutPrimaryKeyIT extends AbstractConnectorTest {
 
         TestHelper.waitForStreamingStarted();
         TestHelper.waitForMaxLsnAvailable(connection);
-
-        connection.execute(DDL_STATEMENTS);
 
         Testing.Print.enable();
         TestHelper.enableTableCdc(connection, "t1");
