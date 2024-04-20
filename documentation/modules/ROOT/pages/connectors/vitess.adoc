@@ -973,18 +973,13 @@ a|`io.debezium.data.EnumSet` +
 The `allowed` schema parameter contains the comma-separated list of allowed values.
 
 |`YEAR[(2\|4)]`
-|`STRING`
-|_n/a_
+|`INT32`
+|io.debezium.time.Year
 
 |`TIMESTAMP[(M)]`
 |`STRING`
 a|_n/a_ +
 In `yyyy-MM-dd HH:mm:ss.SSS` format with microsecond precision based on UTC. MySQL allows `M` to be in the range of `0-6`.
-
-|`DATETIME[(M)]`
-|`STRING`
-a|_n/a_ +
-In `yyyy-MM-dd HH:mm:ss.SSS` format with microsecond precision. MySQL allows `M` to be in the range of `0-6`.
 
 |`NUMERIC[(M[,D])]`
 |`STRING`
@@ -1003,6 +998,78 @@ MULTIPOLYGON, +
 GEOMETRYCOLLECTION`
 |Unsupported yet
 a|_n/a_
+
+|===
+
+[id="vitess-temporal-types"]
+=== Temporal types
+
+Excluding the `TIMESTAMP` data type, Vitess temporal types depend on the value of the `time.precision.mode` connector configuration property.
+
+.Temporal values without time zones
+The `DATETIME` type represents a local date and time such as "2018-01-13 09:48:27". As you can see, there is no time zone information. Such columns are converted into epoch milliseconds or microseconds based on the column’s precision by using UTC. The `TIMESTAMP` type represents a timestamp without time zone information. It is converted by MySQL from the server (or session’s) current time zone into UTC when writing and from UTC into the server (or session's) current time zone when reading back the value. For example:
+
+* `DATETIME` with a value of `2018-06-20 06:37:03` becomes `1529476623000`.
+* `TIMESTAMP` with a value of `2018-06-20 06:37:03` becomes `2018-06-20T13:37:03Z`.
+
+Such columns are converted into an equivalent `io.debezium.time.ZonedTimestamp` in UTC based on the server (or session’s) current time zone. The time zone will be queried from the server by default. If this fails, it must be specified explicitly by the database `connectionTimeZone` MySQL configuration option. For example, if the database’s time zone (either globally or configured for the connector by means of the `connectionTimeZone` option) is "America/Los_Angeles", the TIMESTAMP value "2018-06-20 06:37:03" is represented by a `ZonedTimestamp` with the value "2018-06-20T13:37:03Z".
+
+The time zone of the JVM running Kafka Connect and Debezium does not affect these conversions.
+
+More details about properties related to temporal values are in the documentation for xref:vitess-connector-properties[Connector configuration properties].
+
+time.precision.mode=adaptive_time_microseconds(default)::
+The Vitess connector determines the literal type and semantic type based on the column's data type definition so that events represent exactly the values in the database. All time fields are in microseconds. Only positive `TIME` field values in the range of `00:00:00.000000` to `23:59:59.999999` can be captured correctly.
++
+.Mappings when `time.precision.mode=adaptive_time_microseconds`
+[cols="25%a,20%a,55%a",options="header",subs="+attributes"]
+|===
+|Vitess type |Literal type |Semantic type
+
+|`DATE`
+|`INT32`
+a|`io.debezium.time.Date` +
+Represents the number of days since the epoch.
+
+|`TIME[(M)]`
+|`INT64`
+a|`io.debezium.time.MicroTime` +
+Represents the time value in microseconds and does not include time zone information. MySQL allows `M` to be in the range of `0-6`.
+
+|`DATETIME, DATETIME(0), DATETIME(1), DATETIME(2), DATETIME(3)`
+|`INT64`
+a|`io.debezium.time.Timestamp` +
+Represents the number of milliseconds past the epoch and does not include time zone information.
+
+|`DATETIME(4), DATETIME(5), DATETIME(6)`
+|`INT64`
+a|`io.debezium.time.MicroTimestamp` +
+Represents the number of microseconds past the epoch and does not include time zone information.
+
+|===
+
+time.precision.mode=connect::
+The Vitess connector uses defined Kafka Connect logical types. This approach is less precise than the default approach and the events could be less precise if the database column has a _fractional second precision_ value of greater than `3`. Values in only the range of `00:00:00.000` to `23:59:59.999` can be handled. Set `time.precision.mode=connect` only if you can ensure that the `TIME` values in your tables never exceed the supported ranges. The `connect` setting is expected to be removed in a future version of {prodname}.
++
+.Mappings when `time.precision.mode=connect`
+[cols="25%a,20%a,55%a",options="header",subs="+attributes"]
+|===
+|Vitess data type |Literal type |Semantic type
+
+|`DATE`
+|`INT32`
+a|`org.apache.kafka.connect.data.Date` +
+Represents the number of days since the epoch.
+
+|`TIME[(M)]`
+|`INT64`
+a|`org.apache.kafka.connect.data.Time` +
+Represents the time value in microseconds since midnight and does not include time zone information.
+
+|`DATETIME[(M)]`
+|`INT64`
+a|`org.apache.kafka.connect.data.Timestamp` +
+Represents the number of milliseconds since the epoch, and does not include time zone information.
 
 |===
 
@@ -1426,6 +1493,14 @@ When the connector starts, if it does not detect a value in its offsets topic, i
 
 `never`::
 When the connector starts, it skips the snapshot process and immediately begins to stream change events for operations that the database records to the binary logs.
+
+|[[vitess-property-time-precision-mode]]<<vitess-property-time-precision-mode, `+time.precision.mode+`>>
+|`adaptive_time_microseconds`
+|Time, date, and timestamps can be represented with different kinds of precision, including: +
++
+`adaptive_time_microseconds` (the default) captures the date, datetime and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type, with the exception of TIME type fields, which are always captured as microseconds. +
++
+`connect` always represents time and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, which use millisecond precision regardless of the database columns' precision.
 
 |[[vitess-property-bigint-unsigned-handling-mode]]<<vitess-property-bigint-unsigned-handling-mode,`+bigint.unsigned.handling.mode.mode+`>>
 |string
