@@ -2649,8 +2649,9 @@ You can define tags to identify particular application instances, environments, 
 |The maximum number of retries on retriable errors (e.g. connection errors) before failing (-1 = no limit, 0 = disabled, > 0 = num of retries).
 
 |[[informix-property-database-query-timeout-ms]]<<informix-property-database-query-timeout-ms, `database.query.timeout.ms`>>
-|`600000`
-|Time to wait for a query to execute, given in milliseconds. Defaults to 600 seconds (600,000 ms); zero means there is no limit.
+|`600000` (10 minutes)
+|Specifies the time, in milliseconds, that the connector waits for a query to complete.
+Set the value to `0` (zero) to remove the timeout limit.
 
 |===
 
