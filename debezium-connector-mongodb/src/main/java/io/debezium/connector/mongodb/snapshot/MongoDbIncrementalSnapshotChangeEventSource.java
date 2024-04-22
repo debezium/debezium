@@ -636,7 +636,11 @@ public class MongoDbIncrementalSnapshotChangeEventSource
 
     private String getAdditionalConditions() {
         // Strip additional parenthesis to make sure additional conditions are parsed correctly
-        return context.currentDataCollectionId().getAdditionalCondition().map(s -> s.substring(1, s.length() - 1)).orElse("");
+        return context.currentDataCollectionId().getAdditionalCondition().map(this::getStripedAdditionalConditions).orElse("");
+    }
+
+    private String getStripedAdditionalConditions(String additionalConditions) {
+        return additionalConditions.substring(1, additionalConditions.length() - 1);
     }
 
     private void incrementTableRowsScanned(long rows) {
