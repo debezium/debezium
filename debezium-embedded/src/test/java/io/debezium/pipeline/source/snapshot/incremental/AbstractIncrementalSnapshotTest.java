@@ -464,8 +464,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
                     Testing.print("Record counter " + recordCounter.get());
                     if (topicNames().contains(record.topic())) { // We want to exclude the changed from signal table
                         dbChanges.add(record);
-                        if (!record.topic().contains(topicName()) &&
-                                recordCounter.addAndGet(1) > 150
+                        if (recordCounter.addAndGet(1) > 150
                                 && !restarted.get()) {
 
                             stopConnector();
