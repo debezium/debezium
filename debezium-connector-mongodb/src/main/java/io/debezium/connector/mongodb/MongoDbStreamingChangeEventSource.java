@@ -235,17 +235,24 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         ReplicaSetOplogContext oplogContext = new ReplicaSetOplogContext(rsPartition, rsOffsetContext, primaryClient, replicaSet);
 
         Bson filter = null;
-        if (!txOrder.isPresent()) {
-            LOGGER.info("The last event processed was not transactional, resuming at the oplog event after '{}'", oplogStart);
-            filter = Filters.and(Filters.gt("ts", oplogStart), // start just after our last position
+        if (connectorConfig.isOplogStartAtEnabled()) {
+            LOGGER.info("The mongodb.oplog_start_at.enabled is enabled, resuming at the oplog event at '{}'", oplogStart);
+            filter = Filters.and(Filters.gte("ts", oplogStart), // start just after our last position
                     Filters.exists("fromMigrate", false)); // skip internal movements across shards
         }
         else {
-            LOGGER.info("The last event processed was transactional, resuming at the oplog event '{}', expecting to skip '{}' events",
-                    oplogStart, txOrder.getAsLong());
-            filter = Filters.and(Filters.gte("ts", oplogStart), Filters.exists("fromMigrate", false));
-            oplogContext.setIncompleteEventTimestamp(oplogStart);
-            oplogContext.setIncompleteTxOrder(txOrder.getAsLong());
+            if (!txOrder.isPresent()) {
+                LOGGER.info("The last event processed was not transactional, resuming at the oplog event after '{}'", oplogStart);
+                filter = Filters.and(Filters.gt("ts", oplogStart), // start just after our last position
+                        Filters.exists("fromMigrate", false)); // skip internal movements across shards
+            }
+            else {
+                LOGGER.info("The last event processed was transactional, resuming at the oplog event '{}', expecting to skip '{}' events",
+                        oplogStart, txOrder.getAsLong());
+                filter = Filters.and(Filters.gte("ts", oplogStart), Filters.exists("fromMigrate", false));
+                oplogContext.setIncompleteEventTimestamp(oplogStart);
+                oplogContext.setIncompleteTxOrder(txOrder.getAsLong());
+            }
         }
 
         Bson operationFilter = getOplogSkippedOperationsFilter();

@@ -803,6 +803,15 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withValidation(Field::isPositiveInteger)
             .withDescription("Mongo DB previous multi-task hop seconds");
 
+    public static final Field OPLOG_START_AT_ENABLED = Field.create("mongodb.oplog_start_at.enabled")
+            .withDisplayName("Whether to resume reading oplog by starting at the last offset")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDefault(false)
+            .withValidation(Field::isBoolean)
+            .withDescription("If true, resume at the oplog start time. If false (default), resume after the oplog start time. Only affects oplog mode.");
+
     private static final ConfigDefinition CONFIG_DEFINITION = CommonConnectorConfig.CONFIG_DEFINITION.edit()
             .name("MongoDB")
             .type(
@@ -889,6 +898,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
     private final FiltersMatchMode filtersMatchMode;
 
+    private final boolean oplogStartAtEnabled;
+
     public MongoDbConnectorConfig(Configuration config) {
         super(config, config.getString(LOGICAL_NAME), DEFAULT_SNAPSHOT_FETCH_SIZE);
 
@@ -916,6 +927,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         this.multiTaskPrevMaxTasks = config.getInteger(MongoDbConnectorConfig.MONGODB_MULTI_TASK_PREV_TASKS, 1);
         this.multiTaskPrevGen = config.getInteger(MongoDbConnectorConfig.MONGODB_MULTI_TASK_PREV_GEN, -1);
         this.multiTaskHopSeconds = config.getInteger(MongoDbConnectorConfig.MONGODB_MULTI_TASK_HOP_SECONDS, 10);
+
+        this.oplogStartAtEnabled = config.getBoolean(MongoDbConnectorConfig.OPLOG_START_AT_ENABLED, false);
     }
 
     private static int validateHosts(Configuration config, Field field, ValidationOutput problems) {
@@ -1106,6 +1119,10 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
     public int getMultiTaskHopSeconds() {
         return multiTaskHopSeconds;
+    }
+
+    public boolean isOplogStartAtEnabled() {
+        return oplogStartAtEnabled;
     }
 
     @Override
