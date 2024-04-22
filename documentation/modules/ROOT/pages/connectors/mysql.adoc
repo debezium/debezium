@@ -3922,8 +3922,9 @@ Set one of the following options:
 `skip`::  The connector writes a `null` value to the event field for the column that failed conversion, and writes a message to the debug log.
 
 |[[mysql-property-database-query-timeout-ms]]<<mysql-property-database-query-timeout-ms, `database.query.timeout.ms`>>
-|`600000`
-|Time to wait for a query to execute, given in milliseconds. Defaults to 600 seconds (600,000 ms); zero means there is no limit.
+|`600000` (10 minutes)
+|Specifies the time, in milliseconds, that the connector waits for a query to complete.
+Set the value to `0` (zero) to remove the timeout limit.
 |===
 
 [id="debezium-mysql-connector-database-history-configuration-properties"]
