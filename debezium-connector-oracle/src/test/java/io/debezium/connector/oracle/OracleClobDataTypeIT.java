@@ -2585,6 +2585,67 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
         }
     }
 
+    @Test
+    @FixFor("DBZ-7790")
+    public void shouldNotMergeClobDataWhenNoPrimaryKey() throws Exception {
+        TestHelper.dropTable(connection, "DBZ7790");
+        try {
+            connection.execute("CREATE TABLE DBZ7790(id numeric(9,0), DATA CLOB)");
+            TestHelper.streamTable(connection, "DBZ7790");
+
+            connection.execute("INSERT INTO DBZ7790 (id,data) values (1,'aaa')");
+            connection.execute("INSERT INTO DBZ7790 (id,data) values (2,'bbb')");
+            connection.commit();
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ7790")
+                    .with(OracleConnectorConfig.LOB_ENABLED, "true")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // Get snapshot records
+            SourceRecords sourceRecords = consumeRecordsByTopic(2);
+            List<SourceRecord> tableRecords = sourceRecords.recordsForTopic(topicName("DBZ7790"));
+            assertThat(tableRecords).hasSize(2);
+
+            SourceRecord insert1 = tableRecords.get(0);
+            Struct after = ((Struct) insert1.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertThat(after.get("DATA")).isEqualTo("aaa");
+
+            SourceRecord insert2 = tableRecords.get(1);
+            after = ((Struct) insert2.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(2);
+            assertThat(after.get("DATA")).isEqualTo("bbb");
+
+            // Update - streaming
+            connection.execute("UPDATE DBZ7790 set data = 'ccc' WHERE id = 1");
+            connection.execute("UPDATE DBZ7790 set data = 'ddd' WHERE id = 2");
+            connection.commit();
+
+            sourceRecords = consumeRecordsByTopic(2);
+            tableRecords = sourceRecords.recordsForTopic(topicName("DBZ7790"));
+
+            // Get streaming records
+            assertThat(tableRecords).hasSize(2);
+
+            SourceRecord update1 = tableRecords.get(0);
+            assertThat(getAfterField(update1, "ID")).isEqualTo(1);
+            assertThat(getAfterField(update1, "DATA")).isEqualTo("ccc");
+
+            SourceRecord update2 = tableRecords.get(1);
+            assertThat(getAfterField(update2, "ID")).isEqualTo(2);
+            assertThat(getAfterField(update2, "DATA")).isEqualTo("ddd");
+            stopConnector();
+        }
+        finally {
+            TestHelper.dropTable(connection, "DBZ7790");
+        }
+    }
+
     private String createRandomStringWithAlphaNumeric(int length) {
         return RandomStringUtils.randomAlphabetic(length);
     }
