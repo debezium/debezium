@@ -158,7 +158,7 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
             return;
         }
 
-        if(table.primaryKeyColumnNames().isEmpty()){
+        if (table.primaryKeyColumnNames().isEmpty()) {
             LOGGER.debug("\tEvent for table {} has no primary key, dispatching.", table.id());
             dispatchChangeEvent(event);
             return;
