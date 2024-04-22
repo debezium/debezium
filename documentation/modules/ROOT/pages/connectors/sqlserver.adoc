@@ -1933,7 +1933,7 @@ For details about setting up SQL Server for use with the {prodname} connector, s
 
 endif::product[]
 
-After CDC is applied, it captures all of the `INSERT`, `UPDATE`, and `DELETE` operations that are committed to the tables for which CDD is enabled.
+After CDC is applied, it captures all of the `INSERT`, `UPDATE`, and `DELETE` operations that are committed to the tables for which CDC is enabled.
 The {prodname} connector can then capture these events and emit them to Kafka topics.
 
 // Type: procedure
