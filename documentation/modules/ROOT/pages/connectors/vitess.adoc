@@ -199,12 +199,14 @@ Following is an example of a message:
 [[vitess-ordered-transaction-metadata]]
 === Ordered Transaction Metadata
 You can configure {prodname} to include additional metadata in data change event records.
-Such supplemental metadata can assist downstream consumers in processing messages in the correct order  when repartitioning, or some other disruption, might otherwise lead to data being consumed out of order.
+Such supplemental metadata can assist downstream consumers in processing messages in the correct order when repartitioning, or some other disruption, might otherwise lead to data being consumed out of order.
 
 .Change Data Enrichment
 
-When transaction metadata factory is set to `VitessOrderedTransactionMetadataFactory`, the data message `Envelope` is also enriched with a new `transaction` field.
-This field provides information about every event in the form of a composite of fields. With ordered transaction metadata enabled, there are two additional fields included:
+To configure the connector to emit enriched data change event records, set the xref:vitess-property-transaction-metadata-factory[`transaction.metadata.factory`] property.
+When this property is set to `VitessOrderedTransactionMetadataFactory`, the connector includes a `transaction` field in the message `Envelope`.
+The `transaction` field adds metadata that provides information about the order in which transactions occur.
+The following fields are added to every message:
 
 `transaction_epoch`:: A non-decreasing value that represents the epoch that the transaction rank belongs to.
 `transaction_rank`:: A non-decreasing value within an epoch that represents the order of the transaction.
@@ -1070,7 +1072,7 @@ As you can see in the preceding example, this type does not include time zone in
 Columns of this type are converted into epoch milliseconds or microseconds based on the column’s precision by using UTC.
 The `TIMESTAMP` type represents a timestamp without time zone information.
 When writing data, MySQL converts the `TIMESTAMP` type from the time zone of the server or session into UTC format.
-When it reads values, the database converts from UTC format to the current time zone of the  server or session.
+When it reads values, the database converts from UTC format to the current time zone of the server or session.
 For example:
 
 * `DATETIME` with a value of `2018-06-20 06:37:03` becomes `1529476623000`.
@@ -1570,7 +1572,7 @@ When the connector starts, it skips the snapshot process and immediately begins 
 
 |[[vitess-property-time-precision-mode]]<<vitess-property-time-precision-mode, `+time.precision.mode+`>>
 |`adaptive_time_microseconds`
-|You can set the following options to determine how {prodname} represents the precision of time, date, and timestamps values: +
+|You can set the following options to determine how {prodname} represents the precision of time, date, and timestamp values: +
 +
 `adaptive_time_microseconds`::
 (Default) Captures date, datetime, and timestamp values exactly as they exist in the database.
