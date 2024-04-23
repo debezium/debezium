@@ -900,8 +900,8 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
         final int month = Integer.parseInt(matcher.group(2));
         final int day = Integer.parseInt(matcher.group(3));
 
-        if (year == 0 || month == 0 || day == 0) {
-            LOGGER.warn("Invalid value '{}' stored in column '{}' of table '{}' converted to empty value",
+        if (month == 0 || day == 0) {
+            LOGGER.debug("Invalid value '{}' stored in column '{}' of table '{}' converted to empty value",
                     dateString, column.name(), table.id());
             return null;
         }
@@ -927,8 +927,8 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
         final int month = Integer.parseInt(matcher.group(2));
         final int day = Integer.parseInt(matcher.group(3));
 
-        if (year == 0 || month == 0 || day == 0) {
-            LOGGER.warn("Invalid value '{}' stored in column '{}' of table '{}' converted to empty value",
+        if (month == 0 || day == 0) {
+            LOGGER.debug("Invalid value '{}' stored in column '{}' of table '{}' converted to empty value",
                     timestampString, column.name(), table.id());
             return true;
         }
