@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.oracle.util;
 
+import static io.debezium.relational.RelationalDatabaseConnectorConfig.QUERY_TIMEOUT_MS;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -277,6 +279,7 @@ public class TestHelper {
         jdbcConfiguration.forEach(
                 (field, value) -> builder.with(OracleConnectorConfig.DATABASE_CONFIG_PREFIX + field, value));
 
+        builder.with(QUERY_TIMEOUT_MS, 0); // Fix Oracle 21 xstream tests
         builder.with(CommonConnectorConfig.TOPIC_PREFIX, SERVER_NAME);
         return builder;
     }
