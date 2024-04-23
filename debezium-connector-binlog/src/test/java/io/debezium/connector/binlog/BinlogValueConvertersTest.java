@@ -6,9 +6,11 @@
 package io.debezium.connector.binlog;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.Assert.assertEquals;
 
 import java.math.BigDecimal;
+import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Month;
@@ -263,6 +265,118 @@ public abstract class BinlogValueConvertersTest<C extends SourceConnector> imple
         assertEquals("2023-01-11T00:34:10.123Z", colDConverter.convert(ZonedDateTime.parse("2023-01-11T00:34:10.123Z")));
         assertEquals("2023-01-11T00:34:10.123456Z", colDConverter.convert(ZonedDateTime.parse("2023-01-11T00:34:10.123456Z")));
         assertEquals("2023-01-11T00:34:10Z", colDConverter.convert(ZonedDateTime.parse("2023-01-11T00:34:10Z")));
+    }
+
+    @Test
+    public void testInvalidLocalDate() {
+        LogInterceptor interceptor = new LogInterceptor(BinlogValueConverters.class);
+        String dateTable = "DATE_TABLE";
+        String sql = "CREATE TABLE " + dateTable + " (A DATE NOT NULL);";
+
+        final BinlogValueConverters converters = getValueConverters(
+                JdbcValueConverters.DecimalMode.PRECISE,
+                TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS,
+                JdbcValueConverters.BigIntUnsignedMode.LONG,
+                BinaryHandlingMode.BYTES,
+                x -> x,
+                EventConvertingFailureHandlingMode.WARN);
+
+        DdlParser parser = getDdlParser();
+        Tables tables = new Tables();
+        parser.parse(sql, tables);
+
+        Table table = tables.forTable(new TableId(null, null, dateTable));
+        Column colA = table.columnWithName("A");
+
+        LocalDate actual = BinlogValueConverters.stringToLocalDate("0000-00-00", colA, table);
+        assertThat(actual).isNull();
+
+        assertThat(interceptor.containsWarnMessage("Invalid value")).isFalse();
+    }
+
+    @Test
+    public void testDateValidYear() {
+        String dateTable = "DATE_TABLE";
+        String sql = "CREATE TABLE " + dateTable + " (A DATE NOT NULL);";
+
+        final BinlogValueConverters converters = getValueConverters(
+                JdbcValueConverters.DecimalMode.PRECISE,
+                TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS,
+                JdbcValueConverters.BigIntUnsignedMode.LONG,
+                BinaryHandlingMode.BYTES,
+                x -> x,
+                EventConvertingFailureHandlingMode.WARN);
+
+        DdlParser parser = getDdlParser();
+        Tables tables = new Tables();
+        parser.parse(sql, tables);
+
+        Table table = tables.forTable(new TableId(null, null, dateTable));
+        Column colA = table.columnWithName("A");
+
+        LocalDate actual = BinlogValueConverters.stringToLocalDate("0000-01-01", colA, table);
+        assertThat(actual).isEqualTo(LocalDate.of(0, 1, 1));
+    }
+
+    @Test
+    public void testInvalidTimestamp() {
+        LogInterceptor interceptor = new LogInterceptor(BinlogValueConverters.class);
+        String dateTable = "TIMESTAMP_TABLE";
+        String sql = "CREATE TABLE " + dateTable + " (A TIMESTAMP(3) NOT NULL);";
+
+        final BinlogValueConverters converters = getValueConverters(
+                JdbcValueConverters.DecimalMode.PRECISE,
+                TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS,
+                JdbcValueConverters.BigIntUnsignedMode.LONG,
+                BinaryHandlingMode.BYTES,
+                x -> x,
+                EventConvertingFailureHandlingMode.WARN);
+
+        DdlParser parser = getDdlParser();
+        Tables tables = new Tables();
+        parser.parse(sql, tables);
+
+        Table table = tables.forTable(new TableId(null, null, dateTable));
+        Column colA = table.columnWithName("A");
+
+        String timestampString = "0000-00-00 00:00:00.000";
+
+        assertThatThrownBy(() -> {
+            Timestamp.valueOf(timestampString);
+        }).isInstanceOf(RuntimeException.class);
+
+        Boolean actual = BinlogValueConverters.containsZeroValuesInDatePart(timestampString, colA, table);
+        assertThat(actual).isTrue();
+
+        assertThat(interceptor.containsWarnMessage("Invalid value")).isFalse();
+    }
+
+    @Test
+    public void testTimestampValidYear() {
+        String dateTable = "TIMESTAMP_TABLE";
+        String sql = "CREATE TABLE " + dateTable + " (A TIMESTAMP(3) NOT NULL);";
+
+        final BinlogValueConverters converters = getValueConverters(
+                JdbcValueConverters.DecimalMode.PRECISE,
+                TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS,
+                JdbcValueConverters.BigIntUnsignedMode.LONG,
+                BinaryHandlingMode.BYTES,
+                x -> x,
+                EventConvertingFailureHandlingMode.WARN);
+
+        DdlParser parser = getDdlParser();
+        Tables tables = new Tables();
+        parser.parse(sql, tables);
+
+        Table table = tables.forTable(new TableId(null, null, dateTable));
+        Column colA = table.columnWithName("A");
+
+        String timestampString = "0000-01-01 00:00:00.000";
+
+        assertThat(Timestamp.valueOf(timestampString)).isNotNull();
+
+        Boolean actual = BinlogValueConverters.containsZeroValuesInDatePart(timestampString, colA, table);
+        assertThat(actual).isFalse();
     }
 
     protected LocalDate localDateWithYear(int year) {
