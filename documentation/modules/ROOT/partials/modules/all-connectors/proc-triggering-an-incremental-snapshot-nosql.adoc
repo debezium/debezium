@@ -16,7 +16,7 @@ If the `data-collections` array is empty, {prodname} detects that no action is r
 [NOTE]
 ====
 If the name of a {data-collection} that you want to include in a snapshot contains a dot (`.`) in the name of the database, schema, or table, to add the {data-collection} to the `data-collections` array, you must escape each part of the name in double quotes. +
-+
+ +
 For example, to include a data collection that exists in the `*public*` database, and that has the name `*My.Collection*`, use the following format: `*"public"."My.Collection"*`.
 ====
 
@@ -88,9 +88,9 @@ If you do not specify a value, the connector runs an incremental snapshot.
 |6
 |`additional-conditions`
 | An optional array that specifies a set of additional conditions that the connector evaluates to determine the subset of records to include in a snapshot. +
-Each additional condition is an object with `data-collection` and `filter` properties.
-You can specify different filters for each data collection. +
+Each additional condition is an object with `data-collection` and `filter` properties. You can specify different filters for each data collection. +
 * The `data-collection` property is the fully-qualified name of the data collection for which the filter will be applied.
+For more information about the `additional-conditions` parameter, see xref:{context}-incremental-snapshots-additional-conditions[].
 |===
 
 The following example, shows the JSON for an incremental snapshot event that is captured by a connector.
