@@ -26,3 +26,51 @@ end::sqlserver-snapshot[]
 tag::sqlserver-streaming[]
 The *MBean* is `debezium.{mbean-name}:type=connector-metrics,server=_<topic.prefix>_,task=_<task.id>_,context=streaming`.
 end::sqlserver-streaming[]
+
+
+// Shared
+tag::mbeans-shared[]
+{prodname} connectors expose metrics via the MBean name for the connector.
+These metrics, which are specific to each connector instance, provide data about the behavior of the connector's snapshot, streaming, and schema history processes.
+
+By default, when you deploy a correctly configured connector, {prodname} generates a unique MBean name for each of the different connector metrics.
+To view the metrics for a connector process, you configure your observability stack to monitor its MBean.
+But these default MBean names depend on the connector configuration; configuration changes can result in changes to the MBean names.
+A change to the MBean name breaks the linkage between the connector instance and the MBean, disrupting monitoring activity.
+In this scenario, you must reconfigure the observability stack to use the new MBean name if you want to resume monitoring.
+
+To prevent monitoring disruptions that result from MBean name changes, you can configure custom metrics tags.
+You configure custom metrics by adding the `custom.metric.tags` property to the connector configuration.
+The property accepts key-value pairs in which each key represents a tag for the MBean object name, and the corresponding value represents the value of that tag.
+For example: `k1=v1,k2=v2`.
+{prodname} appends the specified tags to the MBean name of the connector.
+
+After you configure the `custom.metric.tags` property for a connector, you can configure the observability stack to retrieve metrics associated with the specified tags.
+The observability stack then uses the specified tags, rather than the mutable MBean names to uniquely identify connectors.
+Later, if {prodname} redefines how it constructs MBean names, or if the `topic.prefix` in the connector configuration changes, metrics collection is uninterrupted,
+because the metrics scrape task uses the specified tag patterns to identify the connector.
+
+A further benefit of using custom tags, is that you can use tags that reflect the architecture of your data pipeline, so that metrics are organized in a way that suits you operational needs.
+For example, you might specify tags with values that declare the type of connector activity, the application context, or the data source, for example, `db1-streaming-for-application-abc`.
+If you specify multiple key-value pairs, all of the specified pairs are appended to the connector's MBean name.
+
+The following example illustrates how tags modify the default MBean name.
+
+.How custom tags modify the connector MBean name
+=======
+By default, the {connector-name} connector uses the following MBean name for streaming metrics:
+ +
+[source,subs="attributes+,quotes"]
+----
+debezium.{context}:type=connector-metrics,context=streaming,server=_<topic.prefix>_
+----
+
+If you set the value of `custom.metric.tags` to `database=salesdb-streaming,table=inventory`, {prodname} generates the following custom MBean name:
+
+[source,subs="attributes+,quotes"]
+----
+debezium.{context}:type=connector-metrics,context=streaming,server=_<topic.prefix>_,database=salesdb-streaming,table=inventory
+----
+=======
+
+end::mbeans-shared[]
