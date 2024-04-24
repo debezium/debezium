@@ -76,6 +76,7 @@ import io.debezium.util.Strings;
 public abstract class BinlogValueConverters extends JdbcValueConverters {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BinlogValueConverters.class);
+    private static final Logger INVALID_VALUE_LOGGER = LoggerFactory.getLogger(BinlogValueConverters.class.getName() + ".invalid_value");
 
     /**
      * Used to parse values of TIME columns. Format: 000:00:00.000000.
@@ -901,7 +902,7 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
         final int day = Integer.parseInt(matcher.group(3));
 
         if (month == 0 || day == 0) {
-            LOGGER.debug("Invalid value '{}' stored in column '{}' of table '{}' converted to empty value",
+            INVALID_VALUE_LOGGER.warn("Invalid value '{}' stored in column '{}' of table '{}' converted to empty value",
                     dateString, column.name(), table.id());
             return null;
         }
@@ -928,7 +929,7 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
         final int day = Integer.parseInt(matcher.group(3));
 
         if (month == 0 || day == 0) {
-            LOGGER.debug("Invalid value '{}' stored in column '{}' of table '{}' converted to empty value",
+            INVALID_VALUE_LOGGER.warn("Invalid value '{}' stored in column '{}' of table '{}' converted to empty value",
                     timestampString, column.name(), table.id());
             return true;
         }

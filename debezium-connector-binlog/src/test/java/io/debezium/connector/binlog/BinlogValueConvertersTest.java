@@ -269,7 +269,7 @@ public abstract class BinlogValueConvertersTest<C extends SourceConnector> imple
 
     @Test
     public void testInvalidLocalDate() {
-        LogInterceptor interceptor = new LogInterceptor(BinlogValueConverters.class);
+        LogInterceptor interceptorInvalid = new LogInterceptor(BinlogValueConverters.class.getName() + ".invalid_value");
         String dateTable = "DATE_TABLE";
         String sql = "CREATE TABLE " + dateTable + " (A DATE NOT NULL);";
 
@@ -291,7 +291,7 @@ public abstract class BinlogValueConvertersTest<C extends SourceConnector> imple
         LocalDate actual = BinlogValueConverters.stringToLocalDate("0000-00-00", colA, table);
         assertThat(actual).isNull();
 
-        assertThat(interceptor.containsWarnMessage("Invalid value")).isFalse();
+        assertThat(interceptorInvalid.containsWarnMessage("Invalid value")).isTrue();
     }
 
     @Test
@@ -320,7 +320,7 @@ public abstract class BinlogValueConvertersTest<C extends SourceConnector> imple
 
     @Test
     public void testInvalidTimestamp() {
-        LogInterceptor interceptor = new LogInterceptor(BinlogValueConverters.class);
+        LogInterceptor interceptorInvalid = new LogInterceptor(BinlogValueConverters.class.getName() + ".invalid_value");
         String dateTable = "TIMESTAMP_TABLE";
         String sql = "CREATE TABLE " + dateTable + " (A TIMESTAMP(3) NOT NULL);";
 
@@ -348,7 +348,7 @@ public abstract class BinlogValueConvertersTest<C extends SourceConnector> imple
         Boolean actual = BinlogValueConverters.containsZeroValuesInDatePart(timestampString, colA, table);
         assertThat(actual).isTrue();
 
-        assertThat(interceptor.containsWarnMessage("Invalid value")).isFalse();
+        assertThat(interceptorInvalid.containsWarnMessage("Invalid value")).isTrue();
     }
 
     @Test
