@@ -3897,7 +3897,15 @@ Specify one of the following options:
 
 |[[mysql-property-custom-metric-tags]]<<mysql-property-custom-metric-tags, `custom.metric.tags`>>
 |`No default`
-|The custom metric tags will accept key-value pairs to customize the MBean object name which should be appended the end of regular name, each key would represent a tag for the MBean object name, and the corresponding value would be the value of that tag the key is. For example: `k1=v1,k2=v2`.
+|Defines tags that customize MBean object names by adding metadata that provides contextual information.
+Specify a comma-separated list of key-value pairs.
+Each key represents a tag for the MBean object name, and the corresponding value represents a value for the key, for example,  +
+`k1=v1,k2=v2`
+
+The connector appends the specified tags to the base MBean object name.
+Tags can help you to organize and categorize metrics data.
+You can define tags to identify particular application instances, environments, regions, versions, and so forth.
+For more information, see xref:customized-mbean-names[Customized MBean names].
 
 |[[mysql-property-errors-max-retires]]<<mysql-property-errors-max-retires, `errors.max.retries`>>
 |`-1`
@@ -3960,6 +3968,13 @@ The {prodname} MySQL connector provides three types of metrics that are in addit
 * xref:mysql-schema-history-metrics[Schema history metrics] provide information about the status of the connector's schema history.
 
 {link-prefix}:{link-debezium-monitoring}#monitoring-debezium[{prodname} monitoring documentation] provides details for how to expose these metrics by using JMX.
+
+// Type: concept
+// ModuleID: monitoring-debezium-mysql-connectors-customized-mbean-names
+// Title: Customized names for Db2 connector snapshot and streaming MBean objects
+=== Customized MBean names
+
+include::{partialsdir}/modules/all-connectors/frag-common-mbean-name.adoc[leveloffset=+1,tags=mbeans-shared]
 
 // Type: reference
 // ModuleID: monitoring-debezium-during-snapshots-of-mysql-databases
