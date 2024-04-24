@@ -1321,6 +1321,13 @@ The {prodname} Vitess connector provides only one type of metrics that are in ad
 
 xref:{link-debezium-monitoring}#monitoring-debezium[{prodname} monitoring documentation] provides details for how to expose these metrics by using JMX.
 
+// Type: concept
+// ModuleID: monitoring-debezium-vitess-connectors-customized-mbean-names
+// Title: Customized names for Db2 connector snapshot and streaming MBean objects
+=== Customized MBean names
+
+include::{partialsdir}/modules/all-connectors/frag-common-mbean-name.adoc[leveloffset=+1,tags=mbeans-shared]
+
 // Type: reference
 // ModuleID: monitoring-debezium-vitess-connector-record-streaming
 // Title: Monitoring {prodname} Vitess connector record streaming
