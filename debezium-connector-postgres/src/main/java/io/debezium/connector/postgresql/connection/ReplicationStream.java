@@ -9,7 +9,7 @@ package io.debezium.connector.postgresql.connection;
 import java.sql.SQLException;
 import java.util.concurrent.ExecutorService;
 
-import org.postgresql.replication.PGReplicationStream;
+import com.yugabyte.replication.PGReplicationStream;
 
 /**
  * A stream from which messages sent by a logical decoding plugin can be consumed over a replication connection.

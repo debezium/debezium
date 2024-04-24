@@ -10,7 +10,7 @@ import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.util.function.Function;
 
-import org.postgresql.replication.fluent.logical.ChainedLogicalStreamBuilder;
+import com.yugabyte.replication.fluent.logical.ChainedLogicalStreamBuilder;
 
 import io.debezium.connector.postgresql.TypeRegistry;
 import io.debezium.connector.postgresql.connection.ReplicationStream.ReplicationMessageProcessor;

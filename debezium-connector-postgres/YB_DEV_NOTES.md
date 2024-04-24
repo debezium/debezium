@@ -2,10 +2,10 @@
 
 ## Compiling code
 
-The following command will quickly build the postgres connector code with all the required dependencies and proto files:
+Since the smart driver changes require us to build the debezium core as well, build can be completed using:
 
 ```bash
-./mvnw clean install -Dquick -pl debezium-connector-postgres -am 
+./mvnw clean install -Dquick
 ```
 
 ## Running tests

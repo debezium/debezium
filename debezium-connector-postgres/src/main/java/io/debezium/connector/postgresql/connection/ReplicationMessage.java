@@ -13,12 +13,12 @@ import java.time.OffsetTime;
 import java.util.List;
 import java.util.OptionalLong;
 
-import org.postgresql.geometric.PGbox;
-import org.postgresql.geometric.PGcircle;
-import org.postgresql.geometric.PGline;
-import org.postgresql.geometric.PGpath;
-import org.postgresql.geometric.PGpoint;
-import org.postgresql.geometric.PGpolygon;
+import com.yugabyte.geometric.PGbox;
+import com.yugabyte.geometric.PGcircle;
+import com.yugabyte.geometric.PGline;
+import com.yugabyte.geometric.PGpath;
+import com.yugabyte.geometric.PGpoint;
+import com.yugabyte.geometric.PGpolygon;
 
 import io.debezium.connector.postgresql.PostgresStreamingChangeEventSource;
 import io.debezium.connector.postgresql.PostgresStreamingChangeEventSource.PgConnectionSupplier;

@@ -28,12 +28,12 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.errors.ConnectException;
-import org.postgresql.core.BaseConnection;
-import org.postgresql.core.ServerVersion;
-import org.postgresql.replication.PGReplicationStream;
-import org.postgresql.replication.fluent.logical.ChainedLogicalStreamBuilder;
-import org.postgresql.util.PSQLException;
-import org.postgresql.util.PSQLState;
+import com.yugabyte.core.BaseConnection;
+import com.yugabyte.core.ServerVersion;
+import com.yugabyte.replication.PGReplicationStream;
+import com.yugabyte.replication.fluent.logical.ChainedLogicalStreamBuilder;
+import com.yugabyte.util.PSQLException;
+import com.yugabyte.util.PSQLState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

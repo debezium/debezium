@@ -14,16 +14,16 @@ import java.time.OffsetTime;
 import java.time.ZoneOffset;
 
 import org.apache.kafka.connect.errors.ConnectException;
-import org.postgresql.geometric.PGbox;
-import org.postgresql.geometric.PGcircle;
-import org.postgresql.geometric.PGline;
-import org.postgresql.geometric.PGlseg;
-import org.postgresql.geometric.PGpath;
-import org.postgresql.geometric.PGpoint;
-import org.postgresql.geometric.PGpolygon;
-import org.postgresql.jdbc.PgArray;
-import org.postgresql.util.PGInterval;
-import org.postgresql.util.PGtokenizer;
+import com.yugabyte.geometric.PGbox;
+import com.yugabyte.geometric.PGcircle;
+import com.yugabyte.geometric.PGline;
+import com.yugabyte.geometric.PGlseg;
+import com.yugabyte.geometric.PGpath;
+import com.yugabyte.geometric.PGpoint;
+import com.yugabyte.geometric.PGpolygon;
+import com.yugabyte.jdbc.PgArray;
+import com.yugabyte.util.PGInterval;
+import com.yugabyte.util.PGtokenizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

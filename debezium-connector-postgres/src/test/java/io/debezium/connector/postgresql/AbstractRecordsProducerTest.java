@@ -54,7 +54,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTask;
 import org.junit.Rule;
 import org.junit.rules.TestRule;
-import org.postgresql.jdbc.PgStatement;
+import com.yugabyte.jdbc.PgStatement;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

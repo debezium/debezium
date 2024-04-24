@@ -8,8 +8,8 @@ package io.debezium.connector.postgresql;
 import java.util.List;
 import java.util.Objects;
 
-import org.postgresql.core.Oid;
-import org.postgresql.core.TypeInfo;
+import com.yugabyte.core.Oid;
+import com.yugabyte.core.TypeInfo;
 
 /**
  * A class that binds together a PostgresSQL OID, JDBC type id and the string name of the type.

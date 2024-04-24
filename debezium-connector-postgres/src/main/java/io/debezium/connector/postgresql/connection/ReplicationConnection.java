@@ -10,7 +10,7 @@ import java.sql.SQLException;
 import java.time.Duration;
 import java.util.Optional;
 
-import org.postgresql.replication.PGReplicationStream;
+import com.yugabyte.replication.PGReplicationStream;
 
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.postgresql.PostgresConnectorConfig;
@@ -52,7 +52,7 @@ public interface ReplicationConnection extends AutoCloseable {
      * @param offset a value representing the WAL sequence number where replication should start from; if the value
      * is {@code null} or negative, this behaves exactly like {@link #startStreaming()}.
      * @return a {@link PGReplicationStream} from which data is read; never null
-     * @see org.postgresql.replication.LogSequenceNumber
+     * @see com.yugabyte.replication.LogSequenceNumber
      * @throws SQLException if anything fails
      */
     ReplicationStream startStreaming(Lsn offset, WalPositionLocator walPosition) throws SQLException, InterruptedException;

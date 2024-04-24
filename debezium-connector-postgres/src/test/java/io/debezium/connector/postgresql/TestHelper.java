@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
 
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
-import org.postgresql.jdbc.PgConnection;
+import com.yugabyte.jdbc.PgConnection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -6,10 +6,10 @@
 
 package io.debezium.connector.postgresql;
 
-import org.postgresql.core.Oid;
+import com.yugabyte.core.Oid;
 
 /**
- * Extension to the {@link org.postgresql.core.Oid} class which contains Postgres specific datatypes not found currently in the
+ * Extension to the {@link com.yugabyte.core.Oid} class which contains Postgres specific datatypes not found currently in the
  * JDBC driver implementation classes.
  *
  * @author Horia Chiorean (hchiorea@redhat.com)

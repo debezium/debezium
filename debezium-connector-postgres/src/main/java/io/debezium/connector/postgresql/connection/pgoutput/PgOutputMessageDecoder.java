@@ -26,7 +26,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 
-import org.postgresql.replication.fluent.logical.ChainedLogicalStreamBuilder;
+import com.yugabyte.replication.fluent.logical.ChainedLogicalStreamBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

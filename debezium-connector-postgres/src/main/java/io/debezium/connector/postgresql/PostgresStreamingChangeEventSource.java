@@ -12,7 +12,7 @@ import java.util.OptionalLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.errors.ConnectException;
-import org.postgresql.core.BaseConnection;
+import com.yugabyte.core.BaseConnection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,7 +48,6 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
      * trigger a "WAL backlog growing" warning.
      */
     private static final int GROWING_WAL_WARNING_LOG_INTERVAL = 10_000;
-
     private static final Logger LOGGER = LoggerFactory.getLogger(PostgresStreamingChangeEventSource.class);
 
     // PGOUTPUT decoder sends the messages with larger time gaps than other decoders

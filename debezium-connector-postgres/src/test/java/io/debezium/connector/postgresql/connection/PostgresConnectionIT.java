@@ -22,7 +22,7 @@ import java.util.concurrent.Future;
 import org.junit.After;
 import org.junit.Ignore;
 import org.junit.Test;
-import org.postgresql.jdbc.PgConnection;
+import com.yugabyte.jdbc.PgConnection;
 
 import io.debezium.connector.postgresql.TestHelper;
 import io.debezium.doc.FixFor;

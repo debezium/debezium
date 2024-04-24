@@ -41,12 +41,12 @@ import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.errors.ConnectException;
-import org.postgresql.PGStatement;
-import org.postgresql.geometric.PGpoint;
-import org.postgresql.jdbc.PgArray;
-import org.postgresql.util.HStoreConverter;
-import org.postgresql.util.PGInterval;
-import org.postgresql.util.PGobject;
+import com.yugabyte.PGStatement;
+import com.yugabyte.geometric.PGpoint;
+import com.yugabyte.jdbc.PgArray;
+import com.yugabyte.util.HStoreConverter;
+import com.yugabyte.util.PGInterval;
+import com.yugabyte.util.PGobject;
 
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
@@ -700,7 +700,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
     /**
      * Returns an Hstore field as string in the form of {@code "key 1"=>"value1", "key_2"=>"val 1"}; i.e. the given byte
      * array is NOT the byte representation returned by {@link HStoreConverter#toBytes(Map,
-     * org.postgresql.core.Encoding))}, but the String based representation
+     * com.yugabyte.core.Encoding))}, but the String based representation
      */
     private String asHstoreString(byte[] data) {
         return new String(data, databaseCharset);
