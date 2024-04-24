@@ -2230,8 +2230,10 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         assertThat(foundNames).containsOnly("Ygritte");
     }
 
-    @Test
+    // @Test
     @FixFor("DBZ-1880")
+    // Broken due to stripe-auto not supported in v1 schema
+    // Skip test due to CDC un-supported scenario - see JIRA https://jira.corp.stripe.com/browse/CDC-1788
     public void shouldGenerateRecordForUpdateEventUsingLegacyV1SourceInfo() throws Exception {
         config = TestHelper.getConfiguration().edit()
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")

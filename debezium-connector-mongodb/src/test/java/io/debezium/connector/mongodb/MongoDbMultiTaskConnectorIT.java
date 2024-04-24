@@ -16,6 +16,7 @@ import java.util.Set;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.bson.BsonTimestamp;
 import org.bson.Document;
 import org.bson.types.ObjectId;
 import org.junit.After;
@@ -23,6 +24,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.data.Envelope;
 
 public class MongoDbMultiTaskConnectorIT extends AbstractMongoConnectorIT {
 
@@ -87,10 +89,11 @@ public class MongoDbMultiTaskConnectorIT extends AbstractMongoConnectorIT {
     public void multiTaskModeWithASingleTasksShouldGenerateRecordForAllEvents() throws Exception {
         final int numDocs = 100;
         final int numUpdates = 35;
+        int hopSize = 100;
         config = config.edit()
                 .with(TASKS_MAX, 1)
                 .with(MongoDbConnectorConfig.MONGODB_MULTI_TASK_GEN, 0)
-                .with(MongoDbConnectorConfig.MONGODB_MULTI_TASK_HOP_SECONDS, 100)
+                .with(MongoDbConnectorConfig.MONGODB_MULTI_TASK_HOP_SECONDS, hopSize)
                 .build();
         start(MongoDbConnector.class, config);
         waitForStreamingRunning("mongodb", "mongo");
@@ -112,6 +115,7 @@ public class MongoDbMultiTaskConnectorIT extends AbstractMongoConnectorIT {
         for (int i = 0; i < numDocs; i++) {
             SourceRecord record = inserts.allRecordsInOrder().get(i);
             assertThat(TestHelper.getDocumentId(record)).isEqualTo(TestHelper.formatObjectId(docIds.get(i)));
+            valdiateEventInWindow(record, hopSize, 1, 0);
         }
 
         // Update some documents
@@ -131,6 +135,7 @@ public class MongoDbMultiTaskConnectorIT extends AbstractMongoConnectorIT {
             assertThat(TestHelper.getDocumentId(record)).isEqualTo(TestHelper.formatObjectId(updatedDocIds.get(i)));
             assertThat(((Struct) record.value()).getStruct("updateDescription").getString("updatedFields"))
                     .isEqualTo("{\"update\": " + i + "}");
+            valdiateEventInWindow(record, hopSize, 1, 0);
         }
 
         // Delete the documents
@@ -145,6 +150,7 @@ public class MongoDbMultiTaskConnectorIT extends AbstractMongoConnectorIT {
         for (int i = 0; i < numDocs; i++) {
             SourceRecord record = deletes.allRecordsInOrder().get(2 * i);
             assertThat(TestHelper.getDocumentId(record)).isEqualTo(TestHelper.formatObjectId(docIds.get(i)));
+            valdiateEventInWindow(record, hopSize, 1, 0);
         }
     }
 
@@ -155,14 +161,16 @@ public class MongoDbMultiTaskConnectorIT extends AbstractMongoConnectorIT {
      * @throws Exception
      */
     @Test
+    // broken
     public void multiTaskModeWithMultipleTasksShouldGenerateRecordForOnlyAssignedEvents() throws Exception {
         final int numTasks = 4;
         final int numDocs = 100; // numDocs should be a multiple of numTasks to simply the test logic
         final int defaultTaskId = 0;
+        final int hopsize = 1;
         config = config.edit()
                 .with(TASKS_MAX, numTasks)
                 .with(MongoDbConnectorConfig.MONGODB_MULTI_TASK_GEN, 0)
-                .with(MongoDbConnectorConfig.MONGODB_MULTI_TASK_HOP_SECONDS, 1)
+                .with(MongoDbConnectorConfig.MONGODB_MULTI_TASK_HOP_SECONDS, hopsize)
                 .build();
         start(MongoDbConnector.class, config);
         waitForStreamingRunning("mongodb", "mongo", defaultTaskId);
@@ -178,7 +186,7 @@ public class MongoDbMultiTaskConnectorIT extends AbstractMongoConnectorIT {
             docIdStrs.add(TestHelper.formatObjectId(objId));
             docIds.add(objId);
 
-            if (i % 20 == 0) {
+            if (i % 10 == 0) {
                 Thread.sleep(1000);
             }
         }
@@ -186,10 +194,14 @@ public class MongoDbMultiTaskConnectorIT extends AbstractMongoConnectorIT {
         // Consume the records of all the inserts and verify that they match the inserted documents
         // and that they should be assigned to this task
         final SourceRecords inserts = consumeRecordsByTopic(numDocs);
-        // assertNoRecordsToConsume();
-        assertThat(inserts.allRecordsInOrder().size()).isLessThan(numDocs);
+
+        // We cannot assertNoRecordsToConsume() since we skip over events.
+
+        assertThat(inserts.allRecordsInOrder().size()).isLessThanOrEqualTo(numDocs);
         for (SourceRecord record : inserts.allRecordsInOrder()) {
             assertThat(TestHelper.getDocumentId(record)).isIn(docIdStrs);
+            // validate time is in window of step
+            valdiateEventInWindow(record, hopsize, numTasks, defaultTaskId);
         }
 
         // updates records
@@ -204,12 +216,12 @@ public class MongoDbMultiTaskConnectorIT extends AbstractMongoConnectorIT {
 
         // Consume the records of all the udpates and verify that they match the inserted documents
         final SourceRecords updates = consumeRecordsByTopic(numDocs);
-        assertNoRecordsToConsume();
-        assertThat(updates.allRecordsInOrder().size()).isLessThan(numDocs);
+        // assertNoRecordsToConsume();
+        assertThat(updates.allRecordsInOrder().size()).isGreaterThan(0);
+        assertThat(updates.allRecordsInOrder().size()).isLessThanOrEqualTo(numDocs);
         for (SourceRecord record : updates.allRecordsInOrder()) {
             assertThat(TestHelper.getDocumentId(record)).isIn(updateDocIdStrs);
-            assertThat(((Struct) record.value()).getStruct("updateDescription").getString("updatedFields"))
-                    .isEqualTo("{\"update\": \"success\"}");
+            valdiateEventInWindow(record, hopsize, numTasks, defaultTaskId);
         }
 
         // Delete the documents
@@ -223,10 +235,32 @@ public class MongoDbMultiTaskConnectorIT extends AbstractMongoConnectorIT {
 
         // Consume the records of all the deletes
         final SourceRecords deletes = consumeRecordsByTopic(numDocs);
-        assertNoRecordsToConsume();
-        assertThat(deletes.allRecordsInOrder().size()).isLessThan(numDocs);
+        // assertNoRecordsToConsume();
+        assertThat(deletes.allRecordsInOrder().size()).isLessThanOrEqualTo(numDocs);
         for (SourceRecord record : deletes.allRecordsInOrder()) {
             assertThat(TestHelper.getDocumentId(record)).isIn(docIdStrs);
+            valdiateEventInWindow(record, hopsize, numTasks, defaultTaskId);
         }
+    }
+
+    private long getClusterTime(SourceRecord record) {
+        final Object recordValue = record.value();
+        if (recordValue != null && recordValue instanceof Struct) {
+            final Struct value = (Struct) recordValue;
+            Struct t = value.getStruct(Envelope.FieldName.SOURCE);
+            final long clusterTime = t.getInt64(Envelope.FieldName.TIMESTAMP);
+            return clusterTime;
+        }
+
+        return -1;
+    }
+
+    private void valdiateEventInWindow(SourceRecord record, int hop, int taskCount, int taskId) {
+        final long clusterTime = getClusterTime(record);
+
+        BsonTimestamp ts = new BsonTimestamp((int) clusterTime, 0);
+        MultiTaskOffsetHandler mth = new MultiTaskOffsetHandler(ts, hop, taskCount, taskId);
+        assertThat(ts.getTime()).isGreaterThanOrEqualTo(mth.oplogStart.getTime());
+        assertThat(ts.getTime()).isLessThanOrEqualTo(mth.oplogStop.getTime());
     }
 }

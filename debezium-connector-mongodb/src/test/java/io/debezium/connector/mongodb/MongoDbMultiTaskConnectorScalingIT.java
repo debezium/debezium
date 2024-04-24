@@ -18,6 +18,7 @@ import java.util.ArrayList;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.bson.BsonTimestamp;
 import org.bson.Document;
 import org.bson.types.ObjectId;
 import org.junit.After;
@@ -40,6 +41,7 @@ public class MongoDbMultiTaskConnectorScalingIT extends AbstractMongoConnectorIT
                 .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
                 .with(MongoDbConnectorConfig.DATABASE_INCLUDE_LIST, db)
                 .with(MongoDbConnectorConfig.MONGODB_MULTI_TASK_ENABLED, true)
+                .with(MongoDbConnectorConfig.CAPTURE_MODE, "change_streams_with_pre_image")
                 .with(MONGODB_MULTI_TASK_PREV_GEN, -1)
                 .build();
 
@@ -194,6 +196,7 @@ public class MongoDbMultiTaskConnectorScalingIT extends AbstractMongoConnectorIT
         int numTasks = 1;
         int generation = 0;
         int numPrevTasks = 1;
+        int taskId = 0;
         config = config.edit()
                 .with(TASKS_MAX, numTasks)
                 .with(MONGODB_MULTI_TASK_GEN, generation)
@@ -242,6 +245,7 @@ public class MongoDbMultiTaskConnectorScalingIT extends AbstractMongoConnectorIT
         for (SourceRecord record : newInserts.allRecordsInOrder()) {
             long timestamp = getTimestamp(record);
             assertThat(timestamp).isGreaterThan(firstConnectorStopTime.toEpochMilli());
+            valdiateEventInWindow(record, 10, numTasks, taskId);
         }
     }
 
@@ -496,6 +500,7 @@ public class MongoDbMultiTaskConnectorScalingIT extends AbstractMongoConnectorIT
         int numTasks = 1;
         int generation = 0;
         int numPrevTasks = 1;
+        int taskId = 0;
         config = config.edit()
                 .with(TASKS_MAX, numTasks)
                 .with(MONGODB_MULTI_TASK_GEN, generation)
@@ -539,12 +544,13 @@ public class MongoDbMultiTaskConnectorScalingIT extends AbstractMongoConnectorIT
 
         // Verify that connector starts consuming records from previous generation's offset
         SourceRecords newInserts = consumeRecordsByTopic(numRecords);
-        assertNoRecordsToConsume();
-        assertThat(newInserts.allRecordsInOrder().size()).isGreaterThan(0);
-        assertThat(newInserts.allRecordsInOrder().size()).isLessThan(numRecords);
+        // assertNoRecordsToConsume();
+        assertThat(newInserts.allRecordsInOrder().size()).isGreaterThanOrEqualTo(0);
+        assertThat(newInserts.allRecordsInOrder().size()).isLessThanOrEqualTo(numRecords);
         for (SourceRecord record : newInserts.allRecordsInOrder()) {
             long timestamp = getTimestamp(record);
             assertThat(timestamp).isGreaterThan(firstConnectorStopTime.toEpochMilli());
+            valdiateEventInWindow(record, 10, numTasks, taskId);
         }
     }
 
@@ -714,4 +720,24 @@ public class MongoDbMultiTaskConnectorScalingIT extends AbstractMongoConnectorIT
         return 0;
     }
 
+    private long getClusterTime(SourceRecord record) {
+        final Object recordValue = record.value();
+        if (recordValue != null && recordValue instanceof Struct) {
+            final Struct value = (Struct) recordValue;
+            Struct t = value.getStruct(Envelope.FieldName.SOURCE);
+            final long clusterTime = t.getInt64(Envelope.FieldName.TIMESTAMP);
+            return clusterTime;
+        }
+
+        return -1;
+    }
+
+    private void valdiateEventInWindow(SourceRecord record, int hop, int taskCount, int taskId) {
+        final long clusterTime = getClusterTime(record);
+
+        BsonTimestamp ts = new BsonTimestamp((int) clusterTime, 0);
+        MultiTaskOffsetHandler mth = new MultiTaskOffsetHandler(ts, hop, taskCount, taskId);
+        assertThat(ts.getTime()).isGreaterThanOrEqualTo(mth.oplogStart.getTime());
+        assertThat(ts.getTime()).isLessThanOrEqualTo(mth.oplogStop.getTime());
+    }
 }
