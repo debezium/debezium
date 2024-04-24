@@ -43,6 +43,9 @@ each connector provides additional metrics that you can use to monitor their act
 * {link-prefix}:{link-sqlserver-connector}#sqlserver-monitoring[SQL Server connector metrics]
 ifdef::community[]
 * {link-prefix}:{link-cassandra-connector}#cassandra-monitoring[Cassandra connector metrics]
+* {link-prefix}:{link-vitess-connector}#vitess-monitoring[Vitess connector metrics]
+* {link-prefix}:{link-spanner-connector}#spanner-monitoring[Spanner connector metrics]
+* {link-prefix}:{link-informix-connector}#informix-monitoring[Informix connector metrics]
 endif::community[]
 
 
