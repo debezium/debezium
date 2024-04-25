@@ -3985,6 +3985,7 @@ If the difference between the timestamps is less than the specified value, and t
 |[[oracle-property-log-mining-flush-table-name]]<<oracle-property-log-mining-flush-table-name, `+log.mining.flush.table.name+`>>
 |`LOG_MINING_FLUSH`
 |Specifies the name of the flush table that coordinates flushing the Oracle LogWriter Buffer (LGWR) to the redo logs.
+This name can be specified using the format `_<schemaName>_._<tableName>_` or `_<tableName>_`.
 Typically, multiple connectors can use the same flush table.
 However, if connectors encounter table lock contention errors, use this property to specify a dedicated table for each connector deployment.
 
