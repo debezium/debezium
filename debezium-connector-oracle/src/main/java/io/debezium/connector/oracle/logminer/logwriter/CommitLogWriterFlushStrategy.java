@@ -15,6 +15,7 @@ import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.jdbc.JdbcConfiguration;
+import io.debezium.relational.TableId;
 import io.debezium.util.Strings;
 
 /**
@@ -33,6 +34,7 @@ public class CommitLogWriterFlushStrategy implements LogWriterFlushStrategy {
     private static final String DELETE_FLUSH_TABLE = "DELETE FROM %s";
 
     private final String flushTableName;
+    private final TableId flushTableId;
     private final String databasePdbName;
     private final OracleConnection connection;
     private final boolean closeConnectionOnClose;
@@ -47,7 +49,8 @@ public class CommitLogWriterFlushStrategy implements LogWriterFlushStrategy {
      * @param connection the connection to be used to force the flush, must not be {@code null}
      */
     public CommitLogWriterFlushStrategy(OracleConnectorConfig connectorConfig, OracleConnection connection) {
-        this.flushTableName = connectorConfig.getLogMiningFlushTableName();
+        this.flushTableId = TableId.parse(connectorConfig.getLogMiningFlushTableName());
+        this.flushTableName = flushTableId.toDoubleQuotedString();
         this.databasePdbName = connectorConfig.getPdbName();
         this.connection = connection;
         this.closeConnectionOnClose = false;
@@ -65,7 +68,8 @@ public class CommitLogWriterFlushStrategy implements LogWriterFlushStrategy {
      * @throws SQLException if there was a database problem
      */
     public CommitLogWriterFlushStrategy(OracleConnectorConfig connectorConfig, JdbcConfiguration jdbcConfig) throws SQLException {
-        this.flushTableName = connectorConfig.getLogMiningFlushTableName();
+        this.flushTableId = TableId.parse(connectorConfig.getLogMiningFlushTableName());
+        this.flushTableName = flushTableId.toDoubleQuotedString();
         this.databasePdbName = connectorConfig.getPdbName();
         this.connection = new OracleConnection(jdbcConfig);
         this.connection.setAutoCommit(false);
@@ -118,13 +122,13 @@ public class CommitLogWriterFlushStrategy implements LogWriterFlushStrategy {
                 connection.setSessionToPdb(databasePdbName);
             }
 
-            if (!connection.isTableExists(flushTableName)) {
+            if (!connection.isTableExists(flushTableId)) {
                 connection.executeWithoutCommitting(String.format(CREATE_FLUSH_TABLE, flushTableName));
             }
 
             fixMultiRowDataBug();
 
-            if (connection.isTableEmpty(flushTableName)) {
+            if (connection.isTableEmpty(flushTableId)) {
                 connection.executeWithoutCommitting(String.format(INSERT_FLUSH_TABLE, flushTableName));
                 connection.commit();
             }
@@ -148,8 +152,8 @@ public class CommitLogWriterFlushStrategy implements LogWriterFlushStrategy {
      * @throws SQLException if a database exception occurs
      */
     private void fixMultiRowDataBug() throws SQLException {
-        if (connection.getRowCount(flushTableName) > 1L) {
-            LOGGER.warn("DBZ-4118: The flush table, {}, has multiple rows and has been corrected.", flushTableName);
+        if (connection.getRowCount(flushTableId) > 1L) {
+            LOGGER.warn("DBZ-4118: The flush table, {}, has multiple rows and has been corrected.", flushTableId);
             connection.executeWithoutCommitting(String.format(DELETE_FLUSH_TABLE, flushTableName));
             connection.executeWithoutCommitting(String.format(INSERT_FLUSH_TABLE, flushTableName));
             connection.commit();
