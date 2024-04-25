@@ -8,14 +8,14 @@ nav:
 
 asciidoc:
   attributes:
-    debezium-version: '2.6.0.Final'
+    debezium-version: '2.7.0.Alpha1'
     debezium-kafka-version: '3.7.0'
-    debezium-docker-label: '2.5'
+    debezium-docker-label: '2.6'
     DockerKafkaConnect: registry.redhat.io/amq7/amq-streams-kafka-28-rhel8:1.8.0
     groovy-version: '4.0.17'
     assemblies: '../assemblies'
     modules: '../../modules'
-    mysql-version: '8.0'
+    mysql-version: '8.2'
     strimzi-version: '0.18.0'
     apicurio-version: '2.4.3.Final'
     db2-version: '11.5.0.0'
