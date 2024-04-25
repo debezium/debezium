@@ -2,6 +2,76 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.7.0.Alpha1
+April 25th 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12425451)
+
+### New features since 2.6.0.Final
+
+* Support helm chart installation of debezium-operator [DBZ-7116](https://issues.redhat.com/browse/DBZ-7116)
+* Adding additional-conditions into Incremental Snapshot to MongoDB [DBZ-7138](https://issues.redhat.com/browse/DBZ-7138)
+* Document MongoDB connector inactivity pause and it's performance implications [DBZ-7147](https://issues.redhat.com/browse/DBZ-7147)
+* Move MariaDB connector from MySQL to its own separate connector [DBZ-7693](https://issues.redhat.com/browse/DBZ-7693)
+* Mongodb Delete events should have `_id` in the payload [DBZ-7695](https://issues.redhat.com/browse/DBZ-7695)
+* Provide option to encode ordering metadata in each record [DBZ-7698](https://issues.redhat.com/browse/DBZ-7698)
+* Manage escaping when captured table are determined for snapshot [DBZ-7718](https://issues.redhat.com/browse/DBZ-7718)
+* Performance improve in KafkaRecordEmitter class [DBZ-7722](https://issues.redhat.com/browse/DBZ-7722)
+* Introduce `RawToString` transform for converting GUIDs stored in Oracle `RAW(16)` columns to Guid string [DBZ-7753](https://issues.redhat.com/browse/DBZ-7753)
+* Improve NLS character set support by including orai18n dependency [DBZ-7761](https://issues.redhat.com/browse/DBZ-7761)
+* Vitess Connector should have parity with MySQL's time.precision.mode [DBZ-7773](https://issues.redhat.com/browse/DBZ-7773)
+* Document potential null values in the after field for lookup full update type [DBZ-7789](https://issues.redhat.com/browse/DBZ-7789)
+* Fix invalid date/timestamp check & logging level [DBZ-7811](https://issues.redhat.com/browse/DBZ-7811)
+
+
+### Breaking changes since 2.6.0.Final
+
+* Provide query timeout property to avoid indefinitely hangs during queries [DBZ-7616](https://issues.redhat.com/browse/DBZ-7616)
+* Update max.iteration.transactions to a sensible default [DBZ-7750](https://issues.redhat.com/browse/DBZ-7750)
+
+
+### Fixes since 2.6.0.Final
+
+* Builtin database name filter is incorrectly applied only to collections instead of databases  in snapshot [DBZ-7485](https://issues.redhat.com/browse/DBZ-7485)
+* After the initial deployment of Debezium, if a new table is added to MSSQL, its schema is was captured [DBZ-7697](https://issues.redhat.com/browse/DBZ-7697)
+* The test is failing because wrong topics are used [DBZ-7715](https://issues.redhat.com/browse/DBZ-7715)
+* Incremental Snapshot: read duplicate data when database has 1000 tables [DBZ-7716](https://issues.redhat.com/browse/DBZ-7716)
+* Handle instability in JDBC connector system tests [DBZ-7726](https://issues.redhat.com/browse/DBZ-7726)
+* SQLServerConnectorIT.shouldNotStreamWhenUsingSnapshotModeInitialOnly check an old log message [DBZ-7729](https://issues.redhat.com/browse/DBZ-7729)
+* Fix MongoDB unwrap SMT test [DBZ-7731](https://issues.redhat.com/browse/DBZ-7731)
+* Snapshot fails with an error of invalid lock [DBZ-7732](https://issues.redhat.com/browse/DBZ-7732)
+* Column CON_ID queried on V$THREAD is not available in Oracle 11 [DBZ-7737](https://issues.redhat.com/browse/DBZ-7737)
+* Redis NOAUTH Authentication Error when DB index is specified [DBZ-7740](https://issues.redhat.com/browse/DBZ-7740)
+* Getting oldest transaction in Oracle buffer can cause NoSuchElementException with Infinispan [DBZ-7741](https://issues.redhat.com/browse/DBZ-7741)
+* The MySQL Debezium connector is not doing the snapshot after the reset. [DBZ-7743](https://issues.redhat.com/browse/DBZ-7743)
+* MongoDb connector doesn't work with Load Balanced cluster [DBZ-7744](https://issues.redhat.com/browse/DBZ-7744)
+* Align unwrap tests to respect AT LEAST ONCE delivery [DBZ-7746](https://issues.redhat.com/browse/DBZ-7746)
+* Exclude reload4j from Kafka connect dependencies in system testsuite [DBZ-7748](https://issues.redhat.com/browse/DBZ-7748)
+* Pod Security Context not set from template [DBZ-7749](https://issues.redhat.com/browse/DBZ-7749)
+* Apply MySQL binlog client version 0.29.1 - bugfix: read long value when deserializing gtid transaction's length [DBZ-7757](https://issues.redhat.com/browse/DBZ-7757)
+* Change streaming exceptions are swallowed by BufferedChangeStreamCursor [DBZ-7759](https://issues.redhat.com/browse/DBZ-7759)
+* Sql-Server connector fails after initial start / processed record on subsequent starts [DBZ-7765](https://issues.redhat.com/browse/DBZ-7765)
+* Valid resume token is considered invalid which leads to new snapshot with some snapshot modes [DBZ-7770](https://issues.redhat.com/browse/DBZ-7770)
+* NO_DATA snapshot mode validation throw DebeziumException on restarts if snapshot is not completed [DBZ-7780](https://issues.redhat.com/browse/DBZ-7780)
+* DDL statement couldn't be parsed [DBZ-7788](https://issues.redhat.com/browse/DBZ-7788)
+* old class reference in ibmi-connector services [DBZ-7795](https://issues.redhat.com/browse/DBZ-7795)
+* Documentation for Debezium Scripting mentions wrong property [DBZ-7798](https://issues.redhat.com/browse/DBZ-7798)
+
+
+### Other changes since 2.6.0.Final
+
+* Update documenation for embedded engine [DBZ-7632](https://issues.redhat.com/browse/DBZ-7632)
+* Implement basic JHM perf. tests for async engine [DBZ-7633](https://issues.redhat.com/browse/DBZ-7633)
+* Upgrade Debezium Quarkus Outbox to Quarkus 3.9.2 [DBZ-7663](https://issues.redhat.com/browse/DBZ-7663)
+* Move LogPositionValidator outside the JdbcConnection [DBZ-7717](https://issues.redhat.com/browse/DBZ-7717)
+* Fix mongodb image in system tests [DBZ-7739](https://issues.redhat.com/browse/DBZ-7739)
+* Refactor exporting to CloudEvents [DBZ-7755](https://issues.redhat.com/browse/DBZ-7755)
+* Use thread cap only for deault value [DBZ-7763](https://issues.redhat.com/browse/DBZ-7763)
+* Evaluate cached thread pool as the default option for async embedded engine [DBZ-7764](https://issues.redhat.com/browse/DBZ-7764)
+* Create JMH benchmark for engine record processing [DBZ-7776](https://issues.redhat.com/browse/DBZ-7776)
+* Improve processing speed of async engine processors which use List#get() [DBZ-7777](https://issues.redhat.com/browse/DBZ-7777)
+* Disable renovate in debezium-ui [DBZ-7814](https://issues.redhat.com/browse/DBZ-7814)
+
+
+
 ## 2.6.0.Final
 April 2nd 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12425282)
 
