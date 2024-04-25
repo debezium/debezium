@@ -6,19 +6,6 @@
 
 package io.debezium.connector.postgresql;
 
-import java.nio.charset.Charset;
-import java.sql.SQLException;
-import java.time.Duration;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-
-import org.apache.kafka.connect.errors.ConnectException;
-import org.apache.kafka.connect.errors.RetriableException;
-import org.apache.kafka.connect.source.SourceRecord;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import io.debezium.DebeziumException;
 import io.debezium.bean.StandardBeanNames;
 import io.debezium.config.CommonConnectorConfig;
@@ -41,7 +28,9 @@ import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.metrics.DefaultChangeEventSourceMetricsFactory;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.signal.SignalProcessor;
+import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Offsets;
+import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
@@ -51,6 +40,21 @@ import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.Metronome;
+import org.apache.kafka.clients.producer.RecordMetadata;
+import org.apache.kafka.connect.errors.ConnectException;
+import org.apache.kafka.connect.errors.RetriableException;
+import org.apache.kafka.connect.source.SourceRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.nio.charset.Charset;
+import java.sql.SQLException;
+import java.time.Duration;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 
 /**
  * Kafka connect source task which uses Postgres logical decoding over a streaming replication connection to process DB changes.
@@ -71,9 +75,18 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
     private volatile ErrorHandler errorHandler;
     private volatile PostgresSchema schema;
 
+    private Partition.Provider<PostgresPartition> partitionProvider = null;
+    private OffsetContext.Loader<PostgresOffsetContext> offsetContextLoader = null;
+
+    // Major DB Upgrade resets the LSN, while Kafka offsets still have the old values.
+    // Therefore, it's necessary to flush the database LSN from Kafka offsets generated after the connector was created.
+
+    private final Map<Map<String, ?>, Long> minimumOffsetTimeRequired = new HashMap<>();
+
+    private final ReentrantLock stateLock = new ReentrantLock();
+
     @Override
     public ChangeEventSourceCoordinator<PostgresPartition, PostgresOffsetContext> start(Configuration config) {
-
         final PostgresConnectorConfig connectorConfig = new PostgresConnectorConfig(config);
         final TopicNamingStrategy<TableId> topicNamingStrategy = connectorConfig.getTopicNamingStrategy(CommonConnectorConfig.TOPIC_NAMING_STRATEGY);
         final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
@@ -106,8 +119,10 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
 
         schema = new PostgresSchema(connectorConfig, defaultValueConverter, topicNamingStrategy, valueConverter);
         this.taskContext = new PostgresTaskContext(connectorConfig, schema, topicNamingStrategy);
+        this.partitionProvider = new PostgresPartition.Provider(connectorConfig, config);
+        this.offsetContextLoader = new PostgresOffsetContext.Loader(connectorConfig);
         final Offsets<PostgresPartition, PostgresOffsetContext> previousOffsets = getPreviousOffsets(
-                new PostgresPartition.Provider(connectorConfig, config), new PostgresOffsetContext.Loader(connectorConfig));
+                this.partitionProvider, this.offsetContextLoader);
         final Clock clock = Clock.system();
         final PostgresOffsetContext previousOffset = previousOffsets.getTheOnlyOffset();
 
@@ -355,6 +370,57 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
     @Override
     protected Iterable<Field> getAllConfigurationFields() {
         return PostgresConnectorConfig.ALL_FIELDS;
+    }
+
+
+    @Override
+    public void commitRecord(SourceRecord record, RecordMetadata metadata) throws InterruptedException {
+        stateLock.lock();
+        if (record.sourceOffset() != null && !minimumOffsetTimeRequired.containsKey(record.sourcePartition())) {
+            Map<String, ?> currentOffset = record.sourceOffset();
+            if (currentOffset.get(SourceInfo.TIMESTAMP_USEC_KEY) != null) {
+                minimumOffsetTimeRequired.put(record.sourcePartition(), (Long) currentOffset.get(SourceInfo.TIMESTAMP_USEC_KEY));
+            }
+        }
+
+        stateLock.unlock();
+    }
+
+    @Override
+    public void commit() throws InterruptedException {
+        boolean locked = stateLock.tryLock();
+
+        if (locked) {
+            try {
+                if (coordinator != null) {
+                    Offsets<PostgresPartition, PostgresOffsetContext> offsets = this.getPreviousOffsets(this.partitionProvider, this.offsetContextLoader);
+                    if (offsets.getOffsets() != null) {
+                        offsets.getOffsets()
+                            .entrySet()
+                            .stream()
+                            .filter(e -> e.getValue() != null)
+                            .forEach(entry -> {
+                                Map<String, String> partition = entry.getKey().getSourcePartition();
+                                Map<String, ?> lastOffset = entry.getValue().getOffset();
+                                Long offsetRecordTimestamp = (Long)lastOffset.get(SourceInfo.TIMESTAMP_USEC_KEY);
+                                Long minimumTimestampRequired = this.minimumOffsetTimeRequired.get(partition);
+                                if (offsetRecordTimestamp != null && minimumTimestampRequired != null && offsetRecordTimestamp.compareTo(minimumTimestampRequired) >= 0) {
+                                    LOGGER.info("Committing offset '{}' for partition '{}'", partition, lastOffset);
+                                    coordinator.commitOffset(partition, lastOffset);
+                                } else {
+                                    LOGGER.info("Skipping offset '{}' for partition '{}'", partition, lastOffset);
+                                }
+                            });
+                    }
+                }
+            }
+            finally {
+                stateLock.unlock();
+            }
+        }
+        else {
+            LOGGER.warn("Couldn't commit processed log positions with the source database due to a concurrent connector shutdown or restart");
+        }
     }
 
     public PostgresTaskContext getTaskContext() {
