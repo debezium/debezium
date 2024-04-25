@@ -84,7 +84,8 @@ transforms.convertTimezone.converted.timezone=Pacific/Easter
 
 The following examples show how the `TimezoneConverter` transformation modifies the timestamp fields in an event record.
 The first example shows a {prodname} event record that is not processed by the transformation; the record retains its original timestamp values.
-The next example shows the same event record after the transformation is applied; the values of the timestamp fields are adjusted to reflect the specified timezone.
+The next example shows the same event record after the transformation is applied.
+Per the specified configuration, the SMT converts the original UTC values of timestamp fields in the source message to `Pacific/Easter` timezone values.
 
 .Event record value before processing by the `TimezoneConverter` transformation
 ====
