@@ -1939,7 +1939,7 @@ Support for the propagation of default values exists primarily to allow for safe
 This behaviour may be unexpected, but it is still safe. Only the schema definition is affected, while the real values present in the message will remain consistent with what was written to the source database.
 ====
 
-[[debezium-oracle-connector-converters]]
+[[custom-postgres-connector-converters]]
 == Custom converters
 
 If your database contains custom data types, such as composite types created with `CREATE TYPE` statements, Debezium will not replicate data from columns with those types by default.
