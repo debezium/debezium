@@ -537,6 +537,10 @@ This setting provides another way to indicate that the record has been deleted.
 
 `rewrite-with-tombstone`:: The SMT behaves as it does when you select the `rewrite` option, except that it also retains `TOMBSTONE` records.
 
+|[[mongodb-extract-new-record-state-delete-tombstone-handling-mode-rewrite-with-id]]xref:mongodb-extract-new-record-state-delete-tombstone-handling-mode-rewrite-with-id[`delete.tombstone.handling.mode.rewrite-with-id`]
+|`false`
+|When set to `true` and `delete.tombstone.handling.mode` is `rewrite`, copies `id` field from the key and includes it as `_id` in the payload for delete events.
+
 |[[mongodb-extract-new-record-state-add-headers-prefix]]<<mongodb-extract-new-record-state-add-headers-prefix, `add.headers.prefix`>>
 |__ (double-underscore)
 |Set this optional string to prefix a header.
