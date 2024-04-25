@@ -40,6 +40,7 @@ Information and procedures for using a {prodname} PostgreSQL connector is organi
 * xref:descriptions-of-debezium-postgresql-connector-data-change-events[]
 * xref:how-debezium-postgresql-connectors-map-data-types[]
 * xref:setting-up-postgresql-to-run-a-debezium-connector[]
+* xref:custom-postgres-connector-converters[]
 * xref:deployment-of-debezium-postgresql-connectors[]
 * xref:monitoring-debezium-postgresql-connector-performance[]
 * xref:how-debezium-postgresql-connectors-handle-faults-and-problems[]
@@ -1331,7 +1332,7 @@ The PostgreSQL connector represents changes to rows with events that are structu
 
 * _semantic type_ describes how the Kafka Connect schema captures the _meaning_ of the field using the name of the Kafka Connect schema for the field.
 
-If the default data type conversions do not meet your needs, you can {link-prefix}:{link-custom-converters}#custom-converters[create a custom converter] for the connector.
+If the default data type conversions do not meet your needs, you can xref:custom-postgres-connector-converters[create a custom converter] for the connector.
 
 ifdef::product[]
 Details are in the following sections:
@@ -1937,6 +1938,17 @@ Support for the propagation of default values exists primarily to allow for safe
 
 This behaviour may be unexpected, but it is still safe. Only the schema definition is affected, while the real values present in the message will remain consistent with what was written to the source database.
 ====
+
+[[debezium-oracle-connector-converters]]
+== Custom converters
+
+If your database contains custom data types, such as composite types created with `CREATE TYPE` statements, Debezium will not replicate data from columns with those types by default.
+To replicate those columns, the basic instructions for {link-prefix}:{link-custom-converters}#custom-converters[creating a custom converter] apply, with a few important caveats:
+
+* You must set xref:postgresql-property-include-unknown-datatypes[`include.unknown.datatypes`] to `true`, otherwise values passed to the custom converter will always be `null`
+* The type of value passed to the converter will vary based on the logical decoding output plug-in
+** `decoderbufs` will get a byte array (`byte[]`) representation of the column data
+** `pgoutput` will get a string representation of the column data
 
 // Type: assembly
 // ModuleID: setting-up-postgresql-to-run-a-debezium-connector
