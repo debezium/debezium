@@ -1942,13 +1942,14 @@ This behaviour may be unexpected, but it is still safe. Only the schema definiti
 [[custom-postgres-connector-converters]]
 == Custom converters
 
-If your database contains custom data types, such as composite types created with `CREATE TYPE` statements, Debezium will not replicate data from columns with those types by default.
-To replicate those columns, the basic instructions for {link-prefix}:{link-custom-converters}#custom-converters[creating a custom converter] apply, with a few important caveats:
+By default, {prodname} does not replicate data from columns with custom data types, such as composite types that are created by using SQL `CREATE TYPE` statements.
+To replicate columns with custom data types, follow the instructions for {link-prefix}:{link-custom-converters}#custom-converters[creating a custom converter], with a few important caveats:
 
-* You must set xref:postgresql-property-include-unknown-datatypes[`include.unknown.datatypes`] to `true`, otherwise values passed to the custom converter will always be `null`
-* The type of value passed to the converter will vary based on the logical decoding output plug-in
-** `decoderbufs` will get a byte array (`byte[]`) representation of the column data
-** `pgoutput` will get a string representation of the column data
+* Set the xref:postgresql-property-include-unknown-datatypes[`include.unknown.datatypes`] property in the connector configuration to `true`.
+The default `false` setting causes the custom converter to always return `null` values.
+* The type of value that is passed to the converter depends on the logical decoding output plug-in that is configured for the replication slot.
+** `decoderbufs` passes a byte array (`byte[]`) representation of the column data.
+** `pgoutput` passes a string representation of the column data.
 
 // Type: assembly
 // ModuleID: setting-up-postgresql-to-run-a-debezium-connector
