@@ -473,7 +473,7 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
     public static final Field USE_NONGRACEFUL_DISCONNECT = Field.create("use.nongraceful.disconnect")
             .withDisplayName("Use Non-graceful Disconnect")
             .withType(ConfigDef.Type.BOOLEAN)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 4))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 5))
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.MEDIUM)
             .withDefault(false)
