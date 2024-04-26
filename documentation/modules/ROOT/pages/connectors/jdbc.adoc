@@ -41,6 +41,7 @@ The {prodname} JDBC connector provides the following features:
 * xref:jdbc-idempotent-writes[]
 * xref:jdbc-schema-evolution[]
 * xref:jdbc-quoting-case-sensitivity[]
+* xref:jdbc-connection-idle-timeouts[]
 
 // Type: concept
 // Title: Description of how the {prodname} JDBC connector consumes complex change events
@@ -271,6 +272,33 @@ To explicitly preserve the case of the table and field names that are present in
 When this options is set, when an incoming event is for a topic called `orders`, and the destination database dialect is Oracle, the connector creates a table with the name `orders`, because the constructed SQL defines the name of the table as `"orders"`.
 Enabling quoting results in the same behavior when the connector creates column names.
 
+[[jdbc-connection-idle-timeouts]]
+=== Connection Idle Timeouts
+
+The JDBC sink connector for {prodname} leverages a connection pool to enhance performance.
+Connection pools are engineered to establish an initial set of connections, maintain a specified number of connections, and efficiently allocate connections to the application as required.
+However, a challenge arises when connections linger idle in the pool, potentially triggering timeouts if they remain inactive beyond the configured idle timeout threshold of the database.
+
+To mitigate the potential for idle connection threads to trigger timeouts, connection pools offer a mechanism that periodically validates the activity of each connection.
+This validation ensures that connections remain active, and prevents the database from flagging them as idle.
+In the event of a network disruption, if {prodname} attempts to use a terminated connection, the connector prompts the pool to generate a new connection.
+
+By default, the {prodname} JDBC sink connector does not conduct idle timeout tests.
+However, you can configure the connector to request the pool to perform timeout tests at a specified interval by setting the `hibernate.c3p0.idle_test_period` property.
+For example:
+
+.Example timeout configuration
+[source,json]
+----
+{
+  "hibernate.c3p0.idle_test_period": "300"
+}
+----
+
+The {prodname} JDBC sink connector uses the Hibernate C3P0 connection pool.
+You can customize the CP30 connection pool by setting properties in the hibernate.c3p0.*` configuration namespace.
+In the preceding example, the setting of the hibernate.c3p0.idle_test_period property configures the connection pool to perform idle timeout tests every 300 seconds.
+After you apply the configuration, the connection pool begins to assess unused connections every five minutes.
 
 // Type: reference
 // ModuleID: debezium-jdbc-connector-how-the-connector-maps-data-types
