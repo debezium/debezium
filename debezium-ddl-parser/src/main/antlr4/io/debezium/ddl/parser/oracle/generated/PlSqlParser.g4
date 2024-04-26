@@ -1903,6 +1903,7 @@ relational_table
           physical_properties?
           column_properties?
           table_partitioning_clauses?
+          segment_attributes_clause? // LogMiner-specific
           (CACHE | NOCACHE)? (RESULT_CACHE '(' MODE (DEFAULT | FORCE) ')')?
           parallel_clause?
           (ROWDEPENDENCIES | NOROWDEPENDENCIES)?
