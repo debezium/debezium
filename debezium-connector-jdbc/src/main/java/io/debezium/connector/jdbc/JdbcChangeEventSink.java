@@ -115,6 +115,13 @@ public class JdbcChangeEventSink implements ChangeEventSink {
 
             if (sinkRecordDescriptor.isDelete()) {
 
+                if (updateBufferByTable.get(tableId) != null && !updateBufferByTable.get(tableId).isEmpty()) {
+                    // When an delete arrives, update buffer must be flushed to avoid losing an
+                    // delete for the same record after its update.
+                    flushBuffer(tableId, updateBufferByTable.get(tableId).flush());
+
+                }
+
                 if (!config.isDeleteEnabled()) {
                     LOGGER.debug("Deletes are not enabled, skipping delete for topic '{}'", sinkRecordDescriptor.getTopicName());
                     continue;
