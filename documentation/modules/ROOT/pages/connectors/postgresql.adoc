@@ -3261,6 +3261,7 @@ For information about the structure of _message_ events and about their ordering
 
 |===
 
+// Title: Advanced {prodname} PostgreSQL connector configuration properties
 [id="postgresql-advanced-configuration-properties"]
 The following _advanced_ configuration properties have defaults that work in most situations and therefore rarely need to be specified in the connector's configuration.
 

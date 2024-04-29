@@ -3423,6 +3423,7 @@ However, it's best to use the minimum number that are required to specify a uniq
 See {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming] for more details.
 |===
 
+// Title: Advanced {prodname} MySQL connector configuration properties
 [id="mysql-advanced-connector-configuration-properties"]
 ==== Advanced MySQL connector configuration properties
 

@@ -1854,6 +1854,7 @@ See {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming] for more de
 
 The following _advanced_ configuration properties have good defaults that will work in most situations and therefore rarely need to be specified in the connector's configuration.
 
+// Title: Advanced {prodname} MongoDB connector configuration properties
 [id="debezium-mongodb-connector-advanced-configuration-properties"]
 .{prodname} MongoDB connector advanced configuration properties
 [cols="30%a,25%a,45%a",options="header"]
