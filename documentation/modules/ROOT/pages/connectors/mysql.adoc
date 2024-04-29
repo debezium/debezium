@@ -3438,6 +3438,10 @@ The following table describes xref:mysql-advanced-connector-configuration-proper
 |`true`
 |A Boolean value that specifies whether a separate thread should be used to ensure that the connection to the MySQL server/cluster is kept alive.
 
+|[[mysql-property-use-nongraceful-disconnect]]<<mysql-property-use-nongraceful-disconnect, `+use.nongraceful.disconnect+`>>
+|`false`
+|A Boolean value that specifies whether the binlog client keepalive thread should use SO_LINGER with 0 timeout when terminating a stale connection. The goal is to avoid potential deadlock in `SSLSocketImpl.close`, see https://github.com/osheroff/mysql-binlog-connector-java/issues/133 for more details.
+
 |[[mysql-property-converters]]<<mysql-property-converters, `converters`>>
 |No default
 |Enumerates a comma-separated list of the symbolic names of the {link-prefix}:{link-custom-converters}#custom-converters[custom converter] instances that the connector can use. +
