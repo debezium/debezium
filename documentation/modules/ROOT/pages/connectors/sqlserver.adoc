@@ -136,7 +136,7 @@ endif::product[]
 
 // Type: concept
 // ModuleID: default-workflow-that-the-sqlserver-connector-uses-to-perform-an-initial-snapshot
-[[default-workflow-for-performing-an-initial-snapshot]]
+[[sqlserver-default-workflow-for-performing-an-initial-snapshot]]
 ==== Default workflow that the {prodname} SQL Server connector uses to perform an initial snapshot
 
 The following workflow lists the steps that {prodname} takes to create a snapshot.
@@ -203,7 +203,7 @@ If the connector stops again for any reason, after it restarts, it resumes strea
 After the snapshot completes, the connector begins to stream event records for subsequent database changes.
 
 |`initial`
-|The connector performs a database snapshot as described in the xref:default-workflow-for-performing-an-initial-snapshot[default workflow for creating an initial snapshot].
+|The connector performs a database snapshot as described in the xref:sqlserver-default-workflow-for-performing-an-initial-snapshot[default workflow for creating an initial snapshot].
 After the snapshot completes, the connector begins to stream event records for subsequent database changes.
 
 |`initial_only`
@@ -213,7 +213,7 @@ After the snapshot completes, the connector begins to stream event records for s
 |Deprecated, see `no_data`.
 
 |`no_data`
-|The connector captures the structure of all relevant tables, performing all the steps described in the xref:default-workflow-for-performing-an-initial-snapshot[default snapshot workflow], except that it does not create `READ` events to represent the data set at the point of the connector's start-up (Step 7.b).
+|The connector captures the structure of all relevant tables, performing all the steps described in the xref:sqlserver-default-workflow-for-performing-an-initial-snapshot[default snapshot workflow], except that it does not create `READ` events to represent the data set at the point of the connector's start-up (Step 7.b).
 
 |`recovery`
 |Set this option to restore a database schema history topic that is lost or corrupted.
@@ -2823,6 +2823,7 @@ For more information, see {link-prefix}:{link-avro-serialization}#avro-naming[Av
 
 |===
 
+// Title: Advanced {prodname} SQL Server connector configuration properties
 [id="sqlserver-advanced-connector-configuration-properties"]
 ==== Advanced SQL Server connector configuration properties
 
@@ -2867,14 +2868,14 @@ The following values are supported:
 `always`:: Perform snapshot on each connector start.
 After the snapshot completes, the connector begins to stream event records for subsequent database changes.
 
-`initial`:: The connector performs a database snapshot as described in the xref:default-workflow-for-performing-an-initial-snapshot[default workflow for creating an initial snapshot].
+`initial`:: The connector performs a database snapshot as described in the xref:sqlserver-default-workflow-for-performing-an-initial-snapshot[default workflow for creating an initial snapshot].
 After the snapshot completes, the connector begins to stream event records for subsequent database changes.
 
 `initial_only`:: The connector performs a database snapshot and stops before streaming any change event records, not allowing any subsequent change events to be captured.
 
 `schema_only`:: Deprecated, see `no_data`.
 
-`no_data`:: The connector captures the structure of all relevant tables, performing all the steps described in the xref:default-workflow-for-performing-an-initial-snapshot[default snapshot workflow], except that it does not create `READ` events to represent the data set at the point of the connector's start-up (Step 7.b).
+`no_data`:: The connector captures the structure of all relevant tables, performing all the steps described in the xref:sqlserver-default-workflow-for-performing-an-initial-snapshot[default snapshot workflow], except that it does not create `READ` events to represent the data set at the point of the connector's start-up (Step 7.b).
 
 `recovery`:: Set this option to restore a database schema history topic that is lost or corrupted.
 After a restart, the connector runs a snapshot that rebuilds the topic from the source tables.
