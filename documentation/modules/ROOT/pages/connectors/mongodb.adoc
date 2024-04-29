@@ -303,9 +303,8 @@ endif::product[]
 After the snapshot completes, the connector begins to stream event records for subsequent database changes.
 
 |`initial`
-|The connector performs a database snapshot as described in the xref:default-workflow-for-performing-an-initial-snapshot[default workflow for creating an initial snapshot].
-After the snapshot completes, the connector begins to stream event records for subsequent database changes.
-
+|After the connector starts, it performs an initial database snapshot.
+//as described in the xref:default-workflow-for-performing-an-initial-snapshot[default workflow for creating an initial snapshot].
 |`initial_only`
 |The connector performs a database snapshot.
 After the snapshot completes, the connector stops, and does not stream event records for subsequent database changes.
@@ -314,7 +313,10 @@ After the snapshot completes, the connector stops, and does not stream event rec
 |Deprecated, see `no_data`.
 
 |`no_data`
-|The connector captures the structure of all relevant tables, performing all the steps described in the xref:default-workflow-for-performing-an-initial-snapshot[default snapshot workflow], except that it does not create `READ` events to represent the data set at the point of the connector's start-up (Step 7.b).
+|The connector captures the structure of all relevant tables,
+//performing all the steps described in the xref:default-workflow-for-performing-an-initial-snapshot[default snapshot workflow],
+but it does not create `READ` events to represent the data set at the point of the connector's start-up.
+//(Step 7.b).
 
 |`when_needed`
 |After the connector starts, it performs a snapshot only if it detects one of the following circumstances:
@@ -1993,7 +1995,8 @@ The snapshot includes the structure and data of the captured tables.
 Specify this value to populate topics with a complete representation of the data from the captured tables every time that the connector starts.
 After the snapshot completes, the connector begins to stream event records for subsequent database changes.
 
-`initial`:: The connector performs a database snapshot as described in the xref:default-workflow-for-performing-an-initial-snapshot[default workflow for creating an initial snapshot].
+`initial`:: When the connector starts, it performs an initial database snapshot.
+//as described in the xref:default-workflow-for-performing-an-initial-snapshot[default workflow for creating an initial snapshot].
 After the snapshot completes, the connector begins to stream event records for subsequent database changes.
 
 `initial_only`:: The connector performs a database a snapshot only when no offsets have been recorded for the logical server name.
@@ -2002,7 +2005,10 @@ It does not transition to streaming event records for subsequent database change
 
 `never`:: Deprecated, see `no_data`.
 
-`no_data`:: The connector runs a snapshot that captures the structure of all relevant tables, performing all the steps described in the xref:default-workflow-for-performing-an-initial-snapshot[default snapshot workflow], except that it does not create `READ` events to represent the data set at the point of the connector's start-up (Step 7.b).
+`no_data`:: The connector runs a snapshot that captures the structure of all relevant tables,
+//, performing all the steps described in the xref:default-workflow-for-performing-an-initial-snapshot[default snapshot workflow], except that
+but it does not create `READ` events to represent the data set at the point of the connector's start-up.
+// (Step 7.b).
 
 `when_needed`:: After the connector starts, it performs a snapshot only if it detects one of the following circumstances:
 

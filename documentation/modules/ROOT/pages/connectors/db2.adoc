@@ -145,8 +145,10 @@ You can find more information about snapshots in the following sections:
 
 endif::product[]
 
-[[debezium-db2-default-workflow-for-performing-an-initial-snapshot]]
-.Default workflow that the {prodname} Db2 connector uses to perform an initial snapshot
+// Type: concept
+// ModuleID: default-workflow-that-the-db2-connector-uses-to-perform-an-initial-snapshot
+[[default-workflow-for-performing-an-initial-snapshot]]
+==== Default workflow that the {prodname} Db2 connector uses to perform an initial snapshot
 
 The following workflow lists the steps that {prodname} takes to create a snapshot.
 These steps describe the process for a snapshot when the xref:db2-property-snapshot-mode[`snapshot.mode`] configuration property is set to its default value, which is `initial`.

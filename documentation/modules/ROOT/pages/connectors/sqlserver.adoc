@@ -134,8 +134,10 @@ You can find more information about snapshots in the following sections:
 * xref:debezium-sqlserver-incremental-snapshots[]
 endif::product[]
 
+// Type: concept
+// ModuleID: default-workflow-that-the-sqlserver-connector-uses-to-perform-an-initial-snapshot
 [[default-workflow-for-performing-an-initial-snapshot]]
-.Default workflow that the {prodname} SQL Server connector uses to perform an initial snapshot
+==== Default workflow that the {prodname} SQL Server connector uses to perform an initial snapshot
 
 The following workflow lists the steps that {prodname} takes to create a snapshot.
 These steps describe the process for a snapshot when the xref:{context}-property-snapshot-mode[`snapshot.mode`] configuration property is set to its default value, which is `initial`.

@@ -108,9 +108,11 @@ You can find more information about snapshots in the following sections:
 * xref:debezium-oracle-incremental-snapshots[]
 endif::product[]
 
-
+// Type: concept
+// ModuleID: default-workflow-that-the-oracle-connector-uses-to-perform-an-initial-snapshot
 [[default-workflow-for-performing-an-initial-snapshot]]
-.Default workflow that the Oracle connector uses to perform an initial snapshot
+==== Default workflow that the Oracle connector uses to perform an initial snapshot
+
 The following workflow lists the steps that {prodname} takes to create a snapshot.
 These steps describe the process for a snapshot when the xref:{context}-property-snapshot-mode[`snapshot.mode`]  configuration property is set to its default value, which is `initial`.
 You can customize the way that the connector creates snapshots by changing the value of the `snapshot.mode` property.
