@@ -385,8 +385,7 @@ public class OracleConnection extends JdbcConnection {
      * @throws SQLException if a database exception occurred
      */
     public long getRowCount(TableId tableId) throws SQLException {
-        final String tableName = new TableId(null, tableId.schema(), tableId.table()).toDoubleQuotedString();
-        return queryAndMap("SELECT COUNT(1) FROM " + tableName, rs -> {
+        return queryAndMap("SELECT COUNT(1) FROM " + tableId.toDoubleQuotedString(), rs -> {
             if (rs.next()) {
                 return rs.getLong(1);
             }
