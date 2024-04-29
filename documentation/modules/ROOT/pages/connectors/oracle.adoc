@@ -599,7 +599,8 @@ The message contains a logical representation of the table schema.
       "rs_id": "001234.00012345.0124",
       "ssn": 1,
       "redo_thread": 1,
-      "user_name": "user"
+      "user_name": "user",
+      "row_id": "AAASgjAAMAAAACnAAA"
     },
     "ts_ms": 1588252618953, // <1>
     "ts_us": 1588252618953987, // <1>
@@ -1250,6 +1251,7 @@ In the case of the Oracle connector, the structure includes the following fields
 * The SCN of the change.
 * A timestamp that indicates when the record in the source database changed (for snapshots, the timestamp indicates when the snapshot occurred).
 * Username who made the change
+* The ROWID associated with the row
 +
 [TIP]
 ====
@@ -1416,6 +1418,11 @@ The following example shows the value of a _create_ event value from the `custom
                         "type": "boolean",
                         "optional": true,
                         "field": "snapshot"
+                    },
+                    {
+                        "type": "string",
+                        "optional": true,
+                        "field": "row_id"
                     }
                 ],
                 "optional": false,
@@ -1467,7 +1474,8 @@ The following example shows the value of a _create_ event value from the `custom
             "ssn": 1,
             "redo_thread": 1,
             "user_name": "user",
-            "snapshot": false
+            "snapshot": false,
+            "row_id": "AAASgjAAMAAAACnAAA"
         },
         "op": "c",
         "ts_ms": 1532592105975,
@@ -1535,7 +1543,8 @@ The following example shows an _update_ change event that the connector captures
             "ssn": 1,
             "redo_thread": 1,
             "user_name": "user",
-            "snapshot": false
+            "snapshot": false,
+            "row_id": "AAASgjAAMAAAACnAAA"
         },
         "op": "u",
         "ts_ms": 1532592713485,
@@ -1601,7 +1610,8 @@ The `schema` portion of the _delete_ event is identical to the `schema` portion 
             "ssn": 1,
             "redo_thread": 1,
             "user_name": "user",
-            "snapshot": false
+            "snapshot": false,
+            "row_id": "AAASgjAAMAAAACnAAA"
         },
         "op": "d",
         "ts_ms": 1532592105960,
@@ -4954,6 +4964,13 @@ The following configuration properties are required when using OpenLogReplicator
 |The port number that is used by the OpenLogReplicator network service.
 
 |===
+
+[[oracle-openlogreplicator-row-id-support]]
+=== OpenLogReplicator ROWID support
+
+OpenLogReplicator does not provide the `ROWID` pseudocolumn details in its change event payloads.
+Consequently, the {prodname} connector for Oracle will consistently display empty `row_id` values in the source information block when utilizing the OpenLogReplicator adapter.
+
 
 [[oracle-openlogreplicator-xml-support]]
 === OpenLogReplicator XML support
