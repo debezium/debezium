@@ -3440,7 +3440,11 @@ The following table describes xref:mysql-advanced-connector-configuration-proper
 
 |[[mysql-property-use-nongraceful-disconnect]]<<mysql-property-use-nongraceful-disconnect, `+use.nongraceful.disconnect+`>>
 |`false`
-|A Boolean value that specifies whether the binlog client keepalive thread should use SO_LINGER with 0 timeout when terminating a stale connection. The goal is to avoid potential deadlock in `SSLSocketImpl.close`, see https://github.com/osheroff/mysql-binlog-connector-java/issues/133 for more details.
+|A Boolean value that specifies whether the binary log client's keepalive thread sets the `SO_LINGER` socket option to  `0` to immediately close stale TCP connections. +
+Set the value to `true` if the connector experiences deadlocks in `SSLSocketImpl.close`. +
+ifdef::community[]
+For more information, see https://github.com/osheroff/mysql-binlog-connector-java/issues/133[Issue 133] in the https://github.com/osheroff/mysql-binlog-connector-java[mysql-binlog-connector-java] GitHub repository.
+endif::community[]
 
 |[[mysql-property-converters]]<<mysql-property-converters, `converters`>>
 |No default
