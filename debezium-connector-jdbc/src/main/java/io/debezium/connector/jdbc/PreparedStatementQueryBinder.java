@@ -5,8 +5,11 @@
  */
 package io.debezium.connector.jdbc;
 
+import java.sql.Array;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.sql.Types;
+import java.util.Collection;
 
 public class PreparedStatementQueryBinder implements QueryBinder {
 
@@ -21,7 +24,14 @@ public class PreparedStatementQueryBinder implements QueryBinder {
 
         try {
             if (valueBindDescriptor.getTargetSqlType() != null) {
-                binder.setObject(valueBindDescriptor.getIndex(), valueBindDescriptor.getValue(), valueBindDescriptor.getTargetSqlType());
+                if (valueBindDescriptor.getTargetSqlType() == Types.ARRAY) {
+                    Collection<Object> collection = (Collection<Object>) valueBindDescriptor.getValue();
+                    Array array = binder.getConnection().createArrayOf(valueBindDescriptor.getSubTypeName(), collection.toArray());
+                    binder.setArray(valueBindDescriptor.getIndex(), array);
+                }
+                else {
+                    binder.setObject(valueBindDescriptor.getIndex(), valueBindDescriptor.getValue(), valueBindDescriptor.getTargetSqlType());
+                }
             }
             else {
                 binder.setObject(valueBindDescriptor.getIndex(), valueBindDescriptor.getValue());

@@ -179,6 +179,7 @@ public class PostgresDatabaseDialect extends GeneralDatabaseDialect {
         registerType(XmlType.INSTANCE);
         registerType(LtreeType.INSTANCE);
         registerType(MapToHstoreType.INSTANCE);
+        registerType(ArrayType.INSTANCE);
 
         // Allows binding string-based types if column type propagation is enabled
         registerType(RangeType.INSTANCE);
