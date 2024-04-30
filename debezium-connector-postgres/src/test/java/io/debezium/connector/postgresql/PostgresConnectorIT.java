@@ -327,6 +327,37 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
+    public void initialSnapshotWithExistingSlot() throws Exception {
+        TestHelper.execute(SETUP_TABLES_STMT);
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE);
+
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+        // now stop the connector
+        stopConnector();
+        assertNoRecordsToConsume();
+
+        // insert some more records
+        TestHelper.execute(INSERT_STMT);
+
+        // check the records from the snapshot
+        // start the connector back up and perform snapshot with an existing slot
+        // but the 2 records that were inserted while we were down will NOT be retrieved
+        // as part of the snapshot. These records will be retrieved as part of streaming
+        Configuration.Builder configBuilderInitial = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE);
+
+        start(PostgresConnector.class, configBuilderInitial.build());
+        assertConnectorIsRunning();
+
+        assertRecordsFromSnapshot(2, 1, 1);
+        assertRecordsAfterInsert(2, 2, 2);
+    }
+
+    @Test
     @FixFor("DBZ-1235")
     public void shouldUseMillisecondsForTransactionCommitTime() throws InterruptedException {
         TestHelper.execute(SETUP_TABLES_STMT);

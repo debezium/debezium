@@ -17,12 +17,14 @@ public class SlotState {
     private final Lsn restartLsn;
     private final Long catalogXmin;
     private final boolean active;
+    private final Long restartCommitHT;
 
-    public SlotState(Lsn lastFlushLsn, Lsn restartLsn, Long catXmin, boolean active) {
+    public SlotState(Lsn lastFlushLsn, Lsn restartLsn, Long catXmin, boolean active, Long restartCommitHT) {
         this.active = active;
         this.latestFlushedLsn = lastFlushLsn;
         this.restartLsn = restartLsn;
         this.catalogXmin = catXmin;
+        this.restartCommitHT = restartCommitHT;
     }
 
     /**
@@ -51,5 +53,12 @@ public class SlotState {
      */
     public boolean slotIsActive() {
         return active;
+    }
+
+    /**
+     * @return if the slot's `yb_restart_commit_ht` value
+     */
+    public Long slotRestartCommitHT() {
+        return restartCommitHT;
     }
 }
