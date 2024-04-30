@@ -969,14 +969,20 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     private boolean isTableAllColumnsSupplementalLoggingEnabled(OracleConnection connection, TableId tableId) throws SQLException {
         // A table can be defined with multiple logging groups, hence why this check needs to iterate
         // multiple returned rows to see whether ALL_COLUMN_LOGGING is part of the set.
-        return connection.queryAndMap(SqlUtils.tableSupplementalLoggingCheckQuery(tableId), rs -> {
-            while (rs.next()) {
-                if (ALL_COLUMN_LOGGING.equals(rs.getString(2))) {
-                    return true;
-                }
-            }
-            return false;
-        });
+        return connection.prepareQueryAndMap(
+                SqlUtils.tableSupplementalLoggingCheckQuery(),
+                ps -> {
+                    ps.setString(1, tableId.schema());
+                    ps.setString(2, tableId.table());
+                },
+                rs -> {
+                    while (rs.next()) {
+                        if (ALL_COLUMN_LOGGING.equals(rs.getString(2))) {
+                            return true;
+                        }
+                    }
+                    return false;
+                });
     }
 
     /**

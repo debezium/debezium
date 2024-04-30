@@ -566,7 +566,7 @@ public class TestHelper {
         try (OracleConnection connection = testConnection()) {
             connection.query("SELECT TABLE_NAME FROM USER_TABLES", rs -> {
                 while (rs.next()) {
-                    dropTable(connection, SCHEMA_USER + "." + rs.getString(1));
+                    dropTable(connection, SCHEMA_USER + ".\"" + rs.getString(1) + "\"");
                 }
             });
         }

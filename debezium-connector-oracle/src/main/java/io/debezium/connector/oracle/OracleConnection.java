@@ -362,39 +362,47 @@ public class OracleConnection extends JdbcConnection {
     /**
      * Returns whether the given table exists or not.
      *
-     * @param tableId table id, should not be {@code null}
+     * @param tableName table name, should not be {@code null}
      * @return true if the table exists, false if it does not
      * @throws SQLException if a database exception occurred
      */
+    public boolean isTableExists(String tableName) throws SQLException {
+        return prepareQueryAndMap(
+                "SELECT COUNT(1) FROM USER_TABLES WHERE TABLE_NAME=?",
+                ps -> ps.setString(1, tableName),
+                rs -> rs.next() && rs.getLong(1) > 0);
+    }
+
     public boolean isTableExists(TableId tableId) throws SQLException {
-        if (Strings.isNullOrBlank(tableId.schema())) {
-            return queryAndMap("SELECT COUNT(1) FROM USER_TABLES WHERE TABLE_NAME = '" + tableId.table() + "'",
-                    rs -> rs.next() && rs.getLong(1) > 0);
-        }
-        return queryAndMap("SELECT COUNT(1) FROM ALL_TABLES WHERE OWNER = '" + tableId.schema() + "' AND TABLE_NAME = '" + tableId.table() + "'",
+        return prepareQueryAndMap(
+                "SELECT COUNT(1) FROM ALL_TABLES WHERE OWNER=? AND TABLE_NAME=?",
+                ps -> {
+                    ps.setString(1, tableId.schema());
+                    ps.setString(2, tableId.table());
+                },
                 rs -> rs.next() && rs.getLong(1) > 0);
     }
 
     /**
      * Returns whether the given table is empty or not.
      *
-     * @param tableId table id, should not be {@code null}
+     * @param tableName table name, should not be {@code null}
      * @return true if the table has no records, false otherwise
      * @throws SQLException if a database exception occurred
      */
-    public boolean isTableEmpty(TableId tableId) throws SQLException {
-        return getRowCount(tableId) == 0L;
+    public boolean isTableEmpty(String tableName) throws SQLException {
+        return getRowCount(tableName) == 0L;
     }
 
     /**
      * Returns the number of rows in a given table.
      *
-     * @param tableId table id, should not be {@code null}
+     * @param tableName table name, should not be {@code null}
      * @return the number of rows
      * @throws SQLException if a database exception occurred
      */
-    public long getRowCount(TableId tableId) throws SQLException {
-        return queryAndMap("SELECT COUNT(1) FROM " + tableId.toDoubleQuotedString(), rs -> {
+    public long getRowCount(String tableName) throws SQLException {
+        return queryAndMap("SELECT COUNT(1) FROM " + tableName, rs -> {
             if (rs.next()) {
                 return rs.getLong(1);
             }
