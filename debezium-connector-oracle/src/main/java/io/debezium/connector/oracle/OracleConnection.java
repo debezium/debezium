@@ -843,4 +843,15 @@ public class OracleConnection extends JdbcConnection {
     interface ObjectIdentifierConsumer {
         void apply(Long objectId, Long dataObjectId);
     }
+
+    @Override
+    protected ResultSet getColumns(DatabaseMetaData metadata, String databaseCatalog, String schemaNamePattern, String tableName) throws SQLException {
+        OracleDatabaseMetaData oracleMeta = new OracleDatabaseMetaData((oracle.jdbc.driver.OracleConnection) metadata.getConnection());
+        return oracleMeta.getColumns(databaseCatalog, schemaNamePattern, tableName, null);
+    }
+
+    @Override
+    protected int getColumnPosition(ResultSet resultSet) throws SQLException {
+        return resultSet.getInt(25);
+    }
 }
