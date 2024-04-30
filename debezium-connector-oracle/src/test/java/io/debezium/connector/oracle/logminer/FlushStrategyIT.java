@@ -167,7 +167,7 @@ public class FlushStrategyIT extends AbstractConnectorTest {
     }
 
     private static String getFlushTableName() {
-        return TestHelper.getConnectorUserName() + "." + flushTableName;
+        return TestHelper.getConnectorUserName().toUpperCase() + "." + flushTableName;
     }
 
     private static TableId getFlushTableId() {
