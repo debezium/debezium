@@ -5722,6 +5722,50 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         }
     }
 
+    @Test
+    @FixFor("DBZ-7831")
+    public void shouldSnapshotAndStreamTablesWithTableNameContainsSingleQuote() throws Exception {
+        TestHelper.dropTable(connection, "\"DBZ7831'\"");
+        try {
+            connection.execute("create table \"DBZ7831'\" (id numeric(9,0), data varchar2(50))");
+            TestHelper.streamTable(connection, "\"DBZ7831'\"");
+
+            connection.execute("INSERT INTO \"DBZ7831'\" values (1, 'Test')");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ7831'")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            SourceRecords records = consumeRecordsByTopic(1);
+            assertThat(records.recordsForTopic("server1.DEBEZIUM.DBZ7831_")).hasSize(1);
+            SourceRecord record = records.recordsForTopic("server1.DEBEZIUM.DBZ7831_").get(0);
+            assertThat(record.key()).isNull();
+            Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertThat(after.get("DATA")).isEqualTo("Test");
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("INSERT INTO \"DBZ7831'\" values (2, 'Test2')");
+            records = consumeRecordsByTopic(1);
+            assertThat(records.recordsForTopic("server1.DEBEZIUM.DBZ7831_")).hasSize(1);
+            record = records.recordsForTopic("server1.DEBEZIUM.DBZ7831_").get(0);
+            assertThat(record.key()).isNull();
+            after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(2);
+            assertThat(after.get("DATA")).isEqualTo("Test2");
+
+        }
+        finally {
+            TestHelper.dropTable(connection, "\"DBZ7831'\"");
+        }
+    }
+
     private void waitForCurrentScnToHaveBeenSeenByConnector() throws SQLException {
         try (OracleConnection admin = TestHelper.adminConnection(true)) {
             final Scn scn = admin.getCurrentScn();

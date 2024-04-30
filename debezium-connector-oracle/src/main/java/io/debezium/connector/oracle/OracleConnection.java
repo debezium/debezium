@@ -312,9 +312,13 @@ public class OracleConnection extends JdbcConnection {
             // By querying for TABLE_TYPE is null, we are explicitly confirming what if an entry exists
             // that the table is in-fact a relational table and if the result set is empty, the object
             // is another type, likely an object-based table, in which case we cannot generate DDL.
-            final String tableType = "SELECT COUNT(1) FROM ALL_ALL_TABLES WHERE OWNER='" + tableId.schema()
-                    + "' AND TABLE_NAME='" + tableId.table() + "' AND TABLE_TYPE IS NULL";
-            if (queryAndMap(tableType, rs -> rs.next() ? rs.getInt(1) : 0) == 0) {
+            final String tableType = "SELECT COUNT(1) FROM ALL_ALL_TABLES WHERE OWNER=? AND TABLE_NAME=? AND TABLE_TYPE IS NULL";
+            if (prepareQueryAndMap(tableType,
+                    st -> {
+                        st.setString(1, tableId.schema());
+                        st.setString(2, tableId.table());
+                    },
+                    rs -> rs.next() ? rs.getInt(1) : 0) == 0) {
                 throw new NonRelationalTableException("Table " + tableId + " is not a relational table");
             }
 
@@ -324,14 +328,19 @@ public class OracleConnection extends JdbcConnection {
             // In case DDL is returned as multiple DDL statements, this allows the parser to parse each separately.
             // This is only critical during streaming as during snapshot the table structure is built from JDBC driver queries.
             executeWithoutCommitting("begin dbms_metadata.set_transform_param(DBMS_METADATA.SESSION_TRANSFORM, 'SQLTERMINATOR', true); end;");
-            return queryAndMap("SELECT dbms_metadata.get_ddl('TABLE','" + tableId.table() + "','" + tableId.schema() + "') FROM DUAL", rs -> {
-                if (!rs.next()) {
-                    throw new DebeziumException("Could not get DDL metadata for table: " + tableId);
-                }
+            return prepareQueryAndMap("SELECT dbms_metadata.get_ddl('TABLE', ?, ?) FROM DUAL",
+                    st -> {
+                        st.setString(1, tableId.table());
+                        st.setString(2, tableId.schema());
+                    },
+                    rs -> {
+                        if (!rs.next()) {
+                            throw new DebeziumException("Could not get DDL metadata for table: " + tableId);
+                        }
 
-                Object res = rs.getObject(1);
-                return ((Clob) res).getSubString(1, (int) ((Clob) res).length());
-            });
+                        Object res = rs.getObject(1);
+                        return ((Clob) res).getSubString(1, (int) ((Clob) res).length());
+                    });
         }
         finally {
             executeWithoutCommitting("begin dbms_metadata.set_transform_param(DBMS_METADATA.SESSION_TRANSFORM, 'DEFAULT'); end;");

@@ -83,27 +83,36 @@ public abstract class AbstractStreamingAdapter<T extends AbstractOracleStreaming
                 .append(" FROM all_objects")
                 .append(" WHERE");
 
-        for (TableId table : ctx.capturedTables) {
-            lastDdlScnQuery.append(" (owner = '" + table.schema() + "' AND object_name = '" + table.table() + "') OR");
+        for (int i = 0; i < ctx.capturedTables.size(); i++) {
+            lastDdlScnQuery.append(" (owner = ? AND object_name = ?) OR");
         }
 
         String query = lastDdlScnQuery.substring(0, lastDdlScnQuery.length() - 3).toString();
-        try (Statement statement = connection.connection().createStatement();
-                ResultSet rs = statement.executeQuery(query)) {
+        try {
+            return connection.prepareQueryAndMap(query,
+                    st -> {
+                        int i = 0;
+                        for (TableId table : ctx.capturedTables) {
+                            st.setString(++i, table.schema());
+                            st.setString(++i, table.table());
+                        }
 
-            if (!rs.next()) {
-                throw new IllegalStateException("Couldn't get latest table DDL SCN");
-            }
+                    },
+                    rs -> {
+                        if (!rs.next()) {
+                            throw new IllegalStateException("Couldn't get latest table DDL SCN");
+                        }
 
-            // Guard against LAST_DDL_TIME with value of 0.
-            // This case should be treated as if we were unable to determine a value for LAST_DDL_TIME.
-            // This forces later calculations to be based upon the current SCN.
-            String latestDdlTime = rs.getString(1);
-            if ("0".equals(latestDdlTime)) {
-                return Optional.empty();
-            }
+                        // Guard against LAST_DDL_TIME with value of 0.
+                        // This case should be treated as if we were unable to determine a value for LAST_DDL_TIME.
+                        // This forces later calculations to be based upon the current SCN.
+                        String latestDdlTime = rs.getString(1);
+                        if ("0".equals(latestDdlTime)) {
+                            return Optional.empty();
+                        }
 
-            return Optional.of(Scn.valueOf(latestDdlTime));
+                        return Optional.of(Scn.valueOf(latestDdlTime));
+                    });
         }
         catch (SQLException e) {
             if (e.getErrorCode() == 8180) {
