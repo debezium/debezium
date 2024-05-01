@@ -4972,7 +4972,7 @@ The following configuration properties are required when using OpenLogReplicator
 === OpenLogReplicator ROWID support
 
 OpenLogReplicator does not provide the `ROWID` pseudocolumn details in its change event payloads.
-Consequently, the {prodname} connector for Oracle will consistently display empty `row_id` values in the source information block when utilizing the OpenLogReplicator adapter.
+Consequently, in environments that use the OpenLogReplicator adapter, the {prodname} connector for Oracle consistently displays empty `row_id` values in the source information block.
 
 
 [[oracle-openlogreplicator-xml-support]]
