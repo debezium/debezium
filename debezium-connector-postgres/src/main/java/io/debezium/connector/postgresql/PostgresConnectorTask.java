@@ -9,7 +9,6 @@ package io.debezium.connector.postgresql;
 import java.nio.charset.Charset;
 import java.sql.SQLException;
 import java.time.Duration;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
@@ -78,11 +77,6 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
 
     private Partition.Provider<PostgresPartition> partitionProvider = null;
     private OffsetContext.Loader<PostgresOffsetContext> offsetContextLoader = null;
-
-    // Major DB Upgrade resets the LSN, while Kafka offsets still have the old values.
-    // Therefore, it's necessary to flush the database LSN from Kafka offsets generated after the connector was created.
-
-    private final Map<Map<String, ?>, Long> minimumOffsetTimeRequired = new HashMap<>();
 
     private final ReentrantLock stateLock = new ReentrantLock();
 
@@ -375,15 +369,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
 
     @Override
     public void commitRecord(SourceRecord record, RecordMetadata metadata) throws InterruptedException {
-        stateLock.lock();
-        if (record.sourceOffset() != null && !minimumOffsetTimeRequired.containsKey(record.sourcePartition())) {
-            Map<String, ?> currentOffset = record.sourceOffset();
-            if (currentOffset.get(SourceInfo.TIMESTAMP_USEC_KEY) != null) {
-                minimumOffsetTimeRequired.put(record.sourcePartition(), (Long) currentOffset.get(SourceInfo.TIMESTAMP_USEC_KEY));
-            }
-        }
-
-        stateLock.unlock();
+        // Do nothing
     }
 
     @Override
@@ -402,16 +388,8 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                                 .forEach(entry -> {
                                     Map<String, String> partition = entry.getKey().getSourcePartition();
                                     Map<String, ?> lastOffset = entry.getValue().getOffset();
-                                    Long offsetRecordTimestamp = (Long) lastOffset.get(SourceInfo.TIMESTAMP_USEC_KEY);
-                                    Long minimumTimestampRequired = this.minimumOffsetTimeRequired.get(partition);
-                                    if (offsetRecordTimestamp != null && minimumTimestampRequired != null
-                                            && offsetRecordTimestamp.compareTo(minimumTimestampRequired) >= 0) {
-                                        LOGGER.info("Committing offset '{}' for partition '{}'", partition, lastOffset);
-                                        coordinator.commitOffset(partition, lastOffset);
-                                    }
-                                    else {
-                                        LOGGER.info("Skipping offset '{}' for partition '{}'", partition, lastOffset);
-                                    }
+                                    LOGGER.debug("Committing offset '{}' for partition '{}'", partition, lastOffset);
+                                    coordinator.commitOffset(partition, lastOffset);
                                 });
                     }
                 }
