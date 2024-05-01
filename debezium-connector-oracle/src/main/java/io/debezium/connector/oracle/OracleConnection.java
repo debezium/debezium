@@ -402,12 +402,16 @@ public class OracleConnection extends JdbcConnection {
      * @throws SQLException if a database exception occurred
      */
     public long getRowCount(String tableName) throws SQLException {
-        return queryAndMap("SELECT COUNT(1) FROM " + tableName, rs -> {
-            if (rs.next()) {
-                return rs.getLong(1);
-            }
-            return 0L;
-        });
+        return prepareQueryAndMap(
+                "SELECT COUNT(1) FROM ?",
+                ps -> ps.setString(1, tableName),
+                rs -> {
+                    if (rs.next()) {
+                        return rs.getLong(1);
+                    }
+                    return 0L;
+                });
+
     }
 
     public <T> T singleOptionalValue(String query, ResultSetExtractor<T> extractor) throws SQLException {
@@ -656,11 +660,11 @@ public class OracleConnection extends JdbcConnection {
             return optionallyDoInContainer(() -> super.reselectColumns(oracleTableId, columns, keyColumns, keyValues, source));
         }
 
-        final String query = String.format("SELECT %s FROM (SELECT * FROM %s AS OF SCN ?) WHERE %s",
+        final String query = String.format("SELECT %s FROM (SELECT * FROM ? AS OF SCN ?) WHERE %s",
                 columns.stream().map(this::quotedColumnIdString).collect(Collectors.joining(",")),
-                quotedTableIdString(oracleTableId),
                 keyColumns.stream().map(key -> key + "=?").collect(Collectors.joining(" AND ")));
-        final List<Object> bindValues = new ArrayList<>(keyValues.size() + 1);
+        final List<Object> bindValues = new ArrayList<>(keyValues.size() + 2);
+        bindValues.add(quotedTableIdString(oracleTableId));
         bindValues.add(commitScn);
         bindValues.addAll(keyValues);
         return optionallyDoInContainer(() -> {
