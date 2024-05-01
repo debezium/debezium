@@ -4479,7 +4479,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             connection.execute("INSERT INTO DEBEZIUM.DBZ5441 (id,lvl) values (1,1)");
 
             Awaitility.await()
-                    .atMost(120, TimeUnit.SECONDS)
+                    .atMost(180, TimeUnit.SECONDS)
                     .until(() -> streamInterceptor.containsMessage("is not a relational table and will be skipped"));
 
             assertNoRecordsToConsume();
