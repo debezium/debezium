@@ -102,7 +102,7 @@
         <version.jackson>2.16.0</version.jackson>
         <version.jackson.databind>2.16.0</version.jackson.databind>
         <version.org.slf4j>1.7.36</version.org.slf4j>
-        <version.netty>4.1.100.Final</version.netty>
+        <version.netty>4.1.107.Final</version.netty>
 
         <!-- Scala version used to build Kafka -->
         <version.kafka.scala>2.13</version.kafka.scala>
@@ -119,10 +119,10 @@
         <!-- Version used in Debezium Server, Operator, etc., usually a LTS version -->
         <!-- Must be aligned with Apicurio version below -->
         <!-- Debezium Server Pravega must use the same Netty version as the one used by Quarkus -->
-        <quarkus.version.runtime>3.2.11.Final</quarkus.version.runtime>
+        <quarkus.version.runtime>3.8.3</quarkus.version.runtime>
 
         <!-- Apicurio -->
-        <version.apicurio>2.4.3.Final</version.apicurio>
+        <version.apicurio>2.5.8.Final</version.apicurio>
 
         <!-- Database drivers, should align with databases -->
         <version.postgresql.driver>42.6.1</version.postgresql.driver>
