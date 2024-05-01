@@ -6,6 +6,22 @@
 
 package io.debezium.connector.postgresql;
 
+import java.nio.charset.Charset;
+import java.sql.SQLException;
+import java.time.Duration;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
+
+import org.apache.kafka.clients.producer.RecordMetadata;
+import org.apache.kafka.connect.errors.ConnectException;
+import org.apache.kafka.connect.errors.RetriableException;
+import org.apache.kafka.connect.source.SourceRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.debezium.DebeziumException;
 import io.debezium.bean.StandardBeanNames;
 import io.debezium.config.CommonConnectorConfig;
@@ -40,21 +56,6 @@ import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.Metronome;
-import org.apache.kafka.clients.producer.RecordMetadata;
-import org.apache.kafka.connect.errors.ConnectException;
-import org.apache.kafka.connect.errors.RetriableException;
-import org.apache.kafka.connect.source.SourceRecord;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.nio.charset.Charset;
-import java.sql.SQLException;
-import java.time.Duration;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.locks.ReentrantLock;
-import java.util.stream.Collectors;
 
 /**
  * Kafka connect source task which uses Postgres logical decoding over a streaming replication connection to process DB changes.
@@ -372,7 +373,6 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
         return PostgresConnectorConfig.ALL_FIELDS;
     }
 
-
     @Override
     public void commitRecord(SourceRecord record, RecordMetadata metadata) throws InterruptedException {
         stateLock.lock();
@@ -396,21 +396,23 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                     Offsets<PostgresPartition, PostgresOffsetContext> offsets = this.getPreviousOffsets(this.partitionProvider, this.offsetContextLoader);
                     if (offsets.getOffsets() != null) {
                         offsets.getOffsets()
-                            .entrySet()
-                            .stream()
-                            .filter(e -> e.getValue() != null)
-                            .forEach(entry -> {
-                                Map<String, String> partition = entry.getKey().getSourcePartition();
-                                Map<String, ?> lastOffset = entry.getValue().getOffset();
-                                Long offsetRecordTimestamp = (Long)lastOffset.get(SourceInfo.TIMESTAMP_USEC_KEY);
-                                Long minimumTimestampRequired = this.minimumOffsetTimeRequired.get(partition);
-                                if (offsetRecordTimestamp != null && minimumTimestampRequired != null && offsetRecordTimestamp.compareTo(minimumTimestampRequired) >= 0) {
-                                    LOGGER.info("Committing offset '{}' for partition '{}'", partition, lastOffset);
-                                    coordinator.commitOffset(partition, lastOffset);
-                                } else {
-                                    LOGGER.info("Skipping offset '{}' for partition '{}'", partition, lastOffset);
-                                }
-                            });
+                                .entrySet()
+                                .stream()
+                                .filter(e -> e.getValue() != null)
+                                .forEach(entry -> {
+                                    Map<String, String> partition = entry.getKey().getSourcePartition();
+                                    Map<String, ?> lastOffset = entry.getValue().getOffset();
+                                    Long offsetRecordTimestamp = (Long) lastOffset.get(SourceInfo.TIMESTAMP_USEC_KEY);
+                                    Long minimumTimestampRequired = this.minimumOffsetTimeRequired.get(partition);
+                                    if (offsetRecordTimestamp != null && minimumTimestampRequired != null
+                                            && offsetRecordTimestamp.compareTo(minimumTimestampRequired) >= 0) {
+                                        LOGGER.info("Committing offset '{}' for partition '{}'", partition, lastOffset);
+                                        coordinator.commitOffset(partition, lastOffset);
+                                    }
+                                    else {
+                                        LOGGER.info("Skipping offset '{}' for partition '{}'", partition, lastOffset);
+                                    }
+                                });
                     }
                 }
             }
