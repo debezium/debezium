@@ -26,7 +26,7 @@ public class PreparedStatementQueryBinder implements QueryBinder {
             if (valueBindDescriptor.getTargetSqlType() != null) {
                 if (valueBindDescriptor.getTargetSqlType() == Types.ARRAY) {
                     Collection<Object> collection = (Collection<Object>) valueBindDescriptor.getValue();
-                    Array array = binder.getConnection().createArrayOf(valueBindDescriptor.getSubTypeName(), collection.toArray());
+                    Array array = binder.getConnection().createArrayOf(valueBindDescriptor.getElementTypeName(), collection.toArray());
                     binder.setArray(valueBindDescriptor.getIndex(), array);
                 }
                 else {
