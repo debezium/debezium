@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.jdbc.integration;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.kafka.connect.sink.SinkRecord;
@@ -241,5 +243,34 @@ public abstract class AbstractJdbcSinkDeleteEnabledTest extends AbstractJdbcSink
         else {
             tableAssert.exists().hasNumberOfRows(0).hasNumberOfColumns(3);
         }
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("DBZ-7830")
+    public void testShouldFlushUpdateBufferWhenDelete(SinkRecordFactory factory) {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_KEY.getValue());
+        properties.put(JdbcSinkConnectorConfig.DELETE_ENABLED, "true");
+        properties.put(JdbcSinkConnectorConfig.BATCH_SIZE, "500");
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server1", "schema", tableName);
+
+        final SinkRecord deleteRecord = factory.deleteRecord(topicName);
+        List<SinkRecord> records = new ArrayList<SinkRecord>();
+
+        records.add(factory.createRecord(topicName, (byte) 2));
+        records.add(factory.createRecord(topicName, (byte) 1));
+        records.add(deleteRecord);
+        // should insert success (not violate primary key constraint)
+        records.add(factory.createRecord(topicName, (byte) 1));
+        consume(records);
+
+        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName(deleteRecord));
+        tableAssert.exists().hasNumberOfRows(2).hasNumberOfColumns(3);
     }
 }
