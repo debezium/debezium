@@ -5722,6 +5722,52 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         }
     }
 
+    @Test
+    @FixFor("DBZ-4332")
+    @SkipWhenAdapterNameIs(value = SkipWhenAdapterNameIs.AdapterName.OLR, reason = "ROW_ID is not sent by this adapter")
+    public void shouldCaptureRowIdForDataChanges() throws Exception {
+        TestHelper.dropTable(connection, "dbz4332");
+        try {
+            connection.execute("CREATE TABLE dbz4332 (id number(9,0), data varchar2(50), primary key(id))");
+            TestHelper.streamTable(connection, "dbz4332");
+
+            connection.execute("INSERT INTO dbz4332 VALUES (1, 'snapshot')");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ4332")
+                    .with(OracleConnectorConfig.TOMBSTONES_ON_DELETE, "false")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("INSERT INTO dbz4332 VALUES (2, 'streaming')");
+            connection.execute("UPDATE dbz4332 set data = 'update'");
+            connection.execute("DELETE FROM dbz4332");
+
+            final SourceRecords sourceRecords = consumeRecordsByTopic(6);
+            final List<SourceRecord> records = sourceRecords.recordsForTopic("server1.DEBEZIUM.DBZ4332");
+            assertThat(records).hasSize(6);
+
+            for (int i = 0; i < records.size(); i++) {
+                final Struct source = ((Struct) records.get(i).value()).getStruct("source");
+                if (i == 0) {
+                    // Snapshots do not capture row ids
+                    assertThat(source.get("row_id")).isNull();
+                }
+                else {
+                    assertThat(source.get("row_id")).isNotNull();
+                }
+            }
+
+            stopConnector();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz4332");
+        }
+    }
+
     private void waitForCurrentScnToHaveBeenSeenByConnector() throws SQLException {
         try (OracleConnection admin = TestHelper.adminConnection(true)) {
             final Scn scn = admin.getCurrentScn();

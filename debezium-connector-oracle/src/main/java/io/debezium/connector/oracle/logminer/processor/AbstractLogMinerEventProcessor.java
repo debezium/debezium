@@ -527,6 +527,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                 offsetContext.setTableId(event.getTableId());
                 offsetContext.setRedoThread(row.getThread());
                 offsetContext.setRsId(event.getRsId());
+                offsetContext.setRowId(event.getRowId());
 
                 if (event instanceof RedoSqlDmlEvent) {
                     offsetContext.setRedoSql(((RedoSqlDmlEvent) event).getRedoSql());
@@ -584,6 +585,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
 
         offsetContext.setEventScn(commitScn);
         offsetContext.setRsId(row.getRsId());
+        offsetContext.setRowId("");
 
         if (dispatchTransactionCommittedEvent) {
             dispatcher.dispatchTransactionCommittedEvent(partition, offsetContext, transaction.getChangeTime());
@@ -815,6 +817,8 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
             offsetContext.setEventScn(row.getScn());
             offsetContext.setRedoThread(row.getThread());
             offsetContext.setRsId(row.getRsId());
+            offsetContext.setRowId("");
+
             dispatcher.dispatchSchemaChangeEvent(partition, offsetContext,
                     tableId,
                     new OracleSchemaChangeEventEmitter(

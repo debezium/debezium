@@ -30,7 +30,8 @@ public class OracleSourceInfoStructMaker extends AbstractSourceInfoStructMaker<S
                 .field(CommitScn.ROLLBACK_SEGMENT_ID_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(CommitScn.SQL_SEQUENCE_NUMBER_KEY, Schema.OPTIONAL_INT64_SCHEMA))
                 .field(SourceInfo.USERNAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
-                .field(SourceInfo.REDO_SQL, Schema.OPTIONAL_STRING_SCHEMA).build();
+                .field(SourceInfo.REDO_SQL, Schema.OPTIONAL_STRING_SCHEMA)
+                .field(SourceInfo.ROW_ID, Schema.OPTIONAL_STRING_SCHEMA).build();
     }
 
     @Override
@@ -59,6 +60,9 @@ public class OracleSourceInfoStructMaker extends AbstractSourceInfoStructMaker<S
         }
         if (!Strings.isNullOrBlank(sourceInfo.getRedoSql())) {
             ret.put(SourceInfo.REDO_SQL, sourceInfo.getRedoSql());
+        }
+        if (!Strings.isNullOrBlank(sourceInfo.getRowId())) {
+            ret.put(SourceInfo.ROW_ID, sourceInfo.getRowId());
         }
 
         ret.put(CommitScn.SQL_SEQUENCE_NUMBER_KEY, sourceInfo.getSsn());

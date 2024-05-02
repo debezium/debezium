@@ -305,6 +305,14 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
         sourceInfo.setRedoSql(redoSql);
     }
 
+    public String getRowId() {
+        return sourceInfo.getRowId();
+    }
+
+    public void setRowId(String rowId) {
+        sourceInfo.setRowId(rowId);
+    }
+
     @Override
     public boolean isSnapshotRunning() {
         return sourceInfo.isSnapshot() && !snapshotCompleted;
