@@ -27,6 +27,10 @@ public class SourceInfo extends BaseSourceInfo {
     public static final String USERNAME_KEY = "user_name";
     public static final String SCN_INDEX_KEY = "scn_idx";
     public static final String REDO_SQL = "redo_sql";
+    public static final String ROW_ID = "row_id";
+
+    // Tracks thread-specific values when using multiple threads during snapshot
+    private final ThreadLocal<String> rowId = new ThreadLocal<>();
 
     private Scn scn;
     private CommitScn commitScn;
@@ -124,6 +128,14 @@ public class SourceInfo extends BaseSourceInfo {
 
     public void setRedoSql(String redoSql) {
         this.redoSql = redoSql;
+    }
+
+    public String getRowId() {
+        return rowId.get();
+    }
+
+    public void setRowId(String rowId) {
+        this.rowId.set(rowId);
     }
 
     public String tableSchema() {
