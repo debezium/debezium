@@ -12,27 +12,27 @@ public class ValueBindDescriptor {
 
     private final Integer targetSqlType;
 
-    private final String subTypeName;
+    private final String elementTypeName;
 
     public ValueBindDescriptor(int index, Object value) {
         this.index = index;
         this.value = value;
         this.targetSqlType = null;
-        this.subTypeName = null;
+        this.elementTypeName = null;
     }
 
     public ValueBindDescriptor(int index, Object value, Integer targetSqlType) {
         this.index = index;
         this.value = value;
         this.targetSqlType = targetSqlType;
-        this.subTypeName = null;
+        this.elementTypeName = null;
     }
 
-    public ValueBindDescriptor(int index, Object value, Integer targetSqlType, String subTypeName) {
+    public ValueBindDescriptor(int index, Object value, Integer targetSqlType, String elementTypeName) {
         this.index = index;
         this.value = value;
         this.targetSqlType = targetSqlType;
-        this.subTypeName = subTypeName;
+        this.elementTypeName = elementTypeName;
     }
 
     public int getIndex() {
@@ -47,7 +47,7 @@ public class ValueBindDescriptor {
         return targetSqlType;
     }
 
-    public String getSubTypeName() {
-        return subTypeName;
+    public String getElementTypeName() {
+        return elementTypeName;
     }
 }
