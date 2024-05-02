@@ -34,8 +34,8 @@ public class ArrayType extends AbstractType {
 
     @Override
     public String getTypeName(DatabaseDialect dialect, Schema schema, boolean key) {
-        Type subType = dialect.getSchemaType(schema.valueSchema());
-        typeName = subType.getTypeName(dialect, schema.valueSchema(), key);
+        Type elementType = dialect.getSchemaType(schema.valueSchema());
+        typeName = elementType.getTypeName(dialect, schema.valueSchema(), key);
         return typeName + "[]";
     }
 
