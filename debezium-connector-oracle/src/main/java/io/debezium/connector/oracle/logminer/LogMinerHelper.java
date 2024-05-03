@@ -26,6 +26,10 @@ public class LogMinerHelper {
             throw new DebeziumException("No column '" + columnName + "' found in table '" + table.id() + "'");
         }
         // want to return a 0-based index and column positions are 1-based
+        return getColumnIndexByName(column);
+    }
+
+    public static int getColumnIndexByName(Column column) {
         return column.position() - 1;
     }
 }
