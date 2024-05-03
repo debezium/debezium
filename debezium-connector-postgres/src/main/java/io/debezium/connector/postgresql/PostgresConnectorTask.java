@@ -78,7 +78,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
     private Partition.Provider<PostgresPartition> partitionProvider = null;
     private OffsetContext.Loader<PostgresOffsetContext> offsetContextLoader = null;
 
-    private final ReentrantLock stateLock = new ReentrantLock();
+    private final ReentrantLock commitLock = new ReentrantLock();
 
     @Override
     public ChangeEventSourceCoordinator<PostgresPartition, PostgresOffsetContext> start(Configuration config) {
@@ -379,7 +379,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
 
     @Override
     public void commit() throws InterruptedException {
-        boolean locked = stateLock.tryLock();
+        boolean locked = commitLock.tryLock();
 
         if (locked) {
             try {
@@ -400,7 +400,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                 }
             }
             finally {
-                stateLock.unlock();
+                commitLock.unlock();
             }
         }
         else {
