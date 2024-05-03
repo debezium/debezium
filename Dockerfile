@@ -22,7 +22,7 @@ COPY debezium-connector-postgres/target/debezium-connector-postgres-*.jar $KAFKA
 COPY debezium-core/target/debezium-core-*.jar $KAFKA_CONNECT_PLUGINS_DIR/debezium-connector-postgres
 
 # Set the TLS version to be used by Kafka processes
-ENV KAFKA_OPTS="-Djdk.tls.client.protocols=TLSv1.2"
+ENV KAFKA_OPTS="-Djdk.tls.client.protocols=TLSv1.2 -javaagent:/kafka/etc/jmx_prometheus_javaagent-0.17.2.jar=8080:/kafka/etc/jmx-exporter/metrics.yml"
 
 # Add the required jar files to be packaged with the base connector
 RUn cd $KAFKA_CONNECT_PLUGINS_DIR/debezium-connector-postgres && curl -sLo kafka-connect-avro-converter-7.6.0 https://packages.confluent.io/maven/io/confluent/kafka-connect-avro-converter/7.6.0/kafka-connect-avro-converter-7.6.0.jar
@@ -34,9 +34,11 @@ RUN cd $KAFKA_CONNECT_PLUGINS_DIR/debezium-connector-postgres && unzip transform
 # Add Jmx agent and metrics pattern file to expose the metrics info
 RUN mkdir /kafka/etc && cd /kafka/etc && curl -so jmx_prometheus_javaagent-0.17.2.jar https://repo1.maven.org/maven2/io/prometheus/jmx/jmx_prometheus_javaagent/0.17.2/jmx_prometheus_javaagent-0.17.2.jar
 
-ADD metrics.yml /etc/jmx-exporter/
+COPY metrics.yml /kafka/etc/jmx-exporter/
 
 ENV CLASSPATH=$KAFKA_HOME
+ENV JMXHOST=localhost
+ENV JMXPORT=1976
 
 # properties file having instructions to roll over log files in case the size exceeds a given limit
 COPY log4j.properties $KAFKA_HOME/config/log4j.properties
