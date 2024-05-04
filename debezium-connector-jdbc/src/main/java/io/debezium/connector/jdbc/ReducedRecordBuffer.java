@@ -1,35 +1,35 @@
-/*
- * Copyright Debezium Authors.
- *
- * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
- */
 package io.debezium.connector.jdbc;
 
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.ConnectException;
+
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.List;
 import java.util.Objects;
-
-import org.apache.kafka.connect.data.Schema;
+import java.util.HashMap;
 
 /**
- * A buffer of {@link SinkRecordDescriptor}. It contains the logic of when is the time to flush
+ * A reduced implementation buffer of {@link SinkRecordDescriptor}.
+ * It reduces events in buffer before submit to external database.
  *
- * @author Mario Fiore Vitale
+ * @author Gaurav Miglani
  */
-public class RecordBuffer implements Buffer {
+public class ReducedRecordBuffer implements Buffer {
 
     private final JdbcSinkConnectorConfig connectorConfig;
     private Schema keySchema;
     private Schema valueSchema;
-    private final ArrayList<SinkRecordDescriptor> records = new ArrayList<>();
 
-    public RecordBuffer(JdbcSinkConnectorConfig connectorConfig) {
+    private final Map<Struct, SinkRecordDescriptor> records = new HashMap<>();
 
+    public ReducedRecordBuffer(JdbcSinkConnectorConfig connectorConfig) {
         this.connectorConfig = connectorConfig;
     }
 
+    @Override
     public List<SinkRecordDescriptor> add(SinkRecordDescriptor recordDescriptor) {
-
         ArrayList<SinkRecordDescriptor> flushed = new ArrayList<>();
 
         if (records.isEmpty()) {
@@ -43,7 +43,12 @@ public class RecordBuffer implements Buffer {
             flushed.addAll(flush());
         }
 
-        records.add(recordDescriptor);
+        Struct keyStruct = recordDescriptor.getKeyStruct(connectorConfig.getPrimaryKeyMode());
+        if (keyStruct != null) {
+            records.put(keyStruct, recordDescriptor);
+        } else {
+            throw new ConnectException("No struct-based primary key defined for record key/value, reduction buffer require struct based primary key");
+        }
 
         if (records.size() >= connectorConfig.getBatchSize()) {
             flushed.addAll(flush());
@@ -52,14 +57,14 @@ public class RecordBuffer implements Buffer {
         return flushed;
     }
 
+    @Override
     public List<SinkRecordDescriptor> flush() {
-
-        ArrayList<SinkRecordDescriptor> flushed = new ArrayList<>(records);
+        ArrayList<SinkRecordDescriptor> flushed = new ArrayList<>(records.values());
         records.clear();
-
         return flushed;
     }
 
+    @Override
     public boolean isEmpty() {
         return records.isEmpty();
     }
