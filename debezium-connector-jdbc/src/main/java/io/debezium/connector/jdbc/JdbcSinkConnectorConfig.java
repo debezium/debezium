@@ -69,6 +69,7 @@ public class JdbcSinkConnectorConfig {
     public static final String BATCH_SIZE = "batch.size";
     public static final String FIELD_INCLUDE_LIST = "field.include.list";
     public static final String FIELD_EXCLUDE_LIST = "field.exclude.list";
+    public static final String USE_REDUCTION_BUFFER = "use.reduction.buffer";
 
     // todo add support for the ValueConverter contract
 
@@ -308,6 +309,15 @@ public class JdbcSinkConnectorConfig {
             .withDescription("A comma-separated list of regular expressions matching fully-qualified names of fields that "
                     + "should be excluded from change events. The field names must be delimited by the format <topic>:<field> ");
 
+    public static final Field USE_REDUCTION_BUFFER_FIELD = Field.create(USE_REDUCTION_BUFFER)
+            .withDisplayName("Controls whether to use reduction buffer by the connector to reduce the SQL load when duplicates are found")
+            .withType(Type.BOOLEAN)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 2))
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.MEDIUM)
+            .withDefault(false)
+            .withDescription("Whether to use reduced buffer or not.");
+
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
             .connector(
                     CONNECTION_URL_FIELD,
@@ -509,6 +519,8 @@ public class JdbcSinkConnectorConfig {
 
     private final long batchSize;
 
+    private final boolean useReductionBuffer;
+
     public JdbcSinkConnectorConfig(Map<String, String> props) {
         config = Configuration.from(props);
         this.insertMode = InsertMode.parse(config.getString(INSERT_MODE));
@@ -526,6 +538,7 @@ public class JdbcSinkConnectorConfig {
         this.postgresPostgisSchema = config.getString(POSTGRES_POSTGIS_SCHEMA_FIELD);
         this.sqlServerIdentityInsert = config.getBoolean(SQLSERVER_IDENTITY_INSERT_FIELD);
         this.batchSize = config.getLong(BATCH_SIZE_FIELD);
+        this.useReductionBuffer = config.getBoolean(USE_REDUCTION_BUFFER_FIELD);
 
         String fieldExcludeList = config.getString(FIELD_EXCLUDE_LIST);
         String fieldIncludeList = config.getString(FIELD_INCLUDE_LIST);
@@ -598,6 +611,10 @@ public class JdbcSinkConnectorConfig {
 
     public long getBatchSize() {
         return batchSize;
+    }
+
+    public boolean isUseReductionBuffer() {
+        return useReductionBuffer;
     }
 
     // public Set<String> getDataTypeMapping() {
