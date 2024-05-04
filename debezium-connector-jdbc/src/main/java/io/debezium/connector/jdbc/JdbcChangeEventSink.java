@@ -65,8 +65,8 @@ public class JdbcChangeEventSink implements ChangeEventSink {
     @Override
     public void execute(Collection<SinkRecord> records) {
 
-        final Map<TableId, RecordBuffer> updateBufferByTable = new HashMap<>();
-        final Map<TableId, RecordBuffer> deleteBufferByTable = new HashMap<>();
+        final Map<TableId, Buffer> updateBufferByTable = new HashMap<>();
+        final Map<TableId, Buffer> deleteBufferByTable = new HashMap<>();
 
         for (SinkRecord record : records) {
 
@@ -127,7 +127,13 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                     flushBuffer(tableId, updateBufferByTable.get(tableId).flush());
                 }
 
-                RecordBuffer tableIdBuffer = deleteBufferByTable.computeIfAbsent(tableId, k -> new RecordBuffer(config));
+                Buffer tableIdBuffer;
+                if (config.isUseReductionBuffer()) {
+                    tableIdBuffer = deleteBufferByTable.computeIfAbsent(tableId, k -> new ReducedRecordBuffer(config));
+                } else {
+                    tableIdBuffer = deleteBufferByTable.computeIfAbsent(tableId, k -> new RecordBuffer(config));
+                }
+
                 List<SinkRecordDescriptor> toFlush = tableIdBuffer.add(sinkRecordDescriptor);
 
                 flushBuffer(tableId, toFlush);
@@ -143,7 +149,14 @@ public class JdbcChangeEventSink implements ChangeEventSink {
 
                 Stopwatch updateBufferStopwatch = Stopwatch.reusable();
                 updateBufferStopwatch.start();
-                RecordBuffer tableIdBuffer = updateBufferByTable.computeIfAbsent(tableId, k -> new RecordBuffer(config));
+
+                Buffer tableIdBuffer;
+                if (config.isUseReductionBuffer()) {
+                    tableIdBuffer = updateBufferByTable.computeIfAbsent(tableId, k -> new ReducedRecordBuffer(config));
+                } else {
+                    tableIdBuffer = updateBufferByTable.computeIfAbsent(tableId, k -> new RecordBuffer(config));
+                }
+
                 List<SinkRecordDescriptor> toFlush = tableIdBuffer.add(sinkRecordDescriptor);
                 updateBufferStopwatch.stop();
 
@@ -190,7 +203,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
         return sinkRecordDescriptor;
     }
 
-    private void flushBuffers(Map<TableId, RecordBuffer> bufferByTable) {
+    private void flushBuffers(Map<TableId, Buffer> bufferByTable) {
 
         bufferByTable.forEach((tableId, recordBuffer) -> flushBuffer(tableId, recordBuffer.flush()));
     }
