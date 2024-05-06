@@ -130,7 +130,8 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                 Buffer tableIdBuffer;
                 if (config.isUseReductionBuffer()) {
                     tableIdBuffer = deleteBufferByTable.computeIfAbsent(tableId, k -> new ReducedRecordBuffer(config));
-                } else {
+                }
+                else {
                     tableIdBuffer = deleteBufferByTable.computeIfAbsent(tableId, k -> new RecordBuffer(config));
                 }
 
@@ -153,7 +154,8 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                 Buffer tableIdBuffer;
                 if (config.isUseReductionBuffer()) {
                     tableIdBuffer = updateBufferByTable.computeIfAbsent(tableId, k -> new ReducedRecordBuffer(config));
-                } else {
+                }
+                else {
                     tableIdBuffer = updateBufferByTable.computeIfAbsent(tableId, k -> new RecordBuffer(config));
                 }
 

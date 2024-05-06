@@ -1,3 +1,8 @@
+/*
+ * Copyright Debezium Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
 package io.debezium.connector.jdbc;
 
 import org.apache.kafka.connect.data.Schema;
@@ -46,7 +51,8 @@ public class ReducedRecordBuffer implements Buffer {
         Struct keyStruct = recordDescriptor.getKeyStruct(connectorConfig.getPrimaryKeyMode());
         if (keyStruct != null) {
             records.put(keyStruct, recordDescriptor);
-        } else {
+        }
+        else {
             throw new ConnectException("No struct-based primary key defined for record key/value, reduction buffer require struct based primary key");
         }
 
