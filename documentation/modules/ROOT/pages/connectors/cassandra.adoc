@@ -940,7 +940,7 @@ Once this upper limit is reached, Cassandra will stop accepting writes for this 
 In the worst case scenario if this happens, complete the following steps:
 
 . Turn off Cassandra connector.
-. Dusable CDC for the table so it stops generating additional writes.
+. Disable CDC for the table so it stops generating additional writes.
   Because the commit logs are not filtered,  writes to other CDC-enabled tables on the same node could still affect the commitlog file generation.
 . Remove the recorded offset from the offset file
 . After the capacity is increased or the directory used space is under control, restart the connector so that it re-bootstraps the table.
