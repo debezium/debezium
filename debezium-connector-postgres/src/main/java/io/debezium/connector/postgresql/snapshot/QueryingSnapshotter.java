@@ -69,12 +69,9 @@ public abstract class QueryingSnapshotter implements Snapshotter {
                 throw new RuntimeException("Exception while waiting", e);
             }
 
-            if (newSlotInfo != null) {
-                return String.format("SET LOCAL yb_read_time TO '%s ht'", newSlotInfo.snapshotName());
-            }
-            else {
-                return String.format("SET LOCAL yb_read_time TO '%s ht'", slotState.slotRestartCommitHT());
-            }
+            String snapshotTimeHT =
+                    newSlotInfo != null ?  newSlotInfo.snapshotName() : String.valueOf(slotState.slotRestartCommitHT());
+            return ybSnapshotStatement(snapshotTimeHT);
         }
 
         // PG case
@@ -87,5 +84,17 @@ public abstract class QueryingSnapshotter implements Snapshotter {
             return "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ; \n" + snapSet;
         }
         return Snapshotter.super.snapshotTransactionIsolationLevelStatement(newSlotInfo, isOnDemand);
+    }
+
+    private String ybSnapshotStatement(String ybReadTime) {
+        return String.format("DO " +
+                             "LANGUAGE plpgsql $$ " +
+                             "BEGIN " +
+                                "SET LOCAL yb_read_time TO '%s ht'; "  +
+                             "EXCEPTION " +
+                                "WHEN OTHERS THEN " +
+                                    "CALL set_yb_read_time('%s ht'); " +
+                             "END $$;",
+                             ybReadTime, ybReadTime);
     }
 }

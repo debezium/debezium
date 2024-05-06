@@ -3214,6 +3214,34 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
     }
 
+    @Test
+    public void nonSuperUserSnapshotAndStreaming() throws Exception {
+        TestHelper.executeDDL("replication_role_user.ddl");
+        TestHelper.execute(SETUP_TABLES_STMT);
+
+        // Only tables owned by the connector user can be added to the publication
+        TestHelper.execute("GRANT USAGE ON SCHEMA s1 to ybpgconn");
+        TestHelper.execute("GRANT USAGE ON SCHEMA s2 to ybpgconn");
+        TestHelper.execute("ALTER TABLE s1.a OWNER TO ybpgconn");
+        TestHelper.execute("ALTER TABLE s2.a OWNER TO ybpgconn");
+
+        // Start the connector with the non super user
+        Configuration.Builder configBuilderInitial = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.USER, "ybpgconn")
+                .with(PostgresConnectorConfig.PUBLICATION_AUTOCREATE_MODE, PostgresConnectorConfig.AutoCreateMode.FILTERED)
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE);
+
+        start(PostgresConnector.class, configBuilderInitial.build());
+        assertConnectorIsRunning();
+
+        // insert some more records - these should not be part of the snapshot
+        TestHelper.execute(INSERT_STMT);
+
+        assertRecordsFromSnapshot(2, 1, 1);
+        assertRecordsAfterInsert(2, 2, 2);
+    }
+
     private CompletableFuture<Void> batchInsertRecords(long recordsCount, int batchSize) {
         String insertStmt = "INSERT INTO text_table(j, jb, x, u) " +
                 "VALUES ('{\"bar\": \"baz\"}'::json, '{\"bar\": \"baz\"}'::jsonb, " +
