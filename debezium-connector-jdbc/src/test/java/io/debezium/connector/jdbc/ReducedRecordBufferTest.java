@@ -64,7 +64,7 @@ class ReducedRecordBufferTest {
     @DisplayName("When 10 sink records arrives and buffer size is 5 then the buffer will be flushed 2 times")
     void correctlyBuffer(SinkRecordFactory factory) {
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(Map.of("batch.size", "5", "primary.key.mode", "record_key","primary.key.fields", "id"));
+        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(Map.of("batch.size", "5", "primary.key.mode", "record_key", "primary.key.fields", "id"));
 
         ReducedRecordBuffer reducedRecordBuffer = new ReducedRecordBuffer(config);
 
@@ -90,7 +90,7 @@ class ReducedRecordBufferTest {
     @DisplayName("When key schema changes then the buffer will be flushed")
     void keySchemaChange(SinkRecordFactory factory) {
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(Map.of("batch.size", "5", "primary.key.mode", "record_key","primary.key.fields", "id"));
+        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(Map.of("batch.size", "5", "primary.key.mode", "record_key", "primary.key.fields", "id"));
 
         ReducedRecordBuffer reducedRecordBuffer = new ReducedRecordBuffer(config);
 
@@ -135,7 +135,7 @@ class ReducedRecordBufferTest {
     @DisplayName("When value schema changes then the buffer will be flushed")
     void valueSchemaChange(SinkRecordFactory factory) {
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(Map.of("batch.size", "5", "primary.key.mode", "record_key","primary.key.fields", "id"));
+        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(Map.of("batch.size", "5", "primary.key.mode", "record_key", "primary.key.fields", "id"));
 
         ReducedRecordBuffer reducedRecordBuffer = new ReducedRecordBuffer(config);
 
@@ -180,7 +180,7 @@ class ReducedRecordBufferTest {
     @DisplayName("When 10 sink records arrives and buffer size is 5 with every alternate duplicate sink record then the buffer will be flushed 1 time")
     void correctlyBufferWithDuplicate(SinkRecordFactory factory) {
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(Map.of("batch.size", "5", "primary.key.mode", "record_key","primary.key.fields", "id"));
+        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(Map.of("batch.size", "5", "primary.key.mode", "record_key", "primary.key.fields", "id"));
 
         ReducedRecordBuffer reducedRecordBuffer = new ReducedRecordBuffer(config);
 
