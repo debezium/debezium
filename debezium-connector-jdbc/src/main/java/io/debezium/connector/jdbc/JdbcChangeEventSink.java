@@ -127,13 +127,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                     flushBuffer(tableId, updateBufferByTable.get(tableId).flush());
                 }
 
-                Buffer tableIdBuffer;
-                if (config.isUseReductionBuffer()) {
-                    tableIdBuffer = deleteBufferByTable.computeIfAbsent(tableId, k -> new ReducedRecordBuffer(config));
-                }
-                else {
-                    tableIdBuffer = deleteBufferByTable.computeIfAbsent(tableId, k -> new RecordBuffer(config));
-                }
+                Buffer tableIdBuffer = resolveBuffer(deleteBufferByTable, tableId);
 
                 List<SinkRecordDescriptor> toFlush = tableIdBuffer.add(sinkRecordDescriptor);
 
@@ -151,13 +145,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                 Stopwatch updateBufferStopwatch = Stopwatch.reusable();
                 updateBufferStopwatch.start();
 
-                Buffer tableIdBuffer;
-                if (config.isUseReductionBuffer()) {
-                    tableIdBuffer = updateBufferByTable.computeIfAbsent(tableId, k -> new ReducedRecordBuffer(config));
-                }
-                else {
-                    tableIdBuffer = updateBufferByTable.computeIfAbsent(tableId, k -> new RecordBuffer(config));
-                }
+                Buffer tableIdBuffer = resolveBuffer(deleteBufferByTable, tableId);
 
                 List<SinkRecordDescriptor> toFlush = tableIdBuffer.add(sinkRecordDescriptor);
                 updateBufferStopwatch.stop();
@@ -185,6 +173,15 @@ public class JdbcChangeEventSink implements ChangeEventSink {
         return record.valueSchema() != null
                 && !Strings.isNullOrEmpty(record.valueSchema().name())
                 && record.valueSchema().name().contains(SCHEMA_CHANGE_VALUE);
+    }
+
+    private Buffer resolveBuffer(Map<TableId, Buffer> bufferMap, TableId tableId) {
+        if (config.isUseReductionBuffer()) {
+            return bufferMap.computeIfAbsent(tableId, k -> new ReducedRecordBuffer(config));
+        }
+        else {
+            return bufferMap.computeIfAbsent(tableId, k -> new RecordBuffer(config));
+        }
     }
 
     private SinkRecordDescriptor buildRecordSinkDescriptor(SinkRecord record) {
