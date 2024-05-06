@@ -996,7 +996,7 @@ include::{partialsdir}/modules/all-connectors/frag-common-mbean-name.adoc[levelo
 |[[connectors-strm-metric-millisecondsbehindsource]]<<connectors-strm-metric-millisecondsbehindsource, `+MilliSecondsBehindSource+`>>
 |`long`
 |The number of milliseconds between the last change event's timestamp and the connector processing it.
-The values will incoporate any differences between the clocks on the machines where the database server and the connector are running.
+The values will incorporate any differences between the clocks on the machines where the database server and the connector are running.
 
 |[[connectors-strm-metric-numberofcommittedtransactions]]<<connectors-strm-metric-numberofcommittedtransactions, `+NumberOfCommittedTransactions+`>>
 |`long`

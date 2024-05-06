@@ -51,7 +51,7 @@ The following table lists the streaming metrics that are available.
 |[[connectors-strm-metric-millisecondsbehindsource_{context}]]<<connectors-strm-metric-millisecondsbehindsource_{context}, `MilliSecondsBehindSource`>>
 |`long`
 |The number of milliseconds between the last change event's timestamp and the connector processing it.
-The values will incoporate any differences between the clocks on the machines where the database server and the connector are running.
+The values will incorporate any differences between the clocks on the machines where the database server and the connector are running.
 
 |[[connectors-strm-metric-numberofcommittedtransactions_{context}]]<<connectors-strm-metric-numberofcommittedtransactions_{context}, `NumberOfCommittedTransactions`>>
 |`long`
