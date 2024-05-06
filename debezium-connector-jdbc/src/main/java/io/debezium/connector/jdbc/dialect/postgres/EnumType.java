@@ -33,7 +33,7 @@ class EnumType extends AbstractType {
 
     @Override
     public String getTypeName(DatabaseDialect dialect, Schema schema, boolean key) {
-        LOGGER.trace("Cannot create enum types automatically, please create the table by hand. Using STRING fallback.");
+        LOGGER.warn("Cannot create enum types automatically, please create the table by hand. Using STRING fallback.");
         return ConnectStringType.INSTANCE.getTypeName(dialect, schema, key);
     }
 
