@@ -136,7 +136,8 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                 slotInfo = jdbcConnection.getReplicationSlotState(connectorConfig.slotName(), connectorConfig.plugin().getPostgresPluginName());
             }
             catch (SQLException e) {
-                LOGGER.warn("unable to load info of replication slot, Debezium will try to create the slot");
+                LOGGER.warn("unable to load info of replication slot, Debezium will try to create the slot", e);
+                throw e;
             }
 
             if (previousOffset == null) {
@@ -258,6 +259,9 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
             coordinator.start(taskContext, this.queue, metadataProvider);
 
             return coordinator;
+        } catch (Exception exception) {
+            // YB Note: Catch all the exceptions and retry.
+            throw new RetriableException(exception);
         }
         finally {
             previousContext.restore();

@@ -34,4 +34,10 @@ public class PostgresErrorHandler extends ErrorHandler {
     protected boolean isRetriable(Throwable throwable) {
         return super.isRetriable(throwable);
     }
+
+    @Override
+    protected boolean isCustomRetriable(Throwable throwable) {
+        // YB Note: Yes, all the errors are custom retriable.
+        return true;
+    }
 }
