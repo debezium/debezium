@@ -39,6 +39,11 @@ public class LogMinerQueryBuilder {
     private static final List<Integer> OPERATION_CODES_NO_LOB = Arrays.asList(1, 2, 3, 6, 7, 34, 36, 255);
 
     /**
+     * The maximum number of permitted elements in an Oracle SQL in-clause list
+     */
+    public static final Integer IN_CLAUSE_MAX_ELEMENTS = 1000;
+
+    /**
      * Builds the LogMiner contents view query.
      *
      * The returned query will contain 2 bind parameters that the caller is responsible for binding before
@@ -473,19 +478,29 @@ public class LogMinerQueryBuilder {
             Objects.requireNonNull(values, "The values list must not be null");
 
             final StringBuilder sql = new StringBuilder();
-            if (caseInsensitive) {
-                sql.append("UPPER(").append(fieldName).append(")");
+            final List<?> listValues = Arrays.asList(values.toArray());
+            final int buckets = (listValues.size() + IN_CLAUSE_MAX_ELEMENTS - 1) / IN_CLAUSE_MAX_ELEMENTS;
+
+            for (int i = 0; i < buckets; i++) {
+                if (i > 0) {
+                    sql.append(negated ? " AND " : " OR ");
+                }
+                if (caseInsensitive) {
+                    sql.append("UPPER(").append(fieldName).append(")");
+                }
+                else {
+                    sql.append(fieldName);
+                }
+                if (negated) {
+                    sql.append(" NOT");
+                }
+
+                final int startIndex = (i * IN_CLAUSE_MAX_ELEMENTS);
+                final int endIndex = startIndex + Math.min(IN_CLAUSE_MAX_ELEMENTS, listValues.size() - startIndex);
+                sql.append(" IN (").append(commaSeparatedList(listValues.subList(startIndex, endIndex))).append(")");
             }
-            else {
-                sql.append(fieldName);
-            }
-            if (negated) {
-                sql.append(" NOT");
-            }
-            sql.append(" IN (");
-            sql.append(commaSeparatedList(values));
-            sql.append(")");
-            return sql.toString();
+
+            return (listValues.size() > IN_CLAUSE_MAX_ELEMENTS) ? "(" + sql + ")" : sql.toString();
         }
 
         private String commaSeparatedList(Collection<?> values) {

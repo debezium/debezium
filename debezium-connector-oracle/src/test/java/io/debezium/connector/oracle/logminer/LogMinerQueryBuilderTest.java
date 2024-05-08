@@ -12,6 +12,7 @@ import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_QUER
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_USERNAME_EXCLUDE_LIST;
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_USERNAME_INCLUDE_LIST;
 import static io.debezium.connector.oracle.OracleConnectorConfig.PDB_NAME;
+import static io.debezium.connector.oracle.logminer.LogMinerQueryBuilder.IN_CLAUSE_MAX_ELEMENTS;
 import static io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig.STORE_ONLY_CAPTURED_TABLES_DDL;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.SCHEMA_EXCLUDE_LIST;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.SCHEMA_INCLUDE_LIST;
@@ -20,6 +21,7 @@ import static io.debezium.relational.RelationalDatabaseConnectorConfig.TABLE_INC
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
@@ -130,6 +132,30 @@ public class LogMinerQueryBuilderTest {
 
         result = LogMinerQueryBuilder.build(connectorConfig);
         assertThat(result).isEqualTo(getQueryFromTemplate(connectorConfig));
+    }
+
+    @Test
+    @FixFor("DBZ-7847")
+    public void testTableIncludeListWithMoreThan1000Elements() {
+        StringBuilder tables = new StringBuilder();
+        for (int i = 0; i < 1001; i++) {
+            if (i > 0) {
+                tables.append(",");
+            }
+            tables.append("DEBEZIUM\\.T" + i);
+        }
+        assertQuery(getBuilderForMode(LogMiningQueryFilterMode.IN).with(TABLE_INCLUDE_LIST, tables.toString()));
+        assertQuery(getBuilderForMode(LogMiningQueryFilterMode.IN).with(TABLE_EXCLUDE_LIST, tables.toString()));
+
+        tables = new StringBuilder();
+        for (int i = 0; i < 2000; i++) {
+            if (i > 0) {
+                tables.append(",");
+            }
+            tables.append("DEBEZIUM\\.T" + i);
+        }
+        assertQuery(getBuilderForMode(LogMiningQueryFilterMode.IN).with(TABLE_INCLUDE_LIST, tables.toString()));
+        assertQuery(getBuilderForMode(LogMiningQueryFilterMode.IN).with(TABLE_EXCLUDE_LIST, tables.toString()));
     }
 
     private void testLogMinerQueryFilterMode(LogMiningQueryFilterMode mode) {
@@ -354,28 +380,40 @@ public class LogMinerQueryBuilderTest {
 
     private String getIn(String columnName, Collection<String> values, boolean negated, boolean caseInsensitive) {
         final StringBuilder predicate = new StringBuilder();
-        if (caseInsensitive) {
-            predicate.append("UPPER(").append(columnName).append(")");
-        }
-        else {
-            predicate.append(columnName);
-        }
-        if (negated) {
-            predicate.append(" NOT");
-        }
-        predicate.append(" IN (");
 
-        for (Iterator<String> iterator = values.iterator(); iterator.hasNext();) {
-            final String value = iterator.next();
-            predicate.append("'").append(value).append("'");
-            if (iterator.hasNext()) {
-                predicate.append(",");
+        final List<?> listValues = Arrays.asList(values.toArray());
+        final int buckets = (listValues.size() + IN_CLAUSE_MAX_ELEMENTS - 1) / IN_CLAUSE_MAX_ELEMENTS;
+        for (int bucket = 0; bucket < buckets; bucket++) {
+            if (bucket > 0) {
+                predicate.append(negated ? " AND " : " OR ");
             }
+            if (caseInsensitive) {
+                predicate.append("UPPER(").append(columnName).append(")");
+            }
+            else {
+                predicate.append(columnName);
+            }
+            if (negated) {
+                predicate.append(" NOT");
+            }
+            predicate.append(" IN (");
+
+            final int startIndex = (bucket * IN_CLAUSE_MAX_ELEMENTS);
+            final int endIndex = startIndex + Math.min(IN_CLAUSE_MAX_ELEMENTS, listValues.size() - startIndex);
+            final List<?> subList = listValues.subList(startIndex, endIndex);
+
+            for (Iterator<?> iterator = subList.iterator(); iterator.hasNext();) {
+                final Object value = iterator.next();
+                predicate.append("'").append(value).append("'");
+                if (iterator.hasNext()) {
+                    predicate.append(",");
+                }
+            }
+
+            predicate.append(")");
         }
 
-        predicate.append(")");
-
-        return predicate.toString();
+        return listValues.size() > IN_CLAUSE_MAX_ELEMENTS ? "(" + predicate + ")" : predicate.toString();
     }
 
     private String getRegexpLike(String columnName, Collection<Pattern> values, boolean negated) {
@@ -432,7 +470,7 @@ public class LogMinerQueryBuilderTest {
         final List<Object> values = new ArrayList<>();
         if (!regex) {
             // Explicitly replace all escaped characters due to Regex.
-            values.addAll(Strings.setOfTrimmed(list, s -> s.split("[,]"), v -> v.replaceAll("\\\\", "")));
+            values.addAll(Strings.listOfTrimmed(list, s -> s.split("[,]"), v -> v.replaceAll("\\\\", "")));
         }
         else {
             values.addAll(Strings.listOfRegex(list, Pattern.CASE_INSENSITIVE));
