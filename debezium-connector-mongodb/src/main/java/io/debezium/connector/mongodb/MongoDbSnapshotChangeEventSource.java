@@ -118,8 +118,8 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
     @Override
     public SnapshottingTask getBlockingSnapshottingTask(MongoDbPartition partition, MongoDbOffsetContext previousOffset, SnapshotConfiguration snapshotConfiguration) {
 
-        Map<String, String> filtersByTable = snapshotConfiguration.getAdditionalConditions().stream()
-                .collect(Collectors.toMap(k -> k.getDataCollection().toString(), AdditionalCondition::getFilter));
+        Map<DataCollectionId, String> filtersByTable = snapshotConfiguration.getAdditionalConditions().stream()
+                .collect(Collectors.toMap(k -> CollectionId.parse(k.getDataCollection().toString()), AdditionalCondition::getFilter));
 
         return new SnapshottingTask(false, true, snapshotConfiguration.getDataCollections(), filtersByTable, true);
     }
@@ -290,7 +290,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
                                                MongoDbSnapshotContext snapshotContext,
                                                SnapshotReceiver<MongoDbPartition> snapshotReceiver,
                                                CollectionId collectionId, MongoDbConnection mongo,
-                                               Map<String, String> snapshotFilterQueryForCollection)
+                                               Map<DataCollectionId, String> snapshotFilterQueryForCollection)
             throws InterruptedException {
         long exportStart = clock.currentTimeInMillis();
         LOGGER.info("\t Exporting data for collection '{}'", collectionId);
@@ -303,7 +303,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
             final int batchSize = taskContext.getConnectorConfig().getSnapshotFetchSize();
 
             long docs = 0;
-            Optional<String> snapshotFilterForCollectionId = Optional.ofNullable(snapshotFilterQueryForCollection.get(collectionId.dbName() + "." + collectionId.name()));
+            Optional<String> snapshotFilterForCollectionId = Optional.ofNullable(snapshotFilterQueryForCollection.get(collectionId));
             Bson filterQuery = Document.parse(snapshotFilterForCollectionId.orElse("{}"));
 
             try (MongoCursor<BsonDocument> cursor = collection.find(filterQuery).batchSize(batchSize).iterator()) {
