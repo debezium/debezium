@@ -1402,22 +1402,18 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         return getSourceInfoStructMaker(SOURCE_INFO_STRUCT_MAKER, Module.name(), Module.version(), this);
     }
 
-    public Optional<String> getSnapshotFilterQueryForCollection(CollectionId collectionId) {
-        return Optional.ofNullable(getSnapshotFilterQueryByCollection().get(collectionId.dbName() + "." + collectionId.name()));
-    }
-
-    public Map<String, String> getSnapshotFilterQueryByCollection() {
+    public Map<DataCollectionId, String> getSnapshotFilterQueryByCollection() {
         String collectionList = getConfig().getString(SNAPSHOT_FILTER_QUERY_BY_COLLECTION);
 
         if (collectionList == null) {
             return Collections.emptyMap();
         }
 
-        Map<String, String> snapshotFilterQueryByCollection = new HashMap<>();
+        Map<DataCollectionId, String> snapshotFilterQueryByCollection = new HashMap<>();
 
         for (String collection : collectionList.split(",")) {
             snapshotFilterQueryByCollection.put(
-                    collection,
+                    CollectionId.parse(collection),
                     getConfig().getString(
                             new StringBuilder().append(SNAPSHOT_FILTER_QUERY_BY_COLLECTION).append(".")
                                     .append(collection).toString()));

@@ -564,17 +564,19 @@ public class SnapshotIT extends AbstractConnectorTest {
     }
 
     @Test
-    @FixFor("DBZ-5198")
+    @FixFor({ "DBZ-5198", "DBZ-7828" })
     public void shouldHandleBracketsInSnapshotSelect() throws InterruptedException, SQLException {
         connection.execute(
                 "CREATE TABLE [user detail] (id int PRIMARY KEY, name varchar(30))",
-                "INSERT INTO [user detail] VALUES(1, 'k')");
+                "INSERT INTO [user detail] VALUES(1, 'k')",
+                "INSERT INTO [user detail] VALUES(2, 'k')");
         TestHelper.enableTableCdc(connection, "user detail");
 
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.user detail")
                 .with(SqlServerConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, "[dbo].[user detail]")
+                .with(SqlServerConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + ".[dbo].[user detail]", "SELECT * FROM [dbo].[user detail] WHERE id = 2")
                 .build();
 
         start(SqlServerConnector.class, config);
@@ -585,7 +587,7 @@ public class SnapshotIT extends AbstractConnectorTest {
         assertThat(recordsForTopic.get(0).key()).isNotNull();
         Struct value = (Struct) ((Struct) recordsForTopic.get(0).value()).get("after");
         System.out.println("DATA: " + value);
-        assertThat(value.get("id")).isEqualTo(1);
+        assertThat(value.get("id")).isEqualTo(2);
         assertThat(value.get("name")).isEqualTo("k");
 
         stopConnector();
