@@ -847,13 +847,16 @@ You can also configure the connector’s underlying consumer’s `_max.poll.reco
 
 |[[jdbc-property-use-reduction-buffer]]<<jdbc-property-use-reduction-buffer, `+use.reduction.buffer+`>>
 |`false`
-|Specifies whether to use the reduction buffer.
+|Specifies whether to enable the {prodname} JDBC connector's reduction buffer.
 
-[NOTE]
-====
-A reduction buffer consolidates the execution of SQL statements by primary key to reduce the SQL load on the target database. When set to false (the default), each incoming event is applied as a logical SQL change. When set to true, incoming events that refer to the same row will be reduced to a single logical change based on the most recent row state.
-For example, when using postgres, user can add `reWriteBatchedInserts` parameter in jdbc url along with enabling this property, then batch upsert queries will get fire to db
-====
+Choose one of the following settings:
+
+`false`:: (default) The connector writes each change event that it consumes from Kafka as a separate logical SQL change. 
+`true`:: The connector uses the reduction buffer to reduce change events before it writes them to the sink database.
+That is, if multiple events refer to the same primary key, the connector consolidates the SQL queries and writes only a single logical SQL change, based on the row state that is reported in the most recent offset record. +
+Choose this option to reduce the SQL load on the target database.
+
+To optimize query processing in a PostgreSQL sink database when the reduction buffer is enabled, you must also enable the database to execute the batched queries by adding the `reWriteBatchedInserts` parameter to the JDBC connection URL.
 
 |[[jdbc-property-field-include-list]]<<jdbc-property-field-include-list, `+field.include.list+`>>
 |_empty string_
