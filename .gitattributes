@@ -1,0 +1,27 @@
+# Repository specific GIT options
+
+# Set default handling of line terminators for all non explicitly listed file types:
+* text=auto
+
+# Force LF as internal repository format for all following files;
+# this overrides user settings to enforce the *right format* :
+*.java text
+*.xml text
+*.txt text
+*.md text
+*.html text
+*.properties text
+*.rb text
+*.pot text
+*.po text
+*.xsd text
+*.header text
+*.groovy text
+*.css text
+
+# Specify CRLF for batch files 
+*.bat text eol=crlf
+
+# Specify we want Java-friendly readable chunk headers for diff:
+
+*.java	diff=java

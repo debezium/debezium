@@ -1,0 +1,14 @@
+{
+    "begun": 1415724207051, 
+    "clientid": "a3eebe76-b15f-490d-872a-ccf6a9033ff8", 
+    "db": "my-db", 
+    "ops": [
+        {
+            "op": "add", 
+            "path": "/", 
+            "value": {}
+        }
+    ], 
+    "request": 1, 
+    "user": "jsmith"
+}

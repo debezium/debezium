@@ -1,0 +1,5 @@
+The {prodname} connector provides for pass-through configuration of the database driver.
+Pass-through database properties begin with the prefix `driver.*`.
+For example, the connector passes properties such as `driver.foobar=false` to the JDBC URL.
+
+As is the case with the xref:{context}-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients[pass-through properties for database schema history clients], {prodname} strips the prefixes from the properties before it passes them to the database driver.

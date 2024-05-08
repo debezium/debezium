@@ -1,0 +1,31 @@
+---
+
+- name: Get Image
+  hosts: localhost
+  gather_facts: no
+  environment:
+  connection: local
+
+  tasks:
+    - name: Collect image facts
+      os_image_facts:
+        cloud: openstack
+      delegate_to: localhost
+
+    - name: Find images
+      set_fact:
+        image: "{{ ( openstack_image | selectattr('name', 'match', '(?i)^' + snapshot_name + '-[0-9]{4}-[0-9]{2}-[0-9]{2}') | map(attribute='name')) | list }}"
+      run_once: true
+
+    
+    - name: Delete old snapshot
+      openstack.cloud.image:
+        cloud: "openstack"
+        name: "{{ item }}"
+        state: absent
+      register: deleted
+      until: deleted is not failed
+      retries: 5
+      delay: 60
+      with_items: "{{ image }}"
+      

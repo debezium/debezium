@@ -1,0 +1,132 @@
+[id="installing-debezium"]
+= Installing {prodname}
+
+:toc:
+:toc-placement: macro
+:sectanchors:
+:linkattrs:
+:icons: font
+
+There are several ways to install and use {prodname} connectors, so we've documented a few of the most common ways to do this.
+
+== Installing a {prodname} Connector
+
+If you've already installed https://zookeeper.apache.org[Zookeeper], https://kafka.apache.org/[Kafka], and {link-kafka-docs}.html#connect[Kafka Connect], then using one of {prodname}'s connectors is easy.
+Simply download one or more connector plug-in archives (see below), extract their files into your Kafka Connect environment, and add the parent directory of the extracted plug-in(s) to Kafka Connect's plugin path.
+If not the case yet, specify the plugin path in your worker configuration (e.g. _connect-distributed.properties_) using the {link-kafka-docs}/#connectconfigs[plugin.path] configuration property.
+As an example, let's assume you have downloaded the {prodname} MySQL connector archive and extracted its contents to _/kafka/connect/debezium-connector-mysql_.
+Then you'd specify the following in the worker config:
+
+[source]
+----
+plugin.path=/kafka/connect
+----
+
+Restart your Kafka Connect process to pick up the new JARs.
+
+The connector plug-ins are available from Maven:
+
+ifeval::['{page-version}' == 'master']
+* {link-mysql-plugin-snapshot}[MySQL Connector plugin archive]
+* {link-postgres-plugin-snapshot}[Postgres Connector plugin archive]
+* {link-mongodb-plugin-snapshot}[MongoDB Connector plugin archive]
+* {link-sqlserver-plugin-snapshot}[SQL Server Connector plugin archive]
+* {link-oracle-plugin-snapshot}[Oracle Connector plugin archive]
+* {link-db2-plugin-snapshot}[Db2 Connector plugin archive]
+* {link-cassandra-3-plugin-snapshot}[Cassandra 3.x plugin archive]
+* {link-cassandra-4-plugin-snapshot}[Cassandra 4.x plugin archive]
+* {link-vitess-plugin-snapshot}[Vitess plugin archive] (incubating)
+* {link-spanner-plugin-snapshot}[Spanner plugin archive]
+* {link-jdbc-plugin-snapshot}[JDBC sink plugin archive] (incubating)
+* {link-informix-plugin-snapshot}[Informix plugin archive] (incubating)
+
+NOTE: All above links are to nightly snapshots of the {prodname} main branch.  If you are looking for non-snapshot versions, please select the appropriate version in the top right.
+endif::[]
+ifeval::['{page-version}' != 'master']
+* https://repo1.maven.org/maven2/io/debezium/debezium-connector-mysql/{debezium-version}/debezium-connector-mysql-{debezium-version}-plugin.tar.gz[MySQL Connector plugin archive]
+* https://repo1.maven.org/maven2/io/debezium/debezium-connector-postgres/{debezium-version}/debezium-connector-postgres-{debezium-version}-plugin.tar.gz[Postgres Connector plugin archive]
+* https://repo1.maven.org/maven2/io/debezium/debezium-connector-mongodb/{debezium-version}/debezium-connector-mongodb-{debezium-version}-plugin.tar.gz[MongoDB Connector plugin archive]
+* https://repo1.maven.org/maven2/io/debezium/debezium-connector-sqlserver/{debezium-version}/debezium-connector-sqlserver-{debezium-version}-plugin.tar.gz[SQL Server Connector plugin archive]
+* https://repo1.maven.org/maven2/io/debezium/debezium-connector-oracle/{debezium-version}/debezium-connector-oracle-{debezium-version}-plugin.tar.gz[Oracle Connector plugin archive]
+* https://repo1.maven.org/maven2/io/debezium/debezium-connector-db2/{debezium-version}/debezium-connector-db2-{debezium-version}-plugin.tar.gz[Db2 Connector plugin archive]
+* https://repo1.maven.org/maven2/io/debezium/debezium-connector-cassandra/{debezium-version}/debezium-connector-cassandra-3-{debezium-version}-plugin.tar.gz[Cassandra 3.x plugin archive]
+* https://repo1.maven.org/maven2/io/debezium/debezium-connector-cassandra/{debezium-version}/debezium-connector-cassandra-4-{debezium-version}-plugin.tar.gz[Cassandra 4.x plugin archive]
+* https://repo1.maven.org/maven2/io/debezium/debezium-connector-vitess/{debezium-version}/debezium-connector-vitess-{debezium-version}-plugin.tar.gz[Vitess plugin archive] (incubating)
+* https://repo1.maven.org/maven2/io/debezium/debezium-connector-spanner/{debezium-version}/debezium-connector-spanner-{debezium-version}-plugin.tar.gz[Spanner plugin archive] (incubating)
+* https://repo1.maven.org/maven2/io/debezium/debezium-connector-jdbc/${debezium-version}/debezium-connector-jdbc-{debezium-version}-plugin.tar.gz[JDBC sink plugin archive] (incubating)
+* https://repo1.maven.org/maven2/io/debezium/debezium-connector-informix/${debezium-version}/debezium-connector-informix-{debezium-version}-plugin.tar.gz[Informix plugin archive] (incubating)
+endif::[]
+
+NOTE: If you are interested in Debezium Server, please check the installation instructions xref:operations/debezium-server.adoc#_installation[here].
+
+If immutable containers are your thing, then check out https://quay.io/organization/debezium[{prodname}'s container images] (https://hub.docker.com/r/debezium/[alternative source] on DockerHub) for Apache Kafka, Kafka Connect and Apache Zookeeper, with the different {prodname} connectors already pre-installed and ready to go. Our xref:tutorial.adoc[tutorial] even walks you through using these images, and this is a great way to learn what {prodname} is all about.
+Of course you also can run {prodname} on Kubernetes and xref:operations/openshift.adoc[OpenShift].
+Using the https://strimzi.io/[Strimzi] Kubernetes Operator is recommended for that.
+It allows to deploy Apache Kafka, Kafka Connect, and even connectors declaratively via custom Kubernetes resources.
+
+By default, the directory _/kafka/connect_ is used as plugin directory by the {prodname} Docker image for Kafka Connect.
+So any additional connectors you may wish to use should be added to that directory.
+Alternatively, you can add further directories to the plugin path by specifying the `KAFKA_CONNECT_PLUGINS_DIR` environment variable when starting the container
+(e.g. `-e KAFKA_CONNECT_PLUGINS_DIR=/kafka/connect/,/path/to/further/plugins`).
+When using the container image for Kafka Connect provided by Confluent, you can specify the `CONNECT_PLUGIN_PATH` environment variable to achieve the same.
+
+Note that Java 11 or later is required to run the {prodname} connectors or {prodname} UI.
+
+ifeval::['{page-version}' != 'main']
+=== Consuming Snapshot Releases
+
+{prodname} executes nightly builds and deployments into the Sonatype snapshot repository.
+If you want to try latest and fresh or verify a bug fix you are interested in, then use plugins from https://oss.sonatype.org/content/repositories/snapshots/io/debezium/[oss.sonatype.org] or view the xref:master@install.adoc[nightly] version of this document for direct links to each connector's plugin artifact.
+The installation procedure is the same as for regular releases.
+endif::[]
+
+== Using a {prodname} Connector
+
+To use a connector to produce change events for a particular source server/cluster, simply create a configuration file for the
+xref:connectors/mysql.adoc[MySQL Connector],
+xref:connectors/postgresql.adoc#postgresql-deployment[Postgres Connector],
+xref:connectors/mongodb.adoc#mongodb-deploying-a-connector[MongoDB Connector],
+xref:connectors/sqlserver.adoc#sqlserver-deploying-a-connector[SQL Server Connector],
+xref:connectors/oracle.adoc#oracle-deploying-a-connector[Oracle Connector],
+xref:connectors/db2.adoc#db2-deploying-a-connector[Db2 Connector],
+xref:connectors/cassandra.adoc#cassandra-deploying-a-connector[Cassandra Connector],
+xref:connectors/vitess.adoc#vitess-deploying-a-connector[Vitess Connector],
+xref:connectors/spanner.adoc#spanner-deploying-a-connector[Spanner Connector],
+xref:connectors/jdbc.adoc#jdbc-deployment[JDBC sink Connector],
+xref:connectors/informix.adoc#informix-deploying-a-connector[Informix Connector],
+and use the link:{link-kafka-docs}/#connect_rest[Kafka Connect REST API] to add that
+connector configuration to your Kafka Connect cluster. When the connector starts, it will connect to the source and produce events
+for each inserted, updated, and deleted row or document.
+
+See the {prodname} xref:connectors/index.adoc[Connectors] documentation for more information.
+
+[[configuring-debezium-topics]]
+== Configuring {prodname} Topics
+{prodname} uses (either via Kafka Connect or directly) multiple topics for storing data.
+The topics have to be either created by an administrator or by Kafka itself by enabling auto-creation for topics.
+There are certain limitations and recommendations which apply to topics:
+
+* Database schema history topic (for the {prodname} connectors for MySQL and SQL Server)
+** Infinite (or very long) retention (no compaction!)
+** Replication factor at least 3 for production
+** Single partition
+* Other topics
+** Optionally, {link-kafka-docs}/#compaction[log compaction] enabled
+(if you wish to only keep the _last_ change event for a given record);
+in this case the `min.compaction.lag.ms` and `delete.retention.ms` topic-level settings in Apache Kafka should be configured,
+so that consumers have enough time to receive all events and delete markers;
+specifically, these values should be larger than the maximum downtime you anticipate for the sink connectors,
+e.g. when updating them
+** Replicated in production
+** Single partition
+*** You can relax the single partition rule but your application must handle out-of-order events for different rows in database (events for a single row are still totally ordered). If multiple partitions are used, Kafka will determine the partition by hashing the key by default. Other partition strategies require using SMTs to set the partition number for each record.
+// the condition can be removed once downstream  is updated to Kafka 2.6+
+ifdef::community[]
+** For customizable topic auto-creation (available since Kafka Connect 2.6.0) see xref:{link-topic-auto-creation}[Custom Topic Auto-Creation]
+endif::community[]
+
+== Using the {prodname} Libraries
+
+Although {prodname} is intended to be used as turnkey services, all of JARs and other artifacts are available in https://search.maven.org/#search%7Cga%7C1%7Cg%3A%22io.debezium%22[Maven Central].
+
+We do provide a small library so applications can xref:development/engine.adoc[embed any Kafka Connect connector] and consume data change events read directly from the source system. This provides a light weight system (since Zookeeper, Kafka, and Kafka Connect services are not needed), but as a consequence it is not as fault tolerant or reliable since the application must manage and maintain all state normally kept inside Kafka's distributed and replicated logs. It's perfect for use in tests, and with careful consideration it may be useful in some applications.

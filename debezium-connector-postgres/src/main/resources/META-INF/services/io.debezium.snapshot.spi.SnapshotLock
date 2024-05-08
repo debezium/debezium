@@ -1,0 +1,2 @@
+io.debezium.connector.postgresql.snapshot.lock.NoSnapshotLock
+io.debezium.connector.postgresql.snapshot.lock.SharedSnapshotLock

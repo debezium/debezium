@@ -1,0 +1,13 @@
+---
+name: "Debezium Quarkus Outbox Reactive"
+description: "Implement the outbox pattern for reliable microservices data exchange with Debezium and change data capture for quarkus applications using reactive datasources"
+metadata:
+  keywords:
+  - "debezium"
+  - "outbox"
+  - "cdc"
+  guide: "https://debezium.io/documentation/reference/${parsedVersion.majorVersion}.${parsedVersion.minorVersion}/transformations/outbox-event-router.html"
+  categories:
+  - "integration"
+  - "cdc"
+  status: "stable"

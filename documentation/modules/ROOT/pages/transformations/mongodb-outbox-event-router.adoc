@@ -1,0 +1,466 @@
+:page-aliases: configuration/mongodb-outbox-event-router.adoc
+// Category: debezium-using
+// Type: assembly
+// ModuleID: configuring-debezium-mongodb-connectors-to-use-the-outbox-pattern
+// Title: Configuring {prodname} MongoDB connectors to use the outbox pattern
+[id="mongodb-outbox-event-router"]
+= MongoDB Outbox Event Router
+
+:toc:
+:toc-placement: macro
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+
+toc::[]
+
+
+[NOTE]
+====
+This SMT is for use with the {prodname} MongoDB connector only.
+For information about using the outbox event router SMT for relational databases, see {link-prefix}:{link-outbox-event-router}#outbox-event-router[Outbox event router].
+====
+
+The outbox pattern is a way to safely and reliably exchange data between multiple (micro) services. An outbox pattern implementation avoids inconsistencies between a service's internal state (as typically persisted in its database) and state in events consumed by services that need the same data.
+
+To implement the outbox pattern in a {prodname} application, configure a {prodname} connector to:
+
+* Capture changes in an outbox collection
+* Apply the {prodname} MongoDB outbox event router single message transformation (SMT)
+
+A {prodname} connector that is configured to apply the MongoDB outbox SMT should capture changes that occur in an outbox collection only.
+For more information, see xref:mongodb-outbox-options-for-applying-the-transformation-selectively[Options for applying the transformation selectively].
+
+A connector can capture changes in more than one outbox collection only if each outbox collection has the same structure.
+
+[NOTE]
+====
+To use this SMT, operations on the actual business collection(s) and the insert into the outbox collection must be done as part of a multi-document transaction, which have been being supported since MongoDB 4.0, to prevent potential data inconsistencies between business collection(s) and outbox collection.
+For future update, to enable updating existing data and inserting outbox event in an ACID transaction without multi-document transactions, we have planned to support additional configurations for storing outbox events in a form of a sub-document of the existing collection, rather than an independent outbox collection.
+====
+
+For more information about the outbox pattern, see link:https://debezium.io/blog/2019/02/19/reliable-microservices-data-exchange-with-the-outbox-pattern/[Reliable Microservices Data Exchange With the Outbox Pattern].
+
+ifdef::product[]
+The following topics provide details:
+
+* xref:example-of-a-debezium-mongodb-outbox-message[]
+* xref:outbox-collection-structure-expected-by-debezium-mongodb-outbox-event-router-smt[]
+* xref:basic-debezium-mongodb-outbox-event-router-smt-configuration[]
+* xref:using-avro-as-the-payload-format-in-debezium-mongodb-outbox-messages[]
+* xref:emitting-additional-fields-in-debezium-mongodb-outbox-messages[]
+* xref:options-for-configuring-mongodb-outbox-event-router-transformation[]
+endif::product[]
+
+// Type: concept
+// ModuleID: example-of-a-debezium-mongodb-outbox-message
+// Title: Example of a {prodname} MongoDB outbox message
+[[example-mongodb-outbox-message]]
+== Example outbox message
+
+To understand how to configure the {prodname} MongoDB outbox event router SMT, consider the following example of a {prodname} outbox message:
+
+[source,javascript,indent=0]
+----
+# Kafka Topic: outbox.event.order
+# Kafka Message key: "b2730779e1f596e275826f08"
+# Kafka Message Headers: "id=596e275826f08b2730779e1f"
+# Kafka Message Timestamp: 1556890294484
+{
+  "{\"id\": {\"$oid\": \"da8d6de63b7745ff8f4457db\"}, \"lineItems\": [{\"id\": 1, \"item\": \"Debezium in Action\", \"status\": \"ENTERED\", \"quantity\": 2, \"totalPrice\": 39.98}, {\"id\": 2, \"item\": \"Debezium for Dummies\", \"status\": \"ENTERED\", \"quantity\": 1, \"totalPrice\": 29.99}], \"orderDate\": \"2019-01-31T12:13:01\", \"customerId\": 123}"
+}
+----
+
+A {prodname} connector that is configured to apply the MongoDB outbox event router SMT generates the preceding message by transforming a raw {prodname} change event message as in the following example:
+
+[source,javascript,indent=0,subs="attributes"]
+----
+# Kafka Message key: { "id": "{\"$oid\": \"596e275826f08b2730779e1f\"}" }
+# Kafka Message Headers: ""
+# Kafka Message Timestamp: 1556890294484
+{
+  "patch": null,
+  "after": "{\"_id\": {\"$oid\": \"596e275826f08b2730779e1f\"}, \"aggregateid\": {\"$oid\": \"b2730779e1f596e275826f08\"}, \"aggregatetype\": \"Order\", \"type\": \"OrderCreated\", \"payload\": {\"_id\": {\"$oid\": \"da8d6de63b7745ff8f4457db\"}, \"lineItems\": [{\"id\": 1, \"item\": \"Debezium in Action\", \"status\": \"ENTERED\", \"quantity\": 2, \"totalPrice\": 39.98}, {\"id\": 2, \"item\": \"Debezium for Dummies\", \"status\": \"ENTERED\", \"quantity\": 1, \"totalPrice\": 29.99}], \"orderDate\": \"2019-01-31T12:13:01\", \"customerId\": 123}}",
+  "source": {
+    "version": "{debezium-version}",
+    "connector": "mongodb",
+    "name": "fulfillment",
+    "ts_ms": 1558965508000,
+    "ts_us": 1558965508000000,
+    "ts_ns": 1558965508000000000,
+    "snapshot": false,
+    "db": "inventory",
+    "rs": "rs0",
+    "collection": "customers",
+    "ord": 31,
+    "h": 1546547425148721999
+  },
+  "op": "c",
+  "ts_ms": 1556890294484,
+  "ts_us": 1556890294484452,
+  "ts_ns": 1556890294484452697,
+}
+----
+
+This example of a {prodname} outbox message is based on the xref:mongodb-outbox-event-router-configuration-options[default outbox event router configuration], which assumes an outbox collection structure and event routing based on aggregates.
+To customize behavior, the outbox event router SMT provides numerous xref:mongodb-outbox-event-router-configuration-options[configuration options].
+
+// Type: concept
+// Title: Outbox collection structure expected by {prodname} mongodb outbox event router SMT
+// ModuleID: outbox-collection-structure-expected-by-debezium-mongodb-outbox-event-router-smt
+[[basic-mongodb-outbox-collection]]
+== Basic outbox collection
+
+To apply the default MongoDB outbox event router SMT configuration, your outbox collection is assumed to have the following fields:
+
+[source]
+----
+{
+  "_id": "objectId",
+  "aggregatetype": "string",
+  "aggregateid": "objectId",
+  "type": "string",
+  "payload": "object"
+}
+----
+
+.Descriptions of expected outbox collection fields
+[cols="30%a,70%a",options="header"]
+|===
+|Field
+|Effect
+
+|`id`
+|Contains the unique ID of the event. In an outbox message, this value is a header. You can use this ID, for example, to remove duplicate messages. +
+ +
+To obtain the unique ID of the event from a different outbox collection field, set the xref:mongodb-outbox-event-router-property-collection-field-event-id[`collection.field.event.id`] SMT option in the connector configuration.
+
+|[[mongodb-outbox-route-by-field-example]]`aggregatetype`
+|Contains a value that the SMT appends to the name of the topic to which the connector emits an outbox message.
+The default behavior is that this value replaces the default `pass:[${routedByValue}]` variable in the xref:mongodb-outbox-event-router-property-route-topic-replacement[`route.topic.replacement`] SMT option. +
+ +
+For example, in a default configuration, the xref:mongodb-outbox-event-router-property-route-by-field[`route.by.field`] SMT option is set to `aggregatetype` and the xref:mongodb-outbox-event-router-property-route-topic-replacement[`route.topic.replacement`] SMT option is set to `outbox.event.pass:[${routedByValue}]`.
+Suppose that your application adds two documents to the outbox collection. In the first document, the value in the `aggregatetype` field is `customers`.
+In the second document, the value in the `aggregatetype` field is `orders`.
+The connector emits the first document to the `outbox.event.customers` topic.
+The connector emits the second document to the `outbox.event.orders` topic. +
+ +
+To obtain this value from a different outbox collection field, set the xref:mongodb-outbox-event-router-property-route-by-field[`route.by.field`] SMT option in the connector configuration.
+
+|`aggregateid`
+|Contains the event key, which provides an ID for the payload.
+The SMT uses this value as the key in the emitted outbox message.
+This is important for maintaining correct order in Kafka partitions. +
+ +
+To obtain the event key from a different outbox collection field, set the xref:mongodb-outbox-event-router-property-collection-field-event-key[`collection.field.event.key`] SMT option in the connector configuration.
+
+|`payload`
+|A representation of the outbox change event.
+The default structure is JSON.
+By default, the Kafka message value is solely comprised of the `payload` value.
+However, if the outbox event is configured to include additional fields, the Kafka message value contains an envelope encapsulating both payload and the additional fields, and each field is represented separately.
+For more information, see xref:mongodb-outbox-emitting-messages-with-additional-fields[Emitting messages with additional fields]. +
+ +
+To obtain the event payload from a different outbox collection field, set the xref:mongodb-outbox-event-router-property-collection-field-event-payload[`collection.field.event.payload`] SMT option in the connector configuration.
+
+|Additional custom fields
+|Any additional fields from the outbox collection can be xref:mongodb-outbox-emitting-messages-with-additional-fields[added to outbox events] either within the payload section or as a message header. +
+ +
+One example could be a field `eventType` which conveys a user-defined value that helps to categorize or organize events.
+
+|===
+
+// Type: concept
+// Title: Basic {prodname} MongoDB outbox event router SMT configuration
+// ModuleID: basic-debezium-mongodb-outbox-event-router-smt-configuration
+[[basic-mongodb-outbox-configuration]]
+== Basic configuration
+
+To configure a {prodname} MongoDB connector to support the outbox pattern, configure the `outbox.MongoEventRouter` SMT.
+To obtain the default behavior of the SMT, add it to the connector configuration without specifying any options, as in the following example:
+
+[source]
+----
+transforms=outbox,...
+transforms.outbox.type=io.debezium.connector.mongodb.transforms.outbox.MongoEventRouter
+----
+
+.Customizing the configuration
+The connector might emit many types of event messages (for example, heartbeat messages, tombstone messages, or metadata messages about transactions).
+To apply the transformation only to events that originate in the outbox collection, define xref:options-for-applying-the-transformation-selectively[an SMT predicate statement that selectively applies the transformation] to those events only.
+
+// Type: concept
+// Title: Options for applying the MongoDB outbox event router transformation selectively
+// ModuleID: options-for-applying-the-mongodb-outbox-event-router-transformation-selectively
+[id="mongodb-outbox-options-for-applying-the-transformation-selectively"]
+== Options for applying the transformation selectively
+
+In addition to the change event messages that a {prodname} connector emits when a database change occurs, the connector also emits other types of messages, including heartbeat messages, and metadata messages about schema changes and transactions.
+Because the structure of these other messages differs from the structure of the change event messages that the SMT is designed to process, it's best to configure the connector to selectively apply the SMT, so that it processes only the intended data change messages.
+You can use one of the following methods to configure the connector to apply the SMT selectively:
+
+* {link-prefix}:{link-smt-predicates}#applying-transformations-selectively[Configure an SMT predicate for the transformation].
+* Use the xref:mongodb-outbox-event-router-property-route-topic-regex[`route.topic.regex`] configuration option for the SMT.
+
+// Type: concept
+// Title: Using Avro as the payload format in {prodname} MongoDB outbox messages
+// ModuleID: using-avro-as-the-payload-format-in-debezium-mongodb-outbox-messages
+[[mongodb-outbox-avro-as-payload-format]]
+== Using Avro as the payload format
+
+The MongoDB outbox event router SMT supports arbitrary payload formats. The `payload` field value in an outbox collection is passed on transparently. An alternative to working with JSON is to use Avro.
+This can be beneficial for message format governance and for ensuring that outbox event schemas evolve in a backwards-compatible way.
+
+How a source application produces Avro formatted content for outbox message payloads is out of the scope of this documentation.
+One possibility is to leverage the `KafkaAvroSerializer` class to serialize `GenericRecord` instances.
+To ensure that the Kafka message value is the exact Avro binary data,
+apply the following configuration to the connector:
+
+[source]
+----
+transforms=outbox,...
+transforms.outbox.type=io.debezium.connector.mongodb.transforms.outbox.MongoEventRouter
+value.converter=io.debezium.converters.ByteArrayConverter
+----
+
+By default, the `payload` field value (the Avro data) is the only message value.
+Configuration of `ByteArrayConverter` as the value converter propagates the `payload` field value as-is into the Kafka message value.
+
+Note that this differs from the `BinaryDataConverter` suggested for other SMTs.
+This is due to the different approach MongoDB takes to storing byte arrays internally.
+
+The {prodname} connectors may be configured to emit heartbeat, transaction metadata, or schema change events (support varies by connector).
+These events cannot be serialized by the `ByteArrayConverter` so additional configuration must be provided so the converter knows how to serialize these events.
+As an example, the following configuration illustrates using the Apache Kafka `JsonConverter` with no schemas:
+
+[source]
+----
+transforms=outbox,...
+transforms.outbox.type=io.debezium.connector.mongodb.transforms.outbox.MongoEventRouter
+value.converter=io.debezium.converters.ByteArrayConverter
+value.converter.delegate.converter.type=org.apache.kafka.connect.json.JsonConverter
+value.converter.delegate.converter.type.schemas.enable=false
+----
+
+The delegate `Converter` implementation is specified by the `delegate.converter.type` option.
+If any extra configuration options are needed by the converter, they can also be specified, such as the disablement of schemas shown above using `schemas.enable=false`.
+
+// Type: concept
+// Title: Emitting additional fields in {prodname} MongoDB outbox messages
+// ModuleID: emitting-additional-fields-in-debezium-mongodb-outbox-messages
+== Emitting messages with additional fields
+[[mongodb-outbox-emitting-messages-with-additional-fields]]
+
+Your outbox collection might contain fields whose values you want to add to the emitted outbox messages. For example, consider an outbox collection that has a value of `purchase-order` in the `aggregatetype` field and another field, `eventType`, whose possible values are `order-created` and `order-shipped`. Additional fields can be added with the syntax `field:placement:alias`.
+
+The allowed values for `placement` are:
+- `header`
+- `envelope`
+- `partition`
+
+To emit the `eventType` field value in the outbox message header, configure the SMT like this:
+
+[source]
+----
+transforms=outbox,...
+transforms.outbox.type=io.debezium.transforms.outbox.EventRouter
+transforms.outbox.collection.fields.additional.placement=eventType:header:type
+----
+
+The result will be a header on the Kafka message with `type` as its key, and the value of the `eventType` field as its value.
+
+To emit the `eventType` field value in the outbox message envelope, configure the SMT like this:
+
+[source]
+----
+transforms=outbox,...
+transforms.outbox.type=io.debezium.transforms.outbox.EventRouter
+transforms.outbox.collection.fields.additional.placement=eventType:envelope:type
+----
+
+To control which partition the outbox message is produced on, configure the SMT like this:
+
+[source]
+----
+transforms=outbox,...
+transforms.outbox.type=io.debezium.transforms.outbox.EventRouter
+transforms.outbox.collection.fields.additional.placement=partitionField:partition
+----
+
+Note that for the `partition` placement, adding an alias will have no effect.
+
+// Type: concept
+// Title: Expanding escaped JSON String as JSON
+// ModuleID: mongodb-outbox-expanding-escaped-json-string-as-json
+[[mongodb-outbox-expanding-escaped-json-string-as-json]]
+== Expanding escaped JSON string as JSON
+
+By default, the `payload` of the {prodname} outbox message is represented as a string.
+When the original source of the string is in JSON format, the resulting Kafka message uses escape sequences to represent the string, as shown in the following example:
+
+[source,javascript,indent=0]
+----
+# Kafka Topic: outbox.event.order
+# Kafka Message key: "1"
+# Kafka Message Headers: "id=596e275826f08b2730779e1f"
+# Kafka Message Timestamp: 1556890294484
+{
+  "{\"id\": {\"$oid\": \"da8d6de63b7745ff8f4457db\"}, \"lineItems\": [{\"id\": 1, \"item\": \"Debezium in Action\", \"status\": \"ENTERED\", \"quantity\": 2, \"totalPrice\": 39.98}, {\"id\": 2, \"item\": \"Debezium for Dummies\", \"status\": \"ENTERED\", \"quantity\": 1, \"totalPrice\": 29.99}], \"orderDate\": \"2019-01-31T12:13:01\", \"customerId\": 123}"
+}
+----
+
+You can configure the outbox event router to expand the message content, converting the escaped JSON back to its original, unescaped JSON format.
+In the converted string, the companion schema is deduced from the original JSON document.
+The following examples shows the expanded JSON in the resulting Kafka message:
+
+[source,javascript,indent=0]
+----
+# Kafka Topic: outbox.event.order
+# Kafka Message key: "1"
+# Kafka Message Headers: "id=596e275826f08b2730779e1f"
+# Kafka Message Timestamp: 1556890294484
+{
+  "id": "da8d6de63b7745ff8f4457db", "lineItems": [{"id": 1, "item": "Debezium in Action", "status": "ENTERED", "quantity": 2, "totalPrice": 39.98}, {"id": 2, "item": "Debezium for Dummies", "status": "ENTERED", "quantity": 1, "totalPrice": 29.99}], "orderDate": "2019-01-31T12:13:01", "customerId": 123
+}
+----
+
+To enable string conversion in the transformation, set the value of `collection.expand.json.payload` to `true` and use the `StringConverter` as shown in the following example:
+
+[source]
+----
+transforms=outbox,...
+transforms.outbox.type=io.debezium.connector.mongodb.transforms.outbox.MongoEventRouter
+transforms.outbox.collection.expand.json.payload=true
+value.converter=org.apache.kafka.connect.storage.StringConverter
+----
+
+// Type: reference
+// ModuleID: options-for-configuring-mongodb-outbox-event-router-transformation
+// Title: Options for configuring outbox event router transformation
+[[mongodb-outbox-event-router-configuration-options]]
+== Configuration options
+
+The following table describes the options that you can specify for the outbox event router SMT.
+In the table, the *Group* column indicates a configuration option classification for Kafka.
+
+.Descriptions of outbox event router SMT configuration options
+[cols="30%a,20%a,10%a,40%a",options="header"]
+|===
+|Option
+|Default
+|Group
+|Description
+
+|[[mongodb-outbox-event-router-property-collection-op-invalid-behavior]]<<mongodb-outbox-event-router-property-collection-op-invalid-behavior, `collection.op.invalid.behavior`>>
+|`warn`
+|Collection
+a|Determines the behavior of the SMT when there is an update operation on the outbox collection. Possible settings are:
+
+* `warn` - The SMT logs a warning and continues to the next outbox collection document.
+* `error` - The SMT logs an error and continues to the next outbox collection document.
+* `fatal` - The SMT logs an error and the connector stops processing.
+
+All changes in an outbox collection are expected to be an insert or delete operation. That is, an outbox collection functions as a queue; updates to documents in an outbox collection are not allowed.
+The SMT automatically filters out delete operations (for removing proceeded outbox events) on an outbox collection.
+
+|[[mongodb-outbox-event-router-property-collection-field-event-id]]<<mongodb-outbox-event-router-property-collection-field-event-id, `collection.field.event.id`>>
+|`_id`
+|Collection
+|Specifies the outbox collection field that contains the unique event ID.
+This ID will be stored in the emitted event's headers under the `id` key.
+
+|[[mongodb-outbox-event-router-property-collection-field-event-key]]<<mongodb-outbox-event-router-property-collection-field-event-key, `collection.field.event.key`>>
+|`aggregateid`
+|Collection
+|Specifies the outbox collection field that contains the event key. When this field contains a value, the SMT uses that value as the key in the emitted outbox message. This is important for maintaining correct order in Kafka partitions.
+
+|[[mongodb-outbox-event-router-property-collection-field-event-timestamp]]<<mongodb-outbox-event-router-property-collection-field-event-timestamp, `collection.field.event.timestamp`>>
+|
+|Collection
+|By default, the timestamp in the emitted outbox message is the {prodname} event timestamp. To use a different timestamp in outbox messages, set this option to an outbox collection field that contains the timestamp that you want to be in emitted outbox messages.
+
+|[[mongodb-outbox-event-router-property-collection-field-event-payload]]<<mongodb-outbox-event-router-property-collection-field-event-payload, `collection.field.event.payload`>>
+|`payload`
+|Collection
+|Specifies the outbox collection field that contains the event payload.
+
+|[[mongodb-outbox-event-router-property-collection-expand-json-payload]]<<mongodb-outbox-event-router-property-collection-expand-json-payload, `collection.expand.json.payload`>>
+|`false`
+|Collection
+a|Specifies whether the JSON expansion of a String payload should be done. If no content found or in case of parsing error, the content is kept "as is". +
+ +
+Fore more details, please see the xref:mongodb-outbox-expanding-escaped-json-string-as-json[expanding escaped json] section.
+
+|[[mongodb-outbox-event-router-property-collection-fields-additional-placement]]<<mongodb-outbox-event-router-property-collection-fields-additional-placement, `collection.fields.additional.placement`>>
+|
+|Collection, Envelope
+a|Specifies one or more outbox collection fields that you want to add to outbox message headers or envelopes. Specify a comma-separated list of pairs. In each pair, specify the name of a field and whether you want the value to be in the header or the envelope. Separate the values in the pair with a colon, for example:
+
+`id:header,my-field:envelope`
+
+To specify an alias for the field, specify a trio with the alias as the third value, for example:
+
+`id:header,my-field:envelope:my-alias`
+
+The second value is the placement and it must always be `header` or `envelope`.
+
+Configuration examples are in xref:mongodb-outbox-emitting-messages-with-additional-fields[emitting additional fields in {prodname} outbox messages].
+
+|[[mongodb-outbox-event-router-property-collection-field-event-schema-version]]<<mongodb-outbox-event-router-property-collection-field-event-schema-version, `collection.field.event.schema.version`>>
+|
+|Collection, Schema
+|When set, this value is used as the schema version as described in the link:https://kafka.apache.org/20/javadoc/org/apache/kafka/connect/data/ConnectSchema.html#version--[Kafka Connect Schema] Javadoc.
+
+|[[mongodb-outbox-event-router-property-route-by-field]]<<mongodb-outbox-event-router-property-route-by-field, `route.by.field`>>
+|`aggregatetype`
+|Router
+|Specifies the name of a field in the outbox collection.
+By default, the value specified in this field becomes a part of the name of the topic to which the connector emits the outbox messages.
+For an example, see the xref:mongodb-outbox-route-by-field-example[description of the expected outbox collection].
+
+|[[mongodb-outbox-event-router-property-route-topic-regex]]<<mongodb-outbox-event-router-property-route-topic-regex, `route.topic.regex`>>
+|`(?<routedByValue>.*)`
+|Router
+|Specifies a regular expression that the outbox SMT applies in the RegexRouter to outbox collection documents. This regular expression is part of the setting of the xref:mongodb-outbox-event-router-property-route-topic-replacement[`route.topic.replacement`] SMT option. +
++
+The default behavior is that the SMT replaces the default `pass:[${routedByValue}]` variable in the setting of the `route.topic.replacement` SMT option with the setting of the xref:mongodb-outbox-event-router-property-route-by-field[`route.by.field`] outbox SMT option.
+
+|[[mongodb-outbox-event-router-property-route-topic-replacement]]<<mongodb-outbox-event-router-property-route-topic-replacement, `route.topic.replacement`>>
+|`outbox.event{zwsp}.pass:[${routedByValue}]`
+|Router
+a|Specifies the name of the topic to which the connector emits outbox messages.
+The default topic name is `outbox.event.` followed by the `aggregatetype` field value in the outbox collection document. For example, if the `aggregatetype` value is `customers`, the topic name is `outbox.event.customers`. +
++
+To change the topic name, you can: +
+
+* Set the xref:mongodb-outbox-event-router-property-route-by-field[`route.by.field`] option to a different field.
+* Set the xref:mongodb-outbox-event-router-property-route-topic-regex[`route.topic.regex`] option to a different regular expression.
+
+|[[mongodb-outbox-event-router-property-route-tombstone-on-empty-payload]]<<mongodb-outbox-event-router-property-route-tombstone-on-empty-payload, `route.tombstone.on.empty.payload`>>
+|`false`
+|Router
+|Indicates whether an empty or `null` payload causes the connector to emit a tombstone event.
+
+ifdef::community[]
+|[[mongodb-outbox-event-router-property-tracing-span-context-field]]<<mongodb-outbox-event-router-property-tracing-span-context-field, `tracing.span.context.field`>>
+|`tracingspancontext`
+|Tracing
+|The name of the field containing tracing span context.
+
+|[[mongodb-outbox-event-router-property-tracing-operation-name]]<<mongodb-outbox-event-router-property-tracing-operation-name, `tracing.operation.name`>>
+|`debezium-read`
+|Tracing
+|The operation name representing the Debezium processing span.
+
+|[[mongodb-outbox-event-router-property-tracing-with-context-field-only]]<<mongodb-outbox-event-router-property-tracing-with-context-field-only, `tracing.with.context.field.only`>>
+|`false`
+|Tracing
+|When `true` only events that have serialized context field should be traced.
+endif::community[]
+|===
+
+ifdef::community[]
+== Distributed tracing
+The outbox event routing SMT has support for distributed tracing.
+See link:/documentation/reference/integrations/tracing[tracing documentation] for more details.
+endif::community[]

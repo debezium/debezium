@@ -1,0 +1,44 @@
+// Metadata created by nebel
+//
+// UserStory: As an evaluator, I want to use Debezium to view create, update, and delete events in my database.
+:context: mysql
+
+[id="viewing-change-events"]
+= Viewing change events
+
+After deploying the {prodname} MySQL connector,
+it starts monitoring the `inventory` database for data change events.
+
+When you watched the connector start up,
+you saw that events were written to the following topics with the `dbserver1` prefix (the name of the connector):
+
+`dbserver1`::
+The {link-prefix}:{link-mysql-connector}#mysql-schema-change-topic[schema change topic] to which all of the DDL statements are written.
+
+`dbserver1.inventory.products`::
+Captures change events for the `products` table in the `inventory` database.
+
+`dbserver1.inventory.products_on_hand`::
+Captures change events for the `products_on_hand` table in the `inventory` database.
+
+`dbserver1.inventory.customers`::
+Captures change events for the `customers` table in the `inventory` database.
+
+`dbserver1.inventory.orders`::
+Captures change events for the `orders` table in the `inventory` database.
+
+For this tutorial, you will explore the `dbserver1.inventory.customers` topic.
+In this topic, you will see different types of change events to see how the connector captured them:
+
+* xref:viewing-create-event[Viewing a _create_ event]
+* xref:updating-database-viewing-update-event[Updating the database and viewing the _update_ event]
+* xref:deleting-record-database-viewing-delete-event[Deleting a record in the database and viewing the _delete_ event]
+* xref:restarting-kafka-connect-service[Restarting Kafka Connect and changing the database]
+
+include::{partialsdir}/modules/tutorial/proc-viewing-create-event.adoc[leveloffset=+1]
+
+include::{partialsdir}/modules/tutorial/proc-updating-database-viewing-update-event.adoc[leveloffset=+1]
+
+include::{partialsdir}/modules/tutorial/proc-deleting-record-database-viewing-delete-event.adoc[leveloffset=+1]
+
+include::{partialsdir}/modules/tutorial/proc-restarting-kafka-connect-service.adoc[leveloffset=+1]

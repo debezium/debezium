@@ -1,0 +1,62 @@
+// Category: debezium-using
+// Type: concept
+// ModuleID: description-of-debezium-architecture
+// Title: Description of Debezium architecture
+[id="debezium-architecture"]
+= {prodname} Architecture
+
+ifdef::community[]
+Most commonly, you deploy {prodname} by means of Apache {link-kafka-docs}/#connect[Kafka Connect].
+Kafka Connect is a framework and runtime for implementing and operating:
+endif::community[]
+
+ifdef::product[]
+You deploy {prodname} by means of Apache {link-kafka-docs}/#connect[Kafka Connect].
+Kafka Connect is a framework and runtime for implementing and operating:
+endif::product[]
+
+* Source connectors such as {prodname} that send records into Kafka
+* Sink connectors that propagate records from Kafka topics to other systems
+
+The following image shows the architecture of a change data capture pipeline based on {prodname}:
+
+image::debezium-architecture.png[{prodname} Architecture]
+
+As shown in the image, the {prodname} connectors for MySQL and PostgresSQL are deployed to capture changes to these two types of databases. Each {prodname} connector establishes a connection to its source database:
+
+* The MySQL connector uses a client library for accessing the `binlog`.
+* The PostgreSQL connector reads from a logical replication stream.
+
+Kafka Connect operates as a separate service besides the Kafka broker.
+
+By default, changes from one database table are written to a Kafka topic whose name corresponds to the table name.
+If needed, you can adjust the destination topic name by configuring {prodname}'s {link-prefix}:{link-topic-routing}#topic-routing[topic routing transformation]. For example, you can:
+
+* Route records to a topic whose name is different from the table's name
+* Stream change event records for multiple tables into a single topic
+
+After change event records are in Apache Kafka, different connectors in the Kafka Connect eco-system can stream the records to other systems and databases such as Elasticsearch, data warehouses and analytics systems, or caches such as Infinispan.
+Depending on the chosen sink connector, you might need to configure {prodname}'s {link-prefix}:{link-event-flattening}#new-record-state-extraction[new record state extraction] transformation. This Kafka Connect SMT propagates the `after` structure from {prodname}'s change event to the sink connector. This is in place of the verbose change event record that is propagated by default.
+
+ifdef::community[]
+== {prodname} Server
+
+Another way to deploy {prodname} is using the xref:operations/debezium-server.adoc[{prodname} server].
+The {prodname} server is a configurable, ready-to-use application that streams change events from a source database to a variety of messaging infrastructures.
+
+The following image shows the architecture of a change data capture pipeline that uses the {prodname} server:
+
+image::debezium-server-architecture.png[{prodname} Architecture]
+
+The {prodname} server is configured to use one of the {prodname} source connectors to capture changes from the source database.
+Change events can be serialized to different formats like JSON or Apache Avro and then will be sent to one of a variety of messaging infrastructures such as Amazon Kinesis, Google Cloud Pub/Sub, or Apache Pulsar.
+
+== Debezium Engine
+
+Yet an alternative way for using the {prodname} connectors is the xref:development/engine.adoc[Debezium engine].
+In this case, {prodname} will not be run via Kafka Connect, but as a library embedded into your custom Java applications.
+This can be useful for either consuming change events within your application itself,
+without the needed for deploying complete Kafka and Kafka Connect clusters,
+or for streaming changes to alternative messaging brokers such as Amazon Kinesis.
+You can find https://github.com/debezium/debezium-examples/tree/main/kinesis[an example] for the latter in the examples repository.
+endif::community[]

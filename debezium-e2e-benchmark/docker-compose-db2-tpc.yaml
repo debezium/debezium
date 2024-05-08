@@ -1,0 +1,59 @@
+version: '2'
+services:
+  zookeeper:
+    image: quay.io/debezium/zookeeper:${DEBEZIUM_VERSION}
+    ports:
+     - 2181:2181
+     - 2888:2888
+     - 3888:3888
+  kafka:
+    image: quay.io/debezium/kafka:${DEBEZIUM_VERSION}
+    ports:
+     - 9092:9092
+    links:
+     - zookeeper
+    environment:
+     - ZOOKEEPER_CONNECT=zookeeper:2181
+     - KAFKA_DELETE_TOPIC_ENABLE=true
+  db2server:
+    image: debezium/db2-cdc:${DEBEZIUM_VERSION}
+    build:
+      context: ../../debezium-examples/tutorial/debezium-db2-init/db2server
+    privileged: True
+    ports:
+     - 50000:50000
+    environment:
+     - LICENSE=accept 
+     - DBNAME=TESTDB
+     - DB2INST1_PASSWORD=Password!
+    volumes: 
+     - ${DEBEZIUM_DB2_VOLUME}:/database
+  connect:
+    image: debezium/connect-db2:${DEBEZIUM_VERSION}
+    build:
+      context: ../../debezium-examples/tutorial/debezium-db2-init/db2connect
+      args:
+        DEBEZIUM_VERSION: ${DEBEZIUM_VERSION}
+    ports:
+     - 8083:8083
+    links:
+     - kafka
+     - db2server
+    environment:
+     - BOOTSTRAP_SERVERS=kafka:9092
+     - GROUP_ID=1
+     - CONFIG_STORAGE_TOPIC=tpc_connect_configs
+     - OFFSET_STORAGE_TOPIC=tpc_connect_offsets
+     - STATUS_STORAGE_TOPIC=tpc_connect_statuses
+  tpc:
+    image: debezium-tpc
+    build:
+      context: .
+    privileged: True
+    links:
+      - kafka
+      - db2server
+      - connect
+    volumes: 
+      - ../../debezium-examples/tutorial/register-db2.json:/home/tpc/register.json
+      - ${DEBEZIUM_TPC_VOLUME}:/home/tpc/tpcdata

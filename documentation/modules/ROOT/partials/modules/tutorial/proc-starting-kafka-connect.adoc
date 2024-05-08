@@ -1,0 +1,102 @@
+// Metadata created by nebel
+//
+// ParentAssemblies: assemblies/tutorial/as_starting-services.adoc
+// UserStory:
+
+[id="starting-kafka-connect"]
+= Starting Kafka Connect
+
+After starting MySQL and connecting to the `inventory` database with the MySQL command line client,
+you start the Kafka Connect service.
+This service exposes a REST API to manage the {prodname} MySQL connector.
+
+.Procedure
+
+. Open a new terminal, and use it to start the Kafka Connect service in a container.
++
+--
+This command runs a new container using the {debezium-docker-label} version of the `quay.io/debezium/connect` image:
+
+[source,shell,options="nowrap",subs="+attributes"]
+----
+$ docker run -it --rm --name connect -p 8083:8083 -e GROUP_ID=1 -e CONFIG_STORAGE_TOPIC=my_connect_configs -e OFFSET_STORAGE_TOPIC=my_connect_offsets -e STATUS_STORAGE_TOPIC=my_connect_statuses --link kafka:kafka --link mysql:mysql quay.io/debezium/connect:{debezium-docker-label}
+----
+
+`-it`:: The container is interactive,
+which means the terminal's standard input and output are attached to the container.
+`--rm`:: The container will be removed when it is stopped.
+`--name connect`:: The name of the container.
+`-p 8083:8083`:: Maps port `8083` in the container to the same port on the Docker host.
+This enables applications outside of the container to use Kafka Connect's REST API to set up and manage new container instances.
+`-e CONFIG_STORAGE_TOPIC=my_connect_configs -e OFFSET_STORAGE_TOPIC=my_connect_offsets -e STATUS_STORAGE_TOPIC=my_connect_statuses`:: Sets environment variables required by the {prodname} image.
+`--link kafka:kafka --link mysql:mysql`:: Links the container to the containers that are running Kafka and the MySQL server.
+--
+
+ifdef::community[]
+[NOTE]
+====
+If you use Podman, run the following command:
+[source,shell,options="nowrap",subs="+attributes"]
+----
+$ podman run -it --rm --name connect --pod dbz -e GROUP_ID=1 -e CONFIG_STORAGE_TOPIC=my_connect_configs -e OFFSET_STORAGE_TOPIC=my_connect_offsets -e STATUS_STORAGE_TOPIC=my_connect_statuses quay.io/debezium/connect:{debezium-docker-label}
+----
+====
+endif::community[]
+
+[NOTE]
+====
+If you provide a `--hostname` command option then Kafka Connect REST API will *not* listen on the `localhost` interface.
+This can cause issues when the REST port is being exposed.
+
+If this is a problem then set environment variable `REST_HOST_NAME=0.0.0.0` which will ensure that REST API will be accessible from all interfaces.
+====
+
+. Verify that Kafka Connect started and is ready to accept connections.
++
+--
+You should see output similar to the following:
+
+[source,shell,options="nowrap"]
+----
+...
+2020-02-06 15:48:33,939 INFO   ||  Kafka version: 3.0.0   [org.apache.kafka.common.utils.AppInfoParser]
+...
+2020-02-06 15:48:34,485 INFO   ||  [Worker clientId=connect-1, groupId=1] Starting connectors and tasks using config offset -1   [org.apache.kafka.connect.runtime.distributed.DistributedHerder]
+2020-02-06 15:48:34,485 INFO   ||  [Worker clientId=connect-1, groupId=1] Finished starting connectors and tasks   [org.apache.kafka.connect.runtime.distributed.DistributedHerder]
+----
+--
+
+. Use the Kafka Connect REST API to check the status of the Kafka Connect service.
++
+Kafka Connect exposes a REST API to manage {prodname} connectors.
+To communicate with the Kafka Connect service,
+you can use the `curl` command to send API requests to port 8083 of the Docker host (which you mapped to port 8083 in the `connect` container when you started Kafka Connect).
++
+[NOTE]
+====
+These commands use `localhost`.
+If you are using a non-native Docker platform (such as Docker Toolbox),
+replace `localhost` with the IP address of your Docker host.
+====
+
+.. Open a new terminal and check the status of the Kafka Connect service:
++
+--
+[source,options="nowrap",subs="+attributes"]
+----
+$ curl -H "Accept:application/json" localhost:8083/
+{"version":"{debezium-kafka-version}","commit":"cb8625948210849f"}  <1>
+----
+<1> The response shows that Kafka Connect version {debezium-kafka-version} is running.
+--
+
+.. Check the list of connectors registered with Kafka Connect:
++
+--
+[source,options="nowrap"]
+----
+$ curl -H "Accept:application/json" localhost:8083/connectors/
+[]  <1>
+----
+<1> No connectors are currently registered with Kafka Connect.
+--

@@ -1,0 +1,42 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: debezium-artifact-server
+  labels:
+    app: debezium-artifact-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: debezium-artifact-server
+      deployment: debezium-artifact-server
+  template:
+    metadata:
+      labels:
+        app: debezium-artifact-server
+        deployment: debezium-artifact-server
+    spec:
+      containers:
+        - name: debezium-artifact-server
+          image: ${image.as}
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+          resources: {}
+          imagePullPolicy: Always
+          livenessProbe:
+            initialDelaySeconds: 30
+            tcpSocket:
+              port: 8080
+            timeoutSeconds: 1
+            readinessProbe:
+              initialDelaySeconds: 30
+              tcpSocket:
+                port: 8080
+          terminationMessagePolicy: File
+          terminationMessagePath: /dev/termination-log
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      dnsPolicy: ClusterFirst
+  strategy:
+    type: Recreate

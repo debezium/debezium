@@ -1,0 +1,83 @@
+// Metadata created by nebel
+//
+// ParentAssemblies: assemblies/tutorial/as_starting-services.adoc
+// UserStory:
+
+[id="starting-kafka"]
+= Starting Kafka
+
+After starting ZooKeeper, you can start Kafka in a new container.
+
+ifdef::product[]
+[NOTE]
+====
+{prodname} {debezium-version} requires Kafka Connect {debezium-kafka-version}.
+Therefore, this procedure uses {debezium-kafka-version} of the Kafka broker.
+For more information about compatibility between different versions of Kafka Connect and Kafka broker,
+see the {link-kafka-docs}.html[Kafka documentation].
+====
+endif::product[]
+ifdef::community[]
+[NOTE]
+====
+{prodname} {debezium-version} has been tested against multiple versions of Kafka Connect.
+Please refer to the https://debezium.io/releases[Debezium Test Matrix] to determine compatibility between {prodname} and Kafka Connect.
+====
+endif::community[]
+
+.Procedure
+
+. Open a new terminal and use it to start Kafka in a container.
++
+--
+This command runs a new container using version {debezium-docker-label} of the `quay.io/debezium/kafka` image:
+
+[source,shell,options="nowrap",subs="+attributes"]
+----
+$ docker run -it --rm --name kafka -p 9092:9092 --link zookeeper:zookeeper quay.io/debezium/kafka:{debezium-docker-label}
+----
+
+`-it`:: The container is interactive,
+which means the terminal's standard input and output are attached to the container.
+`--rm`:: The container will be removed when it is stopped.
+`--name kafka`:: The name of the container.
+`-p 9092:9092`:: Maps port `9092` in the container to the same port on the Docker host so that applications outside of the container can communicate with Kafka.
+`--link zookeeper:zookeeper`:: Tells the container that it can find ZooKeeper in the `zookeeper` container,
+which is running on the same Docker host.
+
+ifdef::community[]
+[NOTE]
+====
+If you use Podman, run the following command:
+[source,shell,options="nowrap",subs="+attributes"]
+----
+$ podman run -it --rm --name kafka --pod dbz quay.io/debezium/kafka:{debezium-docker-label}
+----
+====
+endif::community[]
+
+[NOTE]
+====
+In this tutorial, you will always connect to Kafka from within a Docker container.
+Any of these containers can communicate with the `kafka` container by linking to it.
+If you needed to connect to Kafka from _outside_ of a Docker container,
+you would have to set the `-e` option to advertise the Kafka address through the Docker host
+(`-e ADVERTISED_HOST_NAME=` followed by either the IP address or resolvable host name of the Docker host).
+====
+--
+
+. Verify that Kafka started.
++
+--
+You should see output similar to the following:
+
+[source,shell,options="nowrap"]
+----
+...
+2017-09-21 07:16:59,085 - INFO  [main-EventThread:ZkClient@713] - zookeeper state changed (SyncConnected)
+2017-09-21 07:16:59,218 - INFO  [main:Logging$class@70] - Cluster ID = LPtcBFxzRvOzDSXhc6AamA
+...
+2017-09-21 07:16:59,649 - INFO  [main:Logging$class@70] - [Kafka Server 1], started  // <1>
+----
+<1> The Kafka broker has successfully started and is ready for client connections. The terminal will continue to show additional output as Kafka generates it.
+--

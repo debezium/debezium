@@ -1,0 +1,162 @@
+[id="deleting-record-database-viewing-delete-event"]
+= Deleting a record in the database and viewing the _delete_ event
+
+Now that you have seen how the {prodname} MySQL connector captured the _create_ and _update_ events in the `inventory` database,
+you will now delete one of the records and see how the connector captures it.
+
+By completing this procedure, you will learn how to find details about _delete_ events,
+and how Kafka uses _log compaction_ to reduce the number of _delete_ events while still enabling consumers to get all of the events.
+
+.Procedure
+
+. In the terminal that is running the MySQL command line client, run the following statement:
++
+--
+[source,sql,options="nowrap"]
+----
+mysql> DELETE FROM customers WHERE id=1004;
+Query OK, 1 row affected (0.00 sec)
+----
+
+[NOTE]
+====
+If the above command fails with a foreign key constraint violation,
+then you must remove the reference of the customer address from the _addresses_ table using the following statement:
+
+[source,sql,options="nowrap"]
+----
+mysql> DELETE FROM addresses WHERE customer_id=1004;
+----
+====
+--
+
+ifdef::community[]
+. Switch to the terminal running `watch-topic` to see _two_ new events.
+endif::community[]
+ifdef::product[]
+. Switch to the terminal running `kafka-console-consumer` to see _two_ new events.
+endif::product[]
++
+By deleting a row in the `customers` table, the {prodname} MySQL connector generated two new events.
+
+. Review the _key_ and _value_ for the first new event.
++
+--
+Here are the details of the _key_ for the first new event (formatted for readability):
+
+[source,json,options="nowrap"]
+----
+{
+  "schema": {
+    "type": "struct",
+    "name": "dbserver1.inventory.customers.Key"
+    "optional": false,
+    "fields": [
+      {
+        "field": "id",
+        "type": "int32",
+        "optional": false
+      }
+    ]
+  },
+  "payload": {
+    "id": 1004
+  }
+}
+----
+
+This _key_ is the same as the _key_ in the previous two events you looked at.
+
+Here is the _value_ of the first new event (formatted for readability):
+
+[source,json,options="nowrap",subs="+attributes"]
+----
+{
+  "schema": {...},
+  "payload": {
+    "before": {  // <1>
+      "id": 1004,
+      "first_name": "Anne Marie",
+      "last_name": "Kretchmar",
+      "email": "annek@noanswer.org"
+    },
+    "after": null,  // <2>
+    "source": {  // <3>
+      "name": "{debezium-version}",
+      "name": "dbserver1",
+      "server_id": 223344,
+      "ts_sec": 1486501558,
+      "gtid": null,
+      "file": "mysql-bin.000003",
+      "pos": 725,
+      "row": 0,
+      "snapshot": null,
+      "thread": 3,
+      "db": "inventory",
+      "table": "customers"
+    },
+    "op": "d",  // <4>
+    "ts_ms": 1486501558315,  // <5>
+    "ts_us": 1486501558315901,  // <5>
+    "ts_ns": 1486501558315901687  // <5>
+  }
+}
+----
+<1> The `before` field now has the state of the row that was deleted with the database commit.
+<2> The `after` field is `null` because the row no longer exists.
+<3> The `source` field structure has many of the same values as before,
+except the `ts_sec` and `pos` fields have changed
+(the `file` might have changed in other circumstances).
+<4> The `op` field value is now `d`,
+signifying that this row was deleted.
+<5> The `ts_ms`, `ts_us`, `ts_ns` field shows the time stamp for when {prodname} processes this event.
+
+Thus, this event provides a consumer with the information that it needs to process the removal of the row.
+The old values are also provided, because some consumers might require them to properly handle the removal.
+--
+
+. Review the _key_ and _value_ for the second new event.
++
+--
+Here is the _key_ for the second new event (formatted for readability):
+
+[source,json,options="nowrap"]
+----
+  {
+    "schema": {
+      "type": "struct",
+      "name": "dbserver1.inventory.customers.Key"
+      "optional": false,
+      "fields": [
+        {
+          "field": "id",
+          "type": "int32",
+          "optional": false
+        }
+      ]
+    },
+    "payload": {
+      "id": 1004
+    }
+  }
+----
+
+Once again, this _key_ is exactly the same key as in the previous three events you looked at.
+
+Here is the _value_ of that same event (formatted for readability):
+
+[source,json,options="nowrap"]
+----
+{
+  "schema": null,
+  "payload": null
+}
+----
+If Kafka is set up to be _log compacted_,
+it will remove older messages from the topic if there is at least one message later in the topic with same key.
+This last event is called a _tombstone_ event,
+because it has a key and an empty value.
+This means that Kafka will remove all prior messages with the same key.
+Even though the prior messages will be removed,
+the tombstone event means that consumers can still read the topic from the beginning and not miss any events.
+--

@@ -1,0 +1,63 @@
+<?xml version="1.0"?>
+<assembly xmlns="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.2" 
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.2 http://maven.apache.org/xsd/assembly-1.1.2.xsd">
+  <id>store</id>
+  <formats>
+    <format>tar.gz</format>
+    <format>zip</format>
+  </formats>
+  <includeBaseDirectory>false</includeBaseDirectory>
+  <dependencySets>
+      <dependencySet>
+          <outputDirectory>${project.artifactId}</outputDirectory>
+          <unpack>false</unpack>
+          <scope>runtime</scope>
+          <useProjectArtifact>false</useProjectArtifact>
+          <useTransitiveFiltering>true</useTransitiveFiltering>
+          <excludes>
+              <!-- Exclude dependencies of Kafka APIs, since they will be available in the runtime -->
+              <exclude>com.fasterxml.jackson.core:jackson-core:*</exclude>
+              <exclude>com.fasterxml.jackson.core:jackson-databind:*</exclude>
+              <exclude>com.fasterxml.jackson.core:jackson-annotations:*</exclude>
+              <exclude>com.fasterxml.jackson.datatype:jackson-datatype-jsr310:*</exclude>
+
+              <!-- Exclude guava dependencies -->
+              <exclude>com.google.guava:listenablefuture:*</exclude>
+
+              <!-- Exclude dependencies with incorrect scope -->
+              <exclude>org.checkerframework:checker-qual:*</exclude>
+          </excludes>
+      </dependencySet>
+      <dependencySet>
+          <outputDirectory>${project.artifactId}</outputDirectory>
+          <unpack>false</unpack>
+          <includes>
+              <include>${project.groupId}:${project.artifactId}:*</include>
+          </includes>
+      </dependencySet>
+  </dependencySets>
+  <fileSets>
+    <fileSet>
+      <!-- Get the files from the top-level directory, which should be two levels above the storages -->
+      <directory>${project.basedir}/../..</directory>
+      <outputDirectory>${project.artifactId}</outputDirectory>
+      <includes>
+        <include>README*</include>
+        <include>CHANGELOG*</include>
+        <include>CONTRIBUTE*</include>
+        <include>COPYRIGHT*</include>
+        <include>LICENSE*</include>
+      </includes>
+      <useDefaultExcludes>true</useDefaultExcludes>
+    </fileSet>
+    <fileSet>
+      <directory>${project.build.directory}/generated-sources</directory>
+      <outputDirectory>${project.artifactId}</outputDirectory>
+      <includes>
+          <include>*.json</include>
+      </includes>
+      <useDefaultExcludes>true</useDefaultExcludes>
+    </fileSet>
+  </fileSets>
+</assembly>

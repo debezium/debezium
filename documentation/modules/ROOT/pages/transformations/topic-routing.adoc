@@ -1,0 +1,208 @@
+:page-aliases: configuration/topic-routing.adoc
+// Category: debezium-using
+// Type: assembly
+// ModuleID: routing-debezium-event-records-to-topics-that-you-specify
+// Title: Routing {prodname} event records to topics that you specify
+
+[id="topic-routing"]
+= Topic Routing
+:toc:
+:toc-placement: macro
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+
+toc::[]
+
+Each Kafka record that contains a data change event has a default destination topic. If you need to, you can re-route records to topics that you specify before the records reach the Kafka Connect converter.
+To do this, {prodname} provides the topic routing single message transformation (SMT). Configure this transformation in the {prodname} connector's Kafka Connect configuration. Configuration options enable you to specify the following:
+
+* An expression for identifying the records to re-route
+* An expression that resolves to the destination topic
+* How to ensure a unique key among the records being re-routed to the destination topic
+
+It is up to you to ensure that the transformation configuration provides the behavior that you want. {prodname} does not validate the behavior that results from your configuration of the transformation.
+
+The topic routing transformation is a
+link:https://kafka.apache.org/documentation/#connect_transforms[Kafka Connect SMT].
+
+ifdef::product[]
+The following topics provide details:
+
+* xref:use-case-for-routing-debezium-records-to-topics-that-you-specify[]
+* xref:example-of-routing-debezium-records-for-multiple-tables-to-one-topic[]
+* xref:ensuring-unique-keys-across-debezium-records-routed-to-the-same-topic[]
+* xref:options-for-configuring-debezium-topic-routing-transformation[]
+endif::product[]
+
+// Type: concept
+// ModuleID: use-case-for-routing-debezium-records-to-topics-that-you-specify
+// Title: Use case for routing {prodname} records to topics that you specify
+== Use case
+
+The default behavior is that a {prodname} connector sends each change event record to a topic whose name is formed from the name of the database and the name of the table in which the change was made. In other words, a topic receives records for one physical table. When you want a topic to receive records for more than one physical table, you must configure the {prodname} connector to re-route the records to that topic.
+
+.Logical tables
+
+A logical table is a common use case for routing records for multiple physical tables to one topic. In a logical table, there are multiple physical tables that all have the same schema. For example, sharded tables have the same schema. A logical table might consist of two or more sharded tables: `db_shard1.my_table` and `db_shard2.my_table`. The tables are in different shards and are physically distinct but together they form a logical table.
+You can re-route change event records for tables in any of the shards to the same topic.
+
+.Partitioned PostgreSQL tables
+
+When the {prodname} PostgreSQL connector captures changes in a partitioned table, the default behavior is that change event records are routed to a different topic for each partition. To emit records from all partitions to one topic, configure the topic routing SMT. Because each key in a partitioned table is guaranteed to be unique, configure xref:by-logical-table-router-key-enforce-uniqueness[`key.enforce.uniqueness=false`] so that the SMT does not add a key field to ensure unique keys. The addition of a key field is default behavior.
+
+// Type: concept
+// ModuleID: example-of-routing-debezium-records-for-multiple-tables-to-one-topic
+// Title: Example of routing {prodname} records for multiple tables to one topic
+== Example
+
+To route change event records for multiple physical tables to the same topic, configure the topic routing transformation in the Kafka Connect configuration for the {prodname} connector. Configuration of the topic routing SMT requires you to specify regular expressions that determine:
+
+* The tables for which to route records. These tables must all have the same schema.
+* The destination topic name.
+
+The connector configuration in the following example sets several options for the topic routing SMT:
+
+[source]
+----
+transforms=Reroute
+transforms.Reroute.type=io.debezium.transforms.ByLogicalTableRouter
+transforms.Reroute.topic.regex=(.*)customers_shard(.*)
+transforms.Reroute.topic.replacement=$1customers_all_shards
+----
+
+`topic.regex`:: Specifies a regular expression that the transformation applies to each change event record to determine if it should be routed to a particular topic.
++
+In the example, the regular expression, `pass:[(.*)customers_shard(.*)]` matches records for changes to tables whose names include the `customers_shard` string. This would re-route records for tables with the following names:
++
+`myserver.mydb.customers_shard1` +
+`myserver.mydb.customers_shard2` +
+`myserver.mydb.customers_shard3`
+
+`topic.replacement`:: Specifies a regular expression that represents the destination topic name. The transformation routes each matching record to the topic identified by this expression. In this example, records for the three sharded tables listed above would be routed to the `myserver.mydb.customers_all_shards` topic.
+
+`schema.name.adjustment.mode`:: Specifies how the message key schema names derived from the resulting topic name should be adjusted for compatibility with the message converter used by the connector. The value can be `none` (default) or `avro`.
+
+.Customizing the configuration
+To customize the configuration you can define xref:options-for-applying-the-transformation-selectively[an SMT predicate statement] that specifies the tables that you want the transformation to process, or not to process.
+A predicate might be useful if you configure the SMT to route tables that match a regular expression, and you do not want the SMT to reroute one particular table that matches the expression.
+
+// Type: procedure
+// ModuleID: ensuring-unique-keys-across-debezium-records-routed-to-the-same-topic
+// Title: Ensuring unique keys across {prodname} records routed to the same topic
+== Ensure unique key
+
+A {prodname} change event key uses the table columns that make up the table's primary key. To route records for multiple physical tables to one topic, the event key must be unique across all of those tables. However, it is possible for each physical table to have a primary key that is unique within only that table. For example, a row in the `myserver.mydb.customers_shard1` table might have the same key value as a row in the `myserver.mydb.customers_shard2` table.
+
+To ensure that each event key is unique across the tables whose change event records go to the same topic, the topic routing transformation inserts a field into change event keys. By default, the name of the inserted field is `+__dbz__physicalTableIdentifier+`. The value of the inserted field is the default destination topic name.
+
+If you want to, you can configure the topic routing transformation to insert a different field into the key. To do this, specify the `key.field.name` option and set it to a field name that does not clash with existing primary key field names. For example:
+
+[source]
+----
+transforms=Reroute
+transforms.Reroute.type=io.debezium.transforms.ByLogicalTableRouter
+transforms.Reroute.topic.regex=(.*)customers_shard(.*)
+transforms.Reroute.topic.replacement=$1customers_all_shards
+transforms.Reroute.key.field.name=shard_id
+----
+
+This example adds the `shard_id` field to the key structure in routed records.
+
+If you want to adjust the value of the key's new field, configure both of these options:
+
+`key.field.regex`:: Specifies a regular expression that the transformation applies to the default destination topic name to capture one or more groups of characters.
+
+`key.field.replacement`:: Specifies a regular expression for determining the value of the inserted key field in terms of those captured groups.
+
+For example:
+
+[source]
+----
+transforms.Reroute.key.field.regex=(.*)customers_shard(.*)
+transforms.Reroute.key.field.replacement=$2
+----
+
+With this configuration, suppose that the default destination topic names are:
+
+`myserver.mydb.customers_shard1` +
+`myserver.mydb.customers_shard2` +
+`myserver.mydb.customers_shard3`
+
+The transformation uses the values in the second captured group, the shard numbers, as the value of the key's new field. In this example, the inserted key field's values would be `1`, `2`, or `3`.
+
+If your tables contain globally unique keys and you do not need to change the key structure, you can set the `key.enforce.uniqueness` option to `false`:
+
+[source]
+----
+...
+transforms.Reroute.key.enforce.uniqueness=false
+...
+----
+
+// Type: concept
+// Title: Options for applying the topic routing transformation selectively
+// ModuleID: options-for-applying-the-topic-routing-transformation-selectively
+[id="options-for-applying-the-transformation-selectively"]
+== Options for applying the topic routing transformation selectively
+
+In addition to the change event messages that a {prodname} connector emits when a database change occurs, the connector also emits other types of messages, including heartbeat messages, and metadata messages about schema changes and transactions.
+Because the structure of these other messages differs from the structure of the change event messages that the SMT is designed to process, it's best to configure the connector to selectively apply the SMT, so that it processes only the intended data change messages.
+
+You can use one of the following methods to configure the connector to apply the SMT selectively:
+
+* {link-prefix}:{link-smt-predicates}#applying-transformations-selectively[Configure an SMT predicate for the transformation].
+* Use the xref:by-logical-table-router-topic-regex[topic.regex] configuration option for the SMT.
+
+ifdef::community[]
+[[configuration-options]]
+endif::community[]
+
+// Type: reference
+// ModuleID: options-for-configuring-debezium-topic-routing-transformation
+// Title: Options for configuring {prodname} topic routing transformation
+== Configuration options
+
+The following table describes topic routing SMT configuration options.
+
+.Topic routing SMT configuration options
+[cols="30%a,25%a,45%a",subs="+attributes",options="header"]
+|===
+|Option
+|Default
+|Description
+
+|[[by-logical-table-router-topic-regex]]xref:by-logical-table-router-topic-regex[`topic.regex`]
+|
+|Specifies a regular expression that the transformation applies to each change event record to determine if it should be routed to a particular topic.
+
+|[[by-logical-table-router-topic-replacement]]xref:by-logical-table-router-topic-replacement[`topic.replacement`]
+|
+|Specifies a regular expression that represents the destination topic name. The transformation routes each matching record to the topic identified by this expression. This expression can refer to groups captured by the regular expression that you specify for `topic.regex`. To refer to a group, specify `$1`, `$2`, and so on.
+
+|[[by-logical-table-router-key-enforce-uniqueness]]xref:by-logical-table-router-key-enforce-uniqueness[`key.enforce{zwsp}.uniqueness`]
+|`true`
+|Indicates whether to add a field to the record's change event key. Adding a key field ensures that each event key is unique across the tables whose change event records go to the same topic. This helps to prevent collisions of change events for records that have the same key but that originate from different source tables. +
+ +
+Specify `false` if you do not want the transformation to add a key field.  For example, if you are routing records from a partitioned PostgreSQL table to one topic, you can configure `key.enforce.uniqueness=false` because unique keys are guaranteed in partitioned PostgreSQL tables.
+
+|[[by-logical-table-router-key-field-name]]xref:by-logical-table-router-key-field-name[`key.field.name`]
+|`+__dbz__physicalTableIdentifier+`
+|Name of a field to be added to the change event key. The value of this field identifies the original table name. For the SMT to add this field, `key.enforce.uniqueness` must be `true`, which is the default.
+
+|[[by-logical-table-router-key-field-regex]]xref:by-logical-table-router-key-field-regex[`key.field.regex`]
+|
+|Specifies a regular expression that the transformation applies to the default destination topic name to capture one or more groups of characters. For the SMT to apply this expression, `key.enforce.uniqueness` must be `true`, which is the default.
+
+|[[by-logical-table-router-key-field-replacement]]xref:by-logical-table-router-key-field-replacement[`key.field{zwsp}.replacement`]
+|
+|Specifies a regular expression for determining the value of the inserted key field in terms of the groups captured by the expression specified for `key.field.regex`. For the SMT to apply this expression, `key.enforce.uniqueness` must be `true`, which is the default.
+
+|[[by-logical-table-router-schema-name-adjustment-mode]]xref:by-logical-table-router-schema-name-adjustment-mode[`schema.name.adjustment.mode`]
+|none
+|Specify how the message key schema names derived from the resulting topic name should be adjusted for compatibility with the message converter used by the connector, including: `none` does not apply any adjustment (default), `avro` replaces the characters that cannot be used in the Avro type name with underscore.
+
+|[[by-logical-table-router-logical-table-cache-size]]xref:by-logical-table-router-logical-table-cache-size[`logical.table.cache.size`]
+|`16`
+|The size used for holding the max entries in LRUCache. The cache will keep the old/new schema for logical table key and value, also cache the derived key and topic regex result for improving the source record transformation.
+|===

@@ -1,0 +1,1 @@
+io.debezium.connector.mongodb.metadata.MongoDbConnectorMetadataProvider

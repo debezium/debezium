@@ -1,0 +1,374 @@
+<?xml version="1.0"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+  <parent>
+    <groupId>io.debezium</groupId>
+    <artifactId>debezium-build-parent</artifactId>
+    <version>2.7.0-SNAPSHOT</version>
+    <relativePath>../pom.xml</relativePath>
+  </parent>
+
+    <modelVersion>4.0.0</modelVersion>
+    <artifactId>debezium-parent</artifactId>
+    <name>Debezium Parent POM</name>
+    <description>Parent POM for all modules and connectors</description>
+    <packaging>pom</packaging>
+    <properties>
+
+        <!-- Dockerfiles -->
+        <docker.maintainer>Debezium community</docker.maintainer>
+
+        <!--Skip long running tests by default-->
+        <skipLongRunningTests>true</skipLongRunningTests>
+        <failFlakyTests>true</failFlakyTests>
+
+        <!-- Don't skip integration tests by default -->
+        <skipITs>false</skipITs>
+
+        <!-- Do not skip formatting source code by default -->
+        <format.skip>false</format.skip>
+
+        <!-- Set formatting default goals -->
+        <format.formatter.goal>format</format.formatter.goal>
+        <format.imports.goal>sort</format.imports.goal>
+        <format.imports.source.compliance>15</format.imports.source.compliance>
+
+        <!-- No debug options by default -->
+        <debug.argline />
+
+        <!-- No modules options by default -->
+        <modules.argline />
+
+        <!-- No test options by default -->
+        <test.argline />
+
+        <!-- Assembly configuration -->
+        <assembly.descriptor>connector-distribution</assembly.descriptor>
+
+        <!-- Needed for pre jdk 9 -->
+        <useSystemClassLoader>true</useSystemClassLoader>
+
+        <!-- Skip the API checks by default. Let the modules opt in. -->
+        <revapi.skip>true</revapi.skip>
+
+        <!-- Order in which Maven Failsafe plugin runs integration tests, the default is in alphabetical order -->
+        <runOrder>alphabetical</runOrder>
+
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-bom</artifactId>
+                <version>${project.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-failsafe-plugin</artifactId>
+                    <version>${version.failsafe.plugin}</version>
+                    <configuration>
+                        <argLine>${debug.argline} ${modules.argline} ${test.argline}</argLine>
+                        <useSystemClassLoader>${useSystemClassLoader}</useSystemClassLoader>
+                        <systemPropertyVariables combine.children="append">
+                            <project.basedir>${project.basedir}</project.basedir>
+                            <project.build.directory>${project.build.directory}</project.build.directory>
+                            <failFlakyTests>${failFlakyTests}</failFlakyTests>
+                        </systemPropertyVariables>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>com.googlecode.maven-java-formatter-plugin</groupId>
+                    <artifactId>maven-java-formatter-plugin</artifactId>
+                    <version>${version.google.formatter.plugin}</version>
+                </plugin>
+                <plugin>
+                    <groupId>io.fabric8</groupId>
+                    <artifactId>docker-maven-plugin</artifactId>
+                    <version>${version.docker.maven.plugin}</version>
+                </plugin>
+                <plugin>
+                    <groupId>com.github.os72</groupId>
+                    <artifactId>protoc-jar-maven-plugin</artifactId>
+                    <version>${version.protoc.maven.plugin}</version>
+                </plugin>
+                <plugin>
+                    <groupId>net.revelc.code.formatter</groupId>
+                    <artifactId>formatter-maven-plugin</artifactId>
+                    <version>${version.code.formatter}</version>
+                    <dependencies>
+                        <dependency>
+                            <groupId>io.debezium</groupId>
+                            <artifactId>debezium-ide-configs</artifactId>
+                            <version>${project.version}</version>
+                        </dependency>
+                    </dependencies>
+                    <configuration>
+                        <configFile>/eclipse/debezium-formatter.xml</configFile>
+                        <skip>${format.skip}</skip>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>net.revelc.code</groupId>
+                    <artifactId>impsort-maven-plugin</artifactId>
+                    <version>${version.impsort}</version>
+                    <configuration>
+                        <groups>java.,jakarta.,javax.,org.,com.,io.</groups>
+                        <staticGroups>*</staticGroups>
+                        <staticAfter>false</staticAfter>
+                        <skip>${format.skip}</skip>
+                        <removeUnused>true</removeUnused>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>exec-maven-plugin</artifactId>
+                    <version>3.0.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.jboss.jandex</groupId>
+                    <artifactId>jandex-maven-plugin</artifactId>
+                    <version>${version.jandex}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.revapi</groupId>
+                    <artifactId>revapi-maven-plugin</artifactId>
+                    <version>${version.revapi.plugin}</version>
+                    <dependencies>
+                        <dependency>
+                            <groupId>io.debezium</groupId>
+                            <artifactId>debezium-revapi</artifactId>
+                            <version>${project.version}</version>
+                        </dependency>
+                        <dependency>
+                            <groupId>org.revapi</groupId>
+                            <artifactId>revapi-java</artifactId>
+                            <version>${version.revapi-java.plugin}</version>
+                        </dependency>
+                    </dependencies>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>jar-no-fork</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>attach-test-sources</id>
+                        <goals>
+                            <goal>test-jar-no-fork</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>com.googlecode.maven-java-formatter-plugin</groupId>
+                <artifactId>maven-java-formatter-plugin</artifactId>
+                <configuration>
+                    <configFile>${project.basedir}/support/eclipse-formatting.xml</configFile>
+                    <lineEnding>LF</lineEnding>
+                </configuration>
+            </plugin>
+            <plugin>
+            <!--
+                   Build a test-jar for each project, so that src/test/* resources and
+                   classes can be used in other projects. Also customize how the jar
+                   files are assembled.
+               -->
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>test-jar</id>
+                        <goals>
+                            <goal>test-jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <systemPropertyVariables combine.children="append">
+                        <java.io.tmpdir>${project.build.directory}</java.io.tmpdir>
+                        <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
+                        <failFlakyTests>${failFlakyTests}</failFlakyTests>
+                        <dbz.test.data.dir>${project.build.directory}/data</dbz.test.data.dir>
+                    </systemPropertyVariables>
+                    <argLine>-Djava.awt.headless=true ${debug.argline} ${modules.argline}</argLine>
+                    <!--runOrder>alphabetical</runOrder-->
+                    <useFile>false</useFile>
+                    <enableAssertions>true</enableAssertions>
+                    <forkCount>${forkCount}</forkCount>
+                    <reuseForks>${reuseForks}</reuseForks>
+                    <useSystemClassLoader>${useSystemClassLoader}</useSystemClassLoader>
+                </configuration>
+            </plugin>
+            <plugin>
+                <!-- Serves as support for configuring Revapi -->
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>parse-version</id>
+                        <goals>
+                            <!-- This defines the ${parsedVersion.*} properties used in the Revapi config. -->
+                            <goal>parse-version</goal>
+                        </goals>
+                        <phase>validate</phase>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+    <profiles>
+        <profile>
+            <id>qa</id>
+            <activation>
+                <property>
+                    <name>!quick</name>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>net.revelc.code.formatter</groupId>
+                        <artifactId>formatter-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <phase>process-sources</phase>
+                                <goals>
+                                    <goal>${format.formatter.goal}</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>net.revelc.code</groupId>
+                        <artifactId>impsort-maven-plugin</artifactId>
+                        <configuration>
+                            <removeUnused>true</removeUnused>
+                            <compliance>${format.imports.source.compliance}</compliance>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>sort-imports</id>
+                                <goals>
+                                    <goal>${format.imports.goal}</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-checkstyle-plugin</artifactId>
+                        <dependencies>
+                            <dependency>
+                                <groupId>io.debezium</groupId>
+                                <artifactId>debezium-checkstyle</artifactId>
+                                <version>${project.version}</version>
+                            </dependency>
+                        </dependencies>
+                        <configuration>
+                            <configLocation>checkstyle.xml</configLocation>
+                            <suppressionsLocation>checkstyle-suppressions.xml</suppressionsLocation>
+                            <suppressionsFileExpression>checkstyle.suppressions.file</suppressionsFileExpression>
+                            <consoleOutput>true</consoleOutput>
+                            <failsOnError>true</failsOnError>
+                            <linkXRef>false</linkXRef>
+                            <violationSeverity>error</violationSeverity>
+                            <includeTestSourceDirectory>true</includeTestSourceDirectory>
+                            <sourceDirectories>
+                                <sourceDirectory>${project.build.sourceDirectory}</sourceDirectory>
+                                <sourceDirectory>${project.build.testSourceDirectory}</sourceDirectory>
+                            </sourceDirectories>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>check-style</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>checkstyle</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.revapi</groupId>
+                        <artifactId>revapi-maven-plugin</artifactId>
+                        <configuration>
+                            <failOnMissingConfigurationFiles>false</failOnMissingConfigurationFiles>
+                            <!-- Consider changes from the latest .Final version, not from the latest non-snapshot. -->
+                            <versionFormat>\d+\.\d+\.\d+\.Final</versionFormat>
+                            <ignoreSuggestionsFormat>xml</ignoreSuggestionsFormat>
+                            <analysisConfigurationFiles>
+                                <configurationFile>
+                                    <!-- common API checking configuration -->
+                                    <resource>revapi/revapi-configuration.xml</resource>
+                                </configurationFile>
+                                <configurationFile>
+                                    <!-- API changes recorded in the support/revapi module -->
+                                    <resource>revapi/debezium-api-changes.xml</resource>
+                                    <roots>
+                                        <!--
+                                            The XML file has "<analysisConfiguration>" root node, underneath which
+                                            there are nodes named after each version.
+                                            This way we only need a single file for all releases of Debezium.
+                                        -->
+                                        <root>analysisConfiguration/version-${parsedVersion.majorVersion}.${parsedVersion.minorVersion}.${parsedVersion.incrementalVersion}</root>
+                                    </roots>
+                                </configurationFile>
+                            </analysisConfigurationFiles>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>check</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <!--
+           ###################################################################
+           Enable remotely debugging on the command line
+           ###################################################################
+
+           To use, specify "-Ddebug=true" on the Maven command line
+           (typically used when running a single test). Then, start
+           remote debugger (on port 1044) and connect.
+       -->
+        <profile>
+            <id>debug</id>
+            <activation>
+                <property>
+                    <name>debug</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <properties>
+                <!-- Useful for remotely debugging the unit tests run by Surefire ... -->
+                <debug.argline>-Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=1044</debug.argline>
+            </properties>
+        </profile>
+    </profiles>
+</project>

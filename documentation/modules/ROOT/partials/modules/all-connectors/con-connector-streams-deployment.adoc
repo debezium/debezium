@@ -1,0 +1,26 @@
+Beginning with {prodname} 1.7, the preferred method for deploying a {prodname} connector is to use {StreamsName} to build a Kafka Connect container image that includes the connector plug-in.
+
+During the deployment process, you create and use the following custom resources (CRs):
+
+* A `KafkaConnect` CR that defines your Kafka Connect instance and includes information about the connector artifacts needs to include in the image.
+* A `KafkaConnector` CR that provides details that include information the connector uses to access the source database.
+  After {kafka-streams} starts the Kafka Connect pod, you start the connector by applying the `KafkaConnector` CR.
+
+In the build specification for the Kafka Connect image, you can specify the connectors that are available to deploy.
+For each connector plug-in, you can also specify other components that you want to make available for deployment.
+For example, you can add {registry} artifacts, or the {prodname} scripting component.
+When {kafka-streams} builds the Kafka Connect image, it downloads the specified artifacts, and incorporates them into the image.
+
+The `spec.build.output` parameter in the `KafkaConnect` CR specifies where to store the resulting Kafka Connect container image.
+Container images can be stored in a Docker registry, or in an OpenShift ImageStream.
+To store images in an ImageStream, you must create the ImageStream before you deploy Kafka Connect.
+ImageStreams are not created automatically.
+
+
+NOTE: If you use a `KafkaConnect` resource to create a cluster, afterwards you cannot use the Kafka Connect REST API to create or update connectors.
+You can still use the REST API to retrieve information.
+
+.Additional resources
+
+* link:{LinkDeployManageStreamsOpenShift}#con-kafka-connect-config-str[Configuring Kafka Connect] in {NameDeployManageStreamsOpenShift}.
+* link:{LinkDeployManageStreamsOpenShift}#creating-new-image-using-kafka-connect-build-str[Building a new container image automatically] in {NameDeployManageStreamsOpenShift}.

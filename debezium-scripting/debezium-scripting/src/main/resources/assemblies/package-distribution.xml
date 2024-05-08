@@ -1,0 +1,35 @@
+<?xml version="1.0"?>
+<assembly xmlns="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.2" 
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.2 http://maven.apache.org/xsd/assembly-1.1.2.xsd">
+  <id>distribution</id>
+  <formats>
+    <format>tar.gz</format>
+    <format>zip</format>
+  </formats>
+  <includeBaseDirectory>false</includeBaseDirectory>
+  <fileSets>
+    <fileSet>
+      <!-- Get the module JAR file -->
+      <directory>${project.build.directory}</directory>
+      <outputDirectory>${project.artifactId}</outputDirectory>
+      <includes>
+        <include>${project.build.finalName}.jar</include>
+      </includes>
+      <useDefaultExcludes>true</useDefaultExcludes>
+    </fileSet>
+    <fileSet>
+      <!-- Get the files from the top-level directory -->
+      <directory>${project.basedir}/..</directory>
+      <outputDirectory>${project.artifactId}</outputDirectory>
+      <includes>
+        <include>README*</include>
+        <include>CHANGELOG*</include>
+        <include>CONTRIBUTE*</include>
+        <include>COPYRIGHT*</include>
+        <include>LICENSE*</include>
+      </includes>
+      <useDefaultExcludes>true</useDefaultExcludes>
+    </fileSet>
+  </fileSets>
+</assembly>

@@ -1,0 +1,4 @@
+io.debezium.pipeline.signal.channels.SourceSignalChannel
+io.debezium.pipeline.signal.channels.KafkaSignalChannel
+io.debezium.pipeline.signal.channels.FileSignalChannel
+io.debezium.pipeline.signal.channels.jmx.JmxSignalChannel

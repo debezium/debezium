@@ -1,0 +1,33 @@
+name: Missing commits check
+
+# The Jira access token for performing authenticated queries requires that the variable
+# be passed to the workflow using WEBHOOK_TOKEN so that it can be properly masked. It
+# is currently the only way to do this reliably with GitHub Actions.
+
+on:
+  workflow_dispatch:
+    inputs:
+      fixed_version:
+        description: 'The Jira fixed version (e.g. 1.8.0.Final)'
+        required: true
+      from_tag:
+        description: 'The tag to start from (e.g. v1.8.0.CR1)'
+        required: true
+      to_tag:
+        description: 'The tag to end at (e.g. v1.8.0.Final)'
+        required: true
+
+jobs:
+  script:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout action
+        uses: actions/checkout@v4
+      - name: Run script
+        env:
+          FIXED_VERSION: ${{ github.event.inputs.fixed_version }}
+          FROM_TAG: ${{ github.event.inputs.from_tag }}
+          TO_TAG: ${{ github.event.inputs.to_tag }}
+          WEBHOOK_TOKEN: ${{ secrets.JIRA_TOKEN }}
+        run: |
+          ./github-support/list-missing-commits-by-issue-key.sh $FIXED_VERSION $FROM_TAG $TO_TAG $WEBHOOK_TOKEN

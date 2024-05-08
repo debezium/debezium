@@ -1,0 +1,388 @@
+[id="viewing-create-event"]
+= Viewing a _create_ event
+
+By viewing the `dbserver1.inventory.customers` topic,
+you can see how the MySQL connector captured _create_ events in the `inventory` database.
+In this case, the _create_ events capture new customers being added to the database.
+
+.Procedure
+
+ifdef::community[]
+. Open a new terminal, and use it to start the `watch-topic` utility to watch the `dbserver1.inventory.customers` topic from the beginning of the topic.
++
+--
+The `watch-topic` utility is very simple and limited in functionality.
+It is not intended to be used by an application to consume events.
+In that scenario, you would instead use Kafka consumers and the applicable consumer libraries that offer full functionality and flexibility.
+
+This command runs the `watch-topic` utility in a new container using the {debezium-docker-label} version of the `debezium/kafka` image:
+
+[source,shell,options="nowrap",subs="+attributes"]
+----
+$ docker run -it --rm --name watcher --link zookeeper:zookeeper --link kafka:kafka quay.io/debezium/kafka:{debezium-docker-label} watch-topic -a -k dbserver1.inventory.customers
+----
+`-a`::
+Watches all events since the topic was created.
+Without this option, `watch-topic` would only show the events recorded after you start watching.
+
+`-k`::
+Specifies that the output should include the event's key.
+In this case, this contains the row's primary key.
+
+[NOTE]
+====
+If you use Podman, run the following command:
+[source,shell,options="nowrap",subs="+attributes"]
+----
+$ podman run -it --rm --name watcher --pod dbz quay.io/debezium/kafka:{debezium-docker-label} watch-topic -a -k dbserver1.inventory.customers
+----
+====
+
+The `watch-topic` utility returns the event records from the `customers` table.
+There are four events, one for each row in the table.
+Each event is formatted in JSON, because that is how you configured the Kafka Connect service.
+There are two JSON documents for each event:
+one for the key, and one for the value.
+
+You should see output similar to the following:
+
+[source,shell,options="nowrap"]
+----
+Using ZOOKEEPER_CONNECT=172.17.0.2:2181
+Using KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://172.17.0.7:9092
+Using KAFKA_BROKER=172.17.0.3:9092
+Contents of topic dbserver1.inventory.customers:
+{"schema":{"type":"struct","fields":[{"type":"int32","optional":false,"field":"id"}],"optional":false,"name":"dbserver1.inventory.customers.Key"},"payload":{"id":1001}}
+...
+----
+
+[NOTE]
+====
+This utility keeps watching the topic, so any new events will automatically appear as long as the utility is running.
+====
+--
+endif::community[]
+
+ifdef::product[]
+. Open a new terminal and use `kafka-console-consumer` to consume the `dbserver1.inventory.customers` topic from the beginning of the topic.
++
+--
+This command runs a simple consumer (`kafka-console-consumer.sh`) in the Pod that is running Kafka (`my-cluster-kafka-0`):
+
+[source,shell,options="nowrap"]
+----
+$ oc exec -it my-cluster-kafka-0 -- /opt/kafka/bin/kafka-console-consumer.sh \
+  --bootstrap-server localhost:9092 \
+  --from-beginning \
+  --property print.key=true \
+  --topic dbserver1.inventory.customers
+----
+
+The consumer returns four messages (in JSON format),
+one for each row in the `customers` table.
+Each message contains the event records for the corresponding table row.
+
+There are two JSON documents for each event: a _key_ and a _value_.
+The key corresponds to the row’s primary key,
+and the value shows the details of the row
+(the fields that the row contains, the value of each field, and the type of operation that was performed on the row).
+--
+endif::product[]
+
+. For the last event, review the details of the _key_.
++
+--
+Here are the details of the _key_ of the last event (formatted for readability):
+
+[source,json,options="nowrap"]
+----
+{
+  "schema":{
+    "type":"struct",
+      "fields":[
+        {
+          "type":"int32",
+          "optional":false,
+          "field":"id"
+        }
+      ],
+    "optional":false,
+    "name":"dbserver1.inventory.customers.Key"
+  },
+  "payload":{
+    "id":1004
+  }
+}
+----
+
+The event has two parts: a `schema` and a `payload`.
+The `schema` contains a Kafka Connect schema describing what is in the payload.
+In this case, the payload is a `struct` named `dbserver1.inventory.customers.Key` that is not optional and has one required field (`id` of type `int32`).
+
+The `payload` has a single `id` field, with a value of `1004`.
+
+By reviewing the _key_ of the event,
+you can see that this event applies to the row in the `inventory.customers` table whose `id` primary key column had a value of `1004`.
+--
+
+. Review the details of the same event's _value_.
++
+--
+The event's _value_ shows that the row was created,
+and describes what it contains (in this case, the `id`, `first_name`, `last_name`, and `email` of the inserted row).
+
+Here are the details of the _value_ of the last event (formatted for readability):
+
+[source,json,options="nowrap",subs="+attributes"]
+----
+{
+  "schema": {
+    "type": "struct",
+    "fields": [
+      {
+        "type": "struct",
+        "fields": [
+          {
+            "type": "int32",
+            "optional": false,
+            "field": "id"
+          },
+          {
+            "type": "string",
+            "optional": false,
+            "field": "first_name"
+          },
+          {
+            "type": "string",
+            "optional": false,
+            "field": "last_name"
+          },
+          {
+            "type": "string",
+            "optional": false,
+            "field": "email"
+          }
+        ],
+        "optional": true,
+        "name": "dbserver1.inventory.customers.Value",
+        "field": "before"
+      },
+      {
+        "type": "struct",
+        "fields": [
+          {
+            "type": "int32",
+            "optional": false,
+            "field": "id"
+          },
+          {
+            "type": "string",
+            "optional": false,
+            "field": "first_name"
+          },
+          {
+            "type": "string",
+            "optional": false,
+            "field": "last_name"
+          },
+          {
+            "type": "string",
+            "optional": false,
+            "field": "email"
+          }
+        ],
+        "optional": true,
+        "name": "dbserver1.inventory.customers.Value",
+        "field": "after"
+      },
+      {
+        "type": "struct",
+        "fields": [
+          {
+            "type": "string",
+            "optional": true,
+            "field": "version"
+          },
+          {
+            "type": "string",
+            "optional": false,
+            "field": "name"
+          },
+          {
+            "type": "int64",
+            "optional": false,
+            "field": "server_id"
+          },
+          {
+            "type": "int64",
+            "optional": false,
+            "field": "ts_sec"
+          },
+          {
+            "type": "string",
+            "optional": true,
+            "field": "gtid"
+          },
+          {
+            "type": "string",
+            "optional": false,
+            "field": "file"
+          },
+          {
+            "type": "int64",
+            "optional": false,
+            "field": "pos"
+          },
+          {
+            "type": "int32",
+            "optional": false,
+            "field": "row"
+          },
+          {
+            "type": "boolean",
+            "optional": true,
+            "field": "snapshot"
+          },
+          {
+            "type": "int64",
+            "optional": true,
+            "field": "thread"
+          },
+          {
+            "type": "string",
+            "optional": true,
+            "field": "db"
+          },
+          {
+            "type": "string",
+            "optional": true,
+            "field": "table"
+          }
+        ],
+        "optional": false,
+        "name": "io.debezium.connector.mysql.Source",
+        "field": "source"
+      },
+      {
+        "type": "string",
+        "optional": false,
+        "field": "op"
+      },
+      {
+        "type": "int64",
+        "optional": true,
+        "field": "ts_ms"
+      },
+      {
+        "type": "int64",
+        "optional": true,
+        "field": "ts_us"
+      },
+      {
+        "type": "int64",
+        "optional": true,
+        "field": "ts_ns"
+      }
+    ],
+    "optional": false,
+    "name": "dbserver1.inventory.customers.Envelope",
+    "version": 1
+  },
+  "payload": {
+    "before": null,
+    "after": {
+      "id": 1004,
+      "first_name": "Anne",
+      "last_name": "Kretchmar",
+      "email": "annek@noanswer.org"
+    },
+    "source": {
+      "version": "{debezium-version}",
+      "name": "dbserver1",
+      "server_id": 0,
+      "ts_sec": 0,
+      "gtid": null,
+      "file": "mysql-bin.000003",
+      "pos": 154,
+      "row": 0,
+      "snapshot": true,
+      "thread": null,
+      "db": "inventory",
+      "table": "customers"
+    },
+    "op": "r",
+    "ts_ms": 1486500577691,
+    "ts_us": 1486500577691547,
+    "ts_ns": 1486500577691547930
+  }
+}
+----
+
+This portion of the event is much longer,
+but like the event's _key_, it also has a `schema` and a `payload`.
+The `schema` contains a Kafka Connect schema named `dbserver1.inventory.customers.Envelope` (version 1) that can contain five fields:
+
+`op`::
+A required field that contains a string value describing the type of operation.
+Values for the MySQL connector are `c` for create (or insert), `u` for update, `d` for delete, and `r` for read (in the case of a snapshot).
+`before`::
+An optional field that, if present, contains the state of the row _before_ the event occurred.
+The structure will be described by the `dbserver1.inventory.customers.Value` Kafka Connect schema,
+which the `dbserver1` connector uses for all rows in the `inventory.customers` table.
+`after`::
+An optional field that, if present, contains the state of the row _after_ the event occurred.
+The structure is described by the same `dbserver1.inventory.customers.Value` Kafka Connect schema used in `before`.
+`source`::
+A required field that contains a structure describing the source metadata for the event,
+which in the case of MySQL, contains several fields:
+the connector name, the name of the `binlog` file where the event was recorded, the position in that `binlog` file where the event appeared, the row within the event (if there is more than one), the names of the affected database and table, the MySQL thread ID that made the change, whether this event was part of a snapshot, and, if available, the MySQL server ID, and the timestamp in seconds.
+`ts_ms`::
+An optional field that, if present, contains the time (using the system clock in the JVM running the Kafka Connect task) at which the connector processed the event.
+
+[NOTE]
+====
+The JSON representations of the events are much longer than the rows they describe.
+This is because, with every event key and value, Kafka Connect ships the _schema_ that describes the _payload_.
+Over time, this structure may change.
+However, having the schemas for the key and the value in the event itself makes it much easier for consuming applications to understand the messages, especially as they evolve over time.
+
+The {prodname} MySQL connector constructs these schemas based upon the structure of the database tables.
+If you use DDL statements to alter the table definitions in the MySQL databases,
+the connector reads these DDL statements and updates its Kafka Connect schemas.
+This is the only way that each event is structured exactly like the table from where it originated at the time the event occurred.
+However, the Kafka topic containing all of the events for a single table might have events that correspond to each state of the table definition.
+
+The JSON converter includes the key and value schemas in every message,
+so it does produce very verbose events.
+// The following condition can be removed when the downstream supports Avro.
+ifdef::community[]
+Alternatively, you can use xref:configuration/avro.adoc[Apache Avro] as a serialization format, which results in far smaller event messages.
+This is because it transforms each Kafka Connect schema into an Avro schema and stores the Avro schemas in a separate Schema Registry service.
+Thus, when the Avro converter serializes an event message,
+it places only a unique identifier for the schema along with an Avro-encoded binary representation of the value.
+As a result, the serialized messages that are transferred over the wire and stored in Kafka are far smaller than what you have seen here.
+In fact, the Avro Converter is able to use Avro schema evolution techniques to maintain the history of each schema in the Schema Registry.
+endif::community[]
+====
+--
+
+. Compare the event's _key_ and _value_ schemas to the state of the `inventory` database.
+In the terminal that is running the MySQL command line client, run the following statement:
++
+--
+[source,sql,options="nowrap"]
+----
+mysql> SELECT * FROM customers;
++------+------------+-----------+-----------------------+
+| id   | first_name | last_name | email                 |
++------+------------+-----------+-----------------------+
+| 1001 | Sally      | Thomas    | sally.thomas@acme.com |
+| 1002 | George     | Bailey    | gbailey@foobar.com    |
+| 1003 | Edward     | Walker    | ed@walker.com         |
+| 1004 | Anne       | Kretchmar | annek@noanswer.org    |
++------+------------+-----------+-----------------------+
+4 rows in set (0.00 sec)
+----
+
+This shows that the event records you reviewed match the records in the database.
+--

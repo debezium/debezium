@@ -1,0 +1,2 @@
+mcr.microsoft.com/mssql/server:2019-latest
+quay.io/debezium/db2-cdc:latest

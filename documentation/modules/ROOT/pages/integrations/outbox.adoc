@@ -1,0 +1,404 @@
+[id="outbox-quarkus-extension"]
+= Outbox Quarkus Extension
+
+:toc:
+:toc-placement: macro
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+
+toc::[]
+
+== Overview
+
+This extension is inspired by the xref:transformations/outbox-event-router.adoc[Outbox Event Router] single message transformation (SMT).
+As discussed in the blog post link:/blog/2019/02/19/reliable-microservices-data-exchange-with-the-outbox-pattern/[Reliable Microservices Data Exchange with the Outbox Pattern], microservices often need to exchange information with one another and an excellent way to deal with that is using the Outbox pattern combined with {prodname}'s Outbox Event Router SMT.
+
+The following image shows the overall architecture of this pattern:
+
+image:outbox_pattern.png[Outbox Pattern]
+
+The Outbox extension's goal is to provide a https://quarkus.io/[Quarkus] application with a reusable, highly configurable component that facilitates the use of the Outbox pattern paired with {prodname}'s CDC connector pipeline to reliably and asynchronously share data with any consumer of said data.
+
+== Getting Started
+
+In order to start using the {prodname} Outbox Quarkus extension, the extension needs to be added as a part of the Quarkus application as follows:
+[source,xml,subs="verbatim,attributes"]
+----
+<dependency>
+  <groupId>io.debezium</groupId>
+  <artifactId>debezium-quarkus-outbox</artifactId>
+  <version>{debezium-version}</version>
+</dependency>
+----
+
+The extension provides the application with the `io.debezium.outbox.quarkus.ExportedEvent` interface.
+It's expected that an application class will implement this interface and that the event will be emitted using the `javax.enterprise.event.Event` class.
+
+[NOTE]
+====
+The `ExportedEvent` interface is parameterized to allow the application to designate the Java types used by several attributes emitted by the event.
+It's important that for a given Quarkus application, *all* implementations of the `ExportedEvent` interface must use the same parameter types or a build failure will be thrown since all events will use the same underlying database table.
+====
+
+== Example
+
+The following example illustrates an implementation of the `ExportedEvent` interface representing an order that has been created:
+
+.OrderCreatedEvent.java
+[source,java,indent=0]
+----
+public class OrderCreatedEvent implements ExportedEvent<String, JsonNode> {
+
+    private static final String TYPE = "Order";
+    private static final String EVENT_TYPE = "OrderCreated";
+
+    private final long orderId;
+    private final JsonNode jsonNode;
+    private final Instant timestamp;
+
+    public OrderCreatedEvent(Instant createdAt, Order order) {
+        this.orderId = order.getId();
+        this.timestamp = createdAt;
+        this.jsonNode = convertToJson(order);
+    }
+
+    @Override
+    public String getAggregateId() {
+        return String.valueOf(orderId);
+    }
+
+    @Override
+    public String getAggregateType() {
+        return TYPE;
+    }
+
+    @Override
+    public JsonNode getPayload() {
+        return jsonNode;
+    }
+
+    @Override
+    public String getType() {
+        return EVENT_TYPE;
+    }
+
+    @Override
+    public Instant getTimestamp() {
+        return timestamp;
+    }
+
+    @Override
+    public Map<String, Object> getAdditionalFieldValues() {
+        // no additional fields
+        return Collections.emptyMap();
+    }
+}
+----
+
+The following example illustrates an `OrderService` that emits the `OrderCreatedEvent`:
+
+.OrderService.java
+[source,java,indent=0]
+----
+@ApplicationScoped
+public class OrderService {
+
+    @Inject
+    OrderRepository orderRepository;
+
+    @Inject
+    Event<ExportedEvent<?, ?>> event;
+
+    @Transactional
+    public Order addOrder(Order order) {
+        order = orderRepository.save(order);
+        event.fire(new OrderCreatedEvent(Instant.now(), order));
+        return order;
+    }
+}
+----
+
+When the application code fires the event by calling `Event#fire()`, the Outbox extension will be notified that the event occurred and persists the contents of the event into an outbox event table within the scope of the current transaction.
+The {prodname} CDC connector in conjunction with the Outbox Event Router will be monitoring this table and will be responsible for relaying that data using CDC events.
+
+To see a full end-to-end demo, the https://github.com/debezium/debezium-examples/tree/main/outbox[Outbox] example illustrates two Quarkus microservice applications using the outbox pattern to share data between them when orders are placed or cancelled.
+
+[id=reactive-outbox]
+== Reactive Variant
+
+If your application uses reactive datasources, or Hibernate Reactive, you must use a slightly different configuration to add the extension to your application.
+
+For example, use the following configuration to  import the reactive variant of the extension:
+
+[source,xml,subs="verbatim,attributes"]
+----
+<dependency>
+  <groupId>io.debezium</groupId>
+  <artifactId>debezium-quarkus-outbox-reactive</artifactId>
+  <version>{debezium-version}</version>
+</dependency>
+----
+
+The reactive extension provides the application with the same `io.debezium.outbox.quarkus.ExportedEvent` interface as the non-reactive variant, but it also provides the `DebeziumOutboxHandler` class.
+Injecting the `DebeziumOutboxHandler` bean into an application provides a method for quickly persisting an `ExportedEvent` to the outbox table.
+The following example shows an invocation that uses the same `ExportedEvent` as in the earlier example:
+
+.OrderService.java
+[source,java,indent=0]
+----
+@ApplicationScoped
+public class OrderService {
+
+    @Inject
+    DebeziumOutboxHandler debeziumOutboxHandler;
+
+    @Inject
+    OrderRepository orderRepository;
+
+    @Inject
+    Event<ExportedEvent<?, ?>> event;
+
+    @ReactiveTransactional
+    public Uni<Order> addOrder(Order order) {
+        return orderRepository.persistAndFlush(order)
+        .call(debeziumOutboxHandler.persistToOutbox(new OrderCreatedEvent(Instant.now(), order)));
+
+    }
+}
+----
+
+[NOTE]
+====
+The `persistToOutbox` method returns a Uni; therefore, it must be observed by a subscriber ito receive the result.
+For more information about using the Mutiny library to build reactive applications, see the link:https://quarkus.io/guides/mutiny-primer[Quarkus Mutiny primer].
+====
+
+
+
+[id=additional-field-mappings]
+== Additional Field mappings
+
+The {prodname} Outbox SMT can be configured to read additional fields and emit those field values either as event headers, or as part of the event value.
+
+In order to pass additional field mappings to be saved by the Quarkus Outbox extension,
+the configuration property `quarkus.debezium-outbox.additional-fields` must be specified in the `application.properties`.
+This configuration property is a comma-separated list of additional field definitions that will be added to the Outbox entity mapping and passed by the application's implementation of the `ExportedEvent` interface.
+
+Each entry in this comma-separated list must follow this format:
+[source]
+----
+<field-name>:<field-java-type>[:<field-column-definition>[:<field-jpa-attribute-converter>]]
+----
+
+The pattern indicates that the field's name and java-type are required while the column definition and JPA attribute converter are optional.
+However, please note that if you wish to specify a JPA attribute converter then the column definition must be specified.
+
+The following example shows how to define an additional field called `customer_name` that is represented in Java as a `String` and which should be stored in the outbox table as a `VARCHAR(100)` column.
+This example also shows a JPA Attribute converter defined that forces the storage of the string to upper-case.
+
+.application.properties
+[source,properties,indent=0]
+----
+quarkus.debezium-outbox.additional-fields=customer_name:string:varchar(100):example.UpperCase
+----
+
+Once the field(s) are configured in the application's `.properties` file, the application's code needs to provide the corresponding values through its exported events.
+In order to do this, the application class that extends the `ExportedEvent` needs to override the method called `getAdditionalFieldValues()` and return a `Map` of the additional field names and values.
+
+In the following example, we show how to specify the `customer_name` field with a value of `Acme Goods`.
+Using our `OrderCreatedEvent` from the example section above, we've extended the event:
+
+.OrderCreatedEvent.java
+[source,java,indent=0]
+----
+public class OrderCreatedEvent implements ExportedEvent<String, JsonNode> {
+    ...
+    @Override
+    public Map<String, Object> getAdditionalFieldValues() {
+        return Collections.singletonMap("customer_name", "Acme Goods");
+    }
+}
+----
+
+[NOTE]
+====
+Additional field mappings do allow specifying a JPA attribute converter per field.
+
+In this example, we defined `example.UpperCase` that will convert any supplied string-value to upper-case prior to insertion.
+A JPA attribute converter allows decoupling this type of behavior from the call site, allowing reuse of a common behavior.
+====
+
+With the configuration in the application's `.properties` file and updating of `OrderCreateedEvent` to provide these additional fields and values,
+the {prodname} Outbox SMT now can access these additional field values and place them in the emitted event.
+
+== Configuration
+
+The Outbox extension can be configured by setting options in the Quarkus `application.properties` file.
+The extension works out-of-the-box with a default configuration, but this configuration may not be ideal for every situation.
+
+=== Build time configuration options
+
+[cols="65%a,>12%a,>23%"]
+|===
+|Configuration property
+|Type
+|Default
+
+|[[quarkus-debezium-outbox-table-name]]<<quarkus-debezium-outbox-table-name,`+quarkus.debezium-outbox.table-name+`>>::
+The table name to be used when creating the outbox table.
+|string
+|OutboxEvent
+
+
+|[[quarkus-debezium-outbox-id-name]]<<quarkus-debezium-outbox-id-name,`+quarkus.debezium-outbox.id.name+`>>::
+The column name for the event id column. +
+for example, `uuid`
+|string
+|`id`
+
+|[[quarkus-debezium-outbox-id-column-definition]]<<quarkus-debezium-outbox-id-column-definition,`+quarkus.debezium-outbox.id.column-definition+`>>::
+The database-specific column definition for the event id column. +
+for example, `uuid not null`
+|string
+|`UUID NOT NULL`
+
+|[[quarkus-debezium-outbox-aggregate-id-name]]<<quarkus-debezium-outbox-aggregate-id-name,`+quarkus.debezium-outbox.aggregate-id.name+`>>::
+The column name for the event key column.
+|string
+|`aggregateid`
+
+|[[quarkus-debezium-outbox-aggregate-id-column-definition]]<<quarkus-debezium-outbox-aggregate-id-column-definition,`+quarkus.debezium-outbox.aggregate-id.column-definition+`>>::
+The database-specific column definition for the aggregate id. +
+for example, `varchar(50) not null`
+|string
+|`VARCHAR(255) NOT NULL`
+
+|[[quarkus-debezium-outbox-aggregate-id-converter]]<<quarkus-debezium-outbox-aggregate-id-converter,`+quarkus.debezium-outbox.aggregate-id.converter+`>>::
+The JPA AttributeConverter for the event key column. +
+for example, `com.company.TheAttributeConverter`
+|string
+|
+
+|[[quarkus-debezium-outbox-aggregate-type-name]]<<quarkus-debezium-outbox-aggregate-type-name,`+quarkus.debezium-outbox.aggregate-type.name+`>>::
+The column name for the event aggregate type column.
+|string
+|`aggregatetype`
+
+|[[quarkus-debezium-outbox-aggregate-type-column-definition]]<<quarkus-debezium-outbox-aggregate-type-column-definition,`+quarkus.debezium-outbox.aggregate-type.column-definition+`>>::
+The database-specific column definition for the aggregate type. +
+for example, `varchar(15) not null`
+|string
+|`VARCHAR(255) NOT NULL`
+
+|[[quarkus-debezium-outbox-aggregate-type-converter]]<<quarkus-debezium-outbox-aggregate-type-converter,`+quarkus.debezium-outbox.aggregate-type.converter+`>>::
+The JPA AttributeConverter for the event aggregate type column. +
+for example, `com.company.TheAttributeConverter`
+|string
+|
+
+|[[quarkus-debezium-outbox-type-name]]<<quarkus-debezium-outbox-type-name,`+quarkus.debezium-outbox.type.name+`>>::
+The column name for the event type column.
+|string
+|`type`
+
+|[[quarkus-debezium-outbox-type-column-definition]]<<quarkus-debezium-outbox-type-column-definition,`+quarkus.debezium-outbox.type.column-definition+`>>::
+The database-specific column definition for the event type. +
+for example, `varchar(50) not null`
+|string
+|`VARCHAR(255) NOT NULL`
+
+|[[quarkus-debezium-outbox-type-converter]]<<quarkus-debezium-outbox-type-converter,`+quarkus.debezium-outbox.type.converter+`>>::
+The JPA AttributeConverter for the event type column. +
+for example, `com.company.TheAttributeConverter`
+|string
+|
+
+|[[quarkus-debezium-outbox-timestamp-name]]<<quarkus-debezium-outbox-timestamp-name,`+quarkus.debezium-outbox.timestamp.name+`>>::
+The column name for the event timestamp column.
+|string
+|`timestamp`
+
+|[[quarkus-debezium-outbox-timestamp-column-definition]]<<quarkus-debezium-outbox-timestamp-column-definition,`+quarkus.debezium-outbox.timestamp.column-definition+`>>::
+The database-specific column definition for the event timestamp. +
+for example, `timestamp not null`
+|string
+|`TIMESTAMP NOT NULL`
+
+|[[quarkus-debezium-outbox-timestamp-converter]]<<quarkus-debezium-outbox-timestamp-converter,`+quarkus.debezium-outbox.timestamp.converter+`>>::
+The JPA AttributeConverter for the event timestamp column. +
+for example, `com.company.TheAttributeConverter`
+|string
+|
+
+|[[quarkus-debezium-outbox-payload-name]]<<quarkus-debezium-outbox-payload-name,`+quarkus.debezium-outbox.payload.name+`>>::
+The column name for the event payload column.
+|string
+|`payload`
+
+|[[quarkus-debezium-outbox-payload-column-definition]]<<quarkus-debezium-outbox-payload-column-definition,`+quarkus.debezium-outbox.payload.column-definition+`>>::
+The database-specific column definition for the event payload. +
+for example, `text not null`
+|string
+|`VARCHAR(8000)`
+
+|[[quarkus-debezium-outbox-payload-converter]]<<quarkus-debezium-outbox-payload-converter,`+quarkus.debezium-outbox.payload.converter+`>>::
+The JPA AttributeConverter for the event payload column. +
+for example, `com.company.TheAttributeConverter`
+|string
+|
+
+|[[quarkus-debezium-outbox-payload-type]]<<quarkus-debezium-outbox-payload-type,`+quarkus.debezium-outbox.payload.type+`>>::
+A fully-qualified class name of a Hibernate https://docs.jboss.org/hibernate/orm/current/userguide/html_single/Hibernate_User_Guide.html#basic-custom-type[user type] implementation. +
+for example, `io.company.types.JsonNodeBinaryType`
+|string
+|
+
+|[[quarkus-debezium-outbox-tracing-span-name]]<<quarkus-debezium-outbox-tracing-span-name,`+quarkus.debezium-outbox.tracing-span.name+`>>::
+The column name for the tracing span context column.
+|string
+|`tracingspancontext`
+
+|[[quarkus-debezium-outbox-tracing-span-column-definition]]<<quarkus-debezium-outbox-tracing-span-column-definition,`+quarkus.debezium-outbox.tracingspancontext.column-definition+`>>::
+The database-specific column definition for the tracing span context column. +
+for example, `text not null`
+|string
+|`VARCHAR(256)`
+
+|[[quarkus-debezium-outbox-additional-fields]]<<quarkus-debezium-outbox-additional-fields,`+quarkus.debezium-outbox.additional-fields+`>>::
+A comma-separated list of additional field mappings that will be persisted in the outbox table. +
+ +
+See xref:#additional-field-mappings[additional field mappings] for details on format and usage.
+|string
+|
+
+|===
+
+[NOTE]
+====
+The build time configuration defaults will work with the Outbox Event Router SMT out of the box.
+When not using the default values, be sure that the SMT configuration matches.
+====
+
+=== Runtime configuration options
+
+[cols="65%a,>15%a,>20%"]
+|===
+|Configuration property
+|Type
+|Default
+
+|[[quarkus-debezium-outbox-remove-after-insert]]<<quarkus-debezium-outbox-remove-after-insert,`+quarkus.debezium-outbox.remove-after-insert+`>>::
+Whether the outbox entry is removed after having been inserted. +
++
+_The removal of the entry does not impact the {prodname} connector from being able to emit CDC events.
+This is used as a way to keep the table's underlying storage from growing over time._
+|boolean
+|true
+
+|===
+
+=== Distributed tracing
+
+The extension has support for the distributed tracing.
+See link:/documentation/reference/integrations/tracing[tracing documentation] for more details.

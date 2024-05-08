@@ -1,0 +1,2762 @@
+// Category: debezium-using
+// Type: assembly
+[id="debezium-connector-for-informix"]
+= {prodname} connector for Informix
+
+:context: informix
+:data-collection: table
+:database-port: 9088
+:mbean-name: {context}
+:connector-file: {context}
+:connector-class: InformixConnector
+:connector-name: Informix
+:include-list-example: public.inventory
+ifdef::community[]
+
+:toc:
+:toc-placement: macro
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+
+toc::[]
+endif::community[]
+
+{prodname}'s Informix connector can capture row-level changes in the tables of a Informix database.
+ifdef::community[]
+For information about the Informix Database versions that are compatible with this connector, see the link:https://debezium.io/releases/[{prodname} release overview].
+endif::community[]
+
+This connector is strongly inspired by the {prodname} implementation of IBM Db2, but uses the Informix Change Streams API for Java to capture transactional data.
+The Change Data Capture API captures data from databases that have full row logging enabled and captures transactions from the current logical log.
+The API processes all transactions sequentially.
+
+The first time that a {prodname} Informix connector connects to an Informix database, the connector reads a consistent snapshot of the tables for which the connector is configured to capture changes.
+By default, the connector captures changes from all non-system tables.
+To customize snapshot behavior, you can set configuration properties to specify the tables to include or exclude in the snapshot.
+
+After the snapshot completes, the connector begins to emit change events for updates that are committed to tables that are in capture mode.
+By default, change events for a particular table go to a Kafka topic that has the same name as the table. Applications and services can then consume change event records from these topics.
+
+[NOTE]
+====
+The connector requires the use of the Informix Change Streams API for Java, which is packaged as part of the Informix JDBC installation and is available on Maven Central alongside the latest JDBC drivers.
+====
+
+ifdef::community[]
+The Informix connector has been tested with Informix for Linux.
+It is expected that the connector would also work on other platforms such as Windows,
+and we'd love to get your feedback if you can confirm this to be the case.
+endif::community[]
+
+// Type: concept
+// Title: Overview of {prodname} Informix connector
+// ModuleID: overview-of-debezium-informix-connector
+[[informix-overview]]
+== Overview
+
+The {prodname} Informix connector is based on the link:https://www.ibm.com/docs/en/informix-servers/14.10?topic=api-change-data-capture[Informix Change Data Capture API] that enables Change Data Capture in Informix.
+
+The database administrator must prepare the database and the database server for using the Change Data Capture API. See link:https://www.ibm.com/docs/en/informix-servers/14.10?topic=api-preparing-use-change-data-capture[Preparing to use the Change Data Capture API].
+
+After you place tables in capture mode, the connector can read change stream records for each table update and generate change events from them.
+The connector emits a change event record for each row-level insert, update, and delete operation.
+By default, change events records are sent to a Kafka topic that has the same name as the source table.
+Optionally, you can customize the name of the target topic.
+Client applications read the Kafka topics that correspond to the database tables of interest and can react to each row-level change event.
+
+Typically, the database administrator puts a table into capture mode in the middle of the life of a table.
+This means that the connector does not have the complete history of all changes that have been made to the table.
+Therefore, when the Informix connector first connects to a particular Informix database, it starts by performing a _consistent snapshot_ of each table that is in capture mode.
+After the connector completes the snapshot, the connector streams change events from the point at which the snapshot was made.
+In this way, the connector starts with a consistent view of the tables that are in capture mode, and does not drop any changes that were made while it was performing the snapshot.
+
+{prodname} connectors are tolerant of failures.
+As the connector reads and produces change events, it records the log sequence number (LSN) of the change stream record.
+The LSN is the position of the change event in the database log.
+If the connector stops for any reason, including communication failures, network problems, or crashes, upon restarting it continues reading the change stream where it left off.
+This behavior also applies to snapshots.
+That is, if the snapshot was not complete when the connector stopped, after a restart, the connector begins a new snapshot.
+
+// Type: assembly
+// ModuleID: how-debezium-informix-connectors-work
+// Title: How {prodname} Informix connectors work
+[[how-the-informix-connector-works]]
+== How the connector works
+
+To optimally configure and run a {prodname} Informix connector, it is helpful to understand how the connector performs snapshots, streams change events, determines Kafka topic names, and handles schema changes.
+
+// Type: concept
+// ModuleID: how-debezium-informix-connectors-perform-database-snapshots
+// Title: How {prodname} Informix connectors perform database snapshots
+[[informix-snapshots]]
+=== Snapshots
+
+The Informix replication feature is not designed to store the complete history of database changes.
+As a result, the {prodname} Informix connector cannot retrieve the entire history of the database from the logs.
+To enable the connector to establish a baseline for the current state of the database, the first time that the connector starts, it performs an initial _consistent snapshot_ of the tables that are in capture mode.
+For each change that the snapshot captures, the connector emits a `read` event to the Kafka topic for the captured table.
+
+[[default-workflow-for-performing-an-initial-snapshot]]
+.Default workflow that the {prodname} Informix connector uses to perform an initial snapshot
+
+The following workflow lists the steps that {prodname} takes to create a snapshot.
+These steps describe the process for a snapshot when the xref:informix-property-snapshot-mode[`snapshot.mode`] configuration property is set to its default value, which is `initial`.
+You can customize the way that the connector creates snapshots by changing the value of the `snapshot.mode` property.
+If you configure a different snapshot mode, the connector completes the snapshot by using a modified version of this workflow.
+
+1. Establish a connection to the database.
+
+2. Determine which tables are in capture mode and should be included in the snapshot.
+   By default, the connector captures the data for all non-system tables.
+   After the snapshot completes, the connector continues to stream data for the specified tables.
+   If you want the connector to capture data only from specific tables, you can configure the connector to capture the data for a subset of tables or table elements by setting properties such as xref:{context}-property-table-include-list[`table.include.list`] or xref:{context}-property-table-exclude-list[`table.exclude.list`].
+
+3. Obtain a lock on each of the tables in capture mode.
+  This lock ensures that no schema changes can occur in those tables until the snapshot completes.
+  The level of the lock is determined by the value of the xref:informix-property-snapshot-isolation-mode[`snapshot.isolation.mode`] connector configuration property.
+
+4. Read the highest (most recent) LSN position in the server's transaction log.
+
+5. Capture the schema of all tables or all tables that are designated for capture.
+The connector persists schema information in its internal database schema history topic.
+The schema history provides information about the structure that is in effect when a change event occurs. +
++
+[NOTE]
+====
+By default, the connector captures the schema of every table in the database that is in capture mode, including tables that are not configured for capture.
+If tables are not configured for capture, the initial snapshot captures only their structure; it does not capture any table data.
+
+For more information about why snapshots persist schema information for tables that you did not include in the initial snapshot, see xref:understanding-why-initial-snapshots-capture-the-schema-history-for-all-tables[Understanding why initial snapshots capture the schema for all tables].
+====
+
+6. Release any locks obtained in Step 3.
+  Other database clients can now write to any previously locked tables.
+
+7. At the LSN position read in Step 4, the connector scans the tables that are designated for capture.
+  During the scan, the connector completes the following tasks:
+
+.. Confirms that the table was created before the snapshot began.
+  If the table was created after the snapshot began, the connector skips the table.
+  After the snapshot is complete, and the connector transitions to streaming, it emits change events for any tables that were created after the snapshot began.
+
+.. Produces a `read` event for each row that is captured from a table.
+  All `read` events contain the same LSN position, which is the LSN position that was obtained in step 4.
+
+.. Emits each `read` event to the Kafka topic for the source table.
+
+.. Releases data table locks, if applicable.
+
+8. Record the successful completion of the snapshot in the connector offsets.
+
+The resulting initial snapshot captures the current state of each row in the captured tables.
+From this baseline state, the connector captures subsequent changes as they occur.
+
+After the snapshot process begins, if the process is interrupted due to connector failure, rebalancing, or other reasons, the process restarts after the connector restarts.
+
+After the connector completes the initial snapshot, it continues streaming from the position that it read in Step 4 so that it does not miss any updates.
+
+If the connector stops again for any reason, after it restarts, it resumes streaming changes from where it previously left off.
+
+[id="informix-connector-snapshot-mode-options"]
+.Settings for `snapshot.mode` connector configuration property
+[cols="30%a,70%a",options="header"]
+|===
+|Setting |Description
+|`always`
+|The connector performs a snapshot every time that it starts.
+After the snapshot completes, the connector begins to stream event records for subsequent database changes.
+|`initial`
+|The connector performs a database snapshot as described in the xref:default-workflow-for-performing-an-initial-snapshot[default workflow for creating an initial snapshot].
+After the snapshot completes, the connector begins to stream event records for subsequent database changes.
+|`initial_only`
+|The connector performs a database snapshot.
+After the snapshot completes, the connector stops, and does not stream event records for subsequent database changes.
+|`schema_only`
+|Deprecated, see `no_data`.
+|`no_data`
+|The connector captures the structure of all relevant tables, performing all the steps described in the xref:default-workflow-for-performing-an-initial-snapshot[default snapshot workflow], except that it does not create `READ` events to represent the data set at the point of the connector's start-up (Step 7.b).
+|`recovery`
+|Set this option to restore a database schema history topic that is lost or corrupted.
+After a restart, the connector runs a snapshot that rebuilds the topic from the source tables.
+You can also set the property to periodically prune a database schema history topic that experiences unexpected growth. +
++
+WARNING: Do not use this mode to perform a snapshot if schema changes were committed to the database after the last connector shutdown.
+|`when_needed`
+|After the connector starts, it performs a snapshot only if it detects one of the following circumstances:
+* It cannot detect any topic offsets.
+* A previously recorded offset specifies a log position that is not available on the server.
+
+ifdef::community[]
+|`configuration_based`
+|Set the snapshot mode to `configuration_based` to control snapshot behavior through the set of connector properties that have the prefix 'snapshot.mode.configuration.based'.
+endif::community[]
+
+ifdef::community[]
+|`custom`
+|The `custom` snapshot mode lets you inject your own implementation of the `io.debezium.spi.snapshot.Snapshotter` interface.
+endif::community[]
+
+|===
+
+
+// ModuleID: informix-description-of-why-initial-snapshots-capture-the-schema-history-for-all-tables
+// Title: Description of why initial snapshots capture the schema history for all tables
+// Type: concept
+[id="understanding-why-initial-snapshots-capture-the-schema-history-for-all-tables"]
+==== Understanding why initial snapshots capture the schema history for all tables
+
+The initial snapshot that a connector runs captures two types of information:
+
+Table data::
+Information about `INSERT`, `UPDATE`, and `DELETE` operations in tables that are named in the connector's xref:{context}-property-table-include-list[`table.include.list`] property.
+Schema data::
+DDL statements that describe the structural changes that are applied to tables.
+Schema data is persisted to both the internal schema history topic, and to the connector's schema change topic, if one is configured.
+
+After you run an initial snapshot, you might notice that the snapshot captures schema information for tables that are not designated for capture.
+By default, initial snapshots are designed to capture schema information for every table that is present in the database, not only from tables that are designated for capture.
+Connectors require that the table's schema is present in the schema history topic before they can capture a table.
+By enabling the initial snapshot to capture schema data for tables that are not part of the original capture set, {prodname} prepares the connector to readily capture event data from these tables should that later become necessary.
+If the initial snapshot does not capture a table's schema, you must add the schema to the history topic before the connector can capture data from the table.
+
+In some cases, you might want to limit schema capture in the initial snapshot.
+This can be useful when you want to reduce the time required to complete a snapshot.
+Or when {prodname} connects to the database instance through a user account that has access to multiple logical databases, but you want the connector to capture changes only from tables in a specific logic database.
+
+.Additional information
+* xref:{context}-capturing-data-from-tables-not-captured-by-the-initial-snapshot[Capturing data from tables not captured by the initial snapshot (no schema change)]
+* xref:{context}-capturing-data-from-new-tables-with-schema-changes[Capturing data from tables not captured by the initial snapshot (schema change)]
+* Setting the xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.store.only.captured.tables.ddl`] property to specify the tables from which to capture schema information.
+* Setting the xref:{context}-property-database-history-store-only-captured-databases-ddl[`schema.history.internal.store.only.captured.databases.ddl`] property to specify the logical databases from which to capture schema changes.
+
+// Type: procedure
+[id="informix-capturing-data-from-tables-not-captured-by-the-initial-snapshot"]
+==== Capturing data from tables not captured by the initial snapshot (no schema change)
+
+In some cases, you might want the connector to capture data from a table whose schema was not captured by the initial snapshot.
+Depending on the connector configuration, the initial snapshot might capture the table schema only for specific tables in the database.
+If the table schema is not present in the history topic, the connector fails to capture the table, and reports a missing schema error.
+
+You might still be able to capture data from the table, but you must perform additional steps to add the table schema.
+
+.Prerequisites
+
+* You want to capture data from a table with a schema that the connector did not capture during the initial snapshot.
+* No schema changes were applied to the table between the LSNs of the earliest and latest change table entry that the connector reads.
+For information about capturing data from a new table that has undergone structural changes, see xref:informix-capturing-data-from-new-tables-with-schema-changes[].
+
+.Procedure
+
+1. Stop the connector.
+2. Remove the internal database schema history topic that is specified by the xref:{context}-property-database-history-kafka-topic[`schema.history.internal.kafka.topic property`].
+3. Clear the offsets in the configured Kafka Connect link:{link-kafka-docs}/#connectconfigs_offset.storage.topic[`offset.storage.topic`].
+For more information about how to remove offsets, see the link:https://debezium.io/documentation/faq/#how_to_remove_committed_offsets_for_a_connector[{prodname} community FAQ].
++
+[WARNING]
+====
+Removing offsets should be performed only by advanced users who have experience in manipulating internal Kafka Connect data.
+This operation is potentially destructive, and should be performed only as a last resort.
+====
+4. Apply the following changes to the connector configuration:
+.. (Optional) Set the value of xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.captured.tables.ddl`] to `false`.
+This setting causes the snapshot to capture the schema for all tables, and guarantees that, in the future, the connector can reconstruct the schema history for all tables. +
++
+[NOTE]
+====
+Snapshots that capture the schema for all tables require more time to complete.
+====
+.. Add the tables that you want the connector to capture to xref:{context}-property-table-include-list[`table.include.list`].
+.. Set the xref:{context}-property-snapshot-mode[`snapshot.mode`] to one of the following values:
+`initial`:: When you restart the connector, it takes a full snapshot of the database that captures the table data and table structures. +
+If you select this option, consider setting the value of the xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.captured.tables.ddl`] property to `false` to enable the connector to capture the schema of all tables.
+`schema_only`:: When you restart the connector, it takes a snapshot that captures only the table schema.
+Unlike a full data snapshot, this option does not capture any table data.
+Use this option if you want to restart the connector more quickly than with a full snapshot.
+
+5. Restart the connector.
+The connector completes the type of snapshot specified by the `snapshot.mode`.
+6. (Optional) If the connector performed a `schema_only` snapshot, after the snapshot completes, initiate an xref:debezium-informix-incremental-snapshots[incremental snapshot] to capture data from the tables that you added.
+The connector runs the snapshot while it continues to stream real-time changes from the tables.
+Running an incremental snapshot captures the following data changes:
++
+* For tables that the connector previously captured, the incremental snapsot captures changes that occur while the connector was down, that is, in the interval between the time that the connector was stopped, and the current restart.
+* For newly added tables, the incremental snapshot captures all existing table rows.
+
+// Type: procedure
+[id="informix-capturing-data-from-new-tables-with-schema-changes"]
+==== Capturing data from tables not captured by the initial snapshot (schema change)
+
+If a schema change is applied to a table, records that are committed before the schema change have different structures than those that were committed after the change.
+When {prodname} captures data from a table, it reads the schema history to ensure that it applies the correct schema to each event.
+If the schema is not present in the schema history topic, the connector is unable to capture the table, and an error results.
+
+If you want to capture data from a table that was not captured by the initial snapshot, and the schema of the table was modified, you must add the schema to the history topic, if it is not already available.
+You can add the schema by running a new schema snapshot, or by running an initial snapshot for the table.
+
+.Prerequisites
+* You want to capture data from a table with a schema that the connector did not capture during the initial snapshot.
+* A schema change was applied to the table so that the records to be captured do not have a uniform structure.
+
+.Procedure
+
+Initial snapshot captured the schema for all tables (`store.only.captured.tables.ddl` was set to `false`)::
+1. Edit the xref:{context}-property-table-include-list[`table.include.list`] property to specify the tables that you want to capture.
+2. Restart the connector.
+3. Initiate an xref:debezium-informix-incremental-snapshots[incremental snapshot] if you want to capture existing data from the newly added tables.
+
+Initial snapshot did not capture the schema for all tables (`store.only.captured.tables.ddl` was set to `true`)::
+If the initial snapshot did not save the schema of the table that you want to capture, complete one of the following procedures:
+
+Procedure 1: Schema snapshot, followed by incremental snapshot:::
+In this procedure, the connector first performs a schema snapshot.
+You can then initiate an incremental snapshot to enable the connector to synchronize data.
+1. Stop the connector.
+2. Remove the internal database schema history topic that is specified by the xref:{context}-property-database-history-kafka-topic[`schema.history.internal.kafka.topic property`].
+3. Clear the offsets in the configured Kafka Connect link:{link-kafka-docs}/#connectconfigs_offset.storage.topic[`offset.storage.topic`].
+For more information about how to remove offsets, see the link:https://debezium.io/documentation/faq/#how_to_remove_committed_offsets_for_a_connector[{prodname} community FAQ].
++
+[WARNING]
+====
+Removing offsets should be performed only by advanced users who have experience in manipulating internal Kafka Connect data.
+This operation is potentially destructive, and should be performed only as a last resort.
+====
+4. Set values for properties in the connector configuration as described in the following steps:
+.. Set the value of the xref:{context}-property-snapshot-mode[`snapshot.mode`] property to `schema_only`.
+.. Edit the xref:{context}-property-table-include-list[`table.include.list`] to add the tables that you want to capture.
+5. Restart the connector.
+6. Wait for {prodname} to capture the schema of the new and existing tables.
+Data changes that occurred any tables after the connector stopped are not captured.
+7. To ensure that no data is lost, initiate an xref:debezium-informix-incremental-snapshots[incremental snapshot].
+
+Procedure 2: Initial snapshot, followed by optional incremental snapshot:::
+In this procedure the connector performs a full initial snapshot of the database.
+As with any initial snapshot, in a database with many large tables, running an initial snapshot can be a time-consuming operation.
+After the snapshot completes, you can optionally trigger an incremental snapshot to capture any changes that occur while the connector is off-line.
+
+1. Stop the connector.
+2. Remove the internal database schema history topic that is specified by the xref:{context}-property-database-history-kafka-topic[`schema.history.internal.kafka.topic property`].
+3. Clear the offsets in the configured Kafka Connect link:{link-kafka-docs}/#connectconfigs_offset.storage.topic[`offset.storage.topic`].
+For more information about how to remove offsets, see the link:https://debezium.io/documentation/faq/#how_to_remove_committed_offsets_for_a_connector[{prodname} community FAQ].
++
+[WARNING]
+====
+Removing offsets should be performed only by advanced users who have experience in manipulating internal Kafka Connect data.
+This operation is potentially destructive, and should be performed only as a last resort.
+====
+4. Edit the xref:{context}-property-table-include-list[`table.include.list`] to add the tables that you want to capture.
+5. Set values for properties in the connector configuration as described in the following steps:
+.. Set the value of the xref:{context}-property-snapshot-mode[`snapshot.mode`] property to `initial`.
+.. (Optional) Set xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.store.only.captured.tables.ddl`] to `false`.
+6. Restart the connector.
+The connector takes a full database snapshot.
+After the snapshot completes, the connector transitions to streaming.
+7. (Optional) To capture any data that changed while the connector was off-line, initiate an xref:debezium-informix-incremental-snapshots[incremental snapshot].
+
+// Type: concept
+// ModuleID: debezium-informix-ad-hoc-snapshots
+[id="informix-ad-hoc-snapshots"]
+=== Ad hoc snapshots
+
+include::{partialsdir}/modules/all-connectors/con-connector-ad-hoc-snapshots.adoc[leveloffset=+1]
+
+// Type: assembly
+// ModuleID: debezium-informix-incremental-snapshots
+[id="debezium-informix-incremental-snapshots"]
+=== Incremental snapshots
+
+include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+1]
+
+[WARNING]
+====
+The {prodname} connector for Informix does not support schema changes while an incremental snapshot is running.
+====
+
+// Type: procedure
+// ModuleID: debezium-informix-triggering-an-incremental-snapshot
+[id="informix-triggering-an-incremental-snapshot"]
+==== Triggering an incremental snapshot
+
+include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-sql.adoc[leveloffset=+1]
+
+// Type: procedure
+// ModuleID: debezium-informix-using-the-kafka-signaling-channel-to-trigger-an-incremental-snapshot
+[id="informix-triggering-an-incremental-snapshot-kafka"]
+==== Using the Kafka signaling channel to trigger an incremental snapshot
+
+include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-kafka.adoc[leveloffset=+1]
+
+// Type: procedure
+// ModuleID: debezium-informix-stopping-an-incremental-snapshot
+[id="informix-stopping-an-incremental-snapshot"]
+==== Stopping an incremental snapshot
+
+include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot-sql.adoc[leveloffset=+1]
+
+// Type: procedure
+// ModuleID: debezium-informix-using-the-kafka-signaling-channel-to-stop-an-incremental-snapshot
+[id="informix-stopping-an-incremental-snapshot-kafka"]
+==== Using the Kafka signaling channel to stop an incremental snapshot
+
+include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot-kafka.adoc[leveloffset=+1]
+
+ifdef::community[]
+[[connector-custom-snapshot]]
+=== Custom snapshotter SPI
+include::{partialsdir}/modules/all-connectors/custom-snapshotter-spi.adoc[leveloffset=+3]
+endif::community[]
+
+// Type: concept
+[id="informix-blocking-snapshots"]
+=== Blocking snapshots
+
+include::{partialsdir}/modules/all-connectors/con-connector-blocking-snapshot.adoc[leveloffset=+3]
+
+// Type: concept
+// Title: How {prodname} Informix connectors read change stream records
+[id="how-debezium-informix-connectors-read-change-stream-records"]
+=== Change stream records
+
+After a complete snapshot, when a {prodname} Informix connector starts for the first time, the connector starts consuming change stream records for the source tables that are in capture mode.
+The connector does the following:
+
+. Reads available change records from the current LSN.
+. Groups records by transaction Id and orders them according to the change LSN for each record.
+. Processes records as transactions are committed.
+. Passes begin, commit and change LSNs as offsets to Kafka Connect.
+. Stores the highest commit LSN and the lowest, uncommitted begin LSN that the connector passed to Kafka Connect.
+
+After a restart, the connector resumes emitting change events from the offset (begin, commit and change LSNs) where it left off. It does so by:
+
+. Reading change records that were created between the last stored, lowest uncommitted begin LSN and the current LSN.
+. Grouping records by transaction Id and ordering them according to the change LSN for each event.
+. Discarding already processed transactions (commit LSN lower than last stored commit LSN).
+. Discarding already processed records of the last incompletely processed transaction, if any (change LSN lower than last stored change LSN and commit LSN equal to last stored commit LSN).
+. Processes the remaining records of any incompletely processed transaction.
+. Continues processing records as transactions are committed.
+
+// Type: concept
+// ModuleID: default-names-of-kafka-topics-that-receive-informix-change-event-records
+// Title: Default names of Kafka topics that receive {prodname} Informix change event records
+[[informix-topic-names]]
+=== Topic names
+
+By default, the Informix connector writes change events for all of the `INSERT`, `UPDATE`, and `DELETE` operations that occur in a table to a single Apache Kafka topic that is specific to that table.
+The connector uses the following convention to name change event topics:
+
+_topicPrefix_._schemaName_._tableName_
+
+The following list provides definitions for the components of the default name:
+
+_topicPrefix_:: The topic prefix as specified by the xref:informix-property-topic-prefix[`topic.prefix`] connector configuration property.
+
+_schemaName_:: The name of the schema in which the operation occurred.
+
+_tableName_:: The name of the table in which the operation occurred.
+
+For example, consider an Informix installation with a `mydatabase` database that contains the following tables in the `myschema` schema:
+
+ * `products`
+ * `products_on_hand`
+ * `customers`
+ * `orders`
+
+ The connector would emit events to the following Kafka topics:
+
+* `mydatabase.myschema.products`
+* `mydatabase.myschema.products_on_hand`
+* `mydatabase.myschema.customers`
+* `mydatabase.myschema.orders`
+
+The connector applies similar naming conventions to label its internal database schema history topics, xref:about-the-debezium-informix-connector-schema-change-topic[schema change topics], and xref:informix-transaction-metadata[transaction metadata topics].
+
+If the default topic names do not meet your requirements, you can configure custom topic names.
+To configure custom topic names, you specify regular expressions in the logical topic routing SMT.
+For more information about using the logical topic routing SMT to customize topic naming, see {link-prefix}:{link-topic-routing}#topic-routing[Topic routing].
+
+// Type: concept
+// ModuleID: how-debezium-informix-connectors-handle-database-schema-changes
+// Title: How {prodname} Informix connectors handle database schema changes
+[[informix-schema-history-topic]]
+=== Schema history topic
+
+When a database client queries a database, the client uses the database’s current schema.
+However, the database schema can be changed at any time, which means that the connector must be able to identify what the schema was at the time that each insert, update, or delete operation was recorded.
+Also, a connector cannot necessarily apply the current schema to every event.
+If an event is relatively old, it's possible that it was recorded before the current schema was applied.
+
+To ensure correct processing of events that occur after a schema change, the {prodname} Informix connector stores a snapshot of the new schema based on the structures of the Informix change data tables, which mirror the structures of their associated data tables.
+The connector stores the table schema information, together with the LSN of operations the result in schema changes, in the database schema history Kafka topic.
+The connector uses the stored schema representation to produce change events that correctly mirror the structure of tables at the time of each insert, update, or delete operation.
+
+When the connector restarts after either a crash or a graceful stop, it resumes reading entries in the Informix change data tables from the last position that it read.
+Based on the schema information that the connector reads from the database schema history topic, the connector applies the table structures that existed at the position where the connector restarts.
+
+If you update the schema of an Informix table that is in capture mode, it's important that you also update the schema of the corresponding change table.
+You must be a Informix database administrator with elevated privileges to update database schema.
+For more information about how to update Informix database schema in {prodname} environments, see xref:informix-schema-evolution[Schema history evolution].
+
+The database schema history topic is for internal connector use only.
+Optionally, the connector can also xref:about-the-debezium-informix-connector-schema-change-topic[emit schema change events to a different topic that is intended for consumer applications].
+
+.Additional resources
+
+* xref:informix-topic-names[Default names for topics] that receive {prodname} event records.
+
+// Type: concept
+// Title: About the {prodname} Informix connector schema change topic
+[id="about-the-debezium-informix-connector-schema-change-topic"]
+=== Schema change topic
+
+You can configure a {prodname} Informix connector to produce schema change events that describe schema changes that are applied to tables in the database.
+
+{prodname} emits a message to the schema change topic after the following operations occur in the source database:
+
+* You enable {prodname} to capture changes from a new table.
+* You disable capture for a table from which {prodname} previously captured changes.
+
+The connector writes schema change events to a Kafka schema change topic that has the name `_<topicPrefix>_` where `_<topicPrefix>_` is the topic prefix that is specified in the xref:informix-property-topic-prefix[`topic.prefix`] connector configuration property.
+
+The schema for the schema change event has the following elements:
+
+`name`:: The name of the schema change event message.
+`type`:: The type of the change event message.
+`version`:: The version of the schema. The version is an integer that is incremented each time the schema is changed.
+`fields`:: The fields that are included in the change event message.
+
+.Example: Schema of the Informix connector schema change topic
+The following example shows a typical schema in JSON format.
+
+[source,json,indent=0,subs="+attributes"]
+----
+{
+  "schema": {
+    "type": "struct",
+    "fields": [
+      {
+        "type": "string",
+        "optional": false,
+        "field": "databaseName"
+      }
+    ],
+    "optional": false,
+    "name": "io.debezium.connector.informix.SchemaChangeKey",
+    "version": 1
+  },
+  "payload": {
+    "databaseName": "inventory"
+  }
+}
+----
+
+Messages that the connector sends to the schema change topic contain a payload that includes the following elements:
+
+`databaseName`:: The name of the database to which the statements are applied.
+The value of `databaseName` serves as the message key.
+`pos`:: The position in the transaction log where the statements appear.
+`tableChanges`::  A structured representation of the entire table schema after the schema change.
+The `tableChanges` field contains an array that includes entries for each column of the table.
+Because the structured representation presents data in JSON or Avro format, consumers can easily read messages without first processing them through a DDL parser.
+
+[IMPORTANT]
+====
+For a table that is in capture mode, the connector not only stores the history of schema changes in the schema change topic, but also in an internal database schema history topic.
+The internal database schema history topic is for connector use only and it is not intended for direct use by consuming applications.
+Ensure that applications that require notifications about schema changes consume that information only from the schema change topic.
+====
+
+[IMPORTANT]
+====
+Never partition the database schema history topic.
+For the database schema history topic to function correctly, it must maintain a consistent, global order of the event records that the connector emits to it.
+
+To ensure that the topic is not split among partitions, set the partition count for the topic by using one of the following methods:
+
+* If you create the database schema history topic manually, specify a partition count of `1`.
+* If you use the Apache Kafka broker to create the database schema history topic automatically, the topic is created, set the value of the link:{link-kafka-docs}/#brokerconfigs_num.partitions[Kafka `num.partitions`] configuration option to `1`.
+====
+
+[WARNING]
+====
+The format of messages that a connector emits to its schema change topic is in an incubating state and can change without notice.
+====
+
+.Example: Message emitted to the Informix connector schema change topic
+The following example shows a message in the schema change topic.
+The message contains a logical representation of the table schema.
+
+[source,json,indent=0,subs="+attributes"]
+----
+{
+  "schema": {
+  ...
+  },
+  "payload": {
+    "source": {
+      "version": "{debezium-version}",
+      "connector": "informix",
+      "name": "informix",
+      "ts_ms": 1588252618953,
+      "snapshot": "true",
+      "db": "testdb",
+      "schema": "informix",
+      "table": "customers",
+      "commit_lsn": "0",
+      "change_lsn": "0",
+      "txId": null,
+      "begin_lsn": "0"
+    },
+    "ts_ms": 1588252618953, // <1>
+    "databaseName": "testdb", // <2>
+    "schemaName": "informix",
+    "ddl": null, // <3>
+    "tableChanges": [ // <4>
+      {
+        "type": "CREATE", // <5>
+        "id": "\"testdb\".\"informix\".\"customers\"", // <6>
+        "table": { // <7>
+          "defaultCharsetName": null,
+          "primaryKeyColumnNames": [ // <8>
+            "id"
+          ],
+          "columns": [ // <9>
+            {
+              "name": "id",
+              "jdbcType": 4,
+              "nativeType": null,
+              "typeName": "int identity",
+              "typeExpression": "int identity",
+              "charsetName": null,
+              "length": 10,
+              "scale": 0,
+              "position": 1,
+              "optional": false,
+              "autoIncremented": false,
+              "generated": false
+            },
+            {
+              "name": "first_name",
+              "jdbcType": 12,
+              "nativeType": null,
+              "typeName": "varchar",
+              "typeExpression": "varchar",
+              "charsetName": null,
+              "length": 255,
+              "scale": null,
+              "position": 2,
+              "optional": false,
+              "autoIncremented": false,
+              "generated": false
+            },
+            {
+              "name": "last_name",
+              "jdbcType": 12,
+              "nativeType": null,
+              "typeName": "varchar",
+              "typeExpression": "varchar",
+              "charsetName": null,
+              "length": 255,
+              "scale": null,
+              "position": 3,
+              "optional": false,
+              "autoIncremented": false,
+              "generated": false
+            },
+            {
+              "name": "email",
+              "jdbcType": 12,
+              "nativeType": null,
+              "typeName": "varchar",
+              "typeExpression": "varchar",
+              "charsetName": null,
+              "length": 255,
+              "scale": null,
+              "position": 4,
+              "optional": false,
+              "autoIncremented": false,
+              "generated": false
+            }
+          ],
+          "attributes": [ // <10>
+            {
+              "customAttribute": "attributeValue"
+            }
+          ]
+        }
+      }
+    ]
+  }
+}
+----
+
+.Descriptions of fields in messages emitted to the schema change topic
+[cols="1,3,6",options="header"]
+|===
+|Item |Field name |Description
+
+|1
+|`ts_ms`
+|Optional field that displays the time at which the connector processed the event.
+The time is based on the system clock in the JVM running the Kafka Connect task.
+
+In the source object, `ts_ms` indicates the time that the change was made in the database.
+To determine the time lag between when a change occurs at the source database and when {prodname} processes the change, compare the values for `payload.source.ts_ms` and `payload.ts_ms`.
+
+|2
+|`databaseName` +
+`schemaName`
+|Identifies the database and the schema that contain the change.
+
+|3
+|`ddl`
+|Always `null` for the Informix connector.
+For other connectors, this field contains the DDL responsible for the schema change.
+This DDL is not available to Informix connectors.
+
+|4
+|`tableChanges`
+|An array of one or more items that contain the schema changes generated by a DDL command.
+
+|5
+|`type`
+a|Describes the type of change.
+The field contains one of the following values:
+[horizontal]
+`CREATE`:: A table was created.
+`ALTER`:: A table was modified.
+`DROP`:: A table was deleted.
+
+|6
+|`id`
+|Full identifier of the table that was created, altered, or dropped.
+
+|7
+|`table`
+|Represents table metadata after the applied change.
+
+|8
+|`primaryKeyColumnNames`
+|List of columns that comprise the table's primary key.
+
+|9
+|`columns`
+|Metadata for each column in the changed table.
+
+|10
+|`attributes`
+|Custom attribute metadata for each table change.
+
+|===
+
+In messages that the connector sends to the schema change topic, the message key is the name of the database that contains the schema change.
+In the following example, the `payload` field contains the key:
+
+[source,json,indent=0,subs="+attributes"]
+----
+{
+  "schema": {
+    "type": "struct",
+    "fields": [
+      {
+        "type": "string",
+        "optional": false,
+        "field": "databaseName"
+      }
+    ],
+    "optional": false,
+    "name": "io.debezium.connector.informix.SchemaChangeKey",
+    "version": 1
+  },
+  "payload": {
+    "databaseName": "testdb"
+  }
+}
+----
+
+
+// Type: concept
+// ModuleID: debezium-informix-connector-generated-events-that-represent-transaction-boundaries
+// Title: {prodname} Informix connector-generated events that represent transaction boundaries
+[[informix-transaction-metadata]]
+=== Transaction metadata
+
+{prodname} can generate events that represent transaction boundaries and that enrich change event messages.
+
+[NOTE]
+.Limits on when {prodname} receives transaction metadata
+====
+{prodname} registers and receives metadata only for transactions that occur after you deploy the connector.
+Metadata for transactions that occur before you deploy the connector is not available.
+====
+
+{prodname} generates transaction boundary events for the `BEGIN` and `END` delimiters in every transaction.
+Transaction boundary events contain the following fields:
+
+`status`:: `BEGIN` or `END`.
+`id`:: String representation of the unique transaction identifier composed of Informix transaction ID itself and LSN of given operation separated by colon, i.e. the format is `txID:LSN`.
+`ts_ms`:: The time of a transaction boundary event (`BEGIN` or `END` event) at the data source.
+If the data source does not provide {prodname} with the event time, then the field instead represents the time at which {prodname} processes the event.
+`event_count` (for `END` events):: Total number of events emmitted by the transaction.
+`data_collections` (for `END` events):: An array of pairs of `data_collection` and `event_count` elements that indicates the number of events that the connector emits for changes that originate from a data collection.
+
+.Example
+
+[source,json,indent=0,subs="+attributes"]
+----
+{
+  "status": "BEGIN",
+  "id": "571:53195829",
+  "ts_ms": 1486500577125,
+  "event_count": null,
+  "data_collections": null
+}
+
+{
+  "status": "END",
+  "id": "571:53195832",
+  "ts_ms": 1486500577691,
+  "event_count": 2,
+  "data_collections": [
+    {
+      "data_collection": "testdb.informix.tablea",
+      "event_count": 1
+    },
+    {
+      "data_collection": "testdb.informix.tableb",
+      "event_count": 1
+    }
+  ]
+}
+----
+
+By default, the connector emits transaction events to the xref:informix-property-topic-prefix[`_<topic.prefix>_`]`.transaction` topic.
+You can override the default setting by changing the value of the xref:informix-property-topic-transaction[`topic.transaction`] property.
+
+.Data change event enrichment
+
+When transaction metadata is enabled, the connector enriches the change event `Envelope` with a new `transaction` field.
+This field provides information about every event in the form of a composite of fields:
+
+`id`:: String representation of unique transaction identifier.
+`total_order`:: The absolute position of the event among all events generated by the transaction.
+`data_collection_order`:: The per-data collection position of the event among all events that were emitted by the transaction.
+
+Following is an example of a message:
+
+[source,json,indent=0,subs="+attributes"]
+----
+{
+  "before": null,
+  "after": {
+    "pk": "2",
+    "aa": "1"
+  },
+  "source": {
+    ...
+  },
+  "op": "c",
+  "ts_ms": "1580390884335",
+  "ts_us": "1580390884335641",
+  "ts_ns": "1580390884335641387",
+  "transaction": {
+    "id": "571:53195832",
+    "total_order": "1",
+    "data_collection_order": "1"
+  }
+}
+----
+
+// Type: assembly
+// ModuleID: descriptions-of-debezium-informix-connector-data-change-events
+// Title: Descriptions of {prodname} Informix connector data change events
+[[informix-events]]
+== Data change events
+
+The {prodname} Informix connector generates a data change event for each row-level `INSERT`, `UPDATE`, and `DELETE` operation.
+Each event contains a key and a value.
+The structure of the key and the value depends on the table that was changed.
+
+{prodname} and Kafka Connect are designed for processing _continuous streams of event messages_.
+However, because the structure of these events might change over time, consumers might encounter difficulties when processing some {prodname} events.
+To address this challenge, each event is designed to be self-contained.
+That is, the event contains either the schema for its content, or, in environments that use a schema registry, a schema ID that the consumer can use to obtain the schema from the registry.
+
+The JSON structure in the following example shows how a typical {prodname} event record represents the four basic four components of change event.
+The exact representation an event depends on the Kafka Connect converter that you configure for use with your application.
+A `schema` field is present in a change event only when you configure the converter to produce it.
+Likewise, the event key and event payload are present a change event only if you configure the converter to produce them.
+If you use the JSON converter, and you configure it to produce all four basic change event parts, change events have the following structure:
+
+[source,json,index=0]
+----
+{
+ "schema": { // <1>
+   ...
+  },
+ "payload": { // <2>
+   ...
+ },
+ "schema": { // <3>
+   ...
+ },
+ "payload": { // <4>
+   ...
+ },
+}
+----
+
+.Overview of change event basic content
+[cols="1,2,7",options="header"]
+|===
+|Item |Field name |Description
+
+|1
+|`schema`
+|The first `schema` field is part of the event key.
+It specifies a Kafka Connect schema that describes what is in the event key's `payload` portion.
+In other words, for tables in which a change occurs, the first `schema` field describes the structure of the primary key, or of the table's unique key if no primary key is defined. +
+ +
+It is possible to override the table's primary key by setting the xref:informix-property-message-key-columns[`message.key.columns` connector configuration property]. In this case, the first schema field describes the structure of the key identified by that property.
+
+|2
+|`payload`
+|The first `payload` field is part of the event key.
+It has the structure described by the preceding `schema` field, and it contains the key for the row that was changed.
+
+|3
+|`schema`
+|The second `schema` field is part of the event value.
+It specifies the Kafka Connect schema that describes what is in the event value's `payload` portion.
+In other words, the second `schema` describes the structure of the row that was changed.
+Typically, this schema contains nested schemas.
+
+|4
+|`payload`
+|The second `payload` field is part of the event value.
+It has the structure described by the previous `schema` field, and it contains the actual data for the row that was changed.
+
+|===
+
+By default, the connector streams change event records to topics with names that are the same as the event's originating table.
+For more information, see xref:informix-topic-names[topic names].
+
+[WARNING]
+====
+The {prodname} Informix connector ensures that all Kafka Connect schema names adhere to the link:http://avro.apache.org/docs/current/spec.html#names[Avro schema name format].
+Conforming to the Avro schema name format means that the logical server name starts with a Latin letter, or with an underscore, that is, `a-z`,` A-Z`, or `\_`.
+Each remaining character in the logical server name, and each character in the database and table names, must be a Latin letter, a digit, or an underscore, that is, `a-z`, `A-Z`,`0-9`, or `\_`.
+If there is an invalid character, it is replaced with an underscore character.
+
+The use of underscores to replace invalid characters can lead to unexpected conflicts.
+For example, a conflict can result when the name of a logical server, a database, or a table contains one or more invalid characters, and those characters are the only characters that distinguish the name from the name of another entity of the same type.
+
+Naming conflicts can also occur, because the names of databases, schemas, and tables in Informix can be case-sensitive.
+In some cases, the connector might emit event records from more than one table to the same Kafka topic.
+====
+
+// Type: concept
+// ModuleID: about-keys-in-debezium-informix-change-events
+// Title: About keys in {prodname} informix change events
+[[informix-change-event-keys]]
+=== Change event keys
+
+A change event's key contains the schema for the changed table's key and the changed row's actual key.
+Both the schema and its corresponding payload contain a field for each column in the changed table's `PRIMARY KEY` (or unique constraint) at the time the connector created the event.
+
+Consider the following `customers` table, which is followed by an example of a change event key for this table.
+
+.Example table
+[source,sql,indent=0]
+----
+CREATE TABLE customers (
+ id INTEGER IDENTITY(1001,1) NOT NULL PRIMARY KEY,
+ first_name VARCHAR(255) NOT NULL,
+ last_name VARCHAR(255) NOT NULL,
+ email VARCHAR(255) NOT NULL UNIQUE
+);
+----
+
+.Example change event key
+When {prodname} captures a change from the `customers` table, it emits a change event record that contains the event key schema.
+As long as the definition of the `customers` table remains unchanged, every change that {prodname} captures from the `customers` table results in an event record that has the same key structure.
+The following example shows a JSON representation of the event structure:
+
+[source,json,indent=0]
+----
+{
+    "schema": {  // <1>
+        "type": "struct",
+        "fields": [  // <2>
+            {
+                "type": "int32",
+                "optional": false,
+                "field": "ID"
+            }
+        ],
+        "optional": false,  // <3>
+        "name": "mydatabase.myschema.customers.Key"  // <4>
+    },
+    "payload": {  // <5>
+        "ID": 1004
+    }
+}
+----
+
+.Description of change event key
+[cols="1,2,7",options="header"]
+|===
+|Item |Field name |Description
+
+|1
+|`schema`
+|The schema element of the key shows the Kafka Connect schema that describes the structure of the key's `payload`.
+
+|2
+|`fields`
+|Specifies each field that is expected in the `payload`, including each field's name, type, and whether it is required.
+
+|3
+|`optional`
+|Indicates whether the event key must contain a value in its `payload` field.
+In this example, the `false` value indicates that the key's payload is required.
+A value in the key's payload field is optional when a table does not have a primary key.
+
+|4
+|`mydatabase.myschema.customers.Key`
+a|Name of the schema that defines the structure of the key's payload.
+This schema describes the structure of the primary key for the table that was changed.
+Key schema names have the following format:
+`_<connector-name>_._<database-name>_._<table-name>_.Key`.
+
+In the preceding example the schema name is comprised of the following elements: +
+
+connector-name:: `mydatabase`: The name of the connector that generated this event.
+database-name:: `myschema`: The database schema that contains the table that was changed.
+table-name:: `customers`: The name of the table that was updated.
+
+|5
+|`payload`
+|Contains the key of the table row in which the change event occurred.
+In the preceding example, the key contains a single `ID` field whose value is `1004`.
+
+|===
+
+////
+[NOTE]
+====
+Although the `column.exclude.list` connector configuration property allows you to omit columns from event values, all columns in a primary or unique key are always included in the event's key.
+====
+
+[WARNING]
+====
+If the table does not have a primary or unique key, then the change event's key is null. The rows in a table without a primary or unique key constraint cannot be uniquely identified.
+====
+////
+
+// Type: concept
+// ModuleID: about-values-in-debezium-informix-change-events
+// Title: About values in {prodname} Informix change events
+[[informix-change-event-values]]
+=== Change event values
+
+The value in a change event is a bit more complicated than the key.
+Like the event key, the value includes a `schema` element and a `payload` element.
+The `schema` element contains the schema that describes the `Envelope` structure of the `payload` element, including its nested fields.
+Change events for operations that create, update or delete data all have a value payload with an envelope structure.
+
+Consider the sample `customers`table that was used in the earlier example of a change event key:
+
+.Example table
+[source,sql,indent=0]
+----
+CREATE TABLE customers (
+ id INTEGER IDENTITY(1001,1) NOT NULL PRIMARY KEY,
+ first_name VARCHAR(255) NOT NULL,
+ last_name VARCHAR(255) NOT NULL,
+ email VARCHAR(255) NOT NULL UNIQUE
+);
+----
+
+The `value` element of every change event that {prodname} captures from the `customers` table uses the same schema.
+The payload of each event value varies according to the event type:
+
+* <<informix-create-events,_create_ events>>
+* <<informix-update-events,_update_ events>>
+* <<informix-delete-events,_delete_ events>>
+
+[[informix-create-events]]
+=== _create_ events
+
+The following example shows the value portion of a change event that the connector generates for an operation that creates data in the `customers` table:
+
+[source,json,indent=0,subs="+attributes"]
+----
+{
+  "schema": {  // <1>
+    "type": "struct",
+    "fields": [
+      {
+        "type": "struct",
+        "fields": [
+          {
+            "type": "int32",
+            "optional": false,
+            "field": "id"
+          },
+          {
+            "type": "string",
+            "optional": false,
+            "field": "first_name"
+          },
+          {
+            "type": "string",
+            "optional": false,
+            "field": "last_name"
+          },
+          {
+            "type": "string",
+            "optional": false,
+            "field": "email"
+          }
+        ],
+        "optional": true,
+        "name": "mydatabase.myschema.customers.Value",  // <2>
+        "field": "before"
+      },
+      {
+        "type": "struct",
+        "fields": [
+          {
+            "type": "int32",
+            "optional": false,
+            "field": "id"
+          },
+          {
+            "type": "string",
+            "optional": false,
+            "field": "first_name"
+          },
+          {
+            "type": "string",
+            "optional": false,
+            "field": "last_name"
+          },
+          {
+            "type": "string",
+            "optional": false,
+            "field": "email"
+          }
+        ],
+        "optional": true,
+        "name": "mydatabase.myschema.customers.Value",
+        "field": "after"
+      },
+      {
+        "type": "struct",
+        "fields": [
+          {
+            "type": "string",
+            "optional": false,
+            "field": "version"
+          },
+          {
+            "type": "string",
+            "optional": false,
+            "field": "connector"
+          },
+          {
+            "type": "string",
+            "optional": false,
+            "field": "name"
+          },
+          {
+            "type": "int64",
+            "optional": false,
+            "field": "ts_ms"
+          },
+          {
+            "type": "int64",
+            "optional": false,
+            "field": "ts_us"
+          },
+          {
+            "type": "int64",
+            "optional": false,
+            "field": "ts_ns"
+          },
+          {
+            "type": "boolean",
+            "optional": true,
+            "default": false,
+            "field": "snapshot"
+          },
+          {
+            "type": "string",
+            "optional": false,
+            "field": "db"
+          },
+          {
+            "type": "string",
+            "optional": false,
+            "field": "schema"
+          },
+          {
+            "type": "string",
+            "optional": false,
+            "field": "table"
+          },
+          {
+            "type": "string",
+            "optional": true,
+            "field": "commit_lsn"
+          },
+          {
+            "type": "string",
+            "optional": true,
+            "field": "change_lsn"
+          },
+          {
+            "type": "string",
+            "optional": true,
+            "field": "txId"
+          },
+          {
+            "type": "string",
+            "optional": true,
+            "field": "begin_lsn"
+          }
+        ],
+        "optional": false,
+        "name": "io.debezium.connector.informix.Source",  // <3>
+        "field": "source"
+      },
+      {
+        "type": "string",
+        "optional": false,
+        "field": "op"
+      },
+      {
+        "type": "int64",
+        "optional": true,
+        "field": "ts_ms"
+      },
+      {
+        "type": "int64",
+        "optional": true,
+        "field": "ts_us"
+      },
+      {
+        "type": "int64",
+        "optional": true,
+        "field": "ts_ns"
+      }
+    ],
+    "optional": false,
+    "name": "mydatabase.myschema.customers.Envelope"  // <4>
+  },
+  "payload": {  // <5>
+    "before": null,  // <6>
+    "after": {  // <7>
+      "id": 1005,
+      "first_name": "john",
+      "last_name": "doe",
+      "email": "john.doe@example.org"
+    },
+    "source": {  // <8>
+      "version": "{debezium-version}",
+      "connector": "informix",
+      "name": "myconnector",
+      "ts_ms": 1559729468470,
+      "ts_us": 1559729468470000,
+      "ts_ns": 1559729468470000000,
+      "snapshot": false,
+      "db": "mydatabase",
+      "schema": "myschema",
+      "table": "customers",
+      "commit_lsn": "627404540760620",
+      "change_lsn": "627404540485812",
+      "txId": "157",
+      "begin_lsn": "627404540372400"
+    },
+    "op": "c",  // <9>
+    "ts_ms": 1559729471739,  // <10>
+    "ts_us": 1559729471739241,  // <10>
+    "ts_ns": 1559729471739241367 // <10>
+  }
+}
+----
+
+.Descriptions of _create_ event value fields
+[cols="1,2,7",options="header"]
+|===
+|Item |Field name |Description
+
+|1
+|`schema`
+|The value's schema, which describes the structure of the value's payload.
+The schema of the value in a change event is the same in every change event that the connector generates for a particular table.
+
+|2
+|`name`
+a|In the `schema` element, each `name` field specifies the schema for a field in the value's payload. +
+ +
+`mydatabase.myschema.customers.Value` is the schema for the payload's `before` and `after` fields.
+This schema is specific to the `customers` table.
+The connector uses this schema for all rows in the `myschema.customers` table. +
+ +
+Names of schemas for `before` and `after` fields are of the form `_logicalName_._schemaName_._tableName_.Value`, which ensures that the schema name is unique in the database.
+In environments that use the {link-prefix}:{link-avro-serialization}#avro-serialization[Avro converter], ensuring unique schema names ensures that the Avro schema for each table in a logical source has its own evolution and history.
+
+|3
+|`name`
+a|`io.debezium.connector.informix.Source` is the schema for the payload's `source` field.
+This schema is specific to the Informix connector.
+The connector uses it for all events that it generates.
+
+|4
+|`name`
+a|`mydatabase.myschema.customers.Envelope` is the schema for the overall structure of the payload, where `mydatabase` is the database, `myschema` is the schema, and `customers` is the table.
+
+|5
+|`payload`
+|The value's actual data.
+The payload provides the information about how an event changed data in a table row. +
+ +
+The JSON representation of an event can be larger than the row that it describes.
+This occurs because a JSON representation includes a schema element as well as a payload element for each event record.
+To decrease the size of messages that the connector streams to Kafka topics, use the {link-prefix}:{link-avro-serialization}#avro-serialization[Avro converter].
+
+|6
+|`before`
+|An optional field that represent the state of the row before an event occurs.
+ When the value of the `op` field is `c` for create, as in the preceding example, the `before` field is `null`, because the change event represents a new table row.
+
+|7
+|`after`
+|An optional field that specifies the state of the row after the event occurred.
+In this example, the `after` field contains the values of the new row's `id`, `first_name`, `last_name`, and `email` columns.
+
+|8
+|`source`
+a| Mandatory field that describes the source metadata for the event.
+The `source` structure shows Informix metadata for this change, which provides traceability.
+You can use information in the `source` element to compare events within a topic, or in different topics to understand whether this event occurred before, after, or as part of the same commit as other events.
+The source metadata includes the following information:
+
+* {prodname} version
+* Connector type and name
+* Timestamp for when the change was made in the database
+* Whether the event is part of an ongoing snapshot
+* Name of the database, schema, and table that contain the new row
+* Commit LSN
+* Change LSN
+* Transaction Id (null if this event is part of a snapshot)
+* Begin LSN
+
+|9
+|`op`
+a|Mandatory string that describes the type of operation that caused the connector to generate the event.
+In the preceding example, `c` indicates that the operation created a row.
+
+[horizontal]
+`c`:: create
+`u`:: update
+`d`:: delete
+`r`:: read (applies to only snapshots)
+
+|10
+|`ts_ms`, `ts_us`, `ts_ns`
+a|Optional field that displays the time at which the connector processed the event.
+The time is based on the system clock in the JVM that runs the Kafka Connect task. +
+ +
+In the `source` object, `ts_ms` indicates the time that the change was made in the database.
+By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can calculate the time lag between when the event occurs in the source database, and when {prodname} processes the event.
+
+|===
+
+[[informix-update-events]]
+=== _update_ events
+The value of a change event for an update in the sample `customers` table has the same schema as a _create_ event for that table.
+Similarly, the payload of the value of an _update_ event has a structure that is mirrors the structure of the value payload in a _create_ event.
+However, the `value` payloads of_update_ events and _create_ events do not include the same values.
+The following example shows the change event value for an event record that the connector generates in response to an update in the `customers` table:
+
+[source,json,indent=0,subs="+attributes"]
+----
+{
+  "schema": { ... },
+  "payload": {
+    "before": {  // <1>
+      "id": 1005,
+      "first_name": "john",
+      "last_name": "doe",
+      "email": "john.doe@example.org"
+    },
+    "after": {  // <2>
+      "ID": 1005,
+      "first_name": "john",
+      "last_name": "doe",
+      "email": "noreply@example.org"
+    },
+    "source": {  // <3>
+      "version": "{debezium-version}",
+      "connector": "informix",
+      "name": "myconnector",
+      "ts_ms": 1559729995937,
+      "ts_us": 1559729995937000,
+      "ts_ns": 1559729995937000000,
+      "snapshot": false,
+      "db": "mydatabase",
+      "schema": "myschema",
+      "table": "customers",
+      "commit_lsn": "627404540760620",
+      "change_lsn": "627404540485812",
+      "txId": "157",
+      "begin_lsn": "627404540372400"
+    },
+    "op": "u",  // <4>
+    "ts_ms": 1559729998706,  // <5>
+    "ts_us": 1559729998706742,  // <5>
+    "ts_ns": 1559729998706742877  // <5>
+  }
+}
+----
+
+.Descriptions of _update_ event value fields
+[cols="1,2,7",options="header"]
+|===
+|Item |Field name |Description
+
+|1
+|`before`
+|An optional field that specifies the state of the row before an event occurs.
+In an _update_ event value, the `before` field contains a field for each table column and the value that was in that column before the database commit.
+In this example, the `email` field contains the value `john.doe@example.com`.
+
+|2
+|`after`
+| An optional field that specifies the state of a row after an event occurs.
+By comparing the `before` and `after` structures, you can determine how the row changed as a result of the update.
+ In the example, the `email` field now contains the value `noreply@example.com`.
+
+|3
+|`source`
+a|Mandatory field that describes the source metadata for the event.
+The `source` field structure contains the same fields that are present in a _create_ event, but with some different values.
+For example, the the LSN values are different.
+You can use this information to compare this event to other events to know whether this event occurred before, after, or as part of the same commit as other events.
+The source metadata includes the following fields:
+
+* {prodname} version
+* Connector type and name
+* Timestamp for when the change was made in the database
+* Whether the event is part of an ongoing snapshot
+* Name of the database, schema, and table that contain the new row
+* Commit LSN
+* Change LSN
+* Transaction Id (null if this event is part of a snapshot)
+* Begin LSN
+
+|4
+|`op`
+a|Mandatory string that describes the type of operation.
+In an _update_ event value, the `op` field value is `u`, signifying that this row changed because of an update.
+
+|5
+|`ts_ms`, `ts_us`, `ts_ns`
+a|Optional field that displays the time at which the connector processed the event.
+The time is based on the system clock in the JVM that runs the Kafka Connect task. +
+ +
+In the `source` object, `ts_ms` indicates when the change was made in the source database.
+By comparing the values of `payload.source.ts_ms` and `payload.ts_ms`, you can determine the time lag between the source database update and {prodname}.
+
+|===
+
+[NOTE]
+====
+If you update the columns for a row's primary or unique key, you change the value of the row's key.
+After a key change, {prodname} emits the following events:
+
+ * A `DELETE` event
+ * A xref:informix-tombstone-events[tombstone event] , with the old key for the row
+ * An event that contains the new key for the row.
+====
+
+[[informix-delete-events]]
+=== _delete_ events
+
+The `value` in a _delete_ change event for a table has a `schema` portion that is similar to the `schema` element in _create_ and _update_ events for the same table.
+After a user performs a _delete_ operation in the sample `customers` table, {prodname} emits an event message such as the one in the following example:
+
+[source,json,indent=0,subs="+attributes"]
+----
+{
+  "schema": { ... },
+  },
+  "payload": {
+    "before": {  // <1>
+      "id": 1005,
+      "first_name": "john",
+      "last_name": "doe",
+      "email": "noreply@example.org"
+    },
+    "after": null,  // <2>
+    "source": {  // <3>
+      "version": "{debezium-version}",
+      "connector": "informix",
+      "name": "myconnector",
+      "ts_ms": 1559730445243,
+      "ts_us": 1559730445243000,
+      "ts_ns": 1559730445243000000,
+      "snapshot": false,
+      "db": "mydatabase",
+      "schema": "myschema",
+      "table": "customers",
+      "commit_lsn": "627404540760620",
+      "change_lsn": "627404540485812",
+      "txId": "157",
+      "begin_lsn": "627404540372400"
+    },
+    "op": "d",  // <4>
+    "ts_ms": 1559730450205,  // <5>
+    "ts_us": 1559730450205104,  // <5>
+    "ts_ns": 1559730450205104870  // <5>
+  }
+}
+----
+
+.Descriptions of _delete_ event value fields
+[cols="1,2,7",options="header"]
+|===
+|Item |Field name |Description
+
+|1
+|`before`
+|Optional field that specifies the state of the row before the event occurred.
+In a _delete_ event value, the `before` field contains the values that were in the row before the database commit removed the value.
+
+|2
+|`after`
+| Optional field that specifies the state of the row after the event occurred.
+In a _delete_ event value, the `after` field is `null`, signifying that the row no longer exists.
+
+|3
+|`source`
+a|Mandatory field that describes the source metadata for the event.
+In a _delete_ event value, the `source` field structure is the same as for _create_ and _update_ events for the same table.
+Many `source` field values are also the same.
+In a _delete_ event value, the `ts_ms` and LSN field values, as well as other values, might have changed.
+As you can see in the following example, the `source` field in a _delete_ event value provides the same metadata that is present in other types of event records:
+
+* {prodname} version
+* Connector type and name
+* Timestamp for when the change was made in the database
+* Whether the event is part of an ongoing snapshot
+* Name of the database, schema, and table that contain the new row
+* Commit LSN
+* Change LSN
+* Transaction Id (null if this event is part of a snapshot)
+* Begin LSN
+
+|4
+|`op`
+a|Mandatory string that describes the type of operation.
+The value of the `op` field value is `d`, signifying that this row was deleted.
+
+|5
+|`ts_ms`, `ts_us`, `ts_ns`
+a|Optional field that displays the time at which the connector processed the event.
+The time is based on the system clock in the JVM running the Kafka Connect task. +
+ +
+In the `source` object, `ts_ms` indicates the time that the change was made in the database.
+By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the time lag between the source database update and {prodname}.
+
+|===
+
+A _delete_ change event record provides a consumer with the information that it needs to process the removal of the row.
+The record includes the previous values to support consumers that might require them to process the removal.
+
+Informix connector events are designed to work with link:{link-kafka-docs}/#compaction[Kafka log compaction].
+Log compaction enables removal of some older messages as long as at least the most recent message for every key is kept.
+Retaining the most recent message enables Kafka to reclaim storage space while ensuring that the topic contains a complete data set that can be used for reloading key-based state.
+
+[[informix-tombstone-events]]
+When a row is deleted, the _delete_ event value still works with log compaction, because Kafka can remove all earlier messages that have that same key.
+However, for Kafka to remove all messages that have that same key, the message value must be `null`.
+To make this possible, after {prodname}’s Informix connector emits a _delete_ event, the connector emits a special tombstone event that has the same key but a `null` value.
+
+// Type: reference
+// ModuleID: how-debezium-informix-connectors-map-data-types
+// Title: How {prodname} Informix connectors map data types
+[[informix-data-types]]
+== Data type mappings
+
+For a complete description of the data types that Informix supports, see https://www.ibm.com/support/knowledgecenter/en/SSEPGG_11.5.0/com.ibm.informix.luw.sql.ref.doc/doc/r0008483.html[Data Types] in the Informix documentation.
+
+The Informix connector represents changes to rows by emitting events whose structures mirror the structure of the source tables in which the change events occur.
+Event records contain fields for each column value.
+To populate values in these fields from the source columns, the connector uses a default mapping to convert the values from the original Informix data types  to a Kafka Connect schema type or a semantic type.
+The connector provides default mappings for the following Informix data types:
+
+* xref:informix-basic-types[Basic types]
+* xref:informix-temportal-types[Temporal types]
+* xref:informix-timestamp-types[Timestamp types]
+* xref:informix-decimal-types[Decimal types]
+If the default data type conversions do not meet your needs, you can {link-prefix}:{link-custom-converters}#custom-converters[create a custom converter] for the connector.
+
+[id="informix-basic-types"]
+=== Basic types
+
+The following table describes how the connector maps each Informix data type to a _literal type_ and a _semantic type_ in event fields.
+
+* _literal type_ describes how the value is represented using Kafka Connect schema types: `INT8`, `INT16`, `INT32`, `INT64`, `FLOAT32`, `FLOAT64`, `BOOLEAN`, `STRING`, `BYTES`, `ARRAY`, `MAP`, and `STRUCT`.
+
+* _semantic type_ describes how the Kafka Connect schema captures the _meaning_ of the field using the name of the Kafka Connect schema for the field.
+
+.Mappings for Informix basic data types
+[cols="25%a,20%a,55%a",options="header"]
+|===
+|Informix data type
+|Literal type (schema type)
+|Semantic type (schema name) and Notes
+
+|`BIGINT`
+|`INT64`
+|n/a
+
+|`BIGSERIAL`
+|`INT64`
+|n/a
+
+|`BLOB`
+|`BYTES`
+|n/a
+
+|`BOOLEAN`
+|`BOOLEAN`
+|n/a
+
+|`BYTE`
+|`BYTES`
+|n/a
+
+|`CHAR[(N)]`
+|`STRING`
+|n/a
+
+|`CLOB`
+|`STRING`
+|n/a
+
+|`DATE`
+|`INT32`
+|`io.debezium.time.Date` +
+ +
+A date without timezone information
+
+|`DATETIME`
+|`INT64`
+|`io.debezium.time.Timestamp` +
+ +
+A timestamp without timezone information
+
+|`DECIMAL`
+|`BYTES`
+|`org.apache.kafka.connect.data.Decimal`
+
+|`DOUBLE`
+|`FLOAT64`
+|n/a
+
+|`FLOAT`
+|`FLOAT64`
+|n/a
+
+|`INTEGER`
+|`INT32`
+|n/a
+
+|`LVARCHAR[(N)]`
+|`STRING`
+|n/a
+
+|`NUMERIC`
+|`BYTES`
+|`org.apache.kafka.connect.data.Decimal`
+
+|`REAL`
+|`FLOAT32`
+|n/a
+
+|`SERIAL`
+|`INT32`
+|n/a
+
+|`SMALLINT`
+|`INT16`
+|n/a
+
+|`SMALLFLOAT`
+|`FLOAT32`
+|n/a
+
+|`TINYINT`
+|`INT16`
+|8-bit unsigned integer value between 0 and 255, thus needs to be stored as int16
+
+|`TEXT`
+|`STRING`
+|n/a
+
+|`VARCHAR[(N)]`
+|`STRING`
+|n/a
+
+|===
+
+If present, a column's default value is propagated to the corresponding field's Kafka Connect schema.
+Change events contain the field's default value unless an explicit column value is specified.
+Consequently, there is rarely a need to obtain the default value from the schema.
+ifdef::community[]
+Passing the default value helps satisfy compatibility rules when {link-prefix}:{link-avro-serialization}[using Avro] as the serialization format together with the Confluent schema registry.
+endif::community[]
+
+[[informix-temporal-types]]
+=== Temporal types
+
+Informix maps temporal types based on the value of the `time.precision.mode` connector configuration property.
+The following sections describe these mappings:
+
+* xref:informix-time-precision-mode-adaptive[`time.precision.mode=adaptive`]
+* xref:informix-time-precision-mode-connect[`time.precision.mode=connect`]
+
+[[informix-time-precision-mode-adaptive]]
+.`time.precision.mode=adaptive`
+To ensure that events _exactly_ represent the values in the database, when the `time.precision.mode` configuration property is set to the default value, `adaptive`, the connector determines the literal and semantic types based on the column's data type definition.
+
+.Mappings when `time.precision.mode` is `adaptive`
+[cols="25%a,20%a,55%a",options="header"]
+|===
+|Informix data type |Literal type (schema type) |Semantic type (schema name) and Notes
+
+|`DATE`
+|`INT32`
+|`io.debezium.time.Date` +
+ +
+Represents the number of days since the epoch.
+
+|`DATETIME`
+|`INT64`
+|`io.debezium.time.Timestamp` +
+ +
+Represents the number of milliseconds since the epoch, and does not include timezone information.
+
+|===
+
+[[informix-time-precision-mode-connect]]
+.`time.precision.mode=connect`
+When the `time.precision.mode` configuration property is set to `connect`, the connector uses Kafka Connect logical types.
+This setting can be useful for consumers that can handle only the built-in Kafka Connect logical types, and that cannot handle variable-precision time values.
+However, because Informix supports tens of microsecond precision, if a connector is configured to use `connect` time precision, and the database column has a _fractional second precision_ value that is greater than 3,  the connector generates events that result in a loss of precision.
+
+.Mappings when `time.precision.mode` is `connect`
+[cols="25%a,20%a,55%a",options="header"]
+|===
+|Informix data type |Literal type (schema type) |Semantic type (schema name) and Notes
+
+|`DATE`
+|`INT32`
+|`org.apache.kafka.connect.data.Date` +
+ +
+Represents the number of days since the epoch.
+
+|`DATETIME`
+|`INT64`
+|`org.apache.kafka.connect.data.Timestamp` +
+ +
+Represents the number of milliseconds since the epoch, and does not include timezone information.
+
+|===
+
+[[informix-timestamp-types]]
+=== Timestamp types
+
+The `DATETIME` type represents a timestamp without time zone information.
+Such columns are converted into an equivalent Kafka Connect value based on UTC.
+For example, the `DATETIME` value "2018-06-20 15:13:16.94514" is represented by an `io.debezium.time.Timestamp` with the value "1529507596000".
+
+The timezone of the JVM running Kafka Connect and {prodname} does not affect this conversion.
+
+[[informix-decimal-types]]
+=== Decimal types
+
+[cols="27%a,18%a,55%a",options="header"]
+|===
+|Informix data type |Literal type (schema type) |Semantic type (schema name) and Notes
+
+|`NUMERIC[(P[,S])]`
+|`BYTES`
+|`org.apache.kafka.connect.data.Decimal` +
+ +
+The `scale` schema parameter contains an integer that represents how many digits the decimal point is shifted.
+The `connect.decimal.precision` schema parameter contains an integer that represents the precision of the given decimal value.
+
+|`DECIMAL[(P[,S])]`
+|`BYTES`
+|`org.apache.kafka.connect.data.Decimal` +
++
+The `scale` schema parameter contains an integer that represents how many digits the decimal point is shifted.
+The `connect.decimal.precision` schema parameter contains an integer that represents the precision of the given decimal value.
+
+|===
+
+// Type: assembly
+// ModuleID: setting-up-informix-to-run-a-debezium-connector
+// Title: Setting up Informix to run a {prodname} connector
+[[setting-up-informix]]
+== Setting up Informix
+
+For {prodname} to capture change events that are committed to Informix tables, a Informix database administrator with the necessary privileges must configure the database for change data capture.
+
+Perform the following tasks to prepare for using the Change Data Capture API:
+
+. As the database user `informix`, run the `syscdcv1.sql` script from the `$INFORMIXDIR/etc` directory. This will install the `syscdcv1` database.
+. Verify that the `syscdcv1` database exists by creating a connection to it as user `informix`.
+. Set the `DB_LOCALE` environment variable to be the same as the locale of the database from which you want to capture data.
+
+[NOTE]
+====
+Specific guidance about optimizing Informix for change data capture is beyond the scope of this documentation.
+====
+
+// Type: assembly
+// ModuleID: deployment-of-debezium-informix-connectors
+// Title: Deployment of {prodname} Informix connectors
+[[informix-deploying-a-connector]]
+== Deployment
+
+ifdef::community[]
+To deploy a {prodname} Informix connector, you install the {prodname} Informix connector archive, configure the connector, and start the connector by adding its configuration to Kafka Connect.
+
+.Prerequisites
+
+* link:https://zookeeper.apache.org/[Apache ZooKeeper], link:http://kafka.apache.org/[Apache Kafka], and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
+* Informix is installed and xref:setting-up-informix[capture mode is enabled for tables] to prepare the database to be used with the {prodname} connector.
+
+.Procedure
+
+. Download the link:https://repo1.maven.org/maven2/io/debezium/debezium-connector-informix/{debezium-version}/debezium-connector-informix-{debezium-version}-plugin.tar.gz[{prodname} Informix connector plug-in archive] from Maven Central.
+. Extract the JAR files into your Kafka Connect environment.
+. Download the link:https://repo1.maven.org/maven2/com/ibm/informix/jdbc/{informix-jdbc-version}/jdbc-{informix-jdbc-version}.jar[JDBC driver for Informix] and link:https://repo1.maven.org/maven2/com/ibm/informix/ifx-changestream-client/{ifx-changestream-version}/ifx-changestream-client-{ifx-changestream-version}.jar[Informix Change Stream client] from Maven Central, and copy the downloaded JAR files to the directory that contains the {prodname} Informix connector JAR file (that is, `debezium-connector-informix-{debezium-version}.jar`).
++
+[IMPORTANT]
+====
+Due to licensing requirements, the {prodname} Informix connector archive does not include the Informix JDBC driver and Change Stream client that {prodname} requires to connect to a Informix database.
+To enable the connector to access the database, you must add the driver and client library to your connector environment.
+====
+. Add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`].
+. Restart your Kafka Connect process to pick up the new JAR files.
+
+If you are working with immutable containers, see link:https://quay.io/organization/debezium[{prodname}'s container images] for Apache ZooKeeper, Apache Kafka and Kafka Connect with the Informix connector already installed and ready to run.
+
+You can also xref:operations/openshift.adoc[run {prodname} on Kubernetes and OpenShift].
+
+.Next steps
+
+* xref:informix-example-configuration[Configure the connector] and xref:informix-adding-connector-configuration[add the configuration to your Kafka Connect cluster.]
+endif::community[]
+
+ifdef::community[]
+[[informix-example-configuration]]
+=== Informix connector configuration example
+
+The following example shows the configuration for a connector instance that captures data from an Informix server with the logical name `fullfillment` on port 9088 at 192.168.99.100.
+Typically, you configure the {prodname} Informix connector in a JSON file by setting the configuration properties that are available for the connector.
+
+You can choose to produce events for a subset of the schemas and tables in a database.
+Optionally, you can ignore, mask, or truncate columns that contain sensitive data, that are larger than a specified size, or that you do not need.
+
+[source,json]
+----
+{
+  "name": "informix-connector",  // <1>
+  "config": {
+    "connector.class": "io.debezium.connector.informix.InformixConnector", // <2>
+    "database.hostname": "192.168.99.100", // <3>
+    "database.port": "9088", // <4>
+    "database.user": "informix", // <5>
+    "database.password": "in4mix", // <6>
+    "database.dbname": "mydatabase", // <7>
+    "topic.prefix": "fullfillment", // <8>
+    "table.include.list": "mydatabase.myschema.customers", // <9>
+    "schema.history.internal.kafka.bootstrap.servers": "kafka:9092", // <10>
+    "schema.history.internal.kafka.topic": "schemahistory.fullfillment" // <11>
+  }
+}
+----
+<1> The name of the connector when registered with a Kafka Connect service.
+<2> The name of this Informix connector class.
+<3> The address of the Informix instance.
+<4> The port number of the Informix instance.
+<5> The name of the Informix user.
+<6> The password for the Informix user.
+<7> The name of the database to capture changes from.
+<8> The logical name of the Informix instance/cluster, which forms a namespace and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the {link-prefix}:{link-avro-serialization}[Avro Connector] is used.
+<9> A list of all tables whose changes {prodname} should capture.
+<10> The list of Kafka brokers that this connector uses to write and recover DDL statements to the database schema history topic.
+<11> The name of the database schema history topic where the connector writes and recovers DDL statements.
+This topic is for internal use only and should not be used by consumers.
+
+endif::community[]
+
+For the complete list of the configuration properties that you can set for the {prodname} Informix connector, see xref:informix-connector-properties[Informix connector properties].
+
+ifdef::community[]
+
+You can send this configuration with a `POST` command to a running Kafka Connect service.
+The service records the configuration and starts one connector task that performs the following actions:
+
+* Connects to the Informix database.
+* Reads change-data tables for tables that are in capture mode.
+* Streams change event records to Kafka topics.
+
+[[informix-adding-connector-configuration]]
+=== Adding connector configuration
+
+To start running a Informix connector, create a connector configuration and add the configuration to your Kafka Connect cluster.
+
+.Prerequisites
+
+* xref:setting-up-informix[Informix replication is enabled] to expose change data for tables that are in capture mode.
+* The Informix connector is installed.
+
+.Procedure
+
+. Create a configuration for the Informix connector.
+
+. Use the link:{link-kafka-docs}/#connect_rest[Kafka Connect REST API] to add that connector configuration to your Kafka Connect cluster.
+endif::community[]
+
+.Results
+
+After the connector starts, it xref:informix-snapshots[performs a consistent snapshot] of the Informix database tables that the connector is configured to capture changes for.
+The connector then starts generating data change events for row-level operations and streaming change event records to Kafka topics.
+
+// Type: reference
+// Title: Descriptions of {prodname} Informix connector configuration properties
+// ModuleID: descriptions-of-debezium-informix-connector-configuration-properties
+[[informix-connector-properties]]
+=== Connector properties
+
+The {prodname} Informix connector has numerous configuration properties that you can use to achieve the right connector behavior for your application.
+Many properties have default values.
+Information about the properties is organized as follows:
+
+* xref:informix-required-configuration-properties[Required configuration properties]
+* xref:informix-advanced-configuration-properties[Advanced configuration properties]
+* xref:debezium-informix-connector-database-history-configuration-properties[Database schema history connector configuration properties] that control how {prodname} processes events that it reads from the database schema history topic.
+** xref:debezium-informix-connector-pass-through-database-driver-configuration-properties[Pass-through database schema history properties]
+* xref:debezium-informix-connector-pass-through-database-driver-configuration-properties[Pass-through database driver properties] that control the behavior of the database driver.
+
+
+[id="informix-required-configuration-properties"]
+==== Required {prodname} Informix connector configuration properties
+
+The following configuration properties are _required_ unless a default value is available.
+
+[cols="30%a,25%a,45%a",options="header"]
+|===
+|Property |Default |Description
+
+|[[informix-property-name]]<<informix-property-name, `+name+`>>
+|No default
+|Unique name for the connector.
+You can register a connector with the specified name only once.
+Subsequent attempts result in failures.
+This property is required by all Kafka Connect connectors.
+
+|[[informix-property-connector-class]]<<informix-property-connector-class, `+connector.class+`>>
+|No default
+|The name of the Java class for the connector.
+Always use the value `io.debezium.connector.informix.InformixConnector` for the Informix connector.
+
+|[[informix-property-tasks-max]]<<informix-property-tasks-max, `+tasks.max+`>>
+|`1`
+|The maximum number of tasks that this connector can create.
+The Informix connector always uses a single task and therefore does not use this value, so the default is always acceptable.
+
+|[[informix-property-database-hostname]]<<informix-property-database-hostname, `+database.hostname+`>>
+|No default
+|IP address or hostname of the Informix database server.
+
+|[[informix-property-database-port]]<<informix-property-database-port, `+database.port+`>>
+|`9088`
+|Integer port number of the Informix database server.
+
+|[[informix-property-database-user]]<<informix-property-database-user, `+database.user+`>>
+|No default
+|Name of the Informix database user for connecting to the Informix database server.
+
+|[[informix-property-database-password]]<<informix-property-database-password, `+database.password+`>>
+|No default
+|Password to use when connecting to the Informix database server.
+
+|[[informix-property-database-dbname]]<<informix-property-database-dbname, `+database.dbname+`>>
+|No default
+|The name of the Informix database from which to stream changes.
+
+|[[informix-property-topic-prefix]]<<informix-property-topic-prefix, `+topic.prefix+`>>
+|No default
+|Topic prefix which provides a namespace for the particular Informix database server that hosts the database for which {prodname} is capturing changes.
+Only alphanumeric characters, hyphens, dots and underscores must be used in the topic prefix name.
+The topic prefix is used for all Kafka topics that receive records from this connector.
+Specify a value that is unique across all connectors in the Kafka Connect deployment. +
+ +
+[WARNING]
+====
+Do not change the value of this property.
+If you change the name value, after a restart, instead of continuing to emit events to the original topics, the connector emits subsequent events to topics whose names are based on the new value.
+The connector is also unable to recover its database schema history topic.
+====
+
+|[[informix-property-table-include-list]]<<informix-property-table-include-list, `+table.include.list+`>>
+|No default
+|An optional, comma-separated list of regular expressions that match fully-qualified table identifiers for tables whose changes you want the connector to capture.
+When this property is set, the connector captures changes only from the specified tables.
+Each identifier is of the form _databaseName_._schemaName_._tableName_.
+By default, the connector captures changes in every non-system table. +
+
+To match the name of a table, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the table it does not match substrings that might be present in a table name. +
+If you include this property in the configuration, do not also set the `table.exclude.list` property.
+
+|[[informix-property-table-exclude-list]]<<informix-property-table-exclude-list, `+table.exclude.list+`>>
+|No default
+|An optional, comma-separated list of regular expressions that match fully-qualified table identifiers for tables whose changes you do not want the connector to capture.
+The connector captures changes in each non-system table that is not included in the exclude list.
+Each identifier is of the form _databaseName_._schemaName_._tableName_. +
+
+To match the name of a table, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the table it does not match substrings that might be present in a table name. +
+If you include this property in the configuration, do not also set the `table.include.list` property.
+
+|[[informix-property-column-include-list]]<<informix-property-column-include-list, `+column.include.list+`>>
+|_empty string_
+|An optional, comma-separated list of regular expressions that match the fully-qualified names of columns to include in change event record values.
+The fully-qualified name of a column observes one of the following formats: _databaseName_._tableName_._columnName_, or _databaseName_._schemaName_._tableName_._columnName_. +
+
+To match the name of a column, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the column; it does not match substrings that might be present in a column name.
+If you include this property in the configuration, do not also set the `column.exclude.list` property.
+
+|[[informix-property-column-exclude-list]]<<informix-property-column-exclude-list, `+column.exclude.list+`>>
+|_empty string_
+|An optional, comma-separated list of regular expressions that match the fully-qualified names of columns to exclude from change event values.
+The fully-qualified name of a column observes one of the following formats: _databaseName_._tableName_._columnName_, or _databaseName_._schemaName_._tableName_._columnName_. +
+
+To match the name of a column, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the column; it does not match substrings that might be present in a column name.
+Primary key columns are always included in the event's key, the value that you set in this property would exclude them.
+If you include this property in the configuration, do not set the `column.include.list` property.
+
+|[[informix-property-column-mask-hash]]<<informix-property-column-mask-hash, `column.mask.hash._hashAlgorithm_.with.salt._salt_`>>
+|_n/a_
+|An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns.
+The fully-qualified name of a column observes one of the following formats: _databaseName_._tableName_._columnName_, or _databaseName_._schemaName_._tableName_._columnName_. +
+To match the name of a column, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the column; the expression does not match substrings that might be present in a column name.
+In the resulting change event record, the values for the specified columns are replaced with pseudonyms.
+
+A pseudonym consists of the hashed value that results from applying the specified _hashAlgorithm_ and _salt_.
+Based on the hash function that is used, referential integrity is maintained, while column values are replaced with pseudonyms.
+Supported hash functions are described in the {link-java7-standard-names}[MessageDigest section] of the Java Cryptography Architecture Standard Algorithm Name Documentation. +
+ +
+In the following example, `CzQMA0cB5K` is a randomly selected salt. +
+
+----
+column.mask.hash.SHA-256.with.salt.CzQMA0cB5K = inventory.orders.customerName, inventory.shipment.customerName
+----
+
+If necessary, the pseudonym is automatically shortened to the length of the column.
+The connector configuration can include multiple properties that specify different hash algorithms and salts. +
+ +
+Depending on the _hashAlgorithm_ used, the _salt_ selected, and the actual data set, the resulting data set might not be completely masked.
+
+|[[informix-property-time-precision-mode]]<<informix-property-time-precision-mode, `+time.precision.mode+`>>
+|`adaptive`
+| Specifies the numeric precision that the connector uses to represent time, date, and timestamps values. +
+Specify one of the following values:
+ +
+`adaptive`::
+Depending on the data type of the table column, the connector uses millisecond, microsecond, or nanosecond precision values to represent time and timestamp values exactly as they exist in the source table . +
+ +
+`connect`::
+The connector always represents `Time`, `Date`, and `Timestamp` values by using the default Kafka Connect format, which uses millisecond precision regardless of the precision that is configured for the column in the source table.
+For more information, see xref:informix-temporal-types[temporal types].
+
+|[[informix-property-tombstones-on-delete]]<<informix-property-tombstones-on-delete, `+tombstones.on.delete+`>>
+|`true`
+|Specifies whether a _delete_ event is followed by a tombstone event. +
+Specify one of the following values:
+ +
+`true`:: For each delete operation, the connector emits a _delete_ event, and a subsequent tombstone event.
+Select this option to ensure that Kafka can delete all events that pertain to the key of the deleted row.
+If tombstones are disabled, and {link-kafka-docs}/#compaction[log compaction] is enabled for the destination topic, Kafka might be unable to identify and delete all events that share the key.
+ +
+`false`:: The connector emits only a _delete_ event.
+ +
+
+|[[informix-property-include-schema-changes]]<<informix-property-include-schema-changes, `+include.schema.changes+`>>
+|`true`
+|Boolean value that specifies whether the connector publishes changes in the database schema to the Kafka topic that has the same name as the database server ID.
+When the default value is set, schema changes are recorded with a `key` that contains the database name and a `value` that is a JSON structure that describes the schema update.
+This property does not effect the way that the connector records information to its internal database schema history topic.
+
+|[[informix-property-column-truncate-to-length-chars]]<<informix-property-column-truncate-to-length-chars, `column.truncate.to._length_.chars`>>
+|_n/a_
+|An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns.
+Set this property if you want to truncate the data in a set of columns when it exceeds the number of characters specified by the _length_ in the property name.
+Set `length` to a positive integer value, for example, `column.truncate.to.20.chars`.
+
+The fully-qualified name of a column observes one of the following formats: _databaseName_._tableName_._columnName_, or _databaseName_._schemaName_._tableName_._columnName_. +
+To match the name of a column, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the column; the expression does not match substrings that might be present in a column name.
+
+You can specify multiple properties with different lengths in a single configuration.
+
+|[[informix-property-column-mask-with-length-chars]]<<informix-property-column-mask-with-length-chars, `column.mask.with._length_.chars`>>
+|_n/a_
+|An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns.
+Set this property if you want the connector to mask the values for a set of columns, for example, if they contain sensitive data.
+Set `_length_` to a positive integer to replace data in the specified columns with the number of asterisk (`*`) characters specified by the _length_ in the property name.
+Set _length_ to `0` (zero) to replace data in the specified columns with an empty string.
+
+The fully-qualified name of a column observes one of the following formats: _databaseName_._tableName_._columnName_, or _databaseName_._schemaName_._tableName_._columnName_. +
+To match the name of a column, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the column; the expression does not match substrings that might be present in a column name.
+
+You can specify multiple properties with different lengths in a single configuration.
+
+|[[informix-property-column-propagate-source-type]]<<informix-property-column-propagate-source-type, `+column.propagate.source.type+`>>
+|_n/a_
+|An optional, comma-separated list of regular expressions that match the fully-qualified names of columns for which you want the connector to emit extra parameters that represent column metadata.
+When this property is set, the connector adds the following fields to the schema of event records:
+
+* `pass:[_]pass:[_]debezium.source.column.type` +
+* `pass:[_]pass:[_]debezium.source.column.length` +
+* `pass:[_]pass:[_]debezium.source.column.scale` +
+
+These parameters propagate a column's original type name and length (for variable-width types), respectively. +
+Enabling the connector to emit this extra data can assist in properly sizing specific numeric or character-based columns in sink databases.
+
+The fully-qualified name of a column observes one of the following formats: _databaseName_._tableName_._columnName_, or _databaseName_._schemaName_._tableName_._columnName_. +
+To match the name of a column, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the column; the expression does not match substrings that might be present in a column name.
+
+|[[informix-property-datatype-propagate-source-type]]<<informix-property-datatype-propagate-source-type, `+datatype.propagate.source.type+`>>
+|_n/a_
+|An optional, comma-separated list of regular expressions that specify the fully-qualified names of data types that are defined for columns in a database.
+When this property is set, for columns with matching data types, the connector emits event records that include the following extra fields in their schema:
+
+* `pass:[_]pass:[_]debezium.source.column.type` +
+* `pass:[_]pass:[_]debezium.source.column.length` +
+* `pass:[_]pass:[_]debezium.source.column.scale` +
+
+These parameters propagate the name of a column's original data type, and, for variable-width types, its length, and scale. +
+Enabling the connector to emit this extra data can assist in properly sizing specific numeric or character-based columns in sink databases.
+
+The fully-qualified name of a column observes one of the following formats: _databaseName_._tableName_._typeName_, or _databaseName_._schemaName_._tableName_._typeName_. +
+To match the name of a data type, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the data type; the expression does not match substrings that might be present in a type name.
+
+For the list of Informix-specific data type names, see the xref:informix-data-types[Informix data type mappings] .
+
+|[[informix-property-message-key-columns]]<<informix-property-message-key-columns, `+message.key.columns+`>>
+|_empty string_
+|A list of expressions that specify the columns that the connector uses to form custom message keys for change event records that it publishes to the Kafka topics for specified tables.
+
+By default, {prodname} uses the primary key column of a table as the message key for records that it emits.
+In place of the default, or to specify a key for tables that lack a primary key, you can configure custom message keys based on one or more columns. +
+ +
+To establish a custom message key for a table, list the table, followed by the columns to use as the message key.
+Each list entry takes the following format: +
+ +
+`_<fully-qualified_tableName>_:__<keyColumn>__,_<keyColumn>_` +
+ +
+To base a table key on multiple column names, insert commas between the column names. +
+Each fully-qualified table name is a regular expression in the following format: +
+
+`_<databaseName>_._<schemaName>_._<tableName>_` +
+
+The property can list entries for multiple tables.
+Use a semicolon to separate entries for different tables in the list. +
+ +
+The following example sets the message key for the tables `inventory.customers` and `purchaseorders`: +
+ +
+`inventory.customers:pk1,pk2;(.*).purchaseorders:pk3,pk4` +
+ +
+In the preceding example, the columns `pk1` and `pk2` are specified as the message key for the table `inventory.customer`.
+For `purchaseorders` tables in any schema, the columns `pk3` and `pk4` serve as the message key.
+
+|[[informix-property-schema-name-adjustment-mode]]<<informix-property-schema-name-adjustment-mode,`+schema.name.adjustment.mode+`>>
+|none
+|Specifies how to adjust schema names for compatibility with the message converter that the connector uses. +
+Specify one of the following values:
+
+`none`:: No adjustment. +
+`avro`:: Replace characters that are not valid for the Avro type with an underscore (`_`).
+`avro_unicode`:: Replaces underscores or characters are not valid for the Avro type with the corresponding unicode, for example, `_uxxxx`.
++
+Note: `_` is an escape sequence, equivalent to a backslash in Java.
+
+|[[informix-property-field-name-adjustment-mode]]<<informix-property-field-name-adjustment-mode,`+field.name.adjustment.mode+`>>
+|none
+|SSpecifies how to adjust field names for compatibility with the message converter that the connector uses. +
+Specify one of the following values:
+
+`none`:: No adjustment. +
+`avro`:: Replace characters that are not valid for the Avro type with an underscore (`_`).
+`avro_unicode`:: Replaces underscores or characters are not valid for the Avro type with the corresponding unicode, for example, `_uxxxx`.
++
+Note: `_` is an escape sequence, equivalent to a backslash in Java.
+
+For more information about Avro compatibility, see {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming] .
+|===
+
+[id="informix-advanced-configuration-properties"]
+==== Advanced connector configuration properties
+
+The following _advanced_ configuration properties have defaults that work in most situations and therefore rarely need to be specified in the connector's configuration.
+
+[cols="30%a,25%a,45%a",options="header"]
+|===
+|Property |Default |Description
+
+|[[informix-property-converters]]<<informix-property-converters, `converters`>>
+|No default
+|Enumerates a comma-separated list of the symbolic names of the {link-prefix}:{link-custom-converters}#custom-converters[custom converter] instances that the connector can use.
+For example, +
+
+`isbn`
+
+You must set the `converters` property to enable the connector to use a custom converter.
+
+For each converter that you configure for a connector, you must also add a `.type` property, which specifies the fully-qualified name of the class that implements the converter interface.
+The `.type` property uses the following format: +
+
+`_<converterSymbolicName>_.type` +
+
+For example, +
+
+ isbn.type: io.debezium.test.IsbnConverter
+
+If you want to further control the behavior of a configured converter, you can add one or more configuration parameters to pass values to the converter.
+To associate any additional configuration parameter with a converter, prefix the parameter names with the symbolic name of the converter. +
+For example, +
+
+ isbn.schema.name: io.debezium.informix.type.Isbn
+
+|[[informix-property-snapshot-mode]]<<informix-property-snapshot-mode, `+snapshot.mode+`>>
+|_initial_
+|Specifies the criteria for performing a snapshot when the connector starts: +
+
+`always`:: The connector performs a snapshot every time that it starts.
+The snapshot includes the structure and data of the captured tables.
+Specify this value to populate topics with a complete representation of the data from the captured tables every time that the connector starts.
+After the snapshot completes, the connector begins to stream event records for subsequent database changes.
+`initial`:: The connector performs a database snapshot as described in the xref:default-workflow-for-performing-an-initial-snapshot[default workflow for creating an initial snapshot].
+After the snapshot completes, the connector begins to stream event records for subsequent database changes.
+`initial_only`:: The connector performs a database a snapshot only when no offsets have been recorded for the logical server name.
+After the snapshot completes, the connector stops.
+It does not transition to streaming event records for subsequent database changes.
+`schema_only`:: Deprecated, see `no_data`.
+`no_data`:: The connector runs a snapshot that captures the structure of all relevant tables, performing all the steps described in the xref:default-workflow-for-performing-an-initial-snapshot[default snapshot workflow], except that it does not create `READ` events to represent the data set at the point of the connector's start-up (Step 7.b).
+`recovery`:: Set this option to restore a database schema history topic that is lost or corrupted.
+After a restart, the connector runs a snapshot that rebuilds the topic from the source tables.
+You can also set the property to periodically prune a database schema history topic that experiences unexpected growth. +
++
+WARNING: Do not use this mode to perform a snapshot if schema changes were committed to the database after the last connector shutdown.
+`when_needed`:: After the connector starts, it performs a snapshot only if it detects one of the following circumstances:
+* It cannot detect any topic offsets.
+* A previously recorded offset specifies a log position that is not available on the server.
+
+ifdef::community[]
+`configuration_based`:: With this option, you control snapshot behavior through a set of connector properties that have the prefix 'snapshot.mode.configuration.based'.
+
+endif::community[]
+
+ifdef::community[]
+`custom`:: The `custom` snapshot mode lets you inject your own implementation of the `io.debezium.spi.snapshot.Snapshotter` interface.
+Set the `snapshot.mode.custom.name` configuration property to the name provided by the `name()` method of your implementation.
+
+For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
+endif::community[]
+
+ifdef::community[]
+|[[informix-property-snapshot-mode-configuration-based-snapshot-data]]<<informix-property-configuration-based-snapshot-data, `+snapshot.mode.configuration.based.snapshot.data+`>>
+|false
+|If the `snapshot.mode` is set to `configuration_based`, set this property to specify whether the connector includes table data when it performs a snapshot.
+endif::community[]
+
+ifdef::community[]
+|[[informix-property-snapshot-mode-configuration-based-snapshot-schema]]<<informix-property-configuration-based-snapshot-schema, `+snapshot.mode.configuration.based.snapshot.schema+`>>
+|false
+|If the `snapshot.mode` is set to `configuration_based`, set this property to specify whether the connector includes the table schema when it performs a snapshot.
+endif::community[]
+
+ifdef::community[]
+|[[informix-property-snapshot-mode-configuration-based-start-stream]]<<informix-property-configuration-based-start-stream, `+snapshot.mode.configuration.based.start.stream+`>>
+|false
+|If the `snapshot.mode` is set to `configuration_based`, set this property to specify whether the connector begins to stream change events after a snapshot completes.
+endif::community[]
+
+ifdef::community[]
+|[[informix-property-snapshot-mode-configuration-based-snapshot-on-schema-error]]<<informix-property-configuration-based-snapshot-on-schema-error, `+snapshot.mode.configuration.based.snapshot.on.schema.error+`>>
+|false
+|If the `snapshot.mode` is set to `configuration_based`, set this property to specify whether the connector includes table schema in a snapshot if the schema history topic is not available.
+endif::community[]
+
+ifdef::community[]
+|[[informix-property-snapshot-mode-configuration-based-snapshot-on-data-error]]<<informix-property-configuration-based-snapshot-on-data-error, `+snapshot.mode.configuration.based.snapshot.on.data.error+`>>
+|false
+|If the `snapshot.mode` is set to `configuration_based`, this property specifies whether the connector attempts to snapshot table data if it does not find the last committed offset in the transaction log. +
+Set the value to `true` to instruct the connector to perform a new snapshot.
+endif::community[]
+
+ifdef::community[]
+|[[informix-property-snapshot-mode-custom-name]]<<informix-property-snapshot-mode-custom-name, `+snapshot.mode.custom.name+`>>
+|No default
+| If `snapshot.mode` is set to `custom`, use this setting to specify the name of the custom implementation that is provided in the `name()` method that is defined in the 'io.debezium.spi.snapshot.Snapshotter' interface.
+After a connector restart, {prodname} calls the specified custom implementation to determine whether to perform a snapshot.
+For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
+endif::community[]
+
+|[[informix-property-snapshot-locking-mode]]<<informix-property-snapshot-locking-mode, `+snapshot.locking.mode+`>>
+|_exclusive_
+a|Controls whether and for how long the connector holds a table lock.
+Table locks prevent other database clients from performing certain table operations during a snapshot.
+You can set the following values:
+
+`exclusive`:: Controls how the connector holds locks on tables while performing the schema snapshot when `snapshot.isolation.mode` is `REPEATABLE_READ` or `EXCLUSIVE`. +
+The connector holds a table lock that ensures exclusive table access during only the initial phase of the snapshot in which the connector reads the database schema and other metadata.
+In subsequent phases of the snapshot, the connector uses a flashback query, which requires no locks, to select all rows from each table.
+
+`share`:: Controls how the connector holds locks on tables while performing the schema snapshot when `snapshot.isolation.mode` is `REPEATABLE_READ` or `EXCLUSIVE`. +
+The connector holds a read table lock that ensures read table access during only the initial phase of the snapshot in which the connector reads the database schema and other metadata.
+In subsequent phases of the snapshot, the connector uses a flashback query, which requires no locks, to select all rows from each table.
+
+ifdef::community[]
+`custom`:: The connector performs a snapshot according to the implementation specified by the xref:informix-property-snapshot-locking-mode-custom-name[`snapshot.locking.mode.custom.name`] property, which is a custom implementation of the `io.debezium.spi.snapshot.SnapshotLock` interface.
+endif::community[]
+
+ifdef::community[]
+|[[informix-property-snapshot-locking-mode-custom-name]]<<informix-property-snapshot-locking-mode-custom-name, `+snapshot.locking.mode.custom.name+`>>
+|No default
+| When `snapshot.locking.mode` is set to `custom`, use this setting to specify the name of the custom locking implementation provided in the `name()` method that is defined by the 'io.debezium.spi.snapshot.SnapshotLock' interface.
+For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
+endif::community[]
+
+|[[informix-property-snapshot-query-mode]]<<informix-property-snapshot-query-mode, `+snapshot.query.mode+`>>
+|`select_all`
+|Specifies how the connector queries data while performing a snapshot. +
+Set one of the following options:
+
+`select_all`:: The connector performs a `select all` query by default, optionally adjusting the columns selected based on the column include and exclude list configurations.
+
+ifdef::community[]
+`custom`:: The connector performs a snapshot query according to the implementation specified by the xref:informix-property-snapshot-snapshot-query-mode-custom-name[`snapshot.query.mode.custom.name`] property, which defines a custom implementation of the `io.debezium.spi.snapshot.SnapshotQuery` interface. +
+endif::community[]
+
+This setting enables you to manage snapshot content in a more flexible manner compared to using the xref:informix-property-snapshot-select-statement-overrides[`snapshot.select.statement.overrides`] property.
+
+ifdef::community[]
+|[[informix-property-snapshot-snapshot-query-mode-custom-name]]<<informix-property-snapshot-query-mode-custom-name, `+snapshot.query.mode.custom.name+`>>
+|No default
+| When xref:informix-property-snapshot-query-mode[`snapshot.query.mode`] is set to `custom`, use this setting to specify the name of the custom query implementation provided in the `name()` method that is defined by the 'io.debezium.spi.snapshot.SnapshotQuery' interface.
+For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
+endif::community[]
+
+|[[informix-property-snapshot-isolation-mode]]<<informix-property-snapshot-isolation-mode, `+snapshot.isolation.mode+`>>
+|`repeatable_read`
+|During a snapshot, specifies the transaction isolation level and the length of time that the connector locks tables that are in capture mode.
+Specify one of the following values:
+
+`read_uncommitted`::
+Does not prevent other transactions from updating table rows during an initial snapshot.
+This mode has no data consistency guarantees; some data might be lost or corrupted.
+
+`read_committed`::
+Does not prevent other transactions from updating table rows during an initial snapshot.
+It is possible for a new record to appear twice: once in the initial snapshot, and once in the streaming phase.
+However, this consistency level is appropriate for data mirroring.
+
+`repeatable_read`::
+Prevents other transactions from updating table rows during an initial snapshot.
+It is possible for a new record to appear twice: once in the initial snapshot,and once in the streaming phase.
+However, this consistency level is appropriate for data mirroring.
+
+`exclusive`::
+Uses repeatable read isolation level but takes an exclusive lock for all tables to be read.
+This mode prevents other transactions from updating table rows during an initial snapshot.
+Only `exclusive` mode guarantees full consistency; the initial snapshot and streaming logs constitute a linear history.
+
+|[[informix-property-cdc-timeout]]<<informix-property-cdc-timeout, `+cdc.timeout+`>>
+|`5`
+|Positive integer value that specifies the timeout behavior of a read call to the change stream client. +
+Specify one of the following values:
+
+ +
+
+`<0`:: Do not timeout.
+
+`0`:: Return immediately if no data is available.
+
+`>=1`:: Specifies the number of seconds that the connector waits for data before it times out.
+
+|[[informix-property-cdc-buffersize]]<<informix-property-cdc-buffersize, `+cdc.buffersize+`>>
+|`0x100000`
+|Positive integer value that specifies the maximum size of each batch of records that the Informix Change Stream Client processes.
+
+|[[informix-property-event-processing-failure-handling-mode]]<<informix-property-event-processing-failure-handling-mode, `+event.processing.failure.handling.mode+`>>
+|`fail`
+|Specifies how the connector handles exceptions during processing of events. +
+Specify one of the following values:
+ +
+`fail`:: The connector logs the offset of the problematic event and stops processing.
+
+`warn`:: The connector logs the offset of the problematic event and continues processing with the next event.
+
+`skip`:: The connector skips the problematic event and continues processing with the next event.
+
+|[[informix-property-poll-interval-ms]]<<informix-property-poll-interval-ms, `+poll.interval.ms+`>>
+|`500` (0.5 seconds)
+|Positive integer value that specifies the number of milliseconds that the connector waits for new change events to appear before it starts processing a batch of events.
+
+|[[informix-property-max-batch-size]]<<informix-property-max-batch-size, `+max.batch.size+`>>
+|`2048`
+|Positive integer value that specifies the maximum size of each batch of events that the connector processes.
+
+|[[informix-property-max-queue-size]]<<informix-property-max-queue-size, `+max.queue.size+`>>
+|`8192`
+|Positive integer value that specifies the maximum number of records that the blocking queue can hold.
+When {prodname} reads events streamed from the database, it places the events in the blocking queue before it writes them to Kafka.
+The blocking queue can provide backpressure for reading change events from the database
+in cases where the connector ingests messages faster than it can write them to Kafka, or when Kafka becomes unavailable.
+Events that are held in the queue are disregarded when the connector periodically records offsets.
+Always set the value of `max.queue.size` to be larger than the value of xref:{context}-property-max-batch-size[`max.batch.size`].
+
+|[[informix-property-max-queue-size-in-bytes]]<<informix-property-max-queue-size-in-bytes, `+max.queue.size.in.bytes+`>>
+|`0`
+|A long integer value that specifies the maximum volume of the blocking queue in bytes.
+By default, volume limits are not specified for the blocking queue.
+To specify the number of bytes that the queue can consume, set this property to a positive long value. +
+If xref:informix-property-max-queue-size[`max.queue.size`] is also set, writing to the queue is blocked when the size of the queue reaches the limit specified by either property.
+For example, if you set `max.queue.size=1000`, and `max.queue.size.in.bytes=5000`, writing to the queue is blocked after the queue contains 1000 records, or after the volume of the records in the queue reaches 5000 bytes.
+
+|[[informix-property-heartbeat-interval-ms]]<<informix-property-heartbeat-interval-ms, `+heartbeat.interval.ms+`>>
+|`0`
+|Controls how frequently the connector sends heartbeat messages to a Kafka topic. The default behavior is that the connector does not send heartbeat messages. +
+ +
+Heartbeat messages are useful for monitoring whether the connector is receiving change events from the database.
+Heartbeat messages might help decrease the number of change events that need to be re-sent when a connector restarts.
+To send heartbeat messages, set this property to a positive integer, which indicates the number of milliseconds between heartbeat messages. +
+Heartbeat messages are useful when there are many updates in a database that is being tracked but only a tiny number of updates are in tables that are in capture mode. In this situation, the connector reads from the database transaction log as usual, but rarely emits change records to Kafka.
+In such a situation, the connector has few opportunities to send the latest offset to Kafka.
+Enable the connector to send heartbeat messages to ensure that it sends the latest offset to Kafka even when few changes occur in monitored tables.
+
+|[[informix-property-snapshot-delay-ms]]<<informix-property-snapshot-delay-ms, `+snapshot.delay.ms+`>>
+|No default
+|An interval in milliseconds that the connector should wait before performing a snapshot when the connector starts.
+If you start multiple connectors in a cluster, this property is useful for avoiding snapshot interruptions, which might cause re-balancing of connectors.
+
+|[[informix-property-snapshot-include-collection-list]]<<informix-property-snapshot-include-collection-list, `+snapshot.include.collection.list+`>>
+| All tables specified in `table.include.list`
+|An optional, comma-separated list of regular expressions that match the fully-qualified names (`_databaseName_._schemaName_._tableName_`) of the tables to include in a snapshot.
+The specified items must be named in the connector's xref:informix-property-table-include-list[`table.include.list`] property.
+This property takes effect only if the connector's xref:informix-property-snapshot-mode[`snapshot.mode`] property is set to a value other than `never`. +
+This property does not affect the behavior of incremental snapshots. +
+
+To match the name of a table, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the table; it does not match substrings that might be present in a table name.
+
+|[[informix-property-snapshot-fetch-size]]<<informix-property-snapshot-fetch-size, `+snapshot.fetch.size+`>>
+|`2000`
+|During a snapshot, the connector reads table content in batches of rows.
+This property specifies the maximum number of rows in a batch.
+
+|[[informix-property-snapshot-lock-timeout-ms]]<<informix-property-snapshot-lock-timeout-ms, `+snapshot.lock.timeout.ms+`>>
+|`10000`
+|Specifies the maximum amount of time (in milliseconds) to wait to obtain table locks when performing a snapshot.
+If the connector cannot acquire table locks during this interval, the snapshot fails.
+For more information, see xref:informix-snapshots[How the connector performs snapshots]. +
+Specify one of the following settings:
+ +
+An integer > 0:: The number of milliseconds that the connector waits to obtain table locks.
+The snapshot fails if the connector cannot obtain a lock before the specified interval ends.
+
+`0`:: The snapshot fails immediately if the connector cannot obtain a lock.
+
+`-1`:: The connector waits indefinitely to obtain a lock.
+
+|[[informix-property-snapshot-select-statement-overrides]]<<informix-property-snapshot-select-statement-overrides, `+snapshot.select.statement.overrides+`>>
+|No default
+|Specifies the table rows to include in a snapshot.
+Use the property if you want a snapshot to include only a subset of the rows in a table.
+This property affects snapshots only.
+It does not apply to events that the connector reads from the log during the streaming phase.
+
+The property contains a comma-separated list of fully-qualified table names in the form `_<databaseName>_._<schemaName>.<tableName>_`. For example, +
+ +
+`+"snapshot.select.statement.overrides": "mydatabase.inventory.products,mydatabase.customers.orders"+` +
+ +
+For each table in the list, add a further configuration property that specifies the `SELECT` statement for the connector to run on the table when it takes a snapshot.
+The specified `SELECT` statement determines the subset of table rows to include in the snapshot.
+Use the following format to specify the name of this `SELECT` statement property: +
+ +
+`snapshot.select.statement.overrides._<databaseName>_._<schemaName>_._<tableName>_`.
+For example,
+`snapshot.select.statement.overrides.mydatabase.customers.orders`. +
+ +
+Example:
+
+From a `customers.orders` table that includes the soft-delete column, `delete_flag`, add the following properties if you want a snapshot to include only those records that are not soft-deleted:
+
+----
+"snapshot.select.statement.overrides": "mydatabase.customer.orders",
+"snapshot.select.statement.overrides.mydatabase.customer.orders": "SELECT * FROM [customers].[orders] WHERE delete_flag = 0 ORDER BY id DESC"
+----
+
+In the resulting snapshot, the connector includes only the records for which `delete_flag = 0`.
+
+|[[informix-property-provide-transaction-metadata]]<<informix-property-provide-transaction-metadata, `+provide.transaction.metadata+`>>
+|`false`
+|Determines whether the connector generates events with transaction boundaries and enriches change event envelopes with transaction metadata.
+Set the value to `true` if you want the connector to perform these actions.
+For more information, see xref:informix-transaction-metadata[Transaction metadata] .
+
+|[[informix-property-skipped-operations]]<<informix-property-skipped-operations, `+skipped.operations+`>>
+|`t`
+|A comma-separated list of operation types that the connector skips during streaming.
+You can specify the following values:
+
+`c`:: The connector does not emit events for insert (create) operations.
+`u`:: The connector does not emit events for update operations.
+`d`:: The connector does not emit events for delete operations.
+ `t`(default):: The connector does not emit events truncate operation.
+ `none`:: The connector emits events for all operation types.
+
+|[[informix-property-signal-data-collection]]<<informix-property-signal-data-collection, `+signal.data.collection+`>>
+|No default
+| Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}#debezium-signaling-enabling-source-signaling-channel[signals] to the connector.
+Use the following format to specify the collection name: +
+`_<databaseName>_._<schemaName>_._<tableName>_`
+
+|[[informix-property-signal-enabled-channels]]<<informix-property-signal-enabled-channels, `+signal.enabled.channels+`>>
+|`source`
+| List of the signaling channel names that are enabled for the connector.
+By default, the following channels are available:
+
+* `source`
+* `kafka`
+* `file`
+* `jmx`
+ifdef::community[]
+Optionally, you can also implement a {link-prefix}:{link-signalling}#debezium-signaling-enabling-custom-signaling-channel[custom signaling channel].
+endif::community[]
+|[[informix-property-notification-enabled-channels]]<<informix-property-notification-enabled-channels, `+notification.enabled.channels+`>>
+|No default
+| List of the notification channel names that are enabled for the connector.
+By default, the following channels are available:
+
+* `sink`
+* `log`
+* `jmx`
+ifdef::community[]
+Optionally, you can also implement a {link-prefix}:{link-notification}#debezium-notification-custom-channel[custom notification channel].
+endif::community[]
+|[[informix-property-incremental-snapshot-chunk-size]]<<informix-property-incremental-snapshot-chunk-size, `+incremental.snapshot.chunk.size+`>>
+|`1024`
+|The maximum number of rows that the connector fetches and reads into memory during an incremental snapshot chunk.
+Increasing the chunk size provides greater efficiency, because the snapshot runs fewer snapshot queries of a greater size.
+However, larger chunk sizes also require more memory to buffer the snapshot data.
+Adjust the chunk size to a value that provides the best performance in your environment.
+
+|[[informix-property-incremental-snapshot-watermarking-strategy]]<<informix-property-incremental-snapshot-watermarking-strategy, `+incremental.snapshot.watermarking.strategy+`>>
+|`insert_insert`
+|Specifies the watermarking mechanism that the connector uses during an incremental snapshot to deduplicate events that might be captured by an incremental snapshot and then recaptured after streaming resumes. +
+You can specify one of the following options:
+
+`insert_insert`:: When you send a signal to initiate an incremental snapshot, for every chunk that {prodname} reads during the snapshot, it writes an entry to the signaling data collection to record the signal to open the snapshot window.
+After the snapshot completes, {prodname} inserts a second entry that records the signal to close the window.
+`insert_delete`:: When you send a signal to initiate an incremental snapshot, for every chunk that {prodname} reads, it writes a single entry to the signaling data collection to record the signal to open the snapshot window.
+After the snapshot completes, this entry is removed.
+No entry is created for the signal to close the snapshot window.
+Set this option to prevent rapid growth of the signaling data collection.
+
+|[[informix-property-topic-naming-strategy]]<<informix-property-topic-naming-strategy, `topic.naming.strategy`>>
+|`io.debezium.schema.SchemaTopicNamingStrategy`
+|The name of the `TopicNamingStrategy` class that the connector uses to construct the topic names for data change, schema change, transaction, heartbeat, and other types of events.
+
+|[[informix-property-topic-delimiter]]<<informix-property-topic-delimiter, `topic.delimiter`>>
+|`.`
+|Specifies the delimiter that the connector uses to construct topic names.
+
+|[[informix-property-topic-cache-size]]<<informix-property-topic-cache-size, `topic.cache.size`>>
+|`10000`
+|The cache size allocated for storing topic names in a bounded concurrent hash map.
+This cache helps to determine the topic name that corresponds to a given data collection.
+
+|[[informix-property-topic-heartbeat-prefix]]<<informix-property-topic-heartbeat-prefix, `+topic.heartbeat.prefix+`>>
+|`__debezium-heartbeat`
+|Specifies a string that the connector appends to the name of the topic to which it sends heartbeat messages.
+The topic name has the following pattern: +
+ +
+_topic.heartbeat.prefix_._topic.prefix_ +
+ +
+For example, if the topic prefix is `fulfillment`, based on the default value of the prefix, the connector assigns the following name to the heartbeat topic : `__debezium-heartbeat.fulfillment`.
+
+|[[informix-property-topic-transaction]]<<informix-property-topic-transaction, `topic.transaction`>>
+|`transaction`
+|Specifies a string that the connector appends to the name of the topic to which it sends transaction metadata messages.
+The topic name has the following pattern: +
+ +
+_topic.prefix_._transaction_ +
+ +
+For example, if the topic prefix is `fulfillment`, based on the default value of this property, the connector assigns the following name to the transaction metadata topic:  `fulfillment.transaction`.
+
+|[[informix-property-snapshot-max-threads]]<<informix-property-snapshot-max-threads, `snapshot.max.threads`>>
+|`1`
+|Specifies the maximum number of threads that the connector uses when performing an initial snapshot.
+To enable parallel initial snapshots, set the property to a value greater than 1.
+In a parallel initial snapshot, the connector processes multiple tables concurrently.
+ifdef::community[]
+This feature is incubating.
+endif::community[]
+
+|[[informix-property-custom-metric-tags]]<<informix-property-custom-metric-tags, `custom.metric.tags`>>
+|`No default`
+|Defines tags that customize MBean object names by adding metadata that provides contextual information.
+Specify a comma-separated list of key-value pairs.
+Each key represents a tag for the MBean object name, and the corresponding value represents a value for the key, for example,  +
+`k1=v1,k2=v2`
+
+The connector appends the specified tags to the base MBean object name.
+Tags can help you to organize and categorize metrics data.
+You can define tags to identify particular application instances, environments, regions, versions, and so forth.
+For more information, see xref:customized-mbean-names[Customized MBean names].
+
+|[[informix-property-errors-max-retires]]<<informix-property-errors-max-retires, `errors.max.retries`>>
+|`-1`
+|The maximum number of retries on retriable errors (e.g. connection errors) before failing (-1 = no limit, 0 = disabled, > 0 = num of retries).
+
+|[[informix-property-database-query-timeout-ms]]<<informix-property-database-query-timeout-ms, `database.query.timeout.ms`>>
+|`600000` (10 minutes)
+|Specifies the time, in milliseconds, that the connector waits for a query to complete.
+Set the value to `0` (zero) to remove the timeout limit.
+
+|===
+
+[id="debezium-informix-connector-database-history-configuration-properties"]
+==== {prodname} connector database schema history configuration properties
+
+include::{partialsdir}/modules/all-connectors/ref-connector-configuration-database-history-properties.adoc[leveloffset=+1]
+
+[id="debezium-{context}-connector-kafka-signals-configuration-properties"]
+==== {prodname} connector Kafka signals configuration properties
+
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-signals-configuration-properties.adoc[leveloffset=+1]
+
+[id="debezium-{context}-connector-kafka-notifications-configuration-properties"]
+==== {prodname} connector sink notifications configuration properties
+
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-notification-configuration-properties.adoc[leveloffset=+1]
+
+[id="debezium-informix-connector-pass-through-database-driver-configuration-properties"]
+==== {prodname} connector pass-through database driver configuration properties
+
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-database-driver-configuration-properties.adoc[leveloffset=+1]
+
+// Type: assembly
+// ModuleID: monitoring-debezium-informix-connector-performance
+// Title: Monitoring {prodname} Informix connector performance
+[[informix-monitoring]]
+== Monitoring
+
+The {prodname} Informix connector provides three types of metrics that are in addition to the built-in support for JMX metrics that Apache ZooKeeper, Apache Kafka, and Kafka Connect provide.
+
+* xref:informix-snapshot-metrics[Snapshot metrics] provide information about connector operation while performing a snapshot.
+* xref:informix-streaming-metrics[Streaming metrics] provide information about connector operation when the connector is capturing changes and streaming change event records.
+* xref:informix-schema-history-metrics[Schema history metrics] provide information about the status of the connector's schema history.
+
+{link-prefix}:{link-debezium-monitoring}#monitoring-debezium[{prodname} monitoring documentation] provides details for how to expose these metrics by using JMX.
+
+// Type: concept
+// ModuleID: monitoring-debezium-informix-connectors-customized-mbean-names
+// Title: Customized names for Db2 connector snapshot and streaming MBean objects
+=== Customized MBean names
+
+include::{partialsdir}/modules/all-connectors/frag-common-mbean-name.adoc[leveloffset=+1,tags=mbeans-shared]
+
+// Type: reference
+// ModuleID: monitoring-debezium-during-snapshots-of-informix-databases
+// Title: Monitoring {prodname} during snapshots of Informix databases
+[[informix-snapshot-metrics]]
+=== Snapshot metrics
+
+include::{partialsdir}/modules/all-connectors/frag-common-mbean-name.adoc[leveloffset=+1,tags=common-snapshot]
+
+include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-snapshot-metrics.adoc[leveloffset=+1]
+
+include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-incremental-snapshot-metrics.adoc[leveloffset=+1]
+
+// Type: reference
+// ModuleID: monitoring-debezium-informix-connector-record-streaming
+// Title: Monitoring {prodname} Informix connector record streaming
+[[informix-streaming-metrics]]
+=== Streaming metrics
+
+include::{partialsdir}/modules/all-connectors/frag-common-mbean-name.adoc[leveloffset=+1,tags=common-streaming]
+
+include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
+
+// Type: assembly
+// ModuleID: updating-schemas-for-informix-tables-in-capture-mode-for-debezium-connectors
+// Title: Updating schemas for Informix tables in capture mode for {prodname} connectors
+[[informix-schema-evolution]]
+== Schema evolution
+
+While a {prodname} Informix connector can capture schema changes, to update a schema, you must collaborate with a database administrator to ensure that the connector continues to produce change events.
+
+[WARNING]
+====
+When you initiate a schema update on a table, you must permit the update procedure to complete before you perform a new schema update on the same table.
+When possible, it is best to execute all DDLs in a single batch and perform the schema update procedure only once.
+====
+
+
+// Type: procedure
+// ModuleID: performing-offline-schema-updates-for-debezium-informix-connectors
+// Title: Performing offline schema updates for {prodname} Informix connectors
+[[informix-offline-schema-update]]
+=== Offline schema update
+
+Informix does not support online schema updates while capturing changes.
+You must stop the {prodname} Informix connector before you perform a schema update.
+
+[NOTE]
+====
+Because you must stop {prodname} to complete the schema update procedure, to minimize disruptions to downstream applications, it's best to perform this operation during a scheduled maintenance window.
+====
+
+.Prerequisites
+
+* One or more tables that are in capture mode require schema updates.
+
+.Procedure
+
+. Suspend the application that updates the database.
+. Wait for the {prodname} connector to stream all unstreamed change event records.
+. Stop the {prodname} connector.
+. Apply all changes to the source table schema.
+. Resume the application that updates the database.
+. Restart the {prodname} connector.

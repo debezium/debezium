@@ -1,0 +1,22 @@
+= Connectors
+
+{prodname}'s goal is to build up a library of connectors that capture changes from a variety of database management systems and produce events with very similar structures, making it far easier for your applications to consume and respond to the events regardless of where the changes originated.
+
+We currently have the following connectors:
+
+* xref:connectors/mongodb.adoc[MongoDB]
+* xref:connectors/mysql.adoc[MySQL]
+* xref:connectors/postgresql.adoc[PostgreSQL]
+* xref:connectors/sqlserver.adoc[SQL Server]
+* xref:connectors/oracle.adoc[Oracle]
+* xref:connectors/db2.adoc[Db2]
+* xref:connectors/cassandra.adoc[Cassandra]
+* xref:connectors/vitess.adoc[Vitess] (Incubating)
+* xref:connectors/spanner.adoc[Spanner]
+* xref:connectors/jdbc.adoc[JDBC] (Incubating)
+* xref:connectors/informix.adoc[Informix] (Incubating)
+
+[NOTE]
+====
+An incubating connector is one that has been released for preview purposes and is subject to changes that may not always be backward compatible.
+====

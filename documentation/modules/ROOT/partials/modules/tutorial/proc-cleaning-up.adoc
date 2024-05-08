@@ -1,0 +1,47 @@
+// Metadata created by nebel
+//
+// UserStory:
+
+[id="cleaning-up"]
+= Cleaning up
+
+After you are finished with the tutorial,
+you can use Docker to stop all of the running containers.
+
+.Procedure
+
+. Stop each of the containers:
++
+--
+[source,shell,options="nowrap"]
+----
+$ docker stop mysqlterm watcher connect mysql kafka zookeeper
+----
+
+Docker stops each container.
+Because you used the `--rm` option when you started them, Docker also removes them.
+--
+
+ifdef::community[]
+[NOTE]
+====
+If you use Podman, run the following command:
+[source,shell,options="nowrap",subs="+attributes"]
+----
+$ podman pod kill dbz
+$ podman pod rm dbz
+----
+====
+endif::community[]
+
+. Verify that all of the processes have stopped and have been removed:
++
+--
+[source,shell,options="nowrap"]
+----
+$ docker ps -a
+----
+
+If any of the processes are still running,
+stop them using `docker stop __<process-name>__` or `docker stop __<containerId>__`.
+--

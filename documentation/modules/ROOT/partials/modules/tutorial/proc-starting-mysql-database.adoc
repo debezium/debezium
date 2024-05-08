@@ -1,0 +1,57 @@
+// Metadata created by nebel
+//
+// ParentAssemblies: assemblies/tutorial/as_starting-services.adoc
+// UserStory:
+
+[id="starting-mysql-database"]
+= Starting a MySQL database
+
+At this point, you have started ZooKeeper and Kafka,
+but you still need a database server from which {prodname} can capture changes.
+In this procedure, you will start a MySQL server with an example database.
+
+.Procedure
+
+. Open a new terminal, and use it to start a new container that runs a MySQL database server preconfigured with an `inventory` database.
++
+--
+This command runs a new container using version {debezium-docker-label} of the `quay.io/debezium/example-mysql` image, which is https://github.com/debezium/container-images/blob/main/examples/mysql/{debezium-docker-label}/Dockerfile[based on] the https://hub.docker.com/r/_/mysql/[mysql:8.2] image.
+It also defines and populates a sample `inventory` database:
+
+[source,shell,options="nowrap",subs="attributes"]
+----
+$ docker run -it --rm --name mysql -p 3306:3306 -e MYSQL_ROOT_PASSWORD=debezium -e MYSQL_USER=mysqluser -e MYSQL_PASSWORD=mysqlpw quay.io/debezium/example-mysql:{debezium-docker-label}
+----
+
+`-it`:: The container is interactive,
+which means the terminal's standard input and output are attached to the container.
+`--rm`:: The container will be removed when it is stopped.
+`--name mysql`:: The name of the container.
+`-p 3306:3306`:: Maps port `3306` (the default MySQL port) in the container to the same port on the Docker host so that applications outside of the container can connect to the database server.
+`-e MYSQL_ROOT_PASSWORD=debezium -e MYSQL_USER=mysqluser -e MYSQL_PASSWORD=mysqlpw`:: Creates a user and password that has the minimum privileges required by the {prodname} MySQL connector.
+--
+
+ifdef::community[]
+[NOTE]
+====
+If you use Podman, run the following command:
+[source,shell,options="nowrap",subs="+attributes"]
+----
+$ podman run -it --rm --name mysql --pod dbz -e MYSQL_ROOT_PASSWORD=debezium -e MYSQL_USER=mysqluser -e MYSQL_PASSWORD=mysqlpw quay.io/debezium/example-mysql:{debezium-docker-label}
+----
+====
+endif::community[]
+
+. Verify that the MySQL server starts.
++
+--
+The MySQL server starts and stops a few times as the configuration is modified.
+You should see output similar to the following:
+
+[source,shell,options="nowrap"]
+----
+...
+[System] [MY-010931] [Server] /usr/sbin/mysqld: ready for connections. Version: '8.0.27'  socket: '/var/run/mysqld/mysqld.sock'  port: 3306  MySQL Community Server - GPL.
+[System] [MY-011323] [Server] X Plugin ready for connections. Bind-address: '::' port: 33060, socket: /var/run/mysqld/mysqlx.sock
+----
+--

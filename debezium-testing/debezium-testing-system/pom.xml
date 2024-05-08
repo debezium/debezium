@@ -1,0 +1,668 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+  <parent>
+    <groupId>io.debezium</groupId>
+    <artifactId>debezium-testing</artifactId>
+    <version>2.7.0-SNAPSHOT</version>
+    <relativePath>../pom.xml</relativePath>
+  </parent>
+
+  <modelVersion>4.0.0</modelVersion>
+  <artifactId>debezium-testing-system</artifactId>
+  <name>Debezium system integration test-suite</name>
+
+  <properties>
+    <version.fabric8.client>6.10.0</version.fabric8.client>
+    <version.commons.codec>1.14</version.commons.codec>
+    <version.commons.compress>1.26.0</version.commons.compress>
+    <version.strimzi>0.40.0</version.strimzi>
+    <version.strimzi.kafka>${version.kafka}</version.strimzi.kafka>
+    <version.assertj>3.11.1</version.assertj>
+    <version.apicurio>2.4.1.Final</version.apicurio>
+    <version.apicurio.model>1.1.0</version.apicurio.model>
+    <version.fixture5>0.1.0</version.fixture5>
+    <version.debezium.jdbc.tests>2.6.0.Beta1</version.debezium.jdbc.tests>
+
+    <product.build>false</product.build>
+    <prepare.strimzi>true</prepare.strimzi>
+
+    <!--KC image configuration-->
+    <image.build.registry>quay.io</image.build.registry>
+    <image.as>${image.build.registry}/debezium/test-artifact-server:${project.version}</image.as>
+
+    <!--Docker configuration-->
+    <docker.image.mysql>quay.io/debezium/example-mysql-master:latest</docker.image.mysql>
+    <docker.image.mysql.replica>quay.io/debezium/example-mysql-replica:latest</docker.image.mysql.replica>
+    <docker.image.postgresql>quay.io/debezium/example-postgres:latest</docker.image.postgresql>
+    <docker.image.postgresql.replica>quay.io/debezium/postgres:15</docker.image.postgresql.replica>
+    <docker.image.mongo>quay.io/debezium/example-mongodb:2.6</docker.image.mongo>
+    <docker.image.mongo.sharded>quay.io/debezium/example-mongodb:2.6</docker.image.mongo.sharded>
+    <docker.image.sqlserver>mcr.microsoft.com/mssql/server:2019-latest</docker.image.sqlserver>
+    <docker.image.db2>quay.io/rh_integration/dbz-db2-cdc:latest</docker.image.db2>
+    <docker.image.oracle>quay.io/rh_integration/dbz-oracle:19.3.0</docker.image.oracle>
+
+    <!--OCP configuration-->
+    <ocp.request.retry.backoff.limit>5</ocp.request.retry.backoff.limit>
+    <ocp.project.debezium>debezium</ocp.project.debezium>
+    <ocp.project.registry>${ocp.project.debezium}-registry</ocp.project.registry>
+    <ocp.project.mysql>${ocp.project.debezium}-mysql</ocp.project.mysql>
+    <ocp.project.postgresql>${ocp.project.debezium}-postgresql</ocp.project.postgresql>
+    <ocp.project.mongo>${ocp.project.debezium}-mongo</ocp.project.mongo>
+    <ocp.project.sqlserver>${ocp.project.debezium}-sqlserver</ocp.project.sqlserver>
+    <ocp.project.db2>${ocp.project.debezium}-db2</ocp.project.db2>
+    <ocp.project.oracle>${ocp.project.debezium}-oracle</ocp.project.oracle>
+
+    <ocp.image.mysql>${docker.image.mysql}</ocp.image.mysql>
+    <ocp.image.mysql.replica>${docker.image.mysql.replica}</ocp.image.mysql.replica>
+    <ocp.image.postgresql>${docker.image.postgresql}</ocp.image.postgresql>
+    <ocp.image.postgresql.replica>${docker.image.postgresql.replica}</ocp.image.postgresql.replica>
+    <ocp.image.mongo>${docker.image.mongo}</ocp.image.mongo>
+    <ocp.image.sqlserver>${docker.image.sqlserver}</ocp.image.sqlserver>
+    <ocp.image.db2>${docker.image.db2}</ocp.image.db2>
+    <ocp.image.oracle>${docker.image.oracle}</ocp.image.oracle>
+
+    <!--Strimzi configuration-->
+    <strimzi.operator.channel>stable</strimzi.operator.channel>
+    <strimzi.operator.connectors>true</strimzi.operator.connectors>
+    <strimzi.kc.build>true</strimzi.kc.build>
+    <strimzi.kc.log.level.dbz>DEBUG</strimzi.kc.log.level.dbz>
+
+    <!--Apicurio configuration-->
+    <apicurio.crd.version>v1</apicurio.crd.version>
+    <apicurio.log.level>INFO</apicurio.log.level>
+    <apicurio.operator.channel>2.x</apicurio.operator.channel>
+    <apicurio.tls.enabled>false</apicurio.tls.enabled>
+
+    <!--MySQL configuration-->
+    <database.mysql.port>3306</database.mysql.port>
+    <database.mysql.username>mysqluser</database.mysql.username>
+    <database.mysql.password>mysqlpw</database.mysql.password>
+    <database.mysql.dbz.username>debezium</database.mysql.dbz.username>
+    <database.mysql.dbz.password>dbz</database.mysql.dbz.password>
+    <database.mysql.root.password>debezium</database.mysql.root.password>
+
+    <!--PostgreSQL configuration-->
+    <database.postgresql.port>5432</database.postgresql.port>
+    <database.postgresql.username>debezium</database.postgresql.username>
+    <database.postgresql.password>debezium</database.postgresql.password>
+    <database.postgresql.dbz.username>debezium</database.postgresql.dbz.username>
+    <database.postgresql.dbz.password>debezium</database.postgresql.dbz.password>
+    <database.postgresql.dbname>debezium</database.postgresql.dbname>
+
+    <!--SqlServer configuration-->
+    <database.sqlserver.port>5432</database.sqlserver.port>
+    <database.sqlserver.username>sa</database.sqlserver.username>
+    <database.sqlserver.password>Debezium1$</database.sqlserver.password>
+    <database.sqlserver.dbz.username>${database.sqlserver.username}</database.sqlserver.dbz.username>
+    <database.sqlserver.dbz.password>${database.sqlserver.password}</database.sqlserver.dbz.password>
+    <database.sqlserver.dbnames>testDB</database.sqlserver.dbnames>
+
+    <!--MongoDB configuration-->
+    <database.mongo.port>27017</database.mongo.port>
+    <database.mongo.username>admin</database.mongo.username>
+    <database.mongo.password>admin</database.mongo.password>
+    <database.mongo.dbz.username>debezium</database.mongo.dbz.username>
+    <database.mongo.dbz.password>dbz</database.mongo.dbz.password>
+    <database.mongo.dbz.dbname>inventory</database.mongo.dbz.dbname>
+    <database.mongo.dbz.login.dbname>admin</database.mongo.dbz.login.dbname>
+    <database.mongo.docker.desktop.ports>27017:27117</database.mongo.docker.desktop.ports>
+    <database.mongo.docker.replica.size>1</database.mongo.docker.replica.size>
+
+    <!--Mongodb sharded configuration-->
+    <database.mongo.use.keyfile>false</database.mongo.use.keyfile>
+    <database.mongo.use.tls>false</database.mongo.use.tls>
+
+    <!--DB2 configuration -->
+    <database.db2.port>50000</database.db2.port>
+    <database.db2.username>db2inst1</database.db2.username>
+    <database.db2.password>=Password!</database.db2.password>
+    <database.db2.dbz.username>${database.db2.username}</database.db2.dbz.username>
+    <database.db2.dbz.password>${database.db2.password}</database.db2.dbz.password>
+    <database.db2.dbname>TESTDB</database.db2.dbname>
+    <database.db2.cdc.schema>ASNCDC</database.db2.cdc.schema>
+
+    <!-- Oracle configuration-->
+    <database.oracle.username>debezium</database.oracle.username>
+    <database.oracle.password>dbz</database.oracle.password>
+    <database.oracle.dbz.username>c##dbzuser</database.oracle.dbz.username>
+    <database.oracle.dbz.password>dbz</database.oracle.dbz.password>
+    <database.oracle.dbname>ORCLCDB</database.oracle.dbname>
+    <database.oracle.pdbname>ORCLPDB1</database.oracle.pdbname>
+
+    <!--Debezium connector versions-->
+    <version.debezium.connector>${project.version}</version.debezium.connector>
+
+    <!-- Artifact repository for KC build -->
+    <as.url>http://debezium-artifact-server.${ocp.project.debezium}.svc.cluster.local:8080</as.url>
+    <as.debezium.version>${version.debezium.connector}</as.debezium.version>
+    <as.apicurio.version>${version.apicurio}</as.apicurio.version>
+    <as.apicurio.url>${as.url}/apicurio-registry-distro-connect-converter-${as.apicurio.version}.zip</as.apicurio.url>
+  </properties>
+
+  <repositories>
+    <repository>
+      <id>sonatype-snapshots</id>
+      <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
+      <snapshots>
+        <updatePolicy>always</updatePolicy>
+      </snapshots>
+    </repository>
+  </repositories>
+
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>io.fabric8</groupId>
+        <artifactId>kubernetes-client-bom</artifactId>
+        <version>${version.fabric8.client}</version>
+        <scope>import</scope>
+        <type>pom</type>
+      </dependency>
+
+      <!-- Debezium dependencies -->
+      <dependency>
+        <groupId>io.debezium</groupId>
+        <artifactId>debezium-connector-mysql</artifactId>
+        <classifier>plugin</classifier>
+        <type>zip</type>
+        <version>${version.debezium.connector}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.debezium</groupId>
+        <artifactId>debezium-connector-postgres</artifactId>
+        <classifier>plugin</classifier>
+        <type>zip</type>
+        <version>${version.debezium.connector}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.debezium</groupId>
+        <artifactId>debezium-connector-sqlserver</artifactId>
+        <classifier>plugin</classifier>
+        <type>zip</type>
+        <version>${version.debezium.connector}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.debezium</groupId>
+        <artifactId>debezium-connector-mongodb</artifactId>
+        <classifier>plugin</classifier>
+        <type>zip</type>
+        <version>${version.debezium.connector}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.debezium</groupId>
+        <artifactId>debezium-connector-db2</artifactId>
+        <classifier>plugin</classifier>
+        <type>zip</type>
+        <version>${version.debezium.connector}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.debezium</groupId>
+        <artifactId>debezium-connector-oracle</artifactId>
+        <classifier>plugin</classifier>
+        <type>zip</type>
+        <version>${version.debezium.connector}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.debezium</groupId>
+        <artifactId>debezium-connector-jdbc</artifactId>
+        <classifier>plugin</classifier>
+        <type>zip</type>
+        <version>${version.debezium.connector}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.debezium</groupId>
+        <artifactId>debezium-scripting</artifactId>
+        <type>zip</type>
+        <version>${version.debezium.connector}</version>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <dependencies>
+    <dependency>
+      <groupId>io.debezium</groupId>
+      <artifactId>debezium-testing-testcontainers</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.fabric8</groupId>
+      <artifactId>openshift-client</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>com.squareup.okhttp3</groupId>
+          <artifactId>okhttp</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>com.squareup.okhttp3</groupId>
+          <artifactId>logging-interceptor</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>com.fasterxml.jackson.core</groupId>
+          <artifactId>jackson-core</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>com.fasterxml.jackson.core</groupId>
+          <artifactId>jackson-databind</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+
+    <dependency>
+      <groupId>commons-codec</groupId>
+      <artifactId>commons-codec</artifactId>
+      <version>${version.commons.codec}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-compress</artifactId>
+      <version>${version.commons.compress}</version>
+      <optional>true</optional>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.kafka</groupId>
+      <artifactId>kafka-clients</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.kafka</groupId>
+      <artifactId>connect-api</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-reload4j</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.kafka</groupId>
+      <artifactId>connect-runtime</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>ch.qos.reload4j</groupId>
+          <artifactId>reload4j</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-reload4j</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>com.fasterxml.jackson.core</groupId>
+          <artifactId>jackson-annotations</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+
+    <dependency>
+      <groupId>io.strimzi</groupId>
+      <artifactId>api</artifactId>
+      <version>${version.strimzi}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.apache.logging.log4j</groupId>
+          <artifactId>log4j-api</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.apache.logging.log4j</groupId>
+          <artifactId>log4j-core</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.apache.logging.log4j</groupId>
+          <artifactId>log4j-slf4j-impl</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>com.fasterxml.jackson.core</groupId>
+          <artifactId>jackson-annotations</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+
+    <dependency>
+      <groupId>io.apicurio</groupId>
+      <artifactId>apicurio-registry-operator-api-model</artifactId>
+      <version>${version.apicurio.model}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.apache.logging.log4j</groupId>
+          <artifactId>log4j-api</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-simple</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+
+    <dependency>
+      <groupId>com.squareup.okhttp3</groupId>
+      <artifactId>okhttp</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>org.jetbrains.kotlin</groupId>
+          <artifactId>kotlin-stdlib-common</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.jetbrains.kotlin</groupId>
+          <artifactId>kotlin-stdlib</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+
+    <dependency>
+      <groupId>com.squareup.okhttp3</groupId>
+      <artifactId>logging-interceptor</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-core</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.junit.platform</groupId>
+      <artifactId>junit-platform-launcher</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.assertj</groupId>
+      <artifactId>assertj-core</artifactId>
+      <version>${version.assertj}</version>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>io.github.jcechace</groupId>
+      <artifactId>fixture5</artifactId>
+      <version>${version.fixture5}</version>
+    </dependency>
+
+    <dependency>
+        <groupId>ch.qos.logback</groupId>
+        <artifactId>logback-classic</artifactId>
+        <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.awaitility</groupId>
+      <artifactId>awaitility</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>com.mysql</groupId>
+      <artifactId>mysql-connector-j</artifactId>
+    </dependency>
+
+    <dependency>
+
+      <groupId>org.postgresql</groupId>
+      <artifactId>postgresql</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>com.microsoft.sqlserver</groupId>
+      <artifactId>mssql-jdbc</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.mongodb</groupId>
+      <artifactId>mongodb-driver-sync</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>com.ibm.db2</groupId>
+      <artifactId>jcc</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>jdbc</artifactId>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>mysql</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>mongodb</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>postgresql</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>mssqlserver</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>db2</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>io.debezium</groupId>
+      <artifactId>debezium-connector-jdbc</artifactId>
+      <type>test-jar</type>
+      <scope>test</scope>
+      <version>${version.debezium.jdbc.tests}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>oracle-xe</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.freemarker</groupId>
+      <artifactId>freemarker</artifactId>
+      <version>2.3.32</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.bouncycastle</groupId>
+      <artifactId>bcpkix-jdk15on</artifactId>
+      <version>1.70</version>
+    </dependency>
+  </dependencies>
+
+  <profiles>
+    <profile>
+      <!-- Required to run tests against downstream -->
+      <id>product</id>
+      <properties>
+        <as.apicurio.url>${as.url}/service-registry-${as.apicurio.version}-distro-connect-converter.zip</as.apicurio.url>
+        <product.build>true</product.build>
+      </properties>
+    </profile>
+
+    <profile>
+      <!-- Required to run Oracle tests -->
+      <id>oracleITs</id>
+      <properties>
+        <database.oracle>true</database.oracle>
+      </properties>
+      <dependencies>
+        <dependency>
+          <groupId>com.oracle.database.jdbc</groupId>
+          <artifactId>ojdbc8</artifactId>
+        </dependency>
+      </dependencies>
+    </profile>
+
+    <profile>
+      <!-- Required to run build images with Oracle connector -->
+      <id>oracle-image</id>
+      <dependencies>
+        <dependency>
+          <groupId>io.debezium</groupId>
+          <artifactId>debezium-connector-oracle</artifactId>
+          <classifier>plugin</classifier>
+          <type>zip</type>
+        </dependency>
+      </dependencies>
+    </profile>
+
+    <profile>
+      <id>systemITs</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-failsafe-plugin</artifactId>
+            <configuration>
+              <skipTests>${skipITs}</skipTests>
+              <enableAssertions>true</enableAssertions>
+              <trimStackTrace>false</trimStackTrace>
+              <runOrder>${runOrder}</runOrder>
+              <!-- Idea not picking up and emitting a warning not sure why, it works in other modules just fine -->
+              <argLine>--add-opens java.base/java.net=ALL-UNNAMED</argLine>
+              <systemPropertyVariables>
+                <test.wait.scale>1</test.wait.scale>
+                <test.product.build>${product.build}</test.product.build>
+                <test.prepare.strimzi>${prepare.strimzi}</test.prepare.strimzi>
+
+                <test.artifact.server.url>${as.url}</test.artifact.server.url>
+                <!--Docker Configuration-->
+                <test.docker.image.kc>${docker.image.kc}</test.docker.image.kc>
+                <test.docker.image.mysql>${docker.image.mysql}</test.docker.image.mysql>
+                <test.docker.image.mysql.replica>${docker.image.mysql.replica}</test.docker.image.mysql.replica>
+                <test.docker.image.postgresql>${docker.image.postgresql}</test.docker.image.postgresql>
+                <test.docker.image.mongo>${docker.image.mongo}</test.docker.image.mongo>
+                <test.docker.image.mongo.sharded>${docker.image.mongo.sharded}</test.docker.image.mongo.sharded>
+                <test.docker.image.sqlserver>${docker.image.sqlserver}</test.docker.image.sqlserver>
+                <test.docker.image.db2>${docker.image.db2}</test.docker.image.db2>
+                <test.docker.image.oracle>${docker.image.oracle}</test.docker.image.oracle>
+
+                <!--OCP Configuration-->
+                <test.ocp.url>${ocp.url}</test.ocp.url>
+                <test.ocp.request.retry.backoff.limit>${ocp.request.retry.backoff.limit}</test.ocp.request.retry.backoff.limit>
+                <test.ocp.username>${ocp.username}</test.ocp.username>
+                <test.ocp.password>${ocp.password}</test.ocp.password>
+                <test.ocp.pull.secret.paths>${ocp.pull.secret.paths}</test.ocp.pull.secret.paths>
+                <test.ocp.project.debezium>${ocp.project.debezium}</test.ocp.project.debezium>
+                <test.ocp.project.registry>${ocp.project.registry}</test.ocp.project.registry>
+                <test.ocp.project.mysql>${ocp.project.mysql}</test.ocp.project.mysql>
+                <test.ocp.project.postgresql>${ocp.project.postgresql}</test.ocp.project.postgresql>
+                <test.ocp.project.mongo>${ocp.project.mongo}</test.ocp.project.mongo>
+                <test.ocp.project.sqlserver>${ocp.project.sqlserver}</test.ocp.project.sqlserver>
+                <test.ocp.project.db2>${ocp.project.db2}</test.ocp.project.db2>
+                <test.ocp.project.oracle>${ocp.project.oracle}</test.ocp.project.oracle>
+
+                <!--Strimzi Configuration-->
+                <test.strimzi.operator.channel>${strimzi.operator.channel}</test.strimzi.operator.channel>
+                <test.strimzi.version.kafka>${version.strimzi.kafka}</test.strimzi.version.kafka>
+                <test.strimzi.operator.connectors>${strimzi.operator.connectors}</test.strimzi.operator.connectors>
+                <test.strimzi.kc.build>${strimzi.kc.build}</test.strimzi.kc.build>
+                <test.strimzi.kc.image>${image.kc}</test.strimzi.kc.image>
+                <test.strimzi.kc.log.level.dbz>${strimzi.kc.log.level.dbz}</test.strimzi.kc.log.level.dbz>
+
+                <!--Apicurio configuration-->
+                <test.apicurio.crd.version>${apicurio.crd.version}</test.apicurio.crd.version>
+                <test.apicurio.log.level>${apicurio.log.level}</test.apicurio.log.level>
+                <test.apicurio.operator.channel>${apicurio.operator.channel}</test.apicurio.operator.channel>
+                <test.apicurio.tls.enabled>${apicurio.tls.enabled}</test.apicurio.tls.enabled>
+
+                <!--MySQL configuration-->
+                <test.database.mysql.host>${database.mysql.host}</test.database.mysql.host>
+                <test.database.mysql.username>${database.mysql.username}</test.database.mysql.username>
+                <test.database.mysql.password>${database.mysql.password}</test.database.mysql.password>
+                <test.database.mysql.dbz.username>${database.mysql.dbz.username}</test.database.mysql.dbz.username>
+                <test.database.mysql.dbz.password>${database.mysql.dbz.password}</test.database.mysql.dbz.password>
+                <test.database.mysql.port>${database.mysql.port}</test.database.mysql.port>
+
+                <!--PostgreSQL configuration-->
+                <test.database.postgresql.host>${database.postgresql.host}</test.database.postgresql.host>
+                <test.database.postgresql.port>${database.postgresql.port}</test.database.postgresql.port>
+                <test.database.postgresql.username>${database.postgresql.username}</test.database.postgresql.username>
+                <test.database.postgresql.password>${database.postgresql.password}</test.database.postgresql.password>
+                <test.database.postgresql.dbz.username>${database.postgresql.dbz.username}</test.database.postgresql.dbz.username>
+                <test.database.postgresql.dbz.password>${database.postgresql.dbz.password}</test.database.postgresql.dbz.password>
+                <test.database.postgresql.dbname>${database.postgresql.dbname}</test.database.postgresql.dbname>
+
+                <!--SqlServer configuration-->
+                <test.database.sqlserver.host>${database.sqlserver.host}</test.database.sqlserver.host>
+                <test.database.sqlserver.port>${database.sqlserver.port}</test.database.sqlserver.port>
+                <test.database.sqlserver.username>${database.sqlserver.username}</test.database.sqlserver.username>
+                <test.database.sqlserver.password>${database.sqlserver.password}</test.database.sqlserver.password>
+                <test.database.sqlserver.dbz.username>${database.sqlserver.dbz.username}</test.database.sqlserver.dbz.username>
+                <test.database.sqlserver.dbz.password>${database.sqlserver.dbz.password}</test.database.sqlserver.dbz.password>
+                <test.database.sqlserver.dbnames>${database.sqlserver.dbnames}</test.database.sqlserver.dbnames>
+
+                <!--Mongo configuration-->
+                <test.database.mongo.host>${database.mongo.host}</test.database.mongo.host>
+                <test.database.mongo.port>${database.mongo.port}</test.database.mongo.port>
+                <test.database.mongo.username>${database.mongo.username}</test.database.mongo.username>
+                <test.database.mongo.password>${database.mongo.password}</test.database.mongo.password>
+                <test.database.mongo.dbz.username>${database.mongo.dbz.username}</test.database.mongo.dbz.username>
+                <test.database.mongo.dbz.password>${database.mongo.dbz.password}</test.database.mongo.dbz.password>
+                <test.database.mongo.dbz.dbname>${database.mongo.dbz.dbname}</test.database.mongo.dbz.dbname>
+                <test.database.mongo.dbz.login.dbname>${database.mongo.dbz.login.dbname}</test.database.mongo.dbz.login.dbname>
+                <test.database.mongo.docker.desktop.ports>${database.mongo.docker.desktop.ports}</test.database.mongo.docker.desktop.ports>
+                <test.database.mongo.docker.replica.size>${database.mongo.docker.replica.size}</test.database.mongo.docker.replica.size>
+
+                <!--Mongo sharded configuration-->
+                <test.database.mongo.use.keyfile>${database.mongo.use.keyfile}</test.database.mongo.use.keyfile>
+                <test.database.mongo.use.tls>${database.mongo.use.tls}</test.database.mongo.use.tls>
+
+                <!--DB2 configuration-->
+                <test.database.db2.host>${database.db2.host}</test.database.db2.host>
+                <test.database.db2.port>${database.db2.port}</test.database.db2.port>
+                <test.database.db2.username>${database.db2.username}</test.database.db2.username>
+                <test.database.db2.password>${database.db2.password}</test.database.db2.password>
+                <test.database.db2.dbz.username>${database.db2.dbz.username}</test.database.db2.dbz.username>
+                <test.database.db2.dbz.password>${database.db2.dbz.password}</test.database.db2.dbz.password>
+                <test.database.db2.dbname>${database.db2.dbname}</test.database.db2.dbname>
+                <test.database.db2.cdc.schema>${database.db2.cdc.schema}</test.database.db2.cdc.schema>
+
+                <!-- Oracle configuration-->
+                <test.database.oracle>${database.oracle}</test.database.oracle>
+                <test.database.oracle.username>${database.oracle.username}</test.database.oracle.username>
+                <test.database.oracle.password>${database.oracle.password}</test.database.oracle.password>
+                <test.database.oracle.dbz.username>${database.oracle.dbz.username}</test.database.oracle.dbz.username>
+                <test.database.oracle.dbz.password>${database.oracle.dbz.password}</test.database.oracle.dbz.password>
+                <test.database.oracle.dbname>${database.oracle.dbname}</test.database.oracle.dbname>
+                <test.database.oracle.pdbname>${database.oracle.pdbname}</test.database.oracle.pdbname>
+              </systemPropertyVariables>
+            </configuration>
+
+            <executions>
+              <execution>
+                <id>tests-system</id>
+                <goals>
+                  <goal>integration-test</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+
+        <testResources>
+          <testResource>
+            <directory>src/test/resources</directory>
+            <filtering>true</filtering>
+          </testResource>
+        </testResources>
+      </build>
+    </profile>
+  </profiles>
+</project>

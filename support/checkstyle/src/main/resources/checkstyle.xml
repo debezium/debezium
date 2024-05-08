@@ -1,0 +1,179 @@
+<?xml version="1.0"?>
+<!DOCTYPE module PUBLIC "-//Puppy Crawl//DTD Check Configuration 1.2//EN"
+        "http://www.puppycrawl.com/dtds/configuration_1_2.dtd">
+
+<module name="Checker">
+
+    <!-- Source code is not formatted using tabs -->
+    <module name="FileTabCharacter" />
+
+    <!-- Checks the header of Java files -->
+    <module name="io.debezium.checkstyle.Header">
+        <!-- The header file is loaded by location, not classpath -->
+        <property name="headerFile" value="debezium.header"/>
+        <!--property name="fileExtensions" value="java,cnd"/-->
+        <property name="fileExtensions" value="java"/>
+        <!-- Exclude any classes that keep their own copyright and header -->
+        <property name="excludedClasses" value="io.debezium.util.VariableLatch"/>
+        <!-- Exclude any directories that contain completely different headers -->
+        <property name="excludedFilesRegex" value="io/debezium/annotation/.*"/>
+    </module>
+
+    <module name="TreeWalker">
+        <!-- Checks for imports -->
+        <module name="AvoidStarImport" />
+        <module name="RedundantImport" />
+        <!--module name="UnusedImports">
+            <property name="processJavadoc" value="true"/>
+        </module-->
+        <module name="io.debezium.checkstyle.UnusedImports">
+            <property name="processJavadoc" value="true"/>
+        </module>
+
+        <!-- Modifiers -->
+        <module name="RedundantModifier"/>
+
+        <!-- Checks for common coding problems -->
+        <module name="EqualsHashCode" />
+        <module name="IllegalInstantiation" />
+
+        <!-- Checks that ModeShape would really like to use but this requires cleaning up more code -->
+        <!--
+        <module name="ModifierOrder" />
+        <module name="HideUtilityClassConstructor" />
+        <module name="EqualsAvoidNull" />
+        <module name="MissingDeprecated" />
+        <module name="MutableException" />
+        <module name="GenericWhitespace" />
+        -->
+
+        <!-- Miscellaneous other checks. -->
+        <module name="PackageAnnotation" />
+        <module name="CovariantEquals" />
+        <module name="OneStatementPerLine" />
+        <module name="EmptyStatement" />
+        <module name="DefaultComesLast" />
+        <module name="TypecastParenPad" />
+        <module name="CovariantEquals" />
+
+        <module name="MissingOverride"/>
+
+        <module name="NeedBraces"/>
+
+        <!-- Checks for whitespace after tokens -->
+        <module name="WhitespaceAfter"/>
+
+        <module name="WhitespaceAround">
+            <property name="tokens" value="LCURLY,QUESTION,COLON,SLIST" />
+            <property name="allowEmptyLambdas" value="true" />
+        </module>
+
+        <!-- Checks for blocks. You know, those {}'s -->
+        <module name="LeftCurly">
+            <property name="option" value="eol" />
+        </module>
+
+        <module name="RightCurly">
+            <property name="option" value="alone"/>
+        </module>
+
+        <module name="ParenPad">
+            <property name="tokens" value="CTOR_CALL, SUPER_CTOR_CALL" />
+            <property name="option" value="nospace" />
+        </module>
+
+        <module name="RegexpSinglelineJava">
+            <property name="format" value="System\.(out)|(err)\.print(ln)?\(" />
+            <!-- The last sentence of the message is a keyword to trigger exclusion: see ExcludeTestPackages -->
+            <property name="message" value="Not allowed to print to System.out: if you're damn sure you want it, disable Checkstyle on this line. [not required for tests]" />
+            <property name="ignoreComments" value="true" />
+        </module>
+
+        <!-- Nobody should be using StringBuffer anymore -->
+        <module name="RegexpSinglelineJava">
+            <property name="format" value=" StringBuffer" />
+            <!-- The last sentence of the message is a keyword to trigger exclusion: see ExcludeTestPackages -->
+            <property name="message" value="Nobody should be using StringBuffer anymore" />
+        </module>
+        <module name="IllegalInstantiation">
+            <property name="classes" value="java.lang.Boolean"/>
+        </module>
+
+        <!--  Avoid importing some packages -->
+        <module name="IllegalImport">
+            <!-- Should use TestNG -->
+            <property name="illegalPkgs" value="org.testng"/>
+        </module>
+        <module name="IllegalImport">
+            <!-- Should use ModeShape-specific annotations -->
+            <property name="illegalPkgs" value="net.jcip.annotations, org.apache.http.annotation"/>
+        </module>
+        
+        <!--  Avoid importing some specific classes, types, etc. -->
+        <module name="io.debezium.checkstyle.IllegalImport">
+            <property name="illegalClassnames" value="junit.framework.Assert" />
+            <property name="message" value="Use the new org.junit.Assert class instead" />
+        </module>
+
+        <!--
+        Allow for suppressing sections of code using a starting and ending comment:
+        // CHECKSTYLE\:OFF
+        // CHECKSTYLE\:ON
+        -->
+        <module name="SuppressionCommentFilter" />
+
+        <!-- Allow for suppressing sections of code using just a leading comment:
+        // CHECKSTYLE IGNORE check FOR NEXT 2 LINES
+        -->
+        <module name="SuppressWithNearbyCommentFilter">
+            <property name="commentFormat" value="CHECKSTYLE IGNORE (\w+) FOR NEXT (\d+) LINES"/>
+            <property name="checkFormat" value="$1"/>
+            <property name="influenceFormat" value="$2"/>
+        </module>
+
+        <!-- Checks that Debezium is expressly NOT using -->
+        <!--module name="ModifiedControlVariable" /-->
+        <!--module name="DeclarationOrder" /-->
+        <!--module name="InnerTypeLast" /-->
+        <!--module name="IllegalThrows"/-->
+        <!--module name="IllegalCatch">
+            <property name="illegalClassNames" value="java.lang.Throwable, java.lang.RuntimeException" />
+        </module-->
+        <!--module name="MethodParamPad">
+            <property name="option" value="nospace" />
+            <property name="allowLineBreaks" value="false" />
+        </module-->
+
+    </module>
+
+    <!--  
+    BEGIN: ModeShape doesn't current require these, though it would be nice to do so
+    -->
+
+    <!--module name="RegexpMultiline">
+        <property name="format" value="\S\s\s\z" />
+        <property name="message" value="Only one new line is allowed at the end of a file" />
+    </module-->
+    <!-- We are not using NewLineAtEndOfFile because the new line chars change
+        on different operating systems and that rule allows only one type. This rule
+        is not actually checking for new lines, but it will work if we check that
+        there are not white spaces at the end of a line with another rule. -->
+    <!--module name="RegexpMultiline">
+        <property name="format" value="\S\z" />
+        <property name="message" value="Missing new line at the end of file" />
+    </module-->
+
+    <!--  
+    END: ModeShape doesn't current require these, though it would be nice to do so
+    -->
+
+    <!-- Allow for some code sanity rules to be violated by test code -->
+    <module name="io.debezium.checkstyle.ExcludeTestPackages" />
+
+    <!-- Allow custom files set supression -->
+    <module name="SuppressionFilter">
+        <!--The system property is set via Maven-->
+        <property name="file" value="${checkstyle.suppressions.file}"/>
+    </module>
+
+</module>

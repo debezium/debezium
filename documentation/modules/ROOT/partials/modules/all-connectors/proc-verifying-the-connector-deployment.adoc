@@ -1,0 +1,165 @@
+////
+Used in each of the connector docs downstream.
+Also used in the downstream OCP installation guide (proc-installing-debezium-with-amq-streams.adoc).
+A module with the same name is used in the downstream Getting Started guide, but it is not single-sourced, and that version is slightly modified to fit the context.
+////
+
+If the connector starts correctly without errors, it creates a topic for each table that the connector is configured to capture.
+Downstream applications can subscribe to these topics to retrieve information events that occur in the source database.
+
+To verify that the connector is running, you perform the following operations from the OpenShift Container Platform web console, or through the OpenShift CLI tool (oc):
+
+* Verify the connector status.
+* Verify that the connector generates topics.
+* Verify that topics are populated with events for read operations ("op":"r") that the connector generates during the initial snapshot of each table.
+
+.Prerequisites
+
+* A {prodname} connector is deployed to {StreamsName} on OpenShift.
+* The OpenShift `oc` CLI client is installed.
+* You have access to the OpenShift Container Platform web console.
+
+.Procedure
+. Check the status of the `KafkaConnector` resource by using one of the following methods:
+* From the OpenShift Container Platform web console:
+.. Navigate to *Home -> Search*.
+.. On the *Search* page, click *Resources* to open the *Select Resource* box, and then type `*KafkaConnector*`.
+.. From the *KafkaConnectors* list, click the name of the connector that you want to check, for example *inventory-connector-{context}*.
+.. In the *Conditions* section, verify that the values in the *Type* and *Status* columns are set to *Ready* and *True*.
++
+* From a terminal window:
+.. Enter the following command:
++
+[source,shell,options="nowrap",subs="+attributes,quotes"]
+----
+oc describe KafkaConnector _<connector-name>_ -n _<project>_
+----
++
+For example,
++
+[source,shell,options="nowrap",subs="+attributes,quotes"]
+----
+oc describe KafkaConnector inventory-connector-{context} -n debezium
+----
++
+The command returns status information that is similar to the following output:
++
+.`KafkaConnector` resource status
+======================================
+[source,shell,options="nowrap",subs="+attributes,quotes"]
+----
+Name:         inventory-connector-{context}
+Namespace:    debezium
+Labels:       strimzi.io/cluster=debezium-kafka-connect-cluster
+Annotations:  <none>
+API Version:  kafka.strimzi.io/v1beta2
+Kind:         KafkaConnector
+
+...
+
+Status:
+  Conditions:
+    Last Transition Time:  2021-12-08T17:41:34.897153Z
+    Status:                True
+    Type:                  Ready
+  Connector Status:
+    Connector:
+      State:      RUNNING
+      worker_id:  10.131.1.124:8083
+    Name:         inventory-connector-{context}
+    Tasks:
+      Id:               0
+      State:            RUNNING
+      worker_id:        10.131.1.124:8083
+    Type:               source
+  Observed Generation:  1
+  Tasks Max:            1
+  Topics:
+    inventory-connector-{context}.inventory
+    inventory-connector-{context}.inventory.addresses
+    inventory-connector-{context}.inventory.customers
+    inventory-connector-{context}.inventory.geom
+    inventory-connector-{context}.inventory.orders
+    inventory-connector-{context}.inventory.products
+    inventory-connector-{context}.inventory.products_on_hand
+Events:  <none>
+----
+======================================
+
+. Verify that the connector created Kafka topics:
+  * From the OpenShift Container Platform web console.
+  .. Navigate to *Home -> Search*.
+  .. On the *Search* page, click *Resources* to open the *Select Resource* box, and then type `*KafkaTopic*`.
+  .. From the *KafkaTopics* list, click the name of the topic that you want to check, for example, `*inventory-connector-{context}.inventory.orders---ac5e98ac6a5d91e04d8ec0dc9078a1ece439081d*`.
+  .. In the *Conditions* section, verify that the values in the *Type* and *Status* columns are set to *Ready* and *True*.
+  * From a terminal window:
+  .. Enter the following command:
++
+[source,shell,options="nowrap"]
+----
+oc get kafkatopics
+----
++
+The command returns status information that is similar to the following output:
++
+.`KafkaTopic` resource status
+======================================
+[source,options="nowrap",subs="+attributes"]
+----
+NAME                                                                    CLUSTER               PARTITIONS   REPLICATION FACTOR   READY
+connect-cluster-configs                                                 debezium-kafka-cluster   1            1                    True
+connect-cluster-offsets                                                 debezium-kafka-cluster   25           1                    True
+connect-cluster-status                                                  debezium-kafka-cluster   5            1                    True
+consumer-offsets---84e7a678d08f4bd226872e5cdd4eb527fadc1c6a             debezium-kafka-cluster   50           1                    True
+inventory-connector-{context}--a96f69b23d6118ff415f772679da623fbbb99421                               debezium-kafka-cluster   1            1                    True
+inventory-connector-{context}.inventory.addresses---1b6beaf7b2eb57d177d92be90ca2b210c9a56480          debezium-kafka-cluster   1            1                    True
+inventory-connector-{context}.inventory.customers---9931e04ec92ecc0924f4406af3fdace7545c483b          debezium-kafka-cluster   1            1                    True
+inventory-connector-{context}.inventory.geom---9f7e136091f071bf49ca59bf99e86c713ee58dd5               debezium-kafka-cluster   1            1                    True
+inventory-connector-{context}.inventory.orders---ac5e98ac6a5d91e04d8ec0dc9078a1ece439081d             debezium-kafka-cluster   1            1                    True
+inventory-connector-{context}.inventory.products---df0746db116844cee2297fab611c21b56f82dcef           debezium-kafka-cluster   1            1                    True
+inventory-connector-{context}.inventory.products_on_hand---8649e0f17ffcc9212e266e31a7aeea4585e5c6b5   debezium-kafka-cluster   1            1                    True
+schema-changes.inventory                                                debezium-kafka-cluster   1            1                    True
+strimzi-store-topic---effb8e3e057afce1ecf67c3f5d8e4e3ff177fc55          debezium-kafka-cluster   1            1                    True
+strimzi-topic-operator-kstreams-topic-store-changelog---b75e702040b99be8a9263134de3507fc0cc4017b  debezium-kafka-cluster  1   1    True
+----
+======================================
+
+. Check topic content.
++
+  * From a terminal window, enter the following command:
++
+[source,shell,options="nowrap",subs="+attributes,quotes"]
+----
+oc exec -n __<project>__  -it _<kafka-cluster>_ -- /opt/kafka/bin/kafka-console-consumer.sh \
+>     --bootstrap-server localhost:9092 \
+>     --from-beginning \
+>     --property print.key=true \
+>     --topic=_<topic-name_>
+----
++
+For example,
++
+[source,shell,options="nowrap",subs="+attributes,quotes"]
+----
+oc exec -n debezium  -it debezium-kafka-cluster-kafka-0 -- /opt/kafka/bin/kafka-console-consumer.sh \
+>     --bootstrap-server localhost:9092 \
+>     --from-beginning \
+>     --property print.key=true \
+>     --topic=inventory-connector-{context}.inventory.products_on_hand
+----
++
+The format for specifying the topic name is the same as the `oc describe` command returns in Step 1, for example, `inventory-connector-{context}.inventory.addresses`.
++
+For each event in the topic, the command returns information that is similar to the following output:
++
+.Content of a {prodname} change event
+======================================
+[source,subs="+attributes,quotes"]
+----
+{"schema":{"type":"struct","fields":[{"type":"int32","optional":false,"field":"product_id"}],"optional":false,"name":"inventory-connector-{context}.inventory.products_on_hand.Key"},"payload":{"product_id":101}} {"schema":{"type":"struct","fields":[{"type":"struct","fields":[{"type":"int32","optional":false,"field":"product_id"},{"type":"int32","optional":false,"field":"quantity"}],"optional":true,"name":"inventory-connector-{context}.inventory.products_on_hand.Value","field":"before"},{"type":"struct","fields":[{"type":"int32","optional":false,"field":"product_id"},{"type":"int32","optional":false,"field":"quantity"}],"optional":true,"name":"inventory-connector-{context}.inventory.products_on_hand.Value","field":"after"},{"type":"struct","fields":[{"type":"string","optional":false,"field":"version"},{"type":"string","optional":false,"field":"connector"},{"type":"string","optional":false,"field":"name"},{"type":"int64","optional":false,"field":"ts_ms"},{"type":"int64","optional":false,"field":"ts_us"},{"type":"int64","optional":false,"field":"ts_ns"},{"type":"string","optional":true,"name":"io.debezium.data.Enum","version":1,"parameters":{"allowed":"true,last,false"},"default":"false","field":"snapshot"},{"type":"string","optional":false,"field":"db"},{"type":"string","optional":true,"field":"sequence"},{"type":"string","optional":true,"field":"table"},{"type":"int64","optional":false,"field":"server_id"},{"type":"string","optional":true,"field":"gtid"},{"type":"string","optional":false,"field":"file"},{"type":"int64","optional":false,"field":"pos"},{"type":"int32","optional":false,"field":"row"},{"type":"int64","optional":true,"field":"thread"},{"type":"string","optional":true,"field":"query"}],"optional":false,"name":"io.debezium.connector.{context}.Source","field":"source"},{"type":"string","optional":false,"field":"op"},{"type":"int64","optional":true,"field":"ts_ms"},{"type":"int64","optional":true,"field":"ts_us"},{"type":"int64","optional":true,"field":"ts_ns"},{"type":"struct","fields":[{"type":"string","optional":false,"field":"id"},{"type":"int64","optional":false,"field":"total_order"},{"type":"int64","optional":false,"field":"data_collection_order"}],"optional":true,"field":"transaction"}],"optional":false,"name":**"inventory-connector-{context}.inventory.products_on_hand.Envelope"**},*"payload"*:{*"before"*:**null**,*"after"*:{*"product_id":101,"quantity":3*},"source":{"version":"{debezium-version}-redhat-{debezium-build-number}","connector":"{context}","name":"inventory-connector-{context}","ts_ms":1638985247805,"ts_us":1638985247805000000,"ts_ns":1638985247805000000,"snapshot":"true","db":"inventory","sequence":null,"table":"products_on_hand","server_id":0,"gtid":null,"file":"{context}-bin.000003","pos":156,"row":0,"thread":null,"query":null},*"op"*:**"r"**,"ts_ms":1638985247805,"ts_us":1638985247805102,"ts_ns":1638985247805102588,"transaction":null}}
+----
+======================================
++
+In the preceding example, the `payload` value shows that the connector snapshot generated a read (`"op" ="r"`) event from the table `inventory.products_on_hand`.
+The `"before"` state of the `product_id` record is `null`, indicating that no previous value exists for the record.
+The `"after"` state shows a `quantity` of `3` for the item with `product_id` `101`.

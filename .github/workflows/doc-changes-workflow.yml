@@ -1,0 +1,47 @@
+# This workflow is designed to notify a given email address with pertinent information
+# about changes to the Documentation files, using a cron-based trigger.
+
+name: Documentation Changes
+
+on:
+  # Schedule job to run at midnight UTC every day
+  schedule:
+    - cron: "0 0 * * *"
+
+jobs:
+
+  script:
+    if: github.repository == 'debezium/debezium'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout action
+        uses: actions/checkout@v4
+        with:
+          # This is necessary as this script needs to examine all history and prepare an output
+          # report that defines all changes made to the Documentation within the last number of
+          # days.
+          fetch-depth: 0
+          # Always run this against main
+          ref: 'main'
+
+      - name: Run script
+        id: changes
+        run: |
+          ./github-support/notify-documentation-changes.sh "main"
+          CHANGES=$(cat documentation_changes.txt)          
+          echo "CHANGES<<EOF" >> $GITHUB_ENV
+          echo "$CHANGES" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Send email notification
+        uses: zulip/github-actions-zulip/send-message@v1
+        with:
+          api-key: ${{ secrets.ZULIP_TOKEN }}
+          email: ${{ secrets.ZULIP_TOKEN_EMAIL_ADDRESS }}
+          organization-url: "https://debezium.zulipchat.com"
+          to: "documentation"
+          type: "stream"
+          topic: "activity"
+          content: ${{ env.CHANGES }}
+

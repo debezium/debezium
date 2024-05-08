@@ -1,0 +1,2 @@
+io.debezium.embedded.ConvertingEngineBuilderFactory
+io.debezium.embedded.async.ConvertingAsyncEngineBuilderFactory

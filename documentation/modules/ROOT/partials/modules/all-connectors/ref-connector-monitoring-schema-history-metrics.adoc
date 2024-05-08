@@ -1,0 +1,41 @@
+The *MBean* is `debezium.{mbean-name}:type=connector-metrics,context=schema-history,server=_<topic.prefix>_`.
+
+The following table lists the schema history metrics that are available.
+
+[cols="45%a,25%a,30%a",options="header"]
+|===
+|Attributes |Type |Description
+
+|[[connectors-shist-metric-status_{context}]]<<connectors-shist-metric-status_{context}, `Status`>>
+|`string`
+|One of `STOPPED`, `RECOVERING` (recovering history from the storage), `RUNNING` describing the state of the database schema history.
+
+|[[connectors-shist-metric-recoverystarttime_{context}]]<<connectors-shist-metric-recoverystarttime_{context}, `RecoveryStartTime`>>
+|`long`
+|The time in epoch seconds at what recovery has started.
+
+|[[connectors-shist-metric-changesrecovered_{context}]]<<connectors-shist-metric-changesrecovered_{context}, `ChangesRecovered`>>
+|`long`
+|The number of changes that were read during recovery phase.
+
+|[[connectors-shist-metric-changesapplied_{context}]]<<connectors-shist-metric-changesapplied_{context}, `ChangesApplied`>>
+|`long`
+|the total number of schema changes applied during recovery and runtime.
+
+|[[connectors-shist-metric-millisecondssincelastrecoveredchange_{context}]]<<connectors-shist-metric-millisecondssincelastrecoveredchange_{context}, `MilliSecondsSinceLast{zwsp}RecoveredChange`>>
+|`long`
+|The number of milliseconds that elapsed since the last change was recovered from the history store.
+
+|[[connectors-shist-metric-millisecondssincelastappliedchange_{context}]]<<connectors-shist-metric-millisecondssincelastappliedchange_{context}, `MilliSecondsSinceLast{zwsp}AppliedChange`>>
+|`long`
+|The number of milliseconds that elapsed since the last change was applied.
+
+|[[connectors-shist-metric-lastrecoveredchange_{context}]]<<connectors-shist-metric-lastrecoveredchange_{context}, `LastRecoveredChange`>>
+|`string`
+|The string representation of the last change recovered from the history store.
+
+|[[connectors-shist-metric-lastappliedchange_{context}]]<<connectors-shist-metric-lastappliedchange_{context}, `LastAppliedChange`>>
+|`string`
+|The string representation of the last applied change.
+
+|===

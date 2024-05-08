@@ -1,0 +1,22 @@
+name: Release Contributors Workflow
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag1:
+        description: 'From Release Tag(e.g. v1.5.0.CR1)'
+        required: true
+      tag2:
+        description: 'To Release Tag(e.g. v1.5.0.Final)'
+        required: true
+
+jobs:
+  script:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout action
+        uses: actions/checkout@v4
+      - name: Run script
+        run: |
+          ./github-support/list-contributors.sh ${{ github.event.inputs.tag1 }} ${{ github.event.inputs.tag2 }}

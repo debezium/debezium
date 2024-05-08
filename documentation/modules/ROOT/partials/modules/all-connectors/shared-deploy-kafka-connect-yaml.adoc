@@ -1,0 +1,109 @@
+In the example that follows, the custom resource is configured to download the following artifacts:
+
+* The {prodname} {connector-name} connector archive.
+* The {registry-name-full} archive. The {registry} is an optional component.
+Add the {registry} component only if you intend to use Avro serialization with the connector.
+* The {prodname} scripting SMT archive and the associated scripting engine that you want to use with the Debezium connector.
+The SMT archive and scripting language dependencies are optional components.
+Add these components only if you intend to use the {prodname} {link-prefix}:{link-content-based-routing}#content-based-routing[content-based routing SMT] or {link-prefix}:{link-filtering}#message-filtering[filter SMT].
+
+[source%nowrap,yaml,subs="+attributes,+quotes"]
+----
+apiVersion: {KafkaConnectApiVersion}
+kind: KafkaConnect
+metadata:
+  name: debezium-kafka-connect-cluster
+  annotations:
+    strimzi.io/use-connector-resources: "true" // <1>
+spec:
+  version: {debezium-kafka-version}
+  build: // <2>
+    output: // <3>
+      type: imagestream  // <4>
+      image: debezium-streams-connect:latest
+    plugins: // <5>
+      - name: debezium-connector-{connector-file}
+        artifacts:
+          - type: zip // <6>
+            url: {red-hat-maven-repository}debezium/debezium-connector-{connector-file}/{debezium-version}-redhat-{debezium-build-number}/debezium-connector-{connector-file}-{debezium-version}-redhat-{debezium-build-number}-plugin.zip  // <7>
+          - type: zip
+            url: {red-hat-maven-repository}apicurio/apicurio-registry-distro-connect-converter/{registry-maven-version}-redhat-__<build-number>__/apicurio-registry-distro-connect-converter-{registry-maven-version}-redhat-__<build-number>__.zip  // <8>
+          - type: zip
+            url: {red-hat-maven-repository}debezium/debezium-scripting/{debezium-version}-redhat-{debezium-build-number}/debezium-scripting-{debezium-version}-redhat-{debezium-build-number}.zip // <9>
+          - type: jar
+            url: https://repo1.maven.org/maven2/org/apache/groovy/groovy/{groovy-version}/groovy-{groovy-version}.jar  // <10>
+          - type: jar
+            url: https://repo1.maven.org/maven2/org/apache/groovy/groovy-jsr223/{groovy-version}/groovy-jsr223-{groovy-version}.jar
+          - type: jar
+            url: https://repo1.maven.org/maven2/org/apache/groovy/groovy-json{groovy-version}/groovy-json-{groovy-version}.jar
+
+  bootstrapServers: debezium-kafka-cluster-kafka-bootstrap:9093
+
+  ...
+----
+.Descriptions of Kafka Connect configuration settings
+[cols="1,7",options="header",subs="+attributes"]
+|===
+|Item |Description
+
+|1
+| Sets the `strimzi.io/use-connector-resources` annotation to `"true"` to enable the Cluster Operator to use `KafkaConnector` resources to configure connectors in this Kafka Connect cluster.
+
+|2
+|The `spec.build` configuration specifies where to store the build image and lists the plug-ins to include in the image, along with the location of the plug-in artifacts.
+
+|3
+|The `build.output` specifies the registry in which the newly built image is stored.
+
+|4
+|Specifies the name and image name for the image output.
+Valid values for `output.type` are `docker` to push into a container registry such as Docker Hub or Quay, or `imagestream` to push the image to an internal OpenShift ImageStream.
+To use an ImageStream, an ImageStream resource must be deployed to the cluster.
+For more information about specifying the `build.output` in the KafkaConnect configuration, see the link:{LinkConfiguringStreamsOpenShift}#type-Build-reference[{StreamsName} Build schema reference] in {NameConfiguringStreamsOpenShift}.
+
+|5
+|The `plugins` configuration lists all of the connectors that you want to include in the Kafka Connect image.
+For each entry in the list, specify a plug-in `name`, and information for about the artifacts that are required to build the connector.
+Optionally, for each connector plug-in, you can include other components that you want to be available for use with the connector.
+For example, you can add Service Registry artifacts, or the {prodname} scripting component.
+
+|6
+|The value of `artifacts.type` specifies the file type of the artifact specified in the `artifacts.url`.
+Valid types are `zip`, `tgz`, or `jar`.
+{prodname} connector archives are provided in `.zip` file format.
+The `type` value must match the type of the file that is referenced in the `url` field.
+
+|7
+|The value of `artifacts.url` specifies the address of an HTTP server, such as a Maven repository, that stores the file for the connector artifact.
+{prodname} connector artifacts are available in the Red Hat Maven repository.
+The OpenShift cluster must have access to the specified server.
+
+|8
+|(Optional) Specifies the artifact `type` and `url` for downloading the {registry} component.
+Include the {registry} artifact, only if you want the connector to use Apache Avro to serialize event keys and values with the {registry-name-full}, instead of using the default JSON converter.
+
+|9
+|(Optional) Specifies the artifact `type` and `url` for the {prodname} scripting SMT archive to use with the Debezium connector.
+Include the scripting SMT only if you intend to use the {prodname} {link-prefix}:{link-content-based-routing}#content-based-routing[content-based routing SMT] or {link-prefix}:{link-filtering}#message-filtering[filter SMT]
+To use the scripting SMT, you must also deploy a JSR 223-compliant scripting implementation, such as groovy.
+
+|10
+a|(Optional) Specifies the artifact `type` and `url` for the JAR files of a JSR 223-compliant scripting implementation, which is required by the {prodname} scripting SMT.
+
+[IMPORTANT]
+====
+If you use {StreamsName} to incorporate the connector plug-in into your Kafka Connect image, for each of the required scripting language components `artifacts.url` must specify the location of a JAR file,
+and the value of `artifacts.type` must also be set to `jar`.
+Invalid values cause the connector fails at runtime.
+====
+
+To enable use of the Apache Groovy language with the scripting SMT, the custom resource in the example retrieves JAR files for the following libraries:
+
+- `groovy`
+- `groovy-jsr223` (scripting agent)
+- `groovy-json` (module for parsing JSON strings)
+
+As an alternative, the {prodname} scripting SMT also supports the use of the JSR 223 implementation of GraalVM JavaScript.
+
+|===
+=====================================================================

@@ -1,0 +1,3263 @@
+// Category: debezium-using
+// Type: assembly
+[id="debezium-connector-for-db2"]
+= {prodname} connector for Db2
+
+:context: db2
+:data-collection: table
+:database-port: 50000
+:mbean-name: {context}
+:connector-file: {context}
+:connector-class: Db2Connector
+:connector-name: Db2
+:include-list-example: public.inventory
+ifdef::community[]
+
+:toc:
+:toc-placement: macro
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+
+toc::[]
+endif::community[]
+
+{prodname}'s Db2 connector can capture row-level changes in the tables of a Db2 database.
+ifdef::community[]
+For information about the Db2 Database versions that are compatible with this connector, see the link:https://debezium.io/releases/[{prodname} release overview].
+endif::community[]
+ifdef::product[]
+For information about the Db2 Database versions that are compatible with this connector, see the link:{LinkDebeziumSupportedConfigurations}[{NameDebeziumSupportedConfigurations}].
+endif::product[]
+
+This connector is strongly inspired by the {prodname} implementation of SQL Server, which uses a SQL-based polling model that puts tables into "capture mode". When a table is in capture mode, the {prodname} Db2 connector generates and streams a change event for each row-level update to that table.
+
+A table that is in capture mode has an associated change-data table, which Db2 creates. For each change to a table that is in capture mode, Db2 adds data about that change to the table's associated change-data table. A change-data table contains an entry for each state of a row. It also has special entries for deletions. The {prodname} Db2 connector reads change events from change-data tables and emits the events to Kafka topics.
+
+The first time a {prodname} Db2 connector connects to a Db2 database, the connector reads a consistent snapshot of the tables for which the connector is configured to capture changes. By default, this is all non-system tables. There are connector configuration properties that let you specify which tables to put into capture mode, or which tables to exclude from capture mode.
+
+When the snapshot is complete the connector begins emitting change events for committed updates to tables that are in capture mode. By default, change events for a particular table go to a Kafka topic that has the same name as the table. Applications and services consume change events from these topics.
+
+[NOTE]
+====
+The connector requires the use of the abstract syntax notation (ASN) libraries, which are available as a standard part of Db2 for Linux.
+To use the ASN libraries, you must have a license for IBM InfoSphere Data Replication (IIDR).
+You do not have to install IIDR to use the ASN libraries.
+====
+
+ifdef::community[]
+The Db2 connector has been tested with Db2 for Linux.
+It is expected that the connector would also work on other platforms such as Windows,
+and we'd love to get your feedback if you can confirm this to be the case.
+endif::community[]
+
+ifdef::product[]
+
+Information and procedures for using a {prodname} Db2 connector is organized as follows:
+
+* xref:overview-of-debezium-db2-connector[]
+* xref:how-debezium-db2-connectors-work[]
+* xref:descriptions-of-debezium-db2-connector-data-change-events[]
+* xref:how-debezium-db2-connectors-map-data-types[]
+* xref:setting-up-db2-to-run-a-debezium-connector[]
+* xref:deployment-of-debezium-db2-connectors[]
+* xref:monitoring-debezium-db2-connector-performance[]
+* xref:managing-debezium-db2-connectors[]
+* xref:updating-schemas-for-db2-tables-in-capture-mode-for-debezium-connectors[]
+
+endif::product[]
+
+// Type: concept
+// Title: Overview of {prodname} Db2 connector
+// ModuleID: overview-of-debezium-db2-connector
+[[db2-overview]]
+== Overview
+
+The {prodname} Db2 connector is based on the link:https://www.ibm.com/support/pages/q-replication-and-sql-replication-product-documentation-pdf-format-version-101-linux-unix-and-windows[ASN Capture/Apply agents]
+that enable SQL Replication in Db2. A capture agent:
+
+* Generates change-data tables for tables that are in capture mode.
+* Monitors tables in capture mode and stores change events for updates to those tables in their corresponding change-data tables.
+
+The {prodname} connector uses a SQL interface to query change-data tables for change events.
+
+The database administrator must put the tables for which you want to capture changes into capture mode.
+For convenience and for automating testing, there are xref:db2-management[{prodname} management user-defined functions (UDFs)] in C that you can compile and then use to do the following management tasks:
+
+* Start, stop, and reinitialize the ASN agent
+* Put tables into capture mode
+* Create the replication (ASN) schemas and change-data tables
+* Remove tables from capture mode
+
+Alternatively, you can use Db2 control commands to accomplish these tasks.
+
+After the tables of interest are in capture mode, the connector reads their corresponding change-data tables to obtain change events for table updates.
+The connector emits a change event for each row-level insert, update, and delete operation to a Kafka topic that has the same name as the changed table.
+This is default behavior that you can modify.
+Client applications read the Kafka topics that correspond to the database tables of interest and can react to each row-level change event.
+
+Typically, the database administrator puts a table into capture mode in the middle of the life of a table.
+This means that the connector does not have the complete history of all changes that have been made to the table.
+Therefore, when the Db2 connector first connects to a particular Db2 database, it starts by performing a _consistent snapshot_ of each table that is in capture mode.
+After the connector completes the snapshot, the connector streams change events from the point at which the snapshot was made.
+In this way, the connector starts with a consistent view of the tables that are in capture mode, and does not drop any changes that were made while it was performing the snapshot.
+
+{prodname} connectors are tolerant of failures. As the connector reads and produces change events, it records the log sequence number (LSN) of the change-data table entry. The LSN is the position of the change event in the database log. If the connector stops for any reason, including communication failures, network problems, or crashes, upon restarting it continues reading the change-data tables where it left off. This includes snapshots. That is, if the snapshot was not complete when the connector stopped, upon restart the connector begins a new snapshot.
+
+// Type: assembly
+// ModuleID: how-debezium-db2-connectors-work
+// Title: How {prodname} Db2 connectors work
+[[how-the-db2-connector-works]]
+== How the connector works
+
+To optimally configure and run a {prodname} Db2 connector, it is helpful to understand how the connector performs snapshots, streams change events, determines Kafka topic names, and handles schema changes.
+
+ifdef::product[]
+Details are in the following topics:
+
+* xref:how-debezium-db2-connectors-perform-database-snapshots[]
+* xref:debezium-db2-ad-hoc-snapshots[]
+* xref:debezium-db2-incremental-snapshots[]
+* xref:how-debezium-db2-connectors-read-change-data-tables[]
+* xref:default-names-of-kafka-topics-that-receive-db2-change-event-records[]
+* xref:about-the-debezium-db2-connector-schema-change-topic[]
+* xref:debezium-db2-connector-generated-events-that-represent-transaction-boundaries[]
+
+endif::product[]
+
+// Type: concept
+// ModuleID: how-debezium-db2-connectors-perform-database-snapshots
+// Title: How {prodname} Db2 connectors perform database snapshots
+[[db2-snapshots]]
+=== Snapshots
+
+Db2`s replication feature is not designed to store the complete history of database changes.
+As a result, the {prodname} Db2 connector cannot retrieve the entire history of the database from the logs.
+To enable the connector to establish a baseline for the current state of the database, the first time that the connector starts, it performs an initial _consistent snapshot_ of the tables that are in xref:putting-tables-in-capture-mode[capture mode].
+For each change that the snapshot captures, the connector emits a `read` event to the Kafka topic for the captured table.
+
+ifdef::product[]
+
+You can find more information about snapshots in the following sections:
+
+* xref:debezium-db2-ad-hoc-snapshots[]
+* xref:debezium-db2-incremental-snapshots[]
+
+endif::product[]
+
+// Type: concept
+// ModuleID: default-workflow-that-the-db2-connector-uses-to-perform-an-initial-snapshot
+[[db2-default-workflow-for-performing-an-initial-snapshot]]
+==== Default workflow that the {prodname} Db2 connector uses to perform an initial snapshot
+
+The following workflow lists the steps that {prodname} takes to create a snapshot.
+These steps describe the process for a snapshot when the xref:db2-property-snapshot-mode[`snapshot.mode`] configuration property is set to its default value, which is `initial`.
+You can customize the way that the connector creates snapshots by changing the value of the `snapshot.mode` property.
+If you configure a different snapshot mode, the connector completes the snapshot by using a modified version of this workflow.
+
+1. Establish a connection to the database.
+
+2. Determine which tables are in capture mode and should be included in the snapshot.
+   By default, the connector captures the data for all non-system tables.
+   After the snapshot completes, the connector continues to stream data for the specified tables.
+   If you want the connector to capture data only from specific tables you can direct the connector to capture the data for only a subset of tables or table elements by setting properties such as xref:{context}-property-table-include-list[`table.include.list`] or xref:{context}-property-table-exclude-list[`table.exclude.list`].
+
+3. Obtain a lock on each of the tables in capture mode.
+  This lock ensures that no schema changes can occur in those tables until the snapshot completes.
+  The level of the lock is determined by the `snapshot.isolation.mode` connector configuration property.
+
+4. Read the highest (most recent) LSN position in the server's transaction log.
+
+5. Capture the schema of all tables or all tables that are designated for capture.
+The connector persists schema information in its internal database schema history topic.
+The schema history provides information about the structure that is in effect when a change event occurs. +
++
+[NOTE]
+====
+By default, the connector captures the schema of every table in the database that is in capture mode, including tables that are not configured for capture.
+If tables are not configured for capture, the initial snapshot captures only their structure; it does not capture any table data.
+
+For more information about why snapshots persist schema information for tables that you did not include in the initial snapshot, see xref:understanding-why-initial-snapshots-capture-the-schema-history-for-all-tables[Understanding why initial snapshots capture the schema for all tables].
+====
+
+6. Release any locks obtained in Step 3.
+  Other database clients can now write to any previously locked tables.
+
+7. At the LSN position read in Step 4, the connector scans the tables that are designated for capture.
+  During the scan, the connector completes the following tasks:
+
+.. Confirms that the table was created before the snapshot began.
+  If the table was created after the snapshot began, the connector skips the table.
+  After the snapshot is complete, and the connector transitions to streaming, it emits change events for any tables that were created after the snapshot began.
+
+.. Produces a `read` event for each row that is captured from a table.
+  All `read` events contain the same LSN position, which is the LSN position that was obtained in step 4.
+
+.. Emits each `read` event to the Kafka topic for the source table.
+
+.. Releases data table locks, if applicable.
+
+8. Record the successful completion of the snapshot in the connector offsets.
+
+The resulting initial snapshot captures the current state of each row in the captured tables.
+From this baseline state, the connector captures subsequent changes as they occur.
+
+After the snapshot process begins, if the process is interrupted due to connector failure, rebalancing, or other reasons, the process restarts after the connector restarts.
+
+After the connector completes the initial snapshot, it continues streaming from the position that it read in Step 4 so that it does not miss any updates.
+
+If the connector stops again for any reason, after it restarts, it resumes streaming changes from where it previously left off.
+
+[id="db2-connector-snapshot-mode-options"]
+.Settings for `snapshot.mode` connector configuration property
+[cols="30%a,70%a",options="header"]
+|===
+|Setting |Description
+
+|`always`
+|The connector performs a snapshot every time that it starts.
+After the snapshot completes, the connector begins to stream event records for subsequent database changes.
+
+|`initial`
+|The connector performs a database snapshot as described in the xref:db2-default-workflow-for-performing-an-initial-snapshot[default workflow for creating an initial snapshot].
+After the snapshot completes, the connector begins to stream event records for subsequent database changes.
+
+|`initial_only`
+|The connector performs a database snapshot.
+After the snapshot completes, the connector stops, and does not stream event records for subsequent database changes.
+
+|`schema_only`
+|Deprecated, see `no_data`.
+
+|`no_data`
+|The connector captures the structure of all relevant tables, performing all the steps described in the xref:db2-default-workflow-for-performing-an-initial-snapshot[default snapshot workflow], except that it does not create `READ` events to represent the data set at the point of the connector's start-up (Step 7.b).
+
+|`recovery`
+|Set this option to restore a database schema history topic that is lost or corrupted.
+After a restart, the connector runs a snapshot that rebuilds the topic from the source tables.
+You can also set the property to periodically prune a database schema history topic that experiences unexpected growth. +
++
+WARNING: Do not use this mode to perform a snapshot if schema changes were committed to the database after the last connector shutdown.
+
+|`when_needed`
+|After the connector starts, it performs a snapshot only if it detects one of the following circumstances:
+
+* It cannot detect any topic offsets.
+* A previously recorded offset specifies a log position that is not available on the server.
+
+ifdef::community[]
+|`configuration_based`
+|Set the snapshot mode to `configuration_based` to control snapshot behavior through the set of connector properties that have the prefix 'snapshot.mode.configuration.based'.
+endif::community[]
+
+ifdef::community[]
+|`custom`
+|The `custom` snapshot mode lets you inject your own implementation of the `io.debezium.spi.snapshot.Snapshotter` interface.
+Set the `snapshot.mode.custom.name` configuration property to the name provided by the `name()` method of your implementation.
+The name is specified on the classpath of your Kafka Connect cluster.
+If you use the {prodname} `EmbeddedEngine`, the name is included in the connector JAR file.
+For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
+endif::community[]
+
+|===
+
+For more information, see xref:db2-property-snapshot-mode[`snapshot.mode`] in the table of connector configuration properties.
+
+// ModuleID: db2-description-of-why-initial-snapshots-capture-the-schema-history-for-all-tables
+// Title: Description of why initial snapshots capture the schema history for all tables
+// Type: concept
+[id="understanding-why-initial-snapshots-capture-the-schema-history-for-all-tables"]
+==== Understanding why initial snapshots capture the schema history for all tables
+
+The initial snapshot that a connector runs captures two types of information:
+
+Table data::
+Information about `INSERT`, `UPDATE`, and `DELETE` operations in tables that are named in the connector's xref:{context}-property-table-include-list[`table.include.list`] property.
+Schema data::
+DDL statements that describe the structural changes that are applied to tables.
+Schema data is persisted to both the internal schema history topic, and to the connector's schema change topic, if one is configured.
+
+After you run an initial snapshot, you might notice that the snapshot captures schema information for tables that are not designated for capture.
+By default, initial snapshots are designed to capture schema information for every table that is present in the database, not only from tables that are designated for capture.
+Connectors require that the table's schema is present in the schema history topic before they can capture a table.
+By enabling the initial snapshot to capture schema data for tables that are not part of the original capture set, {prodname} prepares the connector to readily capture event data from these tables should that later become necessary.
+If the initial snapshot does not capture a table's schema, you must add the schema to the history topic before the connector can capture data from the table.
+
+In some cases, you might want to limit schema capture in the initial snapshot.
+This can be useful when you want to reduce the time required to complete a snapshot.
+Or when {prodname} connects to the database instance through a user account that has access to multiple logical databases, but you want the connector to capture changes only from tables in a specific logic database.
+
+.Additional information
+* xref:{context}-capturing-data-from-tables-not-captured-by-the-initial-snapshot[Capturing data from tables not captured by the initial snapshot (no schema change)]
+* xref:{context}-capturing-data-from-new-tables-with-schema-changes[Capturing data from tables not captured by the initial snapshot (schema change)]
+* Setting the xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.store.only.captured.tables.ddl`] property to specify the tables from which to capture schema information.
+* Setting the xref:{context}-property-database-history-store-only-captured-databases-ddl[`schema.history.internal.store.only.captured.databases.ddl`] property to specify the logical databases from which to capture schema changes.
+
+// Type: procedure
+[id="db2-capturing-data-from-tables-not-captured-by-the-initial-snapshot"]
+==== Capturing data from tables not captured by the initial snapshot (no schema change)
+
+In some cases, you might want the connector to capture data from a table whose schema was not captured by the initial snapshot.
+Depending on the connector configuration, the initial snapshot might capture the table schema only for specific tables in the database.
+If the table schema is not present in the history topic, the connector fails to capture the table, and reports a missing schema error.
+
+You might still be able to capture data from the table, but you must perform additional steps to add the table schema.
+
+.Prerequisites
+
+* You want to capture data from a table with a schema that the connector did not capture during the initial snapshot.
+* No schema changes were applied to the table between the LSNs of the earliest and latest change table entry that the connector reads.
+For information about capturing data from a new table that has undergone structural changes, see xref:db2-capturing-data-from-new-tables-with-schema-changes[].
+
+.Procedure
+
+1. Stop the connector.
+2. Remove the internal database schema history topic that is specified by the xref:{context}-property-database-history-kafka-topic[`schema.history.internal.kafka.topic property`].
+3. Clear the offsets in the configured Kafka Connect link:{link-kafka-docs}/#connectconfigs_offset.storage.topic[`offset.storage.topic`].
+For more information about how to remove offsets, see the link:https://debezium.io/documentation/faq/#how_to_remove_committed_offsets_for_a_connector[{prodname} community FAQ].
++
+[WARNING]
+====
+Removing offsets should be performed only by advanced users who have experience in manipulating internal Kafka Connect data.
+This operation is potentially destructive, and should be performed only as a last resort.
+====
+4. Apply the following changes to the connector configuration:
+.. (Optional) Set the value of xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.captured.tables.ddl`] to `false`.
+This setting causes the snapshot to capture the schema for all tables, and guarantees that, in the future, the connector can reconstruct the schema history for all tables. +
++
+[NOTE]
+====
+Snapshots that capture the schema for all tables require more time to complete.
+====
+.. Add the tables that you want the connector to capture to xref:{context}-property-table-include-list[`table.include.list`].
+.. Set the xref:{context}-property-snapshot-mode[`snapshot.mode`] to one of the following values:
+`initial`:: When you restart the connector, it takes a full snapshot of the database that captures the table data and table structures. +
+If you select this option, consider setting the value of the xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.captured.tables.ddl`] property to `false` to enable the connector to capture the schema of all tables.
+`schema_only`:: When you restart the connector, it takes a snapshot that captures only the table schema.
+Unlike a full data snapshot, this option does not capture any table data.
+Use this option if you want to restart the connector more quickly than with a full snapshot.
+
+5. Restart the connector.
+The connector completes the type of snapshot specified by the `snapshot.mode`.
+6. (Optional) If the connector performed a `schema_only` snapshot, after the snapshot completes, initiate an xref:debezium-db2-incremental-snapshots[incremental snapshot] to capture data from the tables that you added.
+The connector runs the snapshot while it continues to stream real-time changes from the tables.
+Running an incremental snapshot captures the following data changes:
++
+* For tables that the connector previously captured, the incremental snapsot captures changes that occur while the connector was down, that is, in the interval between the time that the connector was stopped, and the current restart.
+* For newly added tables, the incremental snapshot captures all existing table rows.
+
+// Type: procedure
+[id="db2-capturing-data-from-new-tables-with-schema-changes"]
+==== Capturing data from tables not captured by the initial snapshot (schema change)
+
+If a schema change is applied to a table, records that are committed before the schema change have different structures than those that were committed after the change.
+When {prodname} captures data from a table, it reads the schema history to ensure that it applies the correct schema to each event.
+If the schema is not present in the schema history topic, the connector is unable to capture the table, and an error results.
+
+If you want to capture data from a table that was not captured by the initial snapshot, and the schema of the table was modified, you must add the schema to the history topic, if it is not already available.
+You can add the schema by running a new schema snapshot, or by running an initial snapshot for the table.
+
+.Prerequisites
+* You want to capture data from a table with a schema that the connector did not capture during the initial snapshot.
+* A schema change was applied to the table so that the records to be captured do not have a uniform structure.
+
+.Procedure
+
+Initial snapshot captured the schema for all tables (`store.only.captured.tables.ddl` was set to `false`)::
+1. Edit the xref:{context}-property-table-include-list[`table.include.list`] property to specify the tables that you want to capture.
+2. Restart the connector.
+3. Initiate an xref:debezium-db2-incremental-snapshots[incremental snapshot] if you want to capture existing data from the newly added tables.
+
+Initial snapshot did not capture the schema for all tables (`store.only.captured.tables.ddl` was set to `true`)::
+If the initial snapshot did not save the schema of the table that you want to capture, complete one of the following procedures:
+
+Procedure 1: Schema snapshot, followed by incremental snapshot:::
+In this procedure, the connector first performs a schema snapshot.
+You can then initiate an incremental snapshot to enable the connector to synchronize data.
+1. Stop the connector.
+2. Remove the internal database schema history topic that is specified by the xref:{context}-property-database-history-kafka-topic[`schema.history.internal.kafka.topic property`].
+3. Clear the offsets in the configured Kafka Connect link:{link-kafka-docs}/#connectconfigs_offset.storage.topic[`offset.storage.topic`].
+For more information about how to remove offsets, see the link:https://debezium.io/documentation/faq/#how_to_remove_committed_offsets_for_a_connector[{prodname} community FAQ].
++
+[WARNING]
+====
+Removing offsets should be performed only by advanced users who have experience in manipulating internal Kafka Connect data.
+This operation is potentially destructive, and should be performed only as a last resort.
+====
+4. Set values for properties in the connector configuration as described in the following steps:
+.. Set the value of the xref:{context}-property-snapshot-mode[`snapshot.mode`] property to `schema_only`.
+.. Edit the xref:{context}-property-table-include-list[`table.include.list`] to add the tables that you want to capture.
+5. Restart the connector.
+6. Wait for {prodname} to capture the schema of the new and existing tables.
+Data changes that occurred any tables after the connector stopped are not captured.
+7. To ensure that no data is lost, initiate an xref:debezium-db2-incremental-snapshots[incremental snapshot].
+
+Procedure 2: Initial snapshot, followed by optional incremental snapshot:::
+In this procedure the connector performs a full initial snapshot of the database.
+As with any initial snapshot, in a database with many large tables, running an initial snapshot can be a time-consuming operation.
+After the snapshot completes, you can optionally trigger an incremental snapshot to capture any changes that occur while the connector is off-line.
+
+1. Stop the connector.
+2. Remove the internal database schema history topic that is specified by the xref:{context}-property-database-history-kafka-topic[`schema.history.internal.kafka.topic property`].
+3. Clear the offsets in the configured Kafka Connect link:{link-kafka-docs}/#connectconfigs_offset.storage.topic[`offset.storage.topic`].
+For more information about how to remove offsets, see the link:https://debezium.io/documentation/faq/#how_to_remove_committed_offsets_for_a_connector[{prodname} community FAQ].
++
+[WARNING]
+====
+Removing offsets should be performed only by advanced users who have experience in manipulating internal Kafka Connect data.
+This operation is potentially destructive, and should be performed only as a last resort.
+====
+4. Edit the xref:{context}-property-table-include-list[`table.include.list`] to add the tables that you want to capture.
+5. Set values for properties in the connector configuration as described in the following steps:
+.. Set the value of the xref:{context}-property-snapshot-mode[`snapshot.mode`] property to `initial`.
+.. (Optional) Set xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.store.only.captured.tables.ddl`] to `false`.
+6. Restart the connector.
+The connector takes a full database snapshot.
+After the snapshot completes, the connector transitions to streaming.
+7. (Optional) To capture any data that changed while the connector was off-line, initiate an xref:debezium-db2-incremental-snapshots[incremental snapshot].
+
+// Type: concept
+// ModuleID: debezium-db2-ad-hoc-snapshots
+[id="db2-ad-hoc-snapshots"]
+=== Ad hoc snapshots
+
+include::{partialsdir}/modules/all-connectors/con-connector-ad-hoc-snapshots.adoc[leveloffset=+1]
+
+// Type: assembly
+// ModuleID: debezium-db2-incremental-snapshots
+[id="debezium-db2-incremental-snapshots"]
+=== Incremental snapshots
+
+include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+1]
+
+[WARNING]
+====
+The {prodname} connector for Db2 does not support schema changes while an incremental snapshot is running.
+====
+
+// Type: procedure
+// ModuleID: debezium-db2-triggering-an-incremental-snapshot
+[id="db2-triggering-an-incremental-snapshot"]
+==== Triggering an incremental snapshot
+
+include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-sql.adoc[leveloffset=+1]
+
+// Type: procedure
+// ModuleID: debezium-db2-using-the-kafka-signaling-channel-to-trigger-an-incremental-snapshot
+[id="db2-triggering-an-incremental-snapshot-kafka"]
+==== Using the Kafka signaling channel to trigger an incremental snapshot
+
+include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-kafka.adoc[leveloffset=+1]
+
+// Type: procedure
+// ModuleID: debezium-db2-stopping-an-incremental-snapshot
+[id="db2-stopping-an-incremental-snapshot"]
+==== Stopping an incremental snapshot
+
+include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot-sql.adoc[leveloffset=+1]
+
+// Type: procedure
+// ModuleID: debezium-db2-using-the-kafka-signaling-channel-to-stop-an-incremental-snapshot
+[id="db2-stopping-an-incremental-snapshot-kafka"]
+==== Using the Kafka signaling channel to stop an incremental snapshot
+
+include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot-kafka.adoc[leveloffset=+1]
+
+ifdef::community[]
+[[connector-custom-snapshot]]
+=== Custom snapshotter SPI
+include::{partialsdir}/modules/all-connectors/custom-snapshotter-spi.adoc[leveloffset=+3]
+endif::community[]
+
+// Type: concept
+[id="db2-blocking-snapshots"]
+=== Blocking snapshots
+
+include::{partialsdir}/modules/all-connectors/con-connector-blocking-snapshot.adoc[leveloffset=+3]
+
+// Type: concept
+// Title: How {prodname} Db2 connectors read change-data tables
+[id="how-debezium-db2-connectors-read-change-data-tables"]
+=== Change-data tables
+
+After a complete snapshot, when a {prodname} Db2 connector starts for the first time, the connector identifies the change-data table for each source table that is in capture mode.
+The connector does the following for each change-data table:
+
+. Reads change events that were created between the last stored, highest LSN and the current, highest LSN.
+. Orders the change events according to the commit LSN and the change LSN for each event.
+  This ensures that the connector emits the change events in the order in which the table changes occurred.
+. Passes commit and change LSNs as offsets to Kafka Connect.
+. Stores the highest LSN that the connector passed to Kafka Connect.
+
+After a restart, the connector resumes emitting change events from the offset (commit and change LSNs) where it left off.
+While the connector is running and emitting change events, if you remove a table from capture mode or add a table to capture mode, the connector detects the change, and modifies its behavior accordingly.
+
+// Type: concept
+// ModuleID: default-names-of-kafka-topics-that-receive-db2-change-event-records
+// Title: Default names of Kafka topics that receive {prodname} Db2 change event records
+[[db2-topic-names]]
+=== Topic names
+
+By default, the Db2 connector writes change events for all of the `INSERT`, `UPDATE`, and `DELETE` operations that occur in a table to a single Apache Kafka topic that is specific to that table.
+The connector uses the following convention to name change event topics:
+
+_topicPrefix_._schemaName_._tableName_
+
+The following list provides definitions for the components of the default name:
+
+_topicPrefix_:: The topic prefix as specified by the xref:db2-property-topic-prefix[`topic.prefix`] connector configuration property.
+
+_schemaName_:: The name of the schema in which the operation occurred.
+
+_tableName_:: The name of the table in which the operation occurred.
+
+For example, consider a Db2 installation with the `mydatabase` database,  which contains four tables: `PRODUCTS`, `PRODUCTS_ON_HAND`, `CUSTOMERS`, and `ORDERS` that are in the `MYSCHEMA` schema. The connector would emit events to these four Kafka topics:
+
+* `mydatabase.MYSCHEMA.PRODUCTS`
+* `mydatabase.MYSCHEMA.PRODUCTS_ON_HAND`
+* `mydatabase.MYSCHEMA.CUSTOMERS`
+* `mydatabase.MYSCHEMA.ORDERS`
+
+The connector applies similar naming conventions to label its internal database schema history topics, xref:about-the-debezium-db2-connector-schema-change-topic[schema change topics], and xref:db2-transaction-metadata[transaction metadata topics].
+
+If the default topic name do not meet your requirements, you can configure custom topic names.
+To configure custom topic names, you specify regular expressions in the logical topic routing SMT.
+For more information about using the logical topic routing SMT to customize topic naming, see {link-prefix}:{link-topic-routing}#topic-routing[Topic routing].
+
+// Type: concept
+// ModuleID: how-debezium-db2-connectors-handle-database-schema-changes
+// Title: How {prodname} Db2 connectors handle database schema changes
+[[db2-schema-history-topic]]
+=== Schema history topic
+
+When a database client queries a database, the client uses the database’s current schema.
+However, the database schema can be changed at any time, which means that the connector must be able to identify what the schema was at the time each insert, update, or delete operation was recorded.
+Also, a connector cannot necessarily apply the current schema to every event.
+If an event is relatively old, it's possible that it was recorded before the current schema was applied.
+
+To ensure correct processing of events that occur after a schema change, the {prodname} Db2 connector stores a snapshot of the new schema based on the structures of the Db2 change data tables, which mirror the structures of their associated data tables.
+The connector stores the table schema information, together with the LSN of operations the result in schema changes, in the database schema history Kafka topic.
+The connector uses the stored schema representation to produce change events that correctly mirror the structure of tables at the time of each insert, update, or delete operation.
+
+When the connector restarts after either a crash or a graceful stop, it resumes reading entries in the Db2 change data tables from the last position that it read.
+Based on the schema information that the connector reads from the database schema history topic, the connector applies the table structures that existed at the position where the connector restarts.
+
+If you update the schema of a Db2 table that is in capture mode, it's important that you also update the schema of the corresponding change table.
+You must be a Db2 database administrator with elevated privileges to update database schema.
+For more information about how to update Db2 database schema in {prodname} environments, see xref:db2-schema-evolution[Schema history eveolution].
+
+The database schema history topic is for internal connector use only.
+Optionally, the connector can also xref:about-the-debezium-db2-connector-schema-change-topic[emit schema change events to a different topic that is intended for consumer applications].
+
+.Additional resources
+
+* xref:db2-topic-names[Default names for topics] that receive {prodname} event records.
+
+// Type: concept
+// Title: About the {prodname} Db2 connector schema change topic
+[id="about-the-debezium-db2-connector-schema-change-topic"]
+=== Schema change topic
+
+You can configure a {prodname} Db2 connector to produce schema change events that describe schema changes that are applied to tables in the database.
+
+{prodname} emits a message to the schema change topic when:
+
+* A new table goes into capture mode.
+* A table is removed from capture mode.
+* During a xref:db2-schema-evolution[database schema update], there is a change in the schema for a table that is in capture mode.
+
+The connector writes schema change events to a Kafka schema change topic that has the name `_<topicPrefix>_` where `_<topicPrefix>_` is the topic prefix that is specified in the xref:db2-property-topic-prefix[`topic.prefix`] connector configuration property.
+
+The schema for the schema change event has the following elements:
+
+`name`:: The name of the schema change event message.
+`type`:: The type of the change event message.
+`version`:: The version of the schema. The version is an integer that is incremented each time the schema is changed.
+`fields`:: The fields that are included in the change event message.
+
+.Example: Schema of the Db2 connector schema change topic
+The following example shows a typical schema in JSON format.
+
+[source,json,indent=0,subs="+attributes"]
+----
+{
+  "schema": {
+    "type": "struct",
+    "fields": [
+      {
+        "type": "string",
+        "optional": false,
+        "field": "databaseName"
+      }
+    ],
+    "optional": false,
+    "name": "io.debezium.connector.db2.SchemaChangeKey",
+    "version": 1
+  },
+  "payload": {
+    "databaseName": "inventory"
+  }
+}
+----
+
+Messages that the connector sends to the schema change topic contain a payload that includes the following elements:
+
+`databaseName`:: The name of the database to which the statements are applied.
+The value of `databaseName` serves as the message key.
+`pos`:: The position in the transaction log where the statements appear.
+`tableChanges`::  A structured representation of the entire table schema after the schema change.
+The `tableChanges` field contains an array that includes entries for each column of the table.
+Because the structured representation presents data in JSON or Avro format, consumers can easily read messages without first processing them through a DDL parser.
+
+[IMPORTANT]
+====
+For a table that is in capture mode, the connector not only stores the history of schema changes in the schema change topic, but also in an internal database schema history topic.
+The internal database schema history topic is for connector use only and it is not intended for direct use by consuming applications.
+Ensure that applications that require notifications about schema changes consume that information only from the schema change topic.
+====
+
+[IMPORTANT]
+====
+Never partition the database schema history topic.
+For the database schema history topic to function correctly, it must maintain a consistent, global order of the event records that the connector emits to it.
+
+To ensure that the topic is not split among partitions, set the partition count for the topic by using one of the following methods:
+
+* If you create the database schema history topic manually, specify a partition count of `1`.
+* If you use the Apache Kafka broker to create the database schema history topic automatically, the topic is created, set the value of the link:{link-kafka-docs}/#brokerconfigs_num.partitions[Kafka `num.partitions`] configuration option to `1`.
+====
+
+[WARNING]
+====
+The format of messages that a connector emits to its schema change topic is in an incubating state and can change without notice.
+====
+
+.Example: Message emitted to the Db2 connector schema change topic
+The following example shows a message in the schema change topic.
+The message contains a logical representation of the table schema.
+
+[source,json,indent=0,subs="+attributes"]
+----
+{
+  "schema": {
+  ...
+  },
+  "payload": {
+    "source": {
+      "version": "{debezium-version}",
+      "connector": "db2",
+      "name": "db2",
+      "ts_ms": 0,
+      "snapshot": "true",
+      "db": "testdb",
+      "schema": "DB2INST1",
+      "table": "CUSTOMERS",
+      "change_lsn": null,
+      "commit_lsn": "00000025:00000d98:00a2",
+      "event_serial_no": null
+    },
+    "ts_ms": 1588252618953, // <1>
+    "databaseName": "TESTDB", // <2>
+    "schemaName": "DB2INST1",
+    "ddl": null, // <3>
+    "tableChanges": [ // <4>
+      {
+        "type": "CREATE", // <5>
+        "id": "\"DB2INST1\".\"CUSTOMERS\"", // <6>
+        "table": { // <7>
+          "defaultCharsetName": null,
+          "primaryKeyColumnNames": [ // <8>
+            "ID"
+          ],
+          "columns": [ // <9>
+            {
+              "name": "ID",
+              "jdbcType": 4,
+              "nativeType": null,
+              "typeName": "int identity",
+              "typeExpression": "int identity",
+              "charsetName": null,
+              "length": 10,
+              "scale": 0,
+              "position": 1,
+              "optional": false,
+              "autoIncremented": false,
+              "generated": false
+            },
+            {
+              "name": "FIRST_NAME",
+              "jdbcType": 12,
+              "nativeType": null,
+              "typeName": "varchar",
+              "typeExpression": "varchar",
+              "charsetName": null,
+              "length": 255,
+              "scale": null,
+              "position": 2,
+              "optional": false,
+              "autoIncremented": false,
+              "generated": false
+            },
+            {
+              "name": "LAST_NAME",
+              "jdbcType": 12,
+              "nativeType": null,
+              "typeName": "varchar",
+              "typeExpression": "varchar",
+              "charsetName": null,
+              "length": 255,
+              "scale": null,
+              "position": 3,
+              "optional": false,
+              "autoIncremented": false,
+              "generated": false
+            },
+            {
+              "name": "EMAIL",
+              "jdbcType": 12,
+              "nativeType": null,
+              "typeName": "varchar",
+              "typeExpression": "varchar",
+              "charsetName": null,
+              "length": 255,
+              "scale": null,
+              "position": 4,
+              "optional": false,
+              "autoIncremented": false,
+              "generated": false
+            }
+          ],
+          "attributes": [ // <10>
+            {
+              "customAttribute": "attributeValue"
+            }
+          ]
+        }
+      }
+    ]
+  }
+}
+----
+
+.Descriptions of fields in messages emitted to the schema change topic
+[cols="1,3,6",options="header"]
+|===
+|Item |Field name |Description
+
+|1
+|`ts_ms`
+|Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.
+
+In the source object, ts_ms indicates the time that the change was made in the database. By comparing the value for payload.source.ts_ms with the value for payload.ts_ms, you can determine the lag between the source database update and Debezium.
+
+|2
+|`databaseName` +
+`schemaName`
+|Identifies the database and the schema that contain the change.
+
+|3
+|`ddl`
+|Always `null` for the Db2 connector.
+For other connectors, this field contains the DDL responsible for the schema change.
+This DDL is not available to Db2 connectors.
+
+|4
+|`tableChanges`
+|An array of one or more items that contain the schema changes generated by a DDL command.
+
+|5
+|`type`
+a|Describes the kind of change. The value is one of the following:
+
+* `CREATE` - table created
+* `ALTER` - table modified
+* `DROP` - table deleted
+
+|6
+|`id`
+|Full identifier of the table that was created, altered, or dropped.
+
+|7
+|`table`
+|Represents table metadata after the applied change.
+
+|8
+|`primaryKeyColumnNames`
+|List of columns that compose the table's primary key.
+
+|9
+|`columns`
+|Metadata for each column in the changed table.
+
+|10
+|`attributes`
+|Custom attribute metadata for each table change.
+
+|===
+
+In messages that the connector sends to the schema change topic, the message key is the name of the database that contains the schema change.
+In the following example, the `payload` field contains the key:
+
+[source,json,indent=0,subs="+attributes"]
+----
+{
+  "schema": {
+    "type": "struct",
+    "fields": [
+      {
+        "type": "string",
+        "optional": false,
+        "field": "databaseName"
+      }
+    ],
+    "optional": false,
+    "name": "io.debezium.connector.db2.SchemaChangeKey",
+    "version": 1
+  },
+  "payload": {
+    "databaseName": "TESTDB"
+  }
+}
+----
+
+
+// Type: concept
+// ModuleID: debezium-db2-connector-generated-events-that-represent-transaction-boundaries
+// Title: {prodname} Db2 connector-generated events that represent transaction boundaries
+[[db2-transaction-metadata]]
+=== Transaction metadata
+
+{prodname} can generate events that represent transaction boundaries and that enrich change data event messages.
+
+[NOTE]
+.Limits on when {prodname} receives transaction metadata
+====
+{prodname} registers and receives metadata only for transactions that occur after you deploy the connector.
+Metadata for transactions that occur before you deploy the connector is not available.
+====
+
+{prodname} generates transaction boundary events for the `BEGIN` and `END` delimiters in every transaction.
+Transaction boundary events contain the following fields:
+
+`status`:: `BEGIN` or `END`.
+`id`:: String representation of the unique transaction identifier.
+`ts_ms`:: The time of a transaction boundary event (`BEGIN` or `END` event) at the data source.
+If the data source does not provide {prodname} with the event time, then the field instead represents the time at which {prodname} processes the event.
+`event_count` (for `END` events):: Total number of events emmitted by the transaction.
+`data_collections` (for `END` events):: An array of pairs of `data_collection` and `event_count` elements that indicates the number of events that the connector emits for changes that originate from a data collection.
+
+.Example
+
+[source,json,indent=0,subs="+attributes"]
+----
+{
+  "status": "BEGIN",
+  "id": "00000025:00000d08:0025",
+  "ts_ms": 1486500577125,
+  "event_count": null,
+  "data_collections": null
+}
+
+{
+  "status": "END",
+  "id": "00000025:00000d08:0025",
+  "ts_ms": 1486500577691,
+  "event_count": 2,
+  "data_collections": [
+    {
+      "data_collection": "testDB.dbo.tablea",
+      "event_count": 1
+    },
+    {
+      "data_collection": "testDB.dbo.tableb",
+      "event_count": 1
+    }
+  ]
+}
+----
+
+Unless overridden via the xref:db2-property-topic-transaction[`topic.transaction`] option,
+the connector emits transaction events to the xref:db2-property-topic-prefix[`_<topic.prefix>_`]`.transaction` topic.
+
+.Data change event enrichment
+
+When transaction metadata is enabled the connector enriches the change event  `Envelope` with a new `transaction` field.
+This field provides information about every event in the form of a composite of fields:
+
+`id`:: String representation of unique transaction identifier.
+`total_order`:: The absolute position of the event among all events generated by the transaction.
+`data_collection_order`:: The per-data collection position of the event among all events that were emitted by the transaction.
+
+Following is an example of a message:
+
+[source,json,indent=0,subs="+attributes"]
+----
+{
+  "before": null,
+  "after": {
+    "pk": "2",
+    "aa": "1"
+  },
+  "source": {
+...
+  },
+  "op": "c",
+  "ts_ms": "1580390884335",
+  "ts_us": "1580390884335875",
+  "ts_ns": "1580390884335875412",
+  "transaction": {
+    "id": "00000025:00000d08:0025",
+    "total_order": "1",
+    "data_collection_order": "1"
+  }
+}
+----
+
+// Type: assembly
+// ModuleID: descriptions-of-debezium-db2-connector-data-change-events
+// Title: Descriptions of {prodname} Db2 connector data change events
+[[db2-events]]
+== Data change events
+
+The {prodname} Db2 connector generates a data change event for each row-level `INSERT`, `UPDATE`, and `DELETE` operation. Each event contains a key and a value. The structure of the key and the value depends on the table that was changed.
+
+{prodname} and Kafka Connect are designed around _continuous streams of event messages_. However, the structure of these events may change over time, which can be difficult for consumers to handle. To address this, each event contains the schema for its content or, if you are using a schema registry, a schema ID that a consumer can use to obtain the schema from the registry. This makes each event self-contained.
+
+The following skeleton JSON shows the basic four parts of a change event. However, how you configure the Kafka Connect converter that you choose to use in your application determines the representation of these four parts in change events. A `schema` field is in a change event only when you configure the converter to produce it. Likewise, the event key and event payload are in a change event only if you configure a converter to produce it. If you use the JSON converter and you configure it to produce all four basic change event parts, change events have this structure:
+
+[source,json,index=0]
+----
+{
+ "schema": { // <1>
+   ...
+  },
+ "payload": { // <2>
+   ...
+ },
+ "schema": { // <3>
+   ...
+ },
+ "payload": { // <4>
+   ...
+ },
+}
+----
+
+.Overview of change event basic content
+[cols="1,2,7",options="header"]
+|===
+|Item |Field name |Description
+
+|1
+|`schema`
+|The first `schema` field is part of the event key. It specifies a Kafka Connect schema that describes what is in the event key's `payload` portion. In other words, the first `schema` field describes the structure of the primary key, or the unique key if the table does not have a primary key, for the table that was changed. +
+ +
+It is possible to override the table's primary key by setting the xref:db2-property-message-key-columns[`message.key.columns` connector configuration property]. In this case, the first schema field describes the structure of the key identified by that property.
+
+|2
+|`payload`
+|The first `payload` field is part of the event key. It has the structure described by the previous `schema` field and it contains the key for the row that was changed.
+
+|3
+|`schema`
+|The second `schema` field is part of the event value. It specifies the Kafka Connect schema that describes what is in the event value's `payload` portion. In other words, the second `schema` describes the structure of the row that was changed. Typically, this schema contains nested schemas.
+
+|4
+|`payload`
+|The second `payload` field is part of the event value. It has the structure described by the previous `schema` field and it contains the actual data for the row that was changed.
+
+|===
+
+By default, the connector streams change event records to topics with names that are the same as the event's originating table. For more information, see xref:db2-topic-names[topic names].
+
+[WARNING]
+====
+The {prodname} Db2 connector ensures that all Kafka Connect schema names adhere to the link:http://avro.apache.org/docs/current/spec.html#names[Avro schema name format]. This means that the logical server name must start with a Latin letter or an underscore, that is, a-z, A-Z, or \_. Each remaining character in the logical server name and each character in the database and table names must be a Latin letter, a digit, or an underscore, that is, a-z, A-Z, 0-9, or \_. If there is an invalid character it is replaced with an underscore character.
+
+This can lead to unexpected conflicts if the logical server name, a database name, or a table name contains invalid characters, and the only characters that distinguish names from one another are invalid and thus replaced with underscores.
+
+Also, Db2 names for databases, schemas, and tables can be case sensitive. This means that the connector could emit event records for more than one table to the same Kafka topic.
+====
+
+ifdef::product[]
+Details are in the following topics:
+
+* xref:about-keys-in-debezium-db2-change-events[]
+* xref:about-values-in-debezium-db2-change-events[]
+
+endif::product[]
+
+// Type: concept
+// ModuleID: about-keys-in-debezium-db2-change-events
+// Title: About keys in {prodname} db2 change events
+[[db2-change-event-keys]]
+=== Change event keys
+
+A change event's key contains the schema for the changed table's key and the changed row's actual key. Both the schema and its corresponding payload contain a field for each column in the changed table's `PRIMARY KEY` (or unique constraint) at the time the connector created the event.
+
+Consider the following `customers` table, which is followed by an example of a change event key for this table.
+
+.Example table
+[source,sql,indent=0]
+----
+CREATE TABLE customers (
+ ID INTEGER IDENTITY(1001,1) NOT NULL PRIMARY KEY,
+ FIRST_NAME VARCHAR(255) NOT NULL,
+ LAST_NAME VARCHAR(255) NOT NULL,
+ EMAIL VARCHAR(255) NOT NULL UNIQUE
+);
+----
+
+.Example change event key
+Every change event that captures a change to the `customers` table has the same event key schema. For as long as the `customers` table has the previous definition, every change event that captures a change to the `customers` table has the following key structure. In JSON, it looks like this:
+
+[source,json,indent=0]
+----
+{
+    "schema": {  // <1>
+        "type": "struct",
+        "fields": [  // <2>
+            {
+                "type": "int32",
+                "optional": false,
+                "field": "ID"
+            }
+        ],
+        "optional": false,  // <3>
+        "name": "mydatabase.MYSCHEMA.CUSTOMERS.Key"  // <4>
+    },
+    "payload": {  // <5>
+        "ID": 1004
+    }
+}
+----
+
+.Description of change event key
+[cols="1,2,7",options="header"]
+|===
+|Item |Field name |Description
+
+|1
+|`schema`
+|The schema portion of the key specifies a Kafka Connect schema that describes what is in the key's `payload` portion.
+
+|2
+|`fields`
+|Specifies each field that is expected in the `payload`, including each field's name, type, and whether it is required.
+
+|3
+|`optional`
+|Indicates whether the event key must contain a value in its `payload` field. In this example, a value in the key's payload is required. A value in the key's payload field is optional when a table does not have a primary key.
+
+|4
+|`mydatabase.MYSCHEMA.CUSTOMERS.Key`
+a|Name of the schema that defines the structure of the key's payload. This schema describes the structure of the primary key for the table that was changed. Key schema names have the format _connector-name_._database-name_._table-name_.`Key`. In this example: +
+
+* `mydatabase` is the name of the connector that generated this event. +
+* `MYSCHEMA` is the database schema that contains the table that was changed. +
+* `CUSTOMERS` is the table that was updated.
+
+|5
+|`payload`
+|Contains the key for the row for which this change event was generated. In this example, the key, contains a single `ID` field whose value is `1004`.
+
+|===
+
+////
+[NOTE]
+====
+Although the `column.exclude.list` connector configuration property allows you to omit columns from event values, all columns in a primary or unique key are always included in the event's key.
+====
+
+[WARNING]
+====
+If the table does not have a primary or unique key, then the change event's key is null. The rows in a table without a primary or unique key constraint cannot be uniquely identified.
+====
+////
+
+// Type: concept
+// ModuleID: about-values-in-debezium-db2-change-events
+// Title: About values in {prodname} Db2 change events
+[[db2-change-event-values]]
+=== Change event values
+
+The value in a change event is a bit more complicated than the key. Like the key, the value has a `schema` section and a `payload` section. The `schema` section contains the schema that describes the `Envelope` structure of the `payload` section, including its nested fields. Change events for operations that create, update or delete data all have a value payload with an envelope structure.
+
+Consider the same sample table that was used to show an example of a change event key:
+
+.Example table
+[source,sql,indent=0]
+----
+CREATE TABLE customers (
+ ID INTEGER IDENTITY(1001,1) NOT NULL PRIMARY KEY,
+ FIRST_NAME VARCHAR(255) NOT NULL,
+ LAST_NAME VARCHAR(255) NOT NULL,
+ EMAIL VARCHAR(255) NOT NULL UNIQUE
+);
+----
+
+The event value portion of every change event for the `customers` table specifies the same schema. The event value's payload varies according to the event type:
+
+* <<db2-create-events,_create_ events>>
+* <<db2-update-events,_update_ events>>
+* <<db2-delete-events,_delete_ events>>
+
+[[db2-create-events]]
+=== _create_ events
+
+The following example shows the value portion of a change event that the connector generates for an operation that creates data in the `customers` table:
+
+[source,json,indent=0,subs="+attributes"]
+----
+{
+  "schema": {  // <1>
+    "type": "struct",
+    "fields": [
+      {
+        "type": "struct",
+        "fields": [
+          {
+            "type": "int32",
+            "optional": false,
+            "field": "ID"
+          },
+          {
+            "type": "string",
+            "optional": false,
+            "field": "FIRST_NAME"
+          },
+          {
+            "type": "string",
+            "optional": false,
+            "field": "LAST_NAME"
+          },
+          {
+            "type": "string",
+            "optional": false,
+            "field": "EMAIL"
+          }
+        ],
+        "optional": true,
+        "name": "mydatabase.MYSCHEMA.CUSTOMERS.Value",  // <2>
+        "field": "before"
+      },
+      {
+        "type": "struct",
+        "fields": [
+          {
+            "type": "int32",
+            "optional": false,
+            "field": "ID"
+          },
+          {
+            "type": "string",
+            "optional": false,
+            "field": "FIRST_NAME"
+          },
+          {
+            "type": "string",
+            "optional": false,
+            "field": "LAST_NAME"
+          },
+          {
+            "type": "string",
+            "optional": false,
+            "field": "EMAIL"
+          }
+        ],
+        "optional": true,
+        "name": "mydatabase.MYSCHEMA.CUSTOMERS.Value",
+        "field": "after"
+      },
+      {
+        "type": "struct",
+        "fields": [
+          {
+            "type": "string",
+            "optional": false,
+            "field": "version"
+          },
+          {
+            "type": "string",
+            "optional": false,
+            "field": "connector"
+          },
+          {
+            "type": "string",
+            "optional": false,
+            "field": "name"
+          },
+          {
+            "type": "int64",
+            "optional": false,
+            "field": "ts_ms"
+          },
+          {
+            "type": "int64",
+            "optional": false,
+            "field": "ts_us"
+          },
+          {
+            "type": "int64",
+            "optional": false,
+            "field": "ts_ns"
+          },
+          {
+            "type": "boolean",
+            "optional": true,
+            "default": false,
+            "field": "snapshot"
+          },
+          {
+            "type": "string",
+            "optional": false,
+            "field": "db"
+          },
+          {
+            "type": "string",
+            "optional": false,
+            "field": "schema"
+          },
+          {
+            "type": "string",
+            "optional": false,
+            "field": "table"
+          },
+          {
+            "type": "string",
+            "optional": true,
+            "field": "change_lsn"
+          },
+          {
+            "type": "string",
+            "optional": true,
+            "field": "commit_lsn"
+          },
+        ],
+        "optional": false,
+        "name": "io.debezium.connector.db2.Source",  // <3>
+        "field": "source"
+      },
+      {
+        "type": "string",
+        "optional": false,
+        "field": "op"
+      },
+      {
+        "type": "int64",
+        "optional": true,
+        "field": "ts_ms"
+      },
+      {
+        "type": "int64",
+        "optional": true,
+        "field": "ts_us"
+      },
+      {
+        "type": "int64",
+        "optional": true,
+        "field": "ts_ns"
+      }
+    ],
+    "optional": false,
+    "name": "mydatabase.MYSCHEMA.CUSTOMERS.Envelope"  // <4>
+  },
+  "payload": {  // <5>
+    "before": null,  // <6>
+    "after": {  // <7>
+      "ID": 1005,
+      "FIRST_NAME": "john",
+      "LAST_NAME": "doe",
+      "EMAIL": "john.doe@example.org"
+    },
+    "source": {  // <8>
+      "version": "{debezium-version}",
+      "connector": "db2",
+      "name": "myconnector",
+      "ts_ms": 1559729468470,
+      "ts_us": 1559729468470476,
+      "ts_ns": 1559729468470476000,
+      "snapshot": false,
+      "db": "mydatabase",
+      "schema": "MYSCHEMA",
+      "table": "CUSTOMERS",
+      "change_lsn": "00000027:00000758:0003",
+      "commit_lsn": "00000027:00000758:0005",
+    },
+    "op": "c",  // <9>
+    "ts_ms": 1559729471739,  // <10>
+    "ts_us": 1559729471739762,  // <10>
+    "ts_ns": 1559729471739762314  // <10>
+  }
+}
+----
+
+.Descriptions of _create_ event value fields
+[cols="1,2,7",options="header"]
+|===
+|Item |Field name |Description
+
+|1
+|`schema`
+|The value's schema, which describes the structure of the value's payload. A change event's value schema is the same in every change event that the connector generates for a particular table.
+
+|2
+|`name`
+a|In the `schema` section, each `name` field specifies the schema for a field in the value's payload. +
+ +
+`mydatabase.MYSCHEMA.CUSTOMERS.Value` is the schema for the payload's `before` and `after` fields. This schema is specific to the `customers` table. The connector uses this schema for all rows in the `MYSCHEMA.CUSTOMERS` table. +
+ +
+Names of schemas for `before` and `after` fields are of the form `_logicalName_._schemaName_._tableName_.Value`, which ensures that the schema name is unique in the database.
+This means that when using the {link-prefix}:{link-avro-serialization}#avro-serialization[Avro converter], the resulting Avro schema for each table in each logical source has its own evolution and history.
+
+|3
+|`name`
+a|`io.debezium.connector.db2.Source` is the schema for the payload's `source` field. This schema is specific to the Db2 connector. The connector uses it for all events that it generates.
+
+|4
+|`name`
+a|`mydatabase.MYSCHEMA.CUSTOMERS.Envelope` is the schema for the overall structure of the payload, where `mydatabase` is the database, `MYSCHEMA` is the schema, and `CUSTOMERS` is the table.
+
+|5
+|`payload`
+|The value's actual data. This is the information that the change event is providing. +
+ +
+It may appear that JSON representations of events are much larger than the rows they describe. This is because a JSON representation must include the schema portion and the payload portion of the message.
+However, by using the {link-prefix}:{link-avro-serialization}#avro-serialization[Avro converter], you can significantly decrease the size of the messages that the connector streams to Kafka topics.
+
+|6
+|`before`
+|An optional field that specifies the state of the row before the event occurred. When the `op` field is `c` for create, as it is in this example, the `before` field is `null` since this change event is for new content.
+
+|7
+|`after`
+|An optional field that specifies the state of the row after the event occurred. In this example, the `after` field contains the values of the new row's `ID`, `FIRST_NAME`, `LAST_NAME`, and `EMAIL` columns.
+
+|8
+|`source`
+a| Mandatory field that describes the source metadata for the event. The `source` structure shows Db2 information about this change, which provides traceability. It also has information you can use to compare to other events in the same topic or in other topics to know whether this event occurred before, after, or as part of the same commit as other events. The source metadata includes:
+
+* {prodname} version
+* Connector type and name
+* Timestamp for when the change was made in the database
+* Whether the event is part of an ongoing snapshot
+* Name of the database, schema, and table that contain the new row
+* Change LSN
+* Commit LSN (omitted if this event is part of a snapshot)
+
+|9
+|`op`
+a|Mandatory string that describes the type of operation that caused the connector to generate the event. In this example, `c` indicates that the operation created a row. Valid values are:
+
+* `c` = create
+* `u` = update
+* `d` = delete
+* `r` = read (applies to only snapshots)
+
+|10
+|`ts_ms`, `ts_us`, `ts_ns`
+a|Optional field that displays the time at which the connector processed the event.
+The time is based on the system clock in the JVM running the Kafka Connect task. +
+ +
+In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
+
+|===
+
+[[db2-update-events]]
+=== _update_ events
+The value of a change event for an update in the sample `customers` table has the same schema as a _create_ event for that table. Likewise, the _update_ event value's payload has the same structure. However, the event value payload contains different values in an _update_ event. Here is an example of a change event value in an event that the connector generates for an update in the `customers` table:
+
+[source,json,indent=0,subs="+attributes"]
+----
+{
+  "schema": { ... },
+  "payload": {
+    "before": {  // <1>
+      "ID": 1005,
+      "FIRST_NAME": "john",
+      "LAST_NAME": "doe",
+      "EMAIL": "john.doe@example.org"
+    },
+    "after": {  // <2>
+      "ID": 1005,
+      "FIRST_NAME": "john",
+      "LAST_NAME": "doe",
+      "EMAIL": "noreply@example.org"
+    },
+    "source": {  // <3>
+      "version": "{debezium-version}",
+      "connector": "db2",
+      "name": "myconnector",
+      "ts_ms": 1559729995937,
+      "ts_us": 1559729995937497,
+      "ts_ns": 1559729995937497000,
+      "snapshot": false,
+      "db": "mydatabase",
+      "schema": "MYSCHEMA",
+      "table": "CUSTOMERS",
+      "change_lsn": "00000027:00000ac0:0002",
+      "commit_lsn": "00000027:00000ac0:0007",
+    },
+    "op": "u",  // <4>
+    "ts_ms": 1559729998706,  // <5>
+    "ts_us": 1559729998706647,  // <5>
+    "ts_ns": 1559729998706647825  // <5>
+  }
+}
+----
+
+.Descriptions of _update_ event value fields
+[cols="1,2,7",options="header"]
+|===
+|Item |Field name |Description
+
+|1
+|`before`
+|An optional field that specifies the state of the row before the event occurred. In an _update_ event value, the `before` field contains a field for each table column and the value that was in that column before the database commit. In this example, note that the `EMAIL` value is `john.doe@example.com`.
+
+|2
+|`after`
+| An optional field that specifies the state of the row after the event occurred. You can compare the `before` and `after` structures to determine what the update to this row was. In the example, the `EMAIL` value is now `noreply@example.com`.
+
+|3
+|`source`
+a|Mandatory field that describes the source metadata for the event. The `source` field structure contains the same fields as in a _create_ event, but some values are different, for example, the sample _update_ event has different LSNs. You can use this information to compare this event to other events to know whether this event occurred before, after, or as part of the same commit as other events. The source metadata includes:
+
+* {prodname} version
+* Connector type and name
+* Timestamp for when the change was made in the database
+* Whether the event is part of an ongoing snapshot
+* Name of the database, schema, and table that contain the new row
+* Change LSN
+* Commit LSN (omitted if this event is part of a snapshot)
+
+|4
+|`op`
+a|Mandatory string that describes the type of operation. In an _update_ event value, the `op` field value is `u`, signifying that this row changed because of an update.
+
+|5
+|`ts_ms`, `ts_us`, `ts_ns`
+a|Optional field that displays the time at which the connector processed the event.
+The time is based on the system clock in the JVM running the Kafka Connect task. +
+ +
+In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
+
+|===
+
+[NOTE]
+====
+Updating the columns for a row's primary/unique key changes the value of the row's key. When a key changes, {prodname} outputs _three_ events: a `DELETE` event and a xref:db2-tombstone-events[tombstone event] with the old key for the row, followed by an event with the new key for the row.
+====
+
+[[db2-delete-events]]
+=== _delete_ events
+
+The value in a _delete_ change event has the same `schema` portion as _create_ and _update_ events for the same table. The event value `payload` in a _delete_ event for the sample `customers` table looks like this:
+
+[source,json,indent=0,subs="+attributes"]
+----
+{
+  "schema": { ... },
+  },
+  "payload": {
+    "before": {  // <1>
+      "ID": 1005,
+      "FIRST_NAME": "john",
+      "LAST_NAME": "doe",
+      "EMAIL": "noreply@example.org"
+    },
+    "after": null,  // <2>
+    "source": {  // <3>
+      "version": "{debezium-version}",
+      "connector": "db2",
+      "name": "myconnector",
+      "ts_ms": 1559730445243,
+      "ts_us": 1559730445243482,
+      "ts_ns": 1559730445243482000,
+      "snapshot": false,
+      "db": "mydatabase",
+      "schema": "MYSCHEMA",
+      "table": "CUSTOMERS",
+      "change_lsn": "00000027:00000db0:0005",
+      "commit_lsn": "00000027:00000db0:0007"
+    },
+    "op": "d",  // <4>
+    "ts_ms": 1559730450205,  // <5>
+    "ts_us": 1559730450205521,  // <5>
+    "ts_ns": 1559730450205521475  // <5>
+  }
+}
+----
+
+.Descriptions of _delete_ event value fields
+[cols="1,2,7",options="header"]
+|===
+|Item |Field name |Description
+
+|1
+|`before`
+|Optional field that specifies the state of the row before the event occurred. In a _delete_ event value, the `before` field contains the values that were in the row before it was deleted with the database commit.
+
+|2
+|`after`
+| Optional field that specifies the state of the row after the event occurred. In a _delete_ event value, the `after` field is `null`, signifying that the row no longer exists.
+
+|3
+|`source`
+a|Mandatory field that describes the source metadata for the event. In a _delete_ event value, the `source` field structure is the same as for _create_ and _update_ events for the same table. Many `source` field values are also the same. In a _delete_ event value, the `ts_ms` and LSN field values, as well as other values, might have changed. But the `source` field in a _delete_ event value provides the same metadata:
+
+* {prodname} version
+* Connector type and name
+* Timestamp for when the change was made in the database
+* Whether the event is part of an ongoing snapshot
+* Name of the database, schema, and table that contain the new row
+* Change LSN
+* Commit LSN (omitted if this event is part of a snapshot)
+
+|4
+|`op`
+a|Mandatory string that describes the type of operation. The `op` field value is `d`, signifying that this row was deleted.
+
+|5
+|`ts_ms`, `ts_us`, `ts_ns`
+a|Optional field that displays the time at which the connector processed the event.
+The time is based on the system clock in the JVM running the Kafka Connect task. +
+ +
+In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
+
+|===
+
+A _delete_ change event record provides a consumer with the information it needs to process the removal of this row. The old values are included because some consumers might require them in order to properly handle the removal.
+
+Db2 connector events are designed to work with link:{link-kafka-docs}/#compaction[Kafka log compaction]. Log compaction enables removal of some older messages as long as at least the most recent message for every key is kept. This lets Kafka reclaim storage space while ensuring that the topic contains a complete data set and can be used for reloading key-based state.
+
+[[db2-tombstone-events]]
+When a row is deleted, the _delete_ event value still works with log compaction, because Kafka can remove all earlier messages that have that same key. However, for Kafka to remove all messages that have that same key, the message value must be `null`. To make this possible, after {prodname}’s Db2 connector emits a _delete_ event, the connector emits a special tombstone event that has the same key but a `null` value.
+
+// Type: reference
+// ModuleID: how-debezium-db2-connectors-map-data-types
+// Title: How {prodname} Db2 connectors map data types
+[[db2-data-types]]
+== Data type mappings
+
+For a complete description of the data types that Db2 supports, see https://www.ibm.com/support/knowledgecenter/en/SSEPGG_11.5.0/com.ibm.db2.luw.sql.ref.doc/doc/r0008483.html[Data Types] in the Db2 documentation.
+
+The Db2 connector represents changes to rows with events that are structured like the table in which the row exists. The event contains a field for each column value. How that value is represented in the event depends on the Db2 data type of the column. This section describes these mappings.
+If the default data type conversions do not meet your needs, you can {link-prefix}:{link-custom-converters}#custom-converters[create a custom converter] for the connector.
+
+ifdef::product[]
+Details are in the following sections:
+
+* xref:db2-basic-types[]
+* xref:db2-temporal-types[]
+* xref:db2-timestamp-types[]
+* xref:db2-decimal-types[]
+
+endif::product[]
+
+[id="db2-basic-types"]
+=== Basic types
+
+The following table describes how the connector maps each Db2 data type to a _literal type_ and a _semantic type_ in event fields.
+
+* _literal type_ describes how the value is represented using Kafka Connect schema types: `INT8`, `INT16`, `INT32`, `INT64`, `FLOAT32`, `FLOAT64`, `BOOLEAN`, `STRING`, `BYTES`, `ARRAY`, `MAP`, and `STRUCT`.
+
+* _semantic type_ describes how the Kafka Connect schema captures the _meaning_ of the field using the name of the Kafka Connect schema for the field.
+
+.Mappings for Db2 basic data types
+[cols="25%a,20%a,55%a",options="header"]
+|===
+|Db2 data type
+|Literal type (schema type)
+|Semantic type (schema name) and Notes
+
+|`BOOLEAN`
+|`BOOLEAN`
+|Only snapshots can be taken from tables with BOOLEAN type columns. Currently SQL Replication on Db2 does not support BOOLEAN, so Debezium can not perform CDC on those tables. Consider using a different type.
+
+
+|`BIGINT`
+|`INT64`
+|n/a
+
+|`BINARY`
+|`BYTES`
+|n/a
+
+|`BLOB`
+|`BYTES`
+|n/a
+
+|`CHAR[(N)]`
+|`STRING`
+|n/a
+
+|`CLOB`
+|`STRING`
+|n/a
+
+|`DATE`
+|`INT32`
+|`io.debezium.time.Date` +
+ +
+String representation of a timestamp without timezone information
+
+|`DECFLOAT`
+|`BYTES`
+|`org.apache.kafka.connect.data.Decimal`
+
+|`DECIMAL`
+|`BYTES`
+|`org.apache.kafka.connect.data.Decimal`
+
+|`DBCLOB`
+|`STRING`
+|n/a
+
+|`DOUBLE`
+|`FLOAT64`
+|n/a
+
+|`INTEGER`
+|`INT32`
+|n/a
+
+|`REAL`
+|`FLOAT32`
+|n/a
+
+|`SMALLINT`
+|`INT16`
+|n/a
+
+|`TIME`
+|`INT32`
+|`io.debezium.time.Time` +
+ +
+String representation of a time without timezone information
+
+|`TIMESTAMP`
+|`INT64`
+|`io.debezium.time.MicroTimestamp` +
+ +
+String representation of a timestamp without timezone information
+
+|`VARBINARY`
+|`BYTES`
+|n/a
+
+|`VARCHAR[(N)]`
+|`STRING`
+|n/a
+
+|`VARGRAPHIC`
+|`STRING`
+|n/a
+
+|`XML`
+|`STRING`
+|`io.debezium.data.Xml` +
+ +
+String representation of an XML document
+|===
+
+If present, a column's default value is propagated to the corresponding field's Kafka Connect schema. Change events contain the field's default value unless an explicit column value had been given. Consequently, there is rarely a need to obtain the default value from the schema.
+ifdef::community[]
+Passing the default value helps satisfy compatibility rules when {link-prefix}:{link-avro-serialization}[using Avro] as the serialization format together with the Confluent schema registry.
+endif::community[]
+
+[[db2-temporal-types]]
+=== Temporal types
+
+Except for the `DATETIMEOFFSET` data type, which contains time zone information, Db2 maps temporal types based on the value of the `time.precision.mode` connector configuration property.
+The following sections describe these mappings:
+
+* xref:db2-time-precision-mode-adaptive[`time.precision.mode=adaptive`]
+* xref:db2-time-precision-mode-connect[`time.precision.mode=connect`]
+
+[[db2-time-precision-mode-adaptive]]
+.`time.precision.mode=adaptive`
+When the `time.precision.mode` configuration property is set to `adaptive`, the default, the connector determines the literal type and semantic type based on the column's data type definition. This ensures that events _exactly_ represent the values in the database.
+
+.Mappings when `time.precision.mode` is `adaptive`
+[cols="25%a,20%a,55%a",options="header"]
+|===
+|Db2 data type |Literal type (schema type) |Semantic type (schema name) and Notes
+
+|`DATE`
+|`INT32`
+|`io.debezium.time.Date` +
+ +
+Represents the number of days since the epoch.
+
+|`TIME(0)`, `TIME(1)`, `TIME(2)`, `TIME(3)`
+|`INT32`
+|`io.debezium.time.Time` +
+ +
+Represents the number of milliseconds past midnight, and does not include timezone information.
+
+|`TIME(4)`, `TIME(5)`, `TIME(6)`
+|`INT64`
+|`io.debezium.time.MicroTime` +
+ +
+Represents the number of microseconds past midnight, and does not include timezone information.
+
+|`TIME(7)`
+|`INT64`
+|`io.debezium.time.NanoTime` +
+ +
+Represents the number of nanoseconds past midnight, and does not include timezone information.
+
+|`DATETIME`
+|`INT64`
+|`io.debezium.time.Timestamp` +
+ +
+Represents the number of milliseconds since the epoch, and does not include timezone information.
+
+|===
+
+[[db2-time-precision-mode-connect]]
+.`time.precision.mode=connect`
+When the `time.precision.mode` configuration property is set to `connect`, the connector uses Kafka Connect logical types. This may be useful when consumers can handle only the built-in Kafka Connect logical types and are unable to handle variable-precision time values. However, since Db2 supports tenth of a microsecond precision, the events generated by a connector with the `connect` time precision *results in a loss of precision* when the database column has a _fractional second precision_ value that is greater than 3.
+
+.Mappings when `time.precision.mode` is `connect`
+[cols="25%a,20%a,55%a",options="header"]
+|===
+|Db2 data type |Literal type (schema type) |Semantic type (schema name) and Notes
+
+|`DATE`
+|`INT32`
+|`org.apache.kafka.connect.data.Date` +
+ +
+Represents the number of days since the epoch.
+
+|`TIME([P])`
+|`INT64`
+|`org.apache.kafka.connect.data.Time` +
+ +
+Represents the number of milliseconds since midnight, and does not include timezone information. Db2 allows `P` to be in the range 0-7 to store up to tenth of a microsecond precision, though this mode results in a loss of precision when `P` is greater than 3.
+
+|`DATETIME`
+|`INT64`
+|`org.apache.kafka.connect.data.Timestamp` +
+ +
+Represents the number of milliseconds since the epoch, and does not include timezone information.
+
+|===
+
+[[db2-timestamp-types]]
+=== Timestamp types
+
+The `DATETIME` type represents a timestamp without time zone information.
+Such columns are converted into an equivalent Kafka Connect value based on UTC.
+For example, the `DATETIME` value "2018-06-20 15:13:16.945104" is represented by an `io.debezium.time.Timestamp` with the value "1529507596000".
+
+The timezone of the JVM running Kafka Connect and {prodname} does not affect this conversion.
+
+[[db2-decimal-types]]
+=== Decimal types
+
+[cols="27%a,18%a,55%a",options="header"]
+|===
+|Db2 data type |Literal type (schema type) |Semantic type (schema name) and Notes
+
+|`NUMERIC[(P[,S])]`
+|`BYTES`
+|`org.apache.kafka.connect.data.Decimal` +
+ +
+The `scale` schema parameter contains an integer that represents how many digits the decimal point is shifted.
+The `connect.decimal.precision` schema parameter contains an integer that represents the precision of the given decimal value.
+
+|`DECIMAL[(P[,S])]`
+|`BYTES`
+|`org.apache.kafka.connect.data.Decimal` +
+ +
+The `scale` schema parameter contains an integer that represents how many digits the decimal point is shifted.
+The `connect.decimal.precision` schema parameter contains an integer that  represents the precision of the given decimal value.
+
+|===
+
+// Type: assembly
+// ModuleID: setting-up-db2-to-run-a-debezium-connector
+// Title: Setting up Db2 to run a {prodname} connector
+[[setting-up-db2]]
+== Setting up Db2
+
+For {prodname} to capture change events that are committed to Db2 tables, a Db2 database administrator with the necessary privileges must configure tables in the database for change data capture.
+After you begin to run {prodname} you can adjust the configuration of the capture agent to optimize performance.
+
+ifdef::product[]
+
+For details about setting up Db2 for use with the {prodname} connector, see the following sections:
+
+* xref:configuring-db2-tables-for-change-data-capture[]
+* xref:effect-of-db2-capture-agent-configuration-on-server-load-and-latency[]
+* xref:db2-capture-agent-configuration-parameters[]
+
+endif::product[]
+
+// Type: procedure
+// ModuleID: configuring-db2-tables-for-change-data-capture
+// Title: Configuring Db2 tables for change data capture
+[id="putting-tables-in-capture-mode"]
+=== Putting tables into capture mode
+
+To put tables into capture mode, {prodname} provides a set of user-defined functions (UDFs) for your convenience.
+The procedure here shows how to install and run these management UDFs.
+Alternatively, you can run Db2 control commands to put tables into capture mode.
+The administrator must then enable CDC for each table that you want Debezium to capture.
+
+.Prerequisites
+
+* You are logged in to Db2 as the `db2instl` user.
+* On the Db2 host, the Debezium management UDFs are available in the $HOME/asncdctools/src directory.
+ UDFs are available from the link:https://github.com/debezium/debezium-examples/tree/main/tutorial/debezium-db2-init/db2server[Debezium examples repository].
+* The Db2 command `bldrtn` is on PATH, e.g. by running `export PATH=$PATH:/opt/ibm/db2/V11.5.0.0/samples/c/` with Db2 11.5
+
+.Procedure
+
+. Compile the {prodname} management UDFs on the Db2 server host by using the `bldrtn`
+command provided with Db2:
++
+[source,shell]
+----
+cd $HOME/asncdctools/src
+----
++
+[source,shell]
+----
+bldrtn asncdc
+----
+
+. Start the database if it is not already running. Replace `DB_NAME` with the name of the database that you want {prodname} to connect to.
++
+[source,shell]
+----
+db2 start db DB_NAME
+----
+
+. Ensure that JDBC can read the Db2 metadata catalog:
++
+[source,shell]
+----
+cd $HOME/sqllib/bnd
+----
++
+[source,shell]
+----
+db2 connect to DB_NAME
+db2 bind db2schema.bnd blocking all grant public sqlerror continue
+----
+
+. Ensure that the database was recently backed-up. The ASN agents must have a recent starting point to read from. If you need to perform a backup, run the following commands, which prune the data so that only the most recent version is available. If you do not need to retain the older versions of the data, specify `dev/null` for the backup location.
+
+.. Back up the database. Replace `DB_NAME` and `BACK_UP_LOCATION` with appropriate values:
++
+[source,shell]
+----
+db2 backup db DB_NAME to BACK_UP_LOCATION
+----
+
+.. Restart the database:
++
+[source,shell]
+----
+db2 restart db DB_NAME
+----
+
+. Connect to the database to install the {prodname} management UDFs. It is assumed that you are logged in as the `db2instl` user so the UDFs should be installed on the `db2inst1` user.
++
+[source,shell]
+----
+db2 connect to DB_NAME
+----
+
+. Copy the {prodname} management UDFs and set permissions for them:
++
+[source,shell]
+----
+cp $HOME/asncdctools/src/asncdc $HOME/sqllib/function
+----
++
+[source,shell]
+----
+chmod 777 $HOME/sqllib/function
+----
+
+. Enable the {prodname} UDF that starts and stops the ASN capture agent:
++
+[source,shell]
+----
+db2 -tvmf $HOME/asncdctools/src/asncdc_UDF.sql
+----
+
+. Create the ASN control tables:
++
+[source,shell]
+----
+$ db2 -tvmf $HOME/asncdctools/src/asncdctables.sql
+----
+
+. Enable the {prodname} UDF that adds tables to capture mode and removes tables from capture mode:
++
+[source,shell]
+----
+$ db2 -tvmf $HOME/asncdctools/src/asncdcaddremove.sql
+----
++
+After you set up the Db2 server, use the UDFs to control Db2 replication (ASN) with SQL commands.
+Some of the UDFs expect a return value in which case you use the SQL `VALUE` statement to invoke them.
+For other UDFs, use the SQL `CALL` statement.
+
+. Start the ASN agent from an SQL client:
++
+[source,sql]
+----
+VALUES ASNCDC.ASNCDCSERVICES('start','asncdc');
+----
++
+or from the shell:
++
+[source,shell]
+----
+db2 "VALUES ASNCDC.ASNCDCSERVICES('start','asncdc');"
+----
++
+
+The preceding statement returns one of the following results:
++
+* `asncap is already running`
+* `+start -->+` `_<COMMAND>_`
++
+In this case, enter the specified `_<COMMAND>_` in the terminal window as shown in the following example:
++
+[source,shell]
+----
+/database/config/db2inst1/sqllib/bin/asncap capture_schema=asncdc capture_server=SAMPLE &
+----
+
+. Put tables into capture mode. Invoke the following statement for each table that you want to put into capture. Replace `MYSCHEMA`  with the name of the schema that contains the table you want to put into capture mode. Likewise, replace `MYTABLE` with the name of the table to put into capture mode:
++
+[source,sql]
+----
+CALL ASNCDC.ADDTABLE('MYSCHEMA', 'MYTABLE');
+----
+
+. Reinitialize the ASN service:
++
+[source,sql]
+----
+VALUES ASNCDC.ASNCDCSERVICES('reinit','asncdc');
+----
+
+.Additional resource
+
+xref:db2-management[Reference table for {prodname} Db2 management UDFs]
+
+// Type: concept
+// ModuleID: effect-of-db2-capture-agent-configuration-on-server-load-and-latency
+=== Effect of Db2 capture agent configuration on server load and latency
+
+When a database administrator enables change data capture for a source table, the capture agent begins to run.
+The agent reads new change event records from the transaction log and replicates the event records to a capture table.
+Between the time that a change is committed in the source table, and the time that the change appears in the corresponding change table, there is always a small latency interval.
+This latency interval represents a gap between when changes occur in the source table and when they become available for {prodname} to stream to Apache Kafka.
+
+Ideally, for applications that must respond quickly to changes in data, you want to maintain close synchronization between the source and capture tables.
+You might imagine that running the capture agent to continuously process change events as rapidly as possible might result in increased throughput and reduced latency --
+populating change tables with new event records as soon as possible after the events occur, in near real time.
+However, this is not necessarily the case.
+There is a performance penalty to pay in the pursuit of more immediate synchronization.
+Each time that the change agent queries the database for new event records, it increases the CPU load on the database host.
+The additional load on the server can have a negative effect on overall database performance, and potentially reduce transaction efficiency, especially during times of peak database use.
+
+It's important to monitor database metrics so that you know if the database reaches the point where the server can no longer support the capture agent's level of activity.
+If you experience performance issues while running the capture agent, adjust capture agent settings to reduce CPU load.
+
+// Type: reference
+// ModuleID: db2-capture-agent-configuration-parameters
+=== Db2 capture agent configuration parameters
+
+On Db2, the `IBMSNAP_CAPPARMS` table contains parameters that control the behavior of the capture agent.
+You can adjust the values for these parameters to balance the configuration of the capture process to reduce CPU load and still maintain acceptable levels of latency.
+
+[NOTE]
+====
+Specific guidance about how to configure Db2 capture agent parameters is beyond the scope of this documentation.
+====
+
+In the `IBMSNAP_CAPPARMS` table, the following parameters have the greatest effect on reducing CPU load:
+
+`COMMIT_INTERVAL`::
+* Specifies the number of seconds that the capture agent waits to commit data to the change data tables.
+* A higher value reduces the load on the database host and increases latency.
+* The default value is `30`.
+
+`SLEEP_INTERVAL`::
+* Specifies the number of seconds that the capture agent waits to start a new commit cycle after it reaches the end of the active transaction log.
+* A higher value reduces the load on the server, and increases latency.
+* The default value is `5`.
+
+.Additional resources
+* For more information about capture agent parameters, see the Db2 documentation.
+
+// Type: assembly
+// ModuleID: deployment-of-debezium-db2-connectors
+// Title: Deployment of {prodname} Db2 connectors
+[[db2-deploying-a-connector]]
+== Deployment
+
+ifdef::community[]
+To deploy a {prodname} Db2 connector, you install the {prodname} Db2 connector archive, configure the connector, and start the connector by adding its configuration to Kafka Connect.
+
+.Prerequisites
+
+* link:https://zookeeper.apache.org/[Apache ZooKeeper], link:http://kafka.apache.org/[Apache Kafka], and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
+* Db2 is installed and xref:setting-up-db2[capture mode is enabled for tables] to prepare the database to be used with the {prodname} connector.
+
+.Procedure
+
+. Download the link:https://repo1.maven.org/maven2/io/debezium/debezium-connector-db2/{debezium-version}/debezium-connector-db2-{debezium-version}-plugin.tar.gz[{prodname} Db2 connector plug-in archive] from Maven Central.
+. Extract the JAR files into your Kafka Connect environment.
+. Download the link:https://repo1.maven.org/maven2/com/ibm/db2/jcc/{db2-version}/jcc-{db2-version}.jar[JDBC driver for Db2] from Maven Central, and extract the downloaded driver file to the directory that contains the {prodname} Db2 connector JAR file (that is, `debezium-connector-db2-{debezium-version}.jar`).
++
+[IMPORTANT]
+====
+Due to licensing requirements, the {prodname} Db2 connector archive does not include the Db2 JDBC driver that {prodname} requires to connect to a Db2 database.
+To enable the connector to access the database, you must add the driver to your connector environment.
+====
+. Add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`].
+. Restart your Kafka Connect process to pick up the new JAR files.
+
+If you are working with immutable containers, see link:https://quay.io/organization/debezium[{prodname}'s container images] for Apache ZooKeeper, Apache Kafka and Kafka Connect with the Db2 connector already installed and ready to run.
+
+You can also xref:operations/openshift.adoc[run {prodname} on Kubernetes and OpenShift].
+
+.Next steps
+
+* xref:db2-example-configuration[Configure the connector] and xref:db2-adding-connector-configuration[add the configuration to your Kafka Connect cluster.]
+endif::community[]
+
+ifdef::product[]
+You can use either of the following methods to deploy a {prodname} Db2 connector:
+
+* xref:openshift-streams-db2-connector-deployment[Use {StreamsName} to automatically create an image that includes the connector plug-in].
++
+This is the preferred method.
+* xref:deploying-debezium-db2-connectors[Build a custom Kafka Connect container image from a Dockerfile].
+
+[IMPORTANT]
+====
+Due to licensing requirements, the {prodname} Db2 connector archive does not include the Db2 JDBC driver that {prodname} requires to connect to a Db2 database.
+To enable the connector to access the database, you must add the driver to your connector environment.
+For information about how to obtain the driver, see xref:obtaining-the-db2-jdbc-driver[Obtaining the Db2 JDBC driver].
+====
+
+.Additional resources
+
+* xref:descriptions-of-debezium-db2-connector-configuration-properties[]
+
+// Type: procedure
+[id="obtaining-the-db2-jdbc-driver"]
+=== Obtaining the Db2 JDBC driver
+
+Due to licensing requirements, the Db2 JDBC driver file that {prodname} requires to connect to an Db2 database is not included in the {prodname} Db2 connector archive.
+The driver is available for download from Maven Central.
+Depending on the deployment method that you use, you retrieve the driver by adding a command to the Kafka Connect custom resource or to the Dockerfile that you use to build the connector image.
+
+* If you use {StreamsName} to add the connector to your Kafka Connect image, add the Maven Central location for the driver to `builds.plugins.artifact.url` in the `KafkaConnect` custom resource as shown in xref:using-streams-to-deploy-debezium-db2-connectors[].
+* If you use a Dockerfile to build a container image for the connector, insert a `curl` command in the Dockerfile to specify the URL for downloading the required driver file from Maven Central.
+For more information, see xref:deploying-debezium-db2-connectors[].
+
+
+// Type: concept
+[id="openshift-streams-db2-connector-deployment"]
+=== Db2 connector deployment using {StreamsName}
+
+include::{partialsdir}/modules/all-connectors/con-connector-streams-deployment.adoc[leveloffset=+1]
+
+// Type: procedure
+[id="using-streams-to-deploy-debezium-db2-connectors"]
+=== Using {StreamsName} to deploy a {prodname} Db2 connector
+
+include::{partialsdir}/modules/all-connectors/proc-using-streams-to-deploy-a-debezium-db2-ora-pg-connector.adoc[leveloffset=+1]
+
+// Type: procedure
+// ModuleID: deploying-debezium-db2-connectors
+=== Deploying a {prodname} Db2 connector by building a custom Kafka Connect container image from a Dockerfile
+
+To deploy a {prodname} Db2 connector, you must build a custom Kafka Connect container image that contains the {prodname} connector archive, and then push this container image to a container registry.
+You then need to create the following custom resources (CRs):
+
+* A `KafkaConnect` CR that defines your Kafka Connect instance.
+The `image` property in the CR specifies the name of the container image that you create to run your {prodname} connector.
+You apply this CR to the OpenShift instance where link:https://access.redhat.com/products/red-hat-amq#streams[Red Hat {StreamsName}] is deployed.
+{StreamsName} offers operators and images that bring Apache Kafka to OpenShift.
+
+* A `KafkaConnector` CR that defines your {prodname} Db2 connector.
+Apply this CR to the same OpenShift instance where you applied the `KafkaConnect` CR.
+
+.Prerequisites
+
+* Db2 is running and you completed the steps to xref:setting-up-db2-to-run-a-debezium-connector[set up Db2 to work with a {prodname} connector].
+
+* {StreamsName} is deployed on OpenShift and is running Apache Kafka and Kafka Connect.
+For more information, see link:{LinkDeployManageStreamsOpenShift}[{NameDeployManageStreamsOpenShift}].
+
+* Podman or Docker is installed.
+
+* The Kafka Connect server has access to Maven Central to download the required JDBC driver for Db2.
+  You can also use a local copy of the driver, or one that is available from a local Maven repository or other HTTP server.
+* You have an account and permissions to create and manage containers in the container registry (such as `quay.io` or `docker.io`) to which you plan to add the container that will run your Debezium connector.
+
+.Procedure
+
+. Create the {prodname} Db2 container for Kafka Connect:
+
+.. Create a Dockerfile that uses `{DockerKafkaConnect}` as the base image.
+For example, from a terminal window, enter the following command:
++
+=====================================================================
+
+[source,shell,subs="+attributes,+quotes"]
+----
+cat <<EOF >debezium-container-for-db2.yaml // <1>
+FROM {DockerKafkaConnect}
+USER root:root
+RUN mkdir -p /opt/kafka/plugins/debezium // <2>
+RUN cd /opt/kafka/plugins/debezium/ \
+&& curl -O {red-hat-maven-repository}debezium/debezium-connector-{connector-file}/{debezium-version}-redhat-{debezium-build-number}/debezium-connector-{connector-file}-{debezium-version}-redhat-{debezium-build-number}-plugin.zip \
+&& unzip debezium-connector-{connector-file}-{debezium-version}-redhat-{debezium-build-number}-plugin.zip \
+&& rm debezium-connector-{connector-file}-{debezium-version}-redhat-{debezium-build-number}-plugin.zip
+RUN cd /opt/kafka/plugins/debezium/ \
+&& curl -O https://repo1.maven.org/maven2/com/ibm/db2/jcc/{db2-version}/jcc-{db2-version}.jar
+USER 1001
+EOF
+----
+=====================================================================
++
+[cols="1,7",options="header"]
+|===
+|Item |Description
+
+|1
+|You can specify any file name that you want.
+
+|2
+|Specifies the path to your Kafka Connect plug-ins directory.
+If your Kafka Connect plug-ins directory is in a different location, replace this path with the actual path of your directory.
+
+|===
++
+The command creates a Dockerfile with the name `debezium-container-for-db2.yaml` in the current directory.
+
+.. Build the container image from the `debezium-container-for-db2.yaml` Docker file that you created in the previous step.
+From the directory that contains the file, open a terminal window and enter one of the following commands:
++
+[source,shell,options="nowrap"]
+----
+podman build -t debezium-container-for-db2:latest .
+----
++
+[source,shell,options="nowrap"]
+----
+docker build -t debezium-container-for-db2:latest .
+----
+The preceding commands build a container image with the name `debezium-container-for-db2`.
+
+.. Push your custom image to a container registry, such as quay.io or an internal container registry.
+The container registry must be available to the OpenShift instance where you want to deploy the image.
+Enter one of the following commands:
++
+[source,shell,subs="+quotes"]
+----
+podman push _<myregistry.io>_/debezium-container-for-db2:latest
+----
++
+[source,shell,subs="+quotes"]
+----
+docker push _<myregistry.io>_/debezium-container-for-db2:latest
+----
+
+.. Create a new {prodname} Db2 `KafkaConnect` custom resource (CR).
+For example, create a `KafkaConnect` CR with the name `dbz-connect.yaml` that specifies `annotations` and `image` properties.
+The following example shows an excerpt from a `dbz-connect.yaml` file that describes a `KafkaConnect` custom resource. +
++
+=====================================================================
+[source,yaml,subs="+attributes"]
+----
+apiVersion: {KafkaConnectApiVersion}
+kind: KafkaConnect
+metadata:
+  name: my-connect-cluster
+  annotations:
+    strimzi.io/use-connector-resources: "true" // <1>
+spec:
+  #...
+  image: debezium-container-for-db2  // <2>
+
+  ...
+----
+=====================================================================
++
+[cols="1,7",options="header"]
+|===
+|Item |Description
+
+|1
+|`metadata.annotations` indicates to the Cluster Operator that `KafkaConnector` resources are used to configure connectors in this Kafka Connect cluster.
+
+|2
+|`spec.image` specifies the name of the image that you created to run your Debezium connector.
+This property overrides the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable in the Cluster Operator.
+
+|===
+
+.. Apply the `KafkaConnect` CR to the OpenShift Kafka Connect environment by entering the following command:
++
+[source,shell,options="nowrap"]
+----
+oc create -f dbz-connect.yaml
+----
++
+The command adds a Kafka Connect instance that specifies the name of the image that you created to run your {prodname} connector.
+
+. Create a `KafkaConnector` custom resource that configures your {prodname} Db2 connector instance.
++
+You configure a {prodname} Db2 connector in a `.yaml` file that specifies the configuration properties for the connector.
+The connector configuration might instruct {prodname} to produce events for a subset of the schemas and tables, or it might set properties so that {prodname} ignores, masks, or truncates values in specified columns that are sensitive, too large, or not needed.
++
+The following example configures a {prodname} connector that connects to a Db2 server host, `192.168.99.100`, on port `50000`.
+This host has a database named `mydatabase`, a table with the name `inventory`, and `inventory-connector-{context}` is the server's logical name.
++
+.Db2 `inventory-connector.yaml`
+[source,yaml,options="nowrap",subs="+attributes"]
+----
+apiVersion: {KafkaConnectApiVersion}
+  kind: KafkaConnector
+  metadata:
+    name: inventory-connector-{context}  // <1>
+    labels:
+      strimzi.io/cluster: my-connect-cluster
+    annotations:
+      strimzi.io/use-connector-resources: 'true'
+  spec:
+    class: io.debezium.connector.db2.Db2Connector // <2>
+    tasksMax: 1  // <3>
+    config:  // <4>
+      database.hostname: 192.168.99.100   // <5>
+      database.port: 50000 // <6>
+      database.user: db2inst1 // <7>
+      database.password: Password! // <8>
+      database.dbname: mydatabase // <9>
+      topic.prefix: inventory-connector-{context}   // <10>
+      table.include.list: public.inventory   // <11>
+
+      ...
+----
++
+.Descriptions of connector configuration settings
+[cols="1,7",options="header",subs="+attributes"]
+|===
+|Item |Description
+
+|1
+|The name of the connector when we register it with a Kafka Connect cluster.
+
+|2
+|The name of this Db2 connector class.
+
+|3
+|Only one task should operate at any one time.
+
+|4
+|The connector’s configuration.
+
+|5
+|The database host, which is the address of the Db2 instance.
+
+|6
+|The port number of the Db2 instance.
+
+|7
+|The name of the Db2 user.
+
+|8
+|The password for the Db2 user.
+
+|9
+|The name of the database to capture changes from.
+
+|10
+|The logical name of the Db2 instance/cluster, which forms a namespace and is used in the names of the Kafka topics to which the connector writes, the names of Kafka Connect schemas, and the namespaces of the corresponding Avro schema when the {link-prefix}:{link-avro-serialization}#avro-serialization[Avro Connector] is used.
+
+|11
+|The connector captures changes from the `public.inventory` table only.
+
+|===
+
+. Create your connector instance with Kafka Connect.
+For example, if you saved your `KafkaConnector` resource in the `inventory-connector.yaml` file, you would run the following command:
++
+[source,shell,options="nowrap"]
+----
+oc apply -f inventory-connector.yaml
+----
++
+The preceding command registers `inventory-connector` and the connector starts to run against the `mydatabase` database as defined in the `KafkaConnector` CR.
+
+
+endif::product[]
+
+ifdef::community[]
+[[db2-example-configuration]]
+=== Db2 connector configuration example
+
+Following is an example of the configuration for a connector instance that captures data from a Db2 server on port 50000 at 192.168.99.100, which we logically name `fullfillment`.
+Typically, you configure the {prodname} Db2 connector in a JSON file by setting the configuration properties that are available for the connector.
+
+You can choose to produce events for a subset of the schemas and tables in a database.
+Optionally, you can ignore, mask, or truncate columns that contain sensitive data, that are larger than a specified size, or that you do not need.
+
+[source,json]
+----
+{
+  "name": "db2-connector",  // <1>
+  "config": {
+    "connector.class": "io.debezium.connector.db2.Db2Connector", // <2>
+    "database.hostname": "192.168.99.100", // <3>
+    "database.port": "50000", // <4>
+    "database.user": "db2inst1", // <5>
+    "database.password": "Password!", // <6>
+    "database.dbname": "mydatabase", // <7>
+    "topic.prefix": "fullfillment", // <8>
+    "table.include.list": "MYSCHEMA.CUSTOMERS", // <9>
+    "schema.history.internal.kafka.bootstrap.servers": "kafka:9092", // <10>
+    "schema.history.internal.kafka.topic": "schemahistory.fullfillment" // <11>
+  }
+}
+----
+<1> The name of the connector when registered with a Kafka Connect service.
+<2> The name of this Db2 connector class.
+<3> The address of the Db2 instance.
+<4> The port number of the Db2 instance.
+<5> The name of the Db2 user.
+<6> The password for the Db2 user.
+<7> The name of the database to capture changes from.
+<8> The logical name of the Db2 instance/cluster, which forms a namespace and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the {link-prefix}:{link-avro-serialization}[Avro Connector] is used.
+<9> A list of all tables whose changes {prodname} should capture.
+<10> The list of Kafka brokers that this connector uses to write and recover DDL statements to the database schema history topic.
+<11> The name of the database schema history topic where the connector writes and recovers DDL statements. This topic is for internal use only and should not be used by consumers.
+
+endif::community[]
+
+For the complete list of the configuration properties that you can set for the {prodname} Db2 connector, see xref:db2-connector-properties[Db2 connector properties].
+
+ifdef::community[]
+
+You can send this configuration with a `POST` command to a running Kafka Connect service.
+The service records the configuration and starts one connector task that performs the following actions:
+
+* Connects to the Db2 database.
+* Reads change-data tables for tables that are in capture mode.
+* Streams change event records to Kafka topics.
+
+[[db2-adding-connector-configuration]]
+=== Adding connector configuration
+
+To start running a Db2 connector, create a connector configuration and add the configuration to your Kafka Connect cluster.
+
+.Prerequisites
+
+* xref:setting-up-db2[Db2 replication is enabled] to expose change data for tables that are in capture mode.
+* The Db2 connector is installed.
+
+.Procedure
+
+. Create a configuration for the Db2 connector.
+
+. Use the link:{link-kafka-docs}/#connect_rest[Kafka Connect REST API] to add that connector configuration to your Kafka Connect cluster.
+endif::community[]
+
+.Results
+
+After the connector starts, it xref:db2-snapshots[performs a consistent snapshot] of the Db2 database tables that the connector is configured to capture changes for.
+The connector then starts generating data change events for row-level operations and streaming change event records to Kafka topics.
+
+ifdef::product[]
+// Type: procedure
+[id="verifying-that-the-debezium-db2-connector-is-running"]
+=== Verifying that the {prodname} Db2 connector is running
+
+include::{partialsdir}/modules/all-connectors/proc-verifying-the-connector-deployment.adoc[leveloffset=+1]
+endif::product[]
+
+// Type: reference
+// Title: Descriptions of {prodname} Db2 connector configuration properties
+// ModuleID: descriptions-of-debezium-db2-connector-configuration-properties
+[[db2-connector-properties]]
+=== Connector properties
+
+The {prodname} Db2 connector has numerous configuration properties that you can use to achieve the right connector behavior for your application.
+Many properties have default values.
+Information about the properties is organized as follows:
+
+* xref:db2-required-configuration-properties[Required configuration properties]
+* xref:db2-advanced-configuration-properties[Advanced configuration properties]
+* xref:debezium-db2-connector-database-history-configuration-properties[Database schema history connector configuration properties] that control how {prodname} processes events that it reads from the database schema history topic.
+** xref:debezium-db2-connector-pass-through-database-driver-configuration-properties[Pass-through database schema history properties]
+* xref:debezium-db2-connector-pass-through-database-driver-configuration-properties[Pass-through database driver properties] that control the behavior of the database driver.
+
+
+[id="db2-required-configuration-properties"]
+==== Required {prodname} Db2 connector configuration properties
+
+The following configuration properties are _required_ unless a default value is available.
+
+[cols="30%a,25%a,45%a",options="header"]
+|===
+|Property |Default |Description
+
+|[[db2-property-name]]<<db2-property-name, `+name+`>>
+|No default
+|Unique name for the connector. Attempting to register again with the same name will fail. This property is required by all Kafka Connect connectors.
+
+|[[db2-property-connector-class]]<<db2-property-connector-class, `+connector.class+`>>
+|No default
+|The name of the Java class for the connector. Always use a value of `io.debezium.connector.db2.Db2Connector` for the Db2 connector.
+
+|[[db2-property-tasks-max]]<<db2-property-tasks-max, `+tasks.max+`>>
+|`1`
+|The maximum number of tasks that should be created for this connector. The Db2 connector always uses a single task and therefore does not use this value, so the default is always acceptable.
+
+|[[db2-property-database-hostname]]<<db2-property-database-hostname, `+database.hostname+`>>
+|No default
+|IP address or hostname of the Db2 database server.
+
+|[[db2-property-database-port]]<<db2-property-database-port, `+database.port+`>>
+|`50000`
+|Integer port number of the Db2 database server.
+
+|[[db2-property-database-user]]<<db2-property-database-user, `+database.user+`>>
+|No default
+|Name of the Db2 database user for connecting to the Db2 database server.
+
+|[[db2-property-database-password]]<<db2-property-database-password, `+database.password+`>>
+|No default
+|Password to use when connecting to the Db2 database server.
+
+|[[db2-property-database-dbname]]<<db2-property-database-dbname, `+database.dbname+`>>
+|No default
+|The name of the Db2 database from which to stream the changes
+
+|[[db2-property-topic-prefix]]<<db2-property-topic-prefix, `+topic.prefix+`>>
+|No default
+|Topic prefix which provides a namespace for the particular Db2 database server that hosts the database for which {prodname} is capturing changes.
+Only alphanumeric characters, hyphens, dots and underscores must be used in the topic prefix name.
+The topic prefix should be unique across all other connectors, since this topic prefix is used for all Kafka topics that receive records from this connector. +
+ +
+[WARNING]
+====
+Do not change the value of this property.
+If you change the name value, after a restart, instead of continuing to emit events to the original topics, the connector emits subsequent events to topics whose names are based on the new value.
+The connector is also unable to recover its database schema history topic.
+====
+
+|[[db2-property-table-include-list]]<<db2-property-table-include-list, `+table.include.list+`>>
+|No default
+|An optional, comma-separated list of regular expressions that match fully-qualified table identifiers for tables whose changes you want the connector to capture.
+When this property is set, the connector captures changes only from the specified tables.
+Each identifier is of the form _schemaName_._tableName_. By default, the connector captures changes in every non-system table. +
+
+To match the name of a table, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the table it does not match substrings that might be present in a table name. +
+If you include this property in the configuration, do not also set the `table.exclude.list` property.
+
+|[[db2-property-table-exclude-list]]<<db2-property-table-exclude-list, `+table.exclude.list+`>>
+|No default
+|An optional, comma-separated list of regular expressions that match fully-qualified table identifiers for tables whose changes you do not want the connector to capture.
+The connector captures changes in each non-system table that is not included in the exclude list.
+Each identifier is of the form _schemaName_._tableName_. +
+
+To match the name of a table, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the table it does not match substrings that might be present in a table name. +
+If you include this property in the configuration, do not also set the `table.include.list` property.
+
+|[[db2-property-column-include-list]]<<db2-property-column-include-list, `+column.include.list+`>>
+|_empty string_
+|An optional, comma-separated list of regular expressions that match the fully-qualified names of columns to include in change event record values.
+Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_. +
+
+To match the name of a column, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the column; it does not match substrings that might be present in a column name.
+If you include this property in the configuration, do not also set the `column.exclude.list` property.
+
+|[[db2-property-column-exclude-list]]<<db2-property-column-exclude-list, `+column.exclude.list+`>>
+|_empty string_
+|An optional, comma-separated list of regular expressions that match the fully-qualified names of columns to exclude from change event values.
+Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_. +
+
+To match the name of a column, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the column; it does not match substrings that might be present in a column name.
+Primary key columns are always included in the event's key, even if they are excluded from the value.
+If you include this property in the configuration, do not set the `column.include.list` property.
+
+|[[db2-property-column-mask-hash]]<<db2-property-column-mask-hash, `column.mask.hash._hashAlgorithm_.with.salt._salt_`>>
+|_n/a_
+|An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns.
+Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_. +
+To match the name of a column {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the column; the expression does not match substrings that might be present in a column name.
+In the resulting change event record, the values for the specified columns are replaced with pseudonyms.
+
+A pseudonym consists of the hashed value that results from applying the specified _hashAlgorithm_ and _salt_.
+Based on the hash function that is used, referential integrity is maintained, while column values are replaced with pseudonyms.
+Supported hash functions are described in the {link-java7-standard-names}[MessageDigest section] of the Java Cryptography Architecture Standard Algorithm Name Documentation. +
+ +
+In the following example, `CzQMA0cB5K` is a randomly selected salt. +
+
+----
+column.mask.hash.SHA-256.with.salt.CzQMA0cB5K = inventory.orders.customerName, inventory.shipment.customerName
+----
+
+If necessary, the pseudonym is automatically shortened to the length of the column.
+The connector configuration can include multiple properties that specify different hash algorithms and salts. +
+ +
+Depending on the _hashAlgorithm_ used, the _salt_ selected, and the actual data set, the resulting data set might not be completely masked.
+
+|[[db2-property-time-precision-mode]]<<db2-property-time-precision-mode, `+time.precision.mode+`>>
+|`adaptive`
+| Time, date, and timestamps can be represented with different kinds of precision: +
+ +
+`adaptive` captures the time and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type. +
+ +
+`connect` always represents time and timestamp values by using Kafka Connect's built-in representations for `Time`, `Date`, and `Timestamp`, which uses millisecond precision regardless of the database columns' precision.
+For more information, see xref:db2-temporal-types[temporal types].
+
+|[[db2-property-tombstones-on-delete]]<<db2-property-tombstones-on-delete, `+tombstones.on.delete+`>>
+|`true`
+|Controls whether a _delete_ event is followed by a tombstone event. +
+ +
+`true` - a delete operation is represented by a _delete_ event and a subsequent tombstone event.  +
+ +
+`false` - only a _delete_ event is emitted. +
+ +
+After a source record is deleted, emitting a tombstone event (the default behavior) allows Kafka to completely delete all events that pertain to the key of the deleted row in case {link-kafka-docs}/#compaction[log compaction] is enabled for the topic.
+
+|[[db2-property-include-schema-changes]]<<db2-property-include-schema-changes, `+include.schema.changes+`>>
+|`true`
+|Boolean value that specifies whether the connector should publish changes in the database schema to a Kafka topic with the same name as the database server ID. Each schema change is recorded with a key that contains the database name and a value that is a JSON structure that describes the schema update. This is independent of how the connector internally records database schema history.
+
+|[[db2-property-column-truncate-to-length-chars]]<<db2-property-column-truncate-to-length-chars, `column.truncate.to._length_.chars`>>
+|_n/a_
+|An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns.
+Set this property if you want to truncate the data in a set of columns when it exceeds the number of characters specified by the _length_ in the property name.
+Set `length` to a positive integer value, for example, `column.truncate.to.20.chars`.
+
+The fully-qualified name of a column observes the following format: _schemaName_._tableName_._columnName_.
+To match the name of a column, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the column; the expression does not match substrings that might be present in a column name.
+
+You can specify multiple properties with different lengths in a single configuration.
+
+|[[db2-property-column-mask-with-length-chars]]<<db2-property-column-mask-with-length-chars, `column.mask.with._length_.chars`>>
+|_n/a_
+|An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns.
+Set this property if you want the connector to mask the values for a set of columns, for example, if they contain sensitive data.
+Set `_length_` to a positive integer to replace data in the specified columns with the number of asterisk (`*`) characters specified by the _length_ in the property name.
+Set _length_ to `0` (zero) to replace data in the specified columns with an empty string.
+
+The fully-qualified name of a column observes the following format: _schemaName_._tableName_._columnName_. +
+To match the name of a column, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the column; the expression does not match substrings that might be present in a column name.
+
+You can specify multiple properties with different lengths in a single configuration.
+
+|[[db2-property-column-propagate-source-type]]<<db2-property-column-propagate-source-type, `+column.propagate.source.type+`>>
+|_n/a_
+|An optional, comma-separated list of regular expressions that match the fully-qualified names of columns for which you want the connector to emit extra parameters that represent column metadata.
+When this property is set, the connector adds the following fields to the schema of event records:
+
+* `pass:[_]pass:[_]debezium.source.column.type` +
+* `pass:[_]pass:[_]debezium.source.column.length` +
+* `pass:[_]pass:[_]debezium.source.column.scale` +
+
+These parameters propagate a column's original type name and length (for variable-width types), respectively. +
+Enabling the connector to emit this extra data can assist in properly sizing specific numeric or character-based columns in sink databases.
+
+The fully-qualified name of a column observes one of the following formats: _databaseName_._tableName_._columnName_, or _databaseName_._schemaName_._tableName_._columnName_. +
+To match the name of a column, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the column; the expression does not match substrings that might be present in a column name.
+
+|[[db2-property-datatype-propagate-source-type]]<<db2-property-datatype-propagate-source-type, `+datatype.propagate.source.type+`>>
+|_n/a_
+|An optional, comma-separated list of regular expressions that specify the fully-qualified names of data types that are defined for columns in a database.
+When this property is set, for columns with matching data types, the connector emits event records that include the following extra fields in their schema:
+
+* `pass:[_]pass:[_]debezium.source.column.type` +
+* `pass:[_]pass:[_]debezium.source.column.length` +
+* `pass:[_]pass:[_]debezium.source.column.scale` +
+
+These parameters propagate a column's original type name and length (for variable-width types), respectively. +
+Enabling the connector to emit this extra data can assist in properly sizing specific numeric or character-based columns in sink databases.
+
+The fully-qualified name of a column observes one of the following formats: _databaseName_._tableName_._typeName_, or _databaseName_._schemaName_._tableName_._typeName_. +
+To match the name of a data type, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the data type; the expression does not match substrings that might be present in a type name.
+
+For the list of Db2-specific data type names, see the xref:db2-data-types[Db2 data type mappings] .
+
+|[[db2-property-message-key-columns]]<<db2-property-message-key-columns, `+message.key.columns+`>>
+|_empty string_
+|A list of expressions that specify the columns that the connector uses to form custom message keys for change event records that it publishes to the Kafka topics for specified tables.
+
+By default, {prodname} uses the primary key column of a table as the message key for records that it emits.
+In place of the default, or to specify a key for tables that lack a primary key, you can configure custom message keys based on one or more columns. +
+ +
+To establish a custom message key for a table, list the table, followed by the columns to use as the message key.
+Each list entry takes the following format: +
+ +
+`_<fully-qualified_tableName>_:__<keyColumn>__,_<keyColumn>_` +
+ +
+To base a table key on multiple column names, insert commas between the column names. +
+Each fully-qualified table name is a regular expression in the following format: +
+
+`_<schemaName>_._<tableName>_` +
+
+The property can list entries for multiple tables.
+Use a semicolon to separate entries for different tables in the list. +
+ +
+The following example sets the message key for the tables `inventory.customers` and `purchaseorders`: +
+ +
+`inventory.customers:pk1,pk2;(.*).purchaseorders:pk3,pk4` +
+ +
+In the preceding example, the columns `pk1` and `pk2` are specified as the message key for the table `inventory.customer`.
+For `purchaseorders` tables in any schema, the columns `pk3` and `pk4` serve as the message key.
+
+|[[db2-property-schema-name-adjustment-mode]]<<db2-property-schema-name-adjustment-mode,`+schema.name.adjustment.mode+`>>
+|none
+|Specifies how schema names should be adjusted for compatibility with the message converter used by the connector. Possible settings:  +
+
+* `none` does not apply any adjustment. +
+* `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
+* `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java +
+
+|[[db2-property-field-name-adjustment-mode]]<<db2-property-field-name-adjustment-mode,`+field.name.adjustment.mode+`>>
+|none
+|Specifies how field names should be adjusted for compatibility with the message converter used by the connector. Possible settings:  +
+
+* `none` does not apply any adjustment. +
+* `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
+* `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java +
+
+See {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming] for more details.
+|===
+
+// Title: Advanced {prodname} Db2 connector configuration properties
+[id="db2-advanced-configuration-properties"]
+==== Advanced connector configuration properties
+
+The following _advanced_ configuration properties have defaults that work in most situations and therefore rarely need to be specified in the connector's configuration.
+
+[cols="30%a,25%a,45%a",options="header"]
+|===
+|Property |Default |Description
+
+|[[db2-property-converters]]<<db2-property-converters, `converters`>>
+|No default
+|Enumerates a comma-separated list of the symbolic names of the {link-prefix}:{link-custom-converters}#custom-converters[custom converter] instances that the connector can use.
+For example, +
+
+`isbn`
+
+You must set the `converters` property to enable the connector to use a custom converter.
+
+For each converter that you configure for a connector, you must also add a `.type` property, which specifies the fully-qualified name of the class that implements the converter interface.
+The `.type` property uses the following format: +
+
+`_<converterSymbolicName>_.type` +
+
+For example, +
+
+ isbn.type: io.debezium.test.IsbnConverter
+
+If you want to further control the behavior of a configured converter, you can add one or more configuration parameters to pass values to the converter.
+To associate any additional configuration parameter with a converter, prefix the parameter names with the symbolic name of the converter. +
+For example, +
+
+ isbn.schema.name: io.debezium.db2.type.Isbn
+
+|[[db2-property-snapshot-mode]]<<db2-property-snapshot-mode, `+snapshot.mode+`>>
+|_initial_
+|Specifies the criteria for performing a snapshot when the connector starts: +
+
+`always`:: The connector performs a snapshot every time that it starts.
+The snapshot includes the structure and data of the captured tables.
+Specify this value to populate topics with a complete representation of the data from the captured tables every time that the connector starts.
+After the snapshot completes, the connector begins to stream event records for subsequent database changes.
+
+`initial`:: The connector performs a database snapshot as described in the xref:db2-default-workflow-for-performing-an-initial-snapshot[default workflow for creating an initial snapshot].
+After the snapshot completes, the connector begins to stream event records for subsequent database changes.
+
+`initial_only`:: The connector performs a database a snapshot only when no offsets have been recorded for the logical server name.
+After the snapshot completes, the connector stops.
+It does not transition to streaming event records for subsequent database changes.
+
+`schema_only`:: Deprecated, see `no_data`.
+
+`no_data`:: The connector runs a snapshot that captures the structure of all relevant tables, performing all the steps described in the xref:db2-default-workflow-for-performing-an-initial-snapshot[default snapshot workflow], except that it does not create `READ` events to represent the data set at the point of the connector's start-up (Step 7.b).
+
+`recovery`:: Set this option to restore a database schema history topic that is lost or corrupted.
+After a restart, the connector runs a snapshot that rebuilds the topic from the source tables.
+You can also set the property to periodically prune a database schema history topic that experiences unexpected growth. +
++
+WARNING: Do not use this mode to perform a snapshot if schema changes were committed to the database after the last connector shutdown.
+
+`when_needed`:: After the connector starts, it performs a snapshot only if it detects one of the following circumstances:
+
+* It cannot detect any topic offsets.
+* A previously recorded offset specifies a log position that is not available on the server.
+
+ifdef::community[]
+`configuration_based`:: With this option, you control snapshot behavior through a set of connector properties that have the prefix 'snapshot.mode.configuration.based'.
+
+endif::community[]
+
+ifdef::community[]
+`custom`:: The `custom` snapshot mode lets you inject your own implementation of the `io.debezium.spi.snapshot.Snapshotter` interface.
+Set the `snapshot.mode.custom.name` configuration property to the name provided by the `name()` method of your implementation.
+
+For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
+endif::community[]
+
+ifdef::community[]
+|[[db2-property-snapshot-mode-configuration-based-snapshot-data]]<<db2-property-configuration-based-snapshot-data, `+snapshot.mode.configuration.based.snapshot.data+`>>
+|false
+|If the `snapshot.mode` is set to `configuration_based`, set this property to specify whether the connector includes table data when it performs a snapshot.
+endif::community[]
+
+ifdef::community[]
+|[[db2-property-snapshot-mode-configuration-based-snapshot-schema]]<<db2-property-configuration-based-snapshot-schema, `+snapshot.mode.configuration.based.snapshot.schema+`>>
+|false
+|If the `snapshot.mode` is set to `configuration_based`, set this property to specify whether the connector includes the table schema when it performs a snapshot.
+endif::community[]
+
+ifdef::community[]
+|[[db2-property-snapshot-mode-configuration-based-start-stream]]<<db2-property-configuration-based-start-stream, `+snapshot.mode.configuration.based.start.stream+`>>
+|false
+|If the `snapshot.mode` is set to `configuration_based`, set this property to specify whether the connector begins to stream change events after a snapshot completes.
+endif::community[]
+
+ifdef::community[]
+|[[db2-property-snapshot-mode-configuration-based-snapshot-on-schema-error]]<<db2-property-configuration-based-snapshot-on-schema-error, `+snapshot.mode.configuration.based.snapshot.on.schema.error+`>>
+|false
+|If the `snapshot.mode` is set to `configuration_based`, set this property to specify whether the connector includes table schema in a snapshot if the schema history topic is not available.
+endif::community[]
+
+ifdef::community[]
+|[[db2-property-snapshot-mode-configuration-based-snapshot-on-data-error]]<<db2-property-configuration-based-snapshot-on-data-error, `+snapshot.mode.configuration.based.snapshot.on.data.error+`>>
+|false
+|If the `snapshot.mode` is set to `configuration_based`, this property specifies whether the connector attempts to snapshot table data if it does not find the last committed offset in the transaction log. +
+Set the value to `true` to instruct the connector to perform a new snapshot.
+endif::community[]
+
+ifdef::community[]
+|[[db2-property-snapshot-mode-custom-name]]<<db2-property-snapshot-mode-custom-name, `+snapshot.mode.custom.name+`>>
+|No default
+| If `snapshot.mode` is set to `custom`, use this setting to specify the name of the custom implementation that is provided in the `name()` method that is defined in the 'io.debezium.spi.snapshot.Snapshotter' interface.
+After a connector restart, {prodname} calls the specified custom implementation to determine whether to perform a snapshot.
+For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
+endif::community[]
+
+|[[db2-property-snapshot-locking-mode]]<<db2-property-snapshot-locking-mode, `+snapshot.locking.mode+`>>
+|_exclusive_
+a|Controls whether and for how long the connector holds a table lock.
+Table locks prevent other database clients from performing certain table operations during a snapshot.
+You can set the following values:
+
+`exclusive`:: Controls how the connector holds locks on tables while performing the schema snapshot when `snapshot.isolation.mode` is `REPEATABLE_READ` or `EXCLUSIVE`. +
+The connector holds a table lock that ensures exclusive table access during only the initial phase of the snapshot in which the connector reads the database schema and other metadata.
+In subsequent phases of the snapshot, the connector uses a flashback query, which requires no locks, to select all rows from each table.
+If you prefer snapshots to run without setting any locks, set the following option, `none`.
+
+`none`:: Prevents the connector from acquiring any table locks during the snapshot.
+Use this setting only if no schema changes might occur during the creation of the snapshot.
+
+ifdef::community[]
+`custom`:: The connector performs a snapshot according to the implementation specified by the xref:db2-property-snapshot-locking-mode-custom-name[`snapshot.locking.mode.custom.name`] property, which is a custom implementation of the `io.debezium.spi.snapshot.SnapshotLock` interface.
+endif::community[]
+
+ifdef::community[]
+|[[db2-property-snapshot-locking-mode-custom-name]]<<db2-property-snapshot-locking-mode-custom-name, `+snapshot.locking.mode.custom.name+`>>
+|No default
+| When `snapshot.locking.mode` is set to `custom`, use this setting to specify the name of the custom locking implementation provided in the `name()` method that is defined by the 'io.debezium.spi.snapshot.SnapshotLock' interface.
+For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
+endif::community[]
+
+|[[db2-property-snapshot-query-mode]]<<db2-property-snapshot-query-mode, `+snapshot.query.mode+`>>
+|`select_all`
+|Specifies how the connector queries data while performing a snapshot. +
+Set one of the following options:
+
+`select_all`:: The connector performs a `select all` query by default, optionally adjusting the columns selected based on the column include and exclude list configurations.
+
+ifdef::community[]
+`custom`:: The connector performs a snapshot query according to the implementation specified by the xref:db2-property-snapshot-snapshot-query-mode-custom-name[`snapshot.query.mode.custom.name`] property, which defines a custom implementation of the `io.debezium.spi.snapshot.SnapshotQuery` interface. +
+endif::community[]
+
+This setting enables you to manage snapshot content in a more flexible manner compared to using the xref:db2-property-snapshot-select-statement-overrides[`snapshot.select.statement.overrides`] property.
+
+ifdef::community[]
+|[[db2-property-snapshot-snapshot-query-mode-custom-name]]<<db2-property-snapshot-query-mode-custom-name, `+snapshot.query.mode.custom.name+`>>
+|No default
+| When xref:db2-property-snapshot-query-mode[`snapshot.query.mode`] is set to `custom`, use this setting to specify the name of the custom query implementation provided in the `name()` method that is defined by the 'io.debezium.spi.snapshot.SnapshotQuery' interface.
+For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
+endif::community[]
+
+|[[db2-property-snapshot-isolation-mode]]<<db2-property-snapshot-isolation-mode, `+snapshot.isolation.mode+`>>
+|`repeatable_read`
+|During a snapshot, controls the transaction isolation level and how long the connector locks the tables that are in capture mode. The possible values are: +
+ +
+`read_uncommitted` - Does not prevent other transactions from updating table rows during an initial snapshot. This mode has no data consistency guarantees; some data might be lost or corrupted. +
+ +
+`read_committed` - Does not prevent other transactions from updating table rows during an initial snapshot. It is possible for a new record to appear twice: once in the initial snapshot and once in the streaming phase. However, this consistency level is appropriate for data mirroring. +
+ +
+`repeatable_read` - Prevents other transactions from updating table rows during an initial snapshot. It is possible for a new record to appear twice: once in the initial snapshot and once in the streaming phase. However, this consistency level is appropriate for data mirroring. +
+ +
+`exclusive` - Uses repeatable read isolation level but takes an  exclusive lock for all tables to be read. This mode prevents other transactions from updating table rows during an initial snapshot. Only `exclusive` mode guarantees full consistency; the initial snapshot and streaming logs constitute a linear history.
+
+|[[db2-property-event-processing-failure-handling-mode]]<<db2-property-event-processing-failure-handling-mode, `+event.processing.failure.handling.mode+`>>
+|`fail`
+|Specifies how the connector handles exceptions during processing of events. The possible values are: +
+ +
+`fail` - The connector logs the offset of the problematic event and stops processing. +
+ +
+`warn` - The connector logs the offset of the problematic event and continues processing with the next event. +
+ +
+`skip` - The connector skips the problematic event and continues processing with the next event.
+
+|[[db2-property-poll-interval-ms]]<<db2-property-poll-interval-ms, `+poll.interval.ms+`>>
+|`500`
+|Positive integer value that specifies the number of milliseconds the connector should wait for new change events to appear before it starts processing a batch of events. Defaults to 500 milliseconds, or 0.5 second.
+
+|[[db2-property-max-batch-size]]<<db2-property-max-batch-size, `+max.batch.size+`>>
+|`2048`
+|Positive integer value that specifies the maximum size of each batch of events that the connector processes.
+
+|[[db2-property-max-queue-size]]<<db2-property-max-queue-size, `+max.queue.size+`>>
+|`8192`
+|Positive integer value that specifies the maximum number of records that the blocking queue can hold.
+When {prodname} reads events streamed from the database, it places the events in the blocking queue before it writes them to Kafka.
+The blocking queue can provide backpressure for reading change events from the database
+in cases where the connector ingests messages faster than it can write them to Kafka, or when Kafka becomes unavailable.
+Events that are held in the queue are disregarded when the connector periodically records offsets.
+Always set the value of `max.queue.size` to be larger than the value of xref:{context}-property-max-batch-size[`max.batch.size`].
+
+|[[db2-property-max-queue-size-in-bytes]]<<db2-property-max-queue-size-in-bytes, `+max.queue.size.in.bytes+`>>
+|`0`
+|A long integer value that specifies the maximum volume of the blocking queue in bytes.
+By default, volume limits are not specified for the blocking queue.
+To specify the number of bytes that the queue can consume, set this property to a positive long value. +
+If xref:db2-property-max-queue-size[`max.queue.size`] is also set, writing to the queue is blocked when the size of the queue reaches the limit specified by either property.
+For example, if you set `max.queue.size=1000`, and `max.queue.size.in.bytes=5000`, writing to the queue is blocked after the queue contains 1000 records, or after the volume of the records in the queue reaches 5000 bytes.
+
+|[[db2-property-heartbeat-interval-ms]]<<db2-property-heartbeat-interval-ms, `+heartbeat.interval.ms+`>>
+|`0`
+|Controls how frequently the connector sends heartbeat messages to a Kafka topic. The default behavior is that the connector does not send heartbeat messages. +
+ +
+Heartbeat messages are useful for monitoring whether the connector is receiving change events from the database. Heartbeat messages might help decrease the number of change events that need to be re-sent when a connector restarts. To send heartbeat messages, set this property to a positive integer, which indicates the number of milliseconds between heartbeat messages. +
+ +
+Heartbeat messages are useful when there are many updates in a database that is being tracked but only a tiny number of updates are in tables that are in capture mode. In this situation, the connector reads from the database transaction log as usual but rarely emits change records to Kafka. This means that the connector has few opportunities to send the latest offset to Kafka. Sending heartbeat messages enables the connector to send the latest offset to Kafka.
+
+|[[db2-property-snapshot-delay-ms]]<<db2-property-snapshot-delay-ms, `+snapshot.delay.ms+`>>
+|No default
+|An interval in milliseconds that the connector should wait before performing a snapshot when the connector starts. If you are starting multiple connectors in a cluster, this property is useful for avoiding snapshot interruptions, which might cause re-balancing of connectors.
+
+|[[db2-property-snapshot-include-collection-list]]<<db2-property-snapshot-include-collection-list, `+snapshot.include.collection.list+`>>
+| All tables specified in `table.include.list`
+|An optional, comma-separated list of regular expressions that match the fully-qualified names (`_<schemaName>.<tableName>_`) of the tables to include in a snapshot.
+The specified items must be named in the connector's xref:db2-property-table-include-list[`table.include.list`] property.
+This property takes effect only if the connector's xref:db2-property-snapshot-mode[`snapshot.mode`] property is set to a value other than `never`. +
+This property does not affect the behavior of incremental snapshots. +
+
+To match the name of a table, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the table; it does not match substrings that might be present in a table name.
+
+|[[db2-property-snapshot-fetch-size]]<<db2-property-snapshot-fetch-size, `+snapshot.fetch.size+`>>
+|`2000`
+|During a snapshot, the connector reads table content in batches of rows. This property specifies the maximum number of rows in a batch.
+
+|[[db2-property-snapshot-lock-timeout-ms]]<<db2-property-snapshot-lock-timeout-ms, `+snapshot.lock.timeout.ms+`>>
+|`10000`
+|Positive integer value that specifies the maximum amount of time (in milliseconds) to wait to obtain table locks when performing a snapshot. If the connector cannot acquire table locks in this interval, the snapshot fails. xref:db2-snapshots[How the connector performs snapshots] provides details. Other possible settings are: +
+ +
+`0` -  The connector immediately fails when it cannot obtain a lock. +
+ +
+`-1` - The connector waits infinitely.
+
+|[[db2-property-snapshot-select-statement-overrides]]<<db2-property-snapshot-select-statement-overrides, `+snapshot.select.statement.overrides+`>>
+|No default
+|Specifies the table rows to include in a snapshot.
+Use the property if you want a snapshot to include only a subset of the rows in a table.
+This property affects snapshots only.
+It does not apply to events that the connector reads from the log.
+
+The property contains a comma-separated list of fully-qualified table names in the form `_<schemaName>.<tableName>_`. For example, +
+ +
+`+"snapshot.select.statement.overrides": "inventory.products,customers.orders"+` +
+ +
+For each table in the list, add a further configuration property that specifies the `SELECT` statement for the connector to run on the table when it takes a snapshot.
+The specified `SELECT` statement determines the subset of table rows to include in the snapshot.
+Use the following format to specify the name of this `SELECT` statement property: +
+ +
+`snapshot.select.statement.overrides._<schemaName>_._<tableName>_`.
+For example,
+`snapshot.select.statement.overrides.customers.orders`. +
+ +
+Example:
+
+From a `customers.orders` table that includes the soft-delete column, `delete_flag`, add the following properties if you want a snapshot to include only those records that are not soft-deleted:
+
+----
+"snapshot.select.statement.overrides": "customer.orders",
+"snapshot.select.statement.overrides.customer.orders": "SELECT * FROM [customers].[orders] WHERE delete_flag = 0 ORDER BY id DESC"
+----
+
+In the resulting snapshot, the connector includes only the records for which `delete_flag = 0`.
+
+|[[db2-property-provide-transaction-metadata]]<<db2-property-provide-transaction-metadata, `+provide.transaction.metadata+`>>
+|`false`
+|Determines whether the connector generates events with transaction boundaries and enriches change event envelopes with transaction metadata. Specify `true` if you want the connector to do this. See xref:db2-transaction-metadata[Transaction metadata] for details.
+
+|[[db2-property-skipped-operations]]<<db2-property-skipped-operations, `+skipped.operations+`>>
+|`t`
+|A comma-separated list of operation types that will be skipped during streaming.
+The operations include: `c` for inserts/create, `u` for updates, `d` for deletes, `t` for truncates, and `none` to not skip any operations.
+By default, truncate operations are skipped (not emitted by this connector).
+
+|[[db2-property-signal-data-collection]]<<db2-property-signal-data-collection, `+signal.data.collection+`>>
+|No default
+| Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}#debezium-signaling-enabling-source-signaling-channel[signals] to the connector.
+Use the following format to specify the collection name: +
+`_<schemaName>_._<tableName>_`
+
+|[[db2-property-signal-enabled-channels]]<<db2-property-signal-enabled-channels, `+signal.enabled.channels+`>>
+|source
+| List of the signaling channel names that are enabled for the connector.
+By default, the following channels are available:
+
+* `source`
+* `kafka`
+* `file`
+* `jmx`
+ifdef::community[]
+Optionally, you can also implement a {link-prefix}:{link-signalling}#debezium-signaling-enabling-custom-signaling-channel[custom signaling channel].
+endif::community[]
+|[[db2-property-notification-enabled-channels]]<<db2-property-notification-enabled-channels, `+notification.enabled.channels+`>>
+|No default
+| List of the notification channel names that are enabled for the connector.
+By default, the following channels are available:
+
+* `sink`
+* `log`
+* `jmx`
+ifdef::community[]
+Optionally, you can also implement a {link-prefix}:{link-notification}#debezium-notification-custom-channel[custom notification channel].
+endif::community[]
+|[[db2-property-incremental-snapshot-chunk-size]]<<db2-property-incremental-snapshot-chunk-size, `+incremental.snapshot.chunk.size+`>>
+|`1024`
+|The maximum number of rows that the connector fetches and reads into memory during an incremental snapshot chunk.
+Increasing the chunk size provides greater efficiency, because the snapshot runs fewer snapshot queries of a greater size.
+However, larger chunk sizes also require more memory to buffer the snapshot data.
+Adjust the chunk size to a value that provides the best performance in your environment.
+
+|[[db2-property-incremental-snapshot-watermarking-strategy]]<<db2-property-incremental-snapshot-watermarking-strategy, `+incremental.snapshot.watermarking.strategy+`>>
+|`insert_insert`
+|Specifies the watermarking mechanism that the connector uses during an incremental snapshot to deduplicate events that might be captured by an incremental snapshot and then recaptured after streaming resumes. +
+You can specify one of the following options:
+
+`insert_insert`:: When you send a signal to initiate an incremental snapshot, for every chunk that {prodname} reads during the snapshot, it writes an entry to the signaling data collection to record the signal to open the snapshot window.
+After the snapshot completes, {prodname} inserts a second entry that records the signal to close the window.
+`insert_delete`:: When you send a signal to initiate an incremental snapshot, for every chunk that {prodname} reads, it writes a single entry to the signaling data collection to record the signal to open the snapshot window.
+After the snapshot completes, this entry is removed.
+No entry is created for the signal to close the snapshot window.
+Set this option to prevent rapid growth of the signaling data collection.
+
+|[[db2-property-topic-naming-strategy]]<<db2-property-topic-naming-strategy, `topic.naming.strategy`>>
+|`io.debezium.schema.SchemaTopicNamingStrategy`
+|The name of the TopicNamingStrategy class that should be used to determine the topic name for data change, schema change, transaction, heartbeat event etc., defaults to `SchemaTopicNamingStrategy`.
+
+|[[db2-property-topic-delimiter]]<<db2-property-topic-delimiter, `topic.delimiter`>>
+|`.`
+|Specify the delimiter for topic name, defaults to `.`.
+
+|[[db2-property-topic-cache-size]]<<db2-property-topic-cache-size, `topic.cache.size`>>
+|`10000`
+|The size used for holding the topic names in bounded concurrent hash map. This cache will help to determine the topic name corresponding to a given data collection.
+
+|[[db2-property-topic-heartbeat-prefix]]<<db2-property-topic-heartbeat-prefix, `+topic.heartbeat.prefix+`>>
+|`__debezium-heartbeat`
+|Controls the name of the topic to which the connector sends heartbeat messages. The topic name has this pattern: +
+ +
+_topic.heartbeat.prefix_._topic.prefix_ +
+ +
+For example, if the topic prefix is `fulfillment`, the default topic name is `__debezium-heartbeat.fulfillment`.
+
+|[[db2-property-topic-transaction]]<<db2-property-topic-transaction, `topic.transaction`>>
+|`transaction`
+|Controls the name of the topic to which the connector sends transaction metadata messages. The topic name has this pattern: +
+ +
+_topic.prefix_._topic.transaction_ +
+ +
+For example, if the topic prefix is `fulfillment`, the default topic name is `fulfillment.transaction`.
+
+|[[db2-property-snapshot-max-threads]]<<db2-property-snapshot-max-threads, `snapshot.max.threads`>>
+|`1`
+|Specifies the number of threads that the connector uses when performing an initial snapshot.
+To enable parallel initial snapshots, set the property to a value greater than 1.
+In a parallel initial snapshot, the connector processes multiple tables concurrently.
+ifdef::community[]
+This feature is incubating.
+endif::community[]
+ifdef::product[]
+[IMPORTANT]
+====
+Parallel initial snapshots is a Technology Preview feature only.
+Technology Preview features are not supported with Red Hat production service level agreements (SLAs) and might not be functionally complete.
+Red Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+For more information about the support scope of Red Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
+endif::product[]
+
+|[[db2-property-custom-metric-tags]]<<db2-property-custom-metric-tags, `custom.metric.tags`>>
+|`No default`
+|Defines tags that customize MBean object names by adding metadata that provides contextual information.
+Specify a comma-separated list of key-value pairs.
+Each key represents a tag for the MBean object name, and the corresponding value represents a value for the key, for example,  +
+`k1=v1,k2=v2`
+
+The connector appends the specified tags to the base MBean object name.
+Tags can help you to organize and categorize metrics data.
+You can define tags to identify particular application instances, environments, regions, versions, and so forth.
+For more information, see xref:customized-mbean-names[Customized MBean names].
+
+|[[db2-property-errors-max-retires]]<<db2-property-errors-max-retires, `errors.max.retries`>>
+|`-1`
+|Specifies how the connector responds after an operation that results in a retriable error, such as a connection error. +
+Set one of the following options:
+
+`-1`:: No limit. The connector always restarts automatically, and retries the operation, regardless of the number of previous failures.
+
+`0`:: Disabled. The connector fails immediately, and never retries the operation.
+User intervention is required to restart the connector.
+
+`> 0`:: The connector restarts automatically until it reaches the specified maximum number of retries.
+After the next failure, the connector stops, and user intervention is required to restart it.
+
+|[[db2-property-database-query-timeout-ms]]<<db2-property-database-query-timeout-ms, `database.query.timeout.ms`>>
+|`600000` (10 minutes)
+|Specifies the time, in milliseconds, that the connector waits for a query to complete.
+Set the value to `0` (zero) to remove the timeout limit.
+
+|===
+
+[id="debezium-db2-connector-database-history-configuration-properties"]
+==== {prodname} connector database schema history configuration properties
+
+include::{partialsdir}/modules/all-connectors/ref-connector-configuration-database-history-properties.adoc[leveloffset=+1]
+
+[id="debezium-{context}-connector-kafka-signals-configuration-properties"]
+==== {prodname} connector Kafka signals configuration properties
+
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-signals-configuration-properties.adoc[leveloffset=+1]
+
+[id="debezium-{context}-connector-kafka-notifications-configuration-properties"]
+==== {prodname} connector sink notifications configuration properties
+
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-notification-configuration-properties.adoc[leveloffset=+1]
+
+[id="debezium-db2-connector-pass-through-database-driver-configuration-properties"]
+==== {prodname} connector pass-through database driver configuration properties
+
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-database-driver-configuration-properties.adoc[leveloffset=+1]
+
+// Type: assembly
+// ModuleID: monitoring-debezium-db2-connector-performance
+// Title: Monitoring {prodname} Db2 connector performance
+[[db2-monitoring]]
+== Monitoring
+
+The {prodname} Db2 connector provides three types of metrics that are in addition to the built-in support for JMX metrics that Apache ZooKeeper, Apache Kafka, and Kafka Connect provide.
+
+* xref:db2-snapshot-metrics[Snapshot metrics] provide information about connector operation while performing a snapshot.
+* xref:db2-streaming-metrics[Streaming metrics] provide information about connector operation when the connector is capturing changes and streaming change event records.
+* xref:db2-schema-history-metrics[Schema history metrics] provide information about the status of the connector's schema history.
+
+{link-prefix}:{link-debezium-monitoring}#monitoring-debezium[{prodname} monitoring documentation] provides details for how to expose these metrics by using JMX.
+
+// Type: concept
+// ModuleID: monitoring-debezium-db2-connectors-customized-mbean-names
+// Title: Customized names for Db2 connector snapshot and streaming MBean objects
+=== Customized MBean names
+
+include::{partialsdir}/modules/all-connectors/frag-common-mbean-name.adoc[leveloffset=+1,tags=mbeans-shared]
+
+// Type: reference
+// ModuleID: monitoring-debezium-during-snapshots-of-db2-databases
+// Title: Monitoring {prodname} during snapshots of Db2 databases
+[[db2-snapshot-metrics]]
+=== Snapshot metrics
+
+include::{partialsdir}/modules/all-connectors/frag-common-mbean-name.adoc[leveloffset=+1,tags=common-snapshot]
+
+include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-snapshot-metrics.adoc[leveloffset=+1]
+
+include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-incremental-snapshot-metrics.adoc[leveloffset=+1]
+
+// Type: reference
+// ModuleID: monitoring-debezium-db2-connector-record-streaming
+// Title: Monitoring {prodname} Db2 connector record streaming
+[[db2-streaming-metrics]]
+=== Streaming metrics
+
+include::{partialsdir}/modules/all-connectors/frag-common-mbean-name.adoc[leveloffset=+1,tags=common-streaming]
+
+include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
+
+// Type: reference
+// ModuleID: monitoring-debezium-db2-connector-schema-history
+// Title: Monitoring {prodname} Db2 connector schema history
+[[db2-schema-history-metrics]]
+=== Schema history metrics
+
+include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-schema-history-metrics.adoc[leveloffset=+1]
+
+// Type: reference
+// ModuleID: managing-debezium-db2-connectors
+// Title: Managing {prodname} Db2 connectors
+[[db2-management]]
+== Management
+
+After you deploy a {prodname} Db2 connector, use the {prodname} management UDFs to control Db2 replication (ASN) with SQL commands. Some of the UDFs expect a return value in which case you use the  SQL `VALUE` statement to invoke them. For other UDFs, use the SQL `CALL` statement.
+
+.Descriptions of {prodname} management UDFs
+[cols="1,4",options="header"]
+|===
+|Task |Command and notes
+
+|[[debezium-db2-start-asn-agent]]<<debezium-db2-start-asn-agent,Start the ASN agent>>
+|`VALUES ASNCDC.ASNCDCSERVICES('start','asncdc');`
+
+|[[debezium-db2-stop-asn-agent]]<<debezium-db2-stop-asn-agent,Stop the ASN agent>>
+|`VALUES ASNCDC.ASNCDCSERVICES('stop','asncdc');`
+
+|[[debezium-db2-check-asn-agent]]<<debezium-db2-check-asn-agent,Check the status of the ASN agent>>
+|`VALUES ASNCDC.ASNCDCSERVICES('status','asncdc');`
+
+|[[debezium-db2-put-capture-mode]]<<debezium-db2-put-capture-mode,Put a table into capture mode>>
+|`CALL ASNCDC.ADDTABLE('MYSCHEMA', 'MYTABLE');` +
+ +
+Replace `MYSCHEMA`  with the name of the schema that contains the table you want to put into capture mode. Likewise, replace `MYTABLE` with the name of the table to put into capture mode.
+
+|[[debezium-db2-remove-capture-mode]]<<debezium-db2-remove-capture-mode,Remove a table from capture mode>>
+|`CALL ASNCDC.REMOVETABLE('MYSCHEMA', 'MYTABLE');`
+
+|[[debezium-db2-reinitialize-asn-service]]<<debezium-db2-reinitialize-asn-service,Reinitialize the ASN service>>
+|`VALUES ASNCDC.ASNCDCSERVICES('reinit','asncdc');` +
+ +
+Do this after you put a table into capture mode or after you remove a table from capture mode.
+
+|===
+
+// Type: assembly
+// ModuleID: updating-schemas-for-db2-tables-in-capture-mode-for-debezium-connectors
+// Title: Updating schemas for Db2 tables in capture mode for {prodname} connectors
+[[db2-schema-evolution]]
+== Schema evolution
+
+While a {prodname} Db2 connector can capture schema changes, to update a schema, you must collaborate with a database administrator to ensure that the connector continues to produce change events. This is required by the way that Db2 implements replication.
+
+For each table in capture mode, the replication feature in Db2 creates a change-data table that contains all changes to that source table. However, change-data table schemas are static. If you update the schema for a table in capture mode then you must also update the schema of its corresponding change-data table. A {prodname} Db2 connector cannot do this. A database administrator with elevated privileges must update schemas for tables that are in capture mode.
+
+[WARNING]
+====
+It is vital to execute a schema update procedure completely before there is a new schema update on the same table. Consequently, the recommendation is to execute all DDLs in a single batch so the schema update procedure is done only once.
+====
+
+There are generally two procedures for updating table schemas:
+
+* xref:db2-offline-schema-update[Offline - executed while {prodname} is stopped]
+* xref:db2-hot-schema-update[Online - executed while {prodname} is running]
+
+Each approach has advantages and disadvantages.
+
+// Type: procedure
+// ModuleID: performing-offline-schema-updates-for-debezium-db2-connectors
+// Title: Performing offline schema updates for {prodname} Db2 connectors
+[[db2-offline-schema-update]]
+=== Offline schema update
+
+You stop the {prodname} Db2 connector before you perform an offline schema update. While this is the safer schema update procedure, it might not be feasible for applications with high-availability requirements.
+
+.Prerequisites
+
+* One or more tables that are in capture mode require schema updates.
+
+.Procedure
+
+. Suspend the application that updates the database.
+. Wait for the {prodname} connector to stream all unstreamed change event records.
+. Stop the {prodname} connector.
+. Apply all changes to the source table schema.
+. In the ASN register table, mark the tables with updated schemas as `INACTIVE`.
+. xref:debezium-db2-reinitialize-asn-service[Reinitialize the ASN capture service].
+. Remove the source table with the old schema from capture mode by xref:debezium-db2-remove-capture-mode[running the {prodname} UDF for removing tables from capture mode].
+. Add the source table with the new schema to capture mode by xref:debezium-db2-put-capture-mode[running the {prodname} UDF for adding tables to capture mode].
+. In the ASN register table, mark the updated source tables as `ACTIVE`.
+. xref:debezium-db2-reinitialize-asn-service[Reinitialize the ASN capture service.]
+. Resume the application that updates the database.
+. Restart the {prodname} connector.
+
+// Type: procedure
+// ModuleID: performing-online-schema-updates-for-debezium-db2-connectors
+// Title: Performing online schema updates for {prodname} Db2 connectors
+[[db2-hot-schema-update]]
+=== Online schema update
+
+An online schema update does not require application and data processing downtime. That is, you do not stop the {prodname} Db2 connector before you perform an online schema update. Also, an online schema update procedure is simpler than the procedure for an offline schema update.
+
+However, when a table is in capture mode, after a change to a column name, the Db2 replication feature continues to use the old column name. The new column name does not appear in {prodname} change events. You must restart the connector to see the new column name in change events.
+
+.Prerequisites
+
+* One or more tables that are in capture mode require schema updates.
+
+.Procedure when adding a column to the end of a table
+
+. Lock the source tables whose schema you want to change.
+. In the ASN register table, mark the locked tables as `INACTIVE`.
+. xref:debezium-db2-reinitialize-asn-service[Reinitialize the ASN capture service.]
+. Apply all changes to the schemas for the source tables.
+. Apply all changes to the schemas for the corresponding change-data tables.
+. In the ASN register table, mark the source tables as `ACTIVE`.
+. xref:debezium-db2-reinitialize-asn-service[Reinitialize the ASN capture service.]
+. Optional. Restart the connector to see updated column names in change events.
+
+.Procedure when adding a column to the middle of a table
+
+. Lock the source table(s) to be changed.
+. In the ASN register table, mark the locked tables as `INACTIVE`.
+. xref:debezium-db2-reinitialize-asn-service[Reinitialize the ASN capture service.]
+. For each source table to be changed:
+.. Export the data in the source table.
+.. Truncate the source table.
+.. Alter the source table and add the column.
+.. Load the exported data into the altered source table.
+.. Export the data in the source table's corresponding change-data table.
+.. Truncate the change-data table.
+.. Alter the change-data table and add the column.
+.. Load the exported data into the altered change-data table.
+. In the ASN register table, mark the tables as `INACTIVE`. This marks the old change-data tables as inactive, which allows the data in them to remain but they are no longer updated.
+. xref:debezium-db2-reinitialize-asn-service[Reinitialize the ASN capture service.]
+. Optional. Restart the connector to see updated column names in change events.

@@ -1,0 +1,18 @@
+// This file provides hints for an IDE how to render the preview, for example, in IntelliJ.
+// This is mostly intended to define attributes.
+// Read more at: https://intellij-asciidoc-plugin.ahus1.de/docs/users-guide/features/advanced/asciidoctorconfig-file.html
+
+// Duplicate values for the preview that are defined in another repository in the Antora playbook
+:prodname: Debezium
+:jira-url: 'https://issues.redhat.com'
+
+// Define attributes that are used downstream so that an editor known that they exist and doesn't show them in warnings.
+:product!:
+
+// Use the website's preview stylesheet for the preview.
+// Update to the AsciiDoc plugin for IntelliJ version 0.37.49 or later for the best experience.
+:linkcss:
+:stylesdir: https://debezium.io/documentation/debezium-antora/css
+:stylesheet: preview.css
+
+:source-highlighter: highlightjs

@@ -1,0 +1,173 @@
+<?xml version="1.0"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <groupId>io.debezium</groupId>
+        <artifactId>debezium-storage</artifactId>
+        <version>2.7.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+    <artifactId>debezium-storage-tests</artifactId>
+    <name>Debezium Storage Tests Module</name>
+    <packaging>jar</packaging>
+
+    <properties>
+	<!-- S3 -->
+        <version.s3mock>2.4.14</version.s3mock>
+
+    <!-- Azurite -->
+        <version.azurite>3.22.0</version.azurite>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.adobe.testing</groupId>
+                <artifactId>s3mock-testcontainers</artifactId>
+                <version>${version.s3mock}</version>
+                <scope>test</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-core</artifactId>
+            <type>test-jar</type>
+        </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-ddl-parser</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>connect-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Test libs -->
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.easytesting</groupId>
+            <artifactId>fest-assert</artifactId>
+        </dependency>
+
+        <!-- Storage modules -->
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-storage-s3</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-storage-azure-blob</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Source system -->
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-connector-mysql</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Target systems -->
+        <!-- S3 storage -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.adobe.testing</groupId>
+            <artifactId>s3mock-testcontainers</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Azure Blob Storage -->
+        <dependency>
+            <groupId>com.azure</groupId>
+            <artifactId>azure-storage-blob</artifactId>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>integration-test</id>
+                        <goals>
+                            <goal>integration-test</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>verify</id>
+                        <goals>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <skipTests>${skipITs}</skipTests>
+                    <enableAssertions>true</enableAssertions>
+                    <systemPropertyVariables>
+                        <!-- Make these available to the tests via system properties -->
+                        <tag.smock>${version.s3mock}</tag.smock>
+                        <tag.azurite>${version.azurite}</tag.azurite>
+                    </systemPropertyVariables>
+                    <runOrder>alphabetical</runOrder>
+                    <argLine>${debug.argline} ${modules.argline} ${test.argline}</argLine>
+                    <useSystemClassLoader>${useSystemClassLoader}</useSystemClassLoader>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <!--
+    Define several useful profiles
+    -->
+    <profiles>
+        <profile>
+            <id>quick</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+                <property>
+                    <name>quick</name>
+                </property>
+            </activation>
+            <properties>
+                <skipITs>true</skipITs>
+            </properties>
+        </profile>
+    </profiles>
+</project>
+

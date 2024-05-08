@@ -1,0 +1,50 @@
+// Metadata created by nebel
+//
+// UserStory:
+
+[id="considerations-running-debezium-docker"]
+= Considerations for running {prodname} with Docker
+
+This tutorial uses http://docker.com[Docker] and the https://hub.docker.com/u/debezium/[{prodname} container images] to run the ZooKeeper, Kafka, {prodname}, and MySQL services.
+Running each service in a separate container simplifies the setup so that you can see {prodname} in action.
+
+[NOTE]
+====
+In a production environment,
+you would run multiple instances of each service to provide performance, reliability, replication, and fault tolerance.
+Typically, you would either deploy these services on a platform like https://www.openshift.com[OpenShift] or http://kubernetes.io[Kubernetes] that manages multiple Docker containers running on multiple hosts and machines,
+or you would install on dedicated hardware.
+====
+
+You should be aware of the following considerations for running {prodname} with Docker:
+
+* The containers for ZooKeeper and Kafka are ephemeral.
++
+ZooKeeper and Kafka would typically store their data locally inside the containers,
+which would require you to mount directories on the host machine as volumes.
+That way, when the containers are stopped,
+the persisted data remains.
+However, this tutorial skips this setup -
+when a container is stopped, all persisted data is lost.
+This way, cleanup is simple when you complete the tutorial.
++
+[NOTE]
+====
+For more information about storing persistent data,
+see the documentation for the https://quay.io/organization/debezium[container images].
+====
+
+* This tutorial requires you to run each service in a different container.
++
+To avoid confusion, you will run each container in the foreground in a separate terminal.
+This way, all of the output of a container will be displayed in the terminal used to run it.
++
+[NOTE]
+====
+Docker also allows you to run a container in _detached_ mode (with the `-d` option),
+where the container is started and the `docker` command returns immediately.
+However, detached mode containers do not display their output in the terminal.
+To see the output,
+you would need to use the `docker logs --follow --name _<container-name>_` command.
+For more information, see the Docker documentation.
+====

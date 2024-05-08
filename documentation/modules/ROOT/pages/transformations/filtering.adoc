@@ -1,0 +1,258 @@
+:page-aliases: configuration/filtering.adoc
+// Category: debezium-using
+// Type: assembly
+// ModuleID: filtering-debezium-change-event-records
+// Title: Filtering Debezium change event records
+[id="message-filtering"]
+= Message Filtering
+ifdef::community[]
+:toc:
+:toc-placement: macro
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+
+toc::[]
+endif::community[]
+By default, {prodname} delivers every data change event that it receives to the Kafka broker.
+However, in many cases, you might be interested in only a subset of the events emitted by the producer.
+To enable you to process only the records that are relevant to you, {prodname} provides the _filter_ link:https://cwiki.apache.org/confluence/display/KAFKA/KIP-66%3A+Single+Message+Transforms+for+Kafka+Connect[single message transform] (SMT).
+
+While it is possible to use Java to create a custom SMT to encode filtering logic, using a custom-coded SMT has its drawbacks.
+For example:
+
+* It is necessary to compile the transformation up front and deploy it to Kafka Connect.
+* Every change needs code recompilation and redeployment, leading to inflexible operations.
+
+The filter SMT supports scripting languages that integrate with https://jcp.org/en/jsr/detail?id=223[JSR 223] (Scripting for the Java(TM) Platform).
+
+{prodname} does not come with any implementations of the JSR 223 API.
+To use an expression language with {prodname}, you must download the JSR 223 script engine implementation for the language.
+ifdef::community[]
+For example, for Groovy 3, you can download its JSR 223 implementation from https://groovy-lang.org/.
+The JSR223 implementation for GraalVM JavaScript is available at https://github.com/graalvm/graaljs.
+After you obtain the script engine files, you add them to your {prodname} connector plug-in directories, along any other JAR files used by the language implementation.
+endif::community[]
+ifdef::product[]
+Depending on the method that you use to deploy {prodname}, you can automatically download the required artifacts from Maven Central,
+or you can manually download the artifacts, and then add them to your {prodname} connector plug-in directories, along any other JAR files used by the language implementation.
+endif::product[]
+
+// Type: procedure
+// Title: Setting up the {prodname} filter SMT
+// ModuleID: setting-up-the-debezium-filter-smt
+[[set-up-filter]]
+== Set up
+
+For security reasons, the filter SMT is not included with the {prodname} connector archives.
+Instead, it is provided in a separate artifact, `debezium-scripting-{debezium-version}.tar.gz`.
+
+ifdef::product[]
+If you deploy the {prodname} connector by building a custom Kafka Connect container image from a Dockerfile, to use the filter SMT, you must explicitly download the SMT archive and deploy the files alongside the connector plug-in.
+When you use {StreamsName} to deploy the connector, it can download the required artifacts automatically based on configuration parameters that you specify in the Kafka Connect custom resource.
+endif::product[]
+ifdef::community[]
+To use the content-based routing SMT with a {prodname} connector plug-in, you must explicitly add the SMT artifact to your Kafka Connect environment.
+endif::community[]
+IMPORTANT: After the filter SMT is present in a Kafka Connect instance, any user who is allowed to add a connector to the instance can run scripting expressions.
+To ensure that scripting expressions can be run only by authorized users, be sure to secure the Kafka Connect instance and its configuration interface before you add the filter SMT.
+
+ifdef::community[]
+With https://zookeeper.apache.org[Zookeeper], http://kafka.apache.org/[Kafka], {link-kafka-docs}.html#connect[Kafka Connect], and one or more {prodname} connectors installed, the remaining tasks to install the filter SMT are:
+
+. Download the link:https://repo1.maven.org/maven2/io/debezium/debezium-scripting/{debezium-version}/debezium-scripting-{debezium-version}.tar.gz[scripting SMT archive]
+. Extract the contents of the archive into the {prodname} plug-in directories of your Kafka Connect environment.
+. Obtain a JSR-223 script engine implementation and add its contents to the {prodname} plug-in directories of your Kafka Connect environment.
+. Restart your Kafka Connect process to pick up the new JAR files.
+endif::community[]
+
+ifdef::product[]
+The following procedure applies if you build your Kafka Connect container image from a Dockerfile.
+If you use {StreamsName} to create the Kafka Connect image, follow the instructions in the deployment topic for your connector.
+
+.Procedure
+. From a browser, open the link:{LinkDebeziumDownloads}[{NameDebeziumDownloads}], and download the {prodname} scripting SMT archive (`debezium-scripting-{debezium-version}.tar.gz`).
+. Extract the contents of the archive into the {prodname} plug-in directories of your Kafka Connect environment.
+. Obtain a JSR-223 script engine implementation and add its contents to the {prodname} plug-in directories of your Kafka Connect environment.
+. Restart the Kafka Connect process to pick up the new JAR files.
+endif::product[]
+
+The Groovy language needs the following libraries on the classpath:
+
+* `groovy`
+* `groovy-json` (optional)
+* `groovy-jsr223`
+
+The JavaScript language needs the following libraries on the classpath:
+
+* `graalvm.js`
+* `graalvm.js.scriptengine`
+
+// Type: concept
+// Title: Example: {prodname} basic filter SMT configuration
+// ModuleID: example-basic-debezium-filter-smt-configuration
+[[example-basic-filter-configuration-example]]
+== Example: Basic configuration
+
+You configure the filter transformation in the {prodname} connector's Kafka Connect configuration.
+In the configuration, you specify the events that you are interested in by defining filter conditions that are based on business rules.
+As the filter SMT processes the event stream, it evaluates each event against the configured filter conditions.
+Only events that meet the criteria of the filter conditions are passed to the broker.
+
+To configure a {prodname} connector to filter change event records, configure the `Filter` SMT in the Kafka Connect configuration for the {prodname} connector.
+Configuration of the filter SMT requires you to specify a regular expression that defines the filtering criteria.
+
+For example, you might add the following configuration in your connector configuration.
+
+[source]
+----
+...
+transforms=filter
+transforms.filter.type=io.debezium.transforms.Filter
+transforms.filter.language=jsr223.groovy
+transforms.filter.condition=value.op == 'u' && value.before.id == 2
+...
+----
+
+The preceding example specifies the use of the `Groovy` expression language.
+The regular expression `value.op == 'u' && value.before.id == 2` removes all messages, except those that represent update (`u`) records with `id` values that are equal to `2`.
+
+.Customizing the configuration
+The preceding example shows a simple SMT configuration that is designed to process only DML events, which contain an `op` field.
+Other types of messages that a connector might emit (heartbeat messages, tombstone messages, or metadata messages about schema changes and transactions) do not contain this field.
+To avoid processing failures, you can define xref:options-for-applying-the-transformation-selectively[an SMT predicate statement that selectively applies the transformation] to specific events only.
+
+// Type: concept
+// ModuleID: variables-for-use-in-filter-expressions
+== Variables for use in filter expressions
+
+{prodname} binds certain variables into the evaluation context for the filter SMT.
+When you create expressions to specify filter conditions, you can use the variables that {prodname} binds into the evaluation context.
+By binding variables, {prodname} enables the SMT to look up and interpret their values as it evaluates the conditions in an expression.
+
+The following table lists the variables that {prodname} binds into the evaluation context for the filter SMT:
+
+.Filter expression variables
+[cols="25%a,35%a,40%a",subs="+attributes",options="header"]
+|===
+|Name |Description |Type
+|`key`   |A key of the message. |`org.apache.kafka.connect{zwsp}.data{zwsp}.Struct`
+|`value` |A value of the message. |`org.apache.kafka.connect.data{zwsp}.Struct`
+|`keySchema` |Schema of the message key.|`org.apache.kafka.connect{zwsp}.data{zwsp}.Schema`
+|`valueSchema`|Schema of the message value.| `org.apache.kafka.connect{zwsp}.data{zwsp}.Schema`
+|`topic`|Name of the target topic.| String
+|`header`|A Java map of message headers. The key field is the header name.
+The `header` variable exposes the following properties:
+
+* `value` (of type `Object`)
+* `schema` (of type `org.apache.kafka{zwsp}.connect{zwsp}.data{zwsp}.Schema`)
+|`java.util.Map{zwsp}<String, {zwsp}io.debezium.transforms{zwsp}.scripting{zwsp}.RecordHeader>`
+|===
+
+An expression can invoke arbitrary methods on its variables.
+Expressions should resolve to a Boolean value that determines how the SMT dispositions the message.
+When the filter condition in an expression evaluates to `true`, the message is retained.
+When the filter condition evaluates to `false`, the message is removed.
+
+Expressions should not result in any side-effects. That is, they should not modify any variables that they pass.
+
+// Type: concept
+// Title: Options for applying the filter transformation selectively
+// ModuleID: options-for-applying-the-filter-transformation-selectively
+[id="options-for-applying-the-transformation-selectively"]
+== Options for applying the transformation selectively
+
+In addition to the change event messages that a {prodname} connector emits when a database change occurs, the connector also emits other types of messages, including heartbeat messages, and metadata messages about schema changes and transactions.
+Because the structure of these other messages differs from the structure of the change event messages that the SMT is designed to process, it's best to configure the connector to selectively apply the SMT, so that it processes only the intended data change messages.
+You can use one of the following methods to configure the connector to apply the SMT selectively:
+
+* {link-prefix}:{link-smt-predicates}#applying-transformations-selectively[Configure an SMT predicate for the transformation].
+* Use the xref:filter-topic-regex[topic.regex] configuration option for the SMT.
+
+// Type: reference
+// ModuleID: filter-condition-configuration-for-other-scripting-languages
+// Title: Filter condition configuration for other scripting languages
+== Language specifics
+
+The way that you express filtering conditions depends on the scripting language that you use.
+
+For example, as shown in the xref:example-basic-filter-configuration-example[basic configuration example], when you use `Groovy` as the expression language,
+the following expression removes all messages, except for update records that have `id` values set to `2`:
+
+[source,groovy]
+----
+value.op == 'u' && value.before.id == 2
+----
+Other languages use different methods to express the same condition.
+
+[TIP]
+====
+The {prodname} MongoDB connector emits the `after` and `patch` fields as serialized JSON documents rather than as structures. +
+To use the filter SMT with the MongoDB connector, you must first unwind the array fields in the JSON into separate documents. +
+ifdef::community[]
+You can do this by applying the {link-prefix}:{link-mongodb-event-flattening}#new-record-state-extraction[MongoDB `ExtractNewDocumentState`] SMT.
+
+You could also take the approach of using a JSON parser within an expression to generate separate output documents for each array item. +
+endif::community[]
+ifdef::product[]
+You can use a JSON parser within an expression to generate separate output documents for each array item.
+endif::product[]
+For example, if you use Groovy as the expression language, add the `groovy-json` artifact to the classpath, and then add an expression such as `(new groovy.json.JsonSlurper()).parseText(value.after).last_name == 'Kretchmar'`.
+====
+
+.Javascript
+If you use JavaScript as the expression language, you can call the `Struct#get()` method to specify the filtering condition, as in the following example:
+
+[source,javascript]
+----
+value.get('op') == 'u' && value.get('before').get('id') == 2
+----
+
+.Javascript with Graal.js
+If you use JavaScript with Graal.js to define filtering conditions, you use an approach that is similar to the one that you use with Groovy.
+For example:
+
+[source,javascript]
+----
+value.op == 'u' && value.before.id == 2
+----
+
+// Type: reference
+// ModuleID: options-for-configuring-filter-transformation
+// Title: Options for configuring filter transformation
+[[filter-configuration-options]]
+== Configuration options
+
+The following table lists the configuration options that you can use with the filter SMT.
+
+.filter SMT configuration options
+[cols="30%a,25%a,45%a"]
+|===
+|Property
+|Default
+|Description
+
+|[[filter-topic-regex]]<<filter-topic-regex, `topic.regex`>>
+|
+|An optional regular expression that evaluates the name of the destination topic for an event to determine whether to apply filtering logic.
+If the name of the destination topic matches the value in `topic.regex`, the transformation applies the filter logic before it passes the event to the topic.
+If the name of the topic does not match the value in `topic.regex`, the SMT passes the event to the topic unmodified.
+
+|[[filter-language]]<<filter-language, `language`>>
+|
+|The language in which the expression is written. Must begin with `jsr223.`, for example, `jsr223.groovy`, or `jsr223.graal.js`.
+{prodname} supports bootstrapping through the https://jcp.org/en/jsr/detail?id=223[JSR 223 API ("Scripting for the Java (TM) Platform")] only.
+
+|[[filter-condition]]<<filter-condition, `condition`>>
+|
+|The expression to be evaluated for every message. Must evaluate to a Boolean value where a result of `true` keeps the message, and a result of `false` removes it.
+
+|[[filter-null-handling-mode]]<<filter-null-handling-mode, `null.handling.mode`>>
+|`keep`
+a|Specifies how the transformation handles `null` (tombstone) messages. You can specify one of the following options:
+
+`keep`:: (Default) Pass the messages through.
+`drop`:: Remove the messages completely.
+`evaluate`:: Apply the filter condition to the messages.
+
+|===

@@ -1,0 +1,329 @@
+
+// Category: debezium-using
+// Type: assembly
+
+[id="monitoring-debezium"]
+= Monitoring {prodname}
+
+:linkattrs:
+:icons: font
+:toc:
+:toc-placement: macro
+
+toc::[]
+
+You can use the JMX metrics provided by link:https://zookeeper.apache.org/doc/r3.1.2/zookeeperJMX.html[Apache Zookeeper], link:https://kafka.apache.org/documentation/#monitoring[Apache Kafka], and https://kafka.apache.org/documentation/#connect_monitoring[Kafka Connect] to monitor {prodname}.
+To use these metrics, you must enable them when you start the Zookeeper, Kafka, and Kafka Connect services.
+Enabling JMX involves setting the correct environment variables.
+ifdef::community[]
+The environment variables that you must set depend on whether you are running Zookeeper, Kafka, and Kafka Connect in a local installation or in Docker containers.
+endif::community[]
+
+[NOTE]
+====
+If you are running multiple services on the same machine,
+be sure to use distinct JMX ports for each service.
+====
+
+
+// Category: debezium-using
+// Type: concept
+// ModuleID: debezium-metrics-monitoring-connectors
+[id="metrics-monitoring-connectors"]
+== Metrics for monitoring {prodname} connectors
+
+In addition to the built-in support for JMX metrics in Kafka, Zookeeper, and Kafka Connect,
+each connector provides additional metrics that you can use to monitor their activities.
+
+* {link-prefix}:{link-db2-connector}#db2-monitoring[Db2 connector metrics]
+* {link-prefix}:{link-mongodb-connector}#mongodb-monitoring[MongoDB connector metrics]
+* {link-prefix}:{link-mysql-connector}#mysql-monitoring[MySQL connector metrics]
+* {link-prefix}:{link-oracle-connector}#oracle-monitoring[Oracle connector metrics]
+* {link-prefix}:{link-postgresql-connector}#postgresql-monitoring[PostgreSQL connector metrics]
+* {link-prefix}:{link-sqlserver-connector}#sqlserver-monitoring[SQL Server connector metrics]
+ifdef::community[]
+* {link-prefix}:{link-cassandra-connector}#cassandra-monitoring[Cassandra connector metrics]
+* {link-prefix}:{link-vitess-connector}#vitess-monitoring[Vitess connector metrics]
+* {link-prefix}:{link-spanner-connector}#spanner-monitoring[Spanner connector metrics]
+* {link-prefix}:{link-informix-connector}#informix-monitoring[Informix connector metrics]
+endif::community[]
+
+
+// Category: debezium-using
+// Type: assembly
+// ModuleID: enabling-jmx-in-local-installations
+[id="enabling-jmx-local-installation"]
+== Enabling JMX in local installations
+
+With Zookeeper, Kafka, and Kafka Connect,
+you enable JMX by setting the appropriate environment variables when you start each service.
+
+// Category: debezium-using
+// Type: reference
+// ModuleID: debezium-zookeeper-jmx-environment-variables
+[id="zookeeper-jmx-environment-variables"]
+=== Zookeeper JMX environment variables
+
+Zookeeper has built-in support for JMX.
+When running Zookeeper using a local installation,
+the `zkServer.sh` script recognizes the following environment variables:
+
+`JMXPORT`::
+Enables JMX and specifies the port number that will be used for JMX.
+The value is used to specify the JVM parameter `-Dcom.sun.management.jmxremote.port=$JMXPORT`.
+
+`JMXAUTH`::
+Whether JMX clients must use password authentication when connecting.
+Must be either `true` or `false`.
+The default is `false`.
+The value is used to specify the JVM parameter `-Dcom.sun.management.jmxremote.authenticate=$JMXAUTH`.
+
+`JMXSSL`::
+Whether JMX clients connect using SSL/TLS.
+Must be either `true` or `false`.
+The default is `false`.
+The value is used to specify the JVM parameter `-Dcom.sun.management.jmxremote.ssl=$JMXSSL`.
+
+`JMXLOG4J`::
+Whether the Log4J JMX MBeans should be disabled.
+Must be either `true` (default) or `false`.
+The default is `true`.
+The value is used to specify the JVM parameter `-Dzookeeper.jmx.log4j.disable=$JMXLOG4J`.
+
+
+// Category: debezium-using
+// Type: reference
+// ModuleID: debezium-kafka-jmx-environment-variables
+[id="kafka-jmx-environment-variables"]
+=== Kafka JMX environment variables
+
+When running Kafka using a local installation,
+the `kafka-server-start.sh` script recognizes the following environment variables:
+
+`JMX_PORT`::
+Enables JMX and specifies the port number that will be used for JMX.
+The value is used to specify the JVM parameter `-Dcom.sun.management.jmxremote.port=$JMX_PORT`.
+
+`KAFKA_JMX_OPTS`::
+The JMX options, which are passed directly to the JVM during startup.
+The default options are:
++
+** `-Dcom.sun.management.jmxremote`
+** `-Dcom.sun.management.jmxremote.authenticate=false`
+** `-Dcom.sun.management.jmxremote.ssl=false`
+
+
+// Category: debezium-using
+// Type: reference
+// ModuleID: debezium-kafka-connect-jmx-environment-variables
+[id="kafka-connect-jmx-environment-variables"]
+=== Kafka Connect JMX environment variables
+
+When running Kafka using a local installation,
+the `connect-distributed.sh` script recognizes the following environment variables:
+
+`JMX_PORT`::
+Enables JMX and specifies the port number that will be used for JMX.
+The value is used to specify the JVM parameter `-Dcom.sun.management.jmxremote.port=$JMX_PORT`.
+
+`KAFKA_JMX_OPTS`::
+The JMX options, which are passed directly to the JVM during startup.
+The default options are:
++
+** `-Dcom.sun.management.jmxremote`
+** `-Dcom.sun.management.jmxremote.authenticate=false`
+** `-Dcom.sun.management.jmxremote.ssl=false`
+
+ifdef::product[]
+// Category: debezium-using
+// Type: concept
+// ModuleID: monitoring-debezium-on-openshift
+== Monitoring {prodname} on OpenShift
+
+If you are using {prodname} on OpenShift, you can obtain JMX metrics by opening a JMX port on `9999`.
+For information about configuring JMX connection options, see the link:{LinkStreamsAPIReference}#type-KafkaJmxOptions-reference[KafkaJmxOptions schema reference] in the {NameStreamsAPIReference}.
+
+In addition, you can use Prometheus and Grafana to monitor the JMX metrics.
+For more information, see _Monitoring_ in link:{LinkStreamsOpenShiftOverview}#metrics-overview_str[{NameStreamsOpenShiftOverview}] and _Setting up metrics and dashboards_ in link:{LinkDeployManageStreamsOpenShift}#assembly-metrics-str[{NameDeployManageStreamsOpenShift}] .
+
+endif::product[]
+
+ifdef::community[]
+[id="enabling-jmx-docker"]
+== Enabling JMX in Docker
+
+If you are running Apache Zookeeper, Kafka, and Kafka Connect in via the {prodname} container images,
+enabling JMX requires several additional environment variables that are not typically needed when running on a local machine.
+This is because the JVM requires the host name to which it will advertise itself to JMX clients.
+Thus, {prodname}'s container images for Zookeeper, Kafka, and Kafka Connect use several environment variables to enable and configure JMX.
+Most of the environment variables are the same for all of the images,
+but there are some minor differences.
+
+
+[id="zookeeper-jmx-environment-variables-docker"]
+=== Zookeeper JMX environment variables in Docker
+
+The `debezium/zookeeper` image recognizes the following JMX-related environment variables:
+
+`JMXPORT` (Required)::
+The port number that will be used for JMX.
+The value is used to specify the following JVM parameters:
++
+** `-Dcom.sun.management.jmxremote.port=$JMXPORT`
+** `-Dcom.sun.management.jmxremote.rmi.port=$JMXPORT`
+
+`JMXHOST` (Required)::
+The IP address or resolvable host name of the Docker host,
+which JMX uses to construct a URL sent to the JMX client.
+A value of `localhost` or `127.0.0.1` will not work.
+Typically, `0.0.0.0` can be used.
+The value is used to specify the JVM parameter `-Djava.rmi.server.hostname=$JMXHOST`.
+
+`JMXAUTH`::
+Whether JMX clients must use password authentication when connecting.
+Must be either `true` or `false`.
+The default is `false`.
+The value is used to specify the JVM parameter `-Dcom.sun.management.jmxremote.authenticate=$JMXAUTH`.
+
+`JMXSSL`::
+Whether JMX clients connect using SSL/TLS.
+Must be either `true` or `false`.
+The default is `false`.
+The value is used to specify the JVM parameter `-Dcom.sun.management.jmxremote.ssl=$JMXSSL`.
+
+`JMXLOG4J`::
+Whether the Log4J JMX MBeans should be disabled.
+Must be either `true` or `false`.
+The default is `true`.
+The value is used to specify the JVM parameter `-Dzookeeper.jmx.log4j.disable=$JMXLOG4J`.
+
+.Enabling JMX in a Zookeeper Docker container
+====
+The following example Docker command starts a container using the `debezium/zookeeper` image with values for the `JMXPORT` and `JMXHOST` environment variables,
+and maps the Docker host's port 9010 to the container's JMX port:
+
+[source,shell,options="nowrap"]
+----
+$ docker run -it --rm --name zookeeper -p 2181:2181 -p 2888:2888 -p 3888:3888 -p 9010:9010 -e JMXPORT=9010 -e JMXHOST=10.0.1.10 quay.io/debezium/zookeeper:latest
+----
+====
+
+[id="kafka-jmx-environment-variables-docker"]
+=== Kafka JMX environment variables in Docker
+
+The `debezium/kafka` image recognizes the following JMX-related environment variables:
+
+`JMXPORT` (Required)::
+The port number that will be used for JMX.
+The value is used to specify the following JVM parameters:
++
+** `-Dcom.sun.management.jmxremote.port=$JMXPORT`
+** `-Dcom.sun.management.jmxremote.rmi.port=$JMXPORT`
+
+`JMXHOST` (Required)::
+The IP address or resolvable host name of the Docker host,
+which JMX uses to construct a URL sent to the JMX client.
+A value of `localhost` or `127.0.0.1` will not work.
+Typically, `0.0.0.0` can be used.
+The value is used to specify the JVM parameter `-Djava.rmi.server.hostname=$JMXHOST`.
+
+`JMXAUTH`::
+Whether JMX clients must use password authentication when connecting.
+Must be either `true` or `false`.
+The default is `false`.
+The value is used to specify the JVM parameter `-Dcom.sun.management.jmxremote.authenticate=$JMXAUTH`.
+
+`JMXSSL`::
+Whether JMX clients connect using SSL/TLS.
+Must be either `true` or `false`.
+The default is `false`.
+The value is used to specify the JVM parameter `-Dcom.sun.management.jmxremote.ssl=$JMXSSL`.
+
+.Enabling JMX in a Kafka Docker container
+====
+The following example Docker command starts a container using the `debezium/kafka` image with values for the `JMXPORT` and `HOST_NAME` environment variables,
+and maps the Docker host's port 9011 to the container's JMX port:
+
+[source,shell,options="nowrap"]
+----
+$ docker run -it --rm --name kafka -p 9092:9092 -p 9011:9011 -e JMXPORT=9011 -e JMXHOST=10.0.1.10 --link zookeeper:zookeeper quay.io/debezium/kafka:latest
+----
+====
+
+[id="kafka-connect-jmx-environment-variables-docker"]
+=== Kafka Connect JMX environment variables in Docker
+
+The `debezium/connect` image recognizes the following JMX-related environment variables:
+
+`JMXPORT` (Required)::
+The port number that will be used for JMX.
+The value is used to specify the following JVM parameters:
++
+** `-Dcom.sun.management.jmxremote.port=$JMXPORT`
+** `-Dcom.sun.management.jmxremote.rmi.port=$JMXPORT`
+
+`JMXHOST` (Required)::
+The IP address or resolvable host name of the Docker host,
+which JMX uses to construct a URL sent to the JMX client.
+A value of `localhost` or `127.0.0.1` will not work.
+Typically, `0.0.0.0` can be used.
+The value is used to specify the JVM parameter `-Djava.rmi.server.hostname=$JMXHOST`.
+
+`JMXAUTH`::
+Whether JMX clients must use password authentication when connecting.
+Must be either `true` or `false`.
+The default is `false`.
+The value is used to specify the JVM parameter `-Dcom.sun.management.jmxremote.authenticate=$JMXAUTH`.
+
+`JMXSSL`::
+Whether JMX clients connect using SSL/TLS.
+Must be either `true` or `false`.
+The default is `false`.
+The value is used to specify the JVM parameter `-Dcom.sun.management.jmxremote.ssl=$JMXSSL`.
+
+.Enabling JMX in a Kafka Connect Docker container
+====
+The following example Docker command starts a container using the `debezium/connect` image with values for the `JMXPORT` and `JMXHOST` environment variables,
+and maps the Docker host's port 9012 to the container's JMX port:
+
+[source,shell,options="nowrap"]
+----
+$ docker run -it --rm --name connect \
+  -p 8083:8083 -p 9012:9012 \
+  -e JMXPORT=9012 -e JMXHOST=10.0.1.10 \
+  -e GROUP_ID=1 \
+  -e CONFIG_STORAGE_TOPIC=my_connect_configs \
+  -e OFFSET_STORAGE_TOPIC=my_connect_offsets \
+  -e STATUS_STORAGE_TOPIC=my_connect_statuses \
+  --link zookeeper:zookeeper \
+  --link kafka:kafka \
+  --link mysql:mysql \
+  quay.io/debezium/connect:latest
+----
+====
+
+[id="using-prometheus-grafana"]
+== Using Prometheus and Grafana
+
+The metrics exposed by {prodname} and Kafka can be exported and displayed with https://prometheus.io/[Prometheus] and https://grafana.com/[Grafana].
+You can find an example for the required configuration and example dashboards for different connectors in the https://github.com/debezium/debezium-examples/tree/main/monitoring[Debezium examples repository].
+
+[NOTE]
+====
+These dashboards are not part of {prodname} itself and are maintained on a best-effort basis.
+====
+
+[id="java-flight-recorder"]
+== Java Flight Recording
+
+The {prodname} container image for Kafka Connect also provides easy-to-use support for https://openjdk.java.net/jeps/328[JDK Flight Recorder].
+To enable the recording it is necessary to set the environment variable `ENABLE_JFR=true`.
+The recording will then be started automatically upon container start.
+By default, the recording is enabled, i.e. a continuous recording with default settings is done, which you then can dump using _jcmd_ or JDK Mission Control.
+
+It is possible to modify the recorder's behaviour.
+For that, you need to set either environment variables prefixed with `JFR_RECORDING_` to set recording parameters.
+The part after the prefix is converted to lowercase and underscores are replaced with dashes so `JFR_RECORDING_PATH_TO_GC_ROOTS=true` becomes `path-to-gc-roots=true`.
+
+Flight Recorder control options can be configured via `JFR_OPT_` prefixed environment variables.
+endif::community[]

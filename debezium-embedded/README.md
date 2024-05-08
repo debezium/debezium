@@ -1,0 +1,9 @@
+# Embedding Debezium connectors in applications
+
+Debezium connectors are normally operated by deploying them to a Kafka Connect service, and configuring one or more connectors to monitor upstream databases and produce data change events for all changes that they sees in the upstream databases. Those data change events are written to Kafka, where they can be independently consumed by many different applications. Kafka Connect provides excellent fault tolerance and scalability, since it runs as a distributed service and ensures that all registered and configured connectors are always running. For example, even if one of the Kafka Connect endpoints in a cluster goes down, the remaining Kafka Connect endpoints will restart any connectors that were previously running on the now-terminated endpoint, minimizing downtime and eliminating administrative activities.
+
+Not every application needs this level of fault tolerance and reliability, and they may not want to rely upon an external cluster of Kafka brokers and Kafka Connect services. Instead, some applications would prefer to *embed* Debezium connectors directly within the application space. They still want the same data change events, but prefer to have the connectors send them directly to the application rather than persiste them inside Kafka.
+
+This `debezium-embedded` module defines a small library that allows an application to easily configure and run Debezium connectors.
+
+For information about how to embed `DebeziumEngine` into your application, descriptions of the available configuration options, and other details, see the [Debezium Engine documentation](https://debezium.io/documentation/reference/stable/development/engine.html). 

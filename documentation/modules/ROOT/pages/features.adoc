@@ -1,0 +1,45 @@
+// Category: debezium-using
+// Type: concept
+// ModuleID: description-of-debezium-features
+// Title: Description of Debezium features
+[id="debezium-features"]
+= {prodname} Features
+
+:linkattrs:
+:icons: font
+
+{prodname} is a set of source connectors for Apache Kafka Connect. Each connector
+ingests changes from a different database by using that database's features for change data capture (CDC).
+Unlike other approaches, such as polling or dual writes,
+log-based CDC as implemented by {prodname}:
+
+* Ensures that *all data changes are captured*.
+* Produces change events with a *very low delay* while avoiding increased CPU usage required for frequent polling. For example, for MySQL or PostgreSQL, the delay is in the millisecond range.
+* Requires *no changes to your data model*, such as a "Last Updated" column.
+* Can *capture deletes*.
+* Can *capture old record state and additional metadata* such as transaction ID and causing query, depending on the database's capabilities and configuration.
+
+link:https://debezium.io/blog/2018/07/19/advantages-of-log-based-change-data-capture/[Five Advantages of Log-Based Change Data Capture] is a blog post that provides more details.
+
+{prodname} connectors capture data changes with a range of related capabilities and options:
+
+* *Snapshots:* optionally, an initial snapshot of a database's current state can be taken if a connector is started and not all logs still exist. Typically, this is the case when the database has been running for some time and has discarded transaction logs that are no longer needed for transaction recovery or replication. There are different modes for performing snapshots, including support for _incremental_ snapshots, which can be triggered at connector runtime. For more details, see the documentation for the connector that you are using.
+* *Filters:* you can configure the set of captured schemas, tables and columns with include/exclude list filters.
+* *Masking:* the values from specific columns can be masked, for example, when they contain sensitive data.
+* *Monitoring:* most connectors can be monitored by using JMX.
+ifdef::community[]
+* Ready-to-use *message transformations* for message routing, filtering, event flattening, and more; see xref:transformations/index.adoc[Transformations] for an overview of all the SMTs coming with {prodname}.
+endif::community[]
+ifdef::product[]
+* Ready-to-use *single message transformations (SMTs)* for message routing, filtering, event flattening, and more.
+  For more information about the SMTs that {prodname} provides, see xref:applying-transformations-to-modify-messages-exchanged-with-kafka[Applying transformations to modify messages exchanged with Apache Kafka].
+
+The documentation for each connector provides details about the connectors features and configuration options.
+endif::product[]
+
+ifdef::community[]
+See the xref:{link-connectors}[connector documentation] for a list of all supported databases and detailed information about the features and configuration options of each connector.
+
+{prodname} can also be used as xref:development/engine.adoc[library embedded] into your JVM-based applications;
+via xref:operations/debezium-server.adoc[Debezium Server], you can emit change events to messaging infrastructure like Amazon Kinesis, Google Cloud Pub/Sub, Apache Pulsar, etc.
+endif::community[]

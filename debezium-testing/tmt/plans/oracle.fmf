@@ -1,0 +1,44 @@
+# TMT test plan definition
+# https://tmt.readthedocs.io/en/latest/overview.html
+
+# Baseline common for all test plans
+#######################################################################
+summary: Debezium oracle functional testsuite
+discover:
+  how: fmf
+
+# Required HW
+provision:
+  hardware:
+    memory: ">= 32 GiB"
+    cpu:
+      processors: ">= 16"
+
+# Install required packages and scripts for running debezium suite
+prepare:
+  - name: Start docker-ce
+    how: shell
+    script: |
+      sudo systemctl enable docker --now
+
+  - name: Disable Chronyd service
+    how: shell
+    script: |
+      sudo systemctl disable --now chronyd
+
+# Discover tmt defined tests in tests/ folder
+execute:
+  how: tmt
+
+#######################################################################
+
+/oracle:
+  summary: Run oracle connector functional tests
+  provision:
+    hardware:
+      memory: ">= 32 GiB"
+      cpu:
+        processors: ">= 16"
+  discover+:
+    test:
+      - oracle

@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: connect-cfg
+data:
+  metrics: |
+    lowercaseOutputName: true
+  log4j.properties: |+
+    kafka.logs.dir=logs
+
+    log4j.rootLogger=INFO, stdout, appender
+
+    # Disable excessive reflection warnings - KAFKA-5229
+    log4j.logger.org.reflections=ERROR
+
+    # Debezium logging
+    log4j.logger.io.debezium=${strimzi.kc.log.level.dbz}
+
+    log4j.appender.stdout=org.apache.log4j.ConsoleAppender
+    log4j.appender.stdout.threshold=DEBUG
+    log4j.appender.stdout.layout=org.apache.log4j.PatternLayout
+    log4j.appender.stdout.layout.ConversionPattern=%d{ISO8601} %-5p  %X{dbz.connectorType}|%X{dbz.connectorName}|%X{dbz.connectorContext}  %m   [%c]%n
+
+
+    log4j.appender.appender=org.apache.log4j.DailyRollingFileAppender
+    log4j.appender.appender.DatePattern='.'yyyy-MM-dd-HH
+    log4j.appender.appender.File=${kafka.logs.dir}/connect-service.log
+    log4j.appender.appender.layout=org.apache.log4j.PatternLayout
+    log4j.appender.appender.layout.ConversionPattern=%d{ISO8601} %-5p  %X{dbz.connectorType}|%X{dbz.connectorName}|%X{dbz.connectorContext}  %m   [%c]%n

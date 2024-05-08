@@ -1,0 +1,170 @@
+// Metadata created by nebel
+//
+// ParentAssemblies: assemblies/tutorial/as_using-debezium-monitor-mysql-database.adoc
+// UserStory:
+
+[id="registering-connector-monitor-inventory-database"]
+= Registering a connector to monitor the `inventory` database
+
+By registering the {prodname} MySQL connector,
+the connector will start monitoring the MySQL database server's `binlog`.
+The `binlog` records all of the database's transactions (such as changes to individual rows and changes to the schemas).
+When a row in the database changes,
+{prodname} generates a change event.
+
+[NOTE]
+====
+In a production environment, you would typically either use the Kafka tools to manually create the necessary topics,
+including specifying the number of replicas,
+or you'd use the Kafka Connect mechanism for customizing the settings of xref:{link-topic-auto-creation}[auto-created] topics.
+However, for this tutorial, Kafka is configured to automatically create the topics with just one replica.
+====
+
+.Procedure
+
+. Review the configuration of the {prodname} MySQL connector that you will register.
++
+--
+Before registering the connector,
+you should be familiar with its configuration.
+In the next step,
+you will register the following connector:
+
+[source,json,options="nowrap"]
+----
+{
+  "name": "inventory-connector",  // <1>
+  "config": {  // <2>
+    "connector.class": "io.debezium.connector.mysql.MySqlConnector",
+    "tasks.max": "1",  // <3>
+    "database.hostname": "mysql",  // <4>
+    "database.port": "3306",
+    "database.user": "debezium",
+    "database.password": "dbz",
+    "database.server.id": "184054",  // <5>
+    "topic.prefix": "dbserver1",  // <5>
+    "database.include.list": "inventory",  // <6>
+    "schema.history.internal.kafka.bootstrap.servers": "kafka:9092",  // <7>
+    "schema.history.internal.kafka.topic": "schema-changes.inventory"  // <7>
+  }
+}
+----
+<1> The name of the connector.
+<2> The connector's configuration.
+<3> Only one task should operate at any one time.
+Because the MySQL connector reads the MySQL server's `binlog`,
+using a single connector task ensures proper order and event handling.
+The Kafka Connect service uses connectors to start one or more tasks that do the work,
+and it automatically distributes the running tasks across the cluster of Kafka Connect services.
+If any of the services stop or crash, those tasks will be redistributed to running services.
+<4> The database host,
+which is the name of the Docker container running the MySQL server (`mysql`).
+Docker manipulates the network stack within the containers so that each linked container can be resolved with `/etc/hosts` using the container name for the host name.
+If MySQL were running on a normal network, you would specify the IP address or resolvable host name for this value.
+<5> A unique topic prefix.
+This name will be used as the prefix for all Kafka topics.
+<6> Only changes in the `inventory` database will be detected.
+<7> The connector will store the history of the database schemas in Kafka using this broker (the same broker to which you are sending events) and topic name.
+Upon restart, the connector will recover the schemas of the database that existed at the point in time in the `binlog` when the connector should begin reading.
+
+For more information, see xref:{link-mysql-connector}#mysql-connector-properties[MySQL connector configuration properties].
+--
+
+ifdef::community[]
+[NOTE]
+====
+For security reasons, you shouldn't put passwords or other secrets in plain text into connector configurations.
+Instead, any secrets should be externalized via the mechanism defined in https://cwiki.apache.org/confluence/display/KAFKA/KIP-297%3A+Externalizing+Secrets+for+Connect+Configurations[KIP-297]("Externalizing Secrets for Connect Configurations"). 
+====
+endif::community[]
+
+. Open a new terminal, and use the `curl` command to register the {prodname} MySQL connector.
++
+--
+This command uses the Kafka Connect service's API to submit a `POST` request against the `/connectors` resource with a JSON document that describes the new connector (called `inventory-connector`).
+
+This command uses `localhost` to connect to the Docker host.
+If you are using a non-native Docker platform,
+replace `localhost` with the IP address of of your Docker host.
+
+[source,shell,options="nowrap"]
+----
+$ curl -i -X POST -H "Accept:application/json" -H "Content-Type:application/json" localhost:8083/connectors/ -d '{ "name": "inventory-connector", "config": { "connector.class": "io.debezium.connector.mysql.MySqlConnector", "tasks.max": "1", "database.hostname": "mysql", "database.port": "3306", "database.user": "debezium", "database.password": "dbz", "database.server.id": "184054", "topic.prefix": "dbserver1", "database.include.list": "inventory", "schema.history.internal.kafka.bootstrap.servers": "kafka:9092", "schema.history.internal.kafka.topic": "schemahistory.inventory" } }'
+----
+
+ifdef::windows[]
+[NOTE]
+====
+Windows users may need to escape the double-quotes.
+For example:
+
+[source,shell,options="nowrap"]
+----
+$ curl -i -X POST -H "Accept:application/json" -H "Content-Type:application/json" localhost:8083/connectors/ -d '{ \"name\": \"inventory-connector\", \"config\": { \"connector.class\": \"io.debezium.connector.mysql.MySqlConnector\", \"tasks.max\": \"1\", \"database.hostname\": \"mysql\", \"database.port\": \"3306\", \"database.user\": \"debezium\", \"database.password\": \"dbz\", \"database.server.id\": \"184054\", \"topic.prefix\": \"dbserver1\", \"database.include.list\": \"inventory\", \"schema.history.internal.kafka.bootstrap.servers\": \"kafka:9092\", \"schema.history.internal.kafka.topic\": \"schemahistory.inventory\" } }'
+----
+
+Otherwise, you might see an error like the following:
+
+[source,json,options="nowrap"]
+----
+{"error_code":500,"message":"Unexpected character ('n' (code 110)): was expecting double-quote to start field name\n at [Source: (org.glassfish.jersey.message.internal.ReaderInterceptorExecutor$UnCloseableInputStream); line: 1, column: 4]"}
+----
+====
+endif::[]
+--
+
+ifdef::community[]
+[NOTE]
+====
+If you use Podman, run the following command:
+[source,shell,options="nowrap",subs="+attributes"]
+----
+$ curl -i -X POST -H "Accept:application/json" -H "Content-Type:application/json" localhost:8083/connectors/ -d '{ "name": "inventory-connector", "config": { "connector.class": "io.debezium.connector.mysql.MySqlConnector", "tasks.max": "1", "database.hostname": "0.0.0.0", "database.port": "3306", "database.user": "debezium", "database.password": "dbz", "database.server.id": "184054", "topic.prefix": "dbserver1", "database.include.list": "inventory", "schema.history.internal.kafka.bootstrap.servers": "0.0.0.0:9092", "schema.history.internal.kafka.topic": "schemahistory.inventory" } }'
+----
+====
+endif::community[]
+
+. Verify that `inventory-connector` is included in the list of connectors:
++
+--
+[source,shell,options="nowrap"]
+----
+$ curl -H "Accept:application/json" localhost:8083/connectors/
+["inventory-connector"]
+----
+--
+
+. Review the connector's tasks:
++
+--
+[source,shell,options="nowrap"]
+----
+$ curl -i -X GET -H "Accept:application/json" localhost:8083/connectors/inventory-connector
+----
+
+You should see a response similar to the following (formatted for readability):
+
+[source,json,options="nowrap"]
+----
+HTTP/1.1 200 OK
+Date: Thu, 06 Feb 2020 22:12:03 GMT
+Content-Type: application/json
+Content-Length: 531
+Server: Jetty(9.4.20.v20190813)
+
+{
+  "name": "inventory-connector",
+  ...
+  "tasks": [
+    {
+      "connector": "inventory-connector",  // <1>
+      "task": 0
+    }
+  ]
+}
+----
+<1> The connector is running a single task (task `0`) to do its work.
+The connector only supports a single task,
+because MySQL records all of its activities in one sequential `binlog`.
+This means the connector only needs one reader to get a consistent, ordered view of all of the events.
+--

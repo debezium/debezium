@@ -1,0 +1,64 @@
+[source,yaml,subs="+attributes"]
+----
+    apiVersion: {KafkaConnectApiVersion}
+    kind: KafkaConnector
+    metadata:
+      labels:
+        strimzi.io/cluster: debezium-kafka-connect-cluster
+      name: inventory-connector-{context} // <1>
+    spec:
+      class: io.debezium.connector.{context}.{connector-class}Connector // <2>
+      tasksMax: 1  // <3>
+      config:  // <4>
+        schema.history.internal.kafka.bootstrap.servers: debezium-kafka-cluster-kafka-bootstrap.debezium.svc.cluster.local:9092
+        schema.history.internal.kafka.topic: schema-changes.inventory
+        database.hostname: {context}.debezium-{context}.svc.cluster.local // <5>
+        database.port: {database-port}   // <6>
+        database.user: debezium  // <7>
+        database.password: dbz  // <8>
+        topic.prefix: inventory-connector-{context} // <9>
+        table.include.list: {include-list-example}  // <10>
+
+        ...
+----
+=====================================================================
++
+.Descriptions of connector configuration settings
+[cols="1,7",options="header",subs="+attributes"]
+|===
+|Item |Description
+
+|1
+|The name of the connector to register with the Kafka Connect cluster.
+
+|2
+|The name of the connector class.
+
+|3
+|The number of tasks that can operate concurrently.
+
+|4
+|The connector’s configuration.
+
+|5
+|The address of the host database instance.
+
+|6
+|The port number of the database instance.
+
+|7
+|The name of the account that {prodname} uses to connect to the database.
+
+|8
+|The password that {prodname} uses to connect to the database user account.
+
+|9
+|The topic prefix for the database instance or cluster. +
+The specified name must be formed only from alphanumeric characters or underscores. +
+Because the topic prefix is used as the prefix for any Kafka topics that receive change events from this connector, the name must be unique among the connectors in the cluster. +
+This namespace is also used in the names of related Kafka Connect schemas, and the namespaces of a corresponding Avro schema if you integrate the connector with the {link-prefix}:{link-avro-serialization}#avro-serialization[Avro connector].
+
+|10
+|The list of tables from which the connector captures change events.
+
+|===

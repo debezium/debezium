@@ -1,0 +1,477 @@
+<?xml version="1.0"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.jboss</groupId>
+        <artifactId>jboss-parent</artifactId>
+        <version>36</version>
+    </parent>
+
+    <groupId>io.debezium</groupId>
+    <artifactId>debezium-build-parent</artifactId>
+    <version>2.7.0-SNAPSHOT</version>
+    <name>Debezium Build Aggregator</name>
+    <description>Debezium is an open source change data capture platform</description>
+    <packaging>pom</packaging>
+    <url>https://debezium.io</url>
+
+    <scm>
+        <connection>scm:git:git@github.com:debezium/debezium.git</connection>
+        <developerConnection>scm:git:git@github.com:debezium/debezium.git</developerConnection>
+        <url>https://github.com/debezium/debezium</url>
+        <tag>HEAD</tag>
+    </scm>
+
+    <issueManagement>
+        <system>jira</system>
+        <url>http://issues.jboss.org/browse/DBZ</url>
+    </issueManagement>
+
+    <licenses>
+        <license>
+            <name>Apache Software License 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+    <developers>
+        <developer>
+            <id>rhauch</id>
+            <name>Randall Hauch</name>
+            <organization>Red Hat</organization>
+            <organizationUrl>http://redhat.com</organizationUrl>
+            <timezone>-6</timezone>
+        </developer>
+        <developer>
+            <id>gunnarmorling</id>
+            <name>Gunnar Morling</name>
+            <organization>Red Hat</organization>
+            <organizationUrl>http://redhat.com</organizationUrl>
+            <timezone>+2</timezone>
+        </developer>
+    </developers>
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>11</maven.compiler.target>
+
+        <maven.compiler.release>11</maven.compiler.release>
+        <maven.compiler.testRelease>11</maven.compiler.testRelease>
+
+        <!-- Enforce JDK 11 for building (handled via JBoss parent POM)-->
+        <jdk.min.version>11</jdk.min.version>
+
+        <!-- Maven Plugins -->
+        <version.compiler.plugin>3.8.1</version.compiler.plugin>
+        <version.resources.plugin>3.1.0</version.resources.plugin>
+        <version.dependency.plugin>3.1.1</version.dependency.plugin>
+        <version.enforcer.plugin>3.0.0-M2</version.enforcer.plugin>
+
+        <version.maven>3.8.4</version.maven>
+        <version.jar.plugin>3.0.2</version.jar.plugin>
+        <version.source.plugin>3.1.0</version.source.plugin>
+        <version.assembly.plugin>3.1.1</version.assembly.plugin>
+        <version.war.plugin>2.5</version.war.plugin>
+        <version.google.formatter.plugin>0.4</version.google.formatter.plugin>
+        <version.docker.maven.plugin>0.43.4</version.docker.maven.plugin>
+        <version.staging.plugin>1.6.12</version.staging.plugin>
+        <version.protoc.maven.plugin>3.8.0</version.protoc.maven.plugin>
+        <version.javadoc.plugin>3.4.0</version.javadoc.plugin>
+        <version.code.formatter>2.20.0</version.code.formatter>
+        <version.surefire.plugin>3.1.2</version.surefire.plugin>
+        <version.checkstyle.plugin>3.1.1</version.checkstyle.plugin>
+        <version.release.plugin>2.5.3</version.release.plugin>
+        <version.impsort>1.8.0</version.impsort>
+        <version.failsafe.plugin>${version.surefire.plugin}</version.failsafe.plugin>
+        <version.checkstyle>10.1</version.checkstyle>
+        <version.revapi.plugin>0.11.5</version.revapi.plugin>
+        <version.jandex>1.0.8</version.jandex>
+        <version.revapi-java.plugin>0.21.0</version.revapi-java.plugin>
+        <version.build-helper.plugin>1.9.1</version.build-helper.plugin>
+
+        <!-- Which Maven Central infra should be used -->
+        <release.endpoint>https://s01.oss.sonatype.org/</release.endpoint>
+
+        <!-- Kafka and it's dependencies MUST reflect what the Kafka version uses -->
+        <version.kafka>3.7.0</version.kafka>
+        <version.zookeeper>3.8.3</version.zookeeper>
+        <!-- NOTE: These two versions are maintained separately due to decoupling jackson and databind for downstream -->
+        <version.jackson>2.16.0</version.jackson>
+        <version.jackson.databind>2.16.0</version.jackson.databind>
+        <version.org.slf4j>1.7.36</version.org.slf4j>
+        <version.netty>4.1.107.Final</version.netty>
+
+        <!-- Scala version used to build Kafka -->
+        <version.kafka.scala>2.13</version.kafka.scala>
+
+        <!-- ANTLR -->
+        <!-- Align with Antlr runtime version pulled in via Quarkus -->
+        <version.antlr>4.10.1</version.antlr>
+        <version.antlr4test.plugin>1.18</version.antlr4test.plugin>
+
+        <!-- Quarkus -->
+        <!-- Version used for Outbox extension development, changes frequently to align with latest Quarkus -->
+        <quarkus.version.extension>3.10.0</quarkus.version.extension>
+
+        <!-- Version used in Debezium Server, Operator, etc., usually a LTS version -->
+        <!-- Must be aligned with Apicurio version below -->
+        <!-- Debezium Server Pravega must use the same Netty version as the one used by Quarkus -->
+        <quarkus.version.runtime>3.8.3</quarkus.version.runtime>
+
+        <!-- Apicurio -->
+        <version.apicurio>2.5.8.Final</version.apicurio>
+
+        <!-- Database drivers, should align with databases -->
+        <version.postgresql.driver>42.6.1</version.postgresql.driver>
+        <version.mysql.driver>8.3.0</version.mysql.driver>
+        <version.mysql.binlog>0.29.2</version.mysql.binlog>
+        <version.mongo.driver>4.11.0</version.mongo.driver>
+        <version.sqlserver.driver>12.4.2.jre8</version.sqlserver.driver>
+        <version.db2.driver>11.5.0.0</version.db2.driver>
+        <version.informix.changestream.client>1.1.3</version.informix.changestream.client>
+        <version.informix.driver>4.50.10</version.informix.driver>
+        <version.cassandra.driver>4.14.0</version.cassandra.driver>
+        <version.mariadb.driver>3.2.0</version.mariadb.driver>
+        <!-- These two should be aligned by major versions but minor could vary -->
+        <!-- Oracle publishes the driver versions more frequently than the instant client -->
+        <version.oracle.driver>21.11.0.0</version.oracle.driver>
+        <version.oracle.instantclient>21.11.0.0</version.oracle.instantclient>
+
+        <!-- Databases, should align with database drivers -->
+        <version.mysql.server>8.2</version.mysql.server>
+        <version.mysql.percona.server>8.0</version.mysql.percona.server>
+        <version.mongo.server>6.0</version.mongo.server>
+        <version.cassandra3>3.11.12</version.cassandra3>
+        <version.cassandra4>4.0.2</version.cassandra4>
+
+        <!-- Required in protoc plug-in config, too; can't be in BOM therefore -->
+        <version.com.google.protobuf>3.25.2</version.com.google.protobuf>
+        <!-- The version is separate so different protoc can be used in product -->
+        <version.com.google.protobuf.protoc>3.25.2</version.com.google.protobuf.protoc>
+
+        <!-- Infinispan version for Oracle and Debezium Server sink -->
+        <version.infinispan>14.0.20.Final</version.infinispan>
+        <version.infinispan.protostream>4.6.2.Final</version.infinispan.protostream>
+
+        <!-- RocketMQ version for RocketMQ storage and Server sink -->
+        <version.rocketmq>5.1.4</version.rocketmq>
+
+        <!-- MySQL server image name -->
+        <mysql.server.image.source>container-registry.oracle.com/mysql/community-server</mysql.server.image.source>
+    </properties>
+
+    <modules>
+        <module>debezium-bom</module>
+        <module>debezium-parent</module>
+        <module>support/checkstyle</module>
+        <module>support/ide-configs</module>
+        <module>support/revapi</module>
+        <module>debezium-api</module>
+        <module>debezium-ddl-parser</module>
+        <module>debezium-assembly-descriptors</module>
+        <module>debezium-core</module>
+        <module>debezium-embedded</module>
+        <module>debezium-connector-mysql</module>
+        <module>debezium-connector-postgres</module>
+        <module>debezium-connector-mongodb</module>
+        <module>debezium-connector-sqlserver</module>
+        <module>debezium-connector-oracle</module>
+        <module>debezium-connector-binlog</module>
+        <module>debezium-connector-mariadb</module>
+        <module>debezium-microbenchmark-engine</module>
+        <module>debezium-microbenchmark</module>
+        <module>debezium-microbenchmark-oracle</module>
+        <module>debezium-quarkus-outbox-common</module>
+        <module>debezium-quarkus-outbox</module>
+        <module>debezium-quarkus-outbox-reactive</module>
+        <module>debezium-scripting</module>
+        <module>debezium-testing</module>
+        <module>debezium-connect-rest-extension</module>
+        <module>debezium-schema-generator</module>
+        <module>debezium-storage</module>
+        <module>debezium-interceptor</module>
+    </modules>
+
+    <distributionManagement>
+      <repository>
+        <id>ossrh</id>
+        <name>Sonatype Staging Repository</name>
+        <url>${release.endpoint}/service/local/staging/deploy/maven2</url>
+      </repository>
+      <snapshotRepository>
+        <id>ossrh</id>
+        <name>OSS Sonatype Nexus Snapshots</name>
+        <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+      </snapshotRepository>
+    </distributionManagement>
+
+    <repositories>
+        <repository>
+            <id>confluent</id>
+            <name>Confluent</name>
+            <url>https://packages.confluent.io/maven/</url>
+            <snapshots>
+                <enabled>true</enabled>
+                <updatePolicy>never</updatePolicy>
+            </snapshots>
+        </repository>
+        <repository>
+            <id>ossrh</id>
+            <name>OSS Sonatype Nexus</name>
+            <url>${release.endpoint}/content/groups/public/</url>
+            <releases>
+                <enabled>true</enabled>
+                <updatePolicy>never</updatePolicy>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+                <updatePolicy>never</updatePolicy>
+            </snapshots>
+        </repository>
+    </repositories>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-enforcer-plugin</artifactId>
+                    <version>${version.enforcer.plugin}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>${version.compiler.plugin}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-source-plugin</artifactId>
+                    <version>${version.source.plugin}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-javadoc-plugin</artifactId>
+                    <version>${version.javadoc.plugin}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-release-plugin</artifactId>
+                    <version>${version.release.plugin}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.sonatype.plugins</groupId>
+                    <artifactId>nexus-staging-maven-plugin</artifactId>
+                    <version>${version.staging.plugin}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>${version.surefire.plugin}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-checkstyle-plugin</artifactId>
+                    <version>${version.checkstyle.plugin}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-report-plugin</artifactId>
+                    <version>${version.surefire.plugin}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-resources-plugin</artifactId>
+                    <version>${version.resources.plugin}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-dependency-plugin</artifactId>
+                    <version>${version.dependency.plugin}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-gpg-plugin</artifactId>
+                    <version>${version.gpg.plugin}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>build-helper-maven-plugin</artifactId>
+                    <version>${version.build-helper.plugin}</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-release-plugin</artifactId>
+                <configuration>
+                    <pushChanges>false</pushChanges>
+                    <releaseProfiles>docs,assembly,release-sign-artifacts,release</releaseProfiles>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.sonatype.plugins</groupId>
+                <artifactId>nexus-staging-maven-plugin</artifactId>
+                <extensions>true</extensions>
+                <configuration>
+                    <serverId>ossrh</serverId>
+                    <nexusUrl>${release.endpoint}</nexusUrl>
+                    <autoReleaseAfterClose>false</autoReleaseAfterClose>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <source>${maven.compiler.source}</source>
+                    <target>${maven.compiler.target}</target>
+                    <encoding>${project.build.sourceEncoding}</encoding>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <configuration>
+                    <encoding>${project.build.sourceEncoding}</encoding>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>enforce-maven</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <requireMavenVersion>
+                                    <version>[${version.maven},3.8.5),[3.8.6,)</version>
+                                </requireMavenVersion>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+    <profiles>
+        <profile>
+            <id>qa</id>
+            <activation>
+                <property>
+                    <name>!quick</name>
+                </property>
+            </activation>
+        </profile>
+        <profile>
+            <id>quick</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+                <property>
+                    <name>quick</name>
+                </property>
+            </activation>
+            <properties>
+                <skipTests>true</skipTests>
+            </properties>
+        </profile>
+        <profile>
+            <id>assembly</id>
+            <properties>
+                <skipLongRunningTests>false</skipLongRunningTests>
+            </properties>
+        </profile>
+        <profile>
+            <id>release</id>
+            <properties>
+                <skipLongRunningTests>false</skipLongRunningTests>
+            </properties>
+        </profile>
+        <profile>
+            <id>performance</id>
+            <properties>
+                <skipLongRunningTests>false</skipLongRunningTests>
+            </properties>
+        </profile>
+        <profile>
+            <id>docs</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+                <property>
+                    <name>docs</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-javadoc-plugin</artifactId>
+                        <version>${version.javadoc.plugin}</version>
+                        <configuration>
+                            <show>private</show>
+                            <nohelp>true</nohelp>
+                            <!--
+                                Tests are compiled with newer Java version so this must
+                                be reflected in Javadoc, otherwise the plug-in would fail.
+                            -->
+                            <release>${maven.compiler.testRelease}</release>
+                            <debug>true</debug>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>attach-javadocs</id>
+                                <goals>
+                                    <goal>jar</goal>
+                                </goals>
+                            </execution>
+                            <execution>
+                                <id>attach-test-javadocs</id>
+                                <goals>
+                                    <goal>test-jar</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>release-sign-artifacts</id>
+            <activation>
+                <property>
+                    <name>performRelease</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                                <configuration>
+                                    <gpgArguments>
+                                        <arg>--pinentry-mode</arg>
+                                        <arg>loopback</arg>
+                                    </gpgArguments>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+</project>

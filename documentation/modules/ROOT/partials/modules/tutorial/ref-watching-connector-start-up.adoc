@@ -1,0 +1,168 @@
+
+[id="watching-connector-start-up"]
+= Watching the connector start
+
+When you register a connector,
+it generates a large amount of log output in the Kafka Connect container.
+By reviewing this output,
+you can better understand the process that the connector goes through from the time it is created until it begins reading the MySQL server's `binlog`.
+
+After registering the `inventory-connector` connector,
+you can review the log output in the Kafka Connect container (`connect`) to track the connector's status.
+
+The first few lines show the connector (`inventory-connector`) being created and started:
+
+[source,shell,options="nowrap"]
+----
+...
+2021-11-30 01:38:44,223 INFO   ||  [Worker clientId=connect-1, groupId=1] Tasks [inventory-connector-0] configs updated   [org.apache.kafka.connect.runtime.distributed.DistributedHerder]
+2021-11-30 01:38:44,224 INFO   ||  [Worker clientId=connect-1, groupId=1] Handling task config update by restarting tasks []   [org.apache.kafka.connect.runtime.distributed.DistributedHerder]
+2021-11-30 01:38:44,224 INFO   ||  [Worker clientId=connect-1, groupId=1] Rebalance started   [org.apache.kafka.connect.runtime.distributed.WorkerCoordinator]
+2021-11-30 01:38:44,224 INFO   ||  [Worker clientId=connect-1, groupId=1] (Re-)joining group   [org.apache.kafka.connect.runtime.distributed.WorkerCoordinator]
+2021-11-30 01:38:44,227 INFO   ||  [Worker clientId=connect-1, groupId=1] Successfully joined group with generation Generation{generationId=3, memberId='connect-1-7b087c69-8ac5-4c56-9e6b-ec5adabf27e8', protocol='sessioned'}   [org.apache.kafka.connect.runtime.distributed.WorkerCoordinator]
+2021-11-30 01:38:44,230 INFO   ||  [Worker clientId=connect-1, groupId=1] Successfully synced group in generation Generation{generationId=3, memberId='connect-1-7b087c69-8ac5-4c56-9e6b-ec5adabf27e8', protocol='sessioned'}   [org.apache.kafka.connect.runtime.distributed.WorkerCoordinator]
+2021-11-30 01:38:44,231 INFO   ||  [Worker clientId=connect-1, groupId=1] Joined group at generation 3 with protocol version 2 and got assignment: Assignment{error=0, leader='connect-1-7b087c69-8ac5-4c56-9e6b-ec5adabf27e8', leaderUrl='http://172.17.0.7:8083/', offset=4, connectorIds=[inventory-connector], taskIds=[inventory-connector-0], revokedConnectorIds=[], revokedTaskIds=[], delay=0} with rebalance delay: 0   [org.apache.kafka.connect.runtime.distributed.DistributedHerder]
+2021-11-30 01:38:44,232 INFO   ||  [Worker clientId=connect-1, groupId=1] Starting connectors and tasks using config offset 4   [org.apache.kafka.connect.runtime.distributed.DistributedHerder]
+2021-11-30 01:38:44,232 INFO   ||  [Worker clientId=connect-1, groupId=1] Starting task inventory-connector-0   [org.apache.kafka.connect.runtime.distributed.DistributedHerder]
+...
+----
+
+Further down, you should see output like the following from the connector:
+
+[source,shell,options="nowrap"]
+----
+...
+2021-11-30 01:38:44,406 INFO   ||  Kafka version: 3.0.0   [org.apache.kafka.common.utils.AppInfoParser]
+2021-11-30 01:38:44,406 INFO   ||  Kafka commitId: 8cb0a5e9d3441962   [org.apache.kafka.common.utils.AppInfoParser]
+2021-11-30 01:38:44,407 INFO   ||  Kafka startTimeMs: 1638236324406   [org.apache.kafka.common.utils.AppInfoParser]
+2021-11-30 01:38:44,437 INFO   ||  Database schema history topic '(name=schemahistory.inventory, numPartitions=1, replicationFactor=1, replicasAssignments=null, configs={cleanup.policy=delete, retention.ms=9223372036854775807, retention.bytes=-1})' created   [io.debezium.storage.kafka.history.KafkaSchemaHistory]
+2021-11-30 01:38:44,497 INFO   ||  App info kafka.admin.client for dbserver1-schemahistory unregistered   [org.apache.kafka.common.utils.AppInfoParser]
+2021-11-30 01:38:44,499 INFO   ||  Metrics scheduler closed   [org.apache.kafka.common.metrics.Metrics]
+2021-11-30 01:38:44,499 INFO   ||  Closing reporter org.apache.kafka.common.metrics.JmxReporter   [org.apache.kafka.common.metrics.Metrics]
+2021-11-30 01:38:44,499 INFO   ||  Metrics reporters closed   [org.apache.kafka.common.metrics.Metrics]
+2021-11-30 01:38:44,499 INFO   ||  Reconnecting after finishing schema recovery   [io.debezium.connector.mysql.MySqlConnectorTask]
+2021-11-30 01:38:44,524 INFO   ||  Requested thread factory for connector MySqlConnector, id = dbserver1 named = change-event-source-coordinator   [io.debezium.util.Threads]
+2021-11-30 01:38:44,525 INFO   ||  Creating thread debezium-mysqlconnector-dbserver1-change-event-source-coordinator   [io.debezium.util.Threads]
+2021-11-30 01:38:44,526 INFO   ||  WorkerSourceTask{id=inventory-connector-0} Source task finished initialization and start   [org.apache.kafka.connect.runtime.WorkerSourceTask]
+2021-11-30 01:38:44,529 INFO   MySQL|dbserver1|snapshot  Metrics registered   [io.debezium.pipeline.ChangeEventSourceCoordinator]
+2021-11-30 01:38:44,529 INFO   MySQL|dbserver1|snapshot  Context created   [io.debezium.pipeline.ChangeEventSourceCoordinator]
+2021-11-30 01:38:44,534 INFO   MySQL|dbserver1|snapshot  No previous offset has been found   [io.debezium.connector.mysql.MySqlSnapshotChangeEventSource]
+2021-11-30 01:38:44,534 INFO   MySQL|dbserver1|snapshot  According to the connector configuration both schema and data will be snapshotted   [io.debezium.connector.mysql.MySqlSnapshotChangeEventSource]
+2021-11-30 01:38:44,534 INFO   MySQL|dbserver1|snapshot  Snapshot step 1 - Preparing   [io.debezium.relational.RelationalSnapshotChangeEventSource]
+...
+----
+
+The {prodname} log output uses _mapped diagnostic contexts_ (MDC) to provide thread-specific information in the log output,
+and make it easier to understand what is happening in the multi-threaded Kafka Connect service.
+This includes the connector type (`MySQL` in the above log messages),
+the logical name of the connector (`dbserver1` above),
+and the connector's activity (`task`, `snapshot` and `binlog`).
+
+In the log output above,
+the first few lines involve the `task` activity of the connector,
+and report some bookkeeping information (in this case, that the connector was started with no prior offset).
+The next three lines involve the `snapshot` activity of the connector,
+and report that a snapshot is being started using the `debezium` MySQL user along with the MySQL grants associated with that user.
+
+[TIP]
+====
+If the connector is not able to connect,
+or if it does not see any tables or the `binlog`,
+check these grants to ensure that all of those listed above are included.
+====
+
+Next, the connector reports the steps that make up the snapshot operation:
+
+[source,shell,options="nowrap"]
+----
+...
+2021-11-30 01:38:44,534 INFO   MySQL|dbserver1|snapshot  Snapshot step 1 - Preparing   [io.debezium.relational.RelationalSnapshotChangeEventSource]
+2021-11-30 01:38:44,535 INFO   MySQL|dbserver1|snapshot  Snapshot step 2 - Determining captured tables   [io.debezium.relational.RelationalSnapshotChangeEventSource]
+2021-11-30 01:38:44,535 INFO   MySQL|dbserver1|snapshot  Read list of available databases   [io.debezium.connector.mysql.MySqlSnapshotChangeEventSource]
+2021-11-30 01:38:44,537 INFO   MySQL|dbserver1|snapshot  	 list of available databases is: [information_schema, inventory, mysql, performance_schema, sys]   [io.debezium.connector.mysql.MySqlSnapshotChangeEventSource]
+2021-11-30 01:38:44,537 INFO   MySQL|dbserver1|snapshot  Read list of available tables in each database   [io.debezium.connector.mysql.MySqlSnapshotChangeEventSource]
+2021-11-30 01:38:44,548 INFO   MySQL|dbserver1|snapshot  	snapshot continuing with database(s): [inventory]   [io.debezium.connector.mysql.MySqlSnapshotChangeEventSource]
+2021-11-30 01:38:44,551 INFO   MySQL|dbserver1|snapshot  Snapshot step 3 - Locking captured tables [inventory.addresses, inventory.customers, inventory.geom, inventory.orders, inventory.products, inventory.products_on_hand]   [io.debezium.relational.RelationalSnapshotChangeEventSource]
+2021-11-30 01:38:44,552 INFO   MySQL|dbserver1|snapshot  Flush and obtain global read lock to prevent writes to database   [io.debezium.connector.mysql.MySqlSnapshotChangeEventSource]
+2021-11-30 01:38:44,557 INFO   MySQL|dbserver1|snapshot  Snapshot step 4 - Determining snapshot offset   [io.debezium.relational.RelationalSnapshotChangeEventSource]
+2021-11-30 01:38:44,560 INFO   MySQL|dbserver1|snapshot  Read binlog position of MySQL primary server   [io.debezium.connector.mysql.MySqlSnapshotChangeEventSource]
+2021-11-30 01:38:44,562 INFO   MySQL|dbserver1|snapshot  	 using binlog 'mysql-bin.000003' at position '156' and gtid ''   [io.debezium.connector.mysql.MySqlSnapshotChangeEventSource]
+2021-11-30 01:38:44,562 INFO   MySQL|dbserver1|snapshot  Snapshot step 5 - Reading structure of captured tables   [io.debezium.relational.RelationalSnapshotChangeEventSource]
+2021-11-30 01:38:44,562 INFO   MySQL|dbserver1|snapshot  All eligible tables schema should be captured, capturing: [inventory.addresses, inventory.customers, inventory.geom, inventory.orders, inventory.products, inventory.products_on_hand]   [io.debezium.connector.mysql.MySqlSnapshotChangeEventSource]
+2021-11-30 01:38:45,058 INFO   MySQL|dbserver1|snapshot  Reading structure of database 'inventory'   [io.debezium.connector.mysql.MySqlSnapshotChangeEventSource]
+2021-11-30 01:38:45,187 INFO   MySQL|dbserver1|snapshot  Snapshot step 6 - Persisting schema history   [io.debezium.relational.RelationalSnapshotChangeEventSource]
+2021-11-30 01:38:45,273 INFO   MySQL|dbserver1|snapshot  Releasing global read lock to enable MySQL writes   [io.debezium.connector.mysql.MySqlSnapshotChangeEventSource]
+2021-11-30 01:38:45,274 INFO   MySQL|dbserver1|snapshot  Writes to MySQL tables prevented for a total of 00:00:00.717   [io.debezium.connector.mysql.MySqlSnapshotChangeEventSource]
+2021-11-30 01:38:45,274 INFO   MySQL|dbserver1|snapshot  Snapshot step 7 - Snapshotting data   [io.debezium.relational.RelationalSnapshotChangeEventSource]
+2021-11-30 01:38:45,275 INFO   MySQL|dbserver1|snapshot  Snapshotting contents of 6 tables while still in transaction   [io.debezium.relational.RelationalSnapshotChangeEventSource]
+2021-11-30 01:38:45,275 INFO   MySQL|dbserver1|snapshot  Exporting data from table 'inventory.addresses' (1 of 6 tables)   [io.debezium.relational.RelationalSnapshotChangeEventSource]
+2021-11-30 01:38:45,276 INFO   MySQL|dbserver1|snapshot  	 For table 'inventory.addresses' using select statement: 'SELECT `id`, `customer_id`, `street`, `city`, `state`, `zip`, `type` FROM `inventory`.`addresses`'   [io.debezium.relational.RelationalSnapshotChangeEventSource]
+2021-11-30 01:38:45,295 INFO   MySQL|dbserver1|snapshot  	 Finished exporting 7 records for table 'inventory.addresses'; total duration '00:00:00.02'   [io.debezium.relational.RelationalSnapshotChangeEventSource]
+2021-11-30 01:38:45,296 INFO   MySQL|dbserver1|snapshot  Exporting data from table 'inventory.customers' (2 of 6 tables)   [io.debezium.relational.RelationalSnapshotChangeEventSource]
+2021-11-30 01:38:45,296 INFO   MySQL|dbserver1|snapshot  	 For table 'inventory.customers' using select statement: 'SELECT `id`, `first_name`, `last_name`, `email` FROM `inventory`.`customers`'   [io.debezium.relational.RelationalSnapshotChangeEventSource]
+2021-11-30 01:38:45,304 INFO   MySQL|dbserver1|snapshot  	 Finished exporting 4 records for table 'inventory.customers'; total duration '00:00:00.008'   [io.debezium.relational.RelationalSnapshotChangeEventSource]
+2021-11-30 01:38:45,304 INFO   MySQL|dbserver1|snapshot  Exporting data from table 'inventory.geom' (3 of 6 tables)   [io.debezium.relational.RelationalSnapshotChangeEventSource]
+2021-11-30 01:38:45,305 INFO   MySQL|dbserver1|snapshot  	 For table 'inventory.geom' using select statement: 'SELECT `id`, `g`, `h` FROM `inventory`.`geom`'   [io.debezium.relational.RelationalSnapshotChangeEventSource]
+2021-11-30 01:38:45,316 INFO   MySQL|dbserver1|snapshot  	 Finished exporting 3 records for table 'inventory.geom'; total duration '00:00:00.011'   [io.debezium.relational.RelationalSnapshotChangeEventSource]
+2021-11-30 01:38:45,316 INFO   MySQL|dbserver1|snapshot  Exporting data from table 'inventory.orders' (4 of 6 tables)   [io.debezium.relational.RelationalSnapshotChangeEventSource]
+2021-11-30 01:38:45,316 INFO   MySQL|dbserver1|snapshot  	 For table 'inventory.orders' using select statement: 'SELECT `order_number`, `order_date`, `purchaser`, `quantity`, `product_id` FROM `inventory`.`orders`'   [io.debezium.relational.RelationalSnapshotChangeEventSource]
+2021-11-30 01:38:45,325 INFO   MySQL|dbserver1|snapshot  	 Finished exporting 4 records for table 'inventory.orders'; total duration '00:00:00.008'   [io.debezium.relational.RelationalSnapshotChangeEventSource]
+2021-11-30 01:38:45,325 INFO   MySQL|dbserver1|snapshot  Exporting data from table 'inventory.products' (5 of 6 tables)   [io.debezium.relational.RelationalSnapshotChangeEventSource]
+2021-11-30 01:38:45,325 INFO   MySQL|dbserver1|snapshot  	 For table 'inventory.products' using select statement: 'SELECT `id`, `name`, `description`, `weight` FROM `inventory`.`products`'   [io.debezium.relational.RelationalSnapshotChangeEventSource]
+2021-11-30 01:38:45,343 INFO   MySQL|dbserver1|snapshot  	 Finished exporting 9 records for table 'inventory.products'; total duration '00:00:00.017'   [io.debezium.relational.RelationalSnapshotChangeEventSource]
+2021-11-30 01:38:45,344 INFO   MySQL|dbserver1|snapshot  Exporting data from table 'inventory.products_on_hand' (6 of 6 tables)   [io.debezium.relational.RelationalSnapshotChangeEventSource]
+2021-11-30 01:38:45,344 INFO   MySQL|dbserver1|snapshot  	 For table 'inventory.products_on_hand' using select statement: 'SELECT `product_id`, `quantity` FROM `inventory`.`products_on_hand`'   [io.debezium.relational.RelationalSnapshotChangeEventSource]
+2021-11-30 01:38:45,353 INFO   MySQL|dbserver1|snapshot  	 Finished exporting 9 records for table 'inventory.products_on_hand'; total duration '00:00:00.009'   [io.debezium.relational.RelationalSnapshotChangeEventSource]
+2021-11-30 01:38:45,355 INFO   MySQL|dbserver1|snapshot  Snapshot - Final stage   [io.debezium.pipeline.source.AbstractSnapshotChangeEventSource]
+2021-11-30 01:38:45,356 INFO   MySQL|dbserver1|snapshot  Snapshot ended with SnapshotResult [status=COMPLETED, offset=MySqlOffsetContext [sourceInfoSchema=Schema{io.debezium.connector.mysql.Source:STRUCT}, sourceInfo=SourceInfo [currentGtid=null, currentBinlogFilename=mysql-bin.000003, currentBinlogPosition=156, currentRowNumber=0, serverId=0, sourceTime=2021-11-30T01:38:45.352Z, threadId=-1, currentQuery=null, tableIds=[inventory.products_on_hand], databaseName=inventory], snapshotCompleted=true, transactionContext=TransactionContext [currentTransactionId=null, perTableEventCount={}, totalEventCount=0], restartGtidSet=null, currentGtidSet=null, restartBinlogFilename=mysql-bin.000003, restartBinlogPosition=156, restartRowsToSkip=0, restartEventsToSkip=0, currentEventLengthInBytes=0, inTransaction=false, transactionId=null, incrementalSnapshotContext =IncrementalSnapshotContext [windowOpened=false, chunkEndPosition=null, dataCollectionsToSnapshot=[], lastEventKeySent=null, maximumKey=null]]]   [io.debezium.pipeline.ChangeEventSourceCoordinator]
+...
+----
+
+Each of these steps reports what the connector is doing to perform the consistent snapshot.
+For example, Step 6 involves reverse engineering the DDL `create` statements for the tables that are being captured
+and the global write lock just 1 second after acquiring it,
+and Step 7 reads all of the rows in each of the tables and reports the time taken and number of rows found.
+In this case, the connector completed its consistent snapshot in just under 1 second.
+
+[NOTE]
+====
+The snapshot process will take longer with your databases,
+but the connector outputs enough log messages that you can track what it is working on,
+even when the tables have a large number of rows.
+And although an exclusive write lock is used at the beginning of the snapshot process,
+it should not last very long even for large databases.
+This is because the lock is released before any data is copied.
+For more information, see the xref:{link-mysql-connector}#debezium-connector-for-mysql[MySQL connector documentation].
+====
+
+Next, Kafka Connect reports some "errors".
+However, you can safely ignore these warnings:
+these messages just mean that _new_ Kafka topics were created and that Kafka had to assign a new leader for each one:
+
+[source,shell,options="nowrap"]
+----
+...
+2021-11-30 01:38:45,555 WARN   ||  [Producer clientId=connector-producer-inventory-connector-0] Error while fetching metadata with correlation id 3 : {dbserver1=LEADER_NOT_AVAILABLE}   [org.apache.kafka.clients.NetworkClient]
+2021-11-30 01:38:45,691 WARN   ||  [Producer clientId=connector-producer-inventory-connector-0] Error while fetching metadata with correlation id 9 : {dbserver1.inventory.addresses=LEADER_NOT_AVAILABLE}   [org.apache.kafka.clients.NetworkClient]
+2021-11-30 01:38:45,813 WARN   ||  [Producer clientId=connector-producer-inventory-connector-0] Error while fetching metadata with correlation id 13 : {dbserver1.inventory.customers=LEADER_NOT_AVAILABLE}   [org.apache.kafka.clients.NetworkClient]
+2021-11-30 01:38:45,927 WARN   ||  [Producer clientId=connector-producer-inventory-connector-0] Error while fetching metadata with correlation id 18 : {dbserver1.inventory.geom=LEADER_NOT_AVAILABLE}   [org.apache.kafka.clients.NetworkClient]
+2021-11-30 01:38:46,043 WARN   ||  [Producer clientId=connector-producer-inventory-connector-0] Error while fetching metadata with correlation id 22 : {dbserver1.inventory.orders=LEADER_NOT_AVAILABLE}   [org.apache.kafka.clients.NetworkClient]
+2021-11-30 01:38:46,153 WARN   ||  [Producer clientId=connector-producer-inventory-connector-0] Error while fetching metadata with correlation id 26 : {dbserver1.inventory.products=LEADER_NOT_AVAILABLE}   [org.apache.kafka.clients.NetworkClient]
+2021-11-30 01:38:46,269 WARN   ||  [Producer clientId=connector-producer-inventory-connector-0] Error while fetching metadata with correlation id 31 : {dbserver1.inventory.products_on_hand=LEADER_NOT_AVAILABLE}   [org.apache.kafka.clients.NetworkClient]
+...
+----
+
+Finally, the log output shows that the connector has transitioned from its snapshot mode into continuously reading the MySQL server's `binlog`:
+
+[source,shell,options="nowrap"]
+----
+...
+2021-11-30 01:38:45,362 INFO   MySQL|dbserver1|streaming  Starting streaming   [io.debezium.pipeline.ChangeEventSourceCoordinator]
+...
+Nov 30, 2021 1:38:45 AM com.github.shyiko.mysql.binlog.BinaryLogClient connect
+INFO: Connected to mysql:3306 at mysql-bin.000003/156 (sid:184054, cid:13)
+2021-11-30 01:38:45,392 INFO   MySQL|dbserver1|binlog  Connected to MySQL binlog at mysql:3306, starting at MySqlOffsetContext [sourceInfoSchema=Schema{io.debezium.connector.mysql.Source:STRUCT}, sourceInfo=SourceInfo [currentGtid=null, currentBinlogFilename=mysql-bin.000003, currentBinlogPosition=156, currentRowNumber=0, serverId=0, sourceTime=2021-11-30T01:38:45.352Z, threadId=-1, currentQuery=null, tableIds=[inventory.products_on_hand], databaseName=inventory], snapshotCompleted=true, transactionContext=TransactionContext [currentTransactionId=null, perTableEventCount={}, totalEventCount=0], restartGtidSet=null, currentGtidSet=null, restartBinlogFilename=mysql-bin.000003, restartBinlogPosition=156, restartRowsToSkip=0, restartEventsToSkip=0, currentEventLengthInBytes=0, inTransaction=false, transactionId=null, incrementalSnapshotContext =IncrementalSnapshotContext [windowOpened=false, chunkEndPosition=null, dataCollectionsToSnapshot=[], lastEventKeySent=null, maximumKey=null]]   [io.debezium.connector.mysql.MySqlStreamingChangeEventSource]
+2021-11-30 01:38:45,392 INFO   MySQL|dbserver1|streaming  Waiting for keepalive thread to start   [io.debezium.connector.mysql.MySqlStreamingChangeEventSource]
+2021-11-30 01:38:45,393 INFO   MySQL|dbserver1|binlog  Creating thread debezium-mysqlconnector-dbserver1-binlog-client   [io.debezium.util.Threads]
+...
+----

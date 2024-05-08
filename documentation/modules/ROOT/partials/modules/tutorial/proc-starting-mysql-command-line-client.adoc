@@ -1,0 +1,109 @@
+// Metadata created by nebel
+//
+// ParentAssemblies: assemblies/tutorial/as_starting-services.adoc
+// UserStory:
+
+[id="starting-mysql-command-line-client"]
+= Starting a MySQL command line client
+
+After starting MySQL, you start a MySQL command line client so that you access the sample `inventory` database.
+
+.Procedure
+
+. Open a new terminal, and use it to start the MySQL command line client in a container.
++
+--
+This command runs a new container using the https://hub.docker.com/r/_/mysql/[mysql:8.2] image,
+and defines a shell command to run the MySQL command line client with the correct options:
+
+[source,shell,options="nowrap"]
+----
+$ docker run -it --rm --name mysqlterm --link mysql mysql:8.2 sh -c 'exec mysql -h"$MYSQL_PORT_3306_TCP_ADDR" -P"$MYSQL_PORT_3306_TCP_PORT" -uroot -p"$MYSQL_ENV_MYSQL_ROOT_PASSWORD"'
+----
+
+`-it`:: The container is interactive,
+which means the terminal's standard input and output are attached to the container.
+`--rm`:: The container will be removed when it is stopped.
+`--name mysqlterm`:: The name of the container.
+`--link mysql`:: Links the container to the `mysql` container.
+--
+
+ifdef::community[]
+[NOTE]
+====
+If you use Podman, run the following command:
+[source,shell,options="nowrap",subs="+attributes"]
+----
+$ podman run -it --rm --name mysqlterm --pod dbz mysql:8.2 sh -c 'exec mysql -h 0.0.0.0 -uroot -pdebezium'
+----
+====
+endif::community[]
+
+. Verify that the MySQL command line client started.
++
+--
+You should see output similar to the following:
+
+[source,mysql,options="nowrap"]
+----
+mysql: [Warning] Using a password on the command line interface can be insecure.
+Welcome to the MySQL monitor.  Commands end with ; or \g.
+Your MySQL connection id is 9
+Server version: 8.0.27 MySQL Community Server - GPL
+
+Copyright (c) 2000, 2021, Oracle and/or its affiliates.
+
+Oracle is a registered trademark of Oracle Corporation and/or its
+affiliates. Other names may be trademarks of their respective
+owners.
+
+Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
+
+mysql>
+----
+--
+
+. At the `mysql>` command prompt, switch to the inventory database:
++
+[source,sql,options="nowrap"]
+----
+mysql> use inventory;
+----
+
+. List the tables in the database:
++
+[source,sql,options="nowrap"]
+----
+mysql> show tables;
++---------------------+
+| Tables_in_inventory |
++---------------------+
+| addresses           |
+| customers           |
+| geom                |
+| orders              |
+| products            |
+| products_on_hand    |
++---------------------+
+6 rows in set (0.00 sec)
+----
+
+. Use the MySQL command line client to explore the database and view the pre-loaded data in the database.
++
+--
+For example:
+
+[source,sql,options="nowrap"]
+----
+mysql> SELECT * FROM customers;
++------+------------+-----------+-----------------------+
+| id   | first_name | last_name | email                 |
++------+------------+-----------+-----------------------+
+| 1001 | Sally      | Thomas    | sally.thomas@acme.com |
+| 1002 | George     | Bailey    | gbailey@foobar.com    |
+| 1003 | Edward     | Walker    | ed@walker.com         |
+| 1004 | Anne       | Kretchmar | annek@noanswer.org    |
++------+------------+-----------+-----------------------+
+4 rows in set (0.00 sec)
+----
+--

@@ -1,0 +1,58 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: sqlserver
+  labels:
+    app: sqlserver
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sqlserver
+      deployment: sqlserver
+  template:
+    metadata:
+      labels:
+        app: sqlserver
+        deployment: sqlserver
+    spec:
+      hostname: sqlserver
+      serviceAccountName: default
+      securityContext:
+        runAsUser: 10001
+      containers:
+        - name: sqlserver
+          image: ${ocp.image.sqlserver}
+          ports:
+            - containerPort: 1433
+              protocol: TCP
+          env:
+            - name: ACCEPT_EULA
+              value: 'Y'
+            - name: MSSQL_AGENT_ENABLED
+              value: 'true'
+            - name: MSSQL_PID
+              value: Standard
+            - name: SA_PASSWORD
+              value: ${database.sqlserver.password}
+          resources: {}
+          imagePullPolicy: Always
+          livenessProbe:
+            initialDelaySeconds: 30
+            tcpSocket:
+              port: 1433
+            timeoutSeconds: 1
+          readinessProbe:
+            initialDelaySeconds: 30
+            tcpSocket:
+              port: 1433
+            timeoutSeconds: 1
+          initialDelaySeconds: 5
+          timeoutSeconds: 1
+          terminationMessagePolicy: File
+          terminationMessagePath: /dev/termination-log
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      dnsPolicy: ClusterFirst
+  strategy:
+    type: Recreate

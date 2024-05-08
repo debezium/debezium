@@ -1,0 +1,54 @@
+name: Commit message format check
+on:
+  # ATTENTION: See https://securitylab.github.com/research/github-actions-preventing-pwn-requests/
+  # re security implications of using this trigger; in particular, no code from PR branches must
+  # be executed in any flows triggered by it
+  pull_request_target:
+    branches:
+      - main
+      - 1.*
+      - 2.*
+
+jobs:
+  build:
+    name: Commit message
+    runs-on: ubuntu-latest
+    steps:
+      - name: Commit messages in format DBZ-xxx
+        id: check
+        env:
+          pull_request_number: ${{ github.event.pull_request.number }}
+          github_repository: ${{ github.repository }}
+        run: |
+          COMMIT_MSGS=$(curl --silent -X "GET" https://api.github.com/repos/$github_repository/pulls/$pull_request_number/commits | jq '.[] | {message: .commit.message}' | jq '.message' | cut -c 2-)
+          NON_PREFIX_COMMITS=""
+          while IFS= read -r line ;
+          do
+            line=${line%\"}
+            echo "-> checking: $line"
+            if [[ ! $line =~ (^DBZ-[[:digit:]]+)|(\[release\])|(\[jenkins-jobs\])|(\[docs\])|(\[maven-release-plugin\])|(\[ci\]) ]]; then
+              NON_PREFIX_COMMITS="${NON_PREFIX_COMMITS} -> ${line} \n"
+            fi
+          done <<< "$COMMIT_MSGS"
+
+          if [[ $NON_PREFIX_COMMITS != "" ]]; then
+            echo "========================================================================"
+            echo "              COMMIT MESSAGES WITH MISSING \"DBZ\" PREFIX"
+            echo "========================================================================"
+            echo -e "$NON_PREFIX_COMMITS"
+            echo "PREFIX_COMMITS=false" >> $GITHUB_OUTPUT
+          fi
+      - name: Create Comment
+        if: ${{ steps.check.outputs.PREFIX_COMMITS == 'false' }}
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            Hi @${{ github.event.pull_request.user.login }}, thanks for your contribution. Please prefix the commit message(s) with the [DBZ-xxx JIRA issue key](https://github.com/debezium/debezium/blob/main/CONTRIBUTE.md#making-changes).
+      - name: Check failure
+        if: ${{ steps.check.outputs.PREFIX_COMMITS == 'false' }}
+        uses: actions/github-script@v7
+        continue-on-error: false
+        with:
+          script: |
+            throw new Error('Commit has no DBZ-xxx prefix')

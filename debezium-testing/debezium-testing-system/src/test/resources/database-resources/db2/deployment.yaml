@@ -1,0 +1,66 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: db2
+  labels:
+    app: db2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: db2
+      deployment: db2
+  template:
+    metadata:
+      labels:
+        app: db2
+        deployment: db2
+    spec:
+      volumes:
+      - name: db2
+        emptyDir: {}
+      containers:
+      - name: db2
+        image: ${ocp.image.db2}
+        command:
+          - '/var/db2_setup/lib/openshift_entrypoint.sh'
+        ports:
+        - containerPort: 50000
+          protocol: TCP
+        - containerPort: 55000
+          protocol: TCP
+        env:
+        - name: LICENSE
+          value: accept
+        - name: DBNAME
+          value: TESTDB
+        - name: DB2INST1_PASSWORD
+          value: =Password!
+        volumeMounts:
+        - name: db2
+          mountPath: /database
+        securityContext:
+          privileged: true
+        resources: {}
+        imagePullPolicy: Always
+        livenessProbe:
+          initialDelaySeconds: 30
+          timeoutSeconds: 60
+          periodSeconds: 5
+          tcpSocket:
+            port: 50000
+        readinessProbe:
+          initialDelaySeconds: 30
+          timeoutSeconds: 60
+          periodSeconds: 5
+          exec:
+            command:
+            - stat
+            - /asncdctools/src/asncdc.nlk
+        terminationMessagePolicy: File
+        terminationMessagePath: /dev/termination-log
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      dnsPolicy: ClusterFirst
+  strategy:
+    type: Recreate

@@ -1,0 +1,116 @@
+[id="debezium-event-deserialization"]
+= {prodname} Event Deserialization
+
+:toc:
+:toc-placement: macro
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+
+toc::[]
+
+[NOTE]
+====
+This feature is currently in incubating state, i.e. exact semantics, configuration options etc. may change in future revisions, based on the feedback we receive. Please let us know if you encounter any problems while using these SerDes.
+====
+
+{prodname} generates data change events in the form of a complex message structure.
+This message is later on serialized by the configured Kafka Connect converter and it is the responsibility of the consumer to deserialize it into a logical message.
+For this purpose, Kafka uses the so-called {link-kafka-docs}/streams/developer-guide/datatypes.html[SerDes].
+
+{prodname} provides SerDes (`io.debezium.serde.DebeziumSerdes`) to simplify the deserialization for the consumer either being it Kafka Streams pipeline or plain Kafka consumer.
+
+== JSON SerDe
+
+The JSON SerDe deserializes JSON encoded change events and transforms it into a Java class.
+Internally this is achieved using https://github.com/FasterXML/jackson-databind/wiki[Jackson Databind].
+
+The consumer creates a serde instance using
+
+[source,java,indent=0]
+----
+final Serde<MyType> serde = DebeziumSerdes.payloadJson(MyType.class);
+----
+
+The consumer will then receive the logical Java type `MyType` whose fields are initiated from the JSON message.
+This applies to both for keys and values.
+It is also possible to use plain Java types like `Integer`, for example when the key consists of a single `INT` field.
+
+When the JSON converter is used by Kafka Connect then it generally provides two modes of operations - with or without schema.
+If the schema is used then the message looks like so:
+
+[source,json,indent=0]
+----
+{
+    "schema": {...},
+    "payload": {
+    	"op": "u",
+    	"source": {
+    		...
+    	},
+    	"ts_ms" : "...",
+    	"ts_us" : "...",
+    	"ts_ns" : "...",
+    	"before" : {
+    		"field1" : "oldvalue1",
+    		"field2" : "oldvalue2"
+    	},
+    	"after" : {
+    		"field1" : "newvalue1",
+    		"field2" : "newvalue2"
+    	}
+	}
+}
+----
+
+Whereas without schema, the structure look more like this:
+
+[source,json,indent=0]
+----
+{
+	"op": "u",
+	"source": {
+		...
+	},
+	"ts_ms" : "...",
+	"ts_us" : "...",
+	"ts_ns" : "...",
+	"before" : {
+		"field1" : "oldvalue1",
+		"field2" : "oldvalue2"
+	},
+	"after" : {
+		"field1" : "newvalue1",
+		"field2" : "newvalue2"
+	}
+}
+----
+
+The deserializer behaviour is driven by the `from.field` configuration option and follows these rules:
+
+* if a message contains a schema, then use `payload` only
+* if the key is deserialized, then map key field(s) into the target class
+* if the value is deserialized and contains the {prodname} event envelope then:
+** if `from.field` is not set, then deserialize the complete envelope into the target type
+** otherwise deserialize and map only content of the field configured into the target type, thus effectively flatting the message
+* if the value is deserialized and contains already a flattened message (i.e. when using the SMT for xref:{link-event-flattening}[Event Flattening]) then map the flattened record into the target logical type
+
+[[serdes-configuration_options]]
+=== Configuration options
+
+[cols="30%a,25%a,45%a"]
+|===
+|Property
+|Default
+|Description
+
+[id="serdes-from-field"]
+|xref:{link-serdes}#serdes-from-field[`from.field`]
+|`N/A`
+|Empty if a message with full envelope should be deserialized, `before`/`after` if only data values before or after the change are required.
+
+[id="serdes-unknown-properties-ignored"]
+|xref:{link-serdes}#serdes-unknown-properties-ignored[`unknown.properties.ignored`]
+|`false`
+|Determines when an unknown property is encountered whether it should be silently ignored or if a runtime exception should be thrown.
+|===
