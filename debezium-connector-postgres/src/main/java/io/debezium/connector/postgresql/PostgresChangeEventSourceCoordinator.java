@@ -6,7 +6,16 @@
 package io.debezium.connector.postgresql;
 
 import java.sql.SQLException;
+import java.time.Duration;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
+import io.debezium.connector.common.CdcSourceTaskContext;
+import io.debezium.connector.postgresql.spi.OffsetState;
+import io.debezium.pipeline.spi.SnapshotResult;
+import io.debezium.util.Clock;
+import io.debezium.util.LoggingContext;
+import io.debezium.util.Metronome;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,6 +47,8 @@ public class PostgresChangeEventSourceCoordinator extends ChangeEventSourceCoord
     private final Snapshotter snapshotter;
     private final SlotState slotInfo;
 
+    private volatile boolean waitForSnapshotCompletion;
+
     public PostgresChangeEventSourceCoordinator(Offsets<PostgresPartition, PostgresOffsetContext> previousOffsets,
                                                 ErrorHandler errorHandler,
                                                 Class<? extends SourceConnector> connectorType,
@@ -52,6 +63,40 @@ public class PostgresChangeEventSourceCoordinator extends ChangeEventSourceCoord
                 changeEventSourceMetricsFactory, eventDispatcher, schema, signalProcessor, notificationService);
         this.snapshotter = snapshotter;
         this.slotInfo = slotInfo;
+        this.waitForSnapshotCompletion = false;
+    }
+
+    @Override
+    protected void executeChangeEventSources(CdcSourceTaskContext taskContext, SnapshotChangeEventSource<PostgresPartition, PostgresOffsetContext> snapshotSource, Offsets<PostgresPartition, PostgresOffsetContext> previousOffsets,
+                                             AtomicReference<LoggingContext.PreviousContext> previousLogContext, ChangeEventSourceContext context)
+            throws InterruptedException {
+        final PostgresPartition partition = previousOffsets.getTheOnlyPartition();
+        final PostgresOffsetContext previousOffset = previousOffsets.getTheOnlyOffset();
+
+        previousLogContext.set(taskContext.configureLoggingContext("snapshot", partition));
+        SnapshotResult<PostgresOffsetContext> snapshotResult = doSnapshot(snapshotSource, context, partition, previousOffset);
+
+        getSignalProcessor(previousOffsets).ifPresent(s -> s.setContext(snapshotResult.getOffset()));
+
+        LOGGER.debug("Snapshot result {}", snapshotResult);
+
+        if (context.isRunning() && snapshotResult.isCompletedOrSkipped()) {
+            if(YugabyteDBServer.isEnabled() && !snapshotResult.isSkipped()) {
+                LOGGER.info("Will wait for snapshot completion before transitioning to streaming");
+                waitForSnapshotCompletion = true;
+                while (waitForSnapshotCompletion) {
+                    LOGGER.debug("sleeping for 1s to receive snapshot completion offset");
+                    Metronome metronome = Metronome.sleeper(Duration.ofSeconds(1), Clock.SYSTEM);
+                    metronome.pause();
+                    // Note: This heartbeat call is only required to support applications using debezium engine/embedded
+                    // engine. It is not required when the connector is run with kakfa-connect.
+                    eventDispatcher.alwaysDispatchHeartbeatEvent(partition, snapshotResult.getOffset());
+                }
+            }
+            LOGGER.info("Transitioning to streaming");
+            previousLogContext.set(taskContext.configureLoggingContext("streaming", partition));
+            streamEvents(context, partition, snapshotResult.getOffset());
+        }
     }
 
     @Override
@@ -83,6 +128,25 @@ public class PostgresChangeEventSourceCoordinator extends ChangeEventSourceCoord
         snapshotSource.createSnapshotConnection();
         snapshotSource.setSnapshotTransactionIsolationLevel(false);
         snapshotSource.updateOffsetForPreSnapshotCatchUpStreaming(offsetContext);
+    }
+
+    @Override
+    public void commitOffset(Map<String, ?> partition, Map<String, ?> offset) {
+        if (YugabyteDBServer.isEnabled() && waitForSnapshotCompletion) {
+            LOGGER.debug("Checking the offset value for snapshot completion");
+            OffsetState offsetState = new PostgresOffsetContext.Loader((PostgresConnectorConfig) connectorConfig).load(offset).asOffsetState();
+            if(!offsetState.snapshotInEffect()) {
+                LOGGER.info("Offset conveys that snapshot has completed");
+                waitForSnapshotCompletion = false;
+            }
+        }
+
+        // This block won't be executed when we receive an offset that conveys that snapshot is completed because
+        // streamingSource would be null. It is only initialised once we have transitioned to streaming. So, this
+        // block would only be executed once we have switched to streaming phase.
+        if (!commitOffsetLock.isLocked() && streamingSource != null && offset != null) {
+            streamingSource.commitOffset(partition, offset);
+        }
     }
 
 }

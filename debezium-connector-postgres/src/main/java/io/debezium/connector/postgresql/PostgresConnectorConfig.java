@@ -12,7 +12,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import io.debezium.heartbeat.Heartbeat;
+import io.debezium.heartbeat.HeartbeatConnectionProvider;
+import io.debezium.heartbeat.HeartbeatErrorHandler;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.schema.SchemaNameAdjuster;
+import io.debezium.spi.topic.TopicNamingStrategy;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
@@ -1196,6 +1201,24 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             return t.schema() != null && !SYSTEM_SCHEMAS.contains(t.schema().toLowerCase()) &&
                     t.table() != null && !SYSTEM_TABLES.contains(t.table().toLowerCase()) &&
                     !t.schema().startsWith(TEMP_TABLE_SCHEMA_PREFIX);
+        }
+    }
+
+    @Override
+    public Heartbeat createHeartbeat(TopicNamingStrategy topicNamingStrategy,
+                                     SchemaNameAdjuster schemaNameAdjuster,
+                                     HeartbeatConnectionProvider connectionProvider,
+                                     HeartbeatErrorHandler errorHandler) {
+        if (YugabyteDBServer.isEnabled()) {
+            // We do not need any heartbeat when snapshot is never required.
+            if (snapshotMode.equals(SnapshotMode.NEVER)) {
+                return Heartbeat.DEFAULT_NOOP_HEARTBEAT;
+            }
+
+            return new YBHeartbeatImpl(getHeartbeatInterval(), topicNamingStrategy.heartbeatTopic(),
+                    getLogicalName(), schemaNameAdjuster);
+        } else {
+            return super.createHeartbeat(topicNamingStrategy, schemaNameAdjuster, connectionProvider, errorHandler);
         }
     }
 
