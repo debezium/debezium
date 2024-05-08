@@ -9,9 +9,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -54,7 +51,6 @@ public abstract class BinlogReadOnlyIncrementalSnapshotIT<C extends SourceConnec
     private static KafkaCluster kafka;
     private static final int PARTITION_NO = 0;
     public static final String EXCLUDED_TABLE = "b";
-    private final Path signalsFile = Paths.get("src", "test", "resources").resolve("debezium_signaling_file.txt");
 
     @Rule
     public ConditionalFail conditionalFail = new ConditionalFail();
@@ -349,16 +345,6 @@ public abstract class BinlogReadOnlyIncrementalSnapshotIT<C extends SourceConnec
     @Override
     public void insertDeleteWatermarkingStrategy() throws Exception {
         // test has not to be executed on read only
-    }
-
-    private void sendExecuteSnapshotFileSignal(String fullTableNames) throws IOException {
-
-        String signalValue = String.format(
-                "{\"id\":\"12345\",\"type\":\"execute-snapshot\",\"data\": {\"data-collections\": [\"%s\"], \"type\": \"INCREMENTAL\"}}",
-                fullTableNames);
-
-        java.nio.file.Files.write(signalsFile, signalValue.getBytes());
-
     }
 
     protected void populate4PkTable() throws SQLException {

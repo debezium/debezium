@@ -51,6 +51,7 @@ import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.junit.SkipTestRule;
 import io.debezium.junit.SkipWhenDatabaseVersion;
+import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingMode;
 import io.debezium.spi.converter.CustomConverter;
 import io.debezium.spi.converter.RelationalColumn;
@@ -292,6 +293,35 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         VerifyRecord.isValidInsert(second, PK_FIELD, 4);
         assertRecordOffsetAndSnapshotSource(second, SnapshotRecord.FALSE);
         assertSourceInfo(second, TestHelper.TEST_DATABASE, "s2", "a");
+    }
+
+    @Test
+    public void shouldStreamAfterSnapshot() throws Exception {
+
+        LogInterceptor logInterceptor = new LogInterceptor(PostgresStreamingChangeEventSource.class);
+        TestHelper.dropAllSchemas();
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+
+        String insertStmt = "INSERT INTO s1.a (aa) VALUES (1);" +
+                "INSERT INTO s2.a (aa) VALUES (1);";
+
+        String statements = "CREATE SCHEMA s1; " +
+                "CREATE SCHEMA s2; " +
+                "CREATE TABLE s1.a (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
+                "CREATE TABLE s2.a (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
+                insertStmt;
+        TestHelper.execute(statements);
+
+        buildWithStreamProducer(TestHelper.defaultConfig());
+
+        TestConsumer consumer = testConsumer(2, "s1", "s2");
+        waitForSnapshotToBeCompleted();
+
+        // first make sure we get the initial records from both schemas...
+        consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
+        consumer.clear();
+
+        assertThat(logInterceptor.containsMessage("Processing messages")).isTrue();
     }
 
     @Test
