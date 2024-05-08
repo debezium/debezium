@@ -145,7 +145,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                 Stopwatch updateBufferStopwatch = Stopwatch.reusable();
                 updateBufferStopwatch.start();
 
-                Buffer tableIdBuffer = resolveBuffer(deleteBufferByTable, tableId);
+                Buffer tableIdBuffer = resolveBuffer(updateBufferByTable, tableId);
 
                 List<SinkRecordDescriptor> toFlush = tableIdBuffer.add(sinkRecordDescriptor);
                 updateBufferStopwatch.stop();
