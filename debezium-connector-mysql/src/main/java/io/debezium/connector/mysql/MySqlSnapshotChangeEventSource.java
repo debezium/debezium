@@ -56,7 +56,9 @@ public class MySqlSnapshotChangeEventSource extends BinlogSnapshotChangeEventSou
                                                                            SnapshotterService snapshotterService)
             throws Exception {
         LOGGER.info("Read binlog position of MySQL primary server");
-        final String showMasterStmt = "SHOW MASTER STATUS";
+
+        final String showMasterStmt = connectorConfig.getComplianceMode().getShowMasterStatement();
+
         connection.query(showMasterStmt, rs -> {
             if (rs.next()) {
                 final String binlogFilename = rs.getString(1);

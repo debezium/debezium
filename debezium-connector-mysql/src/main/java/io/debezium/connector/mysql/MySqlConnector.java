@@ -56,7 +56,8 @@ public class MySqlConnector extends BinlogConnector<MySqlConnectorConfig> {
     protected MySqlConnection createConnection(Configuration config, MySqlConnectorConfig connectorConfig) {
         return new MySqlConnection(
                 new MySqlConnectionConfiguration(config),
-                MySqlFieldReaderResolver.resolve(connectorConfig));
+                MySqlFieldReaderResolver.resolve(connectorConfig),
+                connectorConfig.getComplianceMode());
     }
 
     @Override

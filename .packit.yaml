@@ -108,6 +108,27 @@ jobs:
   - job: tests
     trigger: pull_request
     # Suffix for job name
+    identifier: "mysql-8-4-none"
+    targets:
+      - centos-stream-8-x86_64
+    skip_build: true
+    manual_trigger: true
+    labels:
+      - mysql
+      - mysql-84
+    tf_extra_params:
+      test:
+        tmt:
+          name: mysql
+      environments:
+        - variables:
+            MYSQL_VERSION: 8.4
+            PROFILE: none
+
+  ###############################################################################################
+  - job: tests
+    trigger: pull_request
+    # Suffix for job name
     identifier: "mysql-8-assembly"
     targets:
       - centos-stream-8-x86_64

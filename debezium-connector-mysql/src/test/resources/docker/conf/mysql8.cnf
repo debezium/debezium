@@ -47,8 +47,3 @@ binlog_row_metadata = FULL
 
 default_authentication_plugin = mysql_native_password
 binlog_expire_logs_seconds = 86400
-
-[mysqld-8.4]
-authentication_policy='caching_sha2_password,'
-binlog_expire_logs_seconds  = 86400
-host-cache-size = 0
