@@ -30,7 +30,8 @@ public class RecordBuffer implements Buffer {
 
     public List<SinkRecordDescriptor> add(SinkRecordDescriptor recordDescriptor) {
 
-        ArrayList<SinkRecordDescriptor> flushed = new ArrayList<>();
+        List<SinkRecordDescriptor> flushed = new ArrayList<>();
+        boolean isSchemaChanged = false;
 
         if (records.isEmpty()) {
             keySchema = recordDescriptor.getKeySchema();
@@ -40,13 +41,21 @@ public class RecordBuffer implements Buffer {
         if (!Objects.equals(keySchema, recordDescriptor.getKeySchema()) || !Objects.equals(valueSchema, recordDescriptor.getValueSchema())) {
             keySchema = recordDescriptor.getKeySchema();
             valueSchema = recordDescriptor.getValueSchema();
-            flushed.addAll(flush());
+            flushed = flush();
+            isSchemaChanged = true;
         }
 
         records.add(recordDescriptor);
 
+        if (isSchemaChanged) {
+            // current record is already added in internal buffer after flush
+            // just return the flushed buffer ignoring buffer size check
+            return flushed;
+        }
+
+
         if (records.size() >= connectorConfig.getBatchSize()) {
-            flushed.addAll(flush());
+            flushed = flush();
         }
 
         return flushed;
@@ -54,7 +63,7 @@ public class RecordBuffer implements Buffer {
 
     public List<SinkRecordDescriptor> flush() {
 
-        ArrayList<SinkRecordDescriptor> flushed = new ArrayList<>(records);
+        List<SinkRecordDescriptor> flushed = new ArrayList<>(records);
         records.clear();
 
         return flushed;

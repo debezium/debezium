@@ -35,7 +35,8 @@ public class ReducedRecordBuffer implements Buffer {
 
     @Override
     public List<SinkRecordDescriptor> add(SinkRecordDescriptor recordDescriptor) {
-        ArrayList<SinkRecordDescriptor> flushed = new ArrayList<>();
+        List<SinkRecordDescriptor> flushed = new ArrayList<>();
+        boolean isSchemaChanged = false;
 
         if (records.isEmpty()) {
             keySchema = recordDescriptor.getKeySchema();
@@ -45,7 +46,8 @@ public class ReducedRecordBuffer implements Buffer {
         if (!Objects.equals(keySchema, recordDescriptor.getKeySchema()) || !Objects.equals(valueSchema, recordDescriptor.getValueSchema())) {
             keySchema = recordDescriptor.getKeySchema();
             valueSchema = recordDescriptor.getValueSchema();
-            flushed.addAll(flush());
+            flushed = flush();
+            isSchemaChanged = true;
         }
 
         Struct keyStruct = recordDescriptor.getKeyStruct(connectorConfig.getPrimaryKeyMode());
@@ -56,8 +58,14 @@ public class ReducedRecordBuffer implements Buffer {
             throw new ConnectException("No struct-based primary key defined for record key/value, reduction buffer require struct based primary key");
         }
 
+        if (isSchemaChanged) {
+            // current record is already added in internal buffer after flush,
+            // just return the flushed buffer ignoring buffer size check
+            return flushed;
+        }
+
         if (records.size() >= connectorConfig.getBatchSize()) {
-            flushed.addAll(flush());
+            flushed = flush();
         }
 
         return flushed;
@@ -65,7 +73,7 @@ public class ReducedRecordBuffer implements Buffer {
 
     @Override
     public List<SinkRecordDescriptor> flush() {
-        ArrayList<SinkRecordDescriptor> flushed = new ArrayList<>(records.values());
+        List<SinkRecordDescriptor> flushed = new ArrayList<>(records.values());
         records.clear();
         return flushed;
     }
