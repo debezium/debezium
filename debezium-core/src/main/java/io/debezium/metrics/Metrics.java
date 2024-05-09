@@ -6,9 +6,12 @@
 package io.debezium.metrics;
 
 import java.lang.management.ManagementFactory;
+import java.time.Duration;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import javax.management.InstanceAlreadyExistsException;
+import javax.management.InstanceNotFoundException;
 import javax.management.JMException;
 import javax.management.MBeanServer;
 import javax.management.MalformedObjectNameException;
@@ -33,6 +36,10 @@ import io.debezium.util.Collect;
 public abstract class Metrics {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Metrics.class);
+
+    // Total 1 minute attempting to retry metrics registration in case of errors
+    private static final int REGISTRATION_RETRIES = 12;
+    private static final Duration REGISTRATION_RETRY_DELAY = Duration.ofSeconds(5);
 
     private final ObjectName name;
     private volatile boolean registered = false;
@@ -70,7 +77,27 @@ public abstract class Metrics {
                 LOGGER.info("JMX not supported, bean '{}' not registered", name);
                 return;
             }
-            mBeanServer.registerMBean(this, name);
+            // During connector restarts it is possible that Kafka Connect does not manage
+            // the lifecycle perfectly. In that case it is possible the old metric MBean is still present.
+            // There will be multiple attempts executed to register new MBean.
+            for (int attempt = 1; attempt <= REGISTRATION_RETRIES; attempt++) {
+                try {
+                    mBeanServer.registerMBean(this, name);
+                    break;
+                }
+                catch (InstanceAlreadyExistsException e) {
+                    if (attempt <= REGISTRATION_RETRIES) {
+                        LOGGER.warn(
+                                "Unable to register metrics as an old set with the same name exists, retrying in {} (attempt {} out of {})",
+                                REGISTRATION_RETRY_DELAY, attempt, REGISTRATION_RETRIES);
+                    }
+                    else {
+                        LOGGER.error("Failed to register metrics MBean, metrics will not be available");
+                    }
+                }
+            }
+            // If the old metrics MBean is present then the connector will try to unregister it
+            // upon shutdown.
             registered = true;
         }
         catch (JMException e) {
@@ -90,7 +117,12 @@ public abstract class Metrics {
                     LOGGER.debug("JMX not supported, bean '{}' not registered", name);
                     return;
                 }
-                mBeanServer.unregisterMBean(name);
+                try {
+                    mBeanServer.unregisterMBean(name);
+                }
+                catch (InstanceNotFoundException e) {
+                    LOGGER.info("Unable to unregister metrics MBean '{}' as it was not found", name);
+                }
                 registered = false;
             }
             catch (JMException e) {
