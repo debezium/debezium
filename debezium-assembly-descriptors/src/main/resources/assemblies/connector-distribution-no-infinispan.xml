@@ -27,9 +27,7 @@
 
               <!-- Exclude Infinispan and dependencies  -->
               <exclude>org.infinispan:infinispan-core:*</exclude>
-              <exclude>org.infinispan:infinispan-core-jakarta:*</exclude>
               <exclude>org.infinispan:infinispan-client-hotrod:*</exclude>
-              <exclude>org.infinispan:infinispan-client-hotrod-jakarta:*</exclude>
 
               <!-- Exclude Oracle OpenLogReplicator dependencies -->
               <exclude>io.vertx:vertx-core:*</exclude>
