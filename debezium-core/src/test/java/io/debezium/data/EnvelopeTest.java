@@ -57,6 +57,18 @@ public class EnvelopeTest {
         assertRequiredField(env, Envelope.FieldName.TRANSACTION, SchemaBuilder.STRING_SCHEMA);
     }
 
+    @Test
+    public void envelopeOperationLookupByCode() {
+        assertThat(Envelope.Operation.forCode(null)).isNull();
+        assertThat(Envelope.Operation.forCode("")).isNull();
+        assertThat(Envelope.Operation.forCode("bogus")).isNull();
+        for (Envelope.Operation operation : Envelope.Operation.values()) {
+            assertThat(Envelope.Operation.forCode(operation.code().toLowerCase())).isEqualTo(operation);
+            assertThat(Envelope.Operation.forCode(operation.code().toUpperCase())).isEqualTo(operation);
+            assertThat(Envelope.Operation.forCode(operation.name())).isNull();
+        }
+    }
+
     protected void assertRequiredField(Envelope env, String fieldName, Schema expectedSchema) {
         assertField(env.schema().field(fieldName), fieldName, expectedSchema, false);
     }
