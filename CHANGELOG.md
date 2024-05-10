@@ -2,6 +2,54 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.7.0.Alpha2
+May 10th 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12427305)
+
+### New features since 2.7.0.Alpha1
+
+* Add ROW_ID as part of source information block for LogMiner sources [DBZ-4332](https://issues.redhat.com/browse/DBZ-4332)
+* Support for ARRAY data types for postgres [DBZ-7752](https://issues.redhat.com/browse/DBZ-7752)
+* Enhance documentation about using tags to customize connector snapshot/streaming MBean names [DBZ-7800](https://issues.redhat.com/browse/DBZ-7800)
+* Allow specifying the log mining flush table with an optional schema [DBZ-7819](https://issues.redhat.com/browse/DBZ-7819)
+* Added nats JWT/seed authentication config options [DBZ-7829](https://issues.redhat.com/browse/DBZ-7829)
+* Update Debezium container images to use Fedora 38 [DBZ-7832](https://issues.redhat.com/browse/DBZ-7832)
+* Debezium oracle connectors needs to support IN clause for log miner query for more than 1000 tables as it creates performance issue [DBZ-7847](https://issues.redhat.com/browse/DBZ-7847)
+
+
+### Breaking changes since 2.7.0.Alpha1
+
+None
+
+
+### Fixes since 2.7.0.Alpha1
+
+* Debezium User Guide 2.5.4: Grammatical error [DBZ-7803](https://issues.redhat.com/browse/DBZ-7803)
+* > io.debezium.text.ParsingException : SQL Contains Partition [DBZ-7805](https://issues.redhat.com/browse/DBZ-7805)
+* Ad-hoc blocking snapshot not working through file channeling without inserting a row in the database. [DBZ-7806](https://issues.redhat.com/browse/DBZ-7806)
+* Postgres: Potential data loss on connector restart [DBZ-7816](https://issues.redhat.com/browse/DBZ-7816)
+* Abnormal Behavior in Debezium Monitoring Example - mysql connector [DBZ-7826](https://issues.redhat.com/browse/DBZ-7826)
+* DEBEZIUM_VERSION is wrongly set to 2.6.0.Alpha1  [DBZ-7827](https://issues.redhat.com/browse/DBZ-7827)
+* Sql Server incorrectly applying quoted snapshot statement overrides [DBZ-7828](https://issues.redhat.com/browse/DBZ-7828)
+* Debezium JDBC Sink not handle order correctly [DBZ-7830](https://issues.redhat.com/browse/DBZ-7830)
+* Fix typo in documentation/modules doc [DBZ-7844](https://issues.redhat.com/browse/DBZ-7844)
+* Support Oracle DDL Alter Audit Policy [DBZ-7864](https://issues.redhat.com/browse/DBZ-7864)
+* Support Oracle DDL Create Audit Policy [DBZ-7865](https://issues.redhat.com/browse/DBZ-7865)
+
+
+### Other changes since 2.7.0.Alpha1
+
+* Log exception details early in case MySQL keep-alive causes deadlock on shutdown [DBZ-7570](https://issues.redhat.com/browse/DBZ-7570)
+* Extend mongodb system tests with ssl option [DBZ-7605](https://issues.redhat.com/browse/DBZ-7605)
+* Refactor oracle connector test job [DBZ-7807](https://issues.redhat.com/browse/DBZ-7807)
+* Fix anchor ID collisions that prevent downstream documentation from building [DBZ-7815](https://issues.redhat.com/browse/DBZ-7815)
+* Add c3p0 timeout configuration example to JDBC sink [DBZ-7822](https://issues.redhat.com/browse/DBZ-7822)
+* Move undocumented option to internal [DBZ-7833](https://issues.redhat.com/browse/DBZ-7833)
+* Increase wait for shouldGracefullySkipObjectBasedTables on XStream [DBZ-7839](https://issues.redhat.com/browse/DBZ-7839)
+* Bump Outbox Extension to Quarkus 3.10.0 [DBZ-7842](https://issues.redhat.com/browse/DBZ-7842)
+* in the Cassandra documentation, there is a typo which should have been disable not Dusable. [DBZ-7851](https://issues.redhat.com/browse/DBZ-7851)
+
+
+
 ## 2.7.0.Alpha1
 April 25th 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12425451)
 
