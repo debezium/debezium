@@ -55,6 +55,7 @@ unit_statement
     | alter_materialized_view_log
     | alter_user
     | alter_view
+    | alter_audit_policy
 
     | analyze
     | associate_statistics
@@ -1385,6 +1386,80 @@ alter_view
 
 alter_view_editionable
     : {isVersion12()}? (EDITIONABLE | NONEDITIONABLE)
+    ;
+
+// https://docs.oracle.com/en/database/oracle/oracle-database/21/sqlrf/ALTER-AUDIT-POLICY-Unified-Auditing.html
+alter_audit_policy
+    : ALTER AUDIT POLICY p = id_expression ADD? (
+        privilege_audit_clause? action_audit_clause? role_audit_clause?
+        | (ONLY TOPLEVEL)?
+    ) DROP? (privilege_audit_clause? action_audit_clause? role_audit_clause? | (ONLY TOPLEVEL)?) (
+        CONDITION (DROP | CHAR_STRING EVALUATE PER (STATEMENT | SESSION | INSTANCE))
+    )?
+    ;
+
+privilege_audit_clause
+    : PRIVILEGES system_privilege (',' system_privilege)*
+    ;
+
+action_audit_clause
+    : (standard_actions | component_actions | system_actions)+
+    ;
+
+system_actions
+    : ACTIONS system_privilege (',' system_privilege)*
+    ;
+
+standard_actions
+    : ACTIONS actions_clause (',' actions_clause)*
+    ;
+
+actions_clause
+    : (object_action | ALL) ON (
+        DIRECTORY directory_name
+        | (MINING MODEL)? (schema_name '.')? id_expression
+    )
+    | (system_action | ALL)
+    ;
+
+role_audit_clause
+    : ROLES role_name (',' role_name)*
+    ;
+
+component_actions
+    : ACTIONS COMPONENT '=' (
+        (DATAPUMP | DIRECT_LOAD | OLS | XS) component_action (',' component_action)*
+        | DV component_action ON id_expression (',' component_action ON id_expression)*
+        | PROTOCOL (FTP | HTTP | AUTHENTICATION)
+    )
+    ;
+
+component_action
+    : id_expression
+    ;
+
+object_action
+    : ALTER
+    | GRANT
+    | READ
+    | EXECUTE
+    | AUDIT
+    | COMMENT
+    | DELETE
+    | INDEX
+    | INSERT
+    | LOCK
+    | SELECT
+    | UPDATE
+    | FLASHBACK
+    | RENAME
+    ;
+
+system_action
+    : id_expression
+    | (CREATE | ALTER | DROP) JAVA
+    | LOCK TABLE
+    | (READ | WRITE | EXECUTE) DIRECTORY
     ;
 
 create_view
