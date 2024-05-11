@@ -127,7 +127,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                     flushBuffer(tableId, updateBufferByTable.get(tableId).flush());
                 }
 
-                Buffer tableIdBuffer = resolveBuffer(deleteBufferByTable, tableId);
+                Buffer tableIdBuffer = resolveBuffer(deleteBufferByTable, tableId, sinkRecordDescriptor);
 
                 List<SinkRecordDescriptor> toFlush = tableIdBuffer.add(sinkRecordDescriptor);
 
@@ -145,7 +145,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                 Stopwatch updateBufferStopwatch = Stopwatch.reusable();
                 updateBufferStopwatch.start();
 
-                Buffer tableIdBuffer = resolveBuffer(updateBufferByTable, tableId);
+                Buffer tableIdBuffer = resolveBuffer(updateBufferByTable, tableId, sinkRecordDescriptor);
 
                 List<SinkRecordDescriptor> toFlush = tableIdBuffer.add(sinkRecordDescriptor);
                 updateBufferStopwatch.stop();
@@ -175,8 +175,8 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                 && record.valueSchema().name().contains(SCHEMA_CHANGE_VALUE);
     }
 
-    private Buffer resolveBuffer(Map<TableId, Buffer> bufferMap, TableId tableId) {
-        if (config.isUseReductionBuffer()) {
+    private Buffer resolveBuffer(Map<TableId, Buffer> bufferMap, TableId tableId, SinkRecordDescriptor sinkRecordDescriptor) {
+        if (config.isUseReductionBuffer() && !sinkRecordDescriptor.getKeyFieldNames().isEmpty()) {
             return bufferMap.computeIfAbsent(tableId, k -> new ReducedRecordBuffer(config));
         }
         else {
