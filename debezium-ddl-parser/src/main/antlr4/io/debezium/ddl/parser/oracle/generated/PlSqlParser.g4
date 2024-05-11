@@ -82,6 +82,7 @@ unit_statement
     | create_trigger
     | create_type
     | create_synonym
+    | create_audit_policy
 
     | drop_function
     | drop_package
@@ -2675,6 +2676,13 @@ create_synonym
     // Synonym's schema cannot be specified for public synonyms
     : CREATE (OR REPLACE)? PUBLIC SYNONYM synonym_name FOR (schema_name PERIOD)? schema_object_name (AT_SIGN link_name)?
     | CREATE (OR REPLACE)? SYNONYM (schema_name PERIOD)? synonym_name FOR (schema_name PERIOD)? schema_object_name (AT_SIGN link_name)?
+    ;
+
+// https://docs.oracle.com/en/database/oracle/oracle-database/21/sqlrf/CREATE-AUDIT-POLICY-Unified-Auditing.html
+create_audit_policy
+    : CREATE AUDIT POLICY p = id_expression privilege_audit_clause? action_audit_clause? role_audit_clause? (
+        WHEN quoted_string EVALUATE PER (STATEMENT | SESSION | INSTANCE)
+    )? (ONLY TOPLEVEL)? container_clause?
     ;
 
 comment_on_table
