@@ -101,32 +101,7 @@ In this way the connector dynamically adjusts to changes in replica set membersh
 [id="read-preference"]
 === Read Preference
 
-You can specify MongoDB read preferences for a connection in the connector properties.
-The method that you use to set read preferences depends on the MongoDB topology, and the xref:mongodb-property-mongodb-connection-mode[`mongodb.connection.mode`].
-
-Replica set topology::
-Set the read preference in the xref:mongodb-property-mongodb-connection-string[`mongodb.connection.string`].
-Sharded cluster topology::
-Set the read preference based on the connection mode, as shown in the following table:
-+
-.Setting the read preference for a sharded cluster based on the `mongodb.connection.mode`
-[cols="3,6",options="header"]
-|===
-|Connection mode |Property for specifying read preference
-
-|`sharded`
-|`mongodb.connection.string`
-
-|`replica_set`
-|`mongodb.connection.string.shard.params`
-
-|===
-+
-In a sharded cluster, the connector first initiates a connection to the mongos router specified in the `mongodb.connection.string`.
-For that initial connection, regardless of the connection mode, the connector honors the read preferences that are specified in the `mongodb.connection.string`.
-When the connection mode is set to `replica_set`, after the connector establishes the initial router connection, it retrieves topology information from the router's `config.shards`.
-It then uses the retrieved shard addresses to connect to individual shards in the cluster, constructing connection strings that use the connection parameters in xref:mongodb-property-mongodb-connection-string-shard-params[`mongodb.connection.string.shard.params`].
-For shard-specific connections, the connector ignores the read preferences that are set in the `mongodb.connection.string`.
+You can specify MongoDB read preferences for a connection via the  xref:mongodb-property-mongodb-connection-string[`mongodb.connection.string`].
 
 // Type: assembly
 // ModuleID: how-debezium-mongodb-connectors-work
@@ -187,19 +162,6 @@ A https://docs.mongodb.com/manual/sharding/[MongoDB sharded cluster] consists of
 +
 To use the MongoDB connector with a sharded cluster, in the connector configuration, set the value of the `mongodb.connection.string` property to the  https://www.mongodb.com/docs/manual/reference/connection-string/[sharded cluster connection string].
 
-[WARNING]
-====
-The `mongodb.connection.string` property replaces the removed `mongodb.hosts` property that was used to provide earlier versions of the connector with the host address of the _configuration server_ replica.
-In the current release, use `mongodb.connection.string` to provide the connector with the addresses of MongoDB routers, also known as `mongos`.
-====
-
-[NOTE]
-====
-When the connector connects to sharded cluster, it discovers the information about each replica set that represents a shard in the cluster.
-The connector uses a separate task to capture changes from each shard.
-As shards are added or removed from the cluster, the connector  dynamically adjusts the numbers of tasks to compensate for the change.
-====
-
 [[mongodb-standalone-server]]
 MongoDB standalone server::
 The MongoDB connector is not capable of monitoring the changes of a standalone MongoDB server, since standalone servers do not have an oplog.
@@ -222,7 +184,7 @@ The MongoDB user account that you create for {prodname} requires specific databa
 The connector user requires the following permissions:
 
 * Read from the database.
-* Run the `ping` command.
+* Run the `hello` command.
 
 The connector user might also require the following permission:
 
@@ -238,13 +200,16 @@ Grant the user permission to read any database.
 `capture.scope` is set to `database`::
 Grant the user permission to read the database specified by the connector's xref:mongodb-property-capture-target[`capture.target`] property.
 
-.Permission to use the MongoDB `ping` command
+.Permission to use the MongoDB `hello` command
 
-Regardless of the `capture.scope` setting, the user requires permission to run the MongoDB https://www.mongodb.com/docs/manual/reference/command/ping/[ping] command.
+Regardless of the `capture.scope` setting, the user requires permission to run the MongoDB https://www.mongodb.com/docs/manual/reference/command/hello/[hello] command.
 
 .Permission to read the `config.shards` collection
+Permissions to read the `config.shards` collection might be required in order for the connector to perform offset consolidation. This happens when the following preconditions are met.
 
-For connectors that capture changes from a sharded MongoDB cluster, and for which the xref:mongodb-property-mongodb-connection-mode[`mongodb.connection.mode`] property is set to `replica_set`, you must grant the user permission to read the `config.shards` system collection.
+- The connector was upgraded from debezium version older than 2.6
+- The connector is configured to capture changes from a sharded MongoDB cluster
+
 
 
 // Type: concept
@@ -258,6 +223,24 @@ The connector uses the logical name in a number of ways: as the prefix for all t
 
 You should give each MongoDB connector a unique logical name that meaningfully describes the source MongoDB system.
 We recommend logical names begin with an alphabetic or underscore character, and remaining characters that are alphanumeric or underscore.
+
+// Type: concept
+// Title: How {prodname} MongoDB connectors perform offset consolidation
+// ModuleID: how-debezium-mongodb-connectors-perform-offset-consolidation
+[[mongodb-offset-consolidation]]
+=== Offset consolidation
+Version 2.6.0 of Debezium MongoDb connector removed the `replica_set` way of connecting to a sharded MongoDb deployment. Consequently, the offsets  recorded by a previous version of MongoDb connector which used the `replica_set` connection mode are incompatible with MongoDb connector version 2.6.0 and later.
+
+To minimise the impact of this change as well as to prevent unexpected snapshot re-execution the Debezium MongoDb connector version 2.6.0 or later will perform what we call an offset consolidation procedure to determine the previously recorded offset:
+
+1. If an offset recorded by MongoDb connector 2.6.0 or later exists, it will be used
+2. If a compatible offset recorded by older MongoDb connector version exists, it will be used
+    - The offset will be compatible if the  targeted MongoDb was deployed as a replica set, or if the `sharded` connection mode was used by the connector to capture changes from sharded MongoDb deployment.
+3. If shard specific offsets recorded by older MongoDB connector version exit for all current database shards.
+    a. If offset invalidation is xref:mongodb-property-allow-offset-invalidation[allowed], the oldest of shard specific offsets will be used.
+    b. If offset invalidation is xref:mongodb-property-allow-offset-invalidation[not allowed],the connector will fail to start
+4. No offset was previously recorded.
+
 
 // Type: concept
 // Title: How {prodname} MongoDB connectors perform snapshots
@@ -1589,6 +1572,16 @@ The following configuration properties are _required_ unless a default value is 
 |===
 |Property |Default |Description
 
+|[[mongodb-property-allow-offset-invalidation]]<<mongodb-property-allow-offset-invalidation, `+internal.mongodb.allow.offset.invalidation+`>>
+|false
+|Allows shard specific offsets recorded by older connector versions to be invalidated and xref:mongodb-offset-consolidation[consolidated]
+
+[WARNING]
+====
+
+This property is considered internal, it will be removed and the default behaviour will be as if enabled in future releases.
+====
+
 |[[mongodb-property-name]]<<mongodb-property-name, `+name+`>>
 |No default
 |Unique name for the connector. Attempting to register again with the same name will fail. (This property is required by all Kafka Connect connectors.)
@@ -1601,41 +1594,6 @@ The following configuration properties are _required_ unless a default value is 
 |No default
 |Specifies a https://www.mongodb.com/docs/manual/reference/connection-string/[connection string] that the connector uses to connect to a MongoDB replica set.
 This property replaces the `mongodb.hosts` property that was available in previous versions of the MongoDB connector. +
- +
-[NOTE]
-====
-Connectors that capture changes from a sharded MongoDB cluster use this connection string only during the initial shard discovery process when xref:mongodb-property-mongodb-connection-mode[`mongodb.connection.mode`] is set to `replica_set`.
-After the initial discovery process, connection strings are generated for each individual shard.
-====
-
-|[[mongodb-property-mongodb-connection-string-shard-params]]<<mongodb-property-mongodb-connection-string-shard-params, `+mongodb.connection.string.shard.params+`>>
-|No default
-|Specifies the URL parameters of the https://www.mongodb.com/docs/manual/reference/connection-string/[connection string], including read preferences, that the connector uses to connect to individual shards of a MongoDB sharded cluster.
-
-[NOTE]
-====
-This property applies only when the xref:mongodb-property-mongodb-connection-mode[`mongodb.connection.mode`] is set to `replica_set`.
-====
-
-|[[mongodb-property-mongodb-connection-mode]]<<mongodb-property-mongodb-connection-mode, `+mongodb.connection.mode+`>>
-|`sharded`
-|Specifies the strategy that the connector uses when it connects to a `sharded` MongoDB cluster.
-Set this property to one of the following values:
-
-`replica_set`:: The connector establishes individual connections to the replica set for each shard.
-
-`sharded`:: The connector establishes a single connection to the mongos router instance that is specified in the xref:mongodb-property-mongodb-connection-string[`mongodb.connection.string`] property.
-
-[NOTE]
-====
-The `replica_set` options allows the connector to distribute shard processing across multiple connector tasks.
-However, in this configuration, the connector bypasses the MongoDB router when it connects to individual shards, which is not recommended by MongoDB.
-====
-
-[WARNING]
-====
-Switching between connection modes invalidates stored offsets, which triggers a new snapshot.
-====
 
 |[[mongodb-property-topic-prefix]]<<mongodb-property-topic-prefix, `+topic.prefix+`>>
 |No default
@@ -1807,19 +1765,6 @@ Fully-qualified names for fields are of the form _databaseName_._collectionName_
 |[[mongodb-property-field-renames]]<<mongodb-property-field-renames, `+field.renames+`>>
 |_empty string_
 |An optional comma-separated list of the fully-qualified replacements of fields that should be used to rename fields in change event message values. Fully-qualified replacements for fields are of the form _databaseName_._collectionName_._fieldName_._nestedFieldName_:__newNestedFieldName__, where _databaseName_ and _collectionName_ may contain the wildcard (*) which matches any characters, the colon character (:) is used to determine rename mapping of field. The next field replacement is applied to the result of the previous field replacement in the list, so keep this in mind when renaming multiple fields that are in the same path.
-
-|[[mongodb-property-tasks-max]]<<mongodb-property-tasks-max, `+tasks.max+`>>
-|`1`
-|Specifies the maximum number of tasks that the connector uses to connect to a sharded cluster.
-When you use the connector with a single MongoDB replica set, the default value is acceptable.
-But when a cluster contains multiple shards, to enable Kafka Connect to distribute the work for each replica set, specify a value that is equal to or greater than the number of shards in the cluster.
-The MongoDB connector can then use a separate task to connect to the replica set for each shard in the cluster.
-
-[NOTE]
-====
-This property has an effect only when the connector is connected to a sharded MongoDB cluster and the xref:mongodb-property-mongodb-connection-mode[`mongodb.connection.mode`] property is set to `replica_set`.
-When the xref:mongodb-property-mongodb-connection-mode[`mongodb.connection.mode`] is set to `sharded`, or if the connector is connected to an unsharded MongoDB replica set deployment, the connector ignores this setting, and defaults to using only a single task.
-====
 
 |[[mongodb-property-tombstones-on-delete]]<<mongodb-property-tombstones-on-delete, `+tombstones.on.delete+`>>
 |`true`
