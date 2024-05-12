@@ -332,7 +332,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
          * The MongoDB user used by debezium needs the following permissions/roles
          * <ul>
          *     <li>read role for any database
-         *     <li>read permissions to the config.shards collection (for sharded clusters with connection.mode=replica_set)</li>
          * </ul>
          */
         DEPLOYMENT("deployment"),
@@ -344,7 +343,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
          * <ul>
          *     <li>read role for database specified by {@link MongoDbConnectorConfig#CAPTURE_TARGET}</li>
          *     <li>write permissions to the signalling collection</li>
-         *     <li>read permissions to the config.shards collection (for sharded clusters with connection.mode=replica_set)</li>
          * </ul>
          *
          * Additionally, the signaling collection has to reside under {@link MongoDbConnectorConfig#CAPTURE_TARGET}
