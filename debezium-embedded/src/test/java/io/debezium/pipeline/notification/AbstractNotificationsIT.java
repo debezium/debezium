@@ -46,6 +46,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.notification.channels.SinkNotificationChannel;
@@ -226,6 +227,54 @@ public abstract class AbstractNotificationsIT<T extends SourceConnector> extends
                 .hasFieldOrPropertyWithValue("type", "COMPLETED")
                 .hasFieldOrPropertyWithValue("additionalData", Map.of("connector_name", server()));
         assertThat(notification.getTimestamp()).isCloseTo(Instant.now().toEpochMilli(), Percentage.withPercentage(1));
+    }
+
+    @Test
+    @FixFor("DBZ-7858")
+    public void sinkNotificationWillCorrectlySaveOffsetAfterSnapshot() throws InterruptedException {
+        // Testing.Print.enable();
+
+        startConnector(config -> config
+                .with(SinkNotificationChannel.NOTIFICATION_TOPIC, "io.debezium.notification")
+                .with(CommonConnectorConfig.NOTIFICATION_ENABLED_CHANNELS, "sink"));
+
+        assertConnectorIsRunning();
+
+        waitForSnapshotToBeCompleted(connector(), server(), task(), database());
+
+        List<SourceRecord> notifications = new ArrayList<>();
+        Awaitility.await().atMost(60, TimeUnit.SECONDS).until(() -> {
+
+            consumeAvailableRecords(r -> {
+                if (r.topic().equals("io.debezium.notification")) {
+                    notifications.add(r);
+                }
+            });
+            return notifications.size() == calculateNotificationSize();
+        });
+
+        assertThat(notifications).hasSize(calculateNotificationSize());
+        SourceRecord sourceRecord = notifications.get(0);
+        Assertions.assertThat(sourceRecord.topic()).isEqualTo("io.debezium.notification");
+        Assertions.assertThat(((Struct) sourceRecord.value()).getString("aggregate_type")).isEqualTo("Initial Snapshot");
+        Assertions.assertThat(((Struct) sourceRecord.value()).getString("type")).isEqualTo("STARTED");
+        Assertions.assertThat(((Struct) sourceRecord.value()).getInt64("timestamp")).isCloseTo(Instant.now().toEpochMilli(), Percentage.withPercentage(1));
+
+        collections().forEach(tableName -> assertTableNotificationsSentToTopic(notifications, tableName));
+
+        sourceRecord = notifications.get(notifications.size() - 1);
+        Assertions.assertThat(sourceRecord.topic()).isEqualTo("io.debezium.notification");
+        Assertions.assertThat(((Struct) sourceRecord.value()).getString("aggregate_type")).isEqualTo("Initial Snapshot");
+        Assertions.assertThat(((Struct) sourceRecord.value()).getString("type")).isEqualTo(snapshotStatusResult());
+        Assertions.assertThat(((Struct) sourceRecord.value()).getInt64("timestamp")).isCloseTo(Instant.now().toEpochMilli(), Percentage.withPercentage(1));
+
+        stopConnector();
+
+        startConnector(config -> config
+                .with(SinkNotificationChannel.NOTIFICATION_TOPIC, "io.debezium.notification")
+                .with(CommonConnectorConfig.NOTIFICATION_ENABLED_CHANNELS, "sink"));
+
+        assertConnectorIsRunning();
     }
 
     private void assertTableNotificationsSentToJmx(List<Notification> notifications, String tableName) {
