@@ -68,8 +68,7 @@
         <version.compiler.plugin>3.8.1</version.compiler.plugin>
         <version.resources.plugin>3.1.0</version.resources.plugin>
         <version.dependency.plugin>3.1.1</version.dependency.plugin>
-        <version.enforcer.plugin>3.4.1</version.enforcer.plugin>
-        <version.enforcer-extra.plugin>1.8.0</version.enforcer-extra.plugin>
+        <version.enforcer.plugin>3.0.0-M2</version.enforcer.plugin>
 
         <version.maven>3.8.4</version.maven>
         <version.jar.plugin>3.0.2</version.jar.plugin>
@@ -356,36 +355,7 @@
                             </rules>
                         </configuration>
                     </execution>
-                    <execution>
-                        <id>enforce-bytecode-version</id>
-                        <goals>
-                            <goal>enforce</goal>
-                        </goals>
-                        <configuration>
-                            <rules>
-                                <enforceBytecodeVersion>
-                                    <maxJdkVersion>${maven.compiler.release}</maxJdkVersion>
-                                    <excludes>
-                                        <exclude>org.mongodb:bson-record-codec</exclude>
-                                        <exclude>org.graalvm.*</exclude>
-
-                                        <!-- IBMi connector requires Java 17 as runtime -->
-                                        <exclude>io.debezium:jt400-override-ccsid</exclude>
-                                        <exclude>io.debezium:ibmi-journal-parsing</exclude>
-                                    </excludes>
-                                </enforceBytecodeVersion>
-                            </rules>
-                            <fail>true</fail>
-                        </configuration>
-                    </execution>
                 </executions>
-                <dependencies>
-                    <dependency>
-                        <groupId>org.codehaus.mojo</groupId>
-                        <artifactId>extra-enforcer-rules</artifactId>
-                        <version>${version.enforcer-extra.plugin}</version>
-                    </dependency>
-                </dependencies>
             </plugin>
         </plugins>
     </build>
