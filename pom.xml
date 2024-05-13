@@ -63,6 +63,8 @@
 
         <!-- Enforce JDK 11 for building (handled via JBoss parent POM)-->
         <jdk.min.version>11</jdk.min.version>
+        <bytecode.max.version>${maven.compiler.release}</bytecode.max.version>
+        <bytecode.max.version.quarkus.extension>17</bytecode.max.version.quarkus.extension>
 
         <!-- Maven Plugins -->
         <version.compiler.plugin>3.8.1</version.compiler.plugin>
@@ -364,7 +366,8 @@
                         <configuration>
                             <rules>
                                 <enforceBytecodeVersion>
-                                    <maxJdkVersion>${maven.compiler.release}</maxJdkVersion>
+                                    <maxJdkVersion>${bytecode.max.version}</maxJdkVersion>
+                                    <ignoredScopes>test</ignoredScopes>
                                     <excludes>
                                         <exclude>org.mongodb:bson-record-codec</exclude>
                                         <exclude>org.graalvm.*</exclude>
