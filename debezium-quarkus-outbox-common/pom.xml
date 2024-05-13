@@ -14,10 +14,6 @@
     <name>Debezium Quarkus :: Outbox :: Common</name>
     <packaging>pom</packaging>
 
-    <properties>
-        <bytecode.max.version>${bytecode.max.version.quarkus.extension}</bytecode.max.version>
-    </properties>
-
     <dependencyManagement>
         <dependencies>
             <dependency>
