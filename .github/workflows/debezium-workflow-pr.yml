@@ -43,7 +43,11 @@ jobs:
       - name: Checkout Action
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          # fetch-depth: 0
+          # Using the pull request HEAD compares the files changed only from this PR and does not
+          # involve the merge commit from main, so that tests only run for what the contribution
+          # changes and not the potential difference between the PR and the current main branch.
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Get modified files (Common)
         id: changed-files-common
