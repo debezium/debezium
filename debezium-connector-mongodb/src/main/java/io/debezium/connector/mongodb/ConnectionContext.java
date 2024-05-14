@@ -86,7 +86,8 @@ public class ConnectionContext implements AutoCloseable {
                 .applyToClusterSettings(
                         builder -> builder.serverSelectionTimeout(serverSelectionTimeoutMs, TimeUnit.MILLISECONDS))
                 .applyToServerSettings(
-                        builder -> builder.heartbeatFrequency(heartbeatFrequencyMs, TimeUnit.MILLISECONDS));
+                        builder -> builder.heartbeatFrequency(heartbeatFrequencyMs, TimeUnit.MILLISECONDS))
+                .applicationName("debezium.1.9");
 
         pool = clientBuilder.build();
 
