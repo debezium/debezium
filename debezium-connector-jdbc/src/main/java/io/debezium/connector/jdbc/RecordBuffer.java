@@ -53,7 +53,6 @@ public class RecordBuffer implements Buffer {
             return flushed;
         }
 
-
         if (records.size() >= connectorConfig.getBatchSize()) {
             flushed = flush();
         }
