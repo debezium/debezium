@@ -25,7 +25,7 @@
 
     <issueManagement>
         <system>jira</system>
-        <url>http://issues.jboss.org/browse/DBZ</url>
+        <url>https://issues.redhat.com/browse/DBZ</url>
     </issueManagement>
 
     <licenses>
@@ -204,7 +204,7 @@
       <snapshotRepository>
         <id>ossrh</id>
         <name>OSS Sonatype Nexus Snapshots</name>
-        <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+        <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
       </snapshotRepository>
     </distributionManagement>
 
