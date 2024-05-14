@@ -101,7 +101,7 @@ In this way the connector dynamically adjusts to changes in replica set membersh
 [id="read-preference"]
 === Read Preference
 
-You can specify MongoDB read preferences for a connection via the  xref:mongodb-property-mongodb-connection-string[`mongodb.connection.string`].
+You specify read preferences for a MongoDB connection by setting the `readPreference` parameter in the xref:mongodb-property-mongodb-connection-string[`mongodb.connection.string`].
 
 // Type: assembly
 // ModuleID: how-debezium-mongodb-connectors-work
@@ -205,10 +205,11 @@ Grant the user permission to read the database specified by the connector's xref
 Regardless of the `capture.scope` setting, the user requires permission to run the MongoDB https://www.mongodb.com/docs/manual/reference/command/hello/[hello] command.
 
 .Permission to read the `config.shards` collection
-Permissions to read the `config.shards` collection might be required in order for the connector to perform offset consolidation. This happens when the following preconditions are met.
+Depending on your {prodname} environment, to enable the connector to perform offset consolidation, you must grant the connector user explicit permission to read the `config.shards` collection.  
+Permission to read the `config.shards` collection is required for the following connector environments:
 
-- The connector was upgraded from debezium version older than 2.6
-- The connector is configured to capture changes from a sharded MongoDB cluster
+* Connectors upgraded from {prodname} 2.5 or earlier.
+* Connectors configured to capture changes from a sharded MongoDB cluster.
 
 
 
@@ -229,17 +230,24 @@ We recommend logical names begin with an alphabetic or underscore character, and
 // ModuleID: how-debezium-mongodb-connectors-perform-offset-consolidation
 [[mongodb-offset-consolidation]]
 === Offset consolidation
-Version 2.6.0 of Debezium MongoDb connector removed the `replica_set` way of connecting to a sharded MongoDb deployment. Consequently, the offsets  recorded by a previous version of MongoDb connector which used the `replica_set` connection mode are incompatible with MongoDb connector version 2.6.0 and later.
 
-To minimise the impact of this change as well as to prevent unexpected snapshot re-execution the Debezium MongoDb connector version 2.6.0 or later will perform what we call an offset consolidation procedure to determine the previously recorded offset:
+The {prodname} MongoDB connector no longer supports `replica_set` connections to sharded MongoDB deployments. 
+As a result, the offsets recorded by connector versions that used the `replica_set` connection mode are incompatible with the current version.
 
-1. If an offset recorded by MongoDb connector 2.6.0 or later exists, it will be used
-2. If a compatible offset recorded by older MongoDb connector version exists, it will be used
-    - The offset will be compatible if the  targeted MongoDb was deployed as a replica set, or if the `sharded` connection mode was used by the connector to capture changes from sharded MongoDb deployment.
-3. If shard specific offsets recorded by older MongoDB connector version exit for all current database shards.
-    a. If offset invalidation is xref:mongodb-property-allow-offset-invalidation[allowed], the oldest of shard specific offsets will be used.
-    b. If offset invalidation is xref:mongodb-property-allow-offset-invalidation[not allowed],the connector will fail to start
-4. No offset was previously recorded.
+To minimize the affects of the connection mode change, and to prevent the connector from running unnecessary snapshots, when the connector restarts after the upgrade, it runs a procedure to consolidate offsets.
+During this offset consolidation procedure, the connector completes the following steps to reconcile offsets that were recorded by the earlier connector version:
+
+1. Offsets that were recorded by connector versions later than 2.5 are used as-is.
+2. Offsets for events that were captured in `sharded` connection mode from sharded MongoDB deployments, or from MongoDB replica set deployments, are used as-is.
+3. Shard-specific offsets that were recorded by connector versions 2.5.x and earlier are used as-is, if both of the following conditions apply:
+
+* The offsets exist for all current database shards.
+* xref:mongodb-property-allow-offset-invalidation[Offset invalidation] is enabled. +
+If offset invalidation is disabled, the connector fails to start.
+
+
+4. After the connector processes existing offsets in the preceding steps, it resumes streaming changes, and then commits offsets for new events that it captures. +
+If the offset consolidation procedure does not detect any existing offsets, the connector xref:mongodb-performing-a-snapshot[performs an initial snapshot].
 
 
 // Type: concept
@@ -1576,12 +1584,13 @@ The following configuration properties are _required_ unless a default value is 
 
 |[[mongodb-property-allow-offset-invalidation]]<<mongodb-property-allow-offset-invalidation, `+internal.mongodb.allow.offset.invalidation+`>>
 |false
-|Allows shard specific offsets recorded by older connector versions to be invalidated and xref:mongodb-offset-consolidation[consolidated]
+|Set this property to `true` to enable the connector to invalidate and xref:mongodb-offset-consolidation[consolidate] shard-specific offsets that were recorded by earlier connector versions.
 
 [WARNING]
 ====
 
-This property is considered internal, it will be removed and the default behaviour will be as if enabled in future releases.
+This property permits you to modify the current default behavior.
+The property is subject to removal in a future release if the default behavior changes to permit the connector to automatically invalidate and consolidate offsets that are recorded by earlier connector versions.
 ====
 
 |[[mongodb-property-name]]<<mongodb-property-name, `+name+`>>
