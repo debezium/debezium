@@ -5,15 +5,15 @@
  */
 package io.debezium.connector.jdbc;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
-
-import java.util.ArrayList;
-import java.util.Map;
-import java.util.List;
-import java.util.Objects;
-import java.util.HashMap;
 
 /**
  * A reduced implementation buffer of {@link SinkRecordDescriptor}.
