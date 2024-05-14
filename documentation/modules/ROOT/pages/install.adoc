@@ -76,7 +76,7 @@ ifeval::['{page-version}' != 'main']
 === Consuming Snapshot Releases
 
 {prodname} executes nightly builds and deployments into the Sonatype snapshot repository.
-If you want to try latest and fresh or verify a bug fix you are interested in, then use plugins from https://oss.sonatype.org/content/repositories/snapshots/io/debezium/[oss.sonatype.org] or view the xref:master@install.adoc[nightly] version of this document for direct links to each connector's plugin artifact.
+If you want to try latest and fresh or verify a bug fix you are interested in, then use plugins from https://s01.oss.sonatype.org/content/repositories/snapshots/io/debezium/[oss.sonatype.org] or view the xref:master@install.adoc[nightly] version of this document for direct links to each connector's plugin artifact.
 The installation procedure is the same as for regular releases.
 endif::[]
 
