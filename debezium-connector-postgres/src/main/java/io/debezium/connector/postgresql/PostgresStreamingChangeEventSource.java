@@ -20,6 +20,7 @@ import io.debezium.DebeziumException;
 import io.debezium.connector.postgresql.connection.LogicalDecodingMessage;
 import io.debezium.connector.postgresql.connection.Lsn;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
+import io.debezium.connector.postgresql.connection.PostgresReplicationConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.connection.ReplicationMessage;
 import io.debezium.connector.postgresql.connection.ReplicationMessage.Operation;
@@ -61,7 +62,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
     private final PostgresSchema schema;
     private final PostgresConnectorConfig connectorConfig;
     private final PostgresTaskContext taskContext;
-    private final ReplicationConnection replicationConnection;
+    private final PostgresReplicationConnection replicationConnection;
     private final AtomicReference<ReplicationStream> replicationStream = new AtomicReference<>();
     private final Snapshotter snapshotter;
     private final DelayStrategy pauseNoMessage;
@@ -98,7 +99,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         pauseNoMessage = DelayStrategy.constant(taskContext.getConfig().getPollInterval());
         this.taskContext = taskContext;
         this.snapshotter = snapshotter;
-        this.replicationConnection = replicationConnection;
+        this.replicationConnection = (PostgresReplicationConnection) replicationConnection;
         this.connectionProbeTimer = ElapsedTimeStrategy.constant(Clock.system(), connectorConfig.statusUpdateInterval());
 
     }
@@ -136,6 +137,15 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
 
         try {
             final WalPositionLocator walPosition;
+
+            // This log can be printed either once or twice.
+            // once - it means that the wal position is not being searched
+            // twice - the wal position locator is searching for a wal position
+            if (YugabyteDBServer.isEnabled()) {
+                LOGGER.info("PID for replication connection: {} on node {}",
+                  replicationConnection.getBackendPid(),
+                  replicationConnection.getConnectedNodeIp());
+            }
 
             if (hasStartLsnStoredInContext) {
                 // start streaming from the last recorded position in the offset
@@ -180,10 +190,18 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                 walPosition.enableFiltering();
                 stream.stopKeepAlive();
                 replicationConnection.reconnect();
+
+                if (YugabyteDBServer.isEnabled()) {
+                    LOGGER.info("PID for replication connection: {} on node {}",
+                                replicationConnection.getBackendPid(),
+                                replicationConnection.getConnectedNodeIp());
+                }
+
                 replicationStream.set(replicationConnection.startStreaming(walPosition.getLastEventStoredLsn(), walPosition));
                 stream = this.replicationStream.get();
                 stream.startKeepAlive(Threads.newSingleThreadExecutor(PostgresConnector.class, connectorConfig.getLogicalName(), KEEP_ALIVE_THREAD_NAME));
             }
+
             processMessages(context, partition, this.effectiveOffset, stream);
         }
         catch (Throwable e) {

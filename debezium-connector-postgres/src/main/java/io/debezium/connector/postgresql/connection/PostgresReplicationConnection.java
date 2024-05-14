@@ -542,6 +542,34 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         return (BaseConnection) connection(false);
     }
 
+    public String getBackendPid() {
+        try (Statement stmt = pgConnection().createStatement()) {
+            ResultSet rs = stmt.executeQuery("SELECT pg_backend_pid() backend_pid;");
+
+            if (rs.next()) {
+                return rs.getString("backend_pid");
+            }
+        } catch (SQLException sqle) {
+            LOGGER.warn("Unable to get the backend PID", sqle);
+        }
+
+        return "FAILED_TO_GET_BACKEND_PID";
+    }
+
+    public String getConnectedNodeIp() {
+        try (Statement stmt = pgConnection().createStatement()) {
+            ResultSet rs = stmt.executeQuery("SELECT inet_server_addr() connected_to_host;");
+
+            if (rs.next()) {
+                return rs.getString("connected_to_host");
+            }
+        } catch (SQLException sqle) {
+            LOGGER.warn("Unable to get the connected host node", sqle);
+        }
+
+        return "FAILED_TO_GET_CONNECTED_NODE";
+    }
+
     private SlotCreationResult parseSlotCreation(ResultSet rs) {
         try {
             if (rs.next()) {
