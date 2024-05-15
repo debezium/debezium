@@ -30,6 +30,7 @@ public class MongoDbSourceInfoStructMaker extends AbstractSourceInfoStructMaker<
                 .field(SourceInfo.WALL_TIME, Schema.OPTIONAL_INT64_SCHEMA)
                 .field(SourceInfo.STRIPE_AUDIT, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(SourceInfo.TASK_UNIQUE_ID, Schema.OPTIONAL_STRING_SCHEMA)
+                .field(SourceInfo.TXN_INDEX, Schema.OPTIONAL_INT64_SCHEMA)
                 .build();
     }
 
@@ -45,7 +46,8 @@ public class MongoDbSourceInfoStructMaker extends AbstractSourceInfoStructMaker<
                 .put(SourceInfo.COLLECTION, sourceInfo.collectionId().name())
                 .put(SourceInfo.ORDER, sourceInfo.position().getInc())
                 .put(SourceInfo.OPERATION_ID, sourceInfo.position().getOperationId())
-                .put(SourceInfo.SESSION_TXN_ID, sourceInfo.position().getOplogSessionTxnId());
+                .put(SourceInfo.SESSION_TXN_ID, sourceInfo.position().getOplogSessionTxnId())
+                .put(SourceInfo.TXN_INDEX, sourceInfo.txnIndex());
 
         if (sourceInfo.position().getChangeStreamSessionTxnId() != null) {
             struct.put(SourceInfo.LSID, sourceInfo.position().getChangeStreamSessionTxnId().lsid)

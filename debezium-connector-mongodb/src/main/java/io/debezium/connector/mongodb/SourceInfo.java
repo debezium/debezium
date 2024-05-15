@@ -101,6 +101,7 @@ public final class SourceInfo extends BaseSourceInfo {
     public static final String WALL_TIME = "wallTime";
     public static final String STRIPE_AUDIT = "stripeAudit";
     public static final String TASK_UNIQUE_ID = "task_unique_id";
+    public static final String TXN_INDEX = "txnIndex";
 
     // Change Stream fields
 
@@ -125,6 +126,7 @@ public final class SourceInfo extends BaseSourceInfo {
     protected int multiTaskGen;
     protected int taskId;
     protected int maxTasks;
+    private long txnIndex;
 
     @Immutable
     protected static final class Position {
@@ -445,7 +447,7 @@ public final class SourceInfo extends BaseSourceInfo {
      * @see #schema()
      */
     public void collectionEvent(String replicaSetName, CollectionId collectionId, long wallTime) {
-        onEvent(replicaSetName, collectionId, positionsByReplicaSetName.get(this.GetPositionKey(replicaSetName)), wallTime, stripeAudit);
+        onEvent(replicaSetName, collectionId, positionsByReplicaSetName.get(this.GetPositionKey(replicaSetName)), wallTime, stripeAudit, 0);
     }
 
     /**
@@ -482,7 +484,7 @@ public final class SourceInfo extends BaseSourceInfo {
         }
         positionsByReplicaSetName.put(this.GetPositionKey(replicaSetName), position);
 
-        onEvent(replicaSetName, CollectionId.parse(replicaSetName, namespace), position, wallTime, stripeAudit);
+        onEvent(replicaSetName, CollectionId.parse(replicaSetName, namespace), position, wallTime, stripeAudit, orderInTx);
     }
 
     public void changeStreamEvent(String replicaSetName, ChangeStreamDocument<BsonDocument> changeStreamEvent, long orderInTx) {
@@ -502,7 +504,7 @@ public final class SourceInfo extends BaseSourceInfo {
         }
         positionsByReplicaSetName.put(this.GetPositionKey(replicaSetName), position);
 
-        onEvent(replicaSetName, CollectionId.parse(replicaSetName, namespace), position, wallTime, stripeAudit);
+        onEvent(replicaSetName, CollectionId.parse(replicaSetName, namespace), position, wallTime, stripeAudit, orderInTx);
     }
 
     /**
@@ -560,12 +562,13 @@ public final class SourceInfo extends BaseSourceInfo {
         return null;
     }
 
-    private void onEvent(String replicaSetName, CollectionId collectionId, Position position, long wallTime, String stripeAudit) {
+    private void onEvent(String replicaSetName, CollectionId collectionId, Position position, long wallTime, String stripeAudit, long txnIndex) {
         this.replicaSetName = replicaSetName;
         this.position = (position == null) ? INITIAL_POSITION : position;
         this.collectionId = collectionId;
         this.wallTime = wallTime;
         this.stripeAudit = stripeAudit;
+        this.txnIndex = txnIndex;
     }
 
     /**
@@ -757,5 +760,9 @@ public final class SourceInfo extends BaseSourceInfo {
 
     protected OptionalLong transactionPosition() {
         return position.getTxOrder();
+    }
+
+    long txnIndex() {
+        return txnIndex;
     }
 }

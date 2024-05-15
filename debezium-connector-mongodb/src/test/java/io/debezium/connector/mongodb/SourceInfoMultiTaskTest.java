@@ -304,6 +304,7 @@ public class SourceInfoMultiTaskTest {
                 .field("wallTime", Schema.OPTIONAL_INT64_SCHEMA)
                 .field("stripeAudit", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("task_unique_id", Schema.OPTIONAL_STRING_SCHEMA)
+                .field("txnIndex", Schema.OPTIONAL_INT64_SCHEMA)
                 .build();
 
         assertConnectSchemasAreEqual(null, source.schema(), schema);

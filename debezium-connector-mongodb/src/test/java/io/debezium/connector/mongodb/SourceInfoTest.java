@@ -278,6 +278,29 @@ public class SourceInfoTest {
     }
 
     @Test
+    public void txNumberIsPresent() {
+        // Non-transactional event.
+        final BsonDocument event = new BsonDocument().append("ts", new BsonTimestamp(100, 2))
+                .append("wall", new BsonDateTime(1987654321123L))
+                .append("h", new BsonInt64(Long.valueOf(1987654321)))
+                .append("ns", new BsonString("dbA.collectA"));
+        source.opLogEvent("rs", event);
+        assertThat(source.struct().getInt64(SourceInfo.TXN_INDEX)).isEqualTo(0);
+
+        // Transactional event.
+        long orderInTx = 2;
+        final BsonDocument masterEvent = new BsonDocument().append("ts", new BsonTimestamp(100, 2))
+                .append("wall", new BsonDateTime(1987654321123L))
+                .append("h", new BsonInt64(Long.valueOf(1987654321)))
+                .append("ns", new BsonString("dbA.collectA"));
+        final BsonDocument oplogEvent = new BsonDocument().append("ts", new BsonTimestamp(100, 2))
+                .append("h", new BsonInt64(Long.valueOf(1987654321)))
+                .append("ns", new BsonString("dbA.collectA"));
+        source.opLogEvent("rs", oplogEvent, masterEvent, orderInTx);
+        assertThat(source.struct().getInt64(SourceInfo.TXN_INDEX)).isEqualTo(orderInTx);
+    }
+
+    @Test
     public void schemaIsCorrect() {
         final Schema schema = SchemaBuilder.struct()
                 .name("io.debezium.connector.mongo.Source")
@@ -299,6 +322,7 @@ public class SourceInfoTest {
                 .field("wallTime", Schema.OPTIONAL_INT64_SCHEMA)
                 .field("stripeAudit", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("task_unique_id", Schema.OPTIONAL_STRING_SCHEMA)
+                .field("txnIndex", Schema.OPTIONAL_INT64_SCHEMA)
                 .build();
 
         assertConnectSchemasAreEqual(null, source.schema(), schema);
