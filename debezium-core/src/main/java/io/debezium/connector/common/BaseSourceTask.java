@@ -487,7 +487,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
 
             if (offset != null) {
                 found = true;
-                LOGGER.info("Found previous partition offset {}: {}", partition, offset.getOffset());
+                LOGGER.debug("Found previous partition offset {}: {}", partition, offset.getOffset());
             }
         }
 
