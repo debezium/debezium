@@ -204,6 +204,13 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
 
     private final List<NotificationChannel> notificationChannels;
 
+    /**
+     * A flag to record whether the offsets stored in the offset store are loaded for the first time.
+     * This is typically used to reduce logging in case a connector like PostgreSQL reads offsets
+     * not only on connector startup but repeatedly during execution time too.
+     */
+    private boolean offsetLoadedInPast = false;
+
     protected BaseSourceTask() {
         // Use exponential delay to log the progress frequently at first, but the quickly tapering off to once an hour...
         pollOutputDelay = ElapsedTimeStrategy.exponential(clock, INITIAL_POLL_PERIOD_IN_MILLIS, MAX_POLL_PERIOD_IN_MILLIS);
@@ -487,7 +494,13 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
 
             if (offset != null) {
                 found = true;
-                LOGGER.debug("Found previous partition offset {}: {}", partition, offset.getOffset());
+                if (offsetLoadedInPast) {
+                    LOGGER.debug("Found previous partition offset {}: {}", partition, offset.getOffset());
+                }
+                else {
+                    LOGGER.info("Found previous partition offset {}: {}", partition, offset.getOffset());
+                    offsetLoadedInPast = true;
+                }
             }
         }
 
