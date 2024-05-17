@@ -238,7 +238,7 @@ createTablespaceNdb
 
 createTrigger
     : CREATE orReplace? ownerStatement?                         // orReplace is MariaDB-specific only
-      TRIGGER thisTrigger=fullId
+      TRIGGER ifNotExists? thisTrigger=fullId
       triggerTime=(BEFORE | AFTER)
       triggerEvent=(INSERT | UPDATE | DELETE)
       ON tableName FOR EACH ROW
