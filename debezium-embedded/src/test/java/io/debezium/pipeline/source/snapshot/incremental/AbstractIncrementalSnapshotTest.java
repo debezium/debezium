@@ -518,7 +518,8 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         startConnector();
         assertThat(interceptor.containsMessage("No incremental snapshot in progress")).isTrue();
 
-        sendAdHocSnapshotSignal();
+        // sendAdHocSnapshotSignal();
+        sendAdHocSnapshotSignalAndWait();
 
         try (JdbcConnection connection = databaseConnection()) {
             connection.setAutoCommit(false);

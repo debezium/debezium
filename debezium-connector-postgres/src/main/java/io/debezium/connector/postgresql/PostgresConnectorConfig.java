@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import io.debezium.data.Envelope;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.heartbeat.HeartbeatConnectionProvider;
 import io.debezium.heartbeat.HeartbeatErrorHandler;
@@ -23,6 +24,7 @@ import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
 import org.apache.kafka.common.config.ConfigValue;
+import org.apache.kafka.connect.data.Struct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -1220,6 +1222,21 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         } else {
             return super.createHeartbeat(topicNamingStrategy, schemaNameAdjuster, connectionProvider, errorHandler);
         }
+    }
+
+    @Override
+    public Optional<String[]> parseSignallingMessage(Struct value) {
+        final Struct after = value.getStruct(Envelope.FieldName.AFTER);
+        if (after == null) {
+            LOGGER.warn("After part of signal '{}' is missing", value);
+            return Optional.empty();
+        }
+        List<org.apache.kafka.connect.data.Field> fields = after.schema().fields();
+        return Optional.of(new String[]{
+                after.getString(fields.get(0).name()),
+                after.getString(fields.get(1).name()),
+                after.getString(fields.get(2).name())
+        });
     }
 
 
