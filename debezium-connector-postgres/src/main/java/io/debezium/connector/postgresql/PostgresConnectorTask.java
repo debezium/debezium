@@ -82,14 +82,8 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
         }
 
         final Charset databaseCharset;
-
         try (PostgresConnection tempConnection = new PostgresConnection(connectorConfig.getJdbcConfig(), PostgresConnection.CONNECTION_GENERAL)) {
             databaseCharset = tempConnection.getDatabaseCharset();
-        }
-        catch (Exception exception) {
-            // YB Note: Catch all the exceptions and retry.
-            LOGGER.warn("Received exception, task will be retrying ", exception);
-            throw new RetriableException(exception);
         }
 
         final PostgresValueConverterBuilder valueConverterBuilder = (typeRegistry) -> PostgresValueConverter.of(
@@ -105,11 +99,8 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
         try {
             jdbcConnection.setAutoCommit(false);
         }
-        catch (Exception e) {
-            // YB Note: Catch all the exceptions and retry.
-            // throw new DebeziumException(e);
-            LOGGER.warn("Received exception, task will be retrying ", e);
-            throw new RetriableException(e);
+        catch (SQLException e) {
+            throw new DebeziumException(e);
         }
 
         final TypeRegistry typeRegistry = jdbcConnection.getTypeRegistry();
@@ -270,7 +261,6 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
             return coordinator;
         } catch (Exception exception) {
             // YB Note: Catch all the exceptions and retry.
-            LOGGER.warn("Received exception, task will be retrying ", exception);
             throw new RetriableException(exception);
         }
         finally {
