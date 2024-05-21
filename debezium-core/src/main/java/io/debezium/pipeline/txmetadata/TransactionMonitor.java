@@ -153,16 +153,24 @@ public class TransactionMonitor {
     }
 
     private void beginTransaction(Partition partition, OffsetContext offsetContext, Instant timestamp) throws InterruptedException {
-        final Struct key = prepareTxKey(offsetContext);
-        final Struct value = prepareTxBeginValue(offsetContext, timestamp);
-        sender.accept(new SourceRecord(partition.getSourcePartition(), offsetContext.getOffset(),
-                topicName, null, key.schema(), key, value.schema(), value));
+        if (shouldSendToTransactionTopic()) {
+            final Struct key = prepareTxKey(offsetContext);
+            final Struct value = prepareTxBeginValue(offsetContext, timestamp);
+            sender.accept(new SourceRecord(partition.getSourcePartition(), offsetContext.getOffset(),
+                    topicName, null, key.schema(), key, value.schema(), value));
+        }
+    }
+
+    private boolean shouldSendToTransactionTopic() {
+        return !connectorConfig.getExcludedTransactionMetadataComponents().contains(CommonConnectorConfig.TransactionMetadataComponent.TRANSACTION_TOPIC);
     }
 
     private void endTransaction(Partition partition, OffsetContext offsetContext, Instant timestamp) throws InterruptedException {
-        final Struct key = prepareTxKey(offsetContext);
-        final Struct value = prepareTxEndValue(offsetContext, timestamp);
-        sender.accept(new SourceRecord(partition.getSourcePartition(), offsetContext.getOffset(),
-                topicName, null, key.schema(), key, value.schema(), value));
+        if (shouldSendToTransactionTopic()) {
+            final Struct key = prepareTxKey(offsetContext);
+            final Struct value = prepareTxEndValue(offsetContext, timestamp);
+            sender.accept(new SourceRecord(partition.getSourcePartition(), offsetContext.getOffset(),
+                    topicName, null, key.schema(), key, value.schema(), value));
+        }
     }
 }
