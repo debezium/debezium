@@ -1,22 +1,16 @@
 = Post Processors
 
-[NOTE]
-====
-This feature is currently in incubating state.
-In future versions, we might change the exact semantics, configuration options, and so forth, depending on the feedback we receive.
-Please let us know if you encounter any problems.
-====
 
-While connectors can be configured with transformations to perform lightweight per message mutations, a transformation requires that the immutable `ConnectRecord`, or more aptly the `SourceRecord` has to be re-created.
-A {prodname} Post-Processor is called earlier in the event chain prior to the hand-off to the messaging runtime, and more importantly, operates on the mutable event payload's `Struct` type.
-This allows for a more efficient way to make specific modifications to an event's payload prior to the construction of the `SourceRecord`.
+Post processors perform lightweight, per-message mutations, similar to the modifications that are performed by single message transformations (SMTs).
+However, {prodname} calls post processors earlier in the event chain than transformations, enabling post processors to act on messages before they are handed off to the messaging runtime.
+Because post processors can act on messages from within the {prodname} context, they are more efficient at modifying event payloads than transformations.
 
-However, there are many other benefits to using a `PostProcessor` over a transformation.
-For example, {prodname} connectors expose both a `BeanRegistry` for looking up connector constructed objects by name and a `ServiceRegistry` for doing service locator acquisition of common {prodname} services using dependency injection.
-In simple terms, this means that a `PostProcessor` can get references to common {prodname} internal objects such as a `JdbcConnection`, `CommonConnectoConfig`, `ValueConverterProvider`, and others.
-This allows creating complex post-processing tasks easy within the {prodname} runtime.
+For a transformation to modify a message, it must recreate the message's immutable `ConnectRecord`, or more aptly, its `SourceRecord`.
+By contrast, because a post processor acts within the {prodname} scope, it can operate on mutable `Struct` types in the event payload of a message, modifying payloads before the construction of the `SourceRecord`.
+Close integration with {prodname} provides post processors with access to {prodname} internals, such as {prodname} metadata about database connections, relational schema model, and so forth.
+In turn, this access enhances efficiency when performing tasks that rely on such internal information.
 
-The following post processor implementations are provided by {prodname}:
+{prodname} provides the following post processor implementations:
 
 [cols="30%a,70%a",options="header"]
 |===
