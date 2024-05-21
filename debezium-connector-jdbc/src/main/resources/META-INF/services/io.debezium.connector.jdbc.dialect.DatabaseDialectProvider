@@ -1,4 +1,5 @@
 io.debezium.connector.jdbc.dialect.db2.Db2DatabaseDialect$Db2DatabaseProvider
+io.debezium.connector.jdbc.dialect.mysql.MariaDbDatabaseDialect$MariaDbDatabaseDialectProvider
 io.debezium.connector.jdbc.dialect.mysql.MySqlDatabaseDialect$MySqlDatabaseDialectProvider
 io.debezium.connector.jdbc.dialect.oracle.OracleDatabaseDialect$OracleDatabaseDialectProvider
 io.debezium.connector.jdbc.dialect.postgres.PostgresDatabaseDialect$PostgresDatabaseDialectProvider
