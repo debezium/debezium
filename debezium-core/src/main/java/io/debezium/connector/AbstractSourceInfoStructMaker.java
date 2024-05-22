@@ -46,8 +46,8 @@ public abstract class AbstractSourceInfoStructMaker<T extends AbstractSourceInfo
                 .field(AbstractSourceInfo.SNAPSHOT_KEY, SNAPSHOT_RECORD_SCHEMA)
                 .field(AbstractSourceInfo.DATABASE_NAME_KEY, Schema.STRING_SCHEMA)
                 .field(AbstractSourceInfo.SEQUENCE_KEY, Schema.OPTIONAL_STRING_SCHEMA)
-                .field(AbstractSourceInfo.TIMESTAMP_US_KEY, Schema.INT64_SCHEMA)
-                .field(AbstractSourceInfo.TIMESTAMP_NS_KEY, Schema.INT64_SCHEMA);
+                .field(AbstractSourceInfo.TIMESTAMP_US_KEY, Schema.OPTIONAL_INT64_SCHEMA)
+                .field(AbstractSourceInfo.TIMESTAMP_NS_KEY, Schema.OPTIONAL_INT64_SCHEMA);
     }
 
     protected Struct commonStruct(T sourceInfo) {
