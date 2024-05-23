@@ -134,9 +134,9 @@ public class SchemaFactory {
         return SchemaBuilder.struct().optional()
                 .name(TRANSACTION_BLOCK_SCHEMA_NAME)
                 .version(TRANSACTION_BLOCK_SCHEMA_VERSION)
-                .field(TransactionStructMaker.DEBEZIUM_TRANSACTION_ID_KEY, Schema.STRING_SCHEMA)
-                .field(TransactionStructMaker.DEBEZIUM_TRANSACTION_TOTAL_ORDER_KEY, Schema.INT64_SCHEMA)
-                .field(TransactionStructMaker.DEBEZIUM_TRANSACTION_DATA_COLLECTION_ORDER_KEY, Schema.INT64_SCHEMA)
+                .field(TransactionStructMaker.DEBEZIUM_TRANSACTION_ID_KEY, SchemaBuilder.string().optional().build())
+                .field(TransactionStructMaker.DEBEZIUM_TRANSACTION_TOTAL_ORDER_KEY, SchemaBuilder.int64().optional().build()).optional()
+                .field(TransactionStructMaker.DEBEZIUM_TRANSACTION_DATA_COLLECTION_ORDER_KEY, SchemaBuilder.int64().optional().build()).optional()
                 .build();
     }
 

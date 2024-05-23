@@ -1258,6 +1258,7 @@ public abstract class CommonConnectorConfig {
             }
             return EnumSet.copyOf(Arrays.stream(componentString.split(","))
                     .map(String::trim)
+                    .map(String::toUpperCase)
                     .map(TransactionMetadataComponent::valueOf)
                     .collect(Collectors.toSet()));
         }

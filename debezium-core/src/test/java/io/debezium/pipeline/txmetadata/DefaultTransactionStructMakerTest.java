@@ -51,7 +51,7 @@ public class DefaultTransactionStructMakerTest {
 
     @Test
     public void getStructWithTransactionBlockExcludingTxId() {
-        Configuration config = Configuration.from(Map.of(CommonConnectorConfig.EXCLUDED_TRANSACTION_METADATA_COMPONENTS.name(), "ID"));
+        Configuration config = Configuration.from(Map.of(CommonConnectorConfig.EXCLUDED_TRANSACTION_METADATA_COMPONENTS.name(), "id"));
         DefaultTransactionStructMaker transactionStructMaker = new DefaultTransactionStructMaker(config);
         TransactionContext transactionContext = new TransactionContext();
         String inputTxId = "tx_id";
@@ -70,7 +70,7 @@ public class DefaultTransactionStructMakerTest {
 
     @Test
     public void getStructWithTransactionBlockExcludingOrder() {
-        Configuration config = Configuration.from(Map.of(CommonConnectorConfig.EXCLUDED_TRANSACTION_METADATA_COMPONENTS.name(), "ORDER"));
+        Configuration config = Configuration.from(Map.of(CommonConnectorConfig.EXCLUDED_TRANSACTION_METADATA_COMPONENTS.name(), "order"));
         DefaultTransactionStructMaker transactionStructMaker = new DefaultTransactionStructMaker(config);
         TransactionContext transactionContext = new TransactionContext();
         String inputTxId = "tx_id";
@@ -83,6 +83,23 @@ public class DefaultTransactionStructMakerTest {
         Struct inputStruct = null;
         Struct expectedStruct = new Struct(transactionStructMaker.getTransactionBlockSchema());
         expectedStruct.put(TransactionStructMaker.DEBEZIUM_TRANSACTION_ID_KEY, inputTxId);
+        assertThat(transactionStructMaker.addTransactionBlock(offsetContext, expectedDataCollectionOrder, inputStruct)).isEqualTo(expectedStruct);
+    }
+
+    @Test
+    public void getStructWithTransactionBlockExcludingIdAndOrder() {
+        Configuration config = Configuration.from(Map.of(CommonConnectorConfig.EXCLUDED_TRANSACTION_METADATA_COMPONENTS.name(), "id,order"));
+        DefaultTransactionStructMaker transactionStructMaker = new DefaultTransactionStructMaker(config);
+        TransactionContext transactionContext = new TransactionContext();
+        String inputTxId = "tx_id";
+        long expectedTotalEventCount = 2L;
+        transactionContext.setTransactionId(inputTxId);
+        transactionContext.setTotalEventCount(expectedTotalEventCount);
+        OffsetContext offsetContext = mock(OffsetContext.class);
+        when(offsetContext.getTransactionContext()).thenReturn(transactionContext);
+        long expectedDataCollectionOrder = 1L;
+        Struct inputStruct = null;
+        Struct expectedStruct = new Struct(transactionStructMaker.getTransactionBlockSchema());
         assertThat(transactionStructMaker.addTransactionBlock(offsetContext, expectedDataCollectionOrder, inputStruct)).isEqualTo(expectedStruct);
     }
 
