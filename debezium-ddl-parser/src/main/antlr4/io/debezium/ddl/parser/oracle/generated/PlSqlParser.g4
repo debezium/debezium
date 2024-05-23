@@ -3430,7 +3430,13 @@ column_definition
 
 column_default_value
     : constant
-    | expression;
+    | interval_default_value_expression
+    | expression
+    ;
+
+interval_default_value_expression
+    : '('? INTERVAL concatenation? interval_expression ')'?
+    ;
 
 virtual_column_definition
     : column_name (datatype (COLLATE collation_name)?)?
