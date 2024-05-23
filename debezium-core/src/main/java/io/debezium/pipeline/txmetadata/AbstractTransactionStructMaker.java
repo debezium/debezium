@@ -5,12 +5,10 @@
  */
 package io.debezium.pipeline.txmetadata;
 
-import static io.debezium.config.CommonConnectorConfig.EXCLUDED_TRANSACTION_METADATA_COMPONENTS;
 import static io.debezium.config.CommonConnectorConfig.SCHEMA_NAME_ADJUSTMENT_MODE;
 
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -29,35 +27,21 @@ public abstract class AbstractTransactionStructMaker implements TransactionStruc
     protected static final Schema EVENT_COUNT_PER_DATA_COLLECTION_SCHEMA = SchemaFactory.get().transactionEventCountPerDataCollectionSchema();
     protected Schema transactionKeySchema;
     protected Schema transactionValueSchema;
-    protected EnumSet<CommonConnectorConfig.TransactionMetadataComponent> components;
 
     public AbstractTransactionStructMaker(Configuration config) {
         SchemaNameAdjuster adjuster = CommonConnectorConfig.SchemaNameAdjustmentMode.parse(config.getString(SCHEMA_NAME_ADJUSTMENT_MODE)).createAdjuster();
         transactionKeySchema = SchemaFactory.get().transactionKeySchema(adjuster);
         transactionValueSchema = SchemaFactory.get().transactionValueSchema(adjuster);
-        components = CommonConnectorConfig.parseTransactionMetadataComponentString(config.getString(EXCLUDED_TRANSACTION_METADATA_COMPONENTS));
     }
 
     @Override
     public Struct addTransactionBlock(OffsetContext offsetContext, long dataCollectionEventOrder, Struct value) {
         TransactionContext transactionContext = offsetContext.getTransactionContext();
         final Struct txStruct = new Struct(getTransactionBlockSchema());
-        if (shouldAddTransactionId()) {
-            txStruct.put(DEBEZIUM_TRANSACTION_ID_KEY, transactionContext.getTransactionId());
-        }
-        if (shouldAddOrder()) {
-            txStruct.put(DEBEZIUM_TRANSACTION_TOTAL_ORDER_KEY, transactionContext.getTotalEventCount());
-            txStruct.put(DEBEZIUM_TRANSACTION_DATA_COLLECTION_ORDER_KEY, dataCollectionEventOrder);
-        }
+        txStruct.put(DEBEZIUM_TRANSACTION_ID_KEY, transactionContext.getTransactionId());
+        txStruct.put(DEBEZIUM_TRANSACTION_TOTAL_ORDER_KEY, transactionContext.getTotalEventCount());
+        txStruct.put(DEBEZIUM_TRANSACTION_DATA_COLLECTION_ORDER_KEY, dataCollectionEventOrder);
         return txStruct;
-    }
-
-    private boolean shouldAddTransactionId() {
-        return !components.contains(CommonConnectorConfig.TransactionMetadataComponent.ID);
-    }
-
-    private boolean shouldAddOrder() {
-        return !components.contains(CommonConnectorConfig.TransactionMetadataComponent.ORDER);
     }
 
     @Override

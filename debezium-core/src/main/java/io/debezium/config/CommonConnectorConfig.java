@@ -718,16 +718,6 @@ public abstract class CommonConnectorConfig {
             .withDescription("Enables transaction metadata extraction together with event counting")
             .withDefault(Boolean.FALSE);
 
-    public static final Field EXCLUDED_TRANSACTION_METADATA_COMPONENTS = Field.create("transaction.metadata.components")
-            .withDisplayName("List of transaction metadata components to excluded, defaults to none so includes all components")
-            .withType(Type.LIST)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.LOW)
-            .withValidation(CommonConnectorConfig::validateExcludedTransactionMetadataComponents)
-            .withDefault("none")
-            .withDescription(
-                    "The comma-separated list of transaction metadata components: 'id', 'order', 'transaction_topic'");
-
     public static final Field TRANSACTION_METADATA_FACTORY = Field.create("transaction.metadata.factory")
             .withDisplayName("Factory class to create transaction context & transaction struct maker classes")
             .withType(Type.CLASS)
@@ -1083,7 +1073,6 @@ public abstract class CommonConnectorConfig {
                     POLL_INTERVAL_MS,
                     MAX_QUEUE_SIZE_IN_BYTES,
                     PROVIDE_TRANSACTION_METADATA,
-                    EXCLUDED_TRANSACTION_METADATA_COMPONENTS,
                     SKIPPED_OPERATIONS,
                     SNAPSHOT_DELAY_MS,
                     SNAPSHOT_MODE_TABLES,
@@ -1137,7 +1126,6 @@ public abstract class CommonConnectorConfig {
     private final SourceInfoStructMaker<? extends AbstractSourceInfo> sourceInfoStructMaker;
     private final TransactionMetadataFactory transactionMetadataFactory;
     private final boolean shouldProvideTransactionMetadata;
-    private final EnumSet<TransactionMetadataComponent> excludedTransactionMetadataComponents;
     private final EventProcessingFailureHandlingMode eventProcessingFailureHandlingMode;
     private final CustomConverterRegistry customConverterRegistry;
     private final BinaryHandlingMode binaryHandlingMode;
@@ -1189,7 +1177,6 @@ public abstract class CommonConnectorConfig {
         this.sourceInfoStructMaker = getSourceInfoStructMaker(Version.V2);
         this.transactionMetadataFactory = getTransactionMetadataFactory();
         this.shouldProvideTransactionMetadata = config.getBoolean(PROVIDE_TRANSACTION_METADATA);
-        this.excludedTransactionMetadataComponents = determineTransactionMetadataComponents(config);
         this.eventProcessingFailureHandlingMode = EventProcessingFailureHandlingMode.parse(config.getString(EVENT_PROCESSING_FAILURE_HANDLING_MODE));
         this.customConverterRegistry = new CustomConverterRegistry(getCustomConverters());
         this.binaryHandlingMode = BinaryHandlingMode.parse(config.getString(BINARY_HANDLING_MODE));
@@ -1243,27 +1230,6 @@ public abstract class CommonConnectorConfig {
         }
         else {
             return EnumSet.noneOf(Envelope.Operation.class);
-        }
-    }
-
-    private static EnumSet<TransactionMetadataComponent> determineTransactionMetadataComponents(Configuration config) {
-        String componentString = config.getString(EXCLUDED_TRANSACTION_METADATA_COMPONENTS);
-        return parseTransactionMetadataComponentString(componentString);
-    }
-
-    public static EnumSet<TransactionMetadataComponent> parseTransactionMetadataComponentString(String componentString) {
-        if (componentString != null) {
-            if (componentString.trim().equalsIgnoreCase("none")) {
-                return EnumSet.noneOf(TransactionMetadataComponent.class);
-            }
-            return EnumSet.copyOf(Arrays.stream(componentString.split(","))
-                    .map(String::trim)
-                    .map(String::toUpperCase)
-                    .map(TransactionMetadataComponent::valueOf)
-                    .collect(Collectors.toSet()));
-        }
-        else {
-            return EnumSet.noneOf(TransactionMetadataComponent.class);
         }
     }
 
@@ -1359,10 +1325,6 @@ public abstract class CommonConnectorConfig {
 
     public boolean shouldProvideTransactionMetadata() {
         return shouldProvideTransactionMetadata;
-    }
-
-    public EnumSet<TransactionMetadataComponent> getExcludedTransactionMetadataComponents() {
-        return excludedTransactionMetadataComponents;
     }
 
     public boolean skipMessagesWithoutChange() {
@@ -1565,39 +1527,6 @@ public abstract class CommonConnectorConfig {
         return 0;
     }
 
-    protected static int validateExcludedTransactionMetadataComponents(Configuration config, Field field, ValidationOutput problems) {
-        String components = config.getString(field);
-
-        if (components == null || "none".equals(components)) {
-            return 0;
-        }
-
-        boolean noneSpecified = false;
-        boolean operationsSpecified = false;
-        for (String component : components.split(",")) {
-            switch (component.trim()) {
-                case "none":
-                    noneSpecified = true;
-                    continue;
-                case "id":
-                case "order":
-                case "transaction_topic":
-                    operationsSpecified = true;
-                    continue;
-                default:
-                    problems.accept(field, component, "Invalid component");
-                    return 1;
-            }
-        }
-
-        if (noneSpecified && operationsSpecified) {
-            problems.accept(field, "none", "'none' cannot be specified with other skipped operation types");
-            return 1;
-        }
-
-        return 0;
-    }
-
     private static boolean isUsingAvroConverter(Configuration config) {
         final String keyConverter = config.getString("key.converter");
         final String valueConverter = config.getString("value.converter");
@@ -1747,21 +1676,5 @@ public abstract class CommonConnectorConfig {
             throw new DebeziumException("Unable to instantiate the transaction struct maker class " + TRANSACTION_METADATA_FACTORY);
         }
         return factory;
-    }
-
-    public enum TransactionMetadataComponent {
-        ID("id"),
-        ORDER("order"),
-        TRANSACTION_TOPIC("transaction_topic");
-
-        private final String value;
-
-        TransactionMetadataComponent(String value) {
-            this.value = value;
-        }
-
-        public String getValue() {
-            return value;
-        }
     }
 }
