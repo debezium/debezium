@@ -1,0 +1,144 @@
+[
+  {
+    "test_name": "test decode 1",
+    "comment": "",
+    "token": "8265F49506000007662B022C0100296E5A1004448A9E1A91724ECA875AAFA40773D05C46645F6964006465F49506238B3BBCC1CB20C00004",
+    "document": {
+      "timestamp": {
+        "t": 1710527750,
+        "i": 1894
+      },
+      "version": 1,
+      "tokenType": 128,
+      "txnOpIndex": 0,
+      "fromInvalidate": false,
+      "uuid": "448a9e1a-9172-4eca-875a-afa40773d05c",
+      "documentKey": {
+        "_id": "65f49506238b3bbcc1cb20c0"
+      }
+    }
+  },
+  {
+    "test_name": "can decode resume tokens with a tiny double in them",
+    "comment": "from https://github.com/mongodb-js/mongodb-resumetoken-decoder/blob/main/test/index.ts",
+    "token": "8265523992000000012B022C0100296E5A1004754B35D306B342E8BA0A3DE71005B66446465F6964004650666F6F0050337F78F63E7958E8661F808709C186A717992A6083F43058818C1A289F7C0BCFA77E73E500000004",
+    "document": {
+      "timestamp": {
+        "t": 1699887506,
+        "i": 1
+      },
+      "version": 1,
+      "tokenType": 128,
+      "txnOpIndex": 0,
+      "fromInvalidate": false,
+      "uuid": "754b35d3-06b3-42e8-ba0a-3de71005b664",
+      "documentKey": {
+        "_id": {
+          "foo": [
+            2.0e+307,
+            -2.0e+307,
+            2.0e-307,
+            -2.0e-307
+          ]
+        }
+      }
+    }
+  },
+  {
+    "test_name": "can decode new resume tokens",
+    "comment": "only check txnOpIndex for now, we aren't factoring Bson types in decoder so not equal. from https://github.com/mongodb-js/mongodb-resumetoken-decoder/blob/main/test/index.ts",
+    "checkOnlyTxnOpIndex": true,
+    "token": "826275077A000000012B042C0100296E5A1004BFFDB617400E486099007C0E0048B305463C6F7065726174696F6E54797065003C696E736572740046646F63756D656E744B65790046645F696400646275077A2F3159F971E405C6000004",
+    "document": {
+      "timestamp": {
+        "t": 1651836794,
+        "i": 1
+      },
+      "version": 2,
+      "tokenType": 128,
+      "txnOpIndex": 0,
+      "fromInvalidate": false,
+      "uuid": "bffdb617-400e-4860-9900-7c0e0048b305",
+      "eventIdentifier": {
+        "operationType": "insert",
+        "documentKey": {
+          "_id": "6275077a2f3159f971e405c6"
+        }
+      }
+    }
+  },
+  {
+    "test_name": "can decode non-document resume tokens",
+    "comment": "from https://github.com/mongodb-js/mongodb-resumetoken-decoder/blob/main/test/index.ts",
+    "token": "82612F653E000000022B0229296E04",
+    "document": {
+      "timestamp": {
+        "t": 1630496062,
+        "i": 2
+      },
+      "version": 1,
+      "tokenType": 0,
+      "txnOpIndex": 0,
+      "fromInvalidate": false,
+      "uuid": null,
+      "documentKey": null
+    }
+  },
+  {
+    "test_name": "test decode txnOpindex 2",
+    "comment": "test txnopindex 2",
+    "token": "8265F49506000007662B022C01002B046E5A1004448A9E1A91724ECA875AAFA40773D05C46645F6964006465F49506238B3BBCC1CB20C00004",
+    "document": {
+      "timestamp": {
+        "t": 1710527750,
+        "i": 1894
+      },
+      "version": 1,
+      "tokenType": 128,
+      "txnOpIndex": 2,
+      "fromInvalidate": false,
+      "uuid": "448a9e1a-9172-4eca-875a-afa40773d05c",
+      "documentKey": {
+        "_id": "65f49506238b3bbcc1cb20c0"
+      }
+    }
+  },
+  {
+    "test_name": "test decode txnOpindex 4",
+    "comment": "",
+    "token": "8265F49506000007662B022C01002B086E5A1004448A9E1A91724ECA875AAFA40773D05C46645F6964006465F49506238B3BBCC1CB20C00004",
+    "document": {
+      "timestamp": {
+        "t": 1710527750,
+        "i": 1894
+      },
+      "version": 1,
+      "tokenType": 128,
+      "txnOpIndex": 4,
+      "fromInvalidate": false,
+      "uuid": "448a9e1a-9172-4eca-875a-afa40773d05c",
+      "documentKey": {
+        "_id": "65f49506238b3bbcc1cb20c0"
+      }
+    }
+  },
+  {
+    "test_name": "test decode txnOpindex 3",
+    "comment": "",
+    "token": "8265F49506000007662B022C01002B066E5A1004448A9E1A91724ECA875AAFA40773D05C46645F6964006465F49506238B3BBCC1CB20C00004",
+    "document": {
+      "timestamp": {
+        "t": 1710527750,
+        "i": 1894
+      },
+      "version": 1,
+      "tokenType": 128,
+      "txnOpIndex": 3,
+      "fromInvalidate": false,
+      "uuid": "448a9e1a-9172-4eca-875a-afa40773d05c",
+      "documentKey": {
+        "_id": "65f49506238b3bbcc1cb20c0"
+      }
+    }
+  }
+]
