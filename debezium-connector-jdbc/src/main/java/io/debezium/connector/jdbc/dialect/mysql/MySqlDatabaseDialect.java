@@ -66,7 +66,7 @@ public class MySqlDatabaseDialect extends GeneralDatabaseDialect {
 
     private final boolean connectionTimeZoneSet;
 
-    private MySqlDatabaseDialect(JdbcSinkConnectorConfig config, SessionFactory sessionFactory) {
+    protected MySqlDatabaseDialect(JdbcSinkConnectorConfig config, SessionFactory sessionFactory) {
         super(config, sessionFactory);
 
         try (StatelessSession session = sessionFactory.openStatelessSession()) {
