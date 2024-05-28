@@ -1183,6 +1183,14 @@ NATS has a built-in distributed persistence system called https://docs.nats.io/n
 | memory
 | Controls how the messages are saved in the stream. Can be memory or file.
 
+|[[nats-jetstream-auth-jwt]]<<nats-jetstream-auth-jwt, `debezium.sink.nats-jetstream.auth.jwt`>>
+|
+|If given, enable JWT authentication with NATS. You must provide an NKey seed to use this authentication technique.
+
+|[[nats-jetstream-auth-seed]]<<nats-jetstream-auth-seed, `debezium.sink.nats-jetstream.auth.seed`>>
+|
+|The NKey seed to use with the JWT.
+
 |===
 
 If you need a more configurable stream, it can be created with nats cli. More about streams at: https://docs.nats.io/nats-concepts/jetstream/streams
