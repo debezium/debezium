@@ -280,3 +280,4 @@ ashishbinu,Ashish Binu
 wltmlx,Lukas Langegger
 GitHubSergei,Sergey Kazakov
 shaer,Mohamed El Shaer
+SylvainMarty,Sylvain Marty
