@@ -64,7 +64,7 @@ public class ExcludeTransactionComponents<R extends ConnectRecord<R>> implements
             Schema updatedSchema = updateSchema("", schema);
             Struct newValue = updateStruct("", updatedSchema, value);
             return record.newRecord(record.topic(), record.kafkaPartition(), record.keySchema(), record.key(),
-                    schema, newValue, record.timestamp());
+                    updatedSchema, newValue, record.timestamp());
         }
         return record;
     }

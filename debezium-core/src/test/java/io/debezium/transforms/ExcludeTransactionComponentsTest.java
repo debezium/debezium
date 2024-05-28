@@ -111,8 +111,10 @@ public class ExcludeTransactionComponentsTest {
                         .put("total_order", 2L));
 
         Struct actualStruct = (Struct) record.value();
+        Schema actualValueSchema = record.valueSchema();
 
         assertThat(actualStruct).isEqualTo(expectedValueStruct);
+        assertThat(actualValueSchema).isEqualTo(expectedValueSchema);
     }
 
     @Test
@@ -177,8 +179,10 @@ public class ExcludeTransactionComponentsTest {
                         .put("data_collection_order", 1L));
 
         Struct actualStruct = (Struct) record.value();
+        Schema actualValueSchema = record.valueSchema();
 
         assertThat(actualStruct).isEqualTo(expectedValueStruct);
+        assertThat(actualValueSchema).isEqualTo(expectedValueSchema);
     }
 
     @Test
@@ -243,8 +247,10 @@ public class ExcludeTransactionComponentsTest {
                         .put("total_order", 2L));
 
         Struct actualStruct = (Struct) record.value();
+        Schema actualValueSchema = record.valueSchema();
 
         assertThat(actualStruct).isEqualTo(expectedValueStruct);
+        assertThat(actualValueSchema).isEqualTo(expectedValueSchema);
     }
 
     @Test
