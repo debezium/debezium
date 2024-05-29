@@ -56,20 +56,11 @@ endif::product[]
 
 An overview of the MySQL topologies that the connector supports is useful for planning your application. To optimally configure and run a {prodname} MySQL connector, it is helpful to understand how the connector tracks the structure of tables, exposes schema changes, performs snapshots, and determines Kafka topic names.
 
-ifdef::community[]
-[NOTE]
-====
-The {prodname} MySQL connector has been tested and officially supports MariaDB 11.1.2+.
-For information about how to connect {prodname} to MariaDB, see xref:mysql-mariadb-support[Using the connector with a MariaDB database].
-====
-endif::community[]
-
 ifdef::product[]
 
 Details are in the following topics:
 
 * xref:mysql-topologies-supported-by-debezium-connectors[]
-* xref:supplemental-configuration-for-connecting-debezium-to-mariadb[
 * xref:how-debezium-mysql-connectors-handle-database-schema-changes[]
 * xref:how-debezium-mysql-connectors-expose-database-schema-changes[]
 * xref:how-debezium-mysql-connectors-perform-database-snapshots[]
@@ -108,46 +99,6 @@ Hosted::
 There is support for the {prodname} MySQL connector to use hosted options such as Amazon RDS and Amazon Aurora.
 +
 Because these hosted options do not allow a global read lock, table-level locks are used to create the _consistent snapshot_.
-
-// Type: concept
-// ModuleID: supplemental-configuration-for-connecting-debezium-to-mariadb
-// Title: Supplemental configuration for connecting {prodname} to a MariaDB database
-[[mysql-mariadb-support]]
-=== Using the connector with a MariaDB database
-
-Although it is possible to use the MySQL driver to connect and stream changes from MariaDB, it's best to configure the {prodname} MySQL connector to use the MariaDB adapter mode, so that the connector can take advantage of the MariaDB driver, and its unique feature stack.
-To toggle the MariaDB support mode, the xref:mysql-property-connector-adapter[`connector.adapter`] configuration property must be specified with a value of `mariadb`.
-This mode utilizes the MariaDB driver instead of the MySQL driver, meaning that you must also provide the database protocol and JDBC driver strings that are compliant with MariaDB, see the example below.
-
-.MariaDB supplemental configuration
-[source,json]
-----
-{
-  ...
-  "connector.adapter": "mariadb",
-  "database.protocol": "jdbc:mariadb",
-  "database.jdbc.driver": "org.mariadb.jdbc.Driver"
-}
-----
-ifdef::product[]
-[IMPORTANT]
-====
-Use of the {prodname} MySQL connector with MariaDB is a Technology Preview feature only.
-Technology Preview features are not supported with Red{nbsp}Hat production service level agreements (SLAs) and might not be functionally complete.
-Red{nbsp}Hat does not recommend using them in production.
-These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
-For more information about the support scope of Red{nbsp}Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
-====
-endif::product[]
-ifdef::community[]
-[NOTE]
-====
-When the new {prodname} MariaDB connector is available in a future release, these supplemental configurations will no longer be necessary.
-As the connector currently includes both the MySQL and MariaDB drivers, the MariaDB mode is _opt-in_ until {prodname} introduces the new MariaDB-specific connector.
-====
-endif::community[]
-After you apply the Maria DB supplemental configuration, the {prodname} MySQL connector uses the MariaDB adapter connector, which natively streams changes from MariaDB binary transaction logs.
-You can use all other xref:mysql-connector-properties[MySQL connector properties] in conjunction with the preceding supplemental configuration.
 
 // Type: concept
 // ModuleID: how-debezium-mysql-connectors-handle-database-schema-changes
@@ -1519,8 +1470,7 @@ a| Mandatory field that describes the source metadata for the event. This field 
 * MySQL server ID (if available)
 * Timestamp for when the change was made in the database
 
-If the xref:enable-query-log-events[`MariaDB`] MySQL configuration option is enabled and the connector configuration `include.query` property is enabled, the `source` field also provides the `query` field, which contains the original SQL statement that caused the change event.
-On MariaDB, the configuration option is `binlog_annotate_row_events`.
+If the xref:enable-query-log-events[`binlog_rows_query_log_events`] MySQL configuration option is enabled and the connector configuration `include.query` property is enabled, the `source` field also provides the `query` field, which contains the original SQL statement that caused the change event.
 
 |===
 
@@ -1603,7 +1553,6 @@ a|Mandatory field that describes the source metadata for the event. The `source`
 * Timestamp for when the change was made in the database
 
 If the xref:enable-query-log-events[`binlog_rows_query_log_events`] MySQL configuration option is enabled and the connector configuration `include.query` property is enabled, the `source` field also provides the `query` field, which contains the original SQL statement that caused the change event.
-On MariaDB, the configuration option is `binlog_annotate_row_events`.
 
 |4
 |`op`
@@ -1717,7 +1666,6 @@ a|Mandatory field that describes the source metadata for the event. In a _delete
 * Timestamp for when the change was made in the database
 
 If the xref:enable-query-log-events[`binlog_rows_query_log_events`] MySQL configuration option is enabled and the connector configuration `include.query` property is enabled, the `source` field also provides the `query` field, which contains the original SQL statement that caused the change event.
-On MariaDB, the configuration option is `binlog_annotate_row_events`.
 
 |4
 |`op`
@@ -2554,7 +2502,7 @@ a|The number of seconds the server waits for activity on a non-interactive conne
 === Enabling query log events
 
 You might want to see the original `SQL` statement for each binlog event.
-Enabling the `binlog_rows_query_log_events` option in the MySQL configuration or `binlog_annotate_row_events` in the MariaDB configuration file allows you to do this.
+Enabling the `binlog_rows_query_log_events` option in the MySQL configuration file allows you to do this.
 
 This option is available in MySQL 5.6 and later.
 
@@ -2566,19 +2514,14 @@ This option is available in MySQL 5.6 and later.
 
 .Procedure
 
-* Enable `binlog_rows_query_log_events` in MySQL or `binlog_annotate_row_events` in MariaDB:
+* Enable `binlog_rows_query_log_events` in MySQL:
 +
 [source,SQL]
 ----
 mysql> binlog_rows_query_log_events=ON
 ----
 +
-[source,SQL]
-----
-mariadb> binlog_annotate_row_events=ON
-----
-+
-`binlog_rows_query_log_events` or `binlog_annotate_row_events` is set to a value that enables/disables support for including the original `SQL` statement in the binlog entry.
+`binlog_rows_query_log_events` is set to a value that enables/disables support for including the original `SQL` statement in the binlog entry.
 +
 ** `ON` = enabled
 ** `OFF` = disabled
@@ -3020,53 +2963,13 @@ The following configuration properties are _required_ unless a default value is 
 |`1`
 |The maximum number of tasks that should be created for this connector. The MySQL connector always uses a single task and therefore does not use this value, so the default is always acceptable.
 
-|[[mysql-property-connector-adapter]]<<mysql-property-connector-adapter, `+connector.adapter+`>>
-|mysql
-|The connector adapter mode to be used.
-For information about how to connect {prodname} to MariaDB, see xref:mysql-mariadb-support[Using the connector with a MariaDB database].
-
-ifdef::product[]
-[IMPORTANT]
-====
-Use of the {prodname} MySQL connector with MariaDB is a Technology Preview feature only.
-Technology Preview features are not supported with Red{nbsp}Hat production service level agreements (SLAs) and might not be functionally complete.
-Red{nbsp}Hat does not recommend using them in production.
-These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
-For more information about the support scope of Red{nbsp}Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
-====
-endif::product[]
-
 |[[mysql-property-database-protocol]]<<mysql-property-database-protocol, `+database.protocol+`>>
 |jdbc:mysql
 |JDBC protocol used by the driver connection string for connecting to the database.
-For information about how to connect {prodname} to MariaDB, see xref:mysql-mariadb-support[Using the connector with a MariaDB database].
-
-ifdef::product[]
-[IMPORTANT]
-====
-Use of the {prodname} MySQL connector with MariaDB is a Technology Preview feature only.
-Technology Preview features are not supported with Red{nbsp}Hat production service level agreements (SLAs) and might not be functionally complete.
-Red{nbsp}Hat does not recommend using them in production.
-These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
-For more information about the support scope of Red{nbsp}Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
-====
-endif::product[]
 
 |[[mysql-property-database-jdbc-driver]]<<mysql-property-database-jdbc-driver, `+database.jdbc.driver+`>>
 |com.mysql.cj.jdbc.Driver
 |The driver class name to use. This can be useful when using an alternative driver to the one packaged with the connector.
-For information about how to connect {prodname} to MariaDB, see xref:mysql-mariadb-support[Using the connector with a MariaDB database].
-
-ifdef::product[]
-[IMPORTANT]
-====
-Use of the {prodname} MySQL connector with MariaDB is a Technology Preview feature only.
-Technology Preview features are not supported with Red{nbsp}Hat production service level agreements (SLAs) and might not be functionally complete.
-Red{nbsp}Hat does not recommend using them in production.
-These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
-For more information about the support scope of Red{nbsp}Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
-====
-endif::product[]
 
 |[[mysql-property-database-hostname]]<<mysql-property-database-hostname, `+database.hostname+`>>
 |No default
@@ -3290,24 +3193,13 @@ endif::community[]
 |`false`
 |Boolean value that specifies whether the connector should include the original SQL query that generated the change event. +
  +
-If you set this option to `true` then you must also configure MySQL with the `binlog_rows_query_log_events` option or MariaDB with the `binlog_annotate_row_events` option set to `ON`.
+If you set this option to `true` then you must also configure MySQL with the `binlog_rows_query_log_events` option set to `ON`.
 When `include.query` is `true`, the query is not present for events that the snapshot process generates.
  +
 Setting `include.query` to `true` might expose tables or fields that are explicitly excluded or masked by including the original SQL statement in the change event.
 For this reason, the default setting is `false`.
 
 For more information about configuring the database to return the original `SQL` statement for each log event, see xref:enable-query-log-events[Enabling query log events].
-
-ifdef::product[]
-[IMPORTANT]
-====
-Use of the {prodname} MySQL connector with MariaDB is a Technology Preview feature only.
-Technology Preview features are not supported with Red{nbsp}Hat production service level agreements (SLAs) and might not be functionally complete.
-Red{nbsp}Hat does not recommend using them in production.
-These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
-For more information about the support scope of Red{nbsp}Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
-====
-endif::product[]
 
 |[[mysql-property-event-deserialization-failure-handling-mode]]<<mysql-property-event-deserialization-failure-handling-mode, `+event.deserialization.failure.handling.mode+`>>
 |`fail`
