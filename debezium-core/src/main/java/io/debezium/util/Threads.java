@@ -241,7 +241,7 @@ public class Threads {
      * Returns a thread factory that creates threads conforming to Debezium thread naming
      * pattern {@code debezium-<component class>-<component-id>-<thread-name>}.
      *
-     * @param component - the source component or sink change consumer class
+     * @param component - the source connector or sink change consumer class
      * @param componentId - the identifier to differentiate between component instances
      * @param name - the name of the thread
      * @param indexed - true if the thread name should be appended with an index
