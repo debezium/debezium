@@ -2,6 +2,47 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.6.2.Final
+May 30th 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12425583)
+
+### New features since 2.6.1.Final
+
+* Debezium oracle connectors needs to support IN clause for log miner query for more than 1000 tables as it creates performance issue [DBZ-7847](https://issues.redhat.com/browse/DBZ-7847)
+
+
+### Breaking changes since 2.6.1.Final
+
+None
+
+
+### Fixes since 2.6.1.Final
+
+* After the initial deployment of Debezium, if a new table is added to MSSQL, its schema is was captured [DBZ-7697](https://issues.redhat.com/browse/DBZ-7697)
+* NO_DATA snapshot mode validation throw DebeziumException on restarts if snapshot is not completed [DBZ-7780](https://issues.redhat.com/browse/DBZ-7780)
+* DDL statement couldn't be parsed [DBZ-7788](https://issues.redhat.com/browse/DBZ-7788)
+* old class reference in ibmi-connector services [DBZ-7795](https://issues.redhat.com/browse/DBZ-7795)
+* Ad-hoc blocking snapshot not working through file channeling without inserting a row in the database. [DBZ-7806](https://issues.redhat.com/browse/DBZ-7806)
+* Postgres: Potential data loss on connector restart [DBZ-7816](https://issues.redhat.com/browse/DBZ-7816)
+* Sql Server incorrectly applying quoted snapshot statement overrides [DBZ-7828](https://issues.redhat.com/browse/DBZ-7828)
+* Debezium JDBC Sink not handle order correctly [DBZ-7830](https://issues.redhat.com/browse/DBZ-7830)
+* Debezium MySQL Snapshot Connector Fails [DBZ-7858](https://issues.redhat.com/browse/DBZ-7858)
+* Support Oracle DDL Alter Audit Policy [DBZ-7864](https://issues.redhat.com/browse/DBZ-7864)
+* Support Oracle DDL Create Audit Policy [DBZ-7865](https://issues.redhat.com/browse/DBZ-7865)
+* Default value of error retries not interpreted correctly [DBZ-7870](https://issues.redhat.com/browse/DBZ-7870)
+* Avro schema compatibility issues when upgrading from Oracle Debezium 2.5.3.Final to 2.6.1.Final [DBZ-7880](https://issues.redhat.com/browse/DBZ-7880)
+* ParsingException (MySQL 8): create trigger if exists [DBZ-7881](https://issues.redhat.com/browse/DBZ-7881)
+* Debezium can't handle columns with # in its name [DBZ-7893](https://issues.redhat.com/browse/DBZ-7893)
+* Oracle interval default values are not properly parsed [DBZ-7898](https://issues.redhat.com/browse/DBZ-7898)
+
+
+### Other changes since 2.6.1.Final
+
+* Add c3p0 timeout configuration example to JDBC sink [DBZ-7822](https://issues.redhat.com/browse/DBZ-7822)
+* in the Cassandra documentation, there is a typo which should have been disable not Dusable. [DBZ-7851](https://issues.redhat.com/browse/DBZ-7851)
+* Too much logs after Debezium update [DBZ-7871](https://issues.redhat.com/browse/DBZ-7871)
+
+
+
 ## 2.6.1.Final
 April 12nd 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12425863)
 
