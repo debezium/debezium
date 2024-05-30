@@ -43,6 +43,11 @@ public class SelectLobLocatorEvent extends DmlEvent {
     }
 
     @Override
+    public boolean isLobEvent() {
+        return true;
+    }
+
+    @Override
     public String toString() {
         return "SelectLobLocatorEvent{" +
                 "columnName='" + columnName + '\'' +

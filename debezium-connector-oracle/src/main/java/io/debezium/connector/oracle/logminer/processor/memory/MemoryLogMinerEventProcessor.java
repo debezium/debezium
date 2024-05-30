@@ -148,20 +148,19 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
     }
 
     @Override
-    protected void finalizeTransactionCommit(String transactionId, Scn commitScn) {
+    protected void cacheRecentlyCommittedTransaction(String transactionId, Scn commitScn) {
         getAbandonedTransactionsCache().remove(transactionId);
         if (getConfig().isLobEnabled()) {
-            // cache recently committed transactions by transaction id
             recentlyProcessedTransactionsCache.put(transactionId, commitScn);
+            metrics.incrementRecentlyProcessedTransactions();
         }
     }
 
     @Override
-    protected void finalizeTransactionRollback(String transactionId, Scn rollbackScn) {
-        transactionCache.remove(transactionId);
-        getAbandonedTransactionsCache().remove(transactionId);
+    protected void cacheRecentlyRolledBackTransaction(String transactionId, Scn rollbackScn) {
         if (getConfig().isLobEnabled()) {
             recentlyProcessedTransactionsCache.put(transactionId, rollbackScn);
+            metrics.incrementRecentlyProcessedTransactions();
         }
     }
 
@@ -202,7 +201,11 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
             if (transaction.getEvents().size() <= eventId) {
                 // Add new event at eventId offset
                 LOGGER.trace("Transaction {}, adding event reference at index {}", transactionId, eventId);
-                transaction.getEvents().add(eventSupplier.get());
+                final LogMinerEvent event = eventSupplier.get();
+                transaction.getEvents().add(event);
+                if (event.isLobEvent()) {
+                    transaction.setHasLobEvent();
+                }
                 metrics.calculateLagFromSource(row.getChangeTime());
             }
 
@@ -232,48 +235,71 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
     @Override
     protected Scn calculateNewStartScn(Scn endScn, Scn maxCommittedScn) throws InterruptedException {
         if (getConfig().isLobEnabled()) {
+            final Scn minLobStartScn = getLobTransactionCacheMinimumScn();
+            LOGGER.trace("Transaction cache minimum start SCN with LOB events: {}", minLobStartScn);
+            if (minLobStartScn.isNull()) {
+                // no LOB events, clearing cache and moving window
+                recentlyProcessedTransactionsCache.clear();
+                metrics.setRecentlyProcessedTransactions(0);
+                return calculateScnNoLobEvents(endScn);
+            }
+
             if (transactionCache.isEmpty() && !maxCommittedScn.isNull()) {
                 offsetContext.setScn(maxCommittedScn);
                 dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
             }
             else {
                 abandonTransactions(getConfig().getLogMiningTransactionRetention());
+                recentlyProcessedTransactionsCache.entrySet().removeIf(entry -> entry.getValue().compareTo(minLobStartScn) < 0);
+                metrics.setRecentlyProcessedTransactions(recentlyProcessedTransactionsCache.size());
                 final Scn minStartScn = getTransactionCacheMinimumScn();
                 if (!minStartScn.isNull()) {
-                    recentlyProcessedTransactionsCache.entrySet().removeIf(entry -> entry.getValue().compareTo(minStartScn) < 0);
                     schemaChangesCache.removeIf(scn -> scn.compareTo(minStartScn) < 0);
                     offsetContext.setScn(minStartScn.subtract(Scn.valueOf(1)));
                     dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
                 }
             }
+
             return offsetContext.getScn();
         }
         else {
-            if (!getLastProcessedScn().isNull() && getLastProcessedScn().compareTo(endScn) < 0) {
-                // If the last processed SCN is before the endScn we need to use the last processed SCN as the
-                // next starting point as the LGWR buffer didn't flush all entries from memory to disk yet.
-                endScn = getLastProcessedScn();
-            }
+            return calculateScnNoLobEvents(endScn);
+        }
+    }
 
-            if (transactionCache.isEmpty()) {
-                offsetContext.setScn(endScn);
+    private Scn calculateScnNoLobEvents(Scn endScn) throws InterruptedException {
+        if (!getLastProcessedScn().isNull() && getLastProcessedScn().compareTo(endScn) < 0) {
+            // If the last processed SCN is before the endScn we need to use the last processed SCN as the
+            // next starting point as the LGWR buffer didn't flush all entries from memory to disk yet.
+            endScn = getLastProcessedScn();
+        }
+
+        if (transactionCache.isEmpty()) {
+            offsetContext.setScn(endScn);
+            dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
+        }
+        else {
+            abandonTransactions(getConfig().getLogMiningTransactionRetention());
+            final Scn minStartScn = getTransactionCacheMinimumScn();
+            if (!minStartScn.isNull()) {
+                offsetContext.setScn(minStartScn.subtract(Scn.valueOf(1)));
                 dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
             }
-            else {
-                abandonTransactions(getConfig().getLogMiningTransactionRetention());
-                final Scn minStartScn = getTransactionCacheMinimumScn();
-                if (!minStartScn.isNull()) {
-                    offsetContext.setScn(minStartScn.subtract(Scn.valueOf(1)));
-                    dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
-                }
-            }
-            return endScn;
         }
+        return endScn;
     }
 
     @Override
     protected Scn getTransactionCacheMinimumScn() {
         return transactionCache.values().stream()
+                .map(MemoryTransaction::getStartScn)
+                .min(Scn::compareTo)
+                .orElse(Scn.NULL);
+    }
+
+    @Override
+    protected Scn getLobTransactionCacheMinimumScn() {
+        return transactionCache.values().stream().filter(MemoryTransaction::hasLobEvent)
                 .map(MemoryTransaction::getStartScn)
                 .min(Scn::compareTo)
                 .orElse(Scn.NULL);

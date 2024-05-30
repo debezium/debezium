@@ -62,6 +62,10 @@ public class LogMinerEvent {
         return changeTime;
     }
 
+    public boolean isLobEvent() {
+        return false;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {

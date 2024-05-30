@@ -250,16 +250,17 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
     }
 
     @Override
-    protected void finalizeTransactionCommit(String transactionId, Scn commitScn) {
+    protected void cacheRecentlyCommittedTransaction(String transactionId, Scn commitScn) {
         getAbandonedTransactionsCache().remove(transactionId);
         // cache recently committed transactions by transaction id
         if (getConfig().isLobEnabled()) {
             getProcessedTransactionsCache().put(transactionId, commitScn.toString());
+            metrics.incrementRecentlyProcessedTransactions();
         }
     }
 
     @Override
-    protected void finalizeTransactionRollback(String transactionId, Scn rollbackScn) {
+    protected void cacheRecentlyRolledBackTransaction(String transactionId, Scn rollbackScn) {
         final InfinispanTransaction transaction = getTransactionCache().get(transactionId);
         if (transaction != null) {
             removeEventsWithTransaction(transaction);
@@ -268,6 +269,7 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
         getAbandonedTransactionsCache().remove(transactionId);
         if (getConfig().isLobEnabled()) {
             getProcessedTransactionsCache().put(transactionId, rollbackScn.toString());
+            metrics.incrementRecentlyProcessedTransactions();
         }
     }
 
@@ -336,7 +338,6 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
 
     @Override
     protected Scn calculateNewStartScn(Scn endScn, Scn maxCommittedScn) throws InterruptedException {
-
         // Cleanup caches based on current state of the transaction cache
         final Optional<InfinispanTransaction> oldestTransaction = getOldestTransactionInCache();
         final Scn minCacheScn;
