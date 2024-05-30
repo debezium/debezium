@@ -49,6 +49,7 @@ Ant Kutschera
 Anton Kondratev
 Anton Martynov
 Arik Cohen
+Aristofanis Lekkos
 Arkoprabho Chakraborti
 artiship
 Arthur Le Ray
@@ -351,7 +352,7 @@ Meng Qiu
 Melissa Winstanley
 Michael Cizmar
 Michael Wang
-Michal Augustyn
+Michal Augustýn
 Mickael Maison
 Mickaël Isaert
 Mike Graham
@@ -487,6 +488,7 @@ Sun Xiao Jian
 Sungho Hwang
 Stein Rolevink
 Syed Muhammad Sufyian
+Sylvain Marty
 Tapani Moilanen
 Tautvydas Januskevicius
 Taylor Rolison
