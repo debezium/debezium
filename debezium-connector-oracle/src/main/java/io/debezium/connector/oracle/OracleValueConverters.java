@@ -154,6 +154,10 @@ public class OracleValueConverters extends JdbcValueConverters {
             // return sufficiently sized int schema for non-floating point types
             Integer scale = column.scale().get();
 
+            if (scale == 0 && decimalMode != DecimalMode.PRECISE) {
+                return SpecialValueDecimal.builder(decimalMode, column.length(), 0);
+            }
+
             // a negative scale means rounding, e.g. NUMBER(10, -2) would be rounded to hundreds
             if (scale <= 0) {
                 int width = column.length() - scale;
@@ -174,9 +178,14 @@ public class OracleValueConverters extends JdbcValueConverters {
             // larger non-floating point types and floating point types use Decimal
             return super.schemaBuilder(column);
         }
-        else {
-            return variableScaleSchema(column);
+        else if (column.length() == 0) {
+            // Defined as NUMBER without specifying a length and scale, treat as NUMBER(38,0)
+            if (decimalMode != DecimalMode.PRECISE) {
+                return SpecialValueDecimal.builder(decimalMode, 38, 0);
+            }
         }
+
+        return variableScaleSchema(column);
     }
 
     private SchemaBuilder variableScaleSchema(Column column) {
@@ -226,6 +235,10 @@ public class OracleValueConverters extends JdbcValueConverters {
         if (column.scale().isPresent()) {
             Integer scale = column.scale().get();
 
+            if (scale == 0 && decimalMode != DecimalMode.PRECISE) {
+                return data -> convertVariableScale(column, fieldDefn, data);
+            }
+
             if (scale <= 0) {
                 int width = column.length() - scale;
                 if (width < 3) {
@@ -245,9 +258,8 @@ public class OracleValueConverters extends JdbcValueConverters {
             // larger non-floating point types and floating point types use Decimal
             return data -> convertNumeric(column, fieldDefn, data);
         }
-        else {
-            return data -> convertVariableScale(column, fieldDefn, data);
-        }
+
+        return data -> convertVariableScale(column, fieldDefn, data);
     }
 
     @Override
