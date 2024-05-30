@@ -255,7 +255,6 @@ Liaoyuxing,leoloel
 iankko,Jan Lieskovsky
 CliffordCheefoon,Clifford Cheefoon
 Fr0z3Nn,Ivanov Sergey Vasilevich
-ankurg03, Ankur Gupta
 Bue-Von-Hun,Bue Von Hun
 nrkeli,Emil Lindström
 akulapid,Akula
@@ -270,3 +269,4 @@ gaurav7261,Gaurav Miglani
 sullis,Sean C. Sullivan
 einar-rt,einar-rt
 joontube,Seongjoon Jeong
+ankurg03, Ankur Gupta
