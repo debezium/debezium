@@ -1302,6 +1302,22 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         assertRecordOffsetAndSnapshotSource(first, SnapshotRecord.LAST);
     }
 
+    @Test
+    @FixFor("DBZ-7878")
+    public void shouldGenerateSnapshotForGisDataTypes() throws Exception {
+
+        // insert geometry
+        TestHelper.execute(INSERT_POSTGIS_TYPES_STMT);
+
+        buildNoStreamProducer(TestHelper.defaultConfig().with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.postgis_table"));
+
+        TestConsumer consumer = testConsumer(1, "public");
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+
+        final Map<String, List<SchemaAndValueField>> expectedValueByTopicName = Collect.hashMapOf("public.postgis_table", schemaAndValuesForPostgisTypes());
+        consumer.process(record -> assertReadRecord(record, expectedValueByTopicName));
+    }
+
     private void buildNoStreamProducer(Configuration.Builder config) {
         alterConfig(config);
         start(PostgresConnector.class, config
