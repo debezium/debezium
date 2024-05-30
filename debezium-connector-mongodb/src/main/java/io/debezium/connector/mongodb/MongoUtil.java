@@ -30,6 +30,7 @@ import com.mongodb.connection.ClusterDescription;
 import com.mongodb.connection.ServerDescription;
 
 import io.debezium.DebeziumException;
+import io.debezium.connector.mongodb.util.ResumeTokenDecoder;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.util.Strings;
 
@@ -258,6 +259,25 @@ public class MongoUtil {
 
         return new SourceInfo.SessionTransactionId(event.getLsid() == null ? null : event.getLsid().toJson(JsonSerialization.COMPACT_JSON_SETTINGS),
                 event.getTxnNumber() == null ? null : event.getTxnNumber().longValue());
+    }
+
+    /**
+     * Helper function that returns the txn op index from the changeStreamDocument, otherwise returns 0 if it does not exist
+     * @return a unique index of the event within the transaction. This is different from the transaction id of the overall transaction
+     * @throws DebeziumException if any unexpected exceptions or errors
+     * */
+    public static long getChangeStreamTxnIdx(ChangeStreamDocument<BsonDocument> event) throws DebeziumException {
+        // if this isn't a transaction event, return early
+        if (event.getLsid() == null || event.getTxnNumber() == null) {
+            return 0;
+        }
+        try {
+            // add 1 because txnOpIndex starts with 0 for first transaction event
+            return 1 + ResumeTokenDecoder.txnOpIndexFromTokenHex(event.getResumeToken().get("_data").asString().getValue());
+        }
+        catch (Exception e) {
+            throw new DebeziumException(e);
+        }
     }
 
     /**

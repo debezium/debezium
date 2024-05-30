@@ -41,7 +41,7 @@ public class ResumeTokenDecoder {
             throw new RuntimeException(String.format("decoded token does not have '%s' field", KeyStringDecoder.TXN_OP_INDEX_KEY));
         }
         catch (Exception e) {
-            throw new RuntimeException(String.format("received unexpected exception. Resume token: '%s'", resumeToken), e);
+            throw new RuntimeException(String.format("received unexpected exception '%s'. Resume token: '%s'", e, resumeToken), e);
         }
     }
 }

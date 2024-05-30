@@ -30,6 +30,8 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.InsertOneOptions;
 
+import io.debezium.config.Field;
+import io.debezium.connector.mongodb.converters.MongoDbRecordParser;
 import io.debezium.util.Testing;
 
 public class MongoDbOplogTransactionIT extends AbstractMongoConnectorIT {
@@ -39,16 +41,32 @@ public class MongoDbOplogTransactionIT extends AbstractMongoConnectorIT {
 
     @Before
     public void beforeEach() {
-        initializeConnectorTestFramework();
-
         Testing.Print.enable();
-        config = TestHelper.getConfiguration()
+        beforeEach(List.of(), List.of());
+    }
+
+    /*
+     * helper that allows tests to override/update default configuration
+     */
+    private void beforeEach(List<Field> configFields, List<Object> configValues) {
+        // call superclass's beforeEach
+        super.beforeEach();
+
+        var configBuilder = TestHelper.getConfiguration()
                 .edit()
                 .with(MongoDbConnectorConfig.LOGICAL_NAME, mongodb)
                 .with(MongoDbConnectorConfig.DATABASE_INCLUDE_LIST, db)
                 .with(MongoDbConnectorConfig.CAPTURE_MODE, MongoDbConnectorConfig.CaptureMode.OPLOG)
-                .with(MongoDbConnectorConfig.RAW_OPLOG_ENABLED, true)
-                .build();
+                .with(MongoDbConnectorConfig.RAW_OPLOG_ENABLED, true);
+
+        // field and value lengths should be the same
+        assertThat(configFields.size()).isEqualTo(configValues.size());
+
+        // add additional config fields (may override others)
+        for (int i = 0; i < configFields.size(); i++) {
+            configBuilder.with(configFields.get(i), configValues.get(i));
+        }
+        config = configBuilder.build();
 
         context = new MongoDbTaskContext(config);
         TestHelper.cleanDatabase(primary(), db);
@@ -187,6 +205,47 @@ public class MongoDbOplogTransactionIT extends AbstractMongoConnectorIT {
             }
         }
         assertThat(timestamps.size()).isEqualTo(sesseionCounts.length);
+    }
+
+    /**
+     * Verifies that all transactional events should also have indices in source
+     * Events in the same transaction should have the same timestamp. TXN_INDEX should be monotonically increasing
+     * Here we set RAW_OPLOG_ENABLED to false as well
+     * This also tests the recordParser
+     *
+     * @throws Exception if test fails
+     */
+    @Test
+    public void transactionEventsSourceShouldHaveTXN_INDEX() throws Exception {
+        // initialize this test with rawoplog disabled
+        beforeEach(List.of(MongoDbConnectorConfig.RAW_OPLOG_ENABLED), List.of(false));
+
+        List<Document> documentsToInsert = loadTestDocuments("restaurants1.json");
+        Document[] docs = documentsToInsert.toArray(new Document[0]);
+        insertDocumentsInTx(db, col, docs);
+
+        final SourceRecords records = consumeRecordsByTopic(docs.length);
+        assertNoRecordsToConsume();
+
+        BsonTimestamp ts = null;
+        long prevTxnIdx = 0;
+        for (int i = 0; i < docs.length; i++) {
+            SourceRecord record = records.allRecordsInOrder().get(i);
+            MongoDbRecordParser recordParser = new MongoDbRecordParser(record.valueSchema(), (Struct) record.value());
+
+            // set if unset
+            if (ts == null) {
+                ts = new BsonTimestamp(((Long) recordParser.getMetadata(SourceInfo.TIMESTAMP_KEY)).intValue() / 1000, (int) recordParser.getMetadata(SourceInfo.ORDER));
+            }
+
+            // assert that timestamps are equal for all events
+            assertThat(ts).isEqualTo(
+                    new BsonTimestamp(((Long) recordParser.getMetadata(SourceInfo.TIMESTAMP_KEY)).intValue() / 1000, (int) recordParser.getMetadata(SourceInfo.ORDER)));
+            // assert that current = previous + 1;
+            long currTxnIdx = (long) recordParser.getMetadata(SourceInfo.TXN_INDEX);
+            assertThat(prevTxnIdx + 1).isEqualTo(currTxnIdx);
+            prevTxnIdx = currTxnIdx;
+        }
     }
 
     private void applyOpsInTx(BiConsumer<MongoCollection<Document>, ClientSession> ops) {

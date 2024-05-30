@@ -41,13 +41,13 @@ public class KeepCaptureModeAfterRestartIT extends AbstractMongoConnectorIT {
         testSwitch(CaptureMode.CHANGE_STREAMS_UPDATE_FULL, CaptureMode.OPLOG);
 
         // stopConnector(value -> assertThat(
-        //        logInterceptor.containsWarnMessage("Stored offsets were created using change streams capturing.")
-        //                && logInterceptor.containsWarnMessage("Switching configuration to 'CHANGE_STREAMS_UPDATE_FULL'")
-        //                && logInterceptor.containsWarnMessage("Either reconfigure the connector or remove the old offsets"))
-        //                        .isTrue());
+        // logInterceptor.containsWarnMessage("Stored offsets were created using change streams capturing.")
+        // && logInterceptor.containsWarnMessage("Switching configuration to 'CHANGE_STREAMS_UPDATE_FULL'")
+        // && logInterceptor.containsWarnMessage("Either reconfigure the connector or remove the old offsets"))
+        // .isTrue());
         stopConnector(value -> assertThat(
                 logInterceptor.containsWarnMessage("Stored offsets were created using change streams capturing."))
-                .isTrue());
+                        .isTrue());
     }
 
     @Test

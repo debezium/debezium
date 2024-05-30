@@ -122,8 +122,8 @@ public class ReplicaSetOffsetContext implements OffsetContext {
         sourceInfo.opLogEvent(replicaSetName, oplogEvent, masterEvent, txOrder);
     }
 
-    public void changeStreamEvent(ChangeStreamDocument<BsonDocument> changeStreamEvent, OptionalLong txOrder) {
-        sourceInfo.changeStreamEvent(replicaSetName, changeStreamEvent, txOrder.orElse(0));
+    public void changeStreamEvent(ChangeStreamDocument<BsonDocument> changeStreamEvent, long txOrder) {
+        sourceInfo.changeStreamEvent(replicaSetName, changeStreamEvent, txOrder);
     }
 
     public BsonTimestamp lastOffsetTimestamp() {

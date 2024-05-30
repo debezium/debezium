@@ -140,5 +140,24 @@
         "_id": "65f49506238b3bbcc1cb20c0"
       }
     }
+  },
+  {
+    "test_name": "test decode txnOpindex 5",
+    "comment": "",
+    "token": "8266561E1B000000062B022C01002B0A6E5A100433C2A58AB57149A3871DA09C9D3A899646645F696400646643963F71CB5838FE3BD9F20004",
+    "document": {
+      "timestamp": {
+        "t": 1716919835,
+        "i": 6
+      },
+      "version": 1,
+      "tokenType": 128,
+      "txnOpIndex": 5,
+      "fromInvalidate": false,
+      "uuid": "33c2a58a-b571-49a3-871d-a09c9d3a8996",
+      "documentKey": {
+        "_id": "6643963f71cb5838fe3bd9f2"
+      }
+    }
   }
 ]

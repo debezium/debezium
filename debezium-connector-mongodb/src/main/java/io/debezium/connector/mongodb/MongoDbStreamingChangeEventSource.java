@@ -501,7 +501,18 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                     if (event != null) {
                         LOGGER.trace("Arrived Change Stream event: {}", event);
 
-                        oplogContext.getOffset().changeStreamEvent(event, txOrder);
+                        long txnOpIndex;
+                        try {
+                            txnOpIndex = MongoUtil.getChangeStreamTxnIdx(event);
+                        }
+                        catch (DebeziumException e) {
+                            txnOpIndex = Integer.MAX_VALUE; // if we failed to parse, then set to Integer.MAX_VALUE so this event isn't considered earlier in the txn
+                            // TODO (tosinva): [CDC-1958][CDC-1960] don't throw any exceptions for now.
+                            // Monitor this and update before we officially ship TXN support
+                            LOGGER.error(String.format("Failed to extract TXN_INDEX from resume token '%s'", event.getResumeToken()), e);
+                        }
+
+                        oplogContext.getOffset().changeStreamEvent(event, txnOpIndex);
 
                         if (multiTaskOffsetHandler.enabled) {
                             // Validate if we should do an offset stop
