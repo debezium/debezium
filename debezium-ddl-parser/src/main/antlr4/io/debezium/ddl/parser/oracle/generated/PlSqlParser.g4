@@ -3080,7 +3080,7 @@ merge_table_partition
     ;
 
 modify_table_partition
-    : MODIFY (PARTITION partition_name
+    : MODIFY ((PARTITION | SUBPARTITION) partition_name
              ((ADD | DROP) list_values_clause)? (ADD range_subpartition_desc)? (REBUILD? UNUSABLE LOCAL INDEXES)? (shrink_clause)?
               | range_partitions)
     ;
