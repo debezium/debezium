@@ -1185,20 +1185,23 @@ NATS has a built-in distributed persistence system called https://docs.nats.io/n
 
 |[[nats-jetstream-auth-jwt]]<<nats-jetstream-auth-jwt, `debezium.sink.nats-jetstream.auth.jwt`>>
 |
-|If given, enable JWT authentication with NATS. You must provide an NKey seed to use this authentication technique.
+|Add this property to the configuration to enable JSON Web Token (JWT) authentication with NATS.
+To use JWT authentication with NATS, you must specify the xref:nats-jetstream-auth-seed[NKey seed].
+Do not enable JWT authentication, if xref:nats-jetstream-auth-user[password authentication] is enabled.
 
 |[[nats-jetstream-auth-seed]]<<nats-jetstream-auth-seed, `debezium.sink.nats-jetstream.auth.seed`>>
 |
-|The NKey seed to use with the JWT.
+|Specifies the NKey seed to use when xref:nats-jetstream-auth-jwt[JWT authentication] is enabled.
 
 |[[nats-jetstream-auth-user]]<<nats-jetstream-auth-user, `debezium.sink.nats-jetstream.auth.user`>>
 |
-|If given, enable user/password authentication with NATS. You must provide a password to use this authentication technique.
-Cannot be used with JWT authentication.
+|Add this property to the configuration to enable password authentication with NATS. +
+To use password authentication with NATS, specify a xref:nats-jetstream-auth-password[`debezium.sink.nats-jetstream.auth.password`].
+Do not enable password authentication if xref:nats-jetstream-auth-jwt[JWT authentication] is enabled.
 
 |[[nats-jetstream-auth-password]]<<nats-jetstream-auth-password, `debezium.sink.nats-jetstream.auth.password`>>
 |
-|The password to use for user/password authentication.
+|Specifies the password to use when xref:nats-jetstream-auth-user[password authentication] is enabled.
 
 |===
 
