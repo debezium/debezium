@@ -520,6 +520,8 @@ The value payload in JSON representation would look like this:
 {
   "op": "c",
   "ts_ms": 1562202942832,
+  "ts_us": 1562202942832014,
+  "ts_ns": 1562202942832014962,
   "after": {
     "id": {
     "value": 1001,
@@ -556,7 +558,9 @@ The value payload in JSON representation would look like this:
     "table": "customers",
     "file": "commitlog-6-123456.log",
     "pos": 54,
-    "ts_ms": 1562202942666382
+    "ts_ms": 1562202942666382,
+    "ts_us": 1562202942666382000,
+    "ts_ns": 1562202942666382000000
   }
 }
 ----
@@ -577,6 +581,8 @@ The value payload in JSON representation would look like this:
 {
   "op": "u",
   "ts_ms": 1562202942912,
+  "ts_us": 1562202942912014,
+  "ts_ns": 1562202942912014982,
   "after": {
     "id": {
     "value": 1001,
@@ -605,7 +611,9 @@ The value payload in JSON representation would look like this:
     "table": "customers",
     "file": "commitlog-6-123456.log",
     "pos": 102,
-    "ts_ms": 1562202942666490
+    "ts_ms": 1562202942666490,
+    "ts_us": 1562202942666490000,
+    "ts_ns": 1562202942666490000000
   }
 }
 ----
@@ -634,6 +642,8 @@ The value payload in JSON representation would look like this:
 {
   "op": "d",
   "ts_ms": 1562202942912,
+  "ts_us": 1562202942912047,
+  "ts_ns": 1562202942912047921,
   "after": {
     "id": {
     "value": 1001,
@@ -658,7 +668,9 @@ The value payload in JSON representation would look like this:
     "table": "customers",
     "file": "commitlog-6-123456.log",
     "pos": 102,
-    "ts_ms": 1562202942666490
+    "ts_ms": 1562202942666490,
+    "ts_us": 1562202942666490000,
+    "ts_ns": 1562202942666490000000
   }
 }
 ----
@@ -928,7 +940,7 @@ Once this upper limit is reached, Cassandra will stop accepting writes for this 
 In the worst case scenario if this happens, complete the following steps:
 
 . Turn off Cassandra connector.
-. Dusable CDC for the table so it stops generating additional writes.
+. Disable CDC for the table so it stops generating additional writes.
   Because the commit logs are not filtered,  writes to other CDC-enabled tables on the same node could still affect the commitlog file generation.
 . Remove the recorded offset from the offset file
 . After the capacity is increased or the directory used space is under control, restart the connector so that it re-bootstraps the table.
@@ -1136,6 +1148,10 @@ Users are supposed to implement their own customized commit log transfer class i
 |false
 |Determines whether or not the CommitLogProcessor should re-process error commit logs.
 
+|[[cassandra-property-event-order-guarantee-mode]]<<cassandra-property-event-order-guarantee-mode, `event.order.guarantee.mode`>>
+|COMMITLOG_FILE
+|Specifies how to ensure the order of change events. Each option indicates which property is used for hashing. Events sharing the same hash value maintain their order. It is recommended to use 'PARTITION_VALUES' to align the hashing strategy with messages in Kafka. Must be one of 'COMMITLOG_FILE', or 'PARTITION_VALUES'.
+
 |[[cassandra-property-converters]]<<cassandra-property-converters, `converters`>>
 |No default
 |Enumerates a comma-separated list of the symbolic names of the {link-prefix}:{link-custom-converters}#custom-converters[custom converter] instances that the connector can use.
@@ -1310,7 +1326,16 @@ See xref:{link-avro-serialization}#avro-naming[Avro naming] for more details.
 
 |[[cassandra-property-errors-max-retires]]<<cassandra-property-errors-max-retires, `errors.max.retries`>>
 |`-1`
-|The maximum number of retries on retriable errors (e.g. connection errors) before failing (-1 = no limit, 0 = disabled, > 0 = num of retries).
+|Specifies how the connector responds after an operation fails with a retriable error, such as a connection error. +
+Set one of the following options:
+
+`-1`:: No limit. The connector always restarts automatically, and retries the operation, regardless of the number of previous failures.
+
+`0`:: Disabled. The connector fails immediately, and never retries the operation.
+User intervention is required to restart the connector.
+
+`> 0`:: The connector restarts automatically until it reaches the specified maximum number of retries.
+After the next failure, the connector stops, and user intervention is required to restart it.
 
 |===
 

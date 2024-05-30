@@ -5,9 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
-import com.github.shyiko.mysql.binlog.BinaryLogClient;
-
-import io.debezium.connector.common.CdcSourceTaskContext;
+import io.debezium.connector.binlog.BinlogTaskContext;
 
 /**
  * A state (context) associated with a MySQL task
@@ -15,22 +13,8 @@ import io.debezium.connector.common.CdcSourceTaskContext;
  * @author Jiri Pechanec
  *
  */
-public class MySqlTaskContext extends CdcSourceTaskContext {
-
-    private final MySqlDatabaseSchema schema;
-    private final BinaryLogClient binaryLogClient;
-
+public class MySqlTaskContext extends BinlogTaskContext<MySqlDatabaseSchema> {
     public MySqlTaskContext(MySqlConnectorConfig config, MySqlDatabaseSchema schema) {
-        super(config.getContextName(), config.getLogicalName(), config.getCustomMetricTags(), schema::tableIds);
-        this.schema = schema;
-        this.binaryLogClient = new BinaryLogClient(config.hostname(), config.port(), config.username(), config.password());
-    }
-
-    public MySqlDatabaseSchema getSchema() {
-        return schema;
-    }
-
-    public BinaryLogClient getBinaryLogClient() {
-        return binaryLogClient;
+        super(config, schema);
     }
 }

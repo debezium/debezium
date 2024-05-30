@@ -6,7 +6,7 @@
 
 package io.debezium.connector.mysql.antlr.listener;
 
-import io.debezium.connector.mysql.MySqlSystemVariables;
+import io.debezium.connector.binlog.jdbc.BinlogSystemVariables;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
@@ -49,7 +49,7 @@ public class CreateAndAlterDatabaseParserListener extends MySqlParserBaseListene
         String charsetName = parser.extractCharset(ctx.charsetName(), ctx.collationName());
         if (ctx.charsetName() != null) {
             if ("DEFAULT".equalsIgnoreCase(charsetName)) {
-                charsetName = parser.systemVariables().getVariable(MySqlSystemVariables.CHARSET_NAME_SERVER);
+                charsetName = parser.systemVariables().getVariable(BinlogSystemVariables.CHARSET_NAME_SERVER);
             }
             parser.charsetNameForDatabase().put(databaseName, charsetName);
         }

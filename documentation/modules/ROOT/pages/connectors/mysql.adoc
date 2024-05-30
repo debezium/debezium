@@ -40,6 +40,7 @@ Information and procedures for using a {prodname} MySQL connector are organized 
 * xref:how-debezium-mysql-connectors-work[]
 * xref:descriptions-of-debezium-mysql-connector-data-change-events[]
 * xref:how-debezium-mysql-connectors-map-data-types[]
+* xref:debezium-mysql-connector-converters[]
 * xref:setting-up-mysql-to-run-a-debezium-connector[]
 * xref:deployment-of-debezium-mysql-connectors[]
 * xref:monitoring-debezium-mysql-connector-performance[]
@@ -58,15 +59,17 @@ An overview of the MySQL topologies that the connector supports is useful for pl
 ifdef::community[]
 [NOTE]
 ====
-The {prodname} MySQL connector has yet to be tested with MariaDB, but multiple reports from the community indicate successful usage of the connector with this database.
-Official support for MariaDB is planned for a future {prodname} version.
+The {prodname} MySQL connector has been tested and officially supports MariaDB 11.1.2+.
+For information about how to connect {prodname} to MariaDB, see xref:mysql-mariadb-support[Using the connector with a MariaDB database].
 ====
 endif::community[]
 
 ifdef::product[]
+
 Details are in the following topics:
 
 * xref:mysql-topologies-supported-by-debezium-connectors[]
+* xref:supplemental-configuration-for-connecting-debezium-to-mariadb[
 * xref:how-debezium-mysql-connectors-handle-database-schema-changes[]
 * xref:how-debezium-mysql-connectors-expose-database-schema-changes[]
 * xref:how-debezium-mysql-connectors-perform-database-snapshots[]
@@ -105,6 +108,46 @@ Hosted::
 There is support for the {prodname} MySQL connector to use hosted options such as Amazon RDS and Amazon Aurora.
 +
 Because these hosted options do not allow a global read lock, table-level locks are used to create the _consistent snapshot_.
+
+// Type: concept
+// ModuleID: supplemental-configuration-for-connecting-debezium-to-mariadb
+// Title: Supplemental configuration for connecting {prodname} to a MariaDB database
+[[mysql-mariadb-support]]
+=== Using the connector with a MariaDB database
+
+Although it is possible to use the MySQL driver to connect and stream changes from MariaDB, it's best to configure the {prodname} MySQL connector to use the MariaDB adapter mode, so that the connector can take advantage of the MariaDB driver, and its unique feature stack.
+To toggle the MariaDB support mode, the xref:mysql-property-connector-adapter[`connector.adapter`] configuration property must be specified with a value of `mariadb`.
+This mode utilizes the MariaDB driver instead of the MySQL driver, meaning that you must also provide the database protocol and JDBC driver strings that are compliant with MariaDB, see the example below.
+
+.MariaDB supplemental configuration
+[source,json]
+----
+{
+  ...
+  "connector.adapter": "mariadb",
+  "database.protocol": "jdbc:mariadb",
+  "database.jdbc.driver": "org.mariadb.jdbc.Driver"
+}
+----
+ifdef::product[]
+[IMPORTANT]
+====
+Use of the {prodname} MySQL connector with MariaDB is a Technology Preview feature only.
+Technology Preview features are not supported with Red{nbsp}Hat production service level agreements (SLAs) and might not be functionally complete.
+Red{nbsp}Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+For more information about the support scope of Red{nbsp}Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
+endif::product[]
+ifdef::community[]
+[NOTE]
+====
+When the new {prodname} MariaDB connector is available in a future release, these supplemental configurations will no longer be necessary.
+As the connector currently includes both the MySQL and MariaDB drivers, the MariaDB mode is _opt-in_ until {prodname} introduces the new MariaDB-specific connector.
+====
+endif::community[]
+After you apply the Maria DB supplemental configuration, the {prodname} MySQL connector uses the MariaDB adapter connector, which natively streams changes from MariaDB binary transaction logs.
+You can use all other xref:mysql-connector-properties[MySQL connector properties] in conjunction with the preceding supplemental configuration.
 
 // Type: concept
 // ModuleID: how-debezium-mysql-connectors-handle-database-schema-changes
@@ -220,11 +263,13 @@ The message contains a logical representation of the table schema.
 {
   "schema": { },
   "payload": {
-      "source": {  <1>
+      "source": {  // <1>
         "version": "{debezium-version}",
         "connector": "mysql",
         "name": "mysql",
-        "ts_ms": 1651535750218, <2>
+        "ts_ms": 1651535750218, // <2>
+        "ts_us": 1651535750218000, // <2>
+        "ts_ns": 1651535750218000000, // <2>
         "snapshot": "false",
         "db": "inventory",
         "sequence": null,
@@ -345,8 +390,9 @@ The message contains a logical representation of the table schema.
 This field is useful to correlate events on different topics.
 
 |2
-|`ts_ms`
-|Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.
+|`ts_ms`, `ts_us`, `ts_ns`
+|Optional field that displays the time at which the connector processed the event.
+The time is based on the system clock in the JVM running the Kafka Connect task.
 
 In the source object, ts_ms indicates the time that the change was made in the database. By comparing the value for payload.source.ts_ms with the value for payload.ts_ms, you can determine the lag between the source database update and Debezium.
 
@@ -598,6 +644,70 @@ a|Record the successful completion of the snapshot in the connector offsets.
 
 |===
 
+[id="mysql-connector-snapshot-mode-options"]
+.Settings for `snapshot.mode` connector configuration property
+[cols="30%a,70%a",options="header"]
+|===
+|Setting |Description
+
+|`always`
+|The connector performs a snapshot every time that it starts.
+The snapshot includes the structure and data of the captured tables.
+Specify this value to populate topics with a complete representation of the data from the captured tables every time that the connector starts.
+After the snapshot completes, the connector begins to stream event records for subsequent database changes.
+
+|`initial`
+|The connector performs a database snapshot as described in the xref:initial-snapshot-workflow-with-global-read-lock[default workflow for creating an initial snapshot].
+After the snapshot completes, the connector begins to stream event records for subsequent database changes.
+
+|`initial_only`
+|The connector performs a database snapshot.
+After the snapshot completes, the connector stops, and does not stream event records for subsequent database changes.
+
+|`schema_only`
+|Deprecated, see `no_data`.
+
+|`no_data`
+|The connector captures the structure of all relevant tables, performing all of the steps described in the xref:initial-snapshot-workflow-with-global-read-lock[default workflow for creating an initial snapshot], except that it does not create `READ` events to represent the data set at the point of the connector's start-up (Step 8.2).
+
+|`never`
+|When the connector starts, rather than performing a snapshot, it immediately begins to stream event records for subsequent database changes.
+This option is under consideration for future deprecation, in favor of the `no_data` option.
+
+|`schema_only_recovery`
+|Deprecated, see `recovery`.
+
+|`recovery`
+|Set this option to restore a database schema history topic that is lost or corrupted.
+After a restart, the connector runs a snapshot that rebuilds the topic from the source tables.
+You can also set the property to periodically prune a database schema history topic that experiences unexpected growth. +
+ +
+WARNING: Do not use this mode to perform a snapshot if schema changes were committed to the database after the last connector shutdown.
+
+|`when_needed`
+|After the connector starts, it performs a snapshot only if it detects one of the following circumstances:
+
+* It cannot detect any topic offsets.
+* A previously recorded offset specifies a log position that is not available on the server.
+
+ifdef::community[]
+|`configuration_based`
+|Set the snapshot mode to `configuration_based` to control snapshot behavior through the set of connector properties that have the prefix 'snapshot.mode.configuration.based'.
+endif::community[]
+
+ifdef::community[]
+|`custom`
+|The `custom` snapshot mode lets you inject your own implementation of the `io.debezium.spi.snapshot.Snapshotter` interface.
+Set the `snapshot.mode.custom.name` configuration property to the name provided by the `name()` method of your implementation.
+The name is specified on the classpath of your Kafka Connect cluster.
+If you use the `EmbeddedEngine`, the name is included in the connector JAR file.
+For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
+endif::community[]
+
+|===
+
+For more information, see xref:mysql-property-snapshot-mode[`snapshot.mode`] in the table of connector configuration properties.
+
 // ModuleID: mysql-description-of-why-initial-snapshots-capture-the-schema-history-for-all-tables
 // Title: Description of why initial snapshots capture the schema history for all tables
 // Type: concept
@@ -810,9 +920,15 @@ transforms.snapshotasinsert.type=io.debezium.connector.mysql.transforms.ReadToIn
 ----
 endif::community[]
 
+ifdef::community[]
+[[connector-custom-snapshot]]
+=== Custom snapshotter SPI
+include::{partialsdir}/modules/all-connectors/custom-snapshotter-spi.adoc[leveloffset=+3]
+endif::community[]
+
 // Type: concept
 [id="mysql-blocking-snapshots"]
-==== Blocking snapshots
+=== Blocking snapshots
 
 include::{partialsdir}/modules/all-connectors/con-connector-blocking-snapshot.adoc[leveloffset=+3]
 
@@ -930,6 +1046,8 @@ Following is an example of a message:
   },
   "op": "c",
   "ts_ms": "1580390884335",
+  "ts_us": "1580390884335472",
+  "ts_ns": "1580390884335472987",
   "transaction": {
     "id": "0e4d5dcd-a33b-11ea-80f1-02010a22a99e:10",
     "total_order": "1",
@@ -1206,6 +1324,16 @@ The following example shows the value portion of a change event that the connect
             "field": "ts_ms"
           },
           {
+            "type": "int64",
+            "optional": false,
+            "field": "ts_us"
+          },
+          {
+            "type": "int64",
+            "optional": false,
+            "field": "ts_ns"
+          },
+          {
             "type": "boolean",
             "optional": true,
             "default": false,
@@ -1270,6 +1398,16 @@ The following example shows the value portion of a change event that the connect
         "type": "int64",
         "optional": true,
         "field": "ts_ms"
+      },
+      {
+        "type": "int64",
+        "optional": true,
+        "field": "ts_us"
+      },
+      {
+        "type": "int64",
+        "optional": true,
+        "field": "ts_ns"
       }
     ],
     "optional": false,
@@ -1278,6 +1416,8 @@ The following example shows the value portion of a change event that the connect
   "payload": { // <5>
     "op": "c", // <6>
     "ts_ms": 1465491411815, // <7>
+    "ts_us": 1465491411815437, // <7>
+    "ts_ns": 1465491411815437158, // <7>
     "before": null, // <8>
     "after": { // <9>
       "id": 1004,
@@ -1290,6 +1430,8 @@ The following example shows the value portion of a change event that the connect
       "connector": "mysql",
       "name": "mysql-server-1",
       "ts_ms": 0,
+      "ts_us": 0,
+      "ts_ns": 0,
       "snapshot": false,
       "db": "inventory",
       "table": "customers",
@@ -1348,8 +1490,9 @@ a| Mandatory string that describes the type of operation that caused the connect
 * `r` = read (applies to only snapshots)
 
 |7
-|`ts_ms`
-a| Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.  +
+|`ts_ms`, `ts_us`, `ts_ns`
+a| Optional field that displays the time at which the connector processed the event.
+The time is based on the system clock in the JVM running the Kafka Connect task.  +
  +
 In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
 
@@ -1376,8 +1519,8 @@ a| Mandatory field that describes the source metadata for the event. This field 
 * MySQL server ID (if available)
 * Timestamp for when the change was made in the database
 
-If the xref:enable-query-log-events[`binlog_rows_query_log_events`] MySQL configuration option is enabled and the connector configuration `include.query` property is enabled, the `source` field also provides the `query` field, which contains the original SQL statement that caused the change event.
-On MariaDB, the configuration option is xref:enable-query-log-events[`binlog_annotate_row_events`].
+If the xref:enable-query-log-events[`MariaDB`] MySQL configuration option is enabled and the connector configuration `include.query` property is enabled, the `source` field also provides the `query` field, which contains the original SQL statement that caused the change event.
+On MariaDB, the configuration option is `binlog_annotate_row_events`.
 
 |===
 
@@ -1410,6 +1553,8 @@ The value of a change event for an update in the sample `customers` table has th
       "connector": "mysql",
       "name": "mysql-server-1",
       "ts_ms": 1465581029100,
+      "ts_ms": 1465581029100000,
+      "ts_ms": 1465581029100000000,
       "snapshot": false,
       "db": "inventory",
       "table": "customers",
@@ -1422,7 +1567,9 @@ The value of a change event for an update in the sample `customers` table has th
       "query": "UPDATE customers SET first_name='Anne Marie' WHERE id=1004"
     },
     "op": "u", // <4>
-    "ts_ms": 1465581029523 // <5>
+    "ts_ms": 1465581029523, // <5>
+    "ts_ms": 1465581029523758, // <6>
+    "ts_ms": 1465581029523758914 // <7>
   }
 }
 ----
@@ -1456,7 +1603,7 @@ a|Mandatory field that describes the source metadata for the event. The `source`
 * Timestamp for when the change was made in the database
 
 If the xref:enable-query-log-events[`binlog_rows_query_log_events`] MySQL configuration option is enabled and the connector configuration `include.query` property is enabled, the `source` field also provides the `query` field, which contains the original SQL statement that caused the change event.
-On MariaDB, the configuration option is xref:enable-query-log-events[`binlog_annotate_row_events`].
+On MariaDB, the configuration option is `binlog_annotate_row_events`.
 
 |4
 |`op`
@@ -1464,9 +1611,20 @@ a|Mandatory string that describes the type of operation. In an _update_ event va
 
 |5
 |`ts_ms`
-a| Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.  +
+a| Optional field that displays the time at which the connector processed the event.
+The time is based on the system clock in the JVM running the Kafka Connect task.  +
  +
 In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
+
+|6
+|`ts_us`
+a|Optional field that displays the time at which the connector processed the event, in microseconds.
+The time is based on the system clock in the JVM running the Kafka Connect task.
+
+|7
+|`ts_ns`
+a|Optional field that displays the time at which the connector processed the event, in nanoseconds.
+The time is based on the system clock in the JVM running the Kafka Connect task.
 
 |===
 
@@ -1509,6 +1667,8 @@ The value in a _delete_ change event has the same `schema` portion as _create_ a
       "connector": "mysql",
       "name": "mysql-server-1",
       "ts_ms": 1465581902300,
+      "ts_us": 1465581902300000,
+      "ts_ns": 1465581902300000000,
       "snapshot": false,
       "db": "inventory",
       "table": "customers",
@@ -1521,7 +1681,9 @@ The value in a _delete_ change event has the same `schema` portion as _create_ a
       "query": "DELETE FROM customers WHERE id=1004"
     },
     "op": "d", // <4>
-    "ts_ms": 1465581902461 // <5>
+    "ts_ms": 1465581902461, // <5>
+    "ts_us": 1465581902461842, // <6>
+    "ts_ns": 1465581902461842579 // <7>
   }
 }
 ----
@@ -1555,7 +1717,7 @@ a|Mandatory field that describes the source metadata for the event. In a _delete
 * Timestamp for when the change was made in the database
 
 If the xref:enable-query-log-events[`binlog_rows_query_log_events`] MySQL configuration option is enabled and the connector configuration `include.query` property is enabled, the `source` field also provides the `query` field, which contains the original SQL statement that caused the change event.
-On MariaDB, the configuration option is xref:enable-query-log-events[`binlog_annotate_row_events`].
+On MariaDB, the configuration option is `binlog_annotate_row_events`.
 
 |4
 |`op`
@@ -1563,9 +1725,20 @@ a|Mandatory string that describes the type of operation. The `op` field value is
 
 |5
 |`ts_ms`
-a|Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.  +
+a|Optional field that displays the time at which the connector processed the event.
+The time is based on the system clock in the JVM running the Kafka Connect task.  +
  +
 In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
+
+|6
+|`ts_us`
+a|Optional field that displays the time at which the connector processed the event, in microseconds.
+The time is based on the system clock in the JVM running the Kafka Connect task.
+
+|7
+|`ts_ns`
+a|Optional field that displays the time at which the connector processed the event, in nanoseconds.
+The time is based on the system clock in the JVM running the Kafka Connect task.
 
 |===
 
@@ -1595,6 +1768,8 @@ The message key is `null` in this case, the message value looks like this:
             "connector": "mysql",
             "name": "mysql-server-1",
             "ts_ms": 1465581029100,
+            "ts_us": 1465581029100000,
+            "ts_ns": 1465581029100000000,
             "snapshot": false,
             "db": "inventory",
             "table": "customers",
@@ -1607,7 +1782,9 @@ The message key is `null` in this case, the message value looks like this:
             "query": "UPDATE customers SET first_name='Anne Marie' WHERE id=1004"
         },
         "op": "t", // <2>
-        "ts_ms": 1465581029523 // <3>
+        "ts_ms": 1465581029523, // <3>
+        "ts_us": 1465581029523468, // <4>
+        "ts_ns": 1465581029523468471 // <5>
     }
 }
 ----
@@ -1638,9 +1815,18 @@ a|Mandatory string that describes the type of operation. The `op` field value is
 
 |3
 |`ts_ms`
-a|Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.  +
+a|Optional field that displays the time at which the connector processed the event.
+The time is based on the system clock in the JVM running the Kafka Connect task.  +
 +
 In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
+
+|4
+|`ts_us`
+a|Optional field that displays the time at which the connector processed the event, in microseconds. The time is based on the system clock in the JVM running the Kafka Connect task.
+
+|5
+|`ts_ns`
+a|Optional field that displays the time at which the connector processed the event, in nanoseconds. The time is based on the system clock in the JVM running the Kafka Connect task.
 
 |===
 
@@ -2015,6 +2201,64 @@ Contains a structure with two fields:
 
 |===
 
+[[debezium-mysql-connector-converters]]
+== Custom converters
+
+By default, the {prodname} MySQL connector provides several `CustomConverter` implementations for MySQL data types.
+These custom converters provide alternative mappings for specific data types based on the connector configuration.
+To add a `CustomConverter` to the connector, follow the instructions in the link:../development/converters.adoc[Custom Converters documentation].
+
+=== `TINYINT(1)` to Boolean
+
+By default, during a connector snapshot, the {prodname} MySQL connector obtains column types from the JDBC driver, which assigns the `TINYINT(1)` type to `BOOLEAN` columns.
+{prodname} then uses these JDBC column types to define the schema for the snapshot events.
+After the connector transitions from the snapshot to the streaming phase, the change event schema that results from the default mapping can lead to inconsistent mappings for `BOOLEAN` columns.
+To help ensure that MySQL emits `BOOLEAN` columns uniformly, you can apply the custom  `TinyIntOneToBooleanConverter`, as shown in the following configuration example.
+
+.Example: `TinyIntOneToBooleanConverter` configuration
+[source]
+----
+converters=tinyint-one-to-boolean
+converters.tinyint-one-to-boolean.type=io.debezium.connector.mysql.converters.TinyIntOneToBooleanConverter
+converters.tinyint-one-to-boolean.selector=.*.MY_TABLE.DATA
+converters.tinyint-one-to-boolean.length.checker=false
+----
+
+In the preceding example, the `selector` and `length.checker` properties are optional.
+By default, the converter checks that `TINYINT` data types conform to a length of `1`.
+If `length.checker` to `false`, the converter does not explicitly confirm that the `TINYINT` data type conforms to a length of `1`.
+The `selector` designates the tables or columns to convert, based on the supplied regular expression.
+If you omit the `selector` property, the converter maps all `TINYINT` columns to logical `BOOL` field types.
+If you do not configure a `selector` option, and you want to map `TINYINT` columns to `TINYINT(1)`, omit the `length.checker` property, or set its value to `true`.
+
+=== JDBC sink data types
+
+If you integrate the {prodname} JDBC sink connector with a {prodname} MySQL source connector, the MYSQL connector emits some column attributes differently during the snapshot and streaming phases.
+For the JDBC sink connector to consistently consume changes from both the snapshot and streaming phase, you must include the `JdbcSinkDataTypesConverter` converter as part of the MySQL source connector configuration, as shown in the following example:
+
+.Example: `JdbcSinkDataTypesConverter` configuration
+[source]
+----
+converters=jdbc-sink
+converters.jdbc-sink.type=io.debezium.connector.mysql.converters.JdbcSinkDataTypesConverter
+converters.jdbc-sink.selector.boolean=.*.MY_TABLE.BOOL_COL
+converters.jdbc-sink.selector.real=.*.MY_TABLE.REAL_COL
+converters.jdbc-sink.selector.string=.*.MY_TABLE.STRING_COL
+converters.jdbc-sink.treat.real.as.double=true
+----
+
+In the preceding example, the `selector.*` and `treat.real.as.double` configuration properties are optional.
+
+The `selector.*` properties specify comma-separated lists of regular expressions that specify which tables and columns that the converter applies to.
+By default, the converter applies the following rules apply to all Boolean, real, and string-based column data types, across all tables:
+
+* `BOOLEAN` data types are always emitted as `INT16` logical types, with `1` representing `true` and `0` representing `false`
+* `REAL` data types are always emitted as `FLOAT64` logical types.
+* String-based columns always include the `__debezium.source.column.character_set` schema parameter that contains the column's character set.
+
+For each data type, you can configure a selector rule to override the default scope and apply the selector to specific tables and columns only.
+For example, to set the scope of the Boolean converter, add the following rule to the connector configuration, as in the preceding example: `converters.jdbc-sink.selector.boolean=.*.MY_TABLE.BOOL_COL`
+
 // Type: assembly
 // ModuleID: setting-up-mysql-to-run-a-debezium-connector
 // Title: Setting up MySQL to run a {prodname} connector
@@ -2309,7 +2553,8 @@ a|The number of seconds the server waits for activity on a non-interactive conne
 [[enable-query-log-events]]
 === Enabling query log events
 
-You might want to see the original `SQL` statement for each binlog event. Enabling the `binlog_rows_query_log_events` option in the MySQL configuration or `binlog_annotate_row_events` in the MariaDB configuration file allows you to do this.
+You might want to see the original `SQL` statement for each binlog event.
+Enabling the `binlog_rows_query_log_events` option in the MySQL configuration or `binlog_annotate_row_events` in the MariaDB configuration file allows you to do this.
 
 This option is available in MySQL 5.6 and later.
 
@@ -2775,14 +3020,53 @@ The following configuration properties are _required_ unless a default value is 
 |`1`
 |The maximum number of tasks that should be created for this connector. The MySQL connector always uses a single task and therefore does not use this value, so the default is always acceptable.
 
+|[[mysql-property-connector-adapter]]<<mysql-property-connector-adapter, `+connector.adapter+`>>
+|mysql
+|The connector adapter mode to be used.
+For information about how to connect {prodname} to MariaDB, see xref:mysql-mariadb-support[Using the connector with a MariaDB database].
+
+ifdef::product[]
+[IMPORTANT]
+====
+Use of the {prodname} MySQL connector with MariaDB is a Technology Preview feature only.
+Technology Preview features are not supported with Red{nbsp}Hat production service level agreements (SLAs) and might not be functionally complete.
+Red{nbsp}Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+For more information about the support scope of Red{nbsp}Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
+endif::product[]
+
 |[[mysql-property-database-protocol]]<<mysql-property-database-protocol, `+database.protocol+`>>
 |jdbc:mysql
 |JDBC protocol used by the driver connection string for connecting to the database.
+For information about how to connect {prodname} to MariaDB, see xref:mysql-mariadb-support[Using the connector with a MariaDB database].
+
+ifdef::product[]
+[IMPORTANT]
+====
+Use of the {prodname} MySQL connector with MariaDB is a Technology Preview feature only.
+Technology Preview features are not supported with Red{nbsp}Hat production service level agreements (SLAs) and might not be functionally complete.
+Red{nbsp}Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+For more information about the support scope of Red{nbsp}Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
+endif::product[]
 
 |[[mysql-property-database-jdbc-driver]]<<mysql-property-database-jdbc-driver, `+database.jdbc.driver+`>>
 |com.mysql.cj.jdbc.Driver
 |The driver class name to use. This can be useful when using an alternative driver to the one packaged with the connector.
+For information about how to connect {prodname} to MariaDB, see xref:mysql-mariadb-support[Using the connector with a MariaDB database].
 
+ifdef::product[]
+[IMPORTANT]
+====
+Use of the {prodname} MySQL connector with MariaDB is a Technology Preview feature only.
+Technology Preview features are not supported with Red{nbsp}Hat production service level agreements (SLAs) and might not be functionally complete.
+Red{nbsp}Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+For more information about the support scope of Red{nbsp}Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
+endif::product[]
 
 |[[mysql-property-database-hostname]]<<mysql-property-database-hostname, `+database.hostname+`>>
 |No default
@@ -3006,9 +3290,24 @@ endif::community[]
 |`false`
 |Boolean value that specifies whether the connector should include the original SQL query that generated the change event. +
  +
-If you set this option to `true` then you must also configure MySQL with the `binlog_rows_query_log_events` option or MariaDB with the `binlog_annotate_row_events` option set to `ON`. When `include.query` is `true`, the query is not present for events that the snapshot process generates. +
+If you set this option to `true` then you must also configure MySQL with the `binlog_rows_query_log_events` option or MariaDB with the `binlog_annotate_row_events` option set to `ON`.
+When `include.query` is `true`, the query is not present for events that the snapshot process generates.
  +
-Setting `include.query` to `true` might expose tables or fields that are explicitly excluded or masked by including the original SQL statement in the change event. For this reason, the default setting is `false`.
+Setting `include.query` to `true` might expose tables or fields that are explicitly excluded or masked by including the original SQL statement in the change event.
+For this reason, the default setting is `false`.
+
+For more information about configuring the database to return the original `SQL` statement for each log event, see xref:enable-query-log-events[Enabling query log events].
+
+ifdef::product[]
+[IMPORTANT]
+====
+Use of the {prodname} MySQL connector with MariaDB is a Technology Preview feature only.
+Technology Preview features are not supported with Red{nbsp}Hat production service level agreements (SLAs) and might not be functionally complete.
+Red{nbsp}Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+For more information about the support scope of Red{nbsp}Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
+endif::product[]
 
 |[[mysql-property-event-deserialization-failure-handling-mode]]<<mysql-property-event-deserialization-failure-handling-mode, `+event.deserialization.failure.handling.mode+`>>
 |`fail`
@@ -3124,6 +3423,7 @@ However, it's best to use the minimum number that are required to specify a uniq
 See {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming] for more details.
 |===
 
+// Title: Advanced {prodname} MySQL connector configuration properties
 [id="mysql-advanced-connector-configuration-properties"]
 ==== Advanced MySQL connector configuration properties
 
@@ -3137,6 +3437,14 @@ The following table describes xref:mysql-advanced-connector-configuration-proper
 |[[mysql-property-connect-keep-alive]]<<mysql-property-connect-keep-alive, `+connect.keep.alive+`>>
 |`true`
 |A Boolean value that specifies whether a separate thread should be used to ensure that the connection to the MySQL server/cluster is kept alive.
+
+|[[mysql-property-use-nongraceful-disconnect]]<<mysql-property-use-nongraceful-disconnect, `+use.nongraceful.disconnect+`>>
+|`false`
+|A Boolean value that specifies whether the binary log client's keepalive thread sets the `SO_LINGER` socket option to  `0` to immediately close stale TCP connections. +
+Set the value to `true` if the connector experiences deadlocks in `SSLSocketImpl.close`. +
+ifdef::community[]
+For more information, see https://github.com/osheroff/mysql-binlog-connector-java/issues/133[Issue 133] in the https://github.com/osheroff/mysql-binlog-connector-java[mysql-binlog-connector-java] GitHub repository.
+endif::community[]
 
 |[[mysql-property-converters]]<<mysql-property-converters, `converters`>>
 |No default
@@ -3233,32 +3541,142 @@ For example, if you set `max.queue.size=1000`, and `max.queue.size.in.bytes=5000
 |Positive integer value that specifies the number of milliseconds the connector should wait for new change events to appear before it starts processing a batch of events. Defaults to 500 milliseconds, or 0.5 second.
 
 |[[mysql-property-snapshot-mode]]<<mysql-property-snapshot-mode, `+snapshot.mode+`>>
-|`initial`
+|_initial_
 |Specifies the criteria for running a snapshot when the connector starts. Possible settings are: +
+
+`always`:: The connector performs a snapshot every time that it starts.
+The snapshot includes the structure and data of the captured tables.
+Specify this value to populate topics with a complete representation of the data from the captured tables every time that the connector starts.
+
+`initial`:: The connector runs a snapshot only when no offsets have been recorded for the logical server name, or if it detects that an earlier snapshot failed to complete.
+After the snapshot completes, the connector begins to stream event records for subsequent database changes.
+
+`initial_only`:: The connector runs a snapshot only when no offsets have been recorded for the logical server name.
+After the snapshot completes, the connector stops.
+It does not transition to streaming to read change events from the binlog.
+
+`schema_only`:: Deprecated, see `no_data`.
+
+`no_data`:: The connector runs a snapshot that captures only the schema, but not any table data.
+Set this option if you do not need the topics to contain a consistent snapshot of the data, but you want to capture any schema changes that were applied after the last connector restart.
+
+`schema_only_recovery`:: Deprecated, see `recovery`.
+
+`recovery`::  Set this option to restore a database schema history topic that is lost or corrupted.
+After a restart, the connector runs a snapshot that rebuilds the topic from the source tables.
+You can also set the property to periodically prune a database schema history topic that experiences unexpected growth. +
  +
-`initial` - the connector runs a snapshot only when no offsets have been recorded for the logical server name. +
- +
-`initial_only` - the connector runs a snapshot only when no offsets have been recorded for the logical server name and then stops; i.e. it will not read change events from the binlog. +
- +
-`when_needed` - the connector runs a snapshot upon startup whenever it deems it necessary. That is, when no offsets are available, or when a previously recorded offset specifies a binlog location or GTID that is not available in the server. +
- +
-`never` - the connector never uses snapshots. Upon first startup with a logical server name, the connector reads from the beginning of the binlog. Configure this behavior with care. It is valid only when the binlog is guaranteed to contain the entire history of the database. +
- +
-`schema_only` - the connector runs a snapshot of the schemas and not the data. This setting is useful when you do not need the topics to contain a consistent snapshot of the data but need them to have only the changes since the connector was started. +
- +
-`schema_only_recovery` - this is a recovery setting for a connector that has already been capturing changes. When you restart the connector, this setting enables recovery of a corrupted or lost database schema history topic. You might set it periodically to "clean up" a database schema history topic that has been growing unexpectedly. Database schema history topics require infinite retention.
+WARNING: Do not use this mode to perform a snapshot if schema changes were committed to the database after the last connector shutdown.
+
+`never`:: When the connector starts, rather than performing a snapshot, it immediately begins to stream event records for subsequent database changes.
+This option is under consideration for future deprecation, in favor of the `no_data` option.
+
+`when_needed`:: After the connector starts, it performs a snapshot only if it detects one of the following circumstances:
+
+* It cannot detect any topic offsets.
+* A previously recorded offset specifies a binlog position or GTID that is not available on the server.
+
+ifdef::community[]
+`configuration_based`:: With this option, you control snapshot behavior through a set of connector properties that have the prefix 'snapshot.mode.configuration.based'.
+endif::community[]
+
+ifdef::community[]
+`custom`:: The connector performs a snapshot according to the implementation specified by the xref:mysql-property-snapshot-mode-custom-name[`snapshot.mode.custom.name`] property, which defines a custom implementation of the `io.debezium.spi.snapshot.Snapshotter` interface.
+endif::community[]
+
+ifdef::community[]
+|[[mysql-property-snapshot-mode-configuration-based-snapshot-data]]<<mysql-property-configuration-based-snapshot-data, `+snapshot.mode.configuration.based.snapshot.data+`>>
+|false
+|If the `snapshot.mode` is set to `configuration_based`, set this property to specify whether the connector includes table data when it performs a snapshot.
+endif::community[]
+
+ifdef::community[]
+|[[mysql-property-snapshot-mode-configuration-based-snapshot-schema]]<<mysql-property-configuration-based-snapshot-schema, `+snapshot.mode.configuration.based.snapshot.schema+`>>
+|false
+|If the `snapshot.mode` is set to `configuration_based`, set this property to specify whether the connector includes the table schema when it performs a snapshot.
+endif::community[]
+
+ifdef::community[]
+|[[mysql-property-snapshot-mode-configuration-based-start-stream]]<<mysql-property-configuration-based-start-stream, `+snapshot.mode.configuration.based.start.stream+`>>
+|false
+|If the `snapshot.mode` is set to `configuration_based`, set this property to specify whether the connector begins to stream change events after a snapshot completes.
+endif::community[]
+
+ifdef::community[]
+|[[mysql-property-snapshot-mode-configuration-based-snapshot-on-schema-error]]<<mysql-property-configuration-based-snapshot-on-schema-error, `+snapshot.mode.configuration.based.snapshot.on.schema.error+`>>
+|false
+|If the `snapshot.mode` is set to `configuration_based`, set this property to specify whether the connector includes table schema in a snapshot if the schema history topic is not available.
+endif::community[]
+
+ifdef::community[]
+|[[mysql-property-snapshot-mode-configuration-based-snapshot-on-data-error]]<<mysql-property-configuration-based-snapshot-on-data-error, `+snapshot.mode.configuration.based.snapshot.on.data.error+`>>
+|false
+|If the `snapshot.mode` is set to `configuration_based`, set this property to specify whether the connector includes table data in a snapshot in the event that data is no longer available in the transaction log.
+endif::community[]
+
+ifdef::community[]
+|[[mysql-property-snapshot-mode-custom-name]]<<mysql-property-snapshot-mode-custom-name, `+snapshot.mode.custom.name+`>>
+|No default
+| If `snapshot.mode` is set to `custom`, use this setting to specify the name of the custom implementation that is provided in the `name()` method that is defined in the 'io.debezium.spi.snapshot.Snapshotter' interface.
+After a connector restart, {prodname} calls the specified custom implementation to determine whether to perform a snapshot.
+For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
+endif::community[]
 
 |[[mysql-property-snapshot-locking-mode]]<<mysql-property-snapshot-locking-mode, `+snapshot.locking.mode+`>>
-|`minimal`
+|_minimal_
 a|Controls whether and how long the connector holds the global MySQL read lock, which prevents any updates to the database, while the connector is performing a snapshot. Possible settings are: +
- +
-`minimal` - the connector holds the global read lock for only the initial portion of the snapshot during which the connector reads the database schemas and other metadata. The remaining work in a snapshot involves selecting all rows from each table. The connector can do this in a consistent fashion by using a REPEATABLE READ transaction. This is the case even when the global read lock is no longer held and other MySQL clients are updating the database. +
- +
-`minimal_percona` - the connector holds link:https://www.percona.com/doc/percona-server/8.0/management/backup_locks.html[the global backup lock] for only the initial portion of the snapshot during which the connector reads the database schemas and other metadata. The remaining work in a snapshot involves selecting all rows from each table. The connector can do this in a consistent fashion by using a REPEATABLE READ transaction. This is the case even when the global backup lock is no longer held and other MySQL clients are updating the database. This mode does not flush tables to disk, is not blocked by long-running reads, and is available only in Percona Server. +
- +
-`extended` - blocks all writes for the duration of the snapshot. Use this setting if there are clients that are submitting operations that MySQL excludes from REPEATABLE READ semantics. +
- +
-`none` - prevents the connector from acquiring any table locks during the snapshot. While this setting is allowed with all snapshot modes, it is safe to use if and _only_ if no schema changes are happening while the snapshot is running. For tables defined with MyISAM engine, the tables would still be locked despite this property being set as MyISAM acquires a table lock. This behavior is unlike InnoDB engine, which acquires row level locks.
+
+`minimal`:: The connector holds the global read lock for only the initial phase of the snapshot during which it reads the database schemas and other metadata.
+During the next phase of the snapshot, the connector releases the lock as it selects all rows from each table.
+To perform the SELECT operation in a consistent fashion, the connector uses a REPEATABLE READ transaction.
+Although the release of the global read lock permits other MySQL clients to update the database, use of REPEATABLE READ isolation ensures a consistent snapshot, because the connector continues to read the same data for the duration of  the transaction. +
+
+`minimal_percona`:: The connector holds link:https://www.percona.com/doc/percona-server/8.0/management/backup_locks.html[the global backup lock] for only the initial phase of the snapshot during which it reads the database schemas and other metadata.
+During the next phase of the snapshot, the connector releases the lock as it selects all rows from each table.
+To perform the SELECT operation in a consistent fashion, the connector uses a REPEATABLE READ transaction.
+
+Although the release of the global read lock permits other MySQL clients to update the database, use of REPEATABLE READ isolation ensures a consistent snapshot, because the connector continues to read the same data for the duration of  the transaction. +
+This mode does not flush tables to disk, is not blocked by long-running reads, and is available only in Percona Server. +
+
+`extended`:: Blocks all write operations for the duration of the snapshot.
+Use this setting if clients submit concurrent operations that are incompatible with the REPEATABLE READ isolation level in MySQL. +
+
+`none`:: Prevents the connector from acquiring any table locks during the snapshot.
+Although this option is allowed with all snapshot modes, it is safe to use _only_ if no schema changes occur while the snapshot is running.
+Tables that are defined with the MyISAM engine always acquire a table lock.
+As a result, such tables are locked even if you set this option.
+This behavior differs from tables that are defined by the InnoDB engine, which acquire row-level locks.
+
+ifdef::community[]
+`custom`:: The connector performs a snapshot according to the implementation specified by the xref:mysql-property-snapshot-locking-mode-custom-name[`snapshot.locking.mode.custom.name`] property, which is a custom implementation of the `io.debezium.spi.snapshot.SnapshotLock` interface.
+endif::community[]
+
+ifdef::community[]
+|[[mysql-property-snapshot-locking-mode-custom-name]]<<mysql-property-snapshot-locking-mode-custom-name, `+snapshot.locking.mode.custom.name+`>>
+|No default
+| When xref:mysql-property-snapshot-locking-mode[`snapshot.locking.mode`] is set to `custom`, use this setting to specify the name of the custom implementation provided in the `name()` method that is defined by the 'io.debezium.spi.snapshot.SnapshotLock' interface.
+For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
+endif::community[]
+
+|[[mysql-property-snapshot-query-mode]]<<mysql-property-snapshot-query-mode, `+snapshot.query.mode+`>>
+|`select_all`
+|Specifies how the connector queries data while performing a snapshot. +
+Set one of the following options:
+
+`select_all`:: The connector performs a `select all` query by default, optionally adjusting the columns selected based on the column include and exclude list configurations.
+
+ifdef::community[]
+`custom`:: The connector performs a snapshot query according to the implementation specified by the xref:mysql-property-snapshot-snapshot-query-mode-custom-name[`snapshot.query.mode.custom.name`] property, which defines a custom implementation of the `io.debezium.spi.snapshot.SnapshotQuery` interface. +
+endif::community[]
+
+This setting enables you to manage snapshot content in a more flexible manner compared to using the xref:mysql-property-snapshot-select-statement-overrides[`snapshot.select.statement.overrides`] property.
+
+ifdef::community[]
+|[[mysql-property-snapshot-snapshot-query-mode-custom-name]]<<mysql-property-snapshot-query-mode-custom-name, `+snapshot.query.mode.custom.name+`>>
+|No default
+| When xref:mysql-property-snapshot-query-mode[`snapshot.query.mode`] is set as `custom`, use this setting to specify the name of the custom implementation provided in the `name()` method that is defined by the 'io.debezium.spi.snapshot.SnapshotQuery' interface.
+For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
+endif::community[]
 
 |[[mysql-property-snapshot-include-collection-list]]<<mysql-property-snapshot-include-collection-list, `+snapshot.include.collection.list+`>>
 | All tables specified in `table.include.list`
@@ -3465,11 +3883,15 @@ endif::community[]
 ifdef::product[]
 [IMPORTANT]
 ====
-Parallel initial snapshots is a Technology Preview feature only.
-Technology Preview features are not supported with Red Hat production service level agreements (SLAs) and might not be functionally complete.
-Red Hat does not recommend using them in production.
-These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
-For more information about the support scope of Red Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+Parallel initial snapshots is a Developer Preview feature only.
+Developer Preview software is not supported by Red{nbsp}Hat in any way and is not functionally complete or production-ready.
+Do not use Developer Preview software for production or business-critical workloads.
+Developer Preview software provides early access to upcoming product software in advance of its possible inclusion in a Red{nbsp}Hat product offering.
+Customers can use this software to test functionality and provide feedback during the development process.
+This software is subject to change or removal at any time, and has received limited testing.
+Red{nbsp}Hat might provide ways to submit feedback on Developer Preview software without an associated SLA.
+
+For more information about the support scope of Red{nbsp}Hat Developer Preview software, see link:https://access.redhat.com/support/offerings/devpreview/[Developer Preview Support Scope].
 ====
 endif::product[]
 
@@ -3484,11 +3906,28 @@ Specify one of the following options:
 
 |[[mysql-property-custom-metric-tags]]<<mysql-property-custom-metric-tags, `custom.metric.tags`>>
 |`No default`
-|The custom metric tags will accept key-value pairs to customize the MBean object name which should be appended the end of regular name, each key would represent a tag for the MBean object name, and the corresponding value would be the value of that tag the key is. For example: `k1=v1,k2=v2`.
+|Defines tags that customize MBean object names by adding metadata that provides contextual information.
+Specify a comma-separated list of key-value pairs.
+Each key represents a tag for the MBean object name, and the corresponding value represents a value for the key, for example,  +
+`k1=v1,k2=v2`
+
+The connector appends the specified tags to the base MBean object name.
+Tags can help you to organize and categorize metrics data.
+You can define tags to identify particular application instances, environments, regions, versions, and so forth.
+For more information, see xref:customized-mbean-names[Customized MBean names].
 
 |[[mysql-property-errors-max-retires]]<<mysql-property-errors-max-retires, `errors.max.retries`>>
 |`-1`
-|The maximum number of retries on retriable errors (e.g. connection errors) before failing (-1 = no limit, 0 = disabled, > 0 = num of retries).
+|Specifies how the connector responds after an operation that results in a retriable error, such as a connection error. +
+Set one of the following options:
+
+`-1`:: No limit. The connector always restarts automatically, and retries the operation, regardless of the number of previous failures.
+
+`0`:: Disabled. The connector fails immediately, and never retries the operation.
+User intervention is required to restart the connector.
+
+`> 0`:: The connector restarts automatically until it reaches the specified maximum number of retries.
+After the next failure, the connector stops, and user intervention is required to restart it.
 
 |[[mysql-property-event-converting-failure-handling-mode]]<<mysql-property-event-converting-failure-handling-mode, `event.converting.failure.handling.mode`>>
 |`warn`
@@ -3498,6 +3937,11 @@ Set one of the following options:
 `fail`::  An exception reports that conversion failed because the data type of the field did not match the schema type, and indicates that it might be necessary to restart the connector in `schema _only_recovery` mode to enable a successful conversion.
 `warn`:: The connector writes a `null` value to the event field for the column that failed conversion, writes a message to the warning log . +
 `skip`::  The connector writes a `null` value to the event field for the column that failed conversion, and writes a message to the debug log.
+
+|[[mysql-property-database-query-timeout-ms]]<<mysql-property-database-query-timeout-ms, `database.query.timeout.ms`>>
+|`600000` (10 minutes)
+|Specifies the time, in milliseconds, that the connector waits for a query to complete.
+Set the value to `0` (zero) to remove the timeout limit.
 |===
 
 [id="debezium-mysql-connector-database-history-configuration-properties"]
@@ -3533,6 +3977,13 @@ The {prodname} MySQL connector provides three types of metrics that are in addit
 * xref:mysql-schema-history-metrics[Schema history metrics] provide information about the status of the connector's schema history.
 
 {link-prefix}:{link-debezium-monitoring}#monitoring-debezium[{prodname} monitoring documentation] provides details for how to expose these metrics by using JMX.
+
+// Type: concept
+// ModuleID: monitoring-debezium-mysql-connectors-customized-mbean-names
+// Title: Customized names for Db2 connector snapshot and streaming MBean objects
+=== Customized MBean names
+
+include::{partialsdir}/modules/all-connectors/frag-common-mbean-name.adoc[leveloffset=+1,tags=mbeans-shared]
 
 // Type: reference
 // ModuleID: monitoring-debezium-during-snapshots-of-mysql-databases

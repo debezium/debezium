@@ -165,13 +165,13 @@ public abstract class MySqlTests extends ConnectorTest {
     @Order(90)
     public void shouldExtractNewRecordState(MySqlController dbController) throws Exception {
         connectController.undeployConnector(connectorConfig.getConnectorName());
-        connectorConfig = connectorConfig.addUnwrapSMT();
+        connectorConfig = connectorConfig.addJdbcUnwrapSMT();
         connectController.deployConnector(connectorConfig);
 
         insertCustomer(dbController, "Eaton", "Beaver", "ebeaver@test.com");
 
         String topic = connectorConfig.getDbServerName() + ".inventory.customers";
-        awaitAssert(() -> assertions.assertRecordsCount(topic, 8));
+        awaitAssert(() -> assertions.assertMinimalRecordsCount(topic, 8));
         awaitAssert(() -> assertions.assertRecordIsUnwrapped(topic, 1));
     }
 }

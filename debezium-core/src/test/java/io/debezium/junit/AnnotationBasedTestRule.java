@@ -6,6 +6,7 @@
 package io.debezium.junit;
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Method;
 
 import org.junit.rules.TestRule;
 import org.junit.runner.Description;
@@ -41,6 +42,16 @@ public abstract class AnnotationBasedTestRule implements TestRule {
         }
         else if (description.isTest() && description.getTestClass().isAnnotationPresent(annotationClass)) {
             return description.getTestClass().getAnnotation(annotationClass);
+        }
+        else if (description.isTest()) {
+            // Check for the annotation on the class that declares the test method
+            for (Method method : description.getTestClass().getMethods()) {
+                if (method.getName().equals(description.getMethodName())) {
+                    if (method.getDeclaringClass().isAnnotationPresent(annotationClass)) {
+                        return method.getDeclaringClass().getAnnotation(annotationClass);
+                    }
+                }
+            }
         }
 
         return null;

@@ -297,6 +297,22 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
         sourceInfo.setSsn(ssn);
     }
 
+    public String getRedoSql() {
+        return sourceInfo.getRedoSql();
+    }
+
+    public void setRedoSql(String redoSql) {
+        sourceInfo.setRedoSql(redoSql);
+    }
+
+    public String getRowId() {
+        return sourceInfo.getRowId();
+    }
+
+    public void setRowId(String rowId) {
+        sourceInfo.setRowId(rowId);
+    }
+
     @Override
     public boolean isSnapshotRunning() {
         return sourceInfo.isSnapshot() && !snapshotCompleted;
@@ -326,6 +342,7 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
         }
 
         sb.append(", commit_scn=").append(sourceInfo.getCommitScn().toLoggableFormat());
+        sb.append(", lcr_position=").append(sourceInfo.getLcrPosition());
 
         sb.append("]");
 

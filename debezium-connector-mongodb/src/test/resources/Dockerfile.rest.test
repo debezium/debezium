@@ -8,7 +8,7 @@ ENV CONNECTOR="mongodb"
 RUN echo "Installing Debezium connectors version: ${DEBEZIUM_VERSION}" ; \
 MAVEN_REPOSITORY="https://repo1.maven.org/maven2/io/debezium" ; \
 if [[ "${DEBEZIUM_VERSION}" == *-SNAPSHOT ]] ; then \
-    MAVEN_REPOSITORY="https://oss.sonatype.org/content/repositories/snapshots/io/debezium" ; \
+    MAVEN_REPOSITORY="https://s01.oss.sonatype.org/content/repositories/snapshots/io/debezium" ; \
 fi ; \
 CONNECTOR_VERSION="${DEBEZIUM_VERSION}" ; \
 for PACKAGE in {scripting,}; do \

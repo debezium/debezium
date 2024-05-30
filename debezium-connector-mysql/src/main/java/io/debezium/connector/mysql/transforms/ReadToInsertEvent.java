@@ -8,6 +8,7 @@ package io.debezium.connector.mysql.transforms;
 import java.util.Map;
 
 import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.connect.components.Versioned;
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.transforms.Transformation;
@@ -15,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.mysql.Module;
 import io.debezium.data.Envelope;
 import io.debezium.transforms.SmtManager;
 
@@ -25,7 +27,7 @@ import io.debezium.transforms.SmtManager;
  * @param <R> the subtype of {@link ConnectRecord} on which this transformation will operate
  * @author Anisha Mohanty
  */
-public class ReadToInsertEvent<R extends ConnectRecord<R>> implements Transformation<R> {
+public class ReadToInsertEvent<R extends ConnectRecord<R>> implements Transformation<R>, Versioned {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ReadToInsertEvent.class);
 
@@ -71,5 +73,10 @@ public class ReadToInsertEvent<R extends ConnectRecord<R>> implements Transforma
     public void configure(Map<String, ?> props) {
         final Configuration config = Configuration.from(props);
         smtManager = new SmtManager<>(config);
+    }
+
+    @Override
+    public String version() {
+        return Module.version();
     }
 }

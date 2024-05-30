@@ -19,14 +19,19 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.oracle.junit.SkipTestDependingOnStrategyRule;
+import io.debezium.connector.oracle.junit.SkipWhenLogMiningStrategyIs;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.processors.AbstractReselectProcessorTest;
 import io.debezium.processors.reselect.ReselectColumnsPostProcessor;
 
@@ -36,6 +41,9 @@ import io.debezium.processors.reselect.ReselectColumnsPostProcessor;
  * @author Chris Cranford
  */
 public class OracleReselectColumnsProcessorIT extends AbstractReselectProcessorTest<OracleConnector> {
+
+    @Rule
+    public final TestRule skipStrategyRule = new SkipTestDependingOnStrategyRule();
 
     private OracleConnection connection;
 
@@ -123,9 +131,12 @@ public class OracleReselectColumnsProcessorIT extends AbstractReselectProcessorT
 
     @Test
     @FixFor("DBZ-7729")
+    @SkipWhenLogMiningStrategyIs(value = SkipWhenLogMiningStrategyIs.Strategy.HYBRID, reason = "Cannot use lob.enabled with Hybrid")
     public void testColumnReselectionUsesPrimaryKeyColumnAndValuesDespiteMessageKeyColumnConfigs() throws Exception {
         TestHelper.dropTable(connection, "dbz7729");
         try {
+            final LogInterceptor logInterceptor = getReselectLogInterceptor();
+
             connection.execute("CREATE TABLE dbz7729 (id numeric(9,0) primary key, data clob, data2 numeric(9,0), data3 varchar2(25))");
             TestHelper.streamTable(connection, "dbz7729");
 
@@ -168,6 +179,8 @@ public class OracleReselectColumnsProcessorIT extends AbstractReselectProcessorT
             assertThat(after.get("DATA")).isEqualTo(clobData);
             assertThat(after.get("DATA2")).isEqualTo(10);
             assertThat(after.get("DATA3")).isEqualTo("A");
+
+            assertColumnReselectedForUnavailableValue(logInterceptor, TestHelper.getDatabaseName() + ".DEBEZIUM.DBZ7729", "DATA");
         }
         finally {
             TestHelper.dropTable(connection, "dbz7729");
@@ -176,9 +189,12 @@ public class OracleReselectColumnsProcessorIT extends AbstractReselectProcessorT
 
     @Test
     @FixFor("DBZ-4321")
+    @SkipWhenLogMiningStrategyIs(value = SkipWhenLogMiningStrategyIs.Strategy.HYBRID, reason = "Cannot use lob.enabled with Hybrid")
     public void testClobReselectedWhenValueIsUnavailable() throws Exception {
         TestHelper.dropTable(connection, "dbz4321");
         try {
+            final LogInterceptor logInterceptor = getReselectLogInterceptor();
+
             connection.execute("CREATE TABLE dbz4321 (id numeric(9,0) primary key, data clob, data2 numeric(9,0))");
             TestHelper.streamTable(connection, "dbz4321");
 
@@ -213,6 +229,8 @@ public class OracleReselectColumnsProcessorIT extends AbstractReselectProcessorT
             assertThat(after.get("ID")).isEqualTo(1);
             assertThat(after.get("DATA")).isEqualTo(clobData);
             assertThat(after.get("DATA2")).isEqualTo(10);
+
+            assertColumnReselectedForUnavailableValue(logInterceptor, TestHelper.getDatabaseName() + ".DEBEZIUM.DBZ4321", "DATA");
         }
         finally {
             TestHelper.dropTable(connection, "dbz4321");
@@ -221,9 +239,12 @@ public class OracleReselectColumnsProcessorIT extends AbstractReselectProcessorT
 
     @Test
     @FixFor("DBZ-4321")
+    @SkipWhenLogMiningStrategyIs(value = SkipWhenLogMiningStrategyIs.Strategy.HYBRID, reason = "Cannot use lob.enabled with Hybrid")
     public void testBlobReselectedWhenValueIsUnavailable() throws Exception {
         TestHelper.dropTable(connection, "dbz4321");
         try {
+            final LogInterceptor logInterceptor = getReselectLogInterceptor();
+
             connection.execute("CREATE TABLE dbz4321 (id numeric(9,0) primary key, data blob, data2 numeric(9,0))");
             TestHelper.streamTable(connection, "dbz4321");
 
@@ -258,6 +279,8 @@ public class OracleReselectColumnsProcessorIT extends AbstractReselectProcessorT
             assertThat(after.get("ID")).isEqualTo(1);
             assertThat(after.get("DATA")).isEqualTo(ByteBuffer.wrap(blobData));
             assertThat(after.get("DATA2")).isEqualTo(10);
+
+            assertColumnReselectedForUnavailableValue(logInterceptor, TestHelper.getDatabaseName() + ".DEBEZIUM.DBZ4321", "DATA");
         }
         finally {
             TestHelper.dropTable(connection, "dbz4321");

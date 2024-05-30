@@ -41,6 +41,7 @@ import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
+import io.debezium.snapshot.SnapshotterService;
 import io.debezium.util.Clock;
 
 /**
@@ -59,6 +60,7 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
     private final Clock clock;
     private final OracleDatabaseSchema schema;
     private final OpenLogReplicatorStreamingChangeEventSourceMetrics streamingMetrics;
+    private final SnapshotterService snapshotterService;
 
     private OlrNetworkClient client;
     private OraclePartition partition;
@@ -71,7 +73,7 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
                                                        EventDispatcher<OraclePartition, TableId> dispatcher,
                                                        ErrorHandler errorHandler, Clock clock,
                                                        OracleDatabaseSchema schema,
-                                                       OpenLogReplicatorStreamingChangeEventSourceMetrics streamingMetrics) {
+                                                       OpenLogReplicatorStreamingChangeEventSourceMetrics streamingMetrics, SnapshotterService snapshotterService) {
         this.connectorConfig = connectorConfig;
         this.dispatcher = dispatcher;
         this.jdbcConnection = connection;
@@ -79,6 +81,7 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
         this.clock = clock;
         this.schema = schema;
         this.streamingMetrics = streamingMetrics;
+        this.snapshotterService = snapshotterService;
     }
 
     @Override
@@ -100,16 +103,13 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
 
     @Override
     public void execute(ChangeEventSourceContext context, OraclePartition partition, OracleOffsetContext offsetContext) throws InterruptedException {
-        if (!connectorConfig.getSnapshotMode().shouldStream()) {
-            LOGGER.info("Streaming is not enabled in current configuration");
-            return;
-        }
+
         try {
             this.partition = partition;
             this.offsetContext = offsetContext;
             this.jdbcConnection.setAutoCommit(false);
 
-            final Scn startScn = offsetContext.getScn();
+            final Scn startScn = connectorConfig.getAdapter().getOffsetScn(offsetContext);
             final Long startScnIndex = offsetContext.getScnIndex();
 
             this.client = new OlrNetworkClient(connectorConfig);

@@ -10,7 +10,7 @@
 
     <groupId>io.debezium</groupId>
     <artifactId>debezium-build-parent</artifactId>
-    <version>2.6.0-SNAPSHOT</version>
+    <version>2.7.0-SNAPSHOT</version>
     <name>Debezium Build Aggregator</name>
     <description>Debezium is an open source change data capture platform</description>
     <packaging>pom</packaging>
@@ -25,7 +25,7 @@
 
     <issueManagement>
         <system>jira</system>
-        <url>http://issues.jboss.org/browse/DBZ</url>
+        <url>https://issues.redhat.com/browse/DBZ</url>
     </issueManagement>
 
     <licenses>
@@ -96,11 +96,11 @@
         <release.endpoint>https://s01.oss.sonatype.org/</release.endpoint>
 
         <!-- Kafka and it's dependencies MUST reflect what the Kafka version uses -->
-        <version.kafka>3.6.1</version.kafka>
+        <version.kafka>3.7.0</version.kafka>
         <version.zookeeper>3.8.3</version.zookeeper>
         <!-- NOTE: These two versions are maintained separately due to decoupling jackson and databind for downstream -->
-        <version.jackson>2.13.5</version.jackson>
-        <version.jackson.databind>2.13.5</version.jackson.databind>
+        <version.jackson>2.16.0</version.jackson>
+        <version.jackson.databind>2.16.0</version.jackson.databind>
         <version.org.slf4j>1.7.36</version.org.slf4j>
         <version.netty>4.1.100.Final</version.netty>
 
@@ -114,20 +114,20 @@
 
         <!-- Quarkus -->
         <!-- Version used for Outbox extension development, changes frequently to align with latest Quarkus -->
-        <quarkus.version.extension>3.7.0</quarkus.version.extension>
+        <quarkus.version.extension>3.10.0</quarkus.version.extension>
 
         <!-- Version used in Debezium Server, Operator, etc., usually a LTS version -->
         <!-- Must be aligned with Apicurio version below -->
         <!-- Debezium Server Pravega must use the same Netty version as the one used by Quarkus -->
-        <quarkus.version.runtime>3.2.9.Final</quarkus.version.runtime>
+        <quarkus.version.runtime>3.2.12.Final</quarkus.version.runtime>
 
         <!-- Apicurio -->
         <version.apicurio>2.4.3.Final</version.apicurio>
 
         <!-- Database drivers, should align with databases -->
-        <version.postgresql.driver>42.6.0</version.postgresql.driver>
-        <version.mysql.driver>8.0.33</version.mysql.driver>
-        <version.mysql.binlog>0.29.0</version.mysql.binlog>
+        <version.postgresql.driver>42.6.1</version.postgresql.driver>
+        <version.mysql.driver>8.3.0</version.mysql.driver>
+        <version.mysql.binlog>0.29.2</version.mysql.binlog>
         <version.mongo.driver>4.11.0</version.mongo.driver>
         <version.sqlserver.driver>12.4.2.jre8</version.sqlserver.driver>
         <version.db2.driver>11.5.0.0</version.db2.driver>
@@ -137,8 +137,8 @@
         <version.mariadb.driver>3.2.0</version.mariadb.driver>
         <!-- These two should be aligned by major versions but minor could vary -->
         <!-- Oracle publishes the driver versions more frequently than the instant client -->
-        <version.oracle.driver>21.6.0.0</version.oracle.driver>
-        <version.oracle.instantclient>21.6.0.0</version.oracle.instantclient>
+        <version.oracle.driver>21.11.0.0</version.oracle.driver>
+        <version.oracle.instantclient>21.11.0.0</version.oracle.instantclient>
 
         <!-- Databases, should align with database drivers -->
         <version.mysql.server>8.2</version.mysql.server>
@@ -157,7 +157,7 @@
         <version.infinispan.protostream>4.6.2.Final</version.infinispan.protostream>
 
         <!-- RocketMQ version for RocketMQ storage and Server sink -->
-        <version.rocketmq>4.9.4</version.rocketmq>
+        <version.rocketmq>5.1.4</version.rocketmq>
 
         <!-- MySQL server image name -->
         <mysql.server.image.source>container-registry.oracle.com/mysql/community-server</mysql.server.image.source>
@@ -179,6 +179,9 @@
         <module>debezium-connector-mongodb</module>
         <module>debezium-connector-sqlserver</module>
         <module>debezium-connector-oracle</module>
+        <module>debezium-connector-binlog</module>
+        <module>debezium-connector-mariadb</module>
+        <module>debezium-microbenchmark-engine</module>
         <module>debezium-microbenchmark</module>
         <module>debezium-microbenchmark-oracle</module>
         <module>debezium-quarkus-outbox-common</module>
@@ -201,7 +204,7 @@
       <snapshotRepository>
         <id>ossrh</id>
         <name>OSS Sonatype Nexus Snapshots</name>
-        <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+        <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
       </snapshotRepository>
     </distributionManagement>
 

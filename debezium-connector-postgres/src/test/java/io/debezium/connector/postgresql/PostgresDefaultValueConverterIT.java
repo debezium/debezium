@@ -8,10 +8,14 @@ package io.debezium.connector.postgresql;
 import static io.debezium.connector.postgresql.TestHelper.topicName;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Map;
 
+import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
@@ -22,6 +26,8 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.connector.postgresql.connection.PostgresDefaultValueConverter;
 import io.debezium.data.Envelope;
+import io.debezium.data.Json;
+import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.junit.EqualityCheck;
@@ -119,6 +125,129 @@ public class PostgresDefaultValueConverterIT extends AbstractConnectorTest {
 
         final Object defaultValue = after.schema().field("id").schema().defaultValue();
         assertThat(defaultValue).isEqualTo("00000000-0000-0000-0000-000000000000");
+    }
+
+    @Test
+    @FixFor("DBZ-7562")
+    public void shouldTruncateDefaultValuePrecisionToMatchColumnMaxPrecision() throws Exception {
+        final String ddl = "DROP SCHEMA IF EXISTS s1 CASCADE;"
+                + "CREATE SCHEMA s1;"
+                + "CREATE TABLE s1.dbz7562 (pk SERIAL, cost numeric(12,0) not null default 0.0, PRIMARY KEY(pk));"
+                + "INSERT INTO s1.dbz7562 (cost) values (2.25);"
+                + "INSERT INTO s1.dbz7562 (cost) values (3);"
+                + "INSERT INTO s1.dbz7562 (cost) values (0);"
+                + "INSERT INTO s1.dbz7562 default values;";
+
+        // Test Snapshot
+        TestHelper.execute(ddl);
+
+        Configuration config = TestHelper.defaultConfig().build();
+        start(PostgresConnector.class, config);
+
+        waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
+
+        // Test Streaming
+        TestHelper.execute("INSERT INTO s1.dbz7562 (cost) values (5.5);");
+        TestHelper.execute("INSERT INTO s1.dbz7562 (cost) values (4);");
+        TestHelper.execute("INSERT INTO s1.dbz7562 (cost) values (0);");
+        TestHelper.execute("INSERT INTO s1.dbz7562 default values;");
+
+        final int expectedRecords = 8;
+        final SourceRecords records = consumeRecordsByTopic(expectedRecords);
+        final List<SourceRecord> recordsForTopic = records.recordsForTopic(topicName("s1.dbz7562"));
+        assertThat(recordsForTopic).hasSize(expectedRecords);
+
+        for (SourceRecord record : recordsForTopic) {
+            VerifyRecord.isValid(record);
+            final Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+            final Schema schema = after.schema().field("cost").schema();
+            assertThat(schema.parameters()).containsEntry("connect.decimal.precision", "12");
+            assertThat(schema.parameters()).containsEntry("scale", "0");
+            assertThat(schema.defaultValue().getClass()).isEqualTo(BigDecimal.class);
+            assertThat(schema.defaultValue()).isEqualTo(new BigDecimal(0).setScale(0));
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-7582")
+    public void shouldSerializeHstoreDefaultAsJsonStringWhenUnavailable() throws Exception {
+        final String data = RandomStringUtils.randomAlphanumeric(16384);
+
+        final String ddl = "DROP SCHEMA IF EXISTS s1 CASCADE;"
+                + "CREATE SCHEMA s1;"
+                + "CREATE TABLE s1.dbz7582 (pk SERIAL, data HSTORE NOT NULl DEFAULT ''::hstore , b boolean null, PRIMARY KEY(pk));"
+                + "INSERT INTO s1.dbz7582 (pk,data,b) values (1,'\"key\"=>\"" + data + "\"', true);";
+
+        TestHelper.execute(ddl);
+
+        Configuration config = TestHelper.defaultConfig().build();
+        start(PostgresConnector.class, config);
+
+        waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
+
+        // Test Streaming
+        TestHelper.execute("UPDATE s1.dbz7582 set B = false;");
+
+        final int expectedRecords = 2;
+        final SourceRecords records = consumeRecordsByTopic(expectedRecords);
+        final List<SourceRecord> recordsForTopic = records.recordsForTopic(topicName("s1.dbz7582"));
+        assertThat(recordsForTopic).hasSize(expectedRecords);
+
+        SourceRecord record = recordsForTopic.get(0);
+        Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+        Schema schema = after.schema().field("data").schema();
+        VerifyRecord.isValidRead(record, "pk", 1);
+        assertThat(schema).isEqualTo(Json.schema());
+        assertThat(after.get("data")).isEqualTo("{\"key\":\"" + data + "\"}");
+
+        record = recordsForTopic.get(1);
+        after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+        schema = after.schema().field("data").schema();
+        VerifyRecord.isValidUpdate(record, "pk", 1);
+        assertThat(schema).isEqualTo(Json.schema());
+        assertThat(after.get("data")).isEqualTo("{\"__debezium_unavailable_value\":\"__debezium_unavailable_value\"}");
+    }
+
+    @Test
+    @FixFor("DBZ-7582")
+    public void shouldSerializeHstoreDefaultAsMapWhenUnavailable() throws Exception {
+        final String data = RandomStringUtils.randomAlphanumeric(16384);
+
+        final String ddl = "DROP SCHEMA IF EXISTS s1 CASCADE;"
+                + "CREATE SCHEMA s1;"
+                + "CREATE TABLE s1.dbz7582 (pk SERIAL, data HSTORE NOT NULl DEFAULT ''::hstore , b boolean null, PRIMARY KEY(pk));"
+                + "INSERT INTO s1.dbz7582 (pk,data,b) values (1,'\"key\"=>\"" + data + "\"', true);";
+
+        TestHelper.execute(ddl);
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.HSTORE_HANDLING_MODE, PostgresConnectorConfig.HStoreHandlingMode.MAP.getValue())
+                .build();
+        start(PostgresConnector.class, config);
+
+        waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
+
+        // Test Streaming
+        TestHelper.execute("UPDATE s1.dbz7582 set B = false;");
+
+        final int expectedRecords = 2;
+        final SourceRecords records = consumeRecordsByTopic(expectedRecords);
+        final List<SourceRecord> recordsForTopic = records.recordsForTopic(topicName("s1.dbz7582"));
+        assertThat(recordsForTopic).hasSize(expectedRecords);
+
+        SourceRecord record = recordsForTopic.get(0);
+        Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+        Schema schema = after.schema().field("data").schema();
+        VerifyRecord.isValidRead(record, "pk", 1);
+        assertThat(schema).isEqualTo(SchemaBuilder.map(Schema.STRING_SCHEMA, Schema.OPTIONAL_STRING_SCHEMA).build());
+        assertThat(after.get("data")).isEqualTo(Map.of("key", data));
+
+        record = recordsForTopic.get(1);
+        after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+        schema = after.schema().field("data").schema();
+        VerifyRecord.isValidUpdate(record, "pk", 1);
+        assertThat(schema).isEqualTo(SchemaBuilder.map(Schema.STRING_SCHEMA, Schema.OPTIONAL_STRING_SCHEMA).build());
+        assertThat(after.get("data")).isEqualTo(Map.of("__debezium_unavailable_value", "__debezium_unavailable_value"));
     }
 
     private void createTableAndInsertData() {

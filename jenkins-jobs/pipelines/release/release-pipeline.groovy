@@ -82,7 +82,8 @@ CONNECTORS_PER_VERSION = [
     '2.3' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra-3', 'cassandra-4', 'db2', 'vitess', 'spanner', 'jdbc'],
     '2.4' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra-3', 'cassandra-4', 'db2', 'vitess', 'spanner', 'jdbc'],
     '2.5' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra-3', 'cassandra-4', 'db2', 'vitess', 'spanner', 'jdbc', 'informix'],
-    '2.6' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra-3', 'cassandra-4', 'db2', 'vitess', 'spanner', 'jdbc', 'informix']
+    '2.6' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra-3', 'cassandra-4', 'db2', 'vitess', 'spanner', 'jdbc', 'informix', 'ibmi'],
+    '2.7' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra-3', 'cassandra-4', 'db2', 'vitess', 'spanner', 'jdbc', 'informix', 'ibmi']
 ]
 
 CONNECTORS = CONNECTORS_PER_VERSION[VERSION_MAJOR_MINOR]
@@ -533,7 +534,7 @@ node('release-node') {
                 modifyFile('Dockerfile') {
                     it
                             .replaceFirst('MAVEN_REPO_CENTRAL="[^"]*"', "MAVEN_REPO_CENTRAL=\"$STAGING_REPO/$serverStagingRepoId/\"")
-                            .replaceFirst('DEBEZIUM_VERSION=\\S+', "DEBEZIUM_VERSION=$RELEASE_VERSION")
+                            .replaceAll('DEBEZIUM_VERSION=\\S+', "DEBEZIUM_VERSION=$RELEASE_VERSION")
                             .replaceFirst('SERVER_MD5=\\S+', "SERVER_MD5=$serverSum")
                 }
             }

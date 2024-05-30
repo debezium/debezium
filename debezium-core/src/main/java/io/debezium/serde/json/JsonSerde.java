@@ -42,7 +42,11 @@ public class JsonSerde<T> implements Serde<T> {
     private JsonSerdeConfig config;
 
     public JsonSerde(Class<T> objectType) {
-        mapper = new ObjectMapper();
+        this(objectType, new ObjectMapper());
+    }
+
+    public JsonSerde(Class<T> objectType, ObjectMapper mapper) {
+        this.mapper = mapper;
         mapper.registerModule(new JavaTimeModule());
 
         this.reader = mapper.readerFor(objectType);

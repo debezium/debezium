@@ -1070,6 +1070,29 @@ public final class Strings {
     }
 
     /**
+     * Checks if the value is empty or null, returning the default value if true, otherwise the specified value.
+     *
+     * @param value the string to check
+     * @param defaultValue the default value to return
+     * @return value if not empty or null; default value otherwise
+     */
+    public static String defaultIfEmpty(String value, String defaultValue) {
+        return isNullOrEmpty(value) ? defaultValue : value;
+    }
+
+    /**
+     * Checks if the value is blank (i.e. it's blank or only contains whitespace characters) or null, returning
+     * the default value if true, otherwise returning the specified value.
+     *
+     * @param value the string to check
+     * @param defaultValue the default value to return
+     * @return value if not blank or null; default value otherwise
+     */
+    public static String defaultIfBlank(String value, String defaultValue) {
+        return isNullOrBlank(value) ? defaultValue : value;
+    }
+
+    /**
      * Check if the string contains only digits.
      *
      * @param str the string to check

@@ -6,13 +6,14 @@
 package io.debezium.testing.system.tests.mongodb.sharded;
 
 import static com.mongodb.client.model.Filters.eq;
+import static io.debezium.testing.system.assertions.KafkaAssertions.LOGGER;
 import static io.debezium.testing.system.assertions.KafkaAssertions.awaitAssert;
 import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_MONGO_DBZ_DBNAME;
-import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_MONGO_DBZ_LOGIN_DBNAME;
-import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_MONGO_DBZ_PASSWORD;
-import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_MONGO_DBZ_USERNAME;
+import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_MONGO_SA_PASSWORD;
+import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_MONGO_USERNAME;
 
 import java.io.IOException;
+import java.util.Map;
 
 import org.bson.Document;
 import org.bson.conversions.Bson;
@@ -21,10 +22,14 @@ import io.debezium.testing.system.assertions.KafkaAssertions;
 import io.debezium.testing.system.tests.ConnectorTest;
 import io.debezium.testing.system.tools.databases.mongodb.MongoDatabaseClient;
 import io.debezium.testing.system.tools.databases.mongodb.MongoDatabaseController;
-import io.debezium.testing.system.tools.databases.mongodb.OcpMongoShardedController;
+import io.debezium.testing.system.tools.databases.mongodb.sharded.OcpMongoShardedController;
+import io.debezium.testing.system.tools.databases.mongodb.sharded.ShardKeyRange;
+import io.debezium.testing.system.tools.databases.mongodb.sharded.componentproviders.OcpShardModelProvider;
 import io.debezium.testing.system.tools.kafka.ConnectorConfigBuilder;
 import io.debezium.testing.system.tools.kafka.KafkaConnectController;
 import io.debezium.testing.system.tools.kafka.KafkaController;
+
+import freemarker.template.TemplateException;
 
 public abstract class ShardedMongoTests extends ConnectorTest {
     public ShardedMongoTests(KafkaController kafkaController, KafkaConnectController connectController, ConnectorConfigBuilder connectorConfig,
@@ -34,7 +39,8 @@ public abstract class ShardedMongoTests extends ConnectorTest {
 
     public void insertCustomer(MongoDatabaseController dbController, String firstName, String lastName, String email, long id) {
         MongoDatabaseClient client = dbController
-                .getDatabaseClient(DATABASE_MONGO_DBZ_USERNAME, DATABASE_MONGO_DBZ_PASSWORD, DATABASE_MONGO_DBZ_LOGIN_DBNAME);
+                .getDatabaseClient(DATABASE_MONGO_USERNAME, DATABASE_MONGO_SA_PASSWORD);
+        LOGGER.info("Creating customer: " + email);
 
         client.execute(DATABASE_MONGO_DBZ_DBNAME, "customers", col -> {
             Document doc = new Document()
@@ -44,11 +50,12 @@ public abstract class ShardedMongoTests extends ConnectorTest {
                     .append("email", email);
             col.insertOne(doc);
         });
+
     }
 
     public void removeCustomer(MongoDatabaseController dbController, String email) {
         MongoDatabaseClient client = dbController
-                .getDatabaseClient(DATABASE_MONGO_DBZ_USERNAME, DATABASE_MONGO_DBZ_PASSWORD, DATABASE_MONGO_DBZ_LOGIN_DBNAME);
+                .getDatabaseClient(DATABASE_MONGO_USERNAME, DATABASE_MONGO_SA_PASSWORD);
 
         client.execute("inventory", "customers", col -> {
             Bson query = eq("email", email);
@@ -56,9 +63,18 @@ public abstract class ShardedMongoTests extends ConnectorTest {
         });
     }
 
+    public void removeProduct(MongoDatabaseController dbController, String name) {
+        MongoDatabaseClient client = dbController
+                .getDatabaseClient(DATABASE_MONGO_USERNAME, DATABASE_MONGO_SA_PASSWORD);
+        client.execute("inventory", "products", col -> {
+            Bson query = eq("name", name);
+            col.deleteOne(col.find(query).first());
+        });
+    }
+
     public void insertProduct(MongoDatabaseController dbController, String name, String description, String weight, int quantity) {
         MongoDatabaseClient client = dbController
-                .getDatabaseClient(DATABASE_MONGO_DBZ_USERNAME, DATABASE_MONGO_DBZ_PASSWORD, DATABASE_MONGO_DBZ_LOGIN_DBNAME);
+                .getDatabaseClient(DATABASE_MONGO_USERNAME, DATABASE_MONGO_SA_PASSWORD);
 
         client.execute(DATABASE_MONGO_DBZ_DBNAME, "products", col -> {
             Document doc = new Document()
@@ -70,13 +86,14 @@ public abstract class ShardedMongoTests extends ConnectorTest {
         });
     }
 
-    protected void addAndRemoveShardTest(OcpMongoShardedController dbController, String connectorName) throws IOException, InterruptedException {
+    protected void addAndRemoveShardTest(OcpMongoShardedController dbController, String connectorName) throws IOException, InterruptedException, TemplateException {
         String topic = connectorName + ".inventory.customers";
-        int rangeStart = 1100;
-        int rangeEnd = 1105;
 
         // add shard, restart connector, insert to that shard and verify that insert was captured by debezium
-        dbController.addShard(3, "THREE", rangeStart, rangeEnd);
+        var key = dbController.getMongo().getShardKey("inventory.customers");
+        var keyRange = new ShardKeyRange(OcpShardModelProvider.getShardReplicaSetName(3), "1100", "1105");
+        var newShard = dbController.getMongo().addShard(Map.of(key, keyRange));
+        newShard.executeMongosh(dbController.createDbzUserCommand(), false);
 
         connectController.undeployConnector(connectorName);
         connectController.deployConnector(connectorConfig);
@@ -87,7 +104,7 @@ public abstract class ShardedMongoTests extends ConnectorTest {
 
         // remove shard, restart connector and verify debezium is still streaming
         removeCustomer(dbController, "ffoo@test.com");
-        dbController.removeShard(3, rangeStart, rangeEnd);
+        dbController.getMongo().removeShard();
 
         connectController.undeployConnector(connectorName);
         connectController.deployConnector(connectorConfig);

@@ -72,10 +72,11 @@ public abstract class AbstractReselectProcessorTest<T extends SourceConnector> e
     @FixFor("DBZ-4321")
     @SuppressWarnings("resource")
     public void testNoColumnsReselectedWhenNullAndUnavailableColumnsAreDisabled() throws Exception {
-        LogInterceptor interceptor = new LogInterceptor(ReselectColumnsPostProcessor.class);
-        interceptor.setLoggerLevel(ReselectColumnsPostProcessor.class, Level.DEBUG);
+        LogInterceptor interceptor = getReselectLogInterceptor();
 
         databaseConnection().execute(getInsertWithNullValue());
+
+        enableTableForCdc();
 
         Configuration config = getConfigurationBuilder()
                 .with("snapshot.mode", "initial")
@@ -106,10 +107,11 @@ public abstract class AbstractReselectProcessorTest<T extends SourceConnector> e
     @FixFor("DBZ-4321")
     @SuppressWarnings("resource")
     public void testNoColumnsReselectedWhenNotNullSnapshot() throws Exception {
-        LogInterceptor interceptor = new LogInterceptor(ReselectColumnsPostProcessor.class);
-        interceptor.setLoggerLevel(ReselectColumnsPostProcessor.class, Level.DEBUG);
+        LogInterceptor interceptor = getReselectLogInterceptor();
 
         databaseConnection().execute(getInsertWithValue());
+
+        enableTableForCdc();
 
         Configuration config = getConfigurationBuilder()
                 .with("snapshot.mode", "initial")
@@ -131,15 +133,16 @@ public abstract class AbstractReselectProcessorTest<T extends SourceConnector> e
         assertThat(after.get(fieldName("data"))).isEqualTo("one");
         assertThat(after.get(fieldName("data2"))).isEqualTo(1);
 
-        assertThat(interceptor.containsMessage("No columns require re-selection.")).isTrue();
+        assertThat(interceptor.containsMessage("No columns require re-selection.")).isFalse();
     }
 
     @Test
     @FixFor("DBZ-4321")
     @SuppressWarnings("resource")
     public void testNoColumnsReselectedWhenNotNullStreaming() throws Exception {
-        LogInterceptor interceptor = new LogInterceptor(ReselectColumnsPostProcessor.class);
-        interceptor.setLoggerLevel(ReselectColumnsPostProcessor.class, Level.DEBUG);
+        enableTableForCdc();
+
+        LogInterceptor interceptor = getReselectLogInterceptor();
 
         Configuration config = getConfigurationBuilder()
                 .with("reselector.reselect.columns.include.list", reselectColumnsList())
@@ -194,6 +197,8 @@ public abstract class AbstractReselectProcessorTest<T extends SourceConnector> e
         databaseConnection().execute(getInsertWithNullValue());
         databaseConnection().execute(String.format("UPDATE %s SET data = 'two' where id = 1", tableName()));
 
+        enableTableForCdc();
+
         Configuration config = getConfigurationBuilder()
                 .with("snapshot.mode", "initial")
                 .with("reselector.reselect.columns.include.list", reselectColumnsList())
@@ -220,6 +225,8 @@ public abstract class AbstractReselectProcessorTest<T extends SourceConnector> e
     @FixFor("DBZ-4321")
     @SuppressWarnings("resource")
     public void testColumnsReselectedWhenValueIsNullStreaming() throws Exception {
+        enableTableForCdc();
+
         Configuration config = getConfigurationBuilder()
                 .with("reselector.reselect.columns.include.list", reselectColumnsList())
                 .build();
@@ -271,6 +278,23 @@ public abstract class AbstractReselectProcessorTest<T extends SourceConnector> e
 
     protected String fieldName(String fieldName) {
         return fieldName;
+    }
+
+    protected void enableTableForCdc() throws Exception {
+    }
+
+    protected LogInterceptor getReselectLogInterceptor() {
+        final LogInterceptor logInterceptor = new LogInterceptor(ReselectColumnsPostProcessor.class);
+        logInterceptor.setLoggerLevel(ReselectColumnsPostProcessor.class, Level.DEBUG);
+        return logInterceptor;
+    }
+
+    protected void assertColumnReselectedForUnavailableValue(LogInterceptor interceptor, String tableName, String columnName) {
+        assertThat(interceptor.containsMessage(String.format(
+                "Adding column %s for table %s to re-select list due to unavailable value placeholder.",
+                columnName,
+                tableName)))
+                .isTrue();
     }
 
 }

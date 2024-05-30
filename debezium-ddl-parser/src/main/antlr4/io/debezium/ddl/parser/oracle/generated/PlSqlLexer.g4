@@ -79,6 +79,7 @@ ANALYZE:                      'ANALYZE';
 ANCILLARY:                    'ANCILLARY';
 AND:                          'AND';
 AND_EQUAL:                    'AND_EQUAL';
+ANNOTATIONS:                  'ANNOTATIONS';
 ANOMALY:                      'ANOMALY';
 ANSI_REARCH:                  'ANSI_REARCH';
 ANTIJOIN:                     'ANTIJOIN';

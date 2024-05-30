@@ -28,7 +28,6 @@ import io.debezium.connector.mongodb.transforms.outbox.MongoEventRouter;
 import io.debezium.converters.CloudEventsConverterTest;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
-import io.debezium.util.Testing;
 
 /**
  * Test to verify MongoDB connector behaviour with CloudEvents converter for all streaming events.
@@ -43,7 +42,7 @@ public class CloudEventsConverterIT extends AbstractMongoConnectorIT {
 
     @Before
     public void beforeEach() {
-        Testing.Print.enable();
+        // Testing.Print.enable();
         config = getConfiguration();
         context = new MongoDbTaskContext(config);
         TestHelper.cleanDatabase(mongo, DB_NAME);

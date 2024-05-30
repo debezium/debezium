@@ -46,7 +46,7 @@ public abstract class MySqlOcpTests extends MySqlTests {
         insertCustomer(masterController, "Arnold", "Test", "atest@test.com");
 
         String topic = connectorConfig.getDbServerName() + ".inventory.customers";
-        awaitAssert(() -> assertions.assertRecordsCount(topic, 8));
+        awaitAssert(() -> assertions.assertRecordsCount(topic, 9));
         awaitAssert(() -> assertions.assertRecordsContain(topic, "atest@test.com"));
     }
 
@@ -60,7 +60,7 @@ public abstract class MySqlOcpTests extends MySqlTests {
         insertCustomer(masterController, "Alex", "master", "amaster@test.com");
 
         String topic = connectorConfig.getDbServerName() + ".inventory.customers";
-        awaitAssert(() -> assertions.assertRecordsCount(topic, 9));
+        awaitAssert(() -> assertions.assertRecordsCount(topic, 10));
         awaitAssert(() -> assertions.assertRecordsContain(topic, "amaster@test.com"));
 
         // restart only master after replication is complete, otherwise there is danger of duplicates in kafka topics
@@ -76,7 +76,7 @@ public abstract class MySqlOcpTests extends MySqlTests {
 
         insertCustomer(masterController, "Tom", "Train", "ttrain@test.com");
 
-        awaitAssert(() -> assertions.assertRecordsCount(topic, 10));
+        awaitAssert(() -> assertions.assertRecordsCount(topic, 11));
         awaitAssert(() -> assertions.assertRecordsContain(topic, "ttrain@test.com"));
     }
 }

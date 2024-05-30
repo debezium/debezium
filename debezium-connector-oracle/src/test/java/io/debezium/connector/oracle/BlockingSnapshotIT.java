@@ -111,6 +111,11 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
     }
 
     @Override
+    protected String escapedTableDataCollectionId() {
+        return "\\\"" + TestHelper.getDatabaseName() + "\\\".\\\"DEBEZIUM\\\".\\\"A\\\"";
+    }
+
+    @Override
     protected List<String> tableDataCollectionIds() {
         return List.of(TestHelper.getDatabaseName() + ".DEBEZIUM.A", TestHelper.getDatabaseName() + ".DEBEZIUM.B");
     }

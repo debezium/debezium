@@ -7,6 +7,7 @@ package io.debezium.bean;
 
 import io.debezium.config.Configuration;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.pipeline.source.AbstractSnapshotChangeEventSource;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.ValueConverterProvider;
 
@@ -48,4 +49,9 @@ public interface StandardBeanNames {
      * The connector-specific offsets.
      */
     String OFFSETS = Offsets.class.getName();
+
+    /**
+     * The context used during snapshots.
+     */
+    String SNAPSHOT_CONTEXT = AbstractSnapshotChangeEventSource.SnapshotContext.class.getName();
 }

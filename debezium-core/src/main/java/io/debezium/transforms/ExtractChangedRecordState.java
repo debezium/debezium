@@ -13,12 +13,14 @@ import java.util.Map;
 import java.util.Objects;
 
 import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.connect.components.Versioned;
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.transforms.Transformation;
 
+import io.debezium.Module;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.util.Strings;
@@ -30,7 +32,7 @@ import io.debezium.util.Strings;
  * @param <R> the subtype of {@link ConnectRecord} on which this transformation will operate
  * @author Harvey Yue
  */
-public class ExtractChangedRecordState<R extends ConnectRecord<R>> implements Transformation<R> {
+public class ExtractChangedRecordState<R extends ConnectRecord<R>> implements Transformation<R>, Versioned {
 
     public static final Field HEADER_CHANGED_NAME = Field.create("header.changed.name")
             .withDisplayName("Header change name.")
@@ -109,5 +111,10 @@ public class ExtractChangedRecordState<R extends ConnectRecord<R>> implements Tr
         final ConfigDef config = new ConfigDef();
         Field.group(config, null, HEADER_CHANGED_NAME, HEADER_UNCHANGED_NAME);
         return config;
+    }
+
+    @Override
+    public String version() {
+        return Module.version();
     }
 }

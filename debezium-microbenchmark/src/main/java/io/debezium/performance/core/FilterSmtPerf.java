@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.connect.components.Versioned;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -28,6 +29,7 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
 
 import io.debezium.data.Envelope;
+import io.debezium.performance.Module;
 import io.debezium.transforms.Filter;
 import io.debezium.util.Collect;
 
@@ -39,7 +41,7 @@ import io.debezium.util.Collect;
  */
 public class FilterSmtPerf {
 
-    private static class NativeFilter implements Transformation<SourceRecord> {
+    private static class NativeFilter implements Transformation<SourceRecord>, Versioned {
 
         @Override
         public void configure(Map<String, ?> configs) {
@@ -63,6 +65,11 @@ public class FilterSmtPerf {
 
         @Override
         public void close() {
+        }
+
+        @Override
+        public String version() {
+            return Module.version();
         }
     }
 

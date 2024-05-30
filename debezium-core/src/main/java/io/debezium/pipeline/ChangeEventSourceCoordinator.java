@@ -67,12 +67,13 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
     /**
      * Waiting period for the polling loop to finish. Will be applied twice, once gracefully, once forcefully.
      */
-    public static final Duration SHUTDOWN_WAIT_TIMEOUT = Duration.ofSeconds(90);
+    public static final Duration SHUTDOWN_WAIT_TIMEOUT = Duration.ofSeconds(CommonConnectorConfig.EXECUTOR_SHUTDOWN_TIMEOUT_SEC);
 
     protected final Offsets<P, O> previousOffsets;
     protected final ErrorHandler errorHandler;
     protected final ChangeEventSourceFactory<P, O> changeEventSourceFactory;
     protected final ChangeEventSourceMetricsFactory<P> changeEventSourceMetricsFactory;
+    protected final SnapshotterService snapshotterService;
     protected final ExecutorService executor;
     private final ExecutorService blockingSnapshotExecutor;
     protected final EventDispatcher<P, ?> eventDispatcher;
@@ -104,6 +105,7 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
         this.errorHandler = errorHandler;
         this.changeEventSourceFactory = changeEventSourceFactory;
         this.changeEventSourceMetricsFactory = changeEventSourceMetricsFactory;
+        this.snapshotterService = snapshotterService;
         this.executor = Threads.newSingleThreadExecutor(connectorType, connectorConfig.getLogicalName(), "change-event-source-coordinator");
         this.blockingSnapshotExecutor = Threads.newSingleThreadExecutor(connectorType, connectorConfig.getLogicalName(), "blocking-snapshot");
         this.eventDispatcher = eventDispatcher;
@@ -166,7 +168,7 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
         actionProviders.stream()
                 .map(provider -> provider.createActions(dispatcher, changeEventSourceCoordinator, connectorConfig))
                 .flatMap(e -> e.entrySet().stream())
-                .collect(Collectors.toMap(e -> e.getKey(), e -> e.getValue()))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue))
                 .forEach(signalProcessor::registerSignalAction);
 
         signalProcessor.start(); // this will run on a separate thread
@@ -268,6 +270,12 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
         initStreamEvents(partition, offsetContext);
         getSignalProcessor(previousOffsets).ifPresent(signalProcessor -> registerSignalActionsAndStartProcessor(signalProcessor,
                 eventDispatcher, this, connectorConfig));
+
+        if (snapshotterService != null && !snapshotterService.getSnapshotter().shouldStream()) {
+            LOGGER.info("Streaming is disabled for snapshot mode {}", snapshotterService.getSnapshotter().name());
+            return;
+        }
+
         LOGGER.info("Starting streaming");
         streamingSource.execute(context, partition, offsetContext);
         LOGGER.info("Finished streaming");

@@ -3,7 +3,7 @@
     <parent>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-parent</artifactId>
-        <version>2.6.0-SNAPSHOT</version>
+        <version>2.7.0-SNAPSHOT</version>
         <relativePath>../debezium-parent/pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -109,6 +109,22 @@
                                     <packageName>io.debezium.ddl.parser.mysql.generated</packageName>
                                     <caseInsensitiveType>UPPER</caseInsensitiveType>
                                     <exampleFiles>src/test/resources/mysql/examples</exampleFiles>
+                                    <enabled>${antlr.tests.enabled}</enabled>
+                                </configuration>
+                                <goals>
+                                    <goal>test</goal>
+                                </goals>
+                            </execution>
+                            <execution>
+                                <id>MariaDB</id>
+                                <configuration>
+                                    <verbose>false</verbose>
+                                    <showTree>false</showTree>
+                                    <entryPoint>root</entryPoint>
+                                    <grammarName>MariaDB</grammarName>
+                                    <packageName>io.debezium.ddl.parser.mariadb.generated</packageName>
+                                    <caseInsensitiveType>UPPER</caseInsensitiveType>
+                                    <exampleFiles>src/test/resources/mariadb/examples</exampleFiles>
                                     <enabled>${antlr.tests.enabled}</enabled>
                                 </configuration>
                                 <goals>

@@ -37,6 +37,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.DebeziumException;
 import io.debezium.connector.simple.SimpleSourceConnector;
 import io.debezium.doc.FixFor;
+import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.embedded.DebeziumEngineTestUtils;
 import io.debezium.embedded.EmbeddedEngineConfig;
 import io.debezium.engine.DebeziumEngine;
@@ -57,8 +58,6 @@ public class AsyncEmbeddedEngineTest {
     private static final int NUMBER_OF_LINES = 10;
     protected static final Path OFFSET_STORE_PATH = Testing.Files.createTestingPath("file-connector-offsets.txt").toAbsolutePath();
     private static final Path TEST_FILE_PATH = Testing.Files.createTestingPath("file-connector-input.txt").toAbsolutePath();
-    // As the default TASK_MANAGEMENT_TIMEOUT_MS is too large and test would run too long, use shorter tim for tests.
-    private static final long TEST_TASK_MANAGEMENT_TIMEOUT_MS = 1_000;
 
     protected static final AtomicBoolean isEngineRunning = new AtomicBoolean(false);
     protected static final AtomicInteger runningTasks = new AtomicInteger(0);
@@ -118,7 +117,7 @@ public class AsyncEmbeddedEngineTest {
             engine.run();
         });
 
-        snapshotLatch.await(1, TimeUnit.SECONDS);
+        snapshotLatch.await(AbstractConnectorTest.waitTimeForEngine(), TimeUnit.SECONDS);
         assertThat(snapshotLatch.getCount()).isEqualTo(0);
 
         for (int i = 0; i < 5; i++) {
@@ -126,7 +125,7 @@ public class AsyncEmbeddedEngineTest {
             appendLinesToSource(NUMBER_OF_LINES);
             Thread.sleep(10);
         }
-        allLatch.await(1, TimeUnit.SECONDS);
+        allLatch.await(AbstractConnectorTest.waitTimeForEngine(), TimeUnit.SECONDS);
         assertThat(allLatch.getCount()).isEqualTo(0);
 
         stopEngine();
@@ -165,7 +164,7 @@ public class AsyncEmbeddedEngineTest {
         Awaitility.await()
                 .alias("Haven't read all the records in time")
                 .pollInterval(100, TimeUnit.MILLISECONDS)
-                .atMost(1, TimeUnit.SECONDS)
+                .atMost(AbstractConnectorTest.waitTimeForEngine(), TimeUnit.SECONDS)
                 .until(() -> recordsRead.get() == NUMBER_OF_TASKS * SimpleSourceConnector.DEFAULT_BATCH_COUNT);
 
         stopEngine();
@@ -177,7 +176,7 @@ public class AsyncEmbeddedEngineTest {
         final Properties props = new Properties();
         props.put(EmbeddedEngineConfig.ENGINE_NAME.name(), "testing-connector");
         props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, String.valueOf(NUMBER_OF_TASKS));
-        props.put(EmbeddedEngineConfig.CONNECTOR_CLASS.name(), DebeziumAsyncEngineTestUtils.RandomlyFailingDuringStartConnector.class.getName());
+        props.put(EmbeddedEngineConfig.CONNECTOR_CLASS.name(), DebeziumAsyncEngineTestUtils.AlmostRandomlyFailingDuringStartConnector.class.getName());
         props.put(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
         props.put(SimpleSourceConnector.BATCH_COUNT, 1);
         props.put(AsyncEngineConfig.TASK_MANAGEMENT_TIMEOUT_MS, "10");
@@ -202,14 +201,14 @@ public class AsyncEmbeddedEngineTest {
         Awaitility.await()
                 .alias("At least some tasks haven't stared on time")
                 .pollInterval(10, TimeUnit.MILLISECONDS)
-                .atMost(1, TimeUnit.SECONDS)
+                .atMost(AbstractConnectorTest.waitTimeForEngine(), TimeUnit.SECONDS)
                 .until(() -> runningTasks.get() > 0);
 
         // Once some tasks failed to start, all started tasks should be stopped.
         Awaitility.await()
                 .alias("Tasks haven't been stopped on time")
                 .pollInterval(10, TimeUnit.MILLISECONDS)
-                .atMost(5, TimeUnit.SECONDS)
+                .atMost(AbstractConnectorTest.waitTimeForEngine(), TimeUnit.SECONDS)
                 // if task fails to start, we don't call task callback, and we call stop for all tasks no matter if they started successfully or not
                 // therefore it is possible that number of running tasks become negative
                 .until(() -> runningTasks.get() <= 0);
@@ -260,11 +259,11 @@ public class AsyncEmbeddedEngineTest {
 
         // Add a few more lines, and then verify they are consumed ...
         appendLinesToSource(NUMBER_OF_LINES);
-        recordsLatch.await(1, TimeUnit.SECONDS);
+        recordsLatch.await(AbstractConnectorTest.waitTimeForEngine(), TimeUnit.SECONDS);
         assertThat(recordsSent.get()).isEqualTo(20);
 
         stopEngine();
-        callbackLatch.await(100, TimeUnit.MILLISECONDS);
+        callbackLatch.await(AbstractConnectorTest.waitTimeForEngine(), TimeUnit.SECONDS);
         assertThat(callbackLatch.getCount()).isEqualTo(0);
     }
 
@@ -299,7 +298,7 @@ public class AsyncEmbeddedEngineTest {
             engine.run();
         });
 
-        callbackLatch.await(TEST_TASK_MANAGEMENT_TIMEOUT_MS + 1000, TimeUnit.MILLISECONDS);
+        callbackLatch.await(AbstractConnectorTest.waitTimeForEngine(), TimeUnit.SECONDS);
         assertThat(callbackLatch.getCount()).isEqualTo(0);
     }
 
@@ -329,7 +328,7 @@ public class AsyncEmbeddedEngineTest {
             engine.run();
         });
 
-        WaitInTaskStartTask.taskStartingLatch.await(100, TimeUnit.MILLISECONDS);
+        WaitInTaskStartTask.taskStartingLatch.await(AbstractConnectorTest.waitTimeForEngine(), TimeUnit.SECONDS);
 
         Exception error = null;
         try {
@@ -438,7 +437,7 @@ public class AsyncEmbeddedEngineTest {
             engine.run();
         });
 
-        snapshotLatch.await(1, TimeUnit.SECONDS);
+        snapshotLatch.await(AbstractConnectorTest.waitTimeForEngine(), TimeUnit.SECONDS);
         assertThat(snapshotLatch.getCount()).isEqualTo(0);
 
         for (int i = 0; i < 5; i++) {
@@ -446,7 +445,7 @@ public class AsyncEmbeddedEngineTest {
             appendLinesToSource(NUMBER_OF_LINES);
             Thread.sleep(10);
         }
-        allLatch.await(1, TimeUnit.SECONDS);
+        allLatch.await(AbstractConnectorTest.waitTimeForEngine(), TimeUnit.SECONDS);
         assertThat(allLatch.getCount()).isEqualTo(0);
 
         stopEngine();
@@ -480,7 +479,7 @@ public class AsyncEmbeddedEngineTest {
             engine.run();
         });
 
-        recordsLatch.await(5, TimeUnit.SECONDS);
+        recordsLatch.await(AbstractConnectorTest.waitTimeForEngine(), TimeUnit.SECONDS);
         assertThat(recordsLatch.getCount()).isEqualTo(0);
 
         stopEngine();
@@ -516,7 +515,7 @@ public class AsyncEmbeddedEngineTest {
             engine.run();
         });
 
-        recordsLatch.await(5, TimeUnit.SECONDS);
+        recordsLatch.await(AbstractConnectorTest.waitTimeForEngine(), TimeUnit.SECONDS);
         // Engine should fail on record 7 as we have only one retry.
         assertThat(recordsLatch.getCount()).isEqualTo(4);
 
@@ -559,6 +558,74 @@ public class AsyncEmbeddedEngineTest {
         runEngineBasicLifecycleWithConsumer(props);
     }
 
+    @Test
+    @FixFor("DBZ-7496")
+    public void testCompletionCallbackCalledAfterConnectorStop() throws Exception {
+        final Properties props = new Properties();
+        props.setProperty(ConnectorConfig.NAME_CONFIG, "debezium-engine");
+        props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
+        props.setProperty(ConnectorConfig.CONNECTOR_CLASS_CONFIG, FileStreamSourceConnector.class.getName());
+        props.setProperty(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
+        props.setProperty(WorkerConfig.OFFSET_COMMIT_INTERVAL_MS_CONFIG, "0");
+        props.setProperty(FileStreamSourceConnector.FILE_CONFIG, TEST_FILE_PATH.toAbsolutePath().toString());
+        props.setProperty(FileStreamSourceConnector.TOPIC_CONFIG, "testTopic");
+
+        appendLinesToSource(NUMBER_OF_LINES);
+
+        CountDownLatch recordsLatch = new CountDownLatch(2); // 2 count down - one for snapshot batch, one for streaming batch
+        CountDownLatch completionCallbackLatch = new CountDownLatch(1);
+        AtomicInteger recordsSent = new AtomicInteger();
+        AtomicBoolean connectorCallbackCalled = new AtomicBoolean(false);
+
+        DebeziumEngine.Builder<SourceRecord> builder = new AsyncEmbeddedEngine.AsyncEngineBuilder();
+        engine = builder
+                .using(props)
+                .using((success, message, error) -> {
+                    if (success && error == null) {
+                        assertThat(connectorCallbackCalled.get()).isTrue();
+                        completionCallbackLatch.countDown();
+                    }
+                })
+                .notifying((records, committer) -> {
+                    for (SourceRecord r : records) {
+                        committer.markProcessed(r);
+                        recordsSent.getAndIncrement();
+                    }
+                    committer.markBatchFinished();
+                    recordsLatch.countDown();
+                })
+                .using(new DebeziumEngine.ConnectorCallback() {
+                    @Override
+                    public void connectorStarted() {
+                        isEngineRunning.compareAndExchange(false, true);
+                    }
+
+                    @Override
+                    public void connectorStopped() {
+                        try {
+                            Thread.sleep(1_000); // sleep 1 second to make sure we don't return too early
+                        }
+                        catch (InterruptedException e) {
+                            LOGGER.warn("Connector callback was interrupted.");
+                        }
+                        connectorCallbackCalled.set(true);
+                        isEngineRunning.set(false);
+                    }
+                }).build();
+
+        engineExecSrv.submit(() -> {
+            LoggingContext.forConnector(getClass().getSimpleName(), "", "engine");
+            engine.run();
+        });
+        waitForEngineToStart();
+        LOGGER.info("Stopping engine");
+        engine.close();
+        // If assertThat(connectorCallbackCalled.get()).isTrue() in completion callback throws, we will time out here.
+        completionCallbackLatch.await(AbstractConnectorTest.waitTimeForEngine(), TimeUnit.SECONDS);
+        assertThat(completionCallbackLatch.getCount()).isEqualTo(0);
+        assertThat(connectorCallbackCalled.get()).isTrue();
+    }
+
     private void runEngineBasicLifecycleWithConsumer(final Properties props) throws IOException, InterruptedException {
 
         final LogInterceptor interceptor = new LogInterceptor(AsyncEmbeddedEngine.class);
@@ -585,7 +652,7 @@ public class AsyncEmbeddedEngineTest {
             appendLinesToSource(NUMBER_OF_LINES);
             Thread.sleep(10);
         }
-        allLatch.await(1, TimeUnit.SECONDS);
+        allLatch.await(AbstractConnectorTest.waitTimeForEngine(), TimeUnit.SECONDS);
         assertThat(allLatch.getCount()).isEqualTo(0);
 
         assertThat(interceptor.containsMessage("Using io.debezium.embedded.async.AsyncEmbeddedEngine$ParallelSmtConsumerProcessor processor"));
@@ -595,8 +662,9 @@ public class AsyncEmbeddedEngineTest {
 
     protected void stopEngine() {
         try {
+            LOGGER.info("Stopping engine");
             engine.close();
-            Awaitility.await().atMost(1, TimeUnit.SECONDS).until(() -> !isEngineRunning.get());
+            Awaitility.await().atMost(AbstractConnectorTest.waitTimeForEngine(), TimeUnit.SECONDS).until(() -> !isEngineRunning.get());
         }
         catch (IOException e) {
             LOGGER.warn("Failed during engine stop", e);
@@ -611,16 +679,16 @@ public class AsyncEmbeddedEngineTest {
     protected void waitForEngineToStart() {
         Awaitility.await()
                 .alias("Engine haven't started on time")
-                .pollInterval(TEST_TASK_MANAGEMENT_TIMEOUT_MS, TimeUnit.MILLISECONDS)
-                .atMost(1, TimeUnit.SECONDS)
+                .pollInterval(10, TimeUnit.MILLISECONDS)
+                .atMost(AbstractConnectorTest.waitTimeForEngine(), TimeUnit.SECONDS)
                 .until(() -> isEngineRunning.get());
     }
 
     protected void waitForEngineToStop() {
         Awaitility.await()
                 .alias("Engine haven't stopped on time")
-                .pollInterval(TEST_TASK_MANAGEMENT_TIMEOUT_MS, TimeUnit.MILLISECONDS)
-                .atMost(10, TimeUnit.SECONDS)
+                .pollInterval(10, TimeUnit.MILLISECONDS)
+                .atMost(AbstractConnectorTest.waitTimeForEngine(), TimeUnit.SECONDS)
                 .until(() -> !isEngineRunning.get());
     }
 
@@ -628,7 +696,7 @@ public class AsyncEmbeddedEngineTest {
         Awaitility.await()
                 .alias("Engine haven't started on time")
                 .pollInterval(10, TimeUnit.MILLISECONDS)
-                .atMost(TEST_TASK_MANAGEMENT_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+                .atMost(AbstractConnectorTest.waitTimeForEngine(), TimeUnit.SECONDS)
                 .until(() -> runningTasks.get() >= minRunningTasks);
     }
 
@@ -675,7 +743,7 @@ public class AsyncEmbeddedEngineTest {
         public void start(Map<String, String> props) {
             taskStartingLatch.countDown();
             try {
-                continueLatch.await(1, TimeUnit.SECONDS);
+                continueLatch.await(AbstractConnectorTest.waitTimeForEngine(), TimeUnit.SECONDS);
             }
             catch (InterruptedException e) {
                 throw new DebeziumException("Waiting for continuation of start was interrupted.");

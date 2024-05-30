@@ -7,8 +7,7 @@ package io.debezium.testing.testcontainers;
 
 import static io.debezium.testing.testcontainers.MongoDbContainer.router;
 import static io.debezium.testing.testcontainers.MongoDbReplicaSet.configServerReplicaSet;
-import static io.debezium.testing.testcontainers.MongoDbReplicaSet.replicaSet;
-import static io.debezium.testing.testcontainers.util.DockerUtils.logDockerDesktopBanner;
+import static io.debezium.testing.testcontainers.util.DockerUtils.logContainerVMBanner;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
@@ -58,11 +57,13 @@ public class MongoDbShardedCluster implements MongoDbDeployment {
 
     public static class Builder {
 
+        private static final Network commonNetwork = Network.newNetwork();
+
         private int shardCount = 1;
         private int replicaCount = 1;
         private int routerCount = 1;
 
-        private Network network = Network.newNetwork();
+        private Network network = commonNetwork;
         private PortResolver portResolver = new RandomPortResolver();
         private boolean skipDockerDesktopLogWarning = false;
         private DockerImageName imageName;
@@ -119,7 +120,7 @@ public class MongoDbShardedCluster implements MongoDbDeployment {
         this.configServers = createConfigServers();
         this.routers = createRouters();
 
-        logDockerDesktopBanner(LOGGER, getHostNames(), builder.skipDockerDesktopLogWarning);
+        logContainerVMBanner(LOGGER, getHostNames(), builder.skipDockerDesktopLogWarning);
     }
 
     /**

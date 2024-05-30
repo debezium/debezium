@@ -30,8 +30,8 @@ import org.junit.Test;
 import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
-import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
-import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIs;
+import io.debezium.connector.oracle.junit.SkipTestDependingOnStrategyRule;
+import io.debezium.connector.oracle.junit.SkipWhenLogMiningStrategyIs;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
@@ -49,7 +49,7 @@ import oracle.xml.parser.v2.XMLDocument;
  *
  * @author Chris Cranford
  */
-@SkipWhenAdapterNameIs(value = SkipWhenAdapterNameIs.AdapterName.OLR, reason = "Does not support XML data types")
+@SkipWhenLogMiningStrategyIs(value = SkipWhenLogMiningStrategyIs.Strategy.HYBRID, reason = "Hybrid does not support XML")
 public class OracleXmlDataTypesIT extends AbstractConnectorTest {
 
     // Short XML files
@@ -61,7 +61,7 @@ public class OracleXmlDataTypesIT extends AbstractConnectorTest {
     private static final String XML_LONG_DATA2 = Testing.Files.readResourceAsString("data/test_xml_data_long2.xml");
 
     @Rule
-    public final TestRule skipAdapterRule = new SkipTestDependingOnAdapterNameRule();
+    public final TestRule skipStrategyRule = new SkipTestDependingOnStrategyRule();
 
     private OracleConnection connection;
 
@@ -725,6 +725,56 @@ public class OracleXmlDataTypesIT extends AbstractConnectorTest {
         }
         finally {
             TestHelper.dropTable(connection, "dbz6782");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-7489")
+    public void shouldHandleStreamingSettingXmlColumnToNull() throws Exception {
+        TestHelper.dropTable(connection, "dbz7489");
+        try {
+            connection.execute("CREATE TABLE dbz7489 (ID numeric(9,0), DATA xmltype, primary key(ID))");
+            TestHelper.streamTable(connection, "dbz7489");
+
+            Configuration config = getDefaultXmlConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ7489")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            final String xml = XML_LONG_DATA;
+            connection.prepareQuery("insert into dbz7489 values (1,?)", ps -> ps.setObject(1, toXmlType(xml)), null);
+            connection.commit();
+
+            SourceRecords records = consumeRecordsByTopic(1);
+            List<SourceRecord> topicRecords = records.recordsForTopic(topicName("DBZ7489"));
+            assertThat(topicRecords).hasSize(1);
+
+            SourceRecord record = topicRecords.get(0);
+            VerifyRecord.isValidInsert(record, "ID", 1);
+
+            Struct after = after(record);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertXmlFieldIsEqual(after, "DATA", xml);
+
+            connection.execute("UPDATE dbz7489 SET data = NULL where id = 1");
+
+            records = consumeRecordsByTopic(1);
+            topicRecords = records.recordsForTopic(topicName("DBZ7489"));
+            assertThat(topicRecords).hasSize(1);
+
+            record = topicRecords.get(0);
+            VerifyRecord.isValidUpdate(record, "ID", 1);
+
+            after = after(record);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertThat(after.get("DATA")).isNull();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz7489");
         }
     }
 

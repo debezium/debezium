@@ -6,7 +6,7 @@
 
 package io.debezium.connector.mysql.antlr.listener;
 
-import io.debezium.connector.mysql.MySqlSystemVariables;
+import io.debezium.connector.binlog.jdbc.BinlogSystemVariables;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
@@ -28,7 +28,7 @@ public class SetStatementParserListener extends MySqlParserBaseListener {
     public void enterSetVariable(MySqlParser.SetVariableContext ctx) {
         // If you set multiple system variables, the most recent GLOBAL or SESSION modifier in the statement
         // is used for following assignments that have no modifier specified.
-        MySqlSystemVariables.MySqlScope scope = null;
+        BinlogSystemVariables.BinlogScope scope = null;
         for (int i = 0; i < ctx.variableClause().size(); i++) {
             MySqlParser.VariableClauseContext variableClauseContext = ctx.variableClause(i);
             String variableName;
@@ -39,31 +39,31 @@ public class SetStatementParserListener extends MySqlParserBaseListener {
                 }
                 String variableIdentifier = variableClauseContext.GLOBAL_ID().getText();
                 if (variableIdentifier.startsWith("@@global.")) {
-                    scope = MySqlSystemVariables.MySqlScope.GLOBAL;
+                    scope = BinlogSystemVariables.BinlogScope.GLOBAL;
                     variableName = variableIdentifier.substring("@@global.".length());
                 }
                 else if (variableIdentifier.startsWith("@@session.")) {
-                    scope = MySqlSystemVariables.MySqlScope.SESSION;
+                    scope = BinlogSystemVariables.BinlogScope.SESSION;
                     variableName = variableIdentifier.substring("@@session.".length());
                 }
                 else if (variableIdentifier.startsWith("@@local.")) {
-                    scope = MySqlSystemVariables.MySqlScope.LOCAL;
+                    scope = BinlogSystemVariables.BinlogScope.LOCAL;
                     variableName = variableIdentifier.substring("@@local.".length());
                 }
                 else {
-                    scope = MySqlSystemVariables.MySqlScope.SESSION;
+                    scope = BinlogSystemVariables.BinlogScope.SESSION;
                     variableName = variableIdentifier.substring("@@".length());
                 }
             }
             else {
                 if (variableClauseContext.GLOBAL() != null) {
-                    scope = MySqlSystemVariables.MySqlScope.GLOBAL;
+                    scope = BinlogSystemVariables.BinlogScope.GLOBAL;
                 }
                 else if (variableClauseContext.SESSION() != null) {
-                    scope = MySqlSystemVariables.MySqlScope.SESSION;
+                    scope = BinlogSystemVariables.BinlogScope.SESSION;
                 }
                 else if (variableClauseContext.LOCAL() != null) {
-                    scope = MySqlSystemVariables.MySqlScope.LOCAL;
+                    scope = BinlogSystemVariables.BinlogScope.LOCAL;
                 }
 
                 variableName = parser.parseName(variableClauseContext.uid());
@@ -74,7 +74,7 @@ public class SetStatementParserListener extends MySqlParserBaseListener {
 
             // If this is setting 'character_set_database', then we need to record the character set for
             // the given database ...
-            if (MySqlSystemVariables.CHARSET_NAME_DATABASE.equalsIgnoreCase(variableName)) {
+            if (BinlogSystemVariables.CHARSET_NAME_DATABASE.equalsIgnoreCase(variableName)) {
                 String currentDatabaseName = parser.currentSchema();
                 if (currentDatabaseName != null) {
                     parser.charsetNameForDatabase().put(currentDatabaseName, value);
@@ -94,10 +94,10 @@ public class SetStatementParserListener extends MySqlParserBaseListener {
         // https://dev.mysql.com/doc/refman/8.2/en/set-character-set.html
         // Using default scope for these variables, because this type of set statement you cannot specify
         // the scope manually
-        parser.systemVariables().setVariable(MySqlSystemVariables.MySqlScope.SESSION, MySqlSystemVariables.CHARSET_NAME_CLIENT, charsetName);
-        parser.systemVariables().setVariable(MySqlSystemVariables.MySqlScope.SESSION, MySqlSystemVariables.CHARSET_NAME_RESULT, charsetName);
-        parser.systemVariables().setVariable(MySqlSystemVariables.MySqlScope.SESSION, MySqlSystemVariables.CHARSET_NAME_CONNECTION,
-                parser.systemVariables().getVariable(MySqlSystemVariables.CHARSET_NAME_DATABASE));
+        parser.systemVariables().setVariable(BinlogSystemVariables.BinlogScope.SESSION, BinlogSystemVariables.CHARSET_NAME_CLIENT, charsetName);
+        parser.systemVariables().setVariable(BinlogSystemVariables.BinlogScope.SESSION, BinlogSystemVariables.CHARSET_NAME_RESULT, charsetName);
+        parser.systemVariables().setVariable(BinlogSystemVariables.BinlogScope.SESSION, BinlogSystemVariables.CHARSET_NAME_CONNECTION,
+                parser.systemVariables().getVariable(BinlogSystemVariables.CHARSET_NAME_DATABASE));
         super.enterSetCharset(ctx);
     }
 
@@ -108,9 +108,9 @@ public class SetStatementParserListener extends MySqlParserBaseListener {
         // https://dev.mysql.com/doc/refman/8.2/en/set-names.html
         // Using default scope for these variables, because this type of set statement you cannot specify
         // the scope manually
-        parser.systemVariables().setVariable(MySqlSystemVariables.MySqlScope.SESSION, MySqlSystemVariables.CHARSET_NAME_CLIENT, charsetName);
-        parser.systemVariables().setVariable(MySqlSystemVariables.MySqlScope.SESSION, MySqlSystemVariables.CHARSET_NAME_RESULT, charsetName);
-        parser.systemVariables().setVariable(MySqlSystemVariables.MySqlScope.SESSION, MySqlSystemVariables.CHARSET_NAME_CONNECTION, charsetName);
+        parser.systemVariables().setVariable(BinlogSystemVariables.BinlogScope.SESSION, BinlogSystemVariables.CHARSET_NAME_CLIENT, charsetName);
+        parser.systemVariables().setVariable(BinlogSystemVariables.BinlogScope.SESSION, BinlogSystemVariables.CHARSET_NAME_RESULT, charsetName);
+        parser.systemVariables().setVariable(BinlogSystemVariables.BinlogScope.SESSION, BinlogSystemVariables.CHARSET_NAME_CONNECTION, charsetName);
         super.enterSetNames(ctx);
     }
 }

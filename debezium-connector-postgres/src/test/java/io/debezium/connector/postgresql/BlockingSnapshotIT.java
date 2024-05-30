@@ -8,6 +8,8 @@ package io.debezium.connector.postgresql;
 
 import static io.debezium.pipeline.signal.actions.AbstractSnapshotSignal.SnapshotType.BLOCKING;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.sql.SQLException;
 import java.util.List;
 
@@ -21,6 +23,7 @@ import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.AbstractBlockingSnapshotTest;
+import io.debezium.pipeline.signal.channels.FileSignalChannel;
 import io.debezium.pipeline.source.AbstractSnapshotChangeEventSource;
 
 public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
@@ -32,6 +35,9 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
             "CREATE TABLE s1.a (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
             "CREATE TABLE s1.b (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
             "CREATE TABLE s1.debezium_signal (id varchar(64), type varchar(32), data varchar(2048))";
+
+    protected final Path signalsFile = Paths.get("src", "test", "resources")
+            .resolve("debezium_signaling_blocking_file.txt");
 
     @Before
     public void before() throws SQLException {
@@ -54,7 +60,7 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
 
     protected Configuration.Builder config() {
         return TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA.getValue())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                 .with(PostgresConnectorConfig.SIGNAL_DATA_COLLECTION, "s1.debezium_signal")
                 .with(PostgresConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 10)
@@ -110,6 +116,11 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
     @Override
     protected String signalTableName() {
         return "s1.debezium_signal";
+    }
+
+    @Override
+    protected String escapedTableDataCollectionId() {
+        return "\\\"s1\\\".\\\"a\\\"";
     }
 
     @Override
@@ -173,6 +184,33 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
         int signalingRecords = 1;
 
         assertRecordsFromSnapshotAndStreamingArePresent(ROW_COUNT, consumeRecordsByTopic(ROW_COUNT + signalingRecords, 10));
+
+        insertRecords(ROW_COUNT, ROW_COUNT * 2);
+
+        assertStreamingRecordsArePresent(ROW_COUNT, consumeRecordsByTopic(ROW_COUNT, 10));
+
+    }
+
+    @Test
+    public void executeBlockingSnapshotJustAfterInitialSnapshotAndNoEventStreamedYet() throws Exception {
+        // Testing.Print.enable();
+
+        populateTable();
+
+        startConnectorWithSnapshot(x -> mutableConfig(false, false)
+                .with(FileSignalChannel.SIGNAL_FILE, signalsFile.toString())
+                .with(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS, "file"));
+
+        waitForSnapshotToBeCompleted(connector(), server(), task(), database());
+
+        SourceRecords consumedRecordsByTopic = consumeRecordsByTopic(ROW_COUNT, 10);
+        assertRecordsFromSnapshotAndStreamingArePresent(ROW_COUNT, consumedRecordsByTopic);
+
+        sendExecuteSnapshotFileSignal(tableDataCollectionId(), BLOCKING.name(), signalsFile);
+
+        waitForLogMessage("Snapshot completed", AbstractSnapshotChangeEventSource.class);
+
+        assertRecordsFromSnapshotAndStreamingArePresent((ROW_COUNT), consumeRecordsByTopic((ROW_COUNT), 10));
 
         insertRecords(ROW_COUNT, ROW_COUNT * 2);
 

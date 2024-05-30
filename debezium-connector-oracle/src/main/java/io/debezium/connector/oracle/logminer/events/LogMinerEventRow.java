@@ -52,6 +52,9 @@ public class LogMinerEventRow {
     private static final int INFO = 15;
     private static final int SSN = 16;
     private static final int THREAD = 17;
+    private static final int OBJECT_ID = 18;
+    private static final int OBJECT_VERSION = 19;
+    private static final int OBJECT_DATA_ID = 20;
 
     private Scn scn;
     private TableId tableId;
@@ -70,6 +73,9 @@ public class LogMinerEventRow {
     private String info;
     private long ssn;
     private int thread;
+    private long objectId;
+    private long objectVersion;
+    private long dataObjectId;
 
     public Scn getScn() {
         return scn;
@@ -77,6 +83,10 @@ public class LogMinerEventRow {
 
     public TableId getTableId() {
         return tableId;
+    }
+
+    public void setTableId(TableId tableId) {
+        this.tableId = tableId;
     }
 
     public String getTableName() {
@@ -139,6 +149,18 @@ public class LogMinerEventRow {
         return thread;
     }
 
+    public long getObjectId() {
+        return objectId;
+    }
+
+    public long getObjectVersion() {
+        return objectVersion;
+    }
+
+    public long getDataObjectId() {
+        return dataObjectId;
+    }
+
     /**
      * Returns a {@link LogMinerEventRow} instance based on the current row of the JDBC {@link ResultSet}.
      *
@@ -184,6 +206,9 @@ public class LogMinerEventRow {
         this.info = resultSet.getString(INFO);
         this.ssn = resultSet.getLong(SSN);
         this.thread = resultSet.getInt(THREAD);
+        this.objectId = resultSet.getLong(OBJECT_ID);
+        this.objectVersion = resultSet.getLong(OBJECT_VERSION);
+        this.dataObjectId = resultSet.getLong(OBJECT_DATA_ID);
         if (this.tableName != null) {
             this.tableId = new TableId(catalogName, tablespaceName, tableName);
         }
@@ -267,6 +292,9 @@ public class LogMinerEventRow {
     public String toString() {
         return "LogMinerEventRow{" +
                 "scn=" + scn +
+                ", objectId=" + objectId +
+                ", objectVersion=" + objectVersion +
+                ", dataObjectId=" + dataObjectId +
                 ", tableId='" + tableId + '\'' +
                 ", tableName='" + tableName + '\'' +
                 ", tablespaceName='" + tablespaceName + '\'' +

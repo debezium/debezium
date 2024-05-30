@@ -25,6 +25,7 @@ import java.util.TimeZone;
 import java.util.regex.Pattern;
 
 import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.connect.components.Versioned;
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
@@ -35,6 +36,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.Module;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.data.Envelope;
@@ -50,7 +52,7 @@ import io.debezium.time.ZonedTimestamp;
  *
  */
 
-public class TimezoneConverter<R extends ConnectRecord<R>> implements Transformation<R> {
+public class TimezoneConverter<R extends ConnectRecord<R>> implements Transformation<R>, Versioned {
     private static final Logger LOGGER = LoggerFactory.getLogger(TimezoneConverter.class);
 
     private static final Field CONVERTED_TIMEZONE = Field.create("converted.timezone")
@@ -252,6 +254,11 @@ public class TimezoneConverter<R extends ConnectRecord<R>> implements Transforma
 
     @Override
     public void close() {
+    }
+
+    @Override
+    public String version() {
+        return Module.version();
     }
 
     private enum Type {

@@ -17,6 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.MSSQLServerContainer;
+import org.testcontainers.containers.MariaDBContainer;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -45,6 +46,7 @@ public class RestExtensionTestInfrastructure {
         SQLSERVER,
         MONGODB,
         ORACLE,
+        MARIADB,
         NONE
     }
 
@@ -74,11 +76,20 @@ public class RestExtensionTestInfrastructure {
             .withEnv("MYSQL_ROOT_PASSWORD", "debezium")
             .withNetworkAliases("mysql");
 
+    private static final MariaDBContainer<?> MARIADB_CONTAINER = new MariaDBContainer<>(
+            DockerImageName.parse("quay.io/debezium/example-mariadb:" + DEBEZIUM_CONTAINER_IMAGE_VERSION_LATEST).asCompatibleSubstituteFor("mariadb"))
+            .withNetwork(NETWORK)
+            .withUsername("mariadbuser")
+            .withPassword("mariadbpw")
+            .withEnv("MARIADB_ROOT_PASSWORD", "debezium")
+            .withNetworkAliases("mariadb");
+
     private static final MongoDbReplicaSet MONGODB_REPLICA = MongoDbReplicaSet.replicaSet()
             .name("rs0")
             .memberCount(1)
             .network(NETWORK)
             .imageName(DockerImageName.parse("mongo:5.0"))
+            .startupTimeout(Duration.ofSeconds(CI_CONTAINER_STARTUP_TIME))
             .build();
 
     private static final MSSQLServerContainer<?> SQL_SERVER_CONTAINER = new MSSQLServerContainer<>(DockerImageName.parse("mcr.microsoft.com/mssql/server:2019-latest"))
@@ -120,6 +131,9 @@ public class RestExtensionTestInfrastructure {
             case ORACLE:
                 dbStartable = ORACLE_CONTAINER;
                 break;
+            case MARIADB:
+                dbStartable = MARIADB_CONTAINER;
+                break;
             case NONE:
             default:
                 dbStartable = null;
@@ -136,6 +150,7 @@ public class RestExtensionTestInfrastructure {
 
     public static void stopContainers() {
         Stream<Startable> containers = Stream.of(DEBEZIUM_CONTAINER, ORACLE_CONTAINER, SQL_SERVER_CONTAINER, MONGODB_REPLICA, MYSQL_CONTAINER, POSTGRES_CONTAINER,
+                MARIADB_CONTAINER,
                 KAFKA_CONTAINER);
         MoreStartables.deepStopSync(containers);
         DEBEZIUM_CONTAINER = null;
@@ -148,9 +163,6 @@ public class RestExtensionTestInfrastructure {
             containers.get().forEach(container -> {
                 if (container instanceof GenericContainer<?> && !(container instanceof OracleContainer)) {
                     ((GenericContainer<?>) container).withStartupTimeout(Duration.ofSeconds(CI_CONTAINER_STARTUP_TIME));
-                }
-                if (container instanceof MongoDbReplicaSet) {
-                    ((MongoDbReplicaSet) container).withStartupTimeout(Duration.ofSeconds(CI_CONTAINER_STARTUP_TIME));
                 }
             });
         }
@@ -208,6 +220,10 @@ public class RestExtensionTestInfrastructure {
 
     public static OracleContainer getOracleContainer() {
         return ORACLE_CONTAINER;
+    }
+
+    public static MariaDBContainer getMariaDbContainer() {
+        return MARIADB_CONTAINER;
     }
 
     public static void waitForConnectorTaskStatus(String connectorName, int taskNumber, Connector.State state) {

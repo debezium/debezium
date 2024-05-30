@@ -49,6 +49,8 @@ If the schema is used then the message looks like so:
     		...
     	},
     	"ts_ms" : "...",
+    	"ts_us" : "...",
+    	"ts_ns" : "...",
     	"before" : {
     		"field1" : "oldvalue1",
     		"field2" : "oldvalue2"
@@ -71,6 +73,8 @@ Whereas without schema, the structure look more like this:
 		...
 	},
 	"ts_ms" : "...",
+	"ts_us" : "...",
+	"ts_ns" : "...",
 	"before" : {
 		"field1" : "oldvalue1",
 		"field2" : "oldvalue2"

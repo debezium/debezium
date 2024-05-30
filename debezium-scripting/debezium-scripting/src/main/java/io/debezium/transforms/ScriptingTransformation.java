@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.regex.Pattern;
 
 import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.connect.components.Versioned;
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.transforms.Transformation;
 import org.slf4j.Logger;
@@ -37,7 +38,7 @@ import io.debezium.util.Strings;
  * @author Jiri Pechanec
  */
 @Incubating
-public abstract class ScriptingTransformation<R extends ConnectRecord<R>> implements Transformation<R> {
+public abstract class ScriptingTransformation<R extends ConnectRecord<R>> implements Transformation<R>, Versioned {
 
     private final Logger LOGGER = LoggerFactory.getLogger(getClass());
 
@@ -202,5 +203,10 @@ public abstract class ScriptingTransformation<R extends ConnectRecord<R>> implem
 
     @Override
     public void close() {
+    }
+
+    @Override
+    public String version() {
+        return Module.version();
     }
 }

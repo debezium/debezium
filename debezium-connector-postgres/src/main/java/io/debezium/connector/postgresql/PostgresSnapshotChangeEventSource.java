@@ -32,6 +32,7 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.snapshot.SnapshotterService;
+import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
 
 public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeEventSource<PostgresPartition, PostgresOffsetContext> {
@@ -63,10 +64,20 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
         boolean snapshotSchema = true;
 
         List<String> dataCollectionsToBeSnapshotted = connectorConfig.getDataCollectionsToBeSnapshotted();
-        Map<String, String> snapshotSelectOverridesByTable = connectorConfig.getSnapshotSelectOverridesByTable().entrySet().stream()
-                .collect(Collectors.toMap(e -> e.getKey().identifier(), Map.Entry::getValue));
+        Map<DataCollectionId, String> snapshotSelectOverridesByTable = connectorConfig.getSnapshotSelectOverridesByTable();
 
-        boolean snapshotData = snapshotterService.getSnapshotter().shouldSnapshot();
+        boolean offsetExists = previousOffset != null;
+        boolean snapshotInProgress = false;
+
+        if (offsetExists) {
+            snapshotInProgress = previousOffset.isSnapshotRunning();
+        }
+
+        if (offsetExists && !previousOffset.isSnapshotRunning()) {
+            LOGGER.info("A previous offset indicating a completed snapshot has been found.");
+        }
+
+        boolean snapshotData = snapshotterService.getSnapshotter().shouldSnapshotData(offsetExists, snapshotInProgress);
         if (snapshotData) {
             LOGGER.info("According to the connector configuration data will be snapshotted");
         }
@@ -111,11 +122,25 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
 
         final Duration lockTimeout = connectorConfig.snapshotLockTimeout();
         final Set<String> capturedTablesNames = snapshotContext.capturedTables.stream().map(TableId::toDoubleQuotedString).collect(Collectors.toSet());
-        final Optional<String> lockStatement = snapshotterService.getSnapshotLock().tableLockingStatement(lockTimeout, capturedTablesNames);
 
-        if (lockStatement.isPresent()) {
+        List<String> tableLockStatements = capturedTablesNames.stream()
+                .map(tableId -> snapshotterService.getSnapshotLock().tableLockingStatement(lockTimeout, tableId))
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .collect(Collectors.toList());
+
+        if (!tableLockStatements.isEmpty()) {
+
+            String lineSeparator = System.lineSeparator();
+            StringBuilder statements = new StringBuilder();
+            statements.append("SET lock_timeout = ").append(lockTimeout.toMillis()).append(";").append(lineSeparator);
+            // we're locking in ACCESS SHARE MODE to avoid concurrent schema changes while we're taking the snapshot
+            // this does not prevent writes to the table, but prevents changes to the table's schema....
+            // DBZ-298 Quoting name in case it has been quoted originally; it doesn't do harm if it hasn't been quoted
+            tableLockStatements.forEach(tableStatement -> statements.append(tableStatement).append(lineSeparator));
+
             LOGGER.info("Waiting a maximum of '{}' seconds for each table lock", lockTimeout.getSeconds());
-            jdbcConnection.executeWithoutCommitting(lockStatement.get());
+            jdbcConnection.executeWithoutCommitting(statements.toString());
             // now that we have the locks, refresh the schema
             schema.refresh(jdbcConnection, false);
         }

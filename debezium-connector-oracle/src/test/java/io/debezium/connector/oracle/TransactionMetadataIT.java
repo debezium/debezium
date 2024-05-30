@@ -92,7 +92,7 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
     public void transactionMetadata() throws Exception {
         Configuration config = TestHelper.defaultConfig()
                 .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER,DEBEZIUM\\.ORDERS")
-                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with(OracleConnectorConfig.PROVIDE_TRANSACTION_METADATA, true)
                 .with(OracleConnectorConfig.LOG_MINING_STRATEGY, OracleConnectorConfig.LogMiningStrategy.ONLINE_CATALOG)
                 .build();
@@ -151,7 +151,7 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
 
             Configuration config = TestHelper.defaultConfig()
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER,DEBEZIUM\\.ORDERS")
-                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                     .with(OracleConnectorConfig.PROVIDE_TRANSACTION_METADATA, true)
                     .with(OracleConnectorConfig.LOG_MINING_STRATEGY, OracleConnectorConfig.LogMiningStrategy.ONLINE_CATALOG)
                     .build();

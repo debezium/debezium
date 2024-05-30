@@ -35,6 +35,10 @@ then
     export ORACLE_CONNECTION="-Ddatabase.dbname=FREEPDB1 -Ddatabase.pdb.name=FREEPDB1"
     debezium-testing/tmt/tests/debezium/init-db.sh
   fi
+  DATABASE_USER="c##dbzuser"
+  if [[ "$ORACLE_VERSION" = *noncdb ]]; then
+    DATABASE_USER="dbzuser"
+  fi
   mvn clean verify -U -pl debezium-connector-oracle -am -fae \
     -Poracle-tests                              \
     ${ORACLE_PROFILE_ARGS:-}                    \
@@ -43,8 +47,11 @@ then
     -Ddatabase.hostname=0.0.0.0                 \
     -Ddatabase.admin.hostname=0.0.0.0           \
     -Ddatabase.port=1521  \
+    --no-transfer-progress \
+    -Dorg.slf4j.simpleLogger.showDateTime=true \
+    -Dorg.slf4j.simpleLogger.dateTimeFormat=HH:mm:ss,SSS \
     -Dinstantclient.dir=${ORACLE_ARTIFACT_DIR}     \
-    -Ddatabase.user="c##dbzuser"                  \
+    -Ddatabase.user=${DATABASE_USER}                  \
     -Dinsecure.repositories=WARN                \
     ${ORACLE_CONNECTION:-}                      \
     -Papicurio

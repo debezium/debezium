@@ -1,0 +1,49 @@
+name: "Build Cassandra"
+description: "Builds the Debezium Cassandra connector"
+
+inputs:
+  path-core:
+    description: "Debezium core repository checkout path"
+    required: true
+  path-cassandra:
+    description: "Debezium Cassandra repository checkout path"
+    required: true
+  shell:
+    description: "The shell to use"
+    required: false
+    default: bash
+
+runs:
+  using: "composite"
+  steps:
+    - name: Build Debezium (Core)
+      shell: ${{ inputs.shell }}
+      run: >
+        ./${{ inputs.path-core }}/mvnw clean install -B -ntp -f ${{ inputs.path-core }}/pom.xml
+        -pl debezium-assembly-descriptors,debezium-bom,debezium-core,debezium-embedded,:debezium-ide-configs,:debezium-checkstyle,:debezium-revapi
+        -am
+        -DskipTests=true
+        -DskipITs=true
+        -Dcheckstyle.skip=true
+        -Dformat.skip=true
+        -Drevapi.skip
+        -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+        -Dmaven.wagon.http.pool=false
+        -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+
+    - name: Install DSE dependency artifacts
+      working-directory: ${{ inputs.path-cassandra }}
+      shell: ${{ inputs.shell }}
+      run: sh ./install-artifacts.sh
+
+    - name: Build Cassandra
+      shell: ${{ inputs.shell }}
+      run: >
+        ./${{ inputs.path-core }}/mvnw clean install -B -ntp -f ${{ inputs.path-cassandra }}/pom.xml 
+        -Passembly        
+        -Dcheckstyle.skip=true
+        -Dformat.skip=true
+        -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+        -Dmaven.wagon.http.pool=false
+        -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        -DfailFlakyTests=false

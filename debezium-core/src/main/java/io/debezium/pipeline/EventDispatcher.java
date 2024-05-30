@@ -39,6 +39,8 @@ import io.debezium.pipeline.spi.ChangeRecordEmitter.Receiver;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.pipeline.spi.SchemaChangeEventEmitter;
+import io.debezium.pipeline.txmetadata.DefaultTransactionInfo;
+import io.debezium.pipeline.txmetadata.TransactionInfo;
 import io.debezium.pipeline.txmetadata.TransactionMonitor;
 import io.debezium.processors.PostProcessorRegistry;
 import io.debezium.processors.spi.PostProcessor;
@@ -231,7 +233,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
     }
 
     public SnapshotReceiver<P> getSnapshotChangeEventReceiver() {
-        return new BufferingSnapshotChangeRecordReceiver();
+        return new BufferingSnapshotChangeRecordReceiver(connectorConfig.getSnapshotMaxThreads() > 1);
     }
 
     public SnapshotReceiver<P> getIncrementalSnapshotChangeEventReceiver(DataChangeEventListener<P> dataListener) {
@@ -349,7 +351,11 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
     }
 
     public void dispatchTransactionStartedEvent(P partition, String transactionId, OffsetContext offset, Instant timestamp) throws InterruptedException {
-        transactionMonitor.transactionStartedEvent(partition, transactionId, offset, timestamp);
+        dispatchTransactionStartedEvent(partition, new DefaultTransactionInfo(transactionId), offset, timestamp);
+    }
+
+    public void dispatchTransactionStartedEvent(P partition, TransactionInfo transactionInfo, OffsetContext offset, Instant timestamp) throws InterruptedException {
+        transactionMonitor.transactionStartedEvent(partition, transactionInfo, offset, timestamp);
         if (incrementalSnapshotChangeEventSource != null) {
             incrementalSnapshotChangeEventSource.processTransactionStartedEvent(partition, offset);
         }
@@ -512,6 +518,11 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
     private final class BufferingSnapshotChangeRecordReceiver implements SnapshotReceiver<P> {
 
         private AtomicReference<BufferedDataChangeEvent> bufferedEventRef = new AtomicReference<>(BufferedDataChangeEvent.NULL);
+        private final boolean threaded;
+
+        BufferingSnapshotChangeRecordReceiver(boolean threaded) {
+            this.threaded = threaded;
+        }
 
         @Override
         public void changeRecord(P partition,
@@ -543,7 +554,17 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
             nextBufferedEvent.offsetContext = offsetContext;
             nextBufferedEvent.dataChangeEvent = new DataChangeEvent(record);
 
-            queue.enqueue(bufferedEventRef.getAndSet(nextBufferedEvent).dataChangeEvent);
+            if (threaded) {
+                // This entire step needs to happen atomically when using buffering with multiple threads.
+                // This guarantees that the getAndSet and the enqueue do not cause a dispatch of out-of-order
+                // events within a single thread.
+                synchronized (queue) {
+                    queue.enqueue(bufferedEventRef.getAndSet(nextBufferedEvent).dataChangeEvent);
+                }
+            }
+            else {
+                queue.enqueue(bufferedEventRef.getAndSet(nextBufferedEvent).dataChangeEvent);
+            }
         }
 
         @Override

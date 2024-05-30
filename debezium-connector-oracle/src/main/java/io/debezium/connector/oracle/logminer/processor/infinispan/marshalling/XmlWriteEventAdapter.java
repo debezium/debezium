@@ -46,9 +46,9 @@ public class XmlWriteEventAdapter extends LogMinerEventAdapter {
      * A ProtoStream handler to extract the {@code xml} field from the {@link XmlWriteEvent}.
      *
      * @param event the event instance, must not be {@code null}
-     * @return the xml, never {@code null}
+     * @return the xml
      */
-    @ProtoField(number = 7, required = true)
+    @ProtoField(number = 7)
     public String getXml(XmlWriteEvent event) {
         return event.getXml();
     }

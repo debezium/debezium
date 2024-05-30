@@ -70,7 +70,8 @@ public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory<
                 schema,
                 taskContext,
                 jdbcConfig,
-                streamingMetrics);
+                streamingMetrics,
+                snapshotterService);
     }
 
     @Override

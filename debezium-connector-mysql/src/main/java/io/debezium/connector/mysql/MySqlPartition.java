@@ -8,50 +8,15 @@ package io.debezium.connector.mysql;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.DATABASE_NAME;
 
 import java.util.Collections;
-import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.binlog.BinlogPartition;
 import io.debezium.pipeline.spi.Partition;
-import io.debezium.relational.AbstractPartition;
-import io.debezium.util.Collect;
 
-public class MySqlPartition extends AbstractPartition implements Partition {
-    private static final String SERVER_PARTITION_KEY = "server";
-
-    private final String serverName;
-
+public class MySqlPartition extends BinlogPartition {
     public MySqlPartition(String serverName, String databaseName) {
-        super(databaseName);
-        this.serverName = serverName;
-    }
-
-    @Override
-    public Map<String, String> getSourcePartition() {
-        return Collect.hashMapOf(SERVER_PARTITION_KEY, serverName);
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (obj == null || getClass() != obj.getClass()) {
-            return false;
-        }
-        final MySqlPartition other = (MySqlPartition) obj;
-        return Objects.equals(serverName, other.serverName);
-    }
-
-    @Override
-    public int hashCode() {
-        return serverName.hashCode();
-    }
-
-    @Override
-    public String toString() {
-        return "MySqlPartition [sourcePartition=" + getSourcePartition() + "]";
+        super(serverName, databaseName);
     }
 
     public static class Provider implements Partition.Provider<MySqlPartition> {

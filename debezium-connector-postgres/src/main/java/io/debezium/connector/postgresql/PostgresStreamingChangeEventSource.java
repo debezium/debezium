@@ -119,14 +119,10 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
     @Override
     public void execute(ChangeEventSourceContext context, PostgresPartition partition, PostgresOffsetContext offsetContext)
             throws InterruptedException {
-        if (!snapshotterService.getSnapshotter().shouldStream()) {
-            LOGGER.info("Streaming is not enabled in configuration");
-            return;
-        }
 
         lsnFlushingAllowed = false;
 
-        // replication slot could exist at the time of starting Debezium so we will stream from the position in the slot
+        // replication slot could exist at the time of starting Debezium, so we will stream from the position in the slot
         // instead of the last position in the database
         boolean hasStartLsnStoredInContext = offsetContext != null;
 
@@ -135,7 +131,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
 
             if (hasStartLsnStoredInContext) {
                 // start streaming from the last recorded position in the offset
-                final Lsn lsn = this.effectiveOffset.lastCompletelyProcessedLsn() != null ? this.effectiveOffset.lastCompletelyProcessedLsn()
+                final Lsn lsn = this.effectiveOffset.hasCompletelyProcessedPosition() ? this.effectiveOffset.lastCompletelyProcessedLsn()
                         : this.effectiveOffset.lsn();
                 final Operation lastProcessedMessageType = this.effectiveOffset.lastProcessedMessageType();
                 LOGGER.info("Retrieved latest position from stored offset '{}'", lsn);
@@ -163,7 +159,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
 
             this.lastCompletelyProcessedLsn = replicationStream.get().startLsn();
 
-            if (walPosition.searchingEnabled()) {
+            if (walPosition.searchingEnabled() && this.effectiveOffset.hasCompletelyProcessedPosition()) {
                 searchWalPosition(context, partition, this.effectiveOffset, stream, walPosition);
                 try {
                     if (!isInPreSnapshotCatchUpStreaming(this.effectiveOffset)) {

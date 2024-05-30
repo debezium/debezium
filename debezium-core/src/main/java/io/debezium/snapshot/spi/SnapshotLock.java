@@ -7,7 +7,6 @@ package io.debezium.snapshot.spi;
 
 import java.time.Duration;
 import java.util.Optional;
-import java.util.Set;
 
 import io.debezium.service.Service;
 import io.debezium.spi.common.Configurable;
@@ -30,6 +29,6 @@ public interface SnapshotLock extends Configurable, Service {
      * Returns a SQL statement for locking the given tables during snapshotting, if required by the specific snapshotter
      * implementation.
      */
-    Optional<String> tableLockingStatement(Duration lockTimeout, Set<String> tableIds);
+    Optional<String> tableLockingStatement(Duration lockTimeout, String tableId);
 
 }

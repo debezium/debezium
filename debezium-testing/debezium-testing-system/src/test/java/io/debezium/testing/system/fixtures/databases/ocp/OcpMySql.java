@@ -7,6 +7,7 @@ package io.debezium.testing.system.fixtures.databases.ocp;
 
 import org.junit.jupiter.api.extension.ExtensionContext;
 
+import io.debezium.testing.system.assertions.JdbcAssertions;
 import io.debezium.testing.system.tools.ConfigProperties;
 import io.debezium.testing.system.tools.databases.mysql.MySqlController;
 import io.debezium.testing.system.tools.databases.mysql.OcpMySqlDeployer;
@@ -14,7 +15,7 @@ import io.fabric8.openshift.client.OpenShiftClient;
 
 import fixture5.annotations.FixtureContext;
 
-@FixtureContext(requires = { OpenShiftClient.class }, provides = { MySqlController.class })
+@FixtureContext(requires = { OpenShiftClient.class }, provides = { MySqlController.class, JdbcAssertions.class })
 public class OcpMySql extends OcpDatabaseFixture<MySqlController> {
 
     public static final String DB_DEPLOYMENT_PATH = "/database-resources/mysql/master/master-deployment.yaml";
@@ -23,6 +24,12 @@ public class OcpMySql extends OcpDatabaseFixture<MySqlController> {
 
     public OcpMySql(ExtensionContext.Store store) {
         super(MySqlController.class, store);
+    }
+
+    @Override
+    public void setup() throws Exception {
+        super.setup();
+        store(JdbcAssertions.class, new JdbcAssertions(dbController));
     }
 
     @Override

@@ -10,13 +10,14 @@ import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.apicurio.registry.operator.api.v1.model.ApicurioRegistryStatus;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.api.model.apps.DeploymentCondition;
 import io.fabric8.kubernetes.api.model.apps.DeploymentStatus;
 import io.fabric8.kubernetes.client.CustomResource;
 import io.fabric8.openshift.api.model.DeploymentConfig;
 import io.fabric8.openshift.api.model.DeploymentConfigStatus;
-import io.strimzi.api.kafka.model.status.Status;
+import io.strimzi.api.kafka.model.kafka.Status;
 
 /**
  *
@@ -66,6 +67,26 @@ public class WaitConditions {
         }
         Stream<io.fabric8.openshift.api.model.DeploymentCondition> conditions = status.getConditions().stream();
         return conditions.anyMatch(c -> c.getType().equalsIgnoreCase("Available") && c.getStatus().equalsIgnoreCase("True"));
+    }
+
+    /**
+     * Wait condition for resource deletion
+     * @param resource dc resource
+     * @return true when resource is deleted
+     */
+    public static <T extends Status> boolean resourceDeleted(CustomResource<?, T> resource) {
+        T status = resource.getStatus();
+        return status == null;
+    }
+
+    /**
+     * Wait condition for apicurio resource deletion
+     * @param resource dc resource
+     * @return true when resource is deleted
+     */
+    public static <T extends ApicurioRegistryStatus> boolean apicurioResourceDeleted(CustomResource<?, T> resource) {
+        T status = resource.getStatus();
+        return status == null;
     }
 
     public static long scaled(long amount) {

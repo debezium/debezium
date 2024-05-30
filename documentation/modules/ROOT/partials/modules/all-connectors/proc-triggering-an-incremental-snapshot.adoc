@@ -127,9 +127,10 @@ If you do not specify a value, the connector runs an incremental snapshot.
 |6
 |`additional-conditions`
 | An optional array that specifies a set of additional conditions that the connector evaluates to determine the subset of records to include in a snapshot. +
-Each additional condition is an object with `data-collection` and `filter` properties. You can specify different filters for each data collection. +
-* The `data-collection` property is the fully-qualified name of the data collection for which the filter will be applied.
-For more information about the `additional-conditions` parameter, see xref:{context}-incremental-snapshots-additional-conditions[].
+Each element in the `additional-conditions` array is an object that includes the following keys:
+
+`data-collection`:: The fully-qualified name of the data collection for which the filter will be applied.
+`filter`:: Specifies the column values that must be present in a data collection record for the snapshot to include it, for example, `"color='blue'"`.
 |7
 |`surrogate-key`
 |An optional string that specifies the column name that the connector uses as the primary key for snapshots.
@@ -238,6 +239,8 @@ The following example, shows the JSON for an incremental snapshot event that is 
     },
     "op":"r", <2>
     "ts_ms":"1620393591654",
+    "ts_us":"1620393591654014",
+    "ts_ns":"1620393591654014325",
     "transaction":null
 }
 ----

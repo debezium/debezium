@@ -39,12 +39,7 @@ public class CustomTestSnapshot extends SelectAllSnapshotQuery implements Snapsh
     }
 
     @Override
-    public void validate(boolean offsetContextExists, boolean isSnapshotInProgress) {
-        hasState = offsetContextExists;
-    }
-
-    @Override
-    public boolean shouldSnapshot() {
+    public boolean shouldSnapshotData(boolean offsetExists, boolean snapshotInProgress) {
         return true;
     }
 
@@ -54,7 +49,7 @@ public class CustomTestSnapshot extends SelectAllSnapshotQuery implements Snapsh
     }
 
     @Override
-    public boolean shouldSnapshotSchema() {
+    public boolean shouldSnapshotSchema(boolean offsetExists, boolean snapshotInProgress) {
         return true;
     }
 

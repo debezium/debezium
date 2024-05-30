@@ -22,6 +22,8 @@ import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
+import io.debezium.connector.oracle.junit.SkipTestDependingOnStrategyRule;
+import io.debezium.connector.oracle.junit.SkipWhenLogMiningStrategyIs;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
@@ -41,6 +43,8 @@ public class OracleRawDataTypeIT extends AbstractConnectorTest {
 
     @Rule
     public final TestRule skipAdapterRule = new SkipTestDependingOnAdapterNameRule();
+    @Rule
+    public final TestRule skipStrategyRule = new SkipTestDependingOnStrategyRule();
 
     private OracleConnection connection;
 
@@ -338,6 +342,7 @@ public class OracleRawDataTypeIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-3605")
+    @SkipWhenLogMiningStrategyIs(value = SkipWhenLogMiningStrategyIs.Strategy.HYBRID, reason = "Cannot use lob.enabled with Hybrid")
     public void shouldStreamTableWithRawTypeColumnAndAnotherLobColumn() throws Exception {
         // For simplicity, pair large raw with a large CLOB data column for multi-fragment processing
         TestHelper.dropTable(connection, "dbz3605");

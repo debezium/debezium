@@ -131,7 +131,12 @@ public class TypeRegistry {
 
     private void addType(PostgresType type) {
         oidToType.put(type.getOid(), type);
-        nameToType.put(type.getName(), type);
+        if (!nameToType.containsKey(type.getName())) {
+            nameToType.put(type.getName(), type);
+        }
+        else {
+            LOGGER.warn("Type [oid:{}, name:{}] is already mapped", type.getOid(), type.getName());
+        }
 
         if (TYPE_NAME_GEOMETRY.equals(type.getName())) {
             geometryOid = type.getOid();

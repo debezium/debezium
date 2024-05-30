@@ -18,10 +18,12 @@ Alex Soto
 Alexander Iskuskov
 Alexander Kovryga
 Alexander Schwartz
+Alexandru Cristu
 Alexey Loubyansky
 Alexey Miroshnikov
 Alfusainey Jallow
 Alisa Houskova
+Amirmohammad Sadat Shokouhi
 Amit Sela
 Aman Garg
 Anatolii Popov
@@ -49,6 +51,7 @@ Anton Martynov
 Arik Cohen
 Arkoprabho Chakraborti
 artiship
+Arthur Le Ray
 Artur Gukasian
 Ashhar Hasan
 Ashique Ansari
@@ -80,6 +83,7 @@ Brandon Brown
 Brandon Maguire
 Brennan Vincent
 Breno Moreira
+Bue Von Hun
 Byron Ruth
 Camile Sing
 ccro
@@ -88,6 +92,7 @@ Cao Manh Dat
 Chad Marmon
 Chai Stofkoper
 Chao Tian
+Choi Jang Ho
 Calin Laurentiu Ilie
 Cheng Pan
 Ching Tsai
@@ -104,6 +109,7 @@ Christian Stein
 Christopher Burch
 Christopher Sang
 Chuck Ha
+Ciaran O'Reilly
 Claus Guttesen
 Claus Ibsen
 Clément Loiselet
@@ -113,6 +119,7 @@ Connor Szczepaniak
 Cory Harper
 Cyprien Etienne
 Cyril Scetbon
+Daan Gerits
 Daan Roosen
 Daniel Petisme
 Dave Cramer
@@ -136,6 +143,7 @@ Derek Moore
 Dhrubajyoti G
 Dominique Chanet
 Dou Pengwei
+Duc Le Tu
 Duncan Sands
 Dushyant M
 Echo Xu
@@ -143,8 +151,10 @@ Ed Laur
 Eduardo Hayashi
 Eero Koplimets
 Egyed Tamas
+einar-rt
 Elan Hasson
 Eliran Agranovich
+Emil Lindström
 Emmanuel Brard
 Emre Akgün
 Emrul Islam
@@ -285,6 +295,7 @@ Kazuki MATSUDA / 松田一樹
 Keith Barber
 Keri Harris
 Kevin Pullin
+Kevin Rothenberger
 Kewei Shang
 Kosta Kostelnik
 Krizhan Mariampillai
@@ -325,6 +336,7 @@ Mark Ducommun
 Mark Lambert
 Martin Medek
 Martin Sillence
+Martin Tosney
 Masazumi Kobayashi
 Matt Beary
 Matt Vance
@@ -339,6 +351,7 @@ Meng Qiu
 Melissa Winstanley
 Michael Cizmar
 Michael Wang
+Michal Augustyn
 Mickael Maison
 Mickaël Isaert
 Mike Graham
@@ -349,6 +362,7 @@ Ming Luo
 Mohamed Pudukulathan
 Mohammad Yousuf Minhaj Zia
 Moira Tagle
+Mostafa Ghadimi
 Muhammad Sufyian
 My Lang Pangzi
 Nancy Xu
@@ -414,6 +428,7 @@ Raúl Tovar
 Renato Mefi
 René Kerner
 Robert Hana
+Robin Moffatt
 Roman Kuchar
 Roman Kudryashov
 Rotem Adhoh
@@ -440,10 +455,13 @@ Saulius Valatka
 Sayed Mohammad Hossein Torabi
 Scofield Xu
 Sara Fonseca
+Sean C. Sullivan
 Sean Rooney
+Sean Wu
 Sebastiaan Knijnenburg
 Sebastian Bruckner
 Seo Jae-kwon
+Seongjoon Jeong
 Sergei Morozov
 Sergey Eizner
 Sergey Ivanov
@@ -460,6 +478,7 @@ SiuFay
 Siddhant Agnihotry
 Stanley Shyiko
 Stathis Souris
+Stavros Champilomatis
 Stefan Miklosovic
 Stephen Powis
 Steven Siahetiong
@@ -500,6 +519,7 @@ Troy Gaines
 Tudor Plugaru
 V K
 Vadzim Ramanenka
+Vaibhav Kushwaha
 Vasily Ulianko
 Vedit Firat Arig
 Vincenzo Santonastaso
@@ -555,7 +575,9 @@ Snigdhajyoti Ghosh
 Andrei Isac
 M. Gökhan Akgül
 Mark Allanson
+Mark Banierink
 Rahul Khanna
+Razvan Laurus
 Ronak Jain
 Pengwei Dou
 Zhongqiang Gong
@@ -585,3 +607,9 @@ leoloel
 Clifford Cheefoon
 Fr0z3Nn
 Ankur Gupta
+Xianming Zhou
+Akula
+Nick Golubev
+Selman Genç
+Pradeep Nain
+Gaurav Miglani

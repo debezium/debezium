@@ -1,0 +1,22 @@
+name: "Set up Java"
+description: "Set up the desired version of Java"
+
+inputs:
+  distribution:
+    description: "The Java distribution to use"
+    required: false
+    default: "temurin"
+  java-version:
+    description: "The java version to install"
+    required: false
+    default: 17
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Java ${{ inputs.java-version }}
+      uses: actions/setup-java@v4
+      with:
+        distribution: ${{ inputs.distribution }}
+        java-version: ${{ inputs.java-version }}
+

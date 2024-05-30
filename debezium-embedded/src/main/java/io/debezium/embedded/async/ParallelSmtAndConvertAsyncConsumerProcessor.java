@@ -5,7 +5,7 @@
  */
 package io.debezium.embedded.async;
 
-import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.Future;
 import java.util.function.Consumer;
@@ -40,14 +40,19 @@ public class ParallelSmtAndConvertAsyncConsumerProcessor<R> extends AbstractReco
     @Override
     public void processRecords(final List<SourceRecord> records) throws Exception {
         LOGGER.debug("Thread {} is submitting {} records for processing.", Thread.currentThread().getName(), records.size());
-        final List<Future<Void>> recordFutures = new ArrayList<>(records.size());
-        records.stream().forEachOrdered(
-                r -> recordFutures.add(recordService.submit(new ProcessingCallables.TransformConvertConsumeRecord<>(r, transformations, convertor, consumer))));
+
+        final Future<Void>[] recordFutures = new Future[records.size()];
+        Iterator<SourceRecord> recordsIterator = records.iterator();
+        for (int i = 0; recordsIterator.hasNext(); i++) {
+            recordFutures[i] = recordService
+                    .submit(new ProcessingCallables.TransformConvertConsumeRecord<>(recordsIterator.next(), transformations, convertor, consumer));
+        }
 
         LOGGER.trace("Waiting for the batch to finish processing.");
-        for (int i = 0; i < records.size(); i++) {
-            recordFutures.get(i);
-            committer.markProcessed(records.get(i));
+        recordsIterator = records.iterator();
+        for (int i = 0; recordsIterator.hasNext(); i++) {
+            recordFutures[i].get();
+            committer.markProcessed(recordsIterator.next());
         }
 
         LOGGER.trace("Marking batch as finished.");

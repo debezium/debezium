@@ -7,9 +7,7 @@ package io.debezium.storage.jdbc.offset;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.sql.Connection;
 import java.sql.DatabaseMetaData;
-import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -37,6 +35,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
+import io.debezium.storage.jdbc.RetriableConnection;
 
 /**
  * Implementation of OffsetBackingStore that saves data to database table.
@@ -50,7 +49,7 @@ public class JdbcOffsetBackingStore implements OffsetBackingStore {
     protected ConcurrentHashMap<String, String> data = new ConcurrentHashMap<>();
     protected ExecutorService executor;
     private final AtomicInteger recordInsertSeq = new AtomicInteger(0);
-    private Connection conn;
+    private RetriableConnection conn;
 
     public JdbcOffsetBackingStore() {
     }
@@ -70,8 +69,8 @@ public class JdbcOffsetBackingStore implements OffsetBackingStore {
             Configuration configuration = Configuration.from(config.originalsStrings());
             this.config = new JdbcOffsetBackingStoreConfig(configuration);
 
-            conn = DriverManager.getConnection(this.config.getJdbcUrl(), this.config.getUser(), this.config.getPassword());
-            conn.setAutoCommit(false);
+            conn = new RetriableConnection(this.config.getJdbcUrl(), this.config.getUser(), this.config.getPassword(),
+                    this.config.getWaitRetryDelay(), this.config.getMaxRetryCount());
         }
         catch (Exception e) {
             throw new IllegalStateException("Failed to connect JDBC offset backing store: " + config.originalsStrings(), e);
@@ -95,46 +94,45 @@ public class JdbcOffsetBackingStore implements OffsetBackingStore {
     }
 
     private void initializeTable() throws SQLException {
-        DatabaseMetaData dbMeta = conn.getMetaData();
-        ResultSet tableExists = dbMeta.getTables(null, null, config.getTableName(), null);
-
-        if (tableExists.next()) {
-            return;
-        }
-
-        LOGGER.info("Creating table {} to store offset", config.getTableName());
-        conn.prepareStatement(config.getTableCreate()).execute();
+        conn.executeWithRetry(conn -> {
+            DatabaseMetaData dbMeta = conn.getMetaData();
+            try (ResultSet tableExists = dbMeta.getTables(null, null, config.getTableName(), null)) {
+                if (tableExists.next()) {
+                    return;
+                }
+            }
+            LOGGER.info("Creating table {} to store offset", config.getTableName());
+            try (var ps = conn.prepareStatement(config.getTableCreate())) {
+                ps.execute();
+            }
+        }, "checking / creating table", false);
     }
 
     protected void save() {
+        LOGGER.debug("Saving data to state table...");
         try {
-            LOGGER.debug("Saving data to state table...");
-            try (PreparedStatement sqlDelete = conn.prepareStatement(config.getTableDelete())) {
-                sqlDelete.executeUpdate();
-                for (Map.Entry<String, String> mapEntry : data.entrySet()) {
-                    Timestamp currentTs = new Timestamp(System.currentTimeMillis());
-                    String key = (mapEntry.getKey() != null) ? mapEntry.getKey() : null;
-                    String value = (mapEntry.getValue() != null) ? mapEntry.getValue() : null;
-                    // Execute a query
-                    try (PreparedStatement sql = conn.prepareStatement(config.getTableInsert())) {
-                        sql.setString(1, UUID.randomUUID().toString());
-                        sql.setString(2, key);
-                        sql.setString(3, value);
-                        sql.setTimestamp(4, currentTs);
-                        sql.setInt(5, recordInsertSeq.incrementAndGet());
-                        sql.executeUpdate();
+            conn.executeWithRetry((conn) -> {
+                try (PreparedStatement sqlDelete = conn.prepareStatement(config.getTableDelete())) {
+                    sqlDelete.executeUpdate();
+                    for (Map.Entry<String, String> mapEntry : data.entrySet()) {
+                        Timestamp currentTs = new Timestamp(System.currentTimeMillis());
+                        String key = (mapEntry.getKey() != null) ? mapEntry.getKey() : null;
+                        String value = (mapEntry.getValue() != null) ? mapEntry.getValue() : null;
+                        // Execute a query
+                        try (PreparedStatement sql = conn.prepareStatement(config.getTableInsert())) {
+                            sql.setString(1, UUID.randomUUID().toString());
+                            sql.setString(2, key);
+                            sql.setString(3, value);
+                            sql.setTimestamp(4, currentTs);
+                            sql.setInt(5, recordInsertSeq.incrementAndGet());
+                            sql.executeUpdate();
+                        }
                     }
                 }
-            }
-            conn.commit();
+                conn.commit();
+            }, "Saving offset", true);
         }
         catch (SQLException e) {
-            try {
-                conn.rollback();
-            }
-            catch (SQLException ex) {
-                // Ignore errors on rollback
-            }
             throw new ConnectException(e);
         }
     }
@@ -142,14 +140,18 @@ public class JdbcOffsetBackingStore implements OffsetBackingStore {
     private void load() {
         try {
             ConcurrentHashMap<String, String> tmpData = new ConcurrentHashMap<>();
-            Statement stmt = conn.createStatement();
-            ResultSet rs = stmt.executeQuery(config.getTableSelect());
-            while (rs.next()) {
-                String key = rs.getString("offset_key");
-                String val = rs.getString("offset_val");
-                tmpData.put(key, val);
-            }
-            data = tmpData;
+            conn.executeWithRetry(conn -> {
+                try (
+                        Statement stmt = conn.createStatement();
+                        ResultSet rs = stmt.executeQuery(config.getTableSelect())) {
+                    while (rs.next()) {
+                        String key = rs.getString("offset_key");
+                        String val = rs.getString("offset_val");
+                        tmpData.put(key, val);
+                    }
+                }
+                data = tmpData;
+            }, "loading offset data", false);
         }
         catch (SQLException e) {
             throw new ConnectException("Failed recover records from database: " + config.getJdbcUrl(), e);

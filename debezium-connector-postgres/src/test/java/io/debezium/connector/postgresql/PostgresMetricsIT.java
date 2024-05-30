@@ -152,7 +152,7 @@ public class PostgresMetricsIT extends AbstractRecordsProducerTest {
         // start connector
         start(PostgresConnector.class,
                 TestHelper.defaultConfig()
-                        .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
+                        .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                         .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                         .build());
 
@@ -269,7 +269,7 @@ public class PostgresMetricsIT extends AbstractRecordsProducerTest {
         final CountDownLatch step2 = new CountDownLatch(1);
 
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                 .with(PostgresConnectorConfig.MAX_QUEUE_SIZE, 10)
                 .with(PostgresConnectorConfig.MAX_BATCH_SIZE, 1)

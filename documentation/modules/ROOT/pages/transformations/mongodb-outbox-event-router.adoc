@@ -86,6 +86,8 @@ A {prodname} connector that is configured to apply the MongoDB outbox event rout
     "connector": "mongodb",
     "name": "fulfillment",
     "ts_ms": 1558965508000,
+    "ts_us": 1558965508000000,
+    "ts_ns": 1558965508000000000,
     "snapshot": false,
     "db": "inventory",
     "rs": "rs0",
@@ -94,7 +96,9 @@ A {prodname} connector that is configured to apply the MongoDB outbox event rout
     "h": 1546547425148721999
   },
   "op": "c",
-  "ts_ms": 1556890294484
+  "ts_ms": 1556890294484,
+  "ts_us": 1556890294484452,
+  "ts_ns": 1556890294484452697,
 }
 ----
 

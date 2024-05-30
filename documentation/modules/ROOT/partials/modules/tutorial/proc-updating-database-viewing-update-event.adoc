@@ -111,7 +111,9 @@ There are no changes in the `schema` section, so only the `payload` section is s
       "table": "customers"
     },
     "op": "u",  // <4>
-    "ts_ms": 1486501486308  // <5>
+    "ts_ms": 1486501486308,  // <5>
+    "ts_us": 1486501486308910,  // <5>
+    "ts_ns": 1486501486308910814  // <5>
   }
 }
 ----
@@ -137,7 +139,7 @@ except that the `ts_sec` and `pos` fields have changed
 |The `op` field value is now `u`, signifying that this row changed because of an update.
 
 |5
-|The `ts_ms` field shows a timestamp that indicates when {prodname} processed this event.
+|The `ts_ms`, `ts_us`, `ts_ns` field shows a timestamp that indicates when {prodname} processed this event.
 
 |===
 

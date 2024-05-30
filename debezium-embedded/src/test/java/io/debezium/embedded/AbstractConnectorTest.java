@@ -70,13 +70,12 @@ import org.slf4j.LoggerFactory;
 import io.debezium.config.Configuration;
 import io.debezium.config.Instantiator;
 import io.debezium.data.VerifyRecord;
-import io.debezium.embedded.async.AsyncEmbeddedEngine;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.function.BooleanConsumer;
 import io.debezium.junit.SkipTestRule;
 import io.debezium.junit.TestLogger;
-import io.debezium.pipeline.txmetadata.TransactionMonitor;
 import io.debezium.pipeline.txmetadata.TransactionStatus;
+import io.debezium.pipeline.txmetadata.TransactionStructMaker;
 import io.debezium.relational.history.HistoryRecord;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.Testing;
@@ -367,7 +366,6 @@ public abstract class AbstractConnectorTest implements Testing {
                 .with(EmbeddedEngineConfig.CONNECTOR_CLASS, connectorClass.getName())
                 .with(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH)
                 .with(EmbeddedEngineConfig.OFFSET_FLUSH_INTERVAL_MS, 0)
-                .with(AsyncEmbeddedEngine.TASK_MANAGEMENT_TIMEOUT_MS, 1_000) // speed up shutdown of the AsyncEmbeddedEngine, for EmbeddedEngine is ignored
                 .build();
         latch = new CountDownLatch(1);
         DebeziumEngine.CompletionCallback wrapperCallback = (success, msg, error) -> {
@@ -755,8 +753,8 @@ public abstract class AbstractConnectorTest implements Testing {
                 nullReturn = 0;
                 final Struct value = (Struct) record.value();
                 if (isTransactionRecord(record)) {
-                    final String status = value.getString(TransactionMonitor.DEBEZIUM_TRANSACTION_STATUS_KEY);
-                    final String txId = value.getString(TransactionMonitor.DEBEZIUM_TRANSACTION_ID_KEY);
+                    final String status = value.getString(TransactionStructMaker.DEBEZIUM_TRANSACTION_STATUS_KEY);
+                    final String txId = value.getString(TransactionStructMaker.DEBEZIUM_TRANSACTION_ID_KEY);
                     String id = Arrays.stream(txId.split(":")).findFirst().get();
                     if (status.equals(TransactionStatus.BEGIN.name())) {
                         endTransactions.add(id);
@@ -800,12 +798,12 @@ public abstract class AbstractConnectorTest implements Testing {
                 nullReturn = 0;
                 final Struct value = (Struct) record.value();
                 if (isTransactionRecord(record)) {
-                    final String status = value.getString(TransactionMonitor.DEBEZIUM_TRANSACTION_STATUS_KEY);
+                    final String status = value.getString(TransactionStructMaker.DEBEZIUM_TRANSACTION_STATUS_KEY);
                     if (status.equals(TransactionStatus.END.name())) {
-                        endTransactions.remove(value.getString(TransactionMonitor.DEBEZIUM_TRANSACTION_ID_KEY));
+                        endTransactions.remove(value.getString(TransactionStructMaker.DEBEZIUM_TRANSACTION_ID_KEY));
                     }
                     else {
-                        endTransactions.add(value.getString(TransactionMonitor.DEBEZIUM_TRANSACTION_ID_KEY));
+                        endTransactions.add(value.getString(TransactionStructMaker.DEBEZIUM_TRANSACTION_ID_KEY));
                     }
                 }
                 else {
@@ -989,7 +987,14 @@ public abstract class AbstractConnectorTest implements Testing {
      * Assert that there are no records to consume.
      */
     protected void assertNoRecordsToConsume() {
-        assertThat(consumedLines.isEmpty()).isTrue();
+        try {
+            assertThat(consumedLines.isEmpty()).isTrue();
+        }
+        catch (org.junit.ComparisonFailure e) {
+            System.out.println("---Assert Expected No Records, Found These---");
+            consumedLines.forEach(System.out::println);
+            throw e;
+        }
     }
 
     /**
@@ -1220,7 +1225,7 @@ public abstract class AbstractConnectorTest implements Testing {
     public void waitForEngineShutdown() {
         Awaitility.await()
                 .pollInterval(200, TimeUnit.MILLISECONDS)
-                .atMost(waitTimeForRecords() * 10L, TimeUnit.SECONDS)
+                .atMost(waitTimeForEngine(), TimeUnit.SECONDS)
                 .until(() -> !isEngineRunning.get());
     }
 
@@ -1265,6 +1270,10 @@ public abstract class AbstractConnectorTest implements Testing {
         assertThat(change.getInt64("total_order")).isEqualTo(expectedTotalOrder);
         assertThat(change.getInt64("data_collection_order")).isEqualTo(expectedCollectionOrder);
         assertThat(offset.get("transaction_id")).isEqualTo(expectedTxId);
+    }
+
+    public static int waitTimeForEngine() {
+        return Integer.parseInt(System.getProperty(TEST_PROPERTY_PREFIX + "engine.waittime", "5"));
     }
 
     public static int waitTimeForRecords() {

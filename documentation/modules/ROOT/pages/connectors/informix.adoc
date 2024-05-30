@@ -97,6 +97,7 @@ As a result, the {prodname} Informix connector cannot retrieve the entire histor
 To enable the connector to establish a baseline for the current state of the database, the first time that the connector starts, it performs an initial _consistent snapshot_ of the tables that are in capture mode.
 For each change that the snapshot captures, the connector emits a `read` event to the Kafka topic for the captured table.
 
+[[default-workflow-for-performing-an-initial-snapshot]]
 .Default workflow that the {prodname} Informix connector uses to perform an initial snapshot
 
 The following workflow lists the steps that {prodname} takes to create a snapshot.
@@ -156,6 +157,48 @@ After the snapshot process begins, if the process is interrupted due to connecto
 After the connector completes the initial snapshot, it continues streaming from the position that it read in Step 4 so that it does not miss any updates.
 
 If the connector stops again for any reason, after it restarts, it resumes streaming changes from where it previously left off.
+
+[id="informix-connector-snapshot-mode-options"]
+.Settings for `snapshot.mode` connector configuration property
+[cols="30%a,70%a",options="header"]
+|===
+|Setting |Description
+|`always`
+|The connector performs a snapshot every time that it starts.
+After the snapshot completes, the connector begins to stream event records for subsequent database changes.
+|`initial`
+|The connector performs a database snapshot as described in the xref:default-workflow-for-performing-an-initial-snapshot[default workflow for creating an initial snapshot].
+After the snapshot completes, the connector begins to stream event records for subsequent database changes.
+|`initial_only`
+|The connector performs a database snapshot.
+After the snapshot completes, the connector stops, and does not stream event records for subsequent database changes.
+|`schema_only`
+|Deprecated, see `no_data`.
+|`no_data`
+|The connector captures the structure of all relevant tables, performing all the steps described in the xref:default-workflow-for-performing-an-initial-snapshot[default snapshot workflow], except that it does not create `READ` events to represent the data set at the point of the connector's start-up (Step 7.b).
+|`recovery`
+|Set this option to restore a database schema history topic that is lost or corrupted.
+After a restart, the connector runs a snapshot that rebuilds the topic from the source tables.
+You can also set the property to periodically prune a database schema history topic that experiences unexpected growth. +
++
+WARNING: Do not use this mode to perform a snapshot if schema changes were committed to the database after the last connector shutdown.
+|`when_needed`
+|After the connector starts, it performs a snapshot only if it detects one of the following circumstances:
+* It cannot detect any topic offsets.
+* A previously recorded offset specifies a log position that is not available on the server.
+
+ifdef::community[]
+|`configuration_based`
+|Set the snapshot mode to `configuration_based` to control snapshot behavior through the set of connector properties that have the prefix 'snapshot.mode.configuration.based'.
+endif::community[]
+
+ifdef::community[]
+|`custom`
+|The `custom` snapshot mode lets you inject your own implementation of the `io.debezium.spi.snapshot.Snapshotter` interface.
+endif::community[]
+
+|===
+
 
 // ModuleID: informix-description-of-why-initial-snapshots-capture-the-schema-history-for-all-tables
 // Title: Description of why initial snapshots capture the schema history for all tables
@@ -357,9 +400,15 @@ include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snaps
 
 include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot-kafka.adoc[leveloffset=+1]
 
+ifdef::community[]
+[[connector-custom-snapshot]]
+=== Custom snapshotter SPI
+include::{partialsdir}/modules/all-connectors/custom-snapshotter-spi.adoc[leveloffset=+3]
+endif::community[]
+
 // Type: concept
 [id="informix-blocking-snapshots"]
-==== Blocking snapshots
+=== Blocking snapshots
 
 include::{partialsdir}/modules/all-connectors/con-connector-blocking-snapshot.adoc[leveloffset=+3]
 
@@ -744,7 +793,7 @@ Metadata for transactions that occur before you deploy the connector is not avai
 Transaction boundary events contain the following fields:
 
 `status`:: `BEGIN` or `END`.
-`id`:: String representation of the unique transaction identifier.
+`id`:: String representation of the unique transaction identifier composed of Informix transaction ID itself and LSN of given operation separated by colon, i.e. the format is `txID:LSN`.
 `ts_ms`:: The time of a transaction boundary event (`BEGIN` or `END` event) at the data source.
 If the data source does not provide {prodname} with the event time, then the field instead represents the time at which {prodname} processes the event.
 `event_count` (for `END` events):: Total number of events emmitted by the transaction.
@@ -756,7 +805,7 @@ If the data source does not provide {prodname} with the event time, then the fie
 ----
 {
   "status": "BEGIN",
-  "id": "157",
+  "id": "571:53195829",
   "ts_ms": 1486500577125,
   "event_count": null,
   "data_collections": null
@@ -764,7 +813,7 @@ If the data source does not provide {prodname} with the event time, then the fie
 
 {
   "status": "END",
-  "id": "157",
+  "id": "571:53195832",
   "ts_ms": 1486500577691,
   "event_count": 2,
   "data_collections": [
@@ -803,12 +852,14 @@ Following is an example of a message:
     "aa": "1"
   },
   "source": {
-...
+    ...
   },
   "op": "c",
   "ts_ms": "1580390884335",
+  "ts_us": "1580390884335641",
+  "ts_ns": "1580390884335641387",
   "transaction": {
-    "id": "157",
+    "id": "571:53195832",
     "total_order": "1",
     "data_collection_order": "1"
   }
@@ -1124,6 +1175,16 @@ The following example shows the value portion of a change event that the connect
             "field": "ts_ms"
           },
           {
+            "type": "int64",
+            "optional": false,
+            "field": "ts_us"
+          },
+          {
+            "type": "int64",
+            "optional": false,
+            "field": "ts_ns"
+          },
+          {
             "type": "boolean",
             "optional": true,
             "default": false,
@@ -1178,6 +1239,16 @@ The following example shows the value portion of a change event that the connect
         "type": "int64",
         "optional": true,
         "field": "ts_ms"
+      },
+      {
+        "type": "int64",
+        "optional": true,
+        "field": "ts_us"
+      },
+      {
+        "type": "int64",
+        "optional": true,
+        "field": "ts_ns"
       }
     ],
     "optional": false,
@@ -1196,6 +1267,8 @@ The following example shows the value portion of a change event that the connect
       "connector": "informix",
       "name": "myconnector",
       "ts_ms": 1559729468470,
+      "ts_us": 1559729468470000,
+      "ts_ns": 1559729468470000000,
       "snapshot": false,
       "db": "mydatabase",
       "schema": "myschema",
@@ -1206,7 +1279,9 @@ The following example shows the value portion of a change event that the connect
       "begin_lsn": "627404540372400"
     },
     "op": "c",  // <9>
-    "ts_ms": 1559729471739  // <10>
+    "ts_ms": 1559729471739,  // <10>
+    "ts_us": 1559729471739241,  // <10>
+    "ts_ns": 1559729471739241367 // <10>
   }
 }
 ----
@@ -1290,7 +1365,7 @@ In the preceding example, `c` indicates that the operation created a row.
 `r`:: read (applies to only snapshots)
 
 |10
-|`ts_ms`
+|`ts_ms`, `ts_us`, `ts_ns`
 a|Optional field that displays the time at which the connector processed the event.
 The time is based on the system clock in the JVM that runs the Kafka Connect task. +
  +
@@ -1328,6 +1403,8 @@ The following example shows the change event value for an event record that the 
       "connector": "informix",
       "name": "myconnector",
       "ts_ms": 1559729995937,
+      "ts_us": 1559729995937000,
+      "ts_ns": 1559729995937000000,
       "snapshot": false,
       "db": "mydatabase",
       "schema": "myschema",
@@ -1338,7 +1415,9 @@ The following example shows the change event value for an event record that the 
       "begin_lsn": "627404540372400"
     },
     "op": "u",  // <4>
-    "ts_ms": 1559729998706  // <5>
+    "ts_ms": 1559729998706,  // <5>
+    "ts_us": 1559729998706742,  // <5>
+    "ts_ns": 1559729998706742877  // <5>
   }
 }
 ----
@@ -1384,7 +1463,7 @@ a|Mandatory string that describes the type of operation.
 In an _update_ event value, the `op` field value is `u`, signifying that this row changed because of an update.
 
 |5
-|`ts_ms`
+|`ts_ms`, `ts_us`, `ts_ns`
 a|Optional field that displays the time at which the connector processed the event.
 The time is based on the system clock in the JVM that runs the Kafka Connect task. +
  +
@@ -1427,6 +1506,8 @@ After a user performs a _delete_ operation in the sample `customers` table, {pro
       "connector": "informix",
       "name": "myconnector",
       "ts_ms": 1559730445243,
+      "ts_us": 1559730445243000,
+      "ts_ns": 1559730445243000000,
       "snapshot": false,
       "db": "mydatabase",
       "schema": "myschema",
@@ -1437,7 +1518,9 @@ After a user performs a _delete_ operation in the sample `customers` table, {pro
       "begin_lsn": "627404540372400"
     },
     "op": "d",  // <4>
-    "ts_ms": 1559730450205  // <5>
+    "ts_ms": 1559730450205,  // <5>
+    "ts_us": 1559730450205104,  // <5>
+    "ts_ns": 1559730450205104870  // <5>
   }
 }
 ----
@@ -1481,7 +1564,7 @@ a|Mandatory string that describes the type of operation.
 The value of the `op` field value is `d`, signifying that this row was deleted.
 
 |5
-|`ts_ms`
+|`ts_ms`, `ts_us`, `ts_ns`
 a|Optional field that displays the time at which the connector processed the event.
 The time is based on the system clock in the JVM running the Kafka Connect task. +
  +
@@ -2174,18 +2257,124 @@ For example, +
  isbn.schema.name: io.debezium.informix.type.Isbn
 
 |[[informix-property-snapshot-mode]]<<informix-property-snapshot-mode, `+snapshot.mode+`>>
-|`initial`
-|Specifies the criteria for performing a snapshot when the connector starts. +
-Specify one of the following values:
+|_initial_
+|Specifies the criteria for performing a snapshot when the connector starts: +
 
-`initial`:: For tables in capture mode, the connector takes a snapshot of the schema for the table and the data in the table, and then transitions to streaming data for subsequent changes.
-This option is useful for populating Kafka topics with a complete representation of the existing table data.
+`always`:: The connector performs a snapshot every time that it starts.
+The snapshot includes the structure and data of the captured tables.
+Specify this value to populate topics with a complete representation of the data from the captured tables every time that the connector starts.
+After the snapshot completes, the connector begins to stream event records for subsequent database changes.
+`initial`:: The connector performs a database snapshot as described in the xref:default-workflow-for-performing-an-initial-snapshot[default workflow for creating an initial snapshot].
+After the snapshot completes, the connector begins to stream event records for subsequent database changes.
+`initial_only`:: The connector performs a database a snapshot only when no offsets have been recorded for the logical server name.
+After the snapshot completes, the connector stops.
+It does not transition to streaming event records for subsequent database changes.
+`schema_only`:: Deprecated, see `no_data`.
+`no_data`:: The connector runs a snapshot that captures the structure of all relevant tables, performing all the steps described in the xref:default-workflow-for-performing-an-initial-snapshot[default snapshot workflow], except that it does not create `READ` events to represent the data set at the point of the connector's start-up (Step 7.b).
+`recovery`:: Set this option to restore a database schema history topic that is lost or corrupted.
+After a restart, the connector runs a snapshot that rebuilds the topic from the source tables.
+You can also set the property to periodically prune a database schema history topic that experiences unexpected growth. +
++
+WARNING: Do not use this mode to perform a snapshot if schema changes were committed to the database after the last connector shutdown.
+`when_needed`:: After the connector starts, it performs a snapshot only if it detects one of the following circumstances:
+* It cannot detect any topic offsets.
+* A previously recorded offset specifies a log position that is not available on the server.
 
-`initial_only`:: Takes a snapshot of structure and data as with the `initial` option, but does not transition to streaming changes after the snapshot completes.
+ifdef::community[]
+`configuration_based`:: With this option, you control snapshot behavior through a set of connector properties that have the prefix 'snapshot.mode.configuration.based'.
 
-`schema_only`:: For tables in capture mode, the connector takes a snapshot of only the schema for the table.
-This is useful when you are not interested in capturing past data and want the connector to emit to Kafka topics only the changes that happen after the current time.
-After the snapshot is complete, the connector continues by reading change events from the database's redo logs.
+endif::community[]
+
+ifdef::community[]
+`custom`:: The `custom` snapshot mode lets you inject your own implementation of the `io.debezium.spi.snapshot.Snapshotter` interface.
+Set the `snapshot.mode.custom.name` configuration property to the name provided by the `name()` method of your implementation.
+
+For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
+endif::community[]
+
+ifdef::community[]
+|[[informix-property-snapshot-mode-configuration-based-snapshot-data]]<<informix-property-configuration-based-snapshot-data, `+snapshot.mode.configuration.based.snapshot.data+`>>
+|false
+|If the `snapshot.mode` is set to `configuration_based`, set this property to specify whether the connector includes table data when it performs a snapshot.
+endif::community[]
+
+ifdef::community[]
+|[[informix-property-snapshot-mode-configuration-based-snapshot-schema]]<<informix-property-configuration-based-snapshot-schema, `+snapshot.mode.configuration.based.snapshot.schema+`>>
+|false
+|If the `snapshot.mode` is set to `configuration_based`, set this property to specify whether the connector includes the table schema when it performs a snapshot.
+endif::community[]
+
+ifdef::community[]
+|[[informix-property-snapshot-mode-configuration-based-start-stream]]<<informix-property-configuration-based-start-stream, `+snapshot.mode.configuration.based.start.stream+`>>
+|false
+|If the `snapshot.mode` is set to `configuration_based`, set this property to specify whether the connector begins to stream change events after a snapshot completes.
+endif::community[]
+
+ifdef::community[]
+|[[informix-property-snapshot-mode-configuration-based-snapshot-on-schema-error]]<<informix-property-configuration-based-snapshot-on-schema-error, `+snapshot.mode.configuration.based.snapshot.on.schema.error+`>>
+|false
+|If the `snapshot.mode` is set to `configuration_based`, set this property to specify whether the connector includes table schema in a snapshot if the schema history topic is not available.
+endif::community[]
+
+ifdef::community[]
+|[[informix-property-snapshot-mode-configuration-based-snapshot-on-data-error]]<<informix-property-configuration-based-snapshot-on-data-error, `+snapshot.mode.configuration.based.snapshot.on.data.error+`>>
+|false
+|If the `snapshot.mode` is set to `configuration_based`, this property specifies whether the connector attempts to snapshot table data if it does not find the last committed offset in the transaction log. +
+Set the value to `true` to instruct the connector to perform a new snapshot.
+endif::community[]
+
+ifdef::community[]
+|[[informix-property-snapshot-mode-custom-name]]<<informix-property-snapshot-mode-custom-name, `+snapshot.mode.custom.name+`>>
+|No default
+| If `snapshot.mode` is set to `custom`, use this setting to specify the name of the custom implementation that is provided in the `name()` method that is defined in the 'io.debezium.spi.snapshot.Snapshotter' interface.
+After a connector restart, {prodname} calls the specified custom implementation to determine whether to perform a snapshot.
+For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
+endif::community[]
+
+|[[informix-property-snapshot-locking-mode]]<<informix-property-snapshot-locking-mode, `+snapshot.locking.mode+`>>
+|_exclusive_
+a|Controls whether and for how long the connector holds a table lock.
+Table locks prevent other database clients from performing certain table operations during a snapshot.
+You can set the following values:
+
+`exclusive`:: Controls how the connector holds locks on tables while performing the schema snapshot when `snapshot.isolation.mode` is `REPEATABLE_READ` or `EXCLUSIVE`. +
+The connector holds a table lock that ensures exclusive table access during only the initial phase of the snapshot in which the connector reads the database schema and other metadata.
+In subsequent phases of the snapshot, the connector uses a flashback query, which requires no locks, to select all rows from each table.
+
+`share`:: Controls how the connector holds locks on tables while performing the schema snapshot when `snapshot.isolation.mode` is `REPEATABLE_READ` or `EXCLUSIVE`. +
+The connector holds a read table lock that ensures read table access during only the initial phase of the snapshot in which the connector reads the database schema and other metadata.
+In subsequent phases of the snapshot, the connector uses a flashback query, which requires no locks, to select all rows from each table.
+
+ifdef::community[]
+`custom`:: The connector performs a snapshot according to the implementation specified by the xref:informix-property-snapshot-locking-mode-custom-name[`snapshot.locking.mode.custom.name`] property, which is a custom implementation of the `io.debezium.spi.snapshot.SnapshotLock` interface.
+endif::community[]
+
+ifdef::community[]
+|[[informix-property-snapshot-locking-mode-custom-name]]<<informix-property-snapshot-locking-mode-custom-name, `+snapshot.locking.mode.custom.name+`>>
+|No default
+| When `snapshot.locking.mode` is set to `custom`, use this setting to specify the name of the custom locking implementation provided in the `name()` method that is defined by the 'io.debezium.spi.snapshot.SnapshotLock' interface.
+For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
+endif::community[]
+
+|[[informix-property-snapshot-query-mode]]<<informix-property-snapshot-query-mode, `+snapshot.query.mode+`>>
+|`select_all`
+|Specifies how the connector queries data while performing a snapshot. +
+Set one of the following options:
+
+`select_all`:: The connector performs a `select all` query by default, optionally adjusting the columns selected based on the column include and exclude list configurations.
+
+ifdef::community[]
+`custom`:: The connector performs a snapshot query according to the implementation specified by the xref:informix-property-snapshot-snapshot-query-mode-custom-name[`snapshot.query.mode.custom.name`] property, which defines a custom implementation of the `io.debezium.spi.snapshot.SnapshotQuery` interface. +
+endif::community[]
+
+This setting enables you to manage snapshot content in a more flexible manner compared to using the xref:informix-property-snapshot-select-statement-overrides[`snapshot.select.statement.overrides`] property.
+
+ifdef::community[]
+|[[informix-property-snapshot-snapshot-query-mode-custom-name]]<<informix-property-snapshot-query-mode-custom-name, `+snapshot.query.mode.custom.name+`>>
+|No default
+| When xref:informix-property-snapshot-query-mode[`snapshot.query.mode`] is set to `custom`, use this setting to specify the name of the custom query implementation provided in the `name()` method that is defined by the 'io.debezium.spi.snapshot.SnapshotQuery' interface.
+For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
+endif::community[]
 
 |[[informix-property-snapshot-isolation-mode]]<<informix-property-snapshot-isolation-mode, `+snapshot.isolation.mode+`>>
 |`repeatable_read`
@@ -2212,7 +2401,7 @@ This mode prevents other transactions from updating table rows during an initial
 Only `exclusive` mode guarantees full consistency; the initial snapshot and streaming logs constitute a linear history.
 
 |[[informix-property-cdc-timeout]]<<informix-property-cdc-timeout, `+cdc.timeout+`>>
-|`1`
+|`5`
 |Positive integer value that specifies the timeout behavior of a read call to the change stream client. +
 Specify one of the following values:
 
@@ -2446,18 +2635,24 @@ endif::community[]
 
 |[[informix-property-custom-metric-tags]]<<informix-property-custom-metric-tags, `custom.metric.tags`>>
 |`No default`
-|Defines tags for customizing MBean object names by adding metadata that provides contextual information that enables you to organize and categorize metrics data.
+|Defines tags that customize MBean object names by adding metadata that provides contextual information.
 Specify a comma-separated list of key-value pairs.
 Each key represents a tag for the MBean object name, and the corresponding value represents a value for the key, for example,  +
 `k1=v1,k2=v2`
 
 The connector appends the specified tags to the base MBean object name.
-
+Tags can help you to organize and categorize metrics data.
 You can define tags to identify particular application instances, environments, regions, versions, and so forth.
+For more information, see xref:customized-mbean-names[Customized MBean names].
 
 |[[informix-property-errors-max-retires]]<<informix-property-errors-max-retires, `errors.max.retries`>>
 |`-1`
 |The maximum number of retries on retriable errors (e.g. connection errors) before failing (-1 = no limit, 0 = disabled, > 0 = num of retries).
+
+|[[informix-property-database-query-timeout-ms]]<<informix-property-database-query-timeout-ms, `database.query.timeout.ms`>>
+|`600000` (10 minutes)
+|Specifies the time, in milliseconds, that the connector waits for a query to complete.
+Set the value to `0` (zero) to remove the timeout limit.
 
 |===
 
@@ -2494,6 +2689,13 @@ The {prodname} Informix connector provides three types of metrics that are in ad
 * xref:informix-schema-history-metrics[Schema history metrics] provide information about the status of the connector's schema history.
 
 {link-prefix}:{link-debezium-monitoring}#monitoring-debezium[{prodname} monitoring documentation] provides details for how to expose these metrics by using JMX.
+
+// Type: concept
+// ModuleID: monitoring-debezium-informix-connectors-customized-mbean-names
+// Title: Customized names for Db2 connector snapshot and streaming MBean objects
+=== Customized MBean names
+
+include::{partialsdir}/modules/all-connectors/frag-common-mbean-name.adoc[leveloffset=+1,tags=mbeans-shared]
 
 // Type: reference
 // ModuleID: monitoring-debezium-during-snapshots-of-informix-databases

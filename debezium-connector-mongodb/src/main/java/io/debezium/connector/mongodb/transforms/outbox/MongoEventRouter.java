@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.connect.components.Versioned;
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
@@ -25,6 +26,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.common.annotation.Incubating;
 import io.debezium.config.Configuration;
+import io.debezium.connector.mongodb.Module;
 import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState;
 import io.debezium.connector.mongodb.transforms.MongoDataConverter;
 import io.debezium.time.Timestamp;
@@ -38,7 +40,7 @@ import io.debezium.transforms.outbox.EventRouterDelegate;
  * @author Sungho Hwang
  */
 @Incubating
-public class MongoEventRouter<R extends ConnectRecord<R>> implements Transformation<R> {
+public class MongoEventRouter<R extends ConnectRecord<R>> implements Transformation<R>, Versioned {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoEventRouter.class);
 
@@ -93,6 +95,11 @@ public class MongoEventRouter<R extends ConnectRecord<R>> implements Transformat
         Map<String, ?> convertedConfigMap = convertConfigMap(configMap);
 
         eventRouterDelegate.configure(convertedConfigMap);
+    }
+
+    @Override
+    public String version() {
+        return Module.version();
     }
 
     /**

@@ -5,6 +5,7 @@
  */
 package io.debezium.embedded.async;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Field;
 import io.debezium.embedded.EmbeddedEngine;
 import io.debezium.embedded.EmbeddedEngineConfig;
@@ -17,16 +18,15 @@ import io.debezium.embedded.EmbeddedEngineConfig;
 public interface AsyncEngineConfig extends EmbeddedEngineConfig {
 
     int AVAILABLE_CORES = Runtime.getRuntime().availableProcessors();
-    int RECORD_PROCESSING_THREADS_CAP = 16;
 
     /**
      * An optional field that specifies the number of threads to be used for processing CDC records.
      */
     Field RECORD_PROCESSING_THREADS = Field.create("record.processing.threads")
-            .withDescription("The number of threads to be used for processing CDC records. The default is number of available machine cores with upper "
-                    + "limit of " + RECORD_PROCESSING_THREADS_CAP + " threads. If you want to use all available thread without any limitation, use 'AVAILABLE_CORES' "
-                    + "placeholder.")
-            .withDefault(AVAILABLE_CORES);
+            .withDescription("The number of threads to be used for processing CDC records. If you want to use all available threads, you can use "
+                    + "'AVAILABLE_CORES' placeholder. If the number of threads is not specified, the threads will be created as needed, using "
+                    + "Java 'Executors.newCachedThreadPool()' executor service.")
+            .withDefault(""); // We need to set some non-null value to avoid Kafka config validation failures.
 
     /**
      * An optional field that specifies maximum time in ms to wait for submitted records to finish processing when the task shut down is called.
@@ -70,8 +70,10 @@ public interface AsyncEngineConfig extends EmbeddedEngineConfig {
      */
     Field TASK_MANAGEMENT_TIMEOUT_MS = Field.createInternal("task.management.timeout.ms")
             .withDescription("Time to wait for task's lifecycle management operations (starting and stopping), given in milliseconds. "
-                    + "Defaults to 2 minutes (120_000 ms).")
-            .withDefault(120_000L)
+                    + "Defaults to 3 minutes (180_000 ms).")
+            // We may wait up to CommonConnectorConfig.EXECUTOR_SHUTDOWN_TIMEOUT_SEC during shutdown in e.g. ChangeEventSourceCoordinator, so for the whole task
+            // shutdown we have to use bigger timeout. Let's double this timeout (and convert it to ms).
+            .withDefault(2 * CommonConnectorConfig.EXECUTOR_SHUTDOWN_TIMEOUT_SEC * 1_000)
             .withValidation(Field::isPositiveInteger);
 
     /**

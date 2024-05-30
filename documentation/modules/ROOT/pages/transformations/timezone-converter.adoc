@@ -1,7 +1,12 @@
 :page-aliases: configuration/timezone-converter.adoc
+// Category: debezium-using
+// Type: assembly
+// ModuleID: converting-timezone-values-in-debezium-event-records
+// Title: Converting timezone values in {prodname} event records
+
 [id="timezone-converter"]
 = Timezone Converter
-
+ifdef::community[]
 :toc:
 :toc-placement: macro
 :linkattrs:
@@ -9,10 +14,11 @@
 :source-highlighter: highlight.js
 
 toc::[]
+endif::community[]
 
 [[timezone-converter-introduction]]
 
-When {prodname} emits event records, the timezone values for timestamp fields in the record can vary depending on the type and configuration of the data source.
+When {prodname} emits event records, the timezone values for timestamp fields in the record can vary, depending on the type and configuration of the data source.
 To maintain data consistency and precision within data processing pipelines and applications, you can use the `Timezone Converter` SMT to ensure that event records use a consistent timezone to represent timestamp data.
 
 The SMT converts the value of the specified field to the target timezone by using the `converted.timezone` configuration option.
@@ -20,7 +26,17 @@ You can specify the target timezone as a geographic timezone, for example,  `Ame
 It is assumed that the fields of the record are in UTC.
 Along with the specified timezone, the SMT also provides configuration options to include or exclude specific fields from timezone conversion using the `include.list` and `exclude.list` configuration options.
 
-The SMT supports all Debezium and Kafka Connect temporal and non-temporal types.
+The SMT supports all {prodname} and Kafka Connect temporal and non-temporal types.
+
+ifdef::product[]
+The following topics provide details:
+
+* xref:example-basic-debezium-timezone-converter-smt-configuration[]
+* xref:effect-of-applying-the-timezone-converter-smt-to-a-debezium-event-record[]
+* xref:example-advanced-debezium-timezone-converter-smt-configuration[]
+* xref:options-for-configuring-the-debezium-timezone-converter-transformation[]
+endif::product[]
+
 
 [NOTE]
 ====
@@ -41,11 +57,14 @@ The SMT also allows conversion of event metadata fields in the source informatio
 If the schema for timestamp fields in the source information block, like `ts_ms`, is currently set to `INT64`, which is not a timestamp type, future releases aim to support the conversion of such fields by introducing compatibility for a timestamp schema.
 ====
 
-[[timezone-converter-usage]]
+// Type: concept
+// Title: Example: Basic {prodname} timezone converter SMT configuration
+// ModuleID: example-basic-debezium-timezone-converter-smt-configuration
 
 [[basic-example-timezone-converter]]
 == Example: Basic configuration
 
+[[timezone-converter-usage]]
 Configure the `TimezoneConverter` SMT in the Kafka Connect configuration for a connector to convert the time-based fields in an event record to a target timezone.
 
 For example, to convert all timestamp fields in an event record from UTC to the `Pacific/Easter` timezone, add the following lines to your connector configuration:
@@ -57,15 +76,22 @@ transforms.convertTimezone.type=io.debezium.transforms.TimezoneConverter
 transforms.convertTimezone.converted.timezone=Pacific/Easter
 ----
 
+// Type: concept
+// Title: Effect of applying the `TimezoneConverter` SMT to a {prodname} event record
+// ModuleID: effect-of-applying-the-timezone-converter-smt-to-a-debezium-event-record
+
 === Effect of applying the `TimezoneConverter` SMT
 
-The following examples show the timestamp fields in an event record before and after applying the `TimezoneConverter` transformation.
+The following examples show how the `TimezoneConverter` transformation modifies the timestamp fields in an event record.
+The first example shows a {prodname} event record that is not processed by the transformation; the record retains its original timestamp values.
+The next example shows the same event record after the transformation is applied.
+Per the configuration specified in xref:basic-example-timezone-converter[the basic configuration example], the SMT converts the original UTC values of timestamp fields in the source message to `Pacific/Easter` timezone values.
 
 .Event record value before processing by the `TimezoneConverter` transformation
 ====
 The value of the `created_at` field shows the UTC time.
 
-[source, json]
+[source, json,subs="+attributes"]
 ----
 {
         "before": null,
@@ -77,10 +103,12 @@ The value of the `created_at` field shows the UTC time.
             "created_at": "2011-01-11T16:40:30.123456789+00:00"
         },
         "source": {
-            "version": "2.4.0.Aplha2",
+            "version": "{debezium-version}",
             "connector": "postgresql",
             "name": "PostgreSQL_server",
             "ts_ms": 1559033904863,
+            "ts_us": 1559033904863000,
+            "ts_ns": 1559033904863000000,
             "snapshot": true,
             "db": "postgres",
             "sequence": "[\"24023119\",\"24023128\"]",
@@ -91,7 +119,9 @@ The value of the `created_at` field shows the UTC time.
             "xmin": null
         },
         "op": "c",
-        "ts_ms": 1559033904863
+        "ts_ms": 1559033904863,
+        "ts_us": 1559033904863875,
+        "ts_ns": 1559033904863875124
     }
 ----
 
@@ -101,7 +131,7 @@ The value of the `created_at` field shows the UTC time.
 The SMT converts the original UTC value of the `created_at` field to the time in the target `Pacific/Easter` timezone that is specified in the xref:basic-example-timezone-converter[Basic configuration] example.
 The SMT also adds an `event_timestamp` field.
 
-[source, json]
+[source, json,subs="+attributes"]
 ----
 {
         "before": null,
@@ -113,10 +143,12 @@ The SMT also adds an `event_timestamp` field.
             "created_at": "2011-01-11T11:40:30.123456789-05:00"
         },
         "source": {
-            "version": "2.4.0.Aplha2",
+            "version": "{debezium-version}",
             "connector": "postgresql",
             "name": "PostgreSQL_server",
             "ts_ms": 1559033904863,
+            "ts_us": 1559033904863752,
+            "ts_ns": 1559033904863752000,
             "snapshot": true,
             "db": "postgres",
             "sequence": "[\"24023119\",\"24023128\"]",
@@ -129,11 +161,16 @@ The SMT also adds an `event_timestamp` field.
         },
         "op": "c",
         "ts_ms": 1559033904863,
+        "ts_us": 1559033904863971,
+        "ts_ns": 1559033904863971541,
         "event_timestamp": 1626102708861
     }
 ----
 ====
 
+// Type: concept
+// Title: Example: Advanced {prodname} timezone converter SMT configuration
+// ModuleID: example-advanced-debezium-timezone-converter-smt-configuration
 [[advanced-example-timezone-converter]]
 == Example: Advanced configuration
 
@@ -160,6 +197,9 @@ transforms.convertTimezone.converted.timezone=+05:30
 transforms.convertTimezone.exclude.list=source:customers:updated_at
 ----
 
+// Type: reference
+// Title: Options for configuring the {prodname} timezone converter transformation
+// ModuleID: options-for-configuring-the-debezium-timezone-converter-transformation
 [[timezone-converter-configuration-options]]
 == Configuration options
 
@@ -178,6 +218,7 @@ The following table lists the configuration options for the `TimezoneConverter` 
 The target timezone can be specified as a geographic timezone, such as, `America/New_York`, or as a UTC offset, for example, `+02:00`.
 |string
 |high
+
 |[[timezone-converter-include-list]]<<timezone-converter-include-list, `include.list`>>
 |A comma-separated list of rules that specify the fields that the SMT includes for timezone conversion.
 Specify rules by using one of the following formats:
@@ -196,6 +237,7 @@ The SMT converts only fields in the specified table that have the specified fiel
 The SMT converts values for the specified field name only. `fieldname` can be prefixed with `before`, `after`, or `source` to include the appropriate field in the event record. If no prefix is specified, both `before` and `after` fields are converted.
 |list
 |medium
+
 |[[timezone-converter-exclude-list]]<<timezone-converter-exclude-list, `exclude.list`>>
 |A comma-separated list of rules that specify the fields to exclude from timezone conversion.
 Specify rules by using one of the following formats:

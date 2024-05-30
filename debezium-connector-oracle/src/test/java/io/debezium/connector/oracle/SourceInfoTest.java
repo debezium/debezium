@@ -57,6 +57,8 @@ public class SourceInfoTest {
                 .field("snapshot", AbstractSourceInfoStructMaker.SNAPSHOT_RECORD_SCHEMA)
                 .field("db", Schema.STRING_SCHEMA)
                 .field("sequence", Schema.OPTIONAL_STRING_SCHEMA)
+                .field("ts_us", Schema.OPTIONAL_INT64_SCHEMA)
+                .field("ts_ns", Schema.OPTIONAL_INT64_SCHEMA)
                 .field("schema", Schema.STRING_SCHEMA)
                 .field("table", Schema.STRING_SCHEMA)
                 .field("txId", Schema.OPTIONAL_STRING_SCHEMA)
@@ -67,6 +69,8 @@ public class SourceInfoTest {
                 .field("ssn", Schema.OPTIONAL_INT64_SCHEMA)
                 .field("redo_thread", Schema.OPTIONAL_INT32_SCHEMA)
                 .field("user_name", Schema.OPTIONAL_STRING_SCHEMA)
+                .field("redo_sql", Schema.OPTIONAL_STRING_SCHEMA)
+                .field("row_id", Schema.OPTIONAL_STRING_SCHEMA)
                 .build();
 
         VerifyRecord.assertConnectSchemasAreEqual(null, source.schema(), schema);

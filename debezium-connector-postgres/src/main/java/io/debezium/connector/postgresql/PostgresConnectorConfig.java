@@ -188,13 +188,29 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
         /**
          * Never perform a snapshot and only receive logical changes.
+         * @deprecated to be removed in Debezium 3.0, replaced by {{@link #NO_DATA}}
          */
         NEVER("never"),
+
+        /**
+         * Never perform a snapshot and only receive logical changes.
+         */
+        NO_DATA("no_data"),
 
         /**
          * Perform a snapshot and then stop before attempting to receive any logical changes.
          */
         INITIAL_ONLY("initial_only"),
+
+        /**
+         * Perform a snapshot when it is needed.
+         */
+        WHEN_NEEDED("when_needed"),
+
+        /**
+         * Allows control over snapshots by setting connectors properties prefixed with 'snapshot.mode.configuration.based'.
+         */
+        CONFIGURATION_BASED("configuration_based"),
 
         /**
          * Inject a custom snapshotter, which allows for more control over snapshots.
@@ -526,60 +542,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         }
     }
 
-    public enum SnapshotQueryMode implements EnumeratedValue {
-        /**
-         * This mode will do a select based on {@code column.include.list} and {@code column.exclude.list} configurations.
-         */
-        SELECT_ALL("select_all"),
-
-        CUSTOM("custom");
-
-        private final String value;
-
-        SnapshotQueryMode(String value) {
-            this.value = value;
-        }
-
-        @Override
-        public String getValue() {
-            return value;
-        }
-
-        /**
-         * Determine if the supplied value is one of the predefined options.
-         *
-         * @param value the configuration property value; may not be {@code null}
-         * @return the matching option, or null if no match is found
-         */
-        public static SnapshotQueryMode parse(String value) {
-            if (value == null) {
-                return null;
-            }
-            value = value.trim();
-            for (SnapshotQueryMode option : SnapshotQueryMode.values()) {
-                if (option.getValue().equalsIgnoreCase(value)) {
-                    return option;
-                }
-            }
-            return null;
-        }
-
-        /**
-         * Determine if the supplied value is one of the predefined options.
-         *
-         * @param value the configuration property value; may not be {@code null}
-         * @param defaultValue the default value; may be {@code null}
-         * @return the matching option, or null if no match is found and the non-null default is invalid
-         */
-        public static SnapshotQueryMode parse(String value, String defaultValue) {
-            SnapshotQueryMode mode = parse(value);
-            if (mode == null && defaultValue != null) {
-                mode = parse(defaultValue);
-            }
-            return mode;
-        }
-    }
-
     protected static final String DATABASE_CONFIG_PREFIX = "database.";
     protected static final int DEFAULT_PORT = 5_432;
     protected static final int DEFAULT_SNAPSHOT_FETCH_SIZE = 10_240;
@@ -865,48 +827,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     + "locks entirely which can be done by specifying 'none'. This mode is only safe to use if no schema changes are happening while the "
                     + "snapshot is taken.");
 
-    public static final Field SNAPSHOT_LOCKING_MODE_CUSTOM_NAME = Field.create("snapshot.locking.mode.custom.name")
-            .withDisplayName("Snapshot Locking Mode Custom Name")
-            .withType(Type.STRING)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 14))
-            .withWidth(Width.MEDIUM)
-            .withImportance(Importance.MEDIUM)
-            .withValidation((config, field, output) -> {
-                if (config.getString(SNAPSHOT_LOCKING_MODE).equalsIgnoreCase("custom") && config.getString(field, "").isEmpty()) {
-                    output.accept(field, "", "snapshot.locking.mode.custom.name cannot be empty when snapshot.locking.mode 'custom' is defined");
-                    return 1;
-                }
-                return 0;
-            })
-            .withDescription(
-                    "When 'snapshot.locking.mode' is set as custom, this setting must be set to specify a the name of the custom implementation provided in the 'name()' method. "
-                            + "The implementations must implement the 'SnapshotterLocking' interface and is called to determine how to lock tables during schema snapshot.");
-
-    public static final Field SNAPSHOT_QUERY_MODE = Field.create("snapshot.query.mode")
-            .withDisplayName("Snapshot query mode")
-            .withEnum(SnapshotQueryMode.class, SnapshotQueryMode.SELECT_ALL)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.LOW)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 15))
-            .withDescription("Controls query used during the snapshot");
-
-    public static final Field SNAPSHOT_QUERY_MODE_CUSTOM_NAME = Field.create("snapshot.query.mode.custom.name")
-            .withDisplayName("Snapshot Query Mode Custom Name")
-            .withType(Type.STRING)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 16))
-            .withWidth(Width.MEDIUM)
-            .withImportance(Importance.MEDIUM)
-            .withValidation((config, field, output) -> {
-                if (config.getString(SNAPSHOT_QUERY_MODE).equalsIgnoreCase("custom") && config.getString(field, "").isEmpty()) {
-                    output.accept(field, "", "snapshot.query.mode.custom.name cannot be empty when snapshot.query.mode 'custom' is defined");
-                    return 1;
-                }
-                return 0;
-            })
-            .withDescription(
-                    "When 'snapshot.query.mode' is set as custom, this setting must be set to specify a the name of the custom implementation provided in the 'name()' method. "
-                            + "The implementations must implement the 'SnapshotterQuery' interface and is called to determine how to build queries during snapshot.");
-
     /**
      * A comma-separated list of regular expressions that match the prefix of logical decoding messages to be excluded
      * from monitoring. Must not be used with {@link #LOGICAL_DECODING_MESSAGE_PREFIX_INCLUDE_LIST}
@@ -1051,9 +971,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     private final SnapshotMode snapshotMode;
     private final SnapshotLockingMode snapshotLockingMode;
-    private final SnapshotQueryMode snapshotQueryMode;
-    private final String snapshotQueryModeCustomName;
-    private final String snapshotLockingModeCustomName;
 
     public PostgresConnectorConfig(Configuration config) {
         super(
@@ -1075,9 +992,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         this.replicaIdentityMapper = (replicaIdentityMapping != null) ? new ReplicaIdentityMapper(replicaIdentityMapping) : null;
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE), SNAPSHOT_MODE.defaultValueAsString());
         this.snapshotLockingMode = SnapshotLockingMode.parse(config.getString(SNAPSHOT_LOCKING_MODE), SNAPSHOT_LOCKING_MODE.defaultValueAsString());
-        this.snapshotQueryMode = SnapshotQueryMode.parse(config.getString(SNAPSHOT_QUERY_MODE), SNAPSHOT_QUERY_MODE.defaultValueAsString());
-        this.snapshotQueryModeCustomName = config.getString(SNAPSHOT_QUERY_MODE_CUSTOM_NAME, "");
-        this.snapshotLockingModeCustomName = config.getString(SNAPSHOT_LOCKING_MODE_CUSTOM_NAME, "");
     }
 
     protected String hostname() {
@@ -1092,11 +1006,11 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return getConfig().getString(DATABASE_NAME);
     }
 
-    protected LogicalDecoder plugin() {
+    public LogicalDecoder plugin() {
         return LogicalDecoder.parse(getConfig().getString(PLUGIN_NAME));
     }
 
-    protected String slotName() {
+    public String slotName() {
         return getConfig().getString(SLOT_NAME);
     }
 
@@ -1181,24 +1095,14 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return Optional.ofNullable(this.replicaIdentityMapper);
     }
 
-    public SnapshotMode snapshotMode() {
+    @Override
+    public SnapshotMode getSnapshotMode() {
         return this.snapshotMode;
     }
 
-    public SnapshotLockingMode snapshotLockingMode() {
-        return this.snapshotLockingMode;
-    }
-
-    public SnapshotQueryMode snapshotQueryMode() {
-        return this.snapshotQueryMode;
-    }
-
-    public String snapshotQueryModeCustomName() {
-        return this.snapshotQueryModeCustomName;
-    }
-
-    public String snapshotLockingModeCustomName() {
-        return this.snapshotLockingModeCustomName;
+    @Override
+    public Optional<SnapshotLockingMode> getSnapshotLockingMode() {
+        return Optional.of(this.snapshotLockingMode);
     }
 
     protected int moneyFractionDigits() {
@@ -1219,6 +1123,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     USER,
                     PASSWORD,
                     DATABASE_NAME,
+                    QUERY_TIMEOUT_MS,
                     PLUGIN_NAME,
                     SLOT_NAME,
                     PUBLICATION_NAME,

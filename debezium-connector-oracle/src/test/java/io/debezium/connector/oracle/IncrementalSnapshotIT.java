@@ -20,6 +20,7 @@ import io.debezium.data.VerifyRecord;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.SkipTestRule;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotTest;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.util.Testing;
 
@@ -112,6 +113,21 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Oracl
     }
 
     @Override
+    protected String noPKTopicName() {
+        return "server1.DEBEZIUM.A42";
+    }
+
+    @Override
+    protected String noPKTableName() {
+        return "DEBEZIUM.A42";
+    }
+
+    @Override
+    protected String returnedIdentifierName(String queriedID) {
+        return queriedID.toUpperCase();
+    }
+
+    @Override
     protected List<String> tableNames() {
         return List.of("DEBEZIUM.A", "DEBEZIUM.B");
     }
@@ -119,6 +135,11 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Oracl
     @Override
     protected String tableDataCollectionId() {
         return TestHelper.getDatabaseName() + ".DEBEZIUM.A";
+    }
+
+    @Override
+    protected String noPKTableDataCollectionId() {
+        return TestHelper.getDatabaseName() + ".DEBEZIUM.A42";
     }
 
     @Override
@@ -134,9 +155,10 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Oracl
     @Override
     protected Configuration.Builder config() {
         return TestHelper.defaultConfig()
-                .with(OracleConnectorConfig.SNAPSHOT_MODE, OracleConnectorConfig.SnapshotMode.SCHEMA_ONLY)
+                .with(OracleConnectorConfig.SNAPSHOT_MODE, OracleConnectorConfig.SnapshotMode.NO_DATA)
                 .with(OracleConnectorConfig.SIGNAL_DATA_COLLECTION, TestHelper.getDatabaseName() + ".DEBEZIUM.DEBEZIUM_SIGNAL")
-                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.A,DEBEZIUM\\.B")
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.A,DEBEZIUM\\.B,DEBEZIUM\\.A42")
+                .with(RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS, "DEBEZIUM.A42:pk1,pk2,pk3,pk4")
                 .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true);
     }
 
@@ -153,6 +175,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Oracl
                 .with(OracleConnectorConfig.SNAPSHOT_MODE, OracleConnectorConfig.SnapshotMode.INITIAL)
                 .with(OracleConnectorConfig.SIGNAL_DATA_COLLECTION, TestHelper.getDatabaseName() + ".DEBEZIUM.DEBEZIUM_SIGNAL")
                 .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, tableIncludeList)
+                .with(RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS, "DEBEZIUM.A42:pk1,pk2,pk3,pk4")
                 .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, storeOnlyCapturedDdl);
     }
 
@@ -203,12 +226,15 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Oracl
     private void createTables() throws Exception {
         connection.execute("CREATE TABLE a (pk numeric(9,0) primary key, aa numeric(9,0))");
         connection.execute("CREATE TABLE b (pk numeric(9,0) primary key, aa numeric(9,0))");
+        connection.execute("CREATE TABLE a42 (pk1 numeric(9,0), pk2 numeric(9,0), pk3 numeric(9,0), pk4 numeric(9,0), aa numeric(9,0))");
         TestHelper.streamTable(connection, "a");
         TestHelper.streamTable(connection, "b");
+        TestHelper.streamTable(connection, "a42");
     }
 
     private void dropTables() throws Exception {
         TestHelper.dropTable(connection, "a");
         TestHelper.dropTable(connection, "b");
+        TestHelper.dropTable(connection, "a42");
     }
 }

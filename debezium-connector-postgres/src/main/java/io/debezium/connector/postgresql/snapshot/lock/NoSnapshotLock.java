@@ -8,11 +8,13 @@ package io.debezium.connector.postgresql.snapshot.lock;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 
+import io.debezium.annotation.ConnectorSpecific;
+import io.debezium.connector.postgresql.PostgresConnector;
 import io.debezium.connector.postgresql.PostgresConnectorConfig;
 import io.debezium.snapshot.spi.SnapshotLock;
 
+@ConnectorSpecific(connector = PostgresConnector.class)
 public class NoSnapshotLock implements SnapshotLock {
 
     @Override
@@ -26,7 +28,7 @@ public class NoSnapshotLock implements SnapshotLock {
     }
 
     @Override
-    public Optional<String> tableLockingStatement(Duration lockTimeout, Set<String> tableIds) {
+    public Optional<String> tableLockingStatement(Duration lockTimeout, String tableId) {
 
         return Optional.empty();
     }

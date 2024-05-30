@@ -148,8 +148,8 @@ public class EmbeddedInfinispanLogMinerEventProcessor extends AbstractInfinispan
     @Override
     protected Optional<InfinispanTransaction> getOldestTransactionInCache() {
         InfinispanTransaction transaction = null;
-        if (!transactionCache.isEmpty()) {
-            try (CloseableIterator<InfinispanTransaction> iterator = transactionCache.values().iterator()) {
+        try (CloseableIterator<InfinispanTransaction> iterator = transactionCache.values().iterator()) {
+            if (iterator.hasNext()) {
                 // Seed with the first element
                 transaction = iterator.next();
                 while (iterator.hasNext()) {

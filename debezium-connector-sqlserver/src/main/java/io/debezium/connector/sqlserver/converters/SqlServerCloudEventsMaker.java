@@ -5,10 +5,14 @@
  */
 package io.debezium.connector.sqlserver.converters;
 
+import java.util.Set;
+
 import io.debezium.connector.AbstractSourceInfo;
+import io.debezium.converters.recordandmetadata.RecordAndMetadata;
 import io.debezium.converters.spi.CloudEventsMaker;
-import io.debezium.converters.spi.RecordParser;
 import io.debezium.converters.spi.SerializerType;
+import io.debezium.data.Envelope;
+import io.debezium.util.Collect;
 
 /**
  * CloudEvents maker for records produced by SQL Server connector.
@@ -17,15 +21,30 @@ import io.debezium.converters.spi.SerializerType;
  */
 public class SqlServerCloudEventsMaker extends CloudEventsMaker {
 
-    public SqlServerCloudEventsMaker(RecordParser parser, SerializerType contentType, String dataSchemaUriBase, String cloudEventsSchemaName) {
-        super(parser, contentType, dataSchemaUriBase, cloudEventsSchemaName);
+    static final String CHANGE_LSN_KEY = "change_lsn";
+    static final String COMMIT_LSN_KEY = "commit_lsn";
+    static final String EVENT_SERIAL_NO_KEY = "event_serial_no";
+
+    static final Set<String> SQLSERVER_SOURCE_FIELDS = Collect.unmodifiableSet(
+            CHANGE_LSN_KEY,
+            COMMIT_LSN_KEY,
+            EVENT_SERIAL_NO_KEY);
+
+    public SqlServerCloudEventsMaker(RecordAndMetadata recordAndMetadata, SerializerType dataContentType, String dataSchemaUriBase,
+                                     String cloudEventsSchemaName) {
+        super(recordAndMetadata, dataContentType, dataSchemaUriBase, cloudEventsSchemaName, Envelope.FieldName.BEFORE, Envelope.FieldName.AFTER);
     }
 
     @Override
     public String ceId() {
-        return "name:" + recordParser.getMetadata(AbstractSourceInfo.SERVER_NAME_KEY)
-                + ";change_lsn:" + recordParser.getMetadata(SqlServerRecordParser.CHANGE_LSN_KEY)
-                + ";commit_lsn:" + recordParser.getMetadata(SqlServerRecordParser.COMMIT_LSN_KEY)
-                + ";event_serial_no:" + recordParser.getMetadata(SqlServerRecordParser.EVENT_SERIAL_NO_KEY);
+        return "name:" + sourceField(AbstractSourceInfo.SERVER_NAME_KEY)
+                + ";change_lsn:" + sourceField(CHANGE_LSN_KEY)
+                + ";commit_lsn:" + sourceField(COMMIT_LSN_KEY)
+                + ";event_serial_no:" + sourceField(EVENT_SERIAL_NO_KEY);
+    }
+
+    @Override
+    public Set<String> connectorSpecificSourceFields() {
+        return SQLSERVER_SOURCE_FIELDS;
     }
 }

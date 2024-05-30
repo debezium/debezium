@@ -5,13 +5,16 @@
  */
 package io.debezium.relational.history;
 
+import io.debezium.connector.mysql.MySqlConnector;
+import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
+import io.debezium.relational.ddl.DdlParser;
+
 /**
  * @author Randall Hauch
  */
-public class MemorySchemaHistoryTest extends AbstractSchemaHistoryTest {
-
+public class MemorySchemaHistoryTest extends AbstractMemorySchemaHistoryTest<MySqlConnector> {
     @Override
-    protected SchemaHistory createHistory() {
-        return new MemorySchemaHistory();
+    protected DdlParser getDdlParser() {
+        return new MySqlAntlrDdlParser();
     }
 }

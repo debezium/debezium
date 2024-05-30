@@ -146,10 +146,9 @@ This means that you can control all of the log messages for a specific class or 
 
 . Configure a logger for the connector.
 +
---
-This example configures loggers for the MySQL connector and the database schema history implementation used by the connector,
-and sets them to log `DEBUG` level messages:
-
+The following example configures loggers for the MySQL connector and for the database schema history implementation used by the connector,
+and sets them to log `DEBUG` level messages: +
++
 .log4j.properties
 [source,properties,options="nowrap"]
 ----
@@ -158,42 +157,49 @@ log4j.logger.io.debezium.connector.mysql=DEBUG, stdout  // <1>
 log4j.logger.io.debezium.relational.history=DEBUG, stdout  // <2>
 
 log4j.additivity.io.debezium.connector.mysql=false  // <3>
-log4j.additivity.io.debezium.storage.kafka.history=false  // <3>
+log4j.additivity.io.debezium.storage.kafka.history=false
 ...
 ----
-<1> Configures the logger named `io.debezium.connector.mysql` to send `DEBUG`, `INFO`, `WARN`, and `ERROR` messages to the `stdout` appender.
-<2> Configures the logger named `io.debezium.relational.history` to send `DEBUG`, `INFO`, `WARN`, and `ERROR` messages to the `stdout` appender.
-<3> Turns off _additivity_,
-which results in log messages not being sent to the appenders of parent loggers (this can prevent seeing duplicate log messages when using multiple appenders).
---
++
+.Descriptions of `log4j.properties` settings
+[cols="1,7",options="header",subs="+attributes"]
+|===
+|Property |Description
+
+|1
+|Configures the logger named `io.debezium.connector.mysql` to send `DEBUG`, `INFO`, `WARN`, and `ERROR` messages to the `stdout` appender.
+
+|2
+|Configures the logger named `io.debezium.relational.history` to send `DEBUG`, `INFO`, `WARN`, and `ERROR` messages to the `stdout` appender.
+
+|3
+|This pair of `log4j.additivity.io` entries disable https://logging.apache.org/log4j/2.x/manual/configuration.html#additivity[additivity].
+If you use multiple appenders, set `additivity` values to `false` to prevent duplicate log messages from being sent to the appenders of the parent loggers.
+
+|===
 
 . If necessary, change the logging level for a specific subset of the classes within the connector.
 +
---
 Increasing the logging level for the entire connector increases the log verbosity,
 which can make it difficult to understand what is happening.
 In these cases,
 you can change the logging level just for the subset of classes that are related to the issue that you are troubleshooting.
---
 
 .. Set the connector's logging level to either `DEBUG` or `TRACE`.
 
 .. Review the connector's log messages.
 +
---
 Find the log messages that are related to the issue that you are troubleshooting.
 The end of each log message shows the name of the Java class that produced the message.
---
 
 .. Set the connector's logging level back to `INFO`.
 
 .. Configure a logger for each Java class that you identified.
 +
---
 For example, consider a scenario in which you are unsure why the MySQL connector is skipping some events when it is processing the binlog.
 Rather than turn on `DEBUG` or `TRACE` logging for the entire connector,
 you can keep the connector's logging level at `INFO` and then configure `DEBUG` or `TRACE` on just the class that is reading the binlog:
-
++
 .log4j.properties
 [source,properties,options="nowrap"]
 ----
@@ -207,7 +213,6 @@ log4j.additivity.io.debezium.storage.kafka.history=false
 log4j.additivity.io.debezium.connector.mysql.BinlogReader=false
 ...
 ----
---
 
 // Type: procedure
 // ModuleID: setting-the-debezium-logging-level-with-the-kafka-connect-rest-api

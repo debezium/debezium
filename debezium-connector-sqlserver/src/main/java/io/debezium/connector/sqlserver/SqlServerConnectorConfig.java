@@ -10,6 +10,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
@@ -46,7 +47,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
 
     public static final String MAX_TRANSACTIONS_PER_ITERATION_CONFIG_NAME = "max.iteration.transactions";
     protected static final int DEFAULT_PORT = 1433;
-    protected static final int DEFAULT_MAX_TRANSACTIONS_PER_ITERATION = 0;
+    protected static final int DEFAULT_MAX_TRANSACTIONS_PER_ITERATION = 500;
     private static final String READ_ONLY_INTENT = "ReadOnly";
     private static final String APPLICATION_INTENT_KEY = "database.applicationIntent";
     private static final int DEFAULT_QUERY_FETCH_SIZE = 10_000;
@@ -57,39 +58,63 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     public enum SnapshotMode implements EnumeratedValue {
 
         /**
+         * Performs a snapshot of data and schema upon each connector start.
+         */
+        ALWAYS("always"),
+
+        /**
          * Perform a snapshot of data and schema upon initial startup of a connector.
          */
-        INITIAL("initial", true),
+        INITIAL("initial"),
 
         /**
          * Perform a snapshot of data and schema upon initial startup of a connector but does not transition to streaming.
          */
-        INITIAL_ONLY("initial_only", true),
+        INITIAL_ONLY("initial_only"),
+
+        /**
+         * Perform a snapshot of the schema but no data upon initial startup of a connector.
+         * @deprecated to be removed in Debezium 3.0, replaced by {{@link #NO_DATA}}
+         */
+        SCHEMA_ONLY("schema_only"),
 
         /**
          * Perform a snapshot of the schema but no data upon initial startup of a connector.
          */
-        SCHEMA_ONLY("schema_only", false);
+        NO_DATA("no_data"),
+
+        /**
+         * Perform a snapshot of only the database schemas (without data) and then begin reading the redo log at the current redo log position.
+         * This can be used for recovery only if the connector has existing offsets and the schema.history.internal.kafka.topic does not exist (deleted).
+         * This recovery option should be used with care as it assumes there have been no schema changes since the connector last stopped,
+         * otherwise some events during the gap may be processed with an incorrect schema and corrupted.
+         */
+        RECOVERY("recovery"),
+
+        /**
+         * Perform a snapshot when it is needed.
+         */
+        WHEN_NEEDED("when_needed"),
+
+        /**
+         * Allows control over snapshots by setting connectors properties prefixed with 'snapshot.mode.configuration.based'.
+         */
+        CONFIGURATION_BASED("configuration_based"),
+
+        /**
+         * Inject a custom snapshotter, which allows for more control over snapshots.
+         */
+        CUSTOM("custom");
 
         private final String value;
-        private final boolean includeData;
 
-        SnapshotMode(String value, boolean includeData) {
+        SnapshotMode(String value) {
             this.value = value;
-            this.includeData = includeData;
         }
 
         @Override
         public String getValue() {
             return value;
-        }
-
-        /**
-         * Whether this snapshotting mode should include the actual data or just the
-         * schema of captured tables.
-         */
-        public boolean includeData() {
-            return includeData;
         }
 
         /**
@@ -127,6 +152,70 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                 mode = parse(defaultValue);
             }
 
+            return mode;
+        }
+    }
+
+    /**
+     * The set of predefined snapshot locking mode options.
+     */
+    public enum SnapshotLockingMode implements EnumeratedValue {
+
+        /**
+         * This mode will use exclusive lock TABLOCKX
+         */
+        EXCLUSIVE("exclusive"),
+
+        /**
+         * This mode will avoid using ANY table locks during the snapshot process.
+         * This mode should be used carefully only when no schema changes are to occur.
+         */
+        NONE("none"),
+
+        CUSTOM("custom");
+
+        private final String value;
+
+        SnapshotLockingMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static SnapshotLockingMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (SnapshotLockingMode option : SnapshotLockingMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static SnapshotLockingMode parse(String value, String defaultValue) {
+            SnapshotLockingMode mode = parse(value);
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
             return mode;
         }
     }
@@ -337,9 +426,9 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             .withImportance(Importance.LOW)
             .withDescription("Controls which transaction isolation level is used and how long the connector locks the captured tables. "
                     + "The default is '" + SnapshotIsolationMode.REPEATABLE_READ.getValue()
-                    + "', which means that repeatable read isolation level is used. In addition, exclusive locks are taken only during schema snapshot. "
+                    + "', which means that repeatable read isolation level is used. In addition, type of acquired lock during schema snapshot depends on `snapshot.locking.mode` property. "
                     + "Using a value of '" + SnapshotIsolationMode.EXCLUSIVE.getValue()
-                    + "' ensures that the connector holds the exclusive lock (and thus prevents any reads and updates) for all captured tables during the entire snapshot duration. "
+                    + "' ensures that the connector holds the type of lock specified with `snapshot.locking.mode` property (and thus prevents any reads and updates) for all captured tables during the entire snapshot duration. "
                     + "When '" + SnapshotIsolationMode.SNAPSHOT.getValue()
                     + "' is specified, connector runs the initial snapshot in SNAPSHOT isolation level, which guarantees snapshot consistency. In addition, neither table nor row-level locks are held. "
                     + "When '" + SnapshotIsolationMode.READ_COMMITTED.getValue()
@@ -347,6 +436,20 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                     + "other transactions from updating table rows. Snapshot consistency is not guaranteed."
                     + "In '" + SnapshotIsolationMode.READ_UNCOMMITTED.getValue()
                     + "' mode neither table nor row-level locks are acquired, but connector does not guarantee snapshot consistency.");
+
+    public static final Field SNAPSHOT_LOCKING_MODE = Field.create("snapshot.locking.mode")
+            .withDisplayName("Snapshot locking mode")
+            .withEnum(SnapshotLockingMode.class, SnapshotLockingMode.EXCLUSIVE)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 2))
+            .withDescription(
+                    "Controls how the connector holds locks on tables while performing the schema snapshot when `snapshot.isolation.mode` is `REPEATABLE_READ` or `EXCLUSIVE`. The 'exclusive' "
+                            + "which means the connector will hold a table lock for exclusive table access for just the initial portion of the snapshot "
+                            + "while the database schemas and other metadata are being read. The remaining work in a snapshot involves selecting all rows from "
+                            + "each table, and this is done using a flashback query that requires no locks. However, in some cases it may be desirable to avoid "
+                            + "locks entirely which can be done by specifying 'none'. This mode is only safe to use if no schema changes are happening while the "
+                            + "snapshot is taken.");
 
     public static final Field INCREMENTAL_SNAPSHOT_OPTION_RECOMPILE = Field.create("incremental.snapshot.option.recompile")
             .withDisplayName("Recompile SELECT statements")
@@ -383,6 +486,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                     PORT,
                     USER,
                     PASSWORD,
+                    QUERY_TIMEOUT_MS,
                     INSTANCE)
             .connector(
                     SNAPSHOT_MODE,
@@ -415,6 +519,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     private final String instanceName;
     private final SnapshotMode snapshotMode;
     private final SnapshotIsolationMode snapshotIsolationMode;
+    private final SnapshotLockingMode snapshotLockingMode;
     private final boolean readOnlyDatabaseConnection;
     private final int maxTransactionsPerIteration;
     private final boolean optionRecompile;
@@ -462,6 +567,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         this.optionRecompile = config.getBoolean(INCREMENTAL_SNAPSHOT_OPTION_RECOMPILE);
 
         this.dataQueryMode = DataQueryMode.parse(config.getString(DATA_QUERY_MODE), DATA_QUERY_MODE.defaultValueAsString());
+        this.snapshotLockingMode = SnapshotLockingMode.parse(config.getString(SNAPSHOT_LOCKING_MODE), SNAPSHOT_LOCKING_MODE.defaultValueAsString());
     }
 
     public List<String> getDatabaseNames() {
@@ -495,6 +601,10 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
 
     public SnapshotIsolationMode getSnapshotIsolationMode() {
         return this.snapshotIsolationMode;
+    }
+
+    public Optional<SnapshotLockingMode> getSnapshotLockingMode() {
+        return Optional.of(this.snapshotLockingMode);
     }
 
     public SnapshotMode getSnapshotMode() {

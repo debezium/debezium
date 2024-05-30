@@ -40,7 +40,7 @@ The CloudEvents specification defines:
 
 * A set of standardized event attributes
 * Rules for defining custom attributes
-* Encoding rules for mapping event formats to serialized representations such as JSON or Avro
+* Encoding rules for mapping event formats to serialized representations such as JSON or Apache Avro
 * Protocol bindings for transport layers such as Apache Kafka, HTTP or AMQP
 
 To configure a {prodname} connector to emit change event records that conform to the CloudEvents specification, {prodname} provides the `io.debezium.converters.CloudEventsConverter`, which is a Kafka Connect message converter.
@@ -180,9 +180,21 @@ The following example also shows what a CloudEvents change event record emitted 
   "data" : "AAAAAAEAAgICAg=="                        <3>
 }
 ----
-<1> Indicates that the `data` attribute contains Avro binary data.
-<2> URI of the schema to which the Avro data adheres.
-<3> The `data` attribute contains base64-encoded Avro binary data.
+.Descriptions of fields in a CloudEvents event record for a connector that uses Avro to format data
+[cols="1,7",options="header",subs="+attributes"]
+|===
+|Item |Description
+
+|1
+|Indicates that the `data` attribute contains Avro binary data.
+
+|2
+|URI of the schema to which the Avro data adheres.
+
+|3
+|The `data` attribute contains base64-encoded Avro binary data.
+
+|===
 
 It is also possible to use Avro for the envelope as well as the `data` attribute.
 
@@ -206,7 +218,15 @@ The following example shows how to configure the CloudEvents converter to emit c
 "value.converter.avro.schema.registry.url": "http://my-registry/schemas/ids/1"
 ...
 ----
-<1> Specifying the `serializer.type` is optional, because `json` is the default.
+[cols="1,7",options="header",subs="+attributes"]
+.Description of fields in CloudEvents converter configuration
+|===
+|Item |Description
+
+|1
+|Specifying the `serializer.type` is optional, because `json` is the default.
+
+|===
 
 The CloudEvents converter converts Kafka record values. In the same connector configuration, you can specify `key.converter` if you want to operate on record keys.
 For example, you might specify `StringConverter`, `LongConverter`, `JsonConverter`, or `AvroConverter`.

@@ -44,7 +44,7 @@ public class StreamingDatatypesIT extends AbstractOracleDatatypesTest {
 
         Configuration config = connectorConfig()
                 .with(OracleConnectorConfig.TIME_PRECISION_MODE, temporalPrecisionMode)
-                .with(OracleConnectorConfig.LOB_ENABLED, true)
+                .with(OracleConnectorConfig.LOB_ENABLED, !isHybridMiningStrategy())
                 .build();
 
         createTables();
@@ -62,7 +62,7 @@ public class StreamingDatatypesIT extends AbstractOracleDatatypesTest {
 
         return TestHelper.defaultConfig()
                 .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, tableIncludeList)
-                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY);
+                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA);
     }
 
     @Override

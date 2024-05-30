@@ -37,7 +37,7 @@ import io.fabric8.kubernetes.api.model.networking.v1.NetworkPolicyPortBuilder;
 import io.fabric8.openshift.api.model.Route;
 import io.fabric8.openshift.client.OpenShiftClient;
 import io.strimzi.api.kafka.Crds;
-import io.strimzi.api.kafka.model.KafkaConnect;
+import io.strimzi.api.kafka.model.connect.KafkaConnect;
 
 import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
@@ -269,7 +269,17 @@ public class OcpKafkaConnectController implements KafkaConnectController {
      */
     @Override
     public boolean undeploy() {
-        return kafkaConnectOperation(ocp).delete(kafkaConnect);
+        try {
+            kafkaConnectOperation(ocp).resource(kafkaConnect).delete();
+            kafkaConnectOperation(ocp)
+                    .resource(kafkaConnect)
+                    .waitUntilCondition(WaitConditions::resourceDeleted, scaled(1), MINUTES);
+        }
+        catch (Exception exception) {
+            LOGGER.error("Kafka connect cluster was not deleted");
+            return false;
+        }
+        return true;
     }
 
     @Override

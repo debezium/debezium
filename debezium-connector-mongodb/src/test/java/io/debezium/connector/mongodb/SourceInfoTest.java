@@ -248,6 +248,8 @@ public class SourceInfoTest {
                 .field("snapshot", AbstractSourceInfoStructMaker.SNAPSHOT_RECORD_SCHEMA)
                 .field("db", Schema.STRING_SCHEMA)
                 .field("sequence", Schema.OPTIONAL_STRING_SCHEMA)
+                .field("ts_us", Schema.OPTIONAL_INT64_SCHEMA)
+                .field("ts_ns", Schema.OPTIONAL_INT64_SCHEMA)
                 .field("collection", Schema.STRING_SCHEMA)
                 .field("ord", Schema.INT32_SCHEMA)
                 .field("lsid", Schema.OPTIONAL_STRING_SCHEMA)

@@ -9,6 +9,9 @@ import static org.apache.kafka.clients.consumer.ConsumerConfig.AUTO_OFFSET_RESET
 import static org.apache.kafka.clients.consumer.ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG;
 import static org.apache.kafka.clients.consumer.ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG;
 import static org.apache.kafka.clients.consumer.ConsumerConfig.GROUP_ID_CONFIG;
+import static org.apache.kafka.clients.producer.ProducerConfig.ACKS_CONFIG;
+import static org.apache.kafka.clients.producer.ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG;
+import static org.apache.kafka.clients.producer.ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG;
 
 import java.util.Properties;
 
@@ -56,5 +59,18 @@ public interface KafkaController {
         consumerProps.put(ENABLE_AUTO_COMMIT_CONFIG, false);
 
         return consumerProps;
+    }
+
+    /**
+     * @return default kafka producer configuration
+     */
+    default Properties getDefaultProducerProperties() {
+        Properties producerProps = new Properties();
+        producerProps.put(BOOTSTRAP_SERVERS_CONFIG, getPublicBootstrapAddress());
+        producerProps.put(KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
+        producerProps.put(VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
+        producerProps.put(ACKS_CONFIG, "all");
+
+        return producerProps;
     }
 }

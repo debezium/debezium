@@ -32,7 +32,9 @@ import org.junit.rules.TestRule;
 import io.debezium.config.Configuration;
 import io.debezium.config.Configuration.Builder;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
+import io.debezium.connector.oracle.junit.SkipTestDependingOnStrategyRule;
 import io.debezium.connector.oracle.junit.SkipTestWhenRunWithApicurioRule;
+import io.debezium.connector.oracle.junit.SkipWhenLogMiningStrategyIs;
 import io.debezium.connector.oracle.junit.SkipWhenRunWithApicurio;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.SchemaAndValueField;
@@ -290,6 +292,9 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
 
     @Rule
     public final TestRule skipApicurioRule = new SkipTestWhenRunWithApicurioRule();
+
+    @Rule
+    public final TestRule skipStrategyRule = new SkipTestDependingOnStrategyRule();
 
     private static OracleConnection connection;
 
@@ -614,6 +619,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
     }
 
     @Test
+    @SkipWhenLogMiningStrategyIs(value = SkipWhenLogMiningStrategyIs.Strategy.HYBRID, reason = "Cannot use lob.enabled with Hybrid")
     public void clobTypes() throws Exception {
         int expectedRecordCount = 0;
 
@@ -788,5 +794,9 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
 
     private void assertRecord(Struct record, List<SchemaAndValueField> expected) {
         expected.forEach(schemaAndValueField -> schemaAndValueField.assertFor(record));
+    }
+
+    protected static boolean isHybridMiningStrategy() {
+        return OracleConnectorConfig.LogMiningStrategy.HYBRID.equals(TestHelper.logMiningStrategy());
     }
 }

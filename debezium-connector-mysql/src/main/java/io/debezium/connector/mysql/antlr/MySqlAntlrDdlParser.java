@@ -16,6 +16,7 @@ import java.util.stream.Collectors;
 
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.misc.Interval;
 import org.antlr.v4.runtime.tree.ParseTree;
 
 import com.mysql.cj.CharsetMapping;
@@ -24,13 +25,15 @@ import io.debezium.antlr.AntlrDdlParser;
 import io.debezium.antlr.AntlrDdlParserListener;
 import io.debezium.antlr.DataTypeResolver;
 import io.debezium.antlr.DataTypeResolver.DataTypeEntry;
-import io.debezium.connector.mysql.MySqlSystemVariables;
-import io.debezium.connector.mysql.MySqlValueConverters;
+import io.debezium.connector.binlog.jdbc.BinlogSystemVariables;
 import io.debezium.connector.mysql.antlr.listener.MySqlAntlrDdlParserListener;
+import io.debezium.connector.mysql.jdbc.MySqlValueConverters;
 import io.debezium.ddl.parser.mysql.generated.MySqlLexer;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser.CharsetNameContext;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser.CollationNameContext;
+import io.debezium.ddl.parser.mysql.generated.MySqlParser.RenameTableClauseContext;
+import io.debezium.ddl.parser.mysql.generated.MySqlParser.RenameTableContext;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.SystemVariables;
@@ -64,7 +67,7 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
     public MySqlAntlrDdlParser(boolean throwErrorsFromTreeWalk, boolean includeViews, boolean includeComments,
                                MySqlValueConverters converters, TableFilter tableFilter) {
         super(throwErrorsFromTreeWalk, includeViews, includeComments);
-        systemVariables = new MySqlSystemVariables();
+        systemVariables = new BinlogSystemVariables();
         this.converters = converters;
         this.tableFilter = tableFilter;
     }
@@ -91,7 +94,7 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
 
     @Override
     protected SystemVariables createNewSystemVariablesInstance() {
-        return new MySqlSystemVariables();
+        return new BinlogSystemVariables();
     }
 
     @Override
@@ -379,9 +382,9 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
      * @return the name of the character set for the current database, or null if not known ...
      */
     public String currentDatabaseCharset() {
-        String charsetName = systemVariables.getVariable(MySqlSystemVariables.CHARSET_NAME_DATABASE);
+        String charsetName = systemVariables.getVariable(BinlogSystemVariables.CHARSET_NAME_DATABASE);
         if (charsetName == null || "DEFAULT".equalsIgnoreCase(charsetName)) {
-            charsetName = systemVariables.getVariable(MySqlSystemVariables.CHARSET_NAME_SERVER);
+            charsetName = systemVariables.getVariable(BinlogSystemVariables.CHARSET_NAME_SERVER);
         }
         return charsetName;
     }
@@ -462,5 +465,20 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
             }
         }
         return charsetName;
+    }
+
+    /**
+     * Signal an alter table event to ddl changes listener.
+     *
+     * @param id         the table identifier; may not be null
+     * @param previousId the previous name of the view if it was renamed, or null if it was not renamed
+     * @param ctx        the start of the statement; may not be null
+     */
+    public void signalAlterTable(TableId id, TableId previousId, RenameTableClauseContext ctx) {
+        final RenameTableContext parent = (RenameTableContext) ctx.getParent();
+        Interval interval = new Interval(ctx.getParent().start.getStartIndex(),
+                parent.renameTableClause().get(0).start.getStartIndex() - 1);
+        String prefix = ctx.getParent().start.getInputStream().getText(interval);
+        signalAlterTable(id, previousId, prefix + getText(ctx));
     }
 }

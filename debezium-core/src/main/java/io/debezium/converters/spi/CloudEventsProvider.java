@@ -22,21 +22,14 @@ public interface CloudEventsProvider {
     String getName();
 
     /**
-     * Create a concrete parser of a change record for the connector.
-     *
-     * @param recordAndMetadata record and its metadata
-     * @return a concrete parser
-     */
-    RecordParser createParser(RecordAndMetadata recordAndMetadata);
-
-    /**
      * Create a concrete CloudEvents maker using the outputs of a record parser. Also need to specify the data content
      * type (that is the serialization format of the data attribute).
      *
-     * @param parser the parser of a change record
-     * @param contentType the data content type of CloudEvents
+     * @param recordAndMetadata a structure containing the record and its metadata
+     * @param contentType       the data content type of CloudEvents
      * @param dataSchemaUriBase the URI of the schema in case of Avro; may be null
      * @return a concrete CloudEvents maker
      */
-    CloudEventsMaker createMaker(RecordParser parser, SerializerType contentType, String dataSchemaUriBase, String cloudEventsSchemaName);
+    CloudEventsMaker createMaker(RecordAndMetadata recordAndMetadata, SerializerType contentType, String dataSchemaUriBase,
+                                 String cloudEventsSchemaName);
 }

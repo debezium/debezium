@@ -31,7 +31,6 @@ import io.debezium.heartbeat.DatabaseHeartbeatImpl;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.testing.testcontainers.util.ContainerImageVersions;
-import io.debezium.util.Testing;
 
 /**
  * Integration test for {@link PostgresConnector} using an {@link EmbeddedEngine} and Testcontainers infrastructure for when Postgres is shutdown during streaming
@@ -109,7 +108,7 @@ public class PostgresShutdownIT extends AbstractConnectorTest {
                 .with(Heartbeat.HEARTBEAT_INTERVAL, 500)
                 .with(DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY, "UPDATE s1.heartbeat SET ts=NOW();");
 
-        Testing.Print.enable();
+        // Testing.Print.enable();
         PostgresConnection postgresConnection = TestHelper.create();
         String initialHeartbeat = postgresConnection.queryAndMap(
                 "SELECT ts FROM s1.heartbeat;",

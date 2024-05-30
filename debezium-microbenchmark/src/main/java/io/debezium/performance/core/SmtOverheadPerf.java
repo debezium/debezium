@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.connect.components.Versioned;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -27,6 +28,8 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
 
+import io.debezium.performance.Module;
+
 /**
  * A basic test to calculate overhead of using SMTs.
  *
@@ -35,7 +38,7 @@ import org.openjdk.jmh.annotations.Warmup;
  */
 public class SmtOverheadPerf {
 
-    private static class NewRecord implements Transformation<SourceRecord> {
+    private static class NewRecord implements Transformation<SourceRecord>, Versioned {
 
         @Override
         public void configure(Map<String, ?> configs) {
@@ -62,9 +65,14 @@ public class SmtOverheadPerf {
         @Override
         public void close() {
         }
+
+        @Override
+        public String version() {
+            return Module.version();
+        }
     }
 
-    private static class NoOp implements Transformation<SourceRecord> {
+    private static class NoOp implements Transformation<SourceRecord>, Versioned {
 
         @Override
         public void configure(Map<String, ?> configs) {
@@ -82,6 +90,11 @@ public class SmtOverheadPerf {
 
         @Override
         public void close() {
+        }
+
+        @Override
+        public String version() {
+            return Module.version();
         }
     }
 

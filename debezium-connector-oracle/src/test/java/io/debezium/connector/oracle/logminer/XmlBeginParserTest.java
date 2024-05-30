@@ -81,4 +81,22 @@ public class XmlBeginParserTest {
         parser.parse(redoSql, table);
     }
 
+    @Test
+    @FixFor("DBZ-7489")
+    public void shouldParseXmlDocBeginThatEndsWithIsNull() {
+        final Table table = Table.editor()
+                .tableId(TableId.parse("SCHEMA.TABLE"))
+                .addColumn(Column.editor().name("COLUMN_A").create())
+                .addColumn(Column.editor().name("COLUMN_B").create())
+                .addColumn(Column.editor().name("COLUMN_D").create())
+                .addColumn(Column.editor().name("TIME_A").create())
+                .addColumn(Column.editor().name("TIME_B").create())
+                .addColumn(Column.editor().name("MODIFICATIONTIME").create())
+                .addColumn(Column.editor().name("PROPERTIES").create())
+                .create();
+
+        String redoSql = "XML DOC BEGIN:  select \"PROPERTIES\" from \"SCHEMA\".\"TABLE\" where \"COLUMN_A\" = '314107' and \"COLUMN_B\" = '69265' and \"COLUMN_D\" = '74' and \"TIME_A\" = TO_TIMESTAMP_TZ('2024-02-14 10:58:02.202590 +01:00') and \"TIME_B\" = TO_TIMESTAMP_TZ('3000-01-01 00:00:00.000000 +00:00') and \"MODIFICATIONTIME\" IS NULL";
+        parser.parse(redoSql, table);
+    }
+
 }

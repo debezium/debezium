@@ -21,6 +21,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiPredicate;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.clients.producer.KafkaProducer;
@@ -45,6 +46,7 @@ import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.kafka.KafkaCluster;
 import io.debezium.pipeline.notification.channels.SinkNotificationChannel;
 import io.debezium.pipeline.signal.actions.snapshotting.StopSnapshot;
+import io.debezium.util.Testing;
 
 public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector> extends AbstractSnapshotTest<T> {
 
@@ -52,6 +54,18 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
     protected String getSignalTypeFieldName() {
         return "type";
+    }
+
+    protected abstract String noPKTopicName();
+
+    protected abstract String noPKTableName();
+
+    protected String noPKTableDataCollectionId() {
+        return noPKTableName();
+    }
+
+    protected String returnedIdentifierName(String queriedID) {
+        return queriedID;
     }
 
     protected void sendAdHocSnapshotStopSignal(String... dataCollectionIds) throws SQLException {
@@ -219,6 +233,72 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
     }
 
     @Test
+    public void insertsWithoutPks() throws Exception {
+        // Testing.Print.enable();
+
+        try (JdbcConnection connection = databaseConnection()) {
+            populate4PkTable(connection, noPKTableName());
+        }
+
+        startConnector();
+
+        sendAdHocSnapshotSignal(noPKTableDataCollectionId());
+
+        final int expectedRecordCount = ROW_COUNT;
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(
+                expectedRecordCount,
+                x -> true,
+                k -> k.getInt32(returnedIdentifierName("pk1")) * 1_000 + k.getInt32(returnedIdentifierName("pk2")) * 100
+                        + k.getInt32(returnedIdentifierName("pk3")) * 10 + k.getInt32(returnedIdentifierName("pk4")),
+                record -> ((Struct) record.value()).getStruct("after").getInt32(valueFieldName()),
+                noPKTopicName(),
+                null);
+        for (int i = 0; i < expectedRecordCount; i++) {
+            assertThat(dbChanges).contains(entry(i + 1, i));
+        }
+    }
+
+    @Test
+    public void insertsWithoutPksAndNull() throws Exception {
+        // Testing.Print.enable();
+
+        try (JdbcConnection connection = databaseConnection()) {
+            connection.setAutoCommit(false);
+            for (int pk1 = 10; pk1 <= 30; pk1 += 10) {
+                String pk1Str = pk1 == 10 ? "NULL" : String.valueOf(pk1);
+                for (int pk2 = 1; pk2 <= 3; pk2++) {
+                    String pk2Str = pk2 == 1 ? "NULL" : String.valueOf(pk2);
+                    int pkSum = pk1 + pk2;
+                    connection.executeWithoutCommitting(String.format(
+                            "INSERT INTO %s (pk1, pk2, pk3, pk4, aa) VALUES (%s, %s, 0, 0, %s)",
+                            noPKTableName(), pk1Str, pk2Str, pkSum));
+                }
+            }
+            connection.commit();
+        }
+
+        // Go only one row at a time so that each possible window boundary with a NULL is tested: this is important for this test
+        startConnector(cfg -> cfg.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 1));
+
+        sendAdHocSnapshotSignal(noPKTableDataCollectionId());
+
+        final int expectedRecordCount = 9;
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(
+                expectedRecordCount,
+                x -> true,
+                k -> Objects.requireNonNullElse(k.getInt32(returnedIdentifierName("pk1")), 10)
+                        + Objects.requireNonNullElse(k.getInt32(returnedIdentifierName("pk2")), 1),
+                record -> ((Struct) record.value()).getStruct("after").getInt32(valueFieldName()),
+                noPKTopicName(),
+                null);
+        for (int pk1 = 10; pk1 <= 30; pk1 += 10) {
+            for (int pk2 = 1; pk2 <= 3; pk2++) {
+                assertThat(dbChanges).contains(entry(pk1 + pk2, pk1 + pk2));
+            }
+        }
+    }
+
+    @Test
     public void updates() throws Exception {
         // Testing.Print.enable();
 
@@ -351,6 +431,67 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
                 });
         for (int i = 0; i < expectedRecordCount; i++) {
             assertThat(dbChanges).contains(entry(i + 1, i));
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-7716")
+    public void whenSnapshotMultipleTablesAndConnectorRestartsThenOnlyNotAlreadyProcessedTableMustBeProcessed() throws Exception {
+        // Testing.Print.enable();
+
+        populateTables();
+        final Configuration config = config()
+                .with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 200)
+                .build();
+        startAndConsumeTillEnd(connectorClass(), config);
+        waitForConnectorToStart();
+
+        waitForAvailableRecords(1, TimeUnit.SECONDS);
+        // there shouldn't be any snapshot records
+        assertNoRecordsToConsume();
+
+        sendAdHocSnapshotSignal(tableDataCollectionIds().toArray(new String[0]));
+
+        final int expectedRecordCount = ROW_COUNT * 2;
+        final AtomicInteger recordCounter = new AtomicInteger();
+        final AtomicBoolean restarted = new AtomicBoolean();
+
+        List<SourceRecord> dbChanges = new ArrayList<>();
+        consumeRecordsUntil((i, r) -> recordCounter.get() == expectedRecordCount,
+                (recordsConsumed, record) -> "",
+                5,
+                record -> {
+                    Testing.print("Record counter " + recordCounter.get());
+                    if (topicNames().contains(record.topic())) { // We want to exclude the changed from signal table
+                        dbChanges.add(record);
+                        if (!record.topic().contains(topicName()) &&
+                                recordCounter.addAndGet(1) > 150
+                                && !restarted.get()) {
+
+                            stopConnector();
+                            assertConnectorNotRunning();
+
+                            start(connectorClass(), config);
+                            waitForConnectorToStart();
+                            restarted.set(true);
+                        }
+                    }
+                },
+                false);
+
+        Map<String, List<SourceRecord>> recordsByTopic = dbChanges.stream().collect(Collectors.groupingBy(SourceRecord::topic,
+                Collectors.mapping(Function.identity(), Collectors.toList())));
+
+        Map<Integer, Integer> dbChangesA = recordsByTopic.get(topicNames().get(0)).stream()
+                .collect(Collectors.toMap(r -> ((Struct) r.key()).getInt32(pkFieldName()),
+                        record -> ((Struct) record.value()).getStruct("after").getInt32(valueFieldName())));
+        Map<Integer, Integer> dbChangesB = recordsByTopic.get(topicNames().get(1)).stream()
+                .collect(Collectors.toMap(r -> ((Struct) r.key()).getInt32(pkFieldName()),
+                        record -> ((Struct) record.value()).getStruct("after").getInt32(valueFieldName())));
+
+        for (int i = 0; i < expectedRecordCount / 2; i++) {
+            assertThat(dbChangesA).contains(entry(i + 1, i));
+            assertThat(dbChangesB).contains(entry(i + 1, i));
         }
     }
 
@@ -856,6 +997,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
     }
 
     @Test
+    // TODO seems slow try to speedup
     public void testNotification() throws Exception {
 
         populateTable();

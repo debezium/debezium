@@ -26,8 +26,6 @@ import org.bson.conversions.Bson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.mongodb.MongoChangeStreamException;
-import com.mongodb.MongoCommandException;
 import com.mongodb.client.ChangeStreamIterable;
 import com.mongodb.client.MongoChangeStreamCursor;
 import com.mongodb.client.MongoCollection;
@@ -35,7 +33,6 @@ import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
 
-import io.debezium.DebeziumException;
 import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.connector.mongodb.recordemitter.MongoDbSnapshotRecordEmitter;
@@ -53,6 +50,7 @@ import io.debezium.pipeline.spi.ChangeRecordEmitter;
 import io.debezium.pipeline.spi.SnapshotResult;
 import io.debezium.snapshot.SnapshotterService;
 import io.debezium.spi.schema.DataCollectionId;
+import io.debezium.spi.snapshot.Snapshotter;
 import io.debezium.util.Clock;
 import io.debezium.util.Strings;
 import io.debezium.util.Threads;
@@ -120,31 +118,39 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
     @Override
     public SnapshottingTask getBlockingSnapshottingTask(MongoDbPartition partition, MongoDbOffsetContext previousOffset, SnapshotConfiguration snapshotConfiguration) {
 
-        Map<String, String> filtersByTable = snapshotConfiguration.getAdditionalConditions().stream()
-                .collect(Collectors.toMap(k -> k.getDataCollection().toString(), AdditionalCondition::getFilter));
+        Map<DataCollectionId, String> filtersByTable = snapshotConfiguration.getAdditionalConditions().stream()
+                .collect(Collectors.toMap(k -> CollectionId.parse(k.getDataCollection().toString()), AdditionalCondition::getFilter));
 
         return new SnapshottingTask(false, true, snapshotConfiguration.getDataCollections(), filtersByTable, true);
     }
 
     @Override
-    public SnapshottingTask getSnapshottingTask(MongoDbPartition partition, MongoDbOffsetContext offsetContext) {
+    public SnapshottingTask getSnapshottingTask(MongoDbPartition partition, MongoDbOffsetContext previousOffset) {
 
-        List<String> dataCollectionsToBeSnapshotted = connectorConfig.getDataCollectionsToBeSnapshotted();
+        final Snapshotter snapshotter = snapshotterService.getSnapshotter();
+        final List<String> dataCollectionsToBeSnapshotted = connectorConfig.getDataCollectionsToBeSnapshotted();
 
-        // If no snapshot should occur, return task with no replica sets
-        if (this.connectorConfig.getSnapshotMode().equals(MongoDbConnectorConfig.SnapshotMode.NEVER)) {
+        boolean offsetExists = previousOffset != null;
+        boolean snapshotInProgress = false;
+
+        if (offsetExists) {
+            snapshotInProgress = previousOffset.isSnapshotRunning();
+        }
+
+        if (offsetExists && !previousOffset.isSnapshotRunning()) {
+            LOGGER.info("A previous offset indicating a completed snapshot has been found.");
+        }
+
+        boolean shouldSnapshotSchema = snapshotter.shouldSnapshotSchema(offsetExists, snapshotInProgress);
+        boolean shouldSnapshotData = snapshotter.shouldSnapshotData(offsetExists, snapshotInProgress);
+
+        if (!shouldSnapshotData) {
             LOGGER.info("According to the connector configuration, no snapshot will occur.");
-            return new SnapshottingTask(false, false, dataCollectionsToBeSnapshotted, Map.of(), false);
         }
 
-        if (offsetContext == null) {
-            LOGGER.info("No previous offset has been found");
-            return new SnapshottingTask(false, true, dataCollectionsToBeSnapshotted, connectorConfig.getSnapshotFilterQueryByCollection(), false);
-        }
-
-        var snapshotData = isSnapshotExpected(partition, offsetContext);
-
-        return new SnapshottingTask(false, snapshotData, dataCollectionsToBeSnapshotted, connectorConfig.getSnapshotFilterQueryByCollection(), false);
+        return new SnapshottingTask(shouldSnapshotSchema, shouldSnapshotData,
+                dataCollectionsToBeSnapshotted, connectorConfig.getSnapshotFilterQueryByCollection(),
+                false);
     }
 
     @Override
@@ -164,50 +170,6 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
             snapshotCtx.offset.preSnapshotCompletion();
             snapshotReceiver.completeSnapshot();
             snapshotCtx.offset.postSnapshotCompletion();
-        }
-    }
-
-    private boolean isSnapshotExpected(MongoDbPartition partition, MongoDbOffsetContext offsetContext) {
-        // todo: Right now we implement when needed snapshot by default. In the future we should provide the same options as other connectors.
-        if (!offsetContext.hasOffset()) {
-            LOGGER.info("No existing offset found, starting snapshot");
-            return true;
-        }
-
-        if (offsetContext.isSnapshotRunning()) {
-            // The latest snapshot was not completed, so restart it
-            LOGGER.info("The previous snapshot was incomplete, so restarting the snapshot");
-            return true;
-        }
-
-        LOGGER.info("Found existing offset for at {}", offsetContext.getOffset());
-        final BsonDocument token = offsetContext.lastResumeTokenDoc();
-
-        return isValidResumeToken(partition, token);
-    }
-
-    private boolean isValidResumeToken(MongoDbPartition partition, BsonDocument token) {
-        if (token == null) {
-            return false;
-        }
-
-        try (MongoDbConnection mongo = taskContext.getConnection(dispatcher, partition)) {
-            return mongo.execute("Checking change stream", client -> {
-                ChangeStreamIterable<BsonDocument> stream = MongoUtils.openChangeStream(client, taskContext);
-                stream.resumeAfter(token);
-
-                try (var ignored = stream.cursor()) {
-                    LOGGER.info("Valid resume token present, so no snapshot will be performed'");
-                    return false;
-                }
-                catch (MongoCommandException | MongoChangeStreamException e) {
-                    LOGGER.info("Invalid resume token present, snapshot will be performed'");
-                    return true;
-                }
-            });
-        }
-        catch (InterruptedException e) {
-            throw new DebeziumException("Interrupted while creating snapshotting task", e);
         }
     }
 
@@ -328,7 +290,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
                                                MongoDbSnapshotContext snapshotContext,
                                                SnapshotReceiver<MongoDbPartition> snapshotReceiver,
                                                CollectionId collectionId, MongoDbConnection mongo,
-                                               Map<String, String> snapshotFilterQueryForCollection)
+                                               Map<DataCollectionId, String> snapshotFilterQueryForCollection)
             throws InterruptedException {
         long exportStart = clock.currentTimeInMillis();
         LOGGER.info("\t Exporting data for collection '{}'", collectionId);
@@ -341,7 +303,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
             final int batchSize = taskContext.getConnectorConfig().getSnapshotFetchSize();
 
             long docs = 0;
-            Optional<String> snapshotFilterForCollectionId = Optional.ofNullable(snapshotFilterQueryForCollection.get(collectionId.dbName() + "." + collectionId.name()));
+            Optional<String> snapshotFilterForCollectionId = Optional.ofNullable(snapshotFilterQueryForCollection.get(collectionId));
             Bson filterQuery = Document.parse(snapshotFilterForCollectionId.orElse("{}"));
 
             try (MongoCursor<BsonDocument> cursor = collection.find(filterQuery).batchSize(batchSize).iterator()) {
@@ -378,6 +340,17 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
                 snapshotProgressListener.dataCollectionSnapshotCompleted(snapshotContext.partition, collectionId, docs);
             }
         });
+    }
+
+    private Optional<String> determineSnapshotQuery(Map<String, String> snapshotFilterQueryForCollection, CollectionId collectionId) {
+
+        String snapshotFilterForCollectionId = snapshotFilterQueryForCollection.get(collectionId.dbName() + "." + collectionId.name());
+
+        if (snapshotFilterForCollectionId != null) {
+            return Optional.of(snapshotFilterForCollectionId);
+        }
+
+        return Optional.empty();
     }
 
     private ChangeRecordEmitter<MongoDbPartition> getChangeRecordEmitter(SnapshotContext<MongoDbPartition, MongoDbOffsetContext> snapshotContext,

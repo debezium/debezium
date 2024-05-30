@@ -34,7 +34,11 @@ import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.RelationalSnapshotChangeEventSource.RelationalSnapshotContext;
 import io.debezium.relational.TableId;
 import io.debezium.relational.history.HistoryRecordComparator;
+import io.debezium.snapshot.SnapshotterService;
 import io.debezium.util.Clock;
+
+import oracle.streams.StreamsException;
+import oracle.streams.XStreamUtility;
 
 /**
  * The streaming adapter implementation for Oracle XStream.
@@ -86,7 +90,8 @@ public class XStreamAdapter extends AbstractStreamingAdapter<XStreamStreamingCha
                                                                                       OracleDatabaseSchema schema,
                                                                                       OracleTaskContext taskContext,
                                                                                       Configuration jdbcConfig,
-                                                                                      XStreamStreamingChangeEventSourceMetrics streamingMetrics) {
+                                                                                      XStreamStreamingChangeEventSourceMetrics streamingMetrics,
+                                                                                      SnapshotterService snapshotterService) {
         return new XstreamStreamingChangeEventSource(
                 connectorConfig,
                 connection,
@@ -141,6 +146,27 @@ public class XStreamAdapter extends AbstractStreamingAdapter<XStreamStreamingCha
                 .transactionContext(new TransactionContext())
                 .incrementalSnapshotContext(new SignalBasedIncrementalSnapshotContext<>())
                 .build();
+    }
+
+    @Override
+    public Scn getOffsetScn(OracleOffsetContext offsetContext) {
+
+        final byte[] startPosition;
+        String lcrPosition = offsetContext.getLcrPosition();
+        if (lcrPosition != null) {
+            startPosition = LcrPosition.valueOf(lcrPosition).getRawPosition();
+            return getScn(startPosition);
+        }
+        return offsetContext.getScn();
+    }
+
+    private static Scn getScn(byte[] startPosition) {
+        try {
+            return new Scn(XStreamUtility.getSCNFromPosition(startPosition).bigIntegerValue());
+        }
+        catch (StreamsException | SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
