@@ -15,6 +15,8 @@ import java.util.UUID;
 
 import org.bson.Document;
 
+import io.debezium.util.Strings;
+
 /**
  * KeyStringDecoder for decoding Mongo internal keystrings
  * It is based on keystringdecoder.ts and resumetokendecoder.ts in the mongodb-resumetoken-decoder github repo
@@ -73,6 +75,9 @@ public class KeyStringDecoder {
 
     // custom: introduce constant for txnOpIndex
     public static final String TXN_OP_INDEX_KEY = "txnOpIndex";
+    private static final String MODE_TOPLEVEL = "toplevel";
+    private static final String MODE_NAMED = "named";
+    private static final String MODE_SINGLE = "single";
 
     public static int numBytesForInt(int ctype) {
         if (ctype >= CType_kNumericPositive1ByteInt) {
@@ -153,14 +158,19 @@ public class KeyStringDecoder {
         }
     }
 
+    /**
+     * Converts a hexString to a byte array.
+     * Note this method pads with 0 if the hexString is even, given each character is 4 bits (half a byte)
+     */
     public static byte[] hexToByteArray(String hexString) {
-        int len = hexString.length();
-        byte[] data = new byte[len / 2];
-        for (int i = 0; i < len; i += 2) {
-            data[i / 2] = (byte) ((Character.digit(hexString.charAt(i), 16) << 4)
-                    + Character.digit(hexString.charAt(i + 1), 16));
+        if (hexString == null) {
+            return new byte[0];
         }
-        return data;
+        // if odd, pad hexString with 0. This is safe for KeyStringDecoder as it parses from left to right and supports truncated tokens
+        if (hexString.length() % 2 != 0) {
+            hexString += "0";
+        }
+        return Strings.hexStringToByteArray(hexString);
     }
 
     public static String uint8ArrayToHex(byte[] arr) {
@@ -200,7 +210,7 @@ public class KeyStringDecoder {
                 return buf.readCStringWithNuls(); // Placeholder for Code
             case CType_kCodeWithScope:
                 String code = buf.readCStringWithNuls();
-                Map<String, Object> scope = (Map<String, Object>) keystringToBsonPartial(version, buf, "named");
+                Map<String, Object> scope = (Map<String, Object>) keystringToBsonPartial(version, buf, MODE_NAMED);
                 return Map.of("code", code, "scope", scope);
             case CType_kBinData:
                 long size = buf.readUint8();
@@ -220,11 +230,11 @@ public class KeyStringDecoder {
                 String refId = uint8ArrayToHex(buf.readBytes(12));
                 return Map.of("$ref", ns, "$id", refId);
             case CType_kObject:
-                return keystringToBsonPartial(version, buf, "named");
+                return keystringToBsonPartial(version, buf, MODE_NAMED);
             case CType_kArray:
                 List<Object> arr = new ArrayList<>();
                 while (buf.peekUint8() != 0) {
-                    arr.add(keystringToBsonPartial(version, buf, "single"));
+                    arr.add(keystringToBsonPartial(version, buf, MODE_SINGLE));
                 }
                 buf.readUint8(); // consume 0-byte
                 return arr;
@@ -398,34 +408,43 @@ public class KeyStringDecoder {
     private static Object keystringToBsonPartial(String version, BufferConsumer buf, String mode) {
         Map<String, Object> contents = new HashMap<>();
         List<Object> contentsList = new ArrayList<>();
-        while (buf.peekUint8() != -1) {
-            int ctype = buf.readUint8();
-            if (ctype == kLess || ctype == kGreater) {
-                ctype = buf.readUint8();
-            }
-            if (ctype == kEnd) {
-                break;
-            }
-            if ("named".equals(mode)) {
-                if (ctype == 0) {
+        try {
+            while (buf.peekUint8() != -1) {
+                int ctype = buf.readUint8();
+                if (ctype == kLess || ctype == kGreater) {
+                    ctype = buf.readUint8();
+                }
+                if (ctype == kEnd) {
                     break;
                 }
-                String key = buf.readCString();
-                ctype = buf.readUint8(); // again ctype, but more accurate this time
-                contents.put(key, readValue(ctype, version, buf));
-            }
-            else if ("single".equals(mode)) {
-                return readValue(ctype, version, buf);
-            }
-            else {
-                contentsList.add(readValue(ctype, version, buf));
+                if (MODE_NAMED.equals(mode)) {
+                    if (ctype == 0) {
+                        break;
+                    }
+                    String key = buf.readCString();
+                    ctype = buf.readUint8(); // again ctype, but more accurate this time
+                    contents.put(key, readValue(ctype, version, buf));
+                }
+                else if (MODE_SINGLE.equals(mode)) {
+                    return readValue(ctype, version, buf);
+                }
+                else {
+                    contentsList.add(readValue(ctype, version, buf));
+                }
             }
         }
-        return "named".equals(mode) ? contents : contentsList;
+        catch (Exception e) {
+            // for the top level result, ignore exceptions to allow partially parsed result
+            // (which may contain the fields we care about)
+            if (!mode.equals(MODE_TOPLEVEL)) {
+                throw e;
+            }
+        }
+        return MODE_NAMED.equals(mode) ? contents : contentsList;
     }
 
     public static Document tokenStringToBson(String version, byte[] buf) {
-        List<Object> obj = (List<Object>) keystringToBsonPartial(version, new BufferConsumer(buf), "toplevel");
+        List<Object> obj = (List<Object>) keystringToBsonPartial(version, new BufferConsumer(buf), MODE_TOPLEVEL);
         Document bsonDoc = new Document();
 
         try {

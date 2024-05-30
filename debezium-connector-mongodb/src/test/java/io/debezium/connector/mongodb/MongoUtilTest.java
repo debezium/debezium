@@ -228,7 +228,7 @@ public class MongoUtilTest {
                 resumeTokenDocument("8266561E1B000000062"), "received unexpected exception",
                 // throws exception with resumeTokenDocument having expected "_data" field but having invalid token
                 resumeTokenDocument("8266561E1B000000062B022C"),
-                "java.lang.RuntimeException: received unexpected exception 'java.lang.RuntimeException: unexpected end of input'",
+                "received unexpected exception 'java.lang.RuntimeException: decoded token does not have 'txnOpIndex' field or its value is null'",
                 // throws exception with empty resumeTokenDocument
                 new BsonDocument(), "java.lang.NullPointerException",
                 // throws exception with resumeTokenDocument with unexpected field

@@ -21,6 +21,8 @@ import org.bson.json.JsonMode;
 import org.bson.json.JsonWriterSettings;
 import org.junit.Test;
 
+import com.mongodb.assertions.Assertions;
+
 import io.debezium.util.IoUtil;
 import io.debezium.util.Testing;
 
@@ -78,6 +80,45 @@ public class ResumeTokenDecoderTest {
         expectedDoc.remove("txnOpIndex");
         expectedDoc.append("txnOpIndex", 101);
         assertThat(normalizeDoc(actualDoc)).isNotEqualTo(normalizeDoc(expectedDoc));
+    }
+
+    /**
+     * test that partial tokens (i.e. truncated) can be successfully parsed up until the section containing txnOpIdx
+     * normally `npx mongodb-resumetoken-decoder $token` will fail for some truncated tokens, but ResumeTokenDecoder should
+     * tolerate truncated tokens
+     */
+    @Test
+    public void allowsPartialToken() {
+        final String resumeToken = "8265F49506000007662B022C01002B066E5A1004448A9E1A91724ECA875AAFA40773D05C46645F6964006465F49506238B3BBCC1CB20C00004";
+        final String shortestTknPrefixWithTxnOpIdx = "8265F49506000007662B022C01002B06";
+        var expectedTxnOpIdx = 3; // npx mongodb-resumetoken-decoder $token
+
+        assertThat(expectedTxnOpIdx).isEqualTo(ResumeTokenDecoder.txnOpIndexFromTokenHex(resumeToken));
+        // verify that this wasn't changed
+        assertThat(resumeToken.startsWith(shortestTknPrefixWithTxnOpIdx)).as(String.format("%s is not a prefix of %s", shortestTknPrefixWithTxnOpIdx, resumeToken))
+                .isTrue();
+
+        var testToken = resumeToken;
+        while (!testToken.isEmpty()) {
+            try {
+                assertThat(expectedTxnOpIdx)
+                        .isEqualTo(ResumeTokenDecoder.txnOpIndexFromTokenHex(testToken));
+            }
+            catch (RuntimeException e) {
+                // an exception should only be thrown if testToken length is smaller than what yields a txnOpIdx
+                if (testToken.length() >= shortestTknPrefixWithTxnOpIdx.length()) {
+                    Assertions.fail(String.format("unexpected exception %s thrown", e));
+                }
+                assertThat(e).isInstanceOf(RuntimeException.class);
+                assertThat(e.getMessage().contains(String.format("decoded token does not have '%s' field or is null", KeyStringDecoder.TXN_OP_INDEX_KEY)));
+            }
+            // check that decoding token always returns (without exception), even if empty token (and resulting empty document)
+            ResumeTokenDecoder.tokenHexToBson(testToken);
+            testToken = testToken.substring(0, testToken.length() - 2);
+        }
+
+        // test that we can handle null strings
+        ResumeTokenDecoder.tokenHexToBson(null);
     }
 
     private static Document normalizeDoc(Document doc) {
