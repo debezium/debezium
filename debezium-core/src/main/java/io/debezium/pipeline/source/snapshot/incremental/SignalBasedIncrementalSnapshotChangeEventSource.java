@@ -35,7 +35,6 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SignalBasedIncrementalSnapshotChangeEventSource.class);
     private final String signalWindowStatement;
-    private final String signalWindowDeleteStatement;
     private SignalMetadata signalMetadata;
 
     public SignalBasedIncrementalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig config,
@@ -48,7 +47,6 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
         super(config, jdbcConnection, dispatcher, databaseSchema, clock, progressListener, dataChangeEventListener, notificationService);
         signalWindowStatement = "INSERT INTO " + getSignalTableName(config.getSignalingDataCollectionId())
                 + " VALUES (?, ?, ?)";
-        signalWindowDeleteStatement = "DELETE FROM " + getSignalTableName(config.getSignalingDataCollectionId()) + " WHERE id = ?";
     }
 
     @Override
