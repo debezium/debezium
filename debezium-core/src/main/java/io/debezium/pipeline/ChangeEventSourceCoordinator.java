@@ -19,6 +19,9 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
+import io.debezium.config.ConfigurationDefaults;
+import io.debezium.util.Clock;
+import io.debezium.util.Metronome;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -193,8 +196,34 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
         LOGGER.debug("Snapshot result {}", snapshotResult);
 
         if (running && snapshotResult.isCompletedOrSkipped()) {
+            if (snapshotResult.isCompleted()) {
+                delayStreamingIfNeeded(context);
+            }
             previousLogContext.set(taskContext.configureLoggingContext("streaming", partition));
             streamEvents(context, partition, snapshotResult.getOffset());
+        }
+    }
+
+    /**
+     * Delays streaming execution as per the {@link CommonConnectorConfig#STREAMING_DELAY_MS} parameter.
+     */
+    protected void delayStreamingIfNeeded(ChangeEventSourceContext context) throws InterruptedException {
+        Duration streamingDelay = connectorConfig.getStreamingDelay();
+
+        if (streamingDelay.isZero() || streamingDelay.isNegative()) {
+            return;
+        }
+
+        Threads.Timer timer = Threads.timer(Clock.SYSTEM, streamingDelay);
+        Metronome metronome = Metronome.parker(ConfigurationDefaults.RETURN_CONTROL_INTERVAL, Clock.SYSTEM);
+
+        while (!timer.expired()) {
+            if (!context.isRunning()) {
+                throw new InterruptedException("Interrupted while awaiting streaming delay");
+            }
+
+            LOGGER.info("The connector will wait for {}s before initiating streaming", timer.remaining().getSeconds());
+            metronome.pause();
         }
     }
 

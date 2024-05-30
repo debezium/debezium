@@ -958,6 +958,16 @@ public abstract class CommonConnectorConfig {
                     + "'warn' (the default) the value of column of event that conversion failed will be null and be logged with warn level; "
                     + "'skip' the value of column of event that conversion failed will be null and be logged with debug level.");
 
+    public static final Field STREAMING_DELAY_MS = Field.create("streaming.delay.ms")
+            .withDisplayName("Streaming Delay (milliseconds)")
+            .withType(Type.LONG)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 27))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.LOW)
+            .withDescription("A delay period after the snapshot is completed and the streaming begins, given in milliseconds. Defaults to 0 ms.")
+            .withDefault(0L)
+            .withValidation(Field::isNonNegativeLong);
+
     public static final Field SNAPSHOT_LOCKING_MODE_CUSTOM_NAME = Field.create("snapshot.locking.mode.custom.name")
             .withDisplayName("Snapshot Locking Mode Custom Name")
             .withType(Type.STRING)
@@ -1075,6 +1085,7 @@ public abstract class CommonConnectorConfig {
                     PROVIDE_TRANSACTION_METADATA,
                     SKIPPED_OPERATIONS,
                     SNAPSHOT_DELAY_MS,
+                    STREAMING_DELAY_MS,
                     SNAPSHOT_MODE_TABLES,
                     SNAPSHOT_FETCH_SIZE,
                     SNAPSHOT_MAX_THREADS,
@@ -1115,6 +1126,7 @@ public abstract class CommonConnectorConfig {
     private final String heartbeatTopicsPrefix;
     private final Duration heartbeatInterval;
     private final Duration snapshotDelay;
+    private final Duration streamingDelay;
     private final Duration retriableRestartWait;
     private final int snapshotFetchSize;
     private final int incrementalSnapshotChunkSize;
@@ -1164,6 +1176,7 @@ public abstract class CommonConnectorConfig {
         this.heartbeatTopicsPrefix = config.getString(Heartbeat.HEARTBEAT_TOPICS_PREFIX);
         this.heartbeatInterval = config.getDuration(Heartbeat.HEARTBEAT_INTERVAL, ChronoUnit.MILLIS);
         this.snapshotDelay = Duration.ofMillis(config.getLong(SNAPSHOT_DELAY_MS));
+        this.streamingDelay = Duration.ofMillis(config.getLong(STREAMING_DELAY_MS));
         this.retriableRestartWait = Duration.ofMillis(config.getLong(RETRIABLE_RESTART_WAIT));
         this.snapshotFetchSize = config.getInteger(SNAPSHOT_FETCH_SIZE, defaultSnapshotFetchSize);
         this.snapshotMaxThreads = config.getInteger(SNAPSHOT_MAX_THREADS);
@@ -1293,6 +1306,10 @@ public abstract class CommonConnectorConfig {
 
     public Duration getSnapshotDelay() {
         return snapshotDelay;
+    }
+
+    public Duration getStreamingDelay() {
+        return streamingDelay;
     }
 
     public int getSnapshotFetchSize() {
