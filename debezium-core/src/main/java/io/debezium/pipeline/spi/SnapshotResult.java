@@ -31,6 +31,10 @@ public class SnapshotResult<O extends OffsetContext> {
         return this.status == SnapshotResultStatus.SKIPPED || this.status == SnapshotResultStatus.COMPLETED;
     }
 
+    public boolean isCompleted() {
+        return this.status == SnapshotResultStatus.COMPLETED;
+    }
+
     public SnapshotResultStatus getStatus() {
         return status;
     }
