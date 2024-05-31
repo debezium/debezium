@@ -19,9 +19,6 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-import io.debezium.config.ConfigurationDefaults;
-import io.debezium.util.Clock;
-import io.debezium.util.Metronome;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,6 +26,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.DebeziumException;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.config.ConfigurationDefaults;
 import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.pipeline.metrics.SnapshotChangeEventSourceMetrics;
@@ -54,7 +52,9 @@ import io.debezium.pipeline.spi.SnapshotResult.SnapshotResultStatus;
 import io.debezium.schema.DatabaseSchema;
 import io.debezium.snapshot.SnapshotterService;
 import io.debezium.spi.schema.DataCollectionId;
+import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext;
+import io.debezium.util.Metronome;
 import io.debezium.util.Threads;
 
 /**
@@ -208,8 +208,11 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
      * Delays streaming execution as per the {@link CommonConnectorConfig#STREAMING_DELAY_MS} parameter.
      */
     protected void delayStreamingIfNeeded(ChangeEventSourceContext context) throws InterruptedException {
-        Duration streamingDelay = connectorConfig.getStreamingDelay();
+        if (snapshotterService != null && !snapshotterService.getSnapshotter().shouldStream()) {
+            return;
+        }
 
+        Duration streamingDelay = connectorConfig.getStreamingDelay();
         if (streamingDelay.isZero() || streamingDelay.isNegative()) {
             return;
         }
