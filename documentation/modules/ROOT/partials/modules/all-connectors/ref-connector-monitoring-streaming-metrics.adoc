@@ -14,19 +14,20 @@ The following table lists the streaming metrics that are available.
 
 |[[connectors-strm-metric-totalnumberofeventsseen_{context}]]<<connectors-strm-metric-totalnumberofeventsseen_{context}, `TotalNumberOfEventsSeen`>>
 |`long`
-|The total number of events that this connector has seen since the last start or metrics reset. (Calculated based on replication protocol events)
+|The total number of data change events reported by the source database since the last connector start, or since a metrics reset. 
+Represents the data change workload for {prodname} to process.
 
 |[[connectors-strm-metric-totalnumberofcreateeventsseen_{context}]]<<connectors-strm-metric-totalnumberofcreateeventsseen_{context}, `TotalNumberOfCreateEventsSeen`>>
 |`long`
-|The total number of create events that this connector has seen since the last start or metrics reset. (Calculated by Debezium)
+|The total number of create events processed by the connector since its last start or metrics reset.
 
 |[[connectors-strm-metric-totalnumberofupdateeventsseen_{context}]]<<connectors-strm-metric-totalnumberofupdateeventsseen_{context}, `TotalNumberOfUpdateEventsSeen`>>
 |`long`
-|The total number of update events that this connector has seen since the last start or metrics reset. (Calculated by Debezium)
+|The total number of update events processed by the connector since its last start or metrics reset.
 
 |[[connectors-strm-metric-totalnumberofdeleteeventsseen_{context}]]<<connectors-strm-metric-totalnumberofdeleteeventsseen_{context}, `TotalNumberOfDeleteEventsSeen`>>
 |`long`
-|The total number of delete events that this connector has seen since the last start or metrics reset. (Calculated by Debezium)
+|The total number of delete events processed by the connector since its last start or metrics reset.
 
 |[[connectors-strm-metric-numberofeventsfiltered_{context}]]<<connectors-strm-metric-numberofeventsfiltered_{context}, `NumberOfEventsFiltered`>>
 |`long`
