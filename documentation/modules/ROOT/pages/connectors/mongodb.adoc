@@ -1920,6 +1920,10 @@ For each collection that you specify, also specify another configuration propert
 |An interval in milliseconds that the connector should wait before taking a snapshot after starting up; +
 Can be used to avoid snapshot interruptions when starting multiple connectors in a cluster, which may cause re-balancing of connectors.
 
+|[[mongodb-property-streaming-delay-ms]]<<mongodb-property-streaming-delay-ms, `+streaming.delay.ms+`>>
+|0
+|An interval in milliseconds that the connector should wait before initiating the streaming process after completing the snapshot. This delay helps prevent the connector from re-snapshotting if it encounters a failure immediately after finishing the snapshot and before starting the streaming process. Set this value higher than the `offset.flush.interval.ms` property of the Connect worker to ensure sufficient delay.
+
 |[[mongodb-property-snapshot-fetch-size]]<<mongodb-property-snapshot-fetch-size, `+snapshot.fetch.size+`>>
 |`0`
 |Specifies the maximum number of documents that should be read in one go from each collection while taking a snapshot.
