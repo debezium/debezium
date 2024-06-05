@@ -5,6 +5,8 @@
  */
 package io.debezium.relational.mapping;
 
+import java.nio.ByteBuffer;
+
 import org.apache.kafka.connect.data.SchemaBuilder;
 
 import io.debezium.annotation.Immutable;
@@ -12,21 +14,21 @@ import io.debezium.relational.Column;
 import io.debezium.relational.ValueConverter;
 
 /**
- * A {@link ColumnMapper} implementation that ensures that string values longer than a specified length will be truncated.
+ * A {@link ColumnMapper} implementation that ensures that column values longer than a specified length will be truncated.
  *
  * @author Randall Hauch
  */
-public class TruncateStrings implements ColumnMapper {
+public class TruncateColumn implements ColumnMapper {
 
     private final TruncatingValueConverter converter;
 
     /**
-     * Create a {@link ColumnMapper} that truncates string values to a maximum length.
+     * Create a {@link ColumnMapper} that truncates column values to a maximum length.
      *
      * @param maxLength the maximum number of characters allowed in values
      * @throws IllegalArgumentException if the {@code maxLength} is not positive
      */
-    public TruncateStrings(int maxLength) {
+    public TruncateColumn(int maxLength) {
         if (maxLength <= 0) {
             throw new IllegalArgumentException("Maximum length must be positive");
         }
@@ -65,6 +67,13 @@ public class TruncateStrings implements ColumnMapper {
                 String str = (String) value;
                 if (str.length() > maxLength) {
                     return str.substring(0, maxLength);
+                }
+            }
+            else if (value instanceof ByteBuffer) {
+                ByteBuffer buffer = (ByteBuffer) value;
+                if (buffer.limit() > maxLength) {
+                    buffer.limit(maxLength);
+                    return buffer.slice();
                 }
             }
             return value;
