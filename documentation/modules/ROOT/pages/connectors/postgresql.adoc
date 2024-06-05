@@ -3551,6 +3551,10 @@ become outdated if TOASTable columns are dropped from the table.
 |No default
 |An interval in milliseconds that the connector should wait before performing a snapshot when the connector starts. If you are starting multiple connectors in a cluster, this property is useful for avoiding snapshot interruptions, which might cause re-balancing of connectors.
 
+|[[postgresql-property-streaming-delay-ms]]<<postgresql-property-streaming-delay-ms, `+streaming.delay.ms+`>>
+|0
+|An interval in milliseconds that the connector should wait before initiating the streaming process after completing the snapshot. This delay helps prevent the connector from re-snapshotting if it encounters a failure immediately after finishing the snapshot and before starting the streaming process. Set this value higher than the `offset.flush.interval.ms` property of the Connect worker to ensure sufficient delay.
+
 |[[postgresql-property-snapshot-fetch-size]]<<postgresql-property-snapshot-fetch-size, `+snapshot.fetch.size+`>>
 |`10240`
 |During a snapshot, the connector reads table content in batches of rows. This property specifies the maximum number of rows in a batch.

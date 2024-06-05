@@ -3793,6 +3793,10 @@ After the connector inserts records into the configured table, it is able to rec
 |Specifies an interval in milliseconds that the connector waits after it starts before it takes a snapshot. +
 Use this property to prevent snapshot interruptions when you start multiple connectors in a cluster, which might cause re-balancing of connectors.
 
+|[[oracle-property-streaming-delay-ms]]<<oracle-property-streaming-delay-ms, `+streaming.delay.ms+`>>
+|0
+|An interval in milliseconds that the connector should wait before initiating the streaming process after completing the snapshot. This delay helps prevent the connector from re-snapshotting if it encounters a failure immediately after finishing the snapshot and before starting the streaming process. Set this value higher than the `offset.flush.interval.ms` property of the Connect worker to ensure sufficient delay.
+
 |[[oracle-property-snapshot-fetch-size]]<<oracle-property-snapshot-fetch-size, `+snapshot.fetch.size+`>>
 |`10000`
 |Specifies the maximum number of rows that should be read in one go from each table while taking a snapshot.

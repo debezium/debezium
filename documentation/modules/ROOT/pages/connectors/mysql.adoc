@@ -3748,6 +3748,10 @@ The connector might establish JDBC connections at its own discretion, so this pr
 |No default
 |An interval in milliseconds that the connector should wait before performing a snapshot when the connector starts. If you are starting multiple connectors in a cluster, this property is useful for avoiding snapshot interruptions, which might cause re-balancing of connectors.
 
+|[[mysql-property-streaming-delay-ms]]<<mysql-property-streaming-delay-ms, `+streaming.delay.ms+`>>
+|0
+|An interval in milliseconds that the connector should wait before initiating the streaming process after completing the snapshot. This delay helps prevent the connector from re-snapshotting if it encounters a failure immediately after finishing the snapshot and before starting the streaming process. Set this value higher than the `offset.flush.interval.ms` property of the Connect worker to ensure sufficient delay.
+
 |[[mysql-property-snapshot-fetch-size]]<<mysql-property-snapshot-fetch-size, `+snapshot.fetch.size+`>>
 |No default
 |During a snapshot, the connector reads table content in batches of rows. This property specifies the maximum number of rows in a batch.
