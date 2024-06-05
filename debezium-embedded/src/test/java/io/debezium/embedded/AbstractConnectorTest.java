@@ -951,15 +951,28 @@ public abstract class AbstractConnectorTest implements Testing {
      * @return {@code true} if records are available, or {@code false} if the timeout occurred and no records are available
      */
     protected boolean waitForAvailableRecords(long timeout, TimeUnit unit) {
-        assertThat(timeout).isGreaterThanOrEqualTo(0);
-        long now = System.currentTimeMillis();
-        long stop = now + unit.toMillis(timeout);
-        while (System.currentTimeMillis() < stop) {
-            if (!consumedLines.isEmpty()) {
-                break;
-            }
+        assertThat(timeout).isNotNegative();
+        assertThat(unit).isNotNull();
+        try {
+            Awaitility.await()
+                    .alias("Records were not available on time")
+                    .pollInterval(timeout < 10
+                            ? unit.toChronoUnit().getDuration().dividedBy(10)
+                            : unit.toChronoUnit().getDuration())
+                    .atMost(timeout, unit)
+                    .until(() -> !consumedLines.isEmpty());
+        }
+        catch (ConditionTimeoutException ignore) {
+            // IGNORE
         }
         return !consumedLines.isEmpty();
+    }
+
+    /**
+     * Wait for a maximum amount of time until the first record is available.
+     */
+    protected boolean waitForAvailableRecords() {
+        return waitForAvailableRecords(waitTimeForRecords() * 30L, TimeUnit.SECONDS);
     }
 
     /**
