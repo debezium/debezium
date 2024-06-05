@@ -49,6 +49,14 @@ ifdef::community[]
 The Db2 connector has been tested with Db2 for Linux.
 It is expected that the connector would also work on other platforms such as Windows,
 and we'd love to get your feedback if you can confirm this to be the case.
+
+The Db2 connector has also *incubating* support for Db2 on z/OS.
+Please see  xref:db2-property-db2-platform[`db2.platform`] configuration option for more details.
+
+[IMPORTANT]
+====
+Db2 versions with 6-bytes LSNs are not currently supported.
+====
 endif::community[]
 
 ifdef::product[]
@@ -2450,6 +2458,19 @@ The following configuration properties are _required_ unless a default value is 
 |No default
 |The name of the Db2 database from which to stream the changes
 
+ifdef::community[]
+|[[db2-property-db2-platform]]<<db2-property-db2-platform, `+db2.platform+`>>
+|`LUW`
+|The Db2 server platform.
+Can be either `LUW` for Linux/Unix/Windows or `ZOS` for Db2 on z/OS. +
+The z/OS support is incubating. +
+ +
+[NOTE]
+====
+When z/OS is used it might be necessary to configure also xref:db2-property-cdc-control-schema[`cdc.control.schema`] and xref:db2-property-cdc-change-tables-schema[`cdc.change.tables.schema`] configuration options.
+====
+endif::community[]
+
 |[[db2-property-topic-prefix]]<<db2-property-topic-prefix, `+topic.prefix+`>>
 |No default
 |Topic prefix which provides a namespace for the particular Db2 database server that hosts the database for which {prodname} is capturing changes.
@@ -3059,6 +3080,16 @@ After the next failure, the connector stops, and user intervention is required t
 |`600000` (10 minutes)
 |Specifies the time, in milliseconds, that the connector waits for a query to complete.
 Set the value to `0` (zero) to remove the timeout limit.
+
+ifdef::community[]
+|[[db2-property-cdc-control-schema]]<<db2-property-cdc-control-schema, `cdc.control.schema`>>
+|`ASNCDC`
+|Specifies the name of the database schema where CDC control structures are located.
+
+|[[db2-property-cdc-change-tables-schema]]<<db2-property-cdc-change-tables-schema, `cdc.change.tables.schema`>>
+|`ASNCDC`
+|Specifies the name of the database schema where CDC change tables are located.
+endif::community[]
 
 |===
 
