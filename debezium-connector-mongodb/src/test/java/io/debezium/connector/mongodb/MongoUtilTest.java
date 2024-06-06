@@ -42,7 +42,7 @@ public class MongoUtilTest {
     }
 
     @Test
-    public void shouldParseIPv4ServerAddressWithoPort() {
+    public void shouldParseIPv4ServerAddressWithPort() {
         address = MongoUtil.parseAddress("localhost:28017");
         assertThat(address.getHost()).isEqualTo("localhost");
         assertThat(address.getPort()).isEqualTo(28017);
@@ -262,13 +262,11 @@ public class MongoUtilTest {
     }
 
     @Test
-    public void changeStreamEventToStringCompact() {
+    public void changeStreamEventToStringCompactSucceeds() {
         // Testing.Print.enable();
-
         var testEvent = testChangestreamDocument(resumeTokenDocument("8266561E1B000000062"), false);
-        var expectedCompactString = "ChangeStreamDocument{ operationType=insert, resumeToken={\"_data\": \"8266561E1B000000062\"}, namespace=null, destinationNamespace=null, documentKey=null, clusterTime=null, updateDescription=null, txnNumber=null, lsid=null, wallTime=null}";
+        var expectedCompactString = "ChangeStreamDocument{ operationType=insert, resumeToken={\"_data\": \"8266561E1B000000062\"}, namespace=null, destinationNamespace=null, documentKey=null, clusterTime=null, txnNumber=null, lsid=null, wallTime=null}";
         assertThat(MongoUtil.changeStreamEventToStringCompact(testEvent)).isEqualTo(expectedCompactString);
-
     }
 
     private static ChangeStreamDocument<BsonDocument> testChangestreamDocument(BsonDocument resumeToken, boolean isTransactionEvent) {

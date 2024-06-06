@@ -288,7 +288,7 @@ public class MongoUtil {
      */
     public static String changeStreamEventToStringCompact(ChangeStreamDocument<BsonDocument> event) {
         // TODO: dynamically construct string
-        return "ChangeStreamDocument{ operationType=" + event.getOperationTypeString() + ", resumeToken=" + event.getResumeToken() + ", namespace=" + event.getNamespace() + ", destinationNamespace=" + event.getDestinationNamespace() +  ", documentKey=" + event.getDocumentKey() + ", clusterTime=" + event.getClusterTime() + ", updateDescription=" + event.getUpdateDescription() + ", txnNumber=" + event.getTxnNumber() + ", lsid=" + event.getLsid() + ", wallTime=" + event.getWallTime() + "}";
+        return "ChangeStreamDocument{ operationType=" + event.getOperationTypeString() + ", resumeToken=" + event.getResumeToken() + ", namespace=" + event.getNamespace() + ", destinationNamespace=" + event.getDestinationNamespace() +  ", documentKey=" + event.getDocumentKey() + ", clusterTime=" + event.getClusterTime() + ", txnNumber=" + event.getTxnNumber() + ", lsid=" + event.getLsid() + ", wallTime=" + event.getWallTime() + "}";
     }
 
     /**
