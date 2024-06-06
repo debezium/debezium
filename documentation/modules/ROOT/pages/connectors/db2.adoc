@@ -50,12 +50,13 @@ The Db2 connector has been tested with Db2 for Linux.
 It is expected that the connector would also work on other platforms such as Windows,
 and we'd love to get your feedback if you can confirm this to be the case.
 
-The Db2 connector has also *incubating* support for Db2 on z/OS.
-Please see  xref:db2-property-db2-platform[`db2.platform`] configuration option for more details.
+You can also use the Db2 connector with Db2 for z/OS.
+This feature is currently  *incubating* and is subject to change in future releases.
+For more information, see the xref:db2-property-db2-platform[`db2.platform`] configuration option.
 
 [IMPORTANT]
 ====
-Db2 versions with 6-bytes LSNs are not currently supported.
+You cannot use {prodname} with Db2 for z/OS versions that use 6-bytes LSNs.
 ====
 endif::community[]
 
@@ -2462,12 +2463,14 @@ ifdef::community[]
 |[[db2-property-db2-platform]]<<db2-property-db2-platform, `+db2.platform+`>>
 |`LUW`
 |The Db2 server platform.
-Can be either `LUW` for Linux/Unix/Windows or `ZOS` for Db2 on z/OS. +
-The z/OS support is incubating. +
- +
+You can specify one of the following options:
+[horizontal]
+ `LUW`:: Db2 for Linux, UNIX, and Windows
+ `ZOS`:: Db2 for z/OS. Support for using {prodname} with z/OS is incubating.
+
 [NOTE]
 ====
-When z/OS is used it might be necessary to configure also xref:db2-property-cdc-control-schema[`cdc.control.schema`] and xref:db2-property-cdc-change-tables-schema[`cdc.change.tables.schema`] configuration options.
+If you use {prodname} with Db2 for z/OS, it might also be necessary to configure the xref:db2-property-cdc-control-schema[`cdc.control.schema`] and xref:db2-property-cdc-change-tables-schema[`cdc.change.tables.schema`] configuration options.
 ====
 endif::community[]
 
@@ -3084,11 +3087,11 @@ Set the value to `0` (zero) to remove the timeout limit.
 ifdef::community[]
 |[[db2-property-cdc-control-schema]]<<db2-property-cdc-control-schema, `cdc.control.schema`>>
 |`ASNCDC`
-|Specifies the name of the database schema where CDC control structures are located.
+|Specifies the name of the database schema that stores CDC control structures.
 
 |[[db2-property-cdc-change-tables-schema]]<<db2-property-cdc-change-tables-schema, `cdc.change.tables.schema`>>
 |`ASNCDC`
-|Specifies the name of the database schema where CDC change tables are located.
+|Specifies the name of the database schema that stores CDC control structures.
 endif::community[]
 
 |===
