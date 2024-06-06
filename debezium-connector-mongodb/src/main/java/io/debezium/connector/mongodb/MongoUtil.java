@@ -281,6 +281,17 @@ public class MongoUtil {
     }
 
     /**
+     * similar to ChangeStreamDocument.toString() except it filters out some details like the fullDocument and the fullDocumentBeforeChange
+     * See <a href="https://github.com/mongodb/mongo-java-driver/blob/4.7.x/driver-core/src/main/com/mongodb/client/model/changestream/ChangeStreamDocument.java#L529-L544">ChangeStreamDocument.java</a>
+     * @param event
+     * @return the ChangeStreamDocument event as a string with appropriate details
+     */
+    public static String changeStreamEventToStringCompact(ChangeStreamDocument<BsonDocument> event) {
+        // TODO: dynamically construct string
+        return "ChangeStreamDocument{ operationType=" + event.getOperationTypeString() + ", resumeToken=" + event.getResumeToken() + ", namespace=" + event.getNamespace() + ", destinationNamespace=" + event.getDestinationNamespace() +  ", documentKey=" + event.getDocumentKey() + ", clusterTime=" + event.getClusterTime() + ", updateDescription=" + event.getUpdateDescription() + ", txnNumber=" + event.getTxnNumber() + ", lsid=" + event.getLsid() + ", wallTime=" + event.getWallTime() + "}";
+    }
+
+    /**
      * Parse the comma-separated list of server addresses. The format of the supplied string is one of the following:
      *
      * <pre>

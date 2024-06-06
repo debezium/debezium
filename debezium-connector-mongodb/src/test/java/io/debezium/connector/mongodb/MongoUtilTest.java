@@ -261,6 +261,16 @@ public class MongoUtilTest {
         }
     }
 
+    @Test
+    public void changeStreamEventToStringCompact() {
+        // Testing.Print.enable();
+
+        var testEvent = testChangestreamDocument(resumeTokenDocument("8266561E1B000000062"), false);
+        var expectedCompactString = "ChangeStreamDocument{ operationType=insert, resumeToken={\"_data\": \"8266561E1B000000062\"}, namespace=null, destinationNamespace=null, documentKey=null, clusterTime=null, updateDescription=null, txnNumber=null, lsid=null, wallTime=null}";
+        assertThat(MongoUtil.changeStreamEventToStringCompact(testEvent)).isEqualTo(expectedCompactString);
+
+    }
+
     private static ChangeStreamDocument<BsonDocument> testChangestreamDocument(BsonDocument resumeToken, boolean isTransactionEvent) {
         String operationTypeString = "insert";
 

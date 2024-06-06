@@ -509,7 +509,8 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                             txnOpIndex = Integer.MAX_VALUE; // if we failed to parse, then set to Integer.MAX_VALUE so this event isn't considered earlier in the txn
                             // TODO (tosinva): [CDC-1958][CDC-1960] don't throw any exceptions for now.
                             // Monitor this and update before we officially ship TXN support
-                            LOGGER.error(String.format("Failed to extract TXN_INDEX from resume token '%s'", event.getResumeToken()), e);
+                            LOGGER.error("Failed to extract TXN_INDEX from resume token '{}'. error: '{}' event: '{}' ",
+                                    event.getResumeToken(), e, MongoUtil.changeStreamEventToStringCompact(event));
                         }
 
                         oplogContext.getOffset().changeStreamEvent(event, txnOpIndex);
