@@ -79,10 +79,10 @@ In this example, the PostgreSQL connector is configured to use JSON as the Cloud
   "source" : "/debezium/postgresql/test_server",    // <2>
   "specversion" : "1.0",                            // <3>
   "type" : "io.debezium.connector.postgresql.DataChangeEvent", // <4>
-  "time" : "2020-01-13T13:55:39.738Z",             //  <5>
-  "datacontenttype" : "application/json",          //  <6>
-  "iodebeziumop" : "r",                            //  <7>
-  "iodebeziumversion" : "{debezium-version}",      //  <8>
+  "time" : "2020-01-13T13:55:39.738Z",             // <5>
+  "datacontenttype" : "application/json",          // <6>
+  "iodebeziumop" : "r",                            // <7>
+  "iodebeziumversion" : "{debezium-version}",      // <8>
   "iodebeziumconnector" : "postgresql",
   "iodebeziumname" : "test_server",
   "iodebeziumtsms" : "1578923739738",
@@ -92,10 +92,10 @@ In this example, the PostgreSQL connector is configured to use JSON as the Cloud
   "iodebeziumtable" : "a",
   "iodebeziumlsn" : "29274832",
   "iodebeziumxmin" : null,
-  "iodebeziumtxid": "565",                       //  <9>
+  "iodebeziumtxid": "565",                       // <9>
   "iodebeziumtxtotalorder": "1",
   "iodebeziumtxdatacollectionorder": "1",
-  "data" : {                                       //  <10>
+  "data" : {                                       // <10>
     "before" : null,
     "after" : {
       "pk" : 1,
@@ -120,7 +120,7 @@ In this example, the PostgreSQL connector is configured to use JSON as the Cloud
 
 |4
 a|Connector type that generated the change event.
-The format of this field is `io.debezium.connector_<CONNECTOR_TYPE>_.DataChangeEvent`.
+The format of this field is `io.debezium.connector.__CONNECTOR_TYPE__.DataChangeEvent`. +
 Valid values for `_CONNECTOR_TYPE_` are `db2`,
 ifdef::community[]
 `informix`,
@@ -160,8 +160,8 @@ The following example also shows what a CloudEvents change event record emitted 
   "specversion" : "1.0",
   "type" : "io.debezium.connector.postgresql.DataChangeEvent",
   "time" : "2020-01-13T14:04:18.597Z",
-  "datacontenttype" : "application/avro",          //  <1>
-  "dataschema" : "http://my-registry/schemas/ids/1", //  <2>
+  "datacontenttype" : "application/avro",          // <1>
+  "dataschema" : "http://my-registry/schemas/ids/1", // <2>
   "iodebeziumop" : "r",
   "iodebeziumversion" : "{debezium-version}",
   "iodebeziumconnector" : "postgresql",
@@ -177,7 +177,7 @@ The following example also shows what a CloudEvents change event record emitted 
   "iodebeziumtxid": "578",
   "iodebeziumtxtotalorder": "1",
   "iodebeziumtxdatacollectionorder": "1",
-  "data" : "AAAAAAEAAgICAg=="                    //  <3>
+  "data" : "AAAAAAEAAgICAg=="                    // <3>
 }
 ----
 .Descriptions of fields in a CloudEvents event record for a connector that uses Avro to format data
@@ -213,7 +213,7 @@ The following example shows how to configure the CloudEvents converter to emit c
 ----
 ...
 "value.converter": "io.debezium.converters.CloudEventsConverter",
-"value.converter.serializer.type" : "json",        //  <1>
+"value.converter.serializer.type" : "json",        // <1>
 "value.converter.data.serializer.type" : "avro",
 "value.converter.avro.schema.registry.url": "http://my-registry/schemas/ids/1"
 ...
