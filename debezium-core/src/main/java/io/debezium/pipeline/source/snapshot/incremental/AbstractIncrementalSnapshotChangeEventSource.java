@@ -227,6 +227,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         }
         LOGGER.info("Incremental snapshot in progress, need to read new chunk on start");
         try {
+            preIncrementalSnapshotStart();
             progressListener.snapshotStarted(partition);
             readChunk(partition, offsetContext);
         }
@@ -681,6 +682,10 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
 
     protected void setContext(IncrementalSnapshotContext<T> context) {
         this.context = context;
+    }
+
+    protected void preIncrementalSnapshotStart() {
+        // no-op
     }
 
     protected void preReadChunk(IncrementalSnapshotContext<T> context) {

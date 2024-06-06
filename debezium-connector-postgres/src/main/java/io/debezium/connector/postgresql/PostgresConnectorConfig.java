@@ -959,6 +959,16 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withDefault(Boolean.TRUE)
             .withValidation(Field::isBoolean, PostgresConnectorConfig::validateFlushLsnSource);
 
+    public static final Field READ_ONLY_CONNECTION = Field.create("read.only")
+            .withDisplayName("Read only connection")
+            .withType(ConfigDef.Type.BOOLEAN)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 100))
+            .withDefault(false)
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDescription("Switched connector to use alternative methods to deliver signals to Debezium instead "
+                    + "of writing to signaling table");
+
     public static final Field SOURCE_INFO_STRUCT_MAKER = CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER
             .withDefault(PostgresSourceInfoStructMaker.class.getName());
 
@@ -971,6 +981,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     private final SnapshotMode snapshotMode;
     private final SnapshotLockingMode snapshotLockingMode;
+    private final boolean readOnlyConnection;
 
     public PostgresConnectorConfig(Configuration config) {
         super(
@@ -992,6 +1003,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         this.replicaIdentityMapper = (replicaIdentityMapping != null) ? new ReplicaIdentityMapper(replicaIdentityMapping) : null;
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE), SNAPSHOT_MODE.defaultValueAsString());
         this.snapshotLockingMode = SnapshotLockingMode.parse(config.getString(SNAPSHOT_LOCKING_MODE), SNAPSHOT_LOCKING_MODE.defaultValueAsString());
+        this.readOnlyConnection = config.getBoolean(READ_ONLY_CONNECTION);
     }
 
     protected String hostname() {
@@ -1103,6 +1115,13 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     @Override
     public Optional<SnapshotLockingMode> getSnapshotLockingMode() {
         return Optional.of(this.snapshotLockingMode);
+    }
+
+    /**
+     * @return whether database connection should be treated as read-only.
+     */
+    public boolean isReadOnlyConnection() {
+        return readOnlyConnection;
     }
 
     protected int moneyFractionDigits() {

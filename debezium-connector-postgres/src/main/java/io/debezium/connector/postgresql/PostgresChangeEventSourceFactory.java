@@ -94,12 +94,26 @@ public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactor
                                                                                                                                                  SnapshotProgressListener<PostgresPartition> snapshotProgressListener,
                                                                                                                                                  DataChangeEventListener<PostgresPartition> dataChangeEventListener,
                                                                                                                                                  NotificationService<PostgresPartition, PostgresOffsetContext> notificationService) {
+        if (configuration.isReadOnlyConnection()) {
+
+            return Optional.of(new PostgresReadOnlyIncrementalSnapshotChangeEventSource<>(
+                    configuration,
+                    connectionFactory.mainConnection(),
+                    dispatcher,
+                    schema,
+                    clock,
+                    snapshotProgressListener,
+                    dataChangeEventListener,
+                    notificationService));
+        }
+
         // If no data collection id is provided, don't return an instance as the implementation requires
         // that a signal data collection id be provided to work.
         if (Strings.isNullOrEmpty(configuration.getSignalingDataCollectionId())) {
             return Optional.empty();
         }
-        final PostgresSignalBasedIncrementalSnapshotChangeEventSource incrementalSnapshotChangeEventSource = new PostgresSignalBasedIncrementalSnapshotChangeEventSource(
+
+        return Optional.of(new PostgresSignalBasedIncrementalSnapshotChangeEventSource(
                 configuration,
                 connectionFactory.mainConnection(),
                 dispatcher,
@@ -107,7 +121,6 @@ public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactor
                 clock,
                 snapshotProgressListener,
                 dataChangeEventListener,
-                notificationService);
-        return Optional.of(incrementalSnapshotChangeEventSource);
+                notificationService));
     }
 }
