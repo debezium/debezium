@@ -3795,7 +3795,9 @@ Use this property to prevent snapshot interruptions when you start multiple conn
 
 |[[oracle-property-streaming-delay-ms]]<<oracle-property-streaming-delay-ms, `+streaming.delay.ms+`>>
 |0
-|An interval in milliseconds that the connector should wait before initiating the streaming process after completing the snapshot. This delay helps prevent the connector from re-snapshotting if it encounters a failure immediately after finishing the snapshot and before starting the streaming process. Set this value higher than the `offset.flush.interval.ms` property of the Connect worker to ensure sufficient delay.
+|Specifies the time, in milliseconds, that the connector delays the start of the streaming process after it completes a snapshot.
+Setting a delay interval helps to prevent the connector from restarting snapshots in the event that a failure occurs immediately after the snapshot completes, but before the streaming process begins. 
+Set a delay value that is higher than the value of the {link-kafka-docs}/#connectconfigs_offset.flush.interval.ms[`offset.flush.interval.ms`] property that is set for the Kafka Connect worker.
 
 |[[oracle-property-snapshot-fetch-size]]<<oracle-property-snapshot-fetch-size, `+snapshot.fetch.size+`>>
 |`10000`
