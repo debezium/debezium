@@ -124,7 +124,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
 
         // replication slot could exist at the time of starting Debezium, so we will stream from the position in the slot
         // instead of the last position in the database
-        boolean hasStartLsnStoredInContext = offsetContext != null;
+        boolean hasStartLsnStoredInContext = this.effectiveOffset != null;
 
         try {
             final WalPositionLocator walPosition;
@@ -194,7 +194,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                 // replicationStream.close();
                 // close the connection - this should also disconnect the current stream even if it's blocking
                 try {
-                    if (!isInPreSnapshotCatchUpStreaming(offsetContext)) {
+                    if (!isInPreSnapshotCatchUpStreaming(this.effectiveOffset)) {
                         connection.commit();
                     }
                     replicationConnection.close();
@@ -251,7 +251,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
             throws SQLException, InterruptedException {
 
         final Lsn lsn = stream.lastReceivedLsn();
-
+        LOGGER.trace("Processing replication message {}", message);
         if (message.isLastEventForLsn()) {
             lastCompletelyProcessedLsn = lsn;
         }
@@ -274,7 +274,6 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                 }
                 return;
             }
-
 
             if (message.getOperation() == Operation.BEGIN) {
                 dispatcher.dispatchTransactionStartedEvent(partition, toString(message.getTransactionId()), offsetContext, message.getCommitTime());
