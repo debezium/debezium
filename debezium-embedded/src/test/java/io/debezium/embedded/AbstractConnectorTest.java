@@ -6,7 +6,6 @@
 package io.debezium.embedded;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.awaitility.pollinterval.FibonacciPollInterval.fibonacci;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
@@ -953,10 +952,13 @@ public abstract class AbstractConnectorTest implements Testing {
      */
     protected boolean waitForAvailableRecords(long timeout, TimeUnit unit) {
         assertThat(timeout).isNotNegative();
+        assertThat(unit).isNotNull();
         try {
             Awaitility.await()
                     .alias("Records were not available on time")
-                    .pollInterval(fibonacci(unit))
+                    .pollInterval(timeout < 10
+                            ? unit.toChronoUnit().getDuration().dividedBy(10)
+                            : unit.toChronoUnit().getDuration())
                     .atMost(timeout, unit)
                     .until(() -> !consumedLines.isEmpty());
         }
