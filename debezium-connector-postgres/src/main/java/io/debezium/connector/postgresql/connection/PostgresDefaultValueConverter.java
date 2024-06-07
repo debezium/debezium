@@ -10,10 +10,12 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.ZoneOffset;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -34,6 +36,7 @@ import io.debezium.relational.Column;
 import io.debezium.relational.DefaultValueConverter;
 import io.debezium.relational.ValueConverter;
 import io.debezium.util.Collect;
+import io.debezium.util.Strings;
 
 /**
  * Parses and converts column default values.
@@ -173,6 +176,8 @@ public class PostgresDefaultValueConverter implements DefaultValueConverter {
         result.put("time", (c, v) -> timestampUtils.toLocalTime(extractDefault(v, "00:00")));
         result.put("timestamp", (c, v) -> timestampUtils.toOffsetDateTime(extractDefault(v, "1970-01-01")));
         result.put("timestamptz", (c, v) -> timestampUtils.toOffsetDateTime(extractDefault(v, "1970-01-01")).atZoneSameInstant(ZoneOffset.UTC));
+        result.put("_text", parseNullDefault((c, v) -> parseStringArr(extractDefault(v, "{}"))));
+        result.put("_varchar", parseNullDefault((c, v) -> parseStringArr(extractDefault(v, "{}"))));
         result.put("interval", (c, v) -> new PGInterval(extractDefault(v, "epoch")));
 
         // Register any existing enum types
@@ -186,6 +191,25 @@ public class PostgresDefaultValueConverter implements DefaultValueConverter {
 
         // Other data types, such as box, bytea, and more are not handled.
         return result;
+    }
+
+    private static List<String> parseStringArr(String arrayString) {
+        Matcher curlyBracesSurroundMatcher = Pattern.compile("\\{(.+?)\\}").matcher(arrayString);
+        Pattern doubleQuotesSurroundPattern = Pattern.compile("\"(.*?)\"");
+        Function<String, String> factory = str -> {
+            Matcher doubleQuotesSurroundMatcher = doubleQuotesSurroundPattern.matcher(str);
+            if (doubleQuotesSurroundMatcher.find()) {
+                return doubleQuotesSurroundMatcher.group(1);
+            }
+            return str;
+        };
+        if (curlyBracesSurroundMatcher.find()) {
+            arrayString = curlyBracesSurroundMatcher.group(1);
+        }
+        else {
+            arrayString = null;
+        }
+        return Strings.listOf(arrayString, s -> s.split(","), factory);
     }
 
     private static String extractDefault(String defaultValue) {
