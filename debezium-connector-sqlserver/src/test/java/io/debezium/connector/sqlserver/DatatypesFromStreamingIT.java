@@ -14,27 +14,21 @@ import io.debezium.jdbc.TemporalPrecisionMode;
 
 /**
  * Integration test to verify different SQL Server datatypes.
- * The types are discovered during snapshotting phase.
+ * The types are discovered during streaming phase.
  *
- * @author Jiri Pechanec
+ * @author Chris Cranford
  */
-public class DatatypesFromSnapshotIT extends AbstractSqlServerDatatypesTest {
+public class DatatypesFromStreamingIT extends AbstractSqlServerDatatypesTest {
 
     @BeforeClass
     public static void beforeClass() throws SQLException {
         AbstractSqlServerDatatypesTest.beforeClass();
-
-        createTables();
-
-        insertIntTypes();
-        insertFpTypes();
-        insertStringTypes();
-        insertTimeTypes();
-        insertXmlTypes();
     }
 
     @Before
     public void before() throws Exception {
-        init(TemporalPrecisionMode.ADAPTIVE, true);
+        dropAllTables();
+        createTables();
+        init(TemporalPrecisionMode.ADAPTIVE, false);
     }
 }
