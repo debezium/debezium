@@ -305,7 +305,7 @@ public class SqlServerConnectionIT {
                     tableSchemaBuilder);
             assertColumnHasDefaultValue(table, "datetimeoffset_column", "2019-01-01T00:00:00.1234567+02:00", tableSchemaBuilder);
             assertColumnHasDefaultValue(table, "smalldatetime_column", toMillis(OffsetDateTime.of(2019, 1, 1, 12, 34, 0, 0, databaseZoneOffset)), tableSchemaBuilder);
-            assertColumnHasDefaultValue(table, "time_column", toNanos(OffsetDateTime.of(1970, 1, 1, 12, 34, 56, 123_000_000, databaseZoneOffset)), tableSchemaBuilder);
+            assertColumnHasDefaultValue(table, "time_column", toNanos(OffsetDateTime.of(1970, 1, 1, 12, 34, 56, 123_456_700, databaseZoneOffset)), tableSchemaBuilder);
             assertColumnHasDefaultValue(table, "time_0_column", (int) toMillis(OffsetDateTime.of(1970, 1, 1, 12, 34, 56, 0, databaseZoneOffset)), tableSchemaBuilder);
             assertColumnHasDefaultValue(table, "time_1_column", (int) toMillis(OffsetDateTime.of(1970, 1, 1, 12, 34, 56, 100_000_000, databaseZoneOffset)),
                     tableSchemaBuilder);
@@ -313,14 +313,13 @@ public class SqlServerConnectionIT {
                     tableSchemaBuilder);
             assertColumnHasDefaultValue(table, "time_3_column", (int) toMillis(OffsetDateTime.of(1970, 1, 1, 12, 34, 56, 123_000_000, databaseZoneOffset)),
                     tableSchemaBuilder);
-            // JDBC connector does not support full precision for type time(n), n = 4, 5, 6, 7
-            assertColumnHasDefaultValue(table, "time_4_column", toMicros(OffsetDateTime.of(1970, 1, 1, 12, 34, 56, 123_000_000, databaseZoneOffset)),
+            assertColumnHasDefaultValue(table, "time_4_column", toMicros(OffsetDateTime.of(1970, 1, 1, 12, 34, 56, 123_400_000, databaseZoneOffset)),
                     tableSchemaBuilder);
-            assertColumnHasDefaultValue(table, "time_5_column", toMicros(OffsetDateTime.of(1970, 1, 1, 12, 34, 56, 123_000_000, databaseZoneOffset)),
+            assertColumnHasDefaultValue(table, "time_5_column", toMicros(OffsetDateTime.of(1970, 1, 1, 12, 34, 56, 123_450_000, databaseZoneOffset)),
                     tableSchemaBuilder);
-            assertColumnHasDefaultValue(table, "time_6_column", toMicros(OffsetDateTime.of(1970, 1, 1, 12, 34, 56, 123_000_000, databaseZoneOffset)),
+            assertColumnHasDefaultValue(table, "time_6_column", toMicros(OffsetDateTime.of(1970, 1, 1, 12, 34, 56, 123_456_000, databaseZoneOffset)),
                     tableSchemaBuilder);
-            assertColumnHasDefaultValue(table, "time_7_column", toNanos(OffsetDateTime.of(1970, 1, 1, 12, 34, 56, 123_000_000, databaseZoneOffset)),
+            assertColumnHasDefaultValue(table, "time_7_column", toNanos(OffsetDateTime.of(1970, 1, 1, 12, 34, 56, 123_456_700, databaseZoneOffset)),
                     tableSchemaBuilder);
             assertColumnHasDefaultValue(table, "char_column", "aaa", tableSchemaBuilder);
             assertColumnHasDefaultValue(table, "varchar_column", "bbb", tableSchemaBuilder);
