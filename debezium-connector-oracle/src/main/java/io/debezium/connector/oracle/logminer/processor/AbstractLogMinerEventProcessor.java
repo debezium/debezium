@@ -106,6 +106,8 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
     protected final String sqlQuery;
 
     private Scn currentOffsetScn = Scn.NULL;
+    private Scn safeResumeScn = Scn.NULL;
+
     private Map<Integer, Scn> currentOffsetCommitScns = new HashMap<>();
     private Instant lastProcessedScnChangeTime = null;
     private Scn lastProcessedScn = Scn.NULL;
@@ -269,12 +271,26 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
 
                 metrics.setLastProcessedRowsCount(counters.rows);
 
-                if (counters.rows == 0) {
-                    // When no rows are processed, don't advance the SCN
-                    return startScn;
+                if (connectorConfig.isLogMiningUseSafeResumeScn()) {
+                    updateOffsets(endScn);
+                    if (safeResumeScn.isNull() || counters.rows == 0) {
+                        // No COMMIT has been observed yet, or no data was read from the result set
+                        // The next mining session should begin from the start position.
+                        return startScn;
+                    }
+                    // Safe to resume from the last resume position
+                    // Subtract ONE as Oracle means read this SCN again and query uses "SCN > ?".
+                    return safeResumeScn.subtract(Scn.ONE);
                 }
                 else {
-                    return calculateNewStartScn(endScn, offsetContext.getCommitScn().getMaxCommittedScn());
+                    // Uses legacy behavior
+                    if (counters.rows == 0) {
+                        // When no rows are processed, don't advance the SCN
+                        return startScn;
+                    }
+                    else {
+                        return calculateNewStartScn(endScn, offsetContext.getCommitScn().getMaxCommittedScn());
+                    }
                 }
             }
         }
@@ -306,6 +322,14 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
      * @throws InterruptedException if the current thread is interrupted
      */
     protected abstract Scn calculateNewStartScn(Scn endScn, Scn maxCommittedScn) throws InterruptedException;
+
+    /**
+     * Update the offsets.
+     *
+     * @param endScn the end system change number for the previous mining range, never {@code null}
+     * @throws InterruptedException if the current thread is interrupted
+     */
+    protected abstract void updateOffsets(Scn endScn) throws InterruptedException;
 
     /**
      * Processes the LogMiner results.
@@ -496,6 +520,9 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         }
 
         counters.commitCount++;
+
+        // The SAFE_RESUME_SCN is only populated on COMMIT operations.
+        safeResumeScn = row.getSafeResumeScn();
 
         int numEvents = (transaction == null) ? 0 : getTransactionEventCount(transaction);
         LOGGER.debug("Committing transaction {} with {} events (scn: {}, oldest buffer scn: {}): {}",

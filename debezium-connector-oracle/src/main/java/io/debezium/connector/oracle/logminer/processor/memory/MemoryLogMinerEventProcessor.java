@@ -272,6 +272,26 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
     }
 
     @Override
+    protected void updateOffsets(Scn endScn) throws InterruptedException {
+        if (transactionCache.isEmpty()) {
+            offsetContext.setScn(endScn);
+            dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
+        }
+        else {
+            abandonTransactions(getConfig().getLogMiningTransactionRetention());
+            final Scn minCachedScn = getTransactionCacheMinimumScn();
+            if (!minCachedScn.isNull()) {
+                if (getConfig().isLobEnabled()) {
+                    recentlyProcessedTransactionsCache.entrySet().removeIf(entry -> entry.getValue().compareTo(minCachedScn) < 0);
+                    schemaChangesCache.removeIf(scn -> scn.compareTo(minCachedScn) < 0);
+                }
+                offsetContext.setScn(minCachedScn.subtract(Scn.valueOf(1)));
+                dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
+            }
+        }
+    }
+
+    @Override
     protected Scn getTransactionCacheMinimumScn() {
         return transactionCache.values().stream()
                 .map(MemoryTransaction::getStartScn)

@@ -55,6 +55,7 @@ public class LogMinerEventRow {
     private static final int OBJECT_ID = 18;
     private static final int OBJECT_VERSION = 19;
     private static final int OBJECT_DATA_ID = 20;
+    private static final int SAFE_RESUME_SCN = 21;
 
     private Scn scn;
     private TableId tableId;
@@ -76,6 +77,7 @@ public class LogMinerEventRow {
     private long objectId;
     private long objectVersion;
     private long dataObjectId;
+    private Scn safeResumeScn;
 
     public Scn getScn() {
         return scn;
@@ -161,6 +163,10 @@ public class LogMinerEventRow {
         return dataObjectId;
     }
 
+    public Scn getSafeResumeScn() {
+        return safeResumeScn;
+    }
+
     /**
      * Returns a {@link LogMinerEventRow} instance based on the current row of the JDBC {@link ResultSet}.
      *
@@ -190,7 +196,7 @@ public class LogMinerEventRow {
      */
     private void initializeFromResultSet(ResultSet resultSet, String catalogName, boolean isTxIdRawValue) throws SQLException {
         // Initialize the state from the result set
-        this.scn = getScn(resultSet);
+        this.scn = getScn(resultSet, SCN);
         this.tableName = resultSet.getString(TABLE_NAME);
         this.tablespaceName = resultSet.getString(TABLESPACE_NAME);
         this.eventType = EventType.from(resultSet.getInt(OPERATION_CODE));
@@ -209,6 +215,7 @@ public class LogMinerEventRow {
         this.objectId = resultSet.getLong(OBJECT_ID);
         this.objectVersion = resultSet.getLong(OBJECT_VERSION);
         this.dataObjectId = resultSet.getLong(OBJECT_DATA_ID);
+        this.safeResumeScn = getScn(resultSet, SAFE_RESUME_SCN);
         if (this.tableName != null) {
             this.tableId = new TableId(catalogName, tablespaceName, tableName);
         }
@@ -227,8 +234,8 @@ public class LogMinerEventRow {
         return result != null ? result.toInstant() : null;
     }
 
-    private Scn getScn(ResultSet rs) throws SQLException {
-        final String scn = rs.getString(SCN);
+    private Scn getScn(ResultSet rs, int columnIndex) throws SQLException {
+        final String scn = rs.getString(columnIndex);
         return Strings.isNullOrEmpty(scn) ? Scn.NULL : Scn.valueOf(scn);
     }
 
@@ -292,6 +299,7 @@ public class LogMinerEventRow {
     public String toString() {
         return "LogMinerEventRow{" +
                 "scn=" + scn +
+                ", safeResumeScn=" + safeResumeScn +
                 ", objectId=" + objectId +
                 ", objectVersion=" + objectVersion +
                 ", dataObjectId=" + dataObjectId +

@@ -58,7 +58,7 @@ public class LogMinerQueryBuilderTest {
 
     private static final String LOG_MINER_QUERY_BASE = "SELECT SCN, SQL_REDO, OPERATION_CODE, TIMESTAMP, " +
             "XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, USERNAME, ROW_ID, ROLLBACK, RS_ID, STATUS, INFO, SSN, " +
-            "THREAD#, DATA_OBJ#, DATA_OBJV#, DATA_OBJD# FROM V$LOGMNR_CONTENTS " +
+            "THREAD#, DATA_OBJ#, DATA_OBJV#, DATA_OBJD#, SAFE_RESUME_SCN FROM V$LOGMNR_CONTENTS " +
             "WHERE SCN > ? AND SCN <= ?";
 
     private static final String PDB_PREDICATE = "SRC_CON_NAME = '${pdbName}'";

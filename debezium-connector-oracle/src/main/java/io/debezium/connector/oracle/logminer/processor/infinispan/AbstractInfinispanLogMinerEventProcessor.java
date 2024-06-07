@@ -392,6 +392,49 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
         }
     }
 
+    @Override
+    protected void updateOffsets(Scn endScn) throws InterruptedException {
+        // Cleanup caches based on current state of the transaction cache
+        final Optional<InfinispanTransaction> oldestTransaction = getOldestTransactionInCache();
+        final Scn minCacheScn;
+        final Instant minCacheScnChangeTime;
+        if (oldestTransaction.isPresent()) {
+            minCacheScn = oldestTransaction.get().getStartScn();
+            minCacheScnChangeTime = oldestTransaction.get().getChangeTime();
+        }
+        else {
+            minCacheScn = Scn.NULL;
+            minCacheScnChangeTime = null;
+        }
+
+        if (!minCacheScn.isNull()) {
+            abandonTransactions(getConfig().getLogMiningTransactionRetention());
+            purgeCache(minCacheScn);
+        }
+        else {
+            getSchemaChangesCache().entrySet().removeIf(e -> true);
+        }
+
+        if (getTransactionCache().isEmpty()) {
+            offsetContext.setScn(endScn);
+            dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
+        }
+        else {
+            abandonTransactions(getConfig().getLogMiningTransactionRetention());
+            final Scn minCachedScn = getTransactionCacheMinimumScn();
+            if (!minCachedScn.isNull()) {
+                if (getConfig().isLobEnabled()) {
+                    getProcessedTransactionsCache().entrySet().removeIf(entry -> Scn.valueOf(entry.getValue()).compareTo(minCacheScn) < 0);
+                }
+                offsetContext.setScn(minCachedScn.subtract(Scn.valueOf(1)));
+                dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
+            }
+        }
+
+        metrics.setOldestScnDetails(minCacheScn, minCacheScnChangeTime);
+        metrics.setOffsetScn(offsetContext.getScn());
+    }
+
     /**
      * Purge the necessary caches with all entries that occurred prior to the specified change number.
      *

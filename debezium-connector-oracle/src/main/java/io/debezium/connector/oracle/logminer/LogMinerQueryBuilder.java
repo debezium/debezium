@@ -80,7 +80,7 @@ public class LogMinerQueryBuilder {
     public static String build(OracleConnectorConfig connectorConfig) {
         final StringBuilder query = new StringBuilder(1024);
         query.append("SELECT SCN, SQL_REDO, OPERATION_CODE, TIMESTAMP, XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, ");
-        query.append("USERNAME, ROW_ID, ROLLBACK, RS_ID, STATUS, INFO, SSN, THREAD#, DATA_OBJ#, DATA_OBJV#, DATA_OBJD# ");
+        query.append("USERNAME, ROW_ID, ROLLBACK, RS_ID, STATUS, INFO, SSN, THREAD#, DATA_OBJ#, DATA_OBJV#, DATA_OBJD#, SAFE_RESUME_SCN ");
         query.append("FROM ").append(LOGMNR_CONTENTS_VIEW).append(" ");
 
         // These bind parameters will be bound when the query is executed by the caller.
