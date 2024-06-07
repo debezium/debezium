@@ -68,7 +68,7 @@ public class SqlServerChangeTablePointer extends ChangeTableResultSet<SqlServerC
     @Override
     protected Object getColumnData(ResultSet resultSet, int columnIndex) throws SQLException {
         if (resultSet.getMetaData().getColumnType(columnIndex) == Types.TIME) {
-            return resultSet.getTime(columnIndex);
+            return resultSet.getTimestamp(columnIndex);
         }
         return super.getColumnData(resultSet, columnIndex);
     }
