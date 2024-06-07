@@ -424,6 +424,10 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                 partition.getSourcePartition(),
                 offset.getOffset(),
                 this::enqueueHeartbeat);
+
+        if (incrementalSnapshotChangeEventSource != null) {
+            incrementalSnapshotChangeEventSource.processHeartbeat(partition, offset);
+        }
     }
 
     public boolean heartbeatsEnabled() {

@@ -97,9 +97,23 @@ public class PostgresReadOnlyIncrementalSnapshotChangeEventSource<P extends Post
             LOGGER.warn("Context is null, skipping message processing");
             return;
         }
+
         LOGGER.trace("Processing transaction event");
         readUntilNewTransactionChange(partition, offsetContext);
         LOGGER.trace("Finished processing transaction event");
+    }
+
+    @Override
+    public void processHeartbeat(P partition, OffsetContext offsetContext) throws InterruptedException {
+
+        if (getContext() == null) {
+            LOGGER.warn("Context is null, skipping message processing");
+            return;
+        }
+
+        LOGGER.trace("Processing heartbeat event");
+        readUntilNewTransactionChange(partition, offsetContext);
+        LOGGER.trace("Finished processing heartbeat event");
     }
 
     private void readUntilNewTransactionChange(P partition, OffsetContext offsetContext) throws InterruptedException {
@@ -152,6 +166,11 @@ public class PostgresReadOnlyIncrementalSnapshotChangeEventSource<P extends Post
     }
 
     private boolean maxInProgressTransactionCommitted(Long eventTxId) {
+
+        if (getContext().getHighWatermark() == null) {
+            return true;
+        }
+
         return getContext().getHighWatermark().getXMax().equals(eventTxId);
     }
 

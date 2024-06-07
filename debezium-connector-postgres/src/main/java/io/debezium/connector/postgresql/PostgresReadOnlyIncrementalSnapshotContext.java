@@ -94,7 +94,8 @@ public class PostgresReadOnlyIncrementalSnapshotContext<T> extends AbstractIncre
     }
 
     public boolean isTransactionVisible(Long eventTxId) {
-        if (lowWatermark == null) {
+
+        if (highWatermark == null) {
             return true;
         }
         return eventTxId.compareTo(highWatermark.getXMin()) <= 0;
