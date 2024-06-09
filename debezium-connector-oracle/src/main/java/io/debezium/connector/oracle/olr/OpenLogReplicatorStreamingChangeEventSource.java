@@ -114,23 +114,31 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
 
             this.client = new OlrNetworkClient(connectorConfig);
             if (client.connect(startScn, startScnIndex)) {
-                // Start read loop
-                while (client.isConnected() && context.isRunning()) {
-                    final StreamingEvent event = client.readEvent();
-                    if (event != null) {
-                        onEvent(event);
-                    }
+                try {
+                    // Start read loop
+                    while (client.isConnected() && context.isRunning()) {
+                        final StreamingEvent event = client.readEvent();
+                        if (event != null) {
+                            onEvent(event);
+                        }
 
-                    if (context.isPaused()) {
-                        LOGGER.info("Streaming will now pause");
-                        context.streamingPaused();
-                        context.waitSnapshotCompletion();
-                        LOGGER.info("Streaming resumed");
+                        if (context.isPaused()) {
+                            LOGGER.info("Streaming will now pause");
+                            context.streamingPaused();
+                            context.waitSnapshotCompletion();
+                            LOGGER.info("Streaming resumed");
+                        }
                     }
                 }
-
-                client.disconnect();
-                LOGGER.info("Client disconnected.");
+                finally {
+                    try {
+                        client.disconnect();
+                        LOGGER.info("Client disconnected.");
+                    }
+                    catch (Exception e) {
+                        LOGGER.error("Exception while disconnecting OpenLogReplicator client", e);
+                    }
+                }
             }
             else {
                 LOGGER.warn("Failed to connect to OpenLogReplicator server.");
