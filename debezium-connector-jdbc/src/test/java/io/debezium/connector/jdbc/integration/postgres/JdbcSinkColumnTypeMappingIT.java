@@ -9,7 +9,10 @@ import static org.fest.assertions.Assertions.assertThat;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -25,6 +28,7 @@ import io.debezium.connector.jdbc.junit.jupiter.PostgresSinkDatabaseContextProvi
 import io.debezium.connector.jdbc.junit.jupiter.Sink;
 import io.debezium.connector.jdbc.junit.jupiter.SinkRecordFactoryArgumentsProvider;
 import io.debezium.connector.jdbc.util.SinkRecordFactory;
+import io.debezium.data.Uuid;
 import io.debezium.doc.FixFor;
 
 /**
@@ -410,6 +414,42 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
         getSink().assertRows(destinationTable, rs -> {
             assertThat(rs.getInt(1)).isEqualTo(1);
             assertThat(rs.getArray(2).getArray()).isEqualTo(new Boolean[]{ false, true });
+            return null;
+        });
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("DBZ-7938")
+    public void testShouldWorkWithMultipleArraysWithDifferentTypes(SinkRecordFactory factory) throws Exception {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.NONE.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
+        properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server2", "schema", tableName);
+        final List<UUID> uuids = List.of(UUID.randomUUID(), UUID.randomUUID());
+
+        final SinkRecord createRecord = factory.createRecordWithSchemaValue(
+                topicName,
+                (byte) 1,
+                List.of("text_data", "uuid_data"),
+                List.of(SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(), SchemaBuilder.array(Uuid.schema()).optional().build()),
+                Arrays.asList(List.of("a", "b"), uuids.stream().map(UUID::toString).collect(Collectors.toList())));
+
+        final String destinationTable = destinationTableName(createRecord);
+        final String sql = "CREATE TABLE %s (id int not null, text_data text[], uuid_data uuid[], primary key(id))";
+        getSink().execute(String.format(sql, destinationTable));
+
+        consume(createRecord);
+
+        getSink().assertRows(destinationTable, rs -> {
+            assertThat(rs.getInt(1)).isEqualTo(1);
+            assertThat(rs.getArray(2).getArray()).isEqualTo(new String[]{ "a", "b" });
+            assertThat(rs.getArray(3).getArray()).isEqualTo(uuids.toArray());
             return null;
         });
     }
