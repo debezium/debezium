@@ -164,7 +164,16 @@ public class MongoDbOffsetContext extends CommonOffsetContext<SourceInfo> {
 
     public BsonDocument lastResumeTokenDoc() {
         final String data = sourceInfo.lastResumeToken();
-        return (data == null) ? null : ResumeTokens.fromData(data);
+        if (data == null) {
+            return null;
+        }
+        try {
+            return ResumeTokens.fromBase64(data);
+        }
+        catch (Exception e) {
+            LOGGER.info("Old resume token format detected, attempting to parse as string " + data);
+            return ResumeTokens.fromData(data);
+        }
     }
 
     public BsonTimestamp lastTimestamp() {
