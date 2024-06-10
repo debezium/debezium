@@ -807,7 +807,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
             throw e;
         }
         catch (ExecutionException | TimeoutException e) {
-            LOGGER.warn("Flush of the offsets failed, canceling the flush.");
+            LOGGER.warn("Flush of the offsets failed, canceling the flush.", e);
             offsetWriter.cancelFlush();
             return false;
         }
