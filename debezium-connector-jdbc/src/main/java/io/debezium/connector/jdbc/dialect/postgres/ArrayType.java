@@ -25,8 +25,6 @@ public class ArrayType extends AbstractType {
 
     public static final ArrayType INSTANCE = new ArrayType();
 
-    private String typeName;
-
     @Override
     public String[] getRegistrationKeys() {
         return new String[]{ "ARRAY" };
@@ -34,9 +32,12 @@ public class ArrayType extends AbstractType {
 
     @Override
     public String getTypeName(DatabaseDialect dialect, Schema schema, boolean key) {
+        return getElementTypeName(dialect, schema, key) + "[]";
+    }
+
+    private String getElementTypeName(DatabaseDialect dialect, Schema schema, boolean key) {
         Type elementType = dialect.getSchemaType(schema.valueSchema());
-        typeName = elementType.getTypeName(dialect, schema.valueSchema(), key);
-        return typeName + "[]";
+        return elementType.getTypeName(dialect, schema.valueSchema(), key);
     }
 
     @Override
@@ -44,6 +45,6 @@ public class ArrayType extends AbstractType {
         if (value == null) {
             return Arrays.asList(new ValueBindDescriptor(index, null));
         }
-        return List.of(new ValueBindDescriptor(index, value, java.sql.Types.ARRAY, typeName));
+        return List.of(new ValueBindDescriptor(index, value, java.sql.Types.ARRAY, getElementTypeName(this.getDialect(), schema, false)));
     }
 }
