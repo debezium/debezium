@@ -5723,8 +5723,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
-    @FixFor("DBZ-4332")
-    @SkipWhenAdapterNameIs(value = SkipWhenAdapterNameIs.AdapterName.OLR, reason = "ROW_ID is not sent by this adapter")
+    @FixFor({ "DBZ-4332", "DBZ-7823" })
     public void shouldCaptureRowIdForDataChanges() throws Exception {
         TestHelper.dropTable(connection, "dbz4332");
         try {

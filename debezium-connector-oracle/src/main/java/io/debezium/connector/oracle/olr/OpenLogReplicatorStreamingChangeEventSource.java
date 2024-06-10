@@ -289,6 +289,7 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
         offsetContext.setEventScn(event.getCheckpointScn());
         offsetContext.setTransactionId(event.getXid());
         offsetContext.tableEvent(tableId, event.getTimestamp());
+        offsetContext.setRowId(mutationEvent.getRid());
 
         streamingMetrics.setLastCapturedDmlCount(1);
 
