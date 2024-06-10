@@ -3281,6 +3281,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         final Configuration config1 = TestHelper.defaultConnectorConfig()
                 .with(SqlServerConnectorConfig.DATABASE_NAMES.name(), TestHelper.TEST_DATABASE_1 + "," + TestHelper.TEST_DATABASE_2)
                 .with("errors.max.retries", 1)
+                .with(SqlServerConnectorConfig.LOG_POSITION_CHECK_ENABLED, false)
                 .build();
         final LogInterceptor logInterceptor = new LogInterceptor(ErrorHandler.class);
 
