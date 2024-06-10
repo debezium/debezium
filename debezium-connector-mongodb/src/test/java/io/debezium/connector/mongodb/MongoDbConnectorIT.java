@@ -34,6 +34,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.assertj.core.api.AssertionsForInterfaceTypes;
 import org.bson.BsonDocument;
 import org.bson.Document;
 import org.bson.conversions.Bson;
@@ -2701,6 +2702,94 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         assertThat(value.schema()).isSameAs(deleteRecord.valueSchema());
         assertThat(value.getString(Envelope.FieldName.OPERATION)).isEqualTo(Operation.UPDATE.code());
         assertThat(value.getInt64(Envelope.FieldName.TIMESTAMP)).isGreaterThanOrEqualTo(timestamp.toEpochMilli());
+    }
+
+    @FixFor("DBZ-6522")
+    @Test
+    public void shouldConsumeDocumentsWithComplexIds() throws Exception {
+        config = TestHelper.getConfiguration(mongo).edit()
+                .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
+                .build();
+
+        context = new MongoDbTaskContext(config);
+        TestHelper.cleanDatabase(mongo, "dbit");
+
+        start(MongoDbConnector.class, config);
+        waitForStreamingRunning("mongodb", "mongo");
+
+        Document doc = new Document("_id", 4367438483L).append("name", "John Doe").append("age", 25);
+        insertDocuments("dbit", "colA", doc);
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        AssertionsForInterfaceTypes.assertThat(records.recordsForTopic("mongo.dbit.colA")).hasSize(1);
+
+        stopConnector();
+
+        start(MongoDbConnector.class, config);
+        waitForStreamingRunning("mongodb", "mongo");
+
+        Document doc1 = new Document("_id", 1).append("name", "Jane Doe").append("age", 22);
+        insertDocuments("dbit", "colA", doc1);
+
+        records = consumeRecordsByTopic(1);
+        AssertionsForInterfaceTypes.assertThat(records.recordsForTopic("mongo.dbit.colA")).hasSize(1);
+
+        stopConnector();
+    }
+
+    @FixFor("DBZ-6522")
+    @Test
+    public void shouldConsumeEventsFromOffsetWithDataResumeToken() throws InterruptedException {
+        LogInterceptor logInterceptor = new LogInterceptor(MongoDbOffsetContext.class);
+
+        config = TestHelper.getConfiguration(mongo).edit()
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
+                .build();
+
+        Map<Map<String, ?>, Map<String, ?>> offset = Map.of(
+                Collect.hashMapOf("server_id", "mongo"),
+                Collect.hashMapOf(
+                        SourceInfo.TIMESTAMP, 0,
+                        SourceInfo.ORDER, -1,
+                        SourceInfo.RESUME_TOKEN,
+                        "826666EDD6000000032B0229296E04"));
+        storeOffsets(config, offset);
+
+        // Set up the replication context for connections ...
+        context = new MongoDbTaskContext(config);
+
+        // Cleanup database
+        TestHelper.cleanDatabase(mongo, "dbit");
+
+        // Before starting the connector, add data to the databases ...
+        insertDocuments("dbit", "colA", new Document("_id", 1).append("name", "John"));
+
+        // Start the connector ...
+        start(MongoDbConnector.class, config);
+
+        waitForStreamingRunning("mongodb", "mongo");
+
+        insertDocuments("dbit", "colA", new Document("_id", 24734982398L).append("name", "Jane"));
+
+        // Consume the records ...
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic("mongo.dbit.colA")).hasSize(1);
+        assertThat(logInterceptor.containsMessage("Old resume token format detected, attempting to parse as string 826666EDD6000000032B0229296E04")).isTrue();
+
+        // Stop the connector ...
+        stopConnector();
+
+        // Restart the connector ...
+        start(MongoDbConnector.class, config);
+
+        insertDocuments("dbit", "colA", new Document("_id", 24734982399L).append("name", "Jack"));
+
+        // Consume the records ...
+        records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic("mongo.dbit.colA")).hasSize(1);
     }
 
     @Test

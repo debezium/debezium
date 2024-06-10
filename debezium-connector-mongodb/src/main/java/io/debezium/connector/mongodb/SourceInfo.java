@@ -193,14 +193,14 @@ public final class SourceInfo extends BaseSourceInfo {
         if (event.hasDocument()) {
             return;
         }
-        noEvent(ResumeTokens.getDataString(event.resumeToken));
+        noEvent(ResumeTokens.toBase64(event.resumeToken));
     }
 
     public void noEvent(MongoChangeStreamCursor<?> cursor) {
         if (cursor == null || cursor.getResumeToken() == null) {
             return;
         }
-        noEvent(ResumeTokens.getDataString(cursor.getResumeToken()));
+        noEvent(ResumeTokens.toBase64(cursor.getResumeToken()));
     }
 
     public void noEvent(BsonTimestamp timestamp) {
@@ -230,7 +230,7 @@ public final class SourceInfo extends BaseSourceInfo {
         String namespace = "";
         long wallTime = 0L;
         if (changeStreamEvent != null) {
-            String resumeToken = ResumeTokens.getDataString(changeStreamEvent.getResumeToken());
+            String resumeToken = ResumeTokens.toBase64(changeStreamEvent.getResumeToken());
             BsonTimestamp ts = changeStreamEvent.getClusterTime();
             position = Position.changeStreamPosition(ts, resumeToken, MongoUtils.getChangeStreamSessionTransactionId(changeStreamEvent));
             namespace = changeStreamEvent.getNamespace().getFullName();

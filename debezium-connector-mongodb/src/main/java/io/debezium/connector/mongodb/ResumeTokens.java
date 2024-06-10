@@ -7,11 +7,18 @@ package io.debezium.connector.mongodb;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.Base64;
 
+import org.bson.BsonBinaryReader;
+import org.bson.BsonBinaryWriter;
 import org.bson.BsonDocument;
 import org.bson.BsonString;
 import org.bson.BsonTimestamp;
 import org.bson.BsonValue;
+import org.bson.codecs.BsonDocumentCodec;
+import org.bson.codecs.DecoderContext;
+import org.bson.codecs.EncoderContext;
+import org.bson.io.BasicOutputBuffer;
 
 import io.debezium.util.HexConverter;
 
@@ -37,16 +44,31 @@ public final class ResumeTokens {
         return new BsonTimestamp(timestampAsLong);
     }
 
+    public static String toBase64(BsonDocument resumeToken) {
+        var out = new BasicOutputBuffer();
+        var writer = new BsonBinaryWriter(out);
+        var codec = new BsonDocumentCodec();
+        var context = EncoderContext.builder().build();
+
+        codec.encode(writer, resumeToken, context);
+        return Base64.getEncoder().encodeToString(out.toByteArray());
+    }
+
+    public static BsonDocument fromBase64(String data) {
+        var bytes = Base64.getDecoder().decode(data);
+        var reader = new BsonBinaryReader(ByteBuffer.wrap(bytes));
+        var codec = new BsonDocumentCodec();
+        var context = DecoderContext.builder().build();
+
+        return codec.decode(reader, context);
+    }
+
     public static BsonValue getData(BsonDocument resumeToken) {
         if (!resumeToken.containsKey("_data")) {
             throw new IllegalArgumentException("Expected _data field in resume token");
         }
 
         return resumeToken.get("_data");
-    }
-
-    public static String getDataString(BsonDocument resumeToken) {
-        return getData(resumeToken).asString().getValue();
     }
 
     public static BsonDocument fromData(String data) {
@@ -78,5 +100,4 @@ public final class ResumeTokens {
     private ResumeTokens() {
         throw new AssertionError(getClass().getName() + " should not be instantiated");
     }
-
 }

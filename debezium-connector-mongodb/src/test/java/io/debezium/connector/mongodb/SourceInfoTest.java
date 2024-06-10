@@ -37,17 +37,26 @@ public class SourceInfoTest {
 
     private static final String REPLICA_SET_NAME = "myReplicaSet";
 
-    // FROM: https://www.mongodb.com/docs/manual/changeStreams/#resume-tokens-from-change-events
-    private static final String CHANGE_RESUME_TOKEN_DATA = "82635019A0000000012B042C0100296E5A1004AB1154ACA" +
-            "CD849A48C61756D70D3B21F463C6F7065726174696F6E54" +
-            "797065003C696E736572740046646F63756D656E744B657" +
-            "90046645F69640064635019A078BE67426D7CF4D2000004";
-    private static final BsonDocument CHANGE_RESUME_TOKEN = ResumeTokens.fromData(CHANGE_RESUME_TOKEN_DATA);
+    // For resume token with all fields included
+    private static final String CHANGE_RESUME_TOKEN_JSON = "{\n" +
+            "    \"_data\": \"82647A41A6000000012B022C0100296E5A10042409C0859BCF45ABBE0E0BD72AB4040346465F696400461E666F6F002B021E626172002B04000004\",\n" +
+            "    \"_typeBits\":\n" +
+            "    {\n" +
+            "        \"$binary\":\n" +
+            "        {\n" +
+            "            \"base64\": \"gkAB\",\n" +
+            "            \"subType\": \"00\"\n" +
+            "        }\n" +
+            "    }\n" +
+            "}";
+    private static final BsonDocument CHANGE_RESUME_TOKEN = BsonDocument.parse(CHANGE_RESUME_TOKEN_JSON);
+    private static final String CHANGE_RESUME_TOKEN_STRING = ResumeTokens.toBase64(CHANGE_RESUME_TOKEN);
     private static final BsonTimestamp CHANGE_TIMESTAMP = new BsonTimestamp(1666193824, 1);
 
     // FROM: https://www.mongodb.com/docs/manual/changeStreams/#resume-tokens-from-aggregate
-    private static final String CURSOR_RESUME_TOKEN_DATA = "8263515EAC000000022B0429296E1404";
-    private static final BsonDocument CURSOR_RESUME_TOKEN = ResumeTokens.fromData(CURSOR_RESUME_TOKEN_DATA);
+    private static final String CURSOR_RESUME_TOKEN_JSON = "{ \"_data\" : \"8263515EAC000000022B0429296E1404\" }";
+    private static final BsonDocument CURSOR_RESUME_TOKEN = BsonDocument.parse(CURSOR_RESUME_TOKEN_JSON);
+    private static final String CURSOR_RESUME_TOKEN_STRING = ResumeTokens.toBase64(CURSOR_RESUME_TOKEN);
 
     private SourceInfo source;
     private MongoDbOffsetContext context;
@@ -151,14 +160,14 @@ public class SourceInfoTest {
     @Test
     public void shouldSetAndReturnRecordedOffset() {
         var cursor = mockEventChangeStreamCursor();
-        assertSourceInfoContents(source, cursor, CHANGE_RESUME_TOKEN_DATA, CHANGE_TIMESTAMP, null);
+        assertSourceInfoContents(source, cursor, CHANGE_RESUME_TOKEN_STRING, CHANGE_TIMESTAMP, null);
 
         // Create a new source info and set the offset ...
         var position = source.position();
         SourceInfo newSource = createSourceInfo();
         newSource.setPosition(position);
 
-        assertSourceInfoContents(newSource, true, CHANGE_RESUME_TOKEN_DATA, CHANGE_TIMESTAMP, null);
+        assertSourceInfoContents(newSource, true, CHANGE_RESUME_TOKEN_STRING, CHANGE_TIMESTAMP, null);
     }
 
     @Test
@@ -170,13 +179,13 @@ public class SourceInfoTest {
     @Test
     public void shouldReturnRecordedOffsetForUsedReplicaName() {
         var cursor = mockEventChangeStreamCursor();
-        assertSourceInfoContents(source, cursor, CHANGE_RESUME_TOKEN_DATA, CHANGE_TIMESTAMP, null);
+        assertSourceInfoContents(source, cursor, CHANGE_RESUME_TOKEN_STRING, CHANGE_TIMESTAMP, null);
     }
 
     @Test
     public void shouldReturnRecordedOffsetForUsedReplicaNameWithoutEvent() {
         var cursor = mockNoEventChangeStreamCursor();
-        assertSourceInfoContents(source, cursor, CURSOR_RESUME_TOKEN_DATA, null, null);
+        assertSourceInfoContents(source, cursor, CURSOR_RESUME_TOKEN_STRING, null, null);
     }
 
     @Test
@@ -190,7 +199,7 @@ public class SourceInfoTest {
         source.startInitialSnapshot();
 
         var cursor = mockEventChangeStreamCursor();
-        assertSourceInfoContents(source, cursor, CHANGE_RESUME_TOKEN_DATA, CHANGE_TIMESTAMP, "true");
+        assertSourceInfoContents(source, cursor, CHANGE_RESUME_TOKEN_STRING, CHANGE_TIMESTAMP, "true");
     }
 
     @Test
@@ -198,7 +207,7 @@ public class SourceInfoTest {
         source.startInitialSnapshot();
 
         var cursor = mockNoEventChangeStreamCursor();
-        assertSourceInfoContents(source, cursor, CURSOR_RESUME_TOKEN_DATA, null, "true");
+        assertSourceInfoContents(source, cursor, CURSOR_RESUME_TOKEN_STRING, null, "true");
     }
 
     @Test
