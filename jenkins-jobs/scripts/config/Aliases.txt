@@ -268,6 +268,7 @@ DLT1412,Duc Le Tu
 gaurav7261,Gaurav Miglani
 sullis,Sean C. Sullivan
 einar-rt,einar-rt
+michal-k-gl,Michal Pioun
 joontube,Seongjoon Jeong
 chungeun-choi,Chungeun Choi
 ashwinmk,Ashwin Murali Krishnan
