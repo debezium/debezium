@@ -137,6 +137,7 @@ public class PostgresReadOnlyIncrementalSnapshotChangeEventSource<P extends Post
         LOGGER.debug("Event txId {}, snapshot is running {}, reachedHighWatermark {}",
                 eventTxId, getContext().snapshotRunning(), getContext().isTransactionVisible(eventTxId));
 
+        LOGGER.trace("Incremental snapshot context {}", getContext());
         if (getContext().snapshotRunning() && maxInProgressTransactionCommitted(eventTxId)) {
             getContext().closeWindow();
             sendWindowEvents(partition, offsetContext);
@@ -146,8 +147,10 @@ public class PostgresReadOnlyIncrementalSnapshotChangeEventSource<P extends Post
         }
 
         while (getContext().snapshotRunning() && getContext().isTransactionVisible(eventTxId)) {
+
             LOGGER.debug("Finishing snapshot, snapshot is running {}, reachedHighWatermark {}", getContext().snapshotRunning(),
                     getContext().isTransactionVisible(eventTxId));
+
             getContext().closeWindow();
             sendWindowEvents(partition, offsetContext);
             readChunk(partition, offsetContext);
@@ -155,6 +158,7 @@ public class PostgresReadOnlyIncrementalSnapshotChangeEventSource<P extends Post
                 LOGGER.trace("Watermarks changed");
                 return;
             }
+
             LOGGER.trace("Re read chunk finished, snapshot is running {}, reachedHighWatermark {}", getContext().snapshotRunning(),
                     getContext().isTransactionVisible(eventTxId));
         }
@@ -182,7 +186,7 @@ public class PostgresReadOnlyIncrementalSnapshotChangeEventSource<P extends Post
     private boolean maxInProgressTransactionCommitted(Long eventTxId) {
 
         if (getContext().getHighWatermark() == null) {
-            return true;
+            return false;
         }
 
         return getContext().getHighWatermark().getXMax().equals(eventTxId);
