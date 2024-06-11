@@ -269,6 +269,7 @@ gaurav7261,Gaurav Miglani
 sullis,Sean C. Sullivan
 einar-rt,einar-rt
 michal-k-gl,Michal Pioun
+michal.kluz,Michal Pioun
 joontube,Seongjoon Jeong
 chungeun-choi,Chungeun Choi
 ashwinmk,Ashwin Murali Krishnan
