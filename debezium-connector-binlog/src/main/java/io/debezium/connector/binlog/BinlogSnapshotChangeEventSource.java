@@ -67,6 +67,7 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
         extends RelationalSnapshotChangeEventSource<P, O> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BinlogSnapshotChangeEventSource.class);
+    private static final Logger BINLOG_ROW_ESTIMATE_LOGGER = LoggerFactory.getLogger("BinlogRowEstimateLogger");
 
     private final BinlogConnectorConfig connectorConfig;
     private final BinlogConnectorConnection connection;
@@ -547,9 +548,12 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
         if (getSnapshotSelectOverridesByTable(tableId, connectorConfig.getSnapshotSelectOverridesByTable()) != null) {
             return super.rowCountForTable(tableId);
         }
-        OptionalLong rowCount = connection.getEstimatedTableSize(tableId);
-        LOGGER.info("Estimated row count for table {} is {}", tableId, rowCount);
-        return rowCount;
+        if (BINLOG_ROW_ESTIMATE_LOGGER.isInfoEnabled()) {
+            OptionalLong rowCount = connection.getEstimatedTableSize(tableId);
+            LOGGER.info("Estimated row count for table {} is {}", tableId, rowCount);
+            return rowCount;
+        }
+        return OptionalLong.empty();
     }
 
     @Override
