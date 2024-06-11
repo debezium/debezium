@@ -1511,7 +1511,7 @@ out_of_line_ref_constraint
     ;
 
 out_of_line_constraint
-    : ( (CONSTRAINT constraint_name)?
+    : ( ((CONSTRAINT | CONSTRAINTS) constraint_name)?
           ( UNIQUE '(' column_name (',' column_name)* ')'
           | PRIMARY KEY '(' column_name (',' column_name)* ')'
           | foreign_key_clause
