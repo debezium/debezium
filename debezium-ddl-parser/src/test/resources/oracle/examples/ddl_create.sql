@@ -696,6 +696,13 @@ CREATE TABLE "interval_type_test" (
     "i1" INTERVAL YEAR(9) TO MONTH DEFAULT (INTERVAL '10-3' YEAR TO MONTH) NULL,
     "i2" INTERVAL DAY(6) TO SECOND (9) DEFAULT (INTERVAL '1 2:34:56.789' DAY TO SECOND) NOT NULL
 );
+CREATE TABLE T1 (
+ "NAME" VARCHAR(10) NOT NULL,
+ "ID" INT NOT NULL,
+ "ADDRESS" VARCHAR(255),
+ "SQ_NUMBER" NUMBER(10),
+ "PQ_NUMBER" NUMBER(10),
+ CONSTRAINTS UQ1 UNIQUE ("SQ_NUMBER", "PQ_NUMBER"));
 -- Create index (Oracle 23+)
 create index hr.name IF NOT EXISTS on hr.table (id,data) tablespace ts;
 -- Create user (Oracle 23+)
