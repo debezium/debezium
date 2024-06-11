@@ -91,6 +91,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     private final SnapshotProgressListener<P> snapshotProgressListener;
     protected final SnapshotterService snapshotterService;
     protected Queue<JdbcConnection> connectionPool;
+    private final TableId signalDataCollectionTableId;
 
     public RelationalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig connectorConfig,
                                                MainConnectionProvidingConnectionFactory<? extends JdbcConnection> jdbcConnectionFactory,
@@ -106,6 +107,13 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         this.clock = clock;
         this.snapshotProgressListener = snapshotProgressListener;
         this.snapshotterService = snapshotterService;
+
+        if (!Strings.isNullOrBlank(connectorConfig.getSignalingDataCollectionId())) {
+            this.signalDataCollectionTableId = TableId.parse(connectorConfig.getSignalingDataCollectionId());
+        }
+        else {
+            this.signalDataCollectionTableId = null;
+        }
     }
 
     @Override
@@ -341,6 +349,10 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
         for (TableId tableId : snapshottedTableIds) {
             if (connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId)) {
+                if (tableId.equals(signalDataCollectionTableId)) {
+                    // Skip the signal data collection as data shouldn't be captured
+                    continue;
+                }
                 LOGGER.trace("Adding table {} to the list of captured tables for which the data will be snapshotted", tableId);
                 capturedTables.add(tableId);
             }
