@@ -16,6 +16,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -38,6 +39,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
+import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.EqualityCheck;
 import io.debezium.junit.SkipWhenConnectorUnderTest;
@@ -582,7 +584,8 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         // we are still within the incremental snapshot rather than it being performed with one
         // round trip to the database
         populateTable();
-        startConnector(x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 1));
+        startConnector(x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 1)
+                .with(Heartbeat.HEARTBEAT_INTERVAL_PROPERTY_NAME, 5000));
 
         // Send ad-hoc start incremental snapshot signal and wait for incremental snapshots to start
         sendAdHocSnapshotSignalAndWait();
@@ -637,7 +640,8 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         // we are still within the incremental snapshot rather than it being performed with one
         // round trip to the database
         populateTable();
-        startConnector(x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 1));
+        startConnector(x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 1)
+                .with(Heartbeat.HEARTBEAT_INTERVAL_PROPERTY_NAME, 5000));
 
         // Send ad-hoc start incremental snapshot signal and wait for incremental snapshots to start
         sendAdHocSnapshotSignalAndWait();
@@ -868,7 +872,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         // there shouldn't be any snapshot records
         assertNoRecordsToConsume();
 
-        sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey(String.format("\"aa = %s\"", expectedValue), "",
+        sendAdHocSnapshotSignalWithAdditionalConditionsWithSurrogateKey(Map.of(tableDataCollectionId(), String.format("aa = %s", expectedValue)), "",
                 tableDataCollectionId());
 
         final Map<Integer, SourceRecord> dbChanges = consumeRecordsMixedWithIncrementalSnapshot(expectedCount,
@@ -913,7 +917,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
         final int recordsCount = ROW_COUNT;
 
-        sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey("\"\"", "", tableDataCollectionId());
+        sendAdHocSnapshotSignalWithAdditionalConditionsWithSurrogateKey(Map.of(), "", tableDataCollectionId());
 
         final Map<Integer, SourceRecord> dbChanges = consumeRecordsMixedWithIncrementalSnapshot(recordsCount,
                 x -> true, null);
@@ -936,7 +940,8 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         // there shouldn't be any snapshot records
         assertNoRecordsToConsume();
 
-        sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey(String.format("\"aa = %s\"", expectedValue), "", tableDataCollectionId());
+        sendAdHocSnapshotSignalWithAdditionalConditionsWithSurrogateKey(Map.of(tableDataCollectionId(), String.format("aa = %s", expectedValue)), "",
+                tableDataCollectionId());
 
         final AtomicInteger recordCounter = new AtomicInteger();
         final AtomicBoolean restarted = new AtomicBoolean();
@@ -987,7 +992,8 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         // there shouldn't be any snapshot records
         assertNoRecordsToConsume();
 
-        sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey(String.format("\"aa = %s\"", expectedValue), "\"aa\"", tableDataCollectionId());
+        sendAdHocSnapshotSignalWithAdditionalConditionsWithSurrogateKey(Map.of(tableDataCollectionId(), String.format("aa = %s", expectedValue)), "\"aa\"",
+                tableDataCollectionId());
 
         final Map<Integer, SourceRecord> dbChanges = consumeRecordsMixedWithIncrementalSnapshot(expectedCount,
                 x -> true, null);
@@ -1176,7 +1182,11 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
             sendAdHocSnapshotSignal(collectionIds);
         }
 
-        Awaitility.await().atMost(60, TimeUnit.SECONDS).until(() -> {
+        Awaitility.await().atMost(60, TimeUnit.SECONDS).until(executeSignalWaiter());
+    }
+
+    protected Callable<Boolean> executeSignalWaiter() {
+        return () -> {
             final AtomicBoolean result = new AtomicBoolean(false);
             consumeAvailableRecords(r -> {
                 if (r.topic().endsWith(signalTableNameSanitized())) {
@@ -1184,14 +1194,18 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
                 }
             });
             return result.get();
-        });
+        };
     }
 
     protected void sendAdHocSnapshotStopSignalAndWait(String... collectionIds) throws Exception {
         sendAdHocSnapshotStopSignal(collectionIds);
 
         // Wait for stop signal received and at least one incremental snapshot record
-        Awaitility.await().atMost(60, TimeUnit.SECONDS).until(() -> {
+        Awaitility.await().atMost(60, TimeUnit.SECONDS).until(stopSignalWaiter());
+    }
+
+    protected Callable<Boolean> stopSignalWaiter() {
+        return () -> {
             final AtomicBoolean stopSignal = new AtomicBoolean(false);
             consumeAvailableRecords(r -> {
                 if (r.topic().endsWith(signalTableNameSanitized())) {
@@ -1205,7 +1219,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
                 }
             });
             return stopSignal.get();
-        });
+        };
     }
 
     protected boolean consumeAnyRemainingIncrementalSnapshotEventsAndCheckForStopMessage(LogInterceptor interceptor, String stopMessage) throws Exception {

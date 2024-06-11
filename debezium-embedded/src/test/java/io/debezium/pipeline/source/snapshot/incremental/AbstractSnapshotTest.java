@@ -409,7 +409,7 @@ public abstract class AbstractSnapshotTest<T extends SourceConnector> extends Ab
         }
     }
 
-    private static String buildAdditionalConditions(Map<String, String> additionalConditions) {
+    protected static String buildAdditionalConditions(Map<String, String> additionalConditions) {
 
         return additionalConditions.entrySet().stream()
                 .map(cond -> String.format("{\"data-collection\": \"%s\", \"filter\": \"%s\"}", cond.getKey(), cond.getValue()))

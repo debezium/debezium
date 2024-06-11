@@ -209,6 +209,10 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
 
         sendAdHocSnapshotSignal("s1.enumpk");
 
+        assertExpectedRecordsEnumPk(enumValues);
+    }
+
+    protected void assertExpectedRecordsEnumPk(List<String> enumValues) throws InterruptedException {
         // SNAPSHOT signal, OPEN WINDOW signal + data + CLOSE WINDOW signal
         final var records = consumeRecordsByTopic(enumValues.size() + 3).allRecordsInOrder();
         for (int i = 0; i < enumValues.size(); i++) {
