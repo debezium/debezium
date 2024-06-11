@@ -39,7 +39,6 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
-import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.EqualityCheck;
 import io.debezium.junit.SkipWhenConnectorUnderTest;
@@ -584,8 +583,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         // we are still within the incremental snapshot rather than it being performed with one
         // round trip to the database
         populateTable();
-        startConnector(x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 1)
-                .with(Heartbeat.HEARTBEAT_INTERVAL_PROPERTY_NAME, 5000));
+        startConnector(additionalConfiguration());
 
         // Send ad-hoc start incremental snapshot signal and wait for incremental snapshots to start
         sendAdHocSnapshotSignalAndWait();
@@ -628,6 +626,10 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         }
     }
 
+    protected Function<Configuration.Builder, Configuration.Builder> additionalConfiguration() {
+        return x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 1);
+    }
+
     @Test
     @FixFor("DBZ-4271")
     public void stopCurrentIncrementalSnapshotWithAllCollectionsAndTakeNewNewIncrementalSnapshotAfterRestart() throws Exception {
@@ -640,8 +642,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         // we are still within the incremental snapshot rather than it being performed with one
         // round trip to the database
         populateTable();
-        startConnector(x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 1)
-                .with(Heartbeat.HEARTBEAT_INTERVAL_PROPERTY_NAME, 5000));
+        startConnector(additionalConfiguration());
 
         // Send ad-hoc start incremental snapshot signal and wait for incremental snapshots to start
         sendAdHocSnapshotSignalAndWait();

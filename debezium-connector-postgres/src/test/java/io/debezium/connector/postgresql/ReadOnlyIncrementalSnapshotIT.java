@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Struct;
@@ -19,6 +20,7 @@ import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.heartbeat.Heartbeat;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.signal.actions.AbstractSnapshotSignal;
 import io.debezium.pipeline.signal.actions.snapshotting.ExecuteSnapshot;
@@ -208,5 +210,11 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
             assertThat(((Struct) record.key()).getString("pk")).isEqualTo(enumValues.get(i));
             assertThat(((Struct) record.value()).getStruct("after").getInt32("aa")).isEqualTo(i);
         }
+    }
+
+    @Override
+    protected Function<Configuration.Builder, Configuration.Builder> additionalConfiguration() {
+        return x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 1)
+                .with(Heartbeat.HEARTBEAT_INTERVAL_PROPERTY_NAME, 5000);
     }
 }
