@@ -53,6 +53,7 @@ import io.debezium.snapshot.SnapshotterService;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
 import io.debezium.util.Stopwatch;
+import io.debezium.util.Strings;
 
 /**
  * A {@link StreamingChangeEventSource} based on Oracle's LogMiner utility.
@@ -862,8 +863,16 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                             + "Use: ALTER DATABASE ADD SUPPLEMENTAL LOG DATA");
                 }
 
+                Set<TableId> tablesToCheck = schema.tableIds();
+                if (!Strings.isNullOrEmpty(connectorConfig.getSignalingDataCollectionId())) {
+                    final TableId signalDataCollectionTableId = TableId.parse(connectorConfig.getSignalingDataCollectionId());
+                    tablesToCheck = schema.tableIds().stream()
+                            .filter(t -> !t.equals(signalDataCollectionTableId))
+                            .collect(Collectors.toSet());
+                }
+
                 // Check if ALL COLUMNS supplemental logging is enabled for each captured table
-                for (TableId tableId : schema.tableIds()) {
+                for (TableId tableId : tablesToCheck) {
                     if (!connection.isTableExists(tableId)) {
                         LOGGER.warn("Database table '{}' no longer exists, supplemental log check skipped", tableId);
                     }
