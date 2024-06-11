@@ -3061,6 +3061,16 @@ This may result in more change events to be re-sent after a connector restart.
 Set this parameter to `0` to not send heartbeat messages at all. +
 Disabled by default.
 
+|[[sqlserver-property-heartbeat-action-query]]<<sqlserver-property-heartbeat-action-query, `+heartbeat.action.query+`>>
+|No default
+|Specifies a query that the connector executes on the source database when the connector sends a heartbeat message. +
++
+This is useful for keeping offsets from becoming stale when capturing changes from a low-traffic database. Create a heartbeat table in the low-traffic database, and set this property to a statement that inserts records into that table, for example:  +
++
+`INSERT INTO test_heartbeat_table (text) VALUES ('test_heartbeat')` +
++
+This allows the connector to receive changes from the low-traffic database and acknowledge their LSNs, which prevents offsets from become stale.
+
 |[[sqlserver-property-snapshot-delay-ms]]<<sqlserver-property-snapshot-delay-ms, `+snapshot.delay.ms+`>>
 |No default
 |An interval in milli-seconds that the connector should wait before taking a snapshot after starting up; +
