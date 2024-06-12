@@ -44,11 +44,11 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Oracl
         createTables();
 
         // todo: creates signal table in the PDB, do we want it to be in the CDB?
-        TestHelper.dropTable(connection, "debezium_signal");
-        connection.execute("CREATE TABLE debezium_signal (id varchar2(64), type varchar2(32), data varchar2(2048))");
-        connection.execute("GRANT INSERT on debezium_signal to " + TestHelper.getConnectorUserName());
-        connection.execute("GRANT DELETE on debezium_signal to " + TestHelper.getConnectorUserName());
-        TestHelper.streamTable(connection, "debezium_signal");
+        TestHelper.dropTable(connection, "\"__DEBEZIUM_SIGNAL\"");
+        connection.execute("CREATE TABLE \"__DEBEZIUM_SIGNAL\" (id varchar2(64), type varchar2(32), data varchar2(2048))");
+        connection.execute("GRANT INSERT on \"__DEBEZIUM_SIGNAL\" to " + TestHelper.getConnectorUserName());
+        connection.execute("GRANT DELETE on \"__DEBEZIUM_SIGNAL\" to " + TestHelper.getConnectorUserName());
+        TestHelper.streamTable(connection, "\"__DEBEZIUM_SIGNAL\"");
 
         setConsumeTimeout(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS);
         initializeConnectorTestFramework();
@@ -60,7 +60,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Oracl
         stopConnector();
         if (connection != null) {
             dropTables();
-            TestHelper.dropTable(connection, "debezium_signal");
+            TestHelper.dropTable(connection, "\"__DEBEZIUM_SIGNAL\"");
             connection.close();
         }
     }
@@ -149,14 +149,14 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Oracl
 
     @Override
     protected String signalTableName() {
-        return "DEBEZIUM.DEBEZIUM_SIGNAL";
+        return "DEBEZIUM.\"__DEBEZIUM_SIGNAL\"";
     }
 
     @Override
     protected Configuration.Builder config() {
         return TestHelper.defaultConfig()
                 .with(OracleConnectorConfig.SNAPSHOT_MODE, OracleConnectorConfig.SnapshotMode.NO_DATA)
-                .with(OracleConnectorConfig.SIGNAL_DATA_COLLECTION, TestHelper.getDatabaseName() + ".DEBEZIUM.DEBEZIUM_SIGNAL")
+                .with(OracleConnectorConfig.SIGNAL_DATA_COLLECTION, TestHelper.getDatabaseName() + ".DEBEZIUM.\"__DEBEZIUM_SIGNAL\"")
                 .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.A,DEBEZIUM\\.B,DEBEZIUM\\.A42")
                 .with(RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS, "DEBEZIUM.A42:pk1,pk2,pk3,pk4")
                 .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true);
@@ -173,7 +173,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Oracl
         }
         return TestHelper.defaultConfig()
                 .with(OracleConnectorConfig.SNAPSHOT_MODE, OracleConnectorConfig.SnapshotMode.INITIAL)
-                .with(OracleConnectorConfig.SIGNAL_DATA_COLLECTION, TestHelper.getDatabaseName() + ".DEBEZIUM.DEBEZIUM_SIGNAL")
+                .with(OracleConnectorConfig.SIGNAL_DATA_COLLECTION, TestHelper.getDatabaseName() + ".DEBEZIUM.\"__DEBEZIUM_SIGNAL\"")
                 .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, tableIncludeList)
                 .with(RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS, "DEBEZIUM.A42:pk1,pk2,pk3,pk4")
                 .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, storeOnlyCapturedDdl);

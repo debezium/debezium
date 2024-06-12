@@ -5,7 +5,10 @@
  */
 package io.debezium.connector.oracle;
 
+import java.util.List;
+
 import io.debezium.relational.TableId;
+import io.debezium.util.Strings;
 
 /**
  * Specialized parser implementation for Oracle {@link TableId} instances.
@@ -25,7 +28,27 @@ public class OracleTableIdParser {
             final String catalogName = resolveCatalogFromDomainName(parts);
             return new TableId(catalogName, schemaName, tableName);
         }
-        return TableId.parse(identifier);
+        return TableId.parse(identifier, false);
+    }
+
+    public static String quoteIfNeeded(TableId tableId, boolean useCatalog, boolean useSchema, List<String> keywords) {
+        final StringBuilder sb = new StringBuilder();
+        if (useCatalog) {
+            sb.append(quotePartIfNeeded(tableId.catalog(), keywords)).append(".");
+        }
+        else if (useSchema) {
+            sb.append(quotePartIfNeeded(tableId.schema(), keywords)).append(".");
+        }
+        return sb.append(quotePartIfNeeded(tableId.table(), keywords)).toString();
+    }
+
+    private static String quotePartIfNeeded(String part, List<String> keywords) {
+        if (!Strings.isNullOrEmpty(part)) {
+            if (part.startsWith("_") || keywords.stream().anyMatch(keyword -> keyword.equalsIgnoreCase(part))) {
+                return "\"" + part + "\"";
+            }
+        }
+        return part;
     }
 
     private static String resolveCatalogFromDomainName(String[] parts) {
