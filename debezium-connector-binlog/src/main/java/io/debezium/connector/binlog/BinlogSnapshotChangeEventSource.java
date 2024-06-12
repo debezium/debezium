@@ -48,6 +48,7 @@ import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.source.SnapshottingTask;
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
+import io.debezium.relational.RelationalDatabaseConnectorConfig.SnapshotTablesRowCountOrder;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.RelationalTableFilters;
 import io.debezium.relational.Table;
@@ -548,7 +549,7 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
         if (getSnapshotSelectOverridesByTable(tableId, connectorConfig.getSnapshotSelectOverridesByTable()) != null) {
             return super.rowCountForTable(tableId);
         }
-        if (ROW_ESTIMATE_LOGGER.isInfoEnabled()) {
+        if (ROW_ESTIMATE_LOGGER.isInfoEnabled() || connectorConfig.snapshotOrderByRowCount() != SnapshotTablesRowCountOrder.DISABLED) {
             OptionalLong rowCount = connection.getEstimatedTableSize(tableId);
             LOGGER.info("Estimated row count for table {} is {}", tableId, rowCount);
             return rowCount;
