@@ -349,10 +349,6 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
         for (TableId tableId : snapshottedTableIds) {
             if (connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId)) {
-                if (tableId.equals(signalDataCollectionTableId)) {
-                    // Skip the signal data collection as data shouldn't be captured
-                    continue;
-                }
                 LOGGER.trace("Adding table {} to the list of captured tables for which the data will be snapshotted", tableId);
                 capturedTables.add(tableId);
             }
@@ -716,6 +712,11 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
      */
     private Optional<String> determineSnapshotSelect(RelationalSnapshotContext<P, O> snapshotContext, TableId tableId,
                                                      Map<DataCollectionId, String> snapshotSelectOverridesByTable) {
+        if (tableId.equals(signalDataCollectionTableId)) {
+            // Skip the signal data collection as data shouldn't be captured
+            return Optional.empty();
+        }
+
         String overriddenSelect = getSnapshotSelectOverridesByTable(tableId, snapshotSelectOverridesByTable);
         if (overriddenSelect != null) {
             return Optional.of(enhanceOverriddenSelect(snapshotContext, overriddenSelect, tableId));
