@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.postgresql;
 
+import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Arrays;
@@ -21,6 +22,7 @@ import org.junit.Test;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.heartbeat.Heartbeat;
+import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.signal.actions.AbstractSnapshotSignal;
 import io.debezium.pipeline.signal.actions.snapshotting.ExecuteSnapshot;
@@ -29,6 +31,7 @@ import io.debezium.pipeline.signal.channels.KafkaSignalChannel;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.util.Strings;
 
+@SkipWhenDatabaseVersion(check = LESS_THAN, major = 13, minor = 0, reason = "Function pg_current_snapshot() not supported until PostgreSQL 13")
 public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
 
     private final LogInterceptor executeSignalInterceptor = new LogInterceptor(ExecuteSnapshot.class);
