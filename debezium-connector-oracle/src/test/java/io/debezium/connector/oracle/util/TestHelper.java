@@ -566,13 +566,37 @@ public class TestHelper {
         try (OracleConnection connection = testConnection()) {
             connection.query("SELECT TABLE_NAME FROM USER_TABLES", rs -> {
                 while (rs.next()) {
-                    dropTable(connection, SCHEMA_USER + "." + rs.getString(1));
+                    // Oracle normally stores tables in upper case; however, if a table is created using
+                    // special characters, it must be quoted and therefore is treated as case-sensitive,
+                    // which will require quotes. This checks this specific use case and quotes the name
+                    // of the table if necessary.
+                    String tableName = rs.getString(1);
+                    if (isQuoteRequired(tableName)) {
+                        tableName = "\"" + tableName + "\"";
+                    }
+                    dropTable(connection, String.format("%s.%s", SCHEMA_USER, tableName));
                 }
             });
         }
         catch (SQLException e) {
             throw new RuntimeException("Failed to clean database", e);
         }
+    }
+
+    public static boolean isQuoteRequired(String tableName) {
+        if (!Strings.isNullOrBlank(tableName)) {
+            // Make sure table isn't already quoted
+            if (!tableName.startsWith("\"") && !tableName.endsWith("\"")) {
+                for (int i = 0; i < tableName.length(); i++) {
+                    final char c = tableName.charAt(i);
+                    // If we detect any lower case character or non letter/digit, name must be quoted
+                    if (Character.isLowerCase(c) || !Character.isLetterOrDigit(c)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     public static List<BigInteger> getCurrentRedoLogSequences() throws SQLException {

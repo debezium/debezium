@@ -5767,6 +5767,40 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         }
     }
 
+    @Test
+    @FixFor("DBZ-7831")
+    public void shouldStreamChangesForTableWithSingleQuote() throws Exception {
+        TestHelper.dropTable(connection, "\"debezium_test'\"");
+        try {
+            connection.execute("CREATE TABLE \"debezium_test'\"\n" +
+                    "(\n" +
+                    "    id NUMBER(10),\n" +
+                    "    first_name VARCHAR2(50),\n" +
+                    "    last_name VARCHAR2(50),\n" +
+                    "    PRIMARY KEY(ID)\n" +
+                    ")");
+            connection.execute("INSERT INTO \"debezium_test'\" (id,first_name,last_name) values (1,'Andy','Griffith')");
+            TestHelper.streamTable(connection, "\"debezium_test'\"");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.debezium_test'")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("INSERT INTO \"debezium_test'\" (id,first_name,last_name) values (2,'Elmer','Fudd')");
+
+            final SourceRecords sourceRecords = consumeRecordsByTopic(2);
+            final List<SourceRecord> records = sourceRecords.recordsForTopic("server1.DEBEZIUM.debezium_test_");
+            assertThat(records).hasSize(2);
+        }
+        finally {
+            TestHelper.dropTable(connection, "\"debezium_test'\"");
+        }
+    }
+
     private void waitForCurrentScnToHaveBeenSeenByConnector() throws SQLException {
         try (OracleConnection admin = TestHelper.adminConnection(true)) {
             final Scn scn = admin.getCurrentScn();

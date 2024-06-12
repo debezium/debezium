@@ -18,7 +18,6 @@ import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot.AdapterName;
-import io.debezium.relational.TableId;
 
 @SkipWhenAdapterNameIsNot(value = AdapterName.LOGMINER)
 public class SqlUtilsTest {
@@ -36,8 +35,8 @@ public class SqlUtilsTest {
         expected = "SELECT 'KEY', SUPPLEMENTAL_LOG_DATA_MIN FROM V$DATABASE";
         assertThat(result).isEqualTo(expected);
 
-        result = SqlUtils.tableSupplementalLoggingCheckQuery(new TableId(null, "s", "t"));
-        expected = "SELECT 'KEY', LOG_GROUP_TYPE FROM ALL_LOG_GROUPS WHERE OWNER = 's' AND TABLE_NAME = 't'";
+        result = SqlUtils.tableSupplementalLoggingCheckQuery();
+        expected = "SELECT 'KEY', LOG_GROUP_TYPE FROM ALL_LOG_GROUPS WHERE OWNER=? AND TABLE_NAME=?";
         assertThat(result).isEqualTo(expected);
 
         result = SqlUtils.startLogMinerStatement(Scn.valueOf(10L), Scn.valueOf(20L), OracleConnectorConfig.LogMiningStrategy.ONLINE_CATALOG, true);
