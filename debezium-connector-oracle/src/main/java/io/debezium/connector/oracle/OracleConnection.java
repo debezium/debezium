@@ -16,6 +16,8 @@ import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -821,6 +823,16 @@ public class OracleConnection extends JdbcConnection {
         }
         catch (SQLException e) {
             throw new DebeziumException("Failed to read the Oracle database redo thread state", e);
+        }
+    }
+
+    public List<String> getSQLKeywords() {
+        try {
+            return Arrays.asList(connection().getMetaData().getSQLKeywords().split(","));
+        }
+        catch (SQLException e) {
+            LOGGER.debug("Failed to acquire SQL keywords from JDBC driver.", e);
+            return Collections.emptyList();
         }
     }
 
