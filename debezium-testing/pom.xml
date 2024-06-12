@@ -13,5 +13,6 @@
   <modules>
     <module>debezium-testing-testcontainers</module>
     <module>debezium-testing-system</module>
+    <module>debezium-testing-performance</module>
   </modules>
 </project>
