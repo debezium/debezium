@@ -34,6 +34,17 @@ public class TruncateColumnTest {
         assertThat(converter.convert("12").toString()).isEqualTo("12");
         assertThat(converter.convert("1").toString()).isEqualTo("1");
         assertThat(converter.convert(null)).isNull();
+
+        converter = new TruncateColumn(0).create(column);
+        assertThat(converter.convert("1234567890").toString()).isEqualTo("");
+        assertThat(converter.convert("123456").toString()).isEqualTo("");
+        assertThat(converter.convert("12345").toString()).isEqualTo("");
+        assertThat(converter.convert("1234").toString()).isEqualTo("");
+        assertThat(converter.convert("123").toString()).isEqualTo("");
+        assertThat(converter.convert("12").toString()).isEqualTo("");
+        assertThat(converter.convert("1").toString()).isEqualTo("");
+        assertThat(converter.convert("").toString()).isEqualTo("");
+        assertThat(converter.convert(null)).isNull();
     }
 
     @Test
@@ -49,6 +60,16 @@ public class TruncateColumnTest {
         assertThat(converter.convert(buffer3)).isEqualTo(buffer3);
         assertThat(converter.convert(buffer2)).isEqualTo(buffer2);
         assertThat(converter.convert(buffer1)).isEqualTo(buffer1);
+        assertThat(converter.convert(null)).isNull();
+
+        converter = new TruncateColumn(0).create(column);
+        ByteBuffer buffer0 = createBuffer(0);
+        assertThat(converter.convert(buffer5)).isEqualTo(buffer0);
+        assertThat(converter.convert(buffer4)).isEqualTo(buffer0);
+        assertThat(converter.convert(buffer3)).isEqualTo(buffer0);
+        assertThat(converter.convert(buffer2)).isEqualTo(buffer0);
+        assertThat(converter.convert(buffer1)).isEqualTo(buffer0);
+        assertThat(converter.convert(buffer0)).isEqualTo(buffer0);
         assertThat(converter.convert(null)).isNull();
     }
 
