@@ -15,7 +15,7 @@ public class PgSnapshotTest {
     @Test
     public void parseCorrectPgSnapshotWithInProgressTransactions() {
 
-        PgSnapshot snapshot = PgSnapshot.from("795:799:795,797");
+        PgSnapshot snapshot = PgSnapshot.valueOf("795:799:795,797");
 
         Assertions.assertThat(snapshot.getXMin()).isEqualTo(795L);
         Assertions.assertThat(snapshot.getXMax()).isEqualTo(799L);
@@ -25,7 +25,7 @@ public class PgSnapshotTest {
     @Test
     public void parseCorrectPgSnapshotWithoutInProgressTransactions() {
 
-        PgSnapshot snapshot = PgSnapshot.from("795:799:");
+        PgSnapshot snapshot = PgSnapshot.valueOf("795:799:");
 
         Assertions.assertThat(snapshot.getXMin()).isEqualTo(795L);
         Assertions.assertThat(snapshot.getXMax()).isEqualTo(799L);
@@ -35,7 +35,7 @@ public class PgSnapshotTest {
     @Test
     public void parseAWrongPgSnapshotWillThrowException() {
 
-        Assertions.assertThatThrownBy(() -> PgSnapshot.from("795::"))
+        Assertions.assertThatThrownBy(() -> PgSnapshot.valueOf("795::"))
                 .isInstanceOf(DebeziumException.class);
     }
 }
