@@ -111,10 +111,6 @@ You specify read preferences for a MongoDB connection by setting the `readPrefer
 
 An overview of the MongoDB topologies that the connector supports is useful for planning your application.
 
-When a MongoDB connector is configured and deployed, it starts by connecting to the MongoDB servers at the seed addresses, and determines the details about each of the available replica sets.
-Since each replica set has its own independent oplog, the connector will try to use a separate task for each replica set.
-The connector can limit the maximum number of tasks it will use, and if not enough tasks are available the connector will assign multiple replica sets to each task, although the task will still use a separate thread for each replica set.
-
 ifdef::product[]
 The following topics provide details about how the {prodname} MongoDB connector works:
 
