@@ -13,6 +13,11 @@ import org.slf4j.LoggerFactory;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotContext;
 import io.debezium.pipeline.spi.OffsetContext;
 
+/**
+ * A class describing PostgreSQL read only incremental snapshot context state.
+ *
+ * @author Mario Fiore Vitale
+ */
 public class PostgresReadOnlyIncrementalSnapshotContext<T> extends AbstractIncrementalSnapshotContext<T> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PostgresReadOnlyIncrementalSnapshotContext.class);
@@ -62,7 +67,7 @@ public class PostgresReadOnlyIncrementalSnapshotContext<T> extends AbstractIncre
 
         Long eventTxId = offsetContext.getSourceInfo().getInt64(SourceInfo.TXID_KEY);
         LOGGER.trace("Received event with TxId {}", eventTxId);
-        LOGGER.trace("Updating window. Window oped: {}, low watermark {}, high watermark {}", windowOpened, lowWatermark, highWatermark);
+        LOGGER.trace("Updating window. Window opened: {}, low watermark {}, high watermark {}", windowOpened, lowWatermark, highWatermark);
 
         if (!windowOpened && lowWatermark != null) {
             boolean pastLowWatermark = eventTxId >= lowWatermark.getXMin();

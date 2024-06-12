@@ -14,6 +14,11 @@ import java.util.stream.Collectors;
 
 import io.debezium.DebeziumException;
 
+/**
+ * This class contains the information returned by the pg_current_snapshot function.
+ *
+ * @author Mario Fiore Vitale
+ */
 public class PgSnapshot {
 
     private static final String SNAPSHOT_FORMAT = "(\\d+):(\\d+):((\\d+,*)+)*";
@@ -42,7 +47,13 @@ public class PgSnapshot {
         return xip;
     }
 
-    public static PgSnapshot from(String snapshotString) {
+    /**
+     * Returns a PgSnapshot instance representing the specified snapshot string
+     *
+     * @param snapshotString is the string returned by the pg_current_snapshot function
+     * @return a PgSnapshot representing the {@code snapshotString}
+     */
+    public static PgSnapshot valueOf(String snapshotString) {
 
         Matcher matcher = SNAPSHOT_PATTERN.matcher(snapshotString);
 
