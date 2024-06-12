@@ -424,6 +424,13 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                 partition.getSourcePartition(),
                 offset.getOffset(),
                 this::enqueueHeartbeat);
+    }
+
+    public void dispatchHeartbeatEventAlsoToIncrementalSnapshot(P partition, OffsetContext offset) throws InterruptedException {
+        heartbeat.heartbeat(
+                partition.getSourcePartition(),
+                offset.getOffset(),
+                this::enqueueHeartbeat);
 
         if (incrementalSnapshotChangeEventSource != null) {
             incrementalSnapshotChangeEventSource.processHeartbeat(partition, offset);
