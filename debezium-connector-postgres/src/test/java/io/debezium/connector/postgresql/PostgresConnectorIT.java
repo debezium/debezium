@@ -78,6 +78,7 @@ import io.debezium.connector.postgresql.connection.PostgresReplicationConnection
 import io.debezium.connector.postgresql.connection.ReplicaIdentityInfo;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.connection.pgoutput.PgOutputMessageDecoder;
+import io.debezium.connector.postgresql.junit.PostgresDatabaseVersionResolver;
 import io.debezium.connector.postgresql.junit.SkipTestDependingOnDecoderPluginNameRule;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIs;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot;
@@ -3518,6 +3519,26 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
             assertEquals("io.debezium.connector.postgresql.Source", source.schema().name());
             assertNotNull(source.getInt64(SourceInfo.LSN_KEY));
         });
+    }
+
+    @Test
+    public void shouldFailWhenReadOnlyIsNotSupported() {
+
+        PostgresDatabaseVersionResolver databaseVersionResolver = new PostgresDatabaseVersionResolver();
+
+        start(PostgresConnector.class, TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.READ_ONLY_CONNECTION, true)
+                .build(), (success, message, error) -> {
+
+                    if (databaseVersionResolver.getVersion().isLessThan(13, 0, 0)) {
+                        assertThat(error)
+                                .isInstanceOf(DebeziumException.class)
+                                .hasMessage("Read only is not supported for version minor to 13");
+                    }
+                    else {
+                        assertTrue(success);
+                    }
+                });
     }
 
     private Predicate<SourceRecord> stopOnPKPredicate(int pkValue) {

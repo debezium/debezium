@@ -23,6 +23,7 @@ public class ServerInfo {
     private String username;
     private String database;
     private Map<String, String> permissionsByRoleName;
+    private Integer majorVersion;
 
     protected ServerInfo() {
         this.permissionsByRoleName = new HashMap<>();
@@ -45,6 +46,11 @@ public class ServerInfo {
 
     protected ServerInfo addRole(String roleName, String permissions) {
         permissionsByRoleName.put(roleName, permissions);
+        return this;
+    }
+
+    public ServerInfo withMajorVersion(Integer majorVersion) {
+        this.majorVersion = majorVersion;
         return this;
     }
 
@@ -82,6 +88,15 @@ public class ServerInfo {
      */
     public Map<String, String> permissionsByRoleName() {
         return permissionsByRoleName;
+    }
+
+    /**
+     * Returns the version num of a database for which a connection was established
+     *
+     * @return an Integer, possibly null if info was not available
+     */
+    public Integer version() {
+        return majorVersion;
     }
 
     @Override
