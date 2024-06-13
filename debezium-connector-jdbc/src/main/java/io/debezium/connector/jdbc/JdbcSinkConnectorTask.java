@@ -123,6 +123,16 @@ public class JdbcSinkConnectorTask extends SinkTask {
     }
 
     @Override
+    public void close(Collection<TopicPartition> partitions) {
+        for (TopicPartition partition : partitions) {
+            if (offsets.containsKey(partition)) {
+                LOGGER.trace("Requested close TopicPartition request for '{}'", partition);
+                offsets.remove(partition);
+            }
+        }
+    }
+
+    @Override
     public Map<TopicPartition, OffsetAndMetadata> preCommit(Map<TopicPartition, OffsetAndMetadata> currentOffsets) {
         // Flush only up to the records processed by this sink
         LOGGER.debug("Flushing offsets: {}", offsets);
@@ -176,15 +186,16 @@ public class JdbcSinkConnectorTask extends SinkTask {
 
         LOGGER.trace("Marking processed record for topic {}", topicName);
 
-        final TopicPartition topicPartition = new TopicPartition(topicName, record.kafkaPartition());
-        final OffsetAndMetadata offsetAndMetadata = new OffsetAndMetadata(record.kafkaOffset() + 1L);
+        final long kafkaOffset = getOriginalKafkaOffset(record);
+        final TopicPartition topicPartition = new TopicPartition(topicName, getOriginalKafkaPartition(record));
+        final OffsetAndMetadata offsetAndMetadata = new OffsetAndMetadata(kafkaOffset + 1L);
 
         final OffsetAndMetadata existing = offsets.put(topicPartition, offsetAndMetadata);
         if (existing == null) {
-            LOGGER.trace("Advanced topic {} to offset {}.", topicName, record.kafkaOffset());
+            LOGGER.trace("Advanced topic {} to offset {}.", topicName, kafkaOffset);
         }
         else {
-            LOGGER.trace("Updated topic {} from offset {} to {}.", topicName, existing.offset(), record.kafkaOffset());
+            LOGGER.trace("Updated topic {} from offset {} to {}.", topicName, existing.offset(), kafkaOffset);
         }
     }
 
@@ -200,10 +211,14 @@ public class JdbcSinkConnectorTask extends SinkTask {
         // in doing this if this tuple is not already in the map as a previous entry could have been
         // added because an earlier record was either processed or marked as not processed since any
         // remaining entries in the batch call this method on failures.
-        final TopicPartition topicPartition = new TopicPartition(record.topic(), record.kafkaPartition());
+        final String topicName = getOriginalTopicName(record);
+        final Integer kafkaPartition = getOriginalKafkaPartition(record);
+        final long kafkaOffset = getOriginalKafkaOffset(record);
+
+        final TopicPartition topicPartition = new TopicPartition(topicName, kafkaPartition);
         if (!offsets.containsKey(topicPartition)) {
-            LOGGER.debug("Rewinding topic {} offset to {}.", record.topic(), record.kafkaOffset());
-            final OffsetAndMetadata offsetAndMetadata = new OffsetAndMetadata(record.kafkaOffset());
+            LOGGER.debug("Rewinding topic {} offset to {}.", topicName, kafkaOffset);
+            final OffsetAndMetadata offsetAndMetadata = new OffsetAndMetadata(kafkaOffset);
             offsets.put(topicPartition, offsetAndMetadata);
         }
     }
@@ -225,4 +240,25 @@ public class JdbcSinkConnectorTask extends SinkTask {
         return null;
     }
 
+    private Integer getOriginalKafkaPartition(SinkRecord record) {
+        try {
+            // Added in Kafka 3.6 and should be used as it will contain the details pre-transformations
+            return record.originalKafkaPartition();
+        }
+        catch (NoSuchMethodError e) {
+            // Fallback to old method for Kafka 3.5 or earlier
+            return record.kafkaPartition();
+        }
+    }
+
+    private long getOriginalKafkaOffset(SinkRecord record) {
+        try {
+            // Added in Kafka 3.6 and should be used as it will contain the details pre-transformations
+            return record.originalKafkaOffset();
+        }
+        catch (NoSuchMethodError e) {
+            // Fallback to old method for Kafka 3.5 or earlier
+            return record.kafkaOffset();
+        }
+    }
 }
