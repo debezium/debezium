@@ -30,7 +30,7 @@ public class TruncateColumn implements ColumnMapper {
      */
     public TruncateColumn(int maxLength) {
         if (maxLength < 0) {
-            throw new IllegalArgumentException("Maximum length must be positive");
+            throw new IllegalArgumentException("Maximum length must be non-negative");
         }
         this.converter = new TruncatingValueConverter(maxLength);
     }
