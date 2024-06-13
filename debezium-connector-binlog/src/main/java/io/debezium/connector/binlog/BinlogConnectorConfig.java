@@ -19,6 +19,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
+import io.debezium.connector.binlog.charset.BinlogCharsetRegistry;
 import io.debezium.connector.binlog.gtid.GtidSet;
 import io.debezium.connector.binlog.gtid.GtidSetFactory;
 import io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode;
@@ -893,6 +894,11 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
      * @return the global transaction identifier set ({@link GtidSet} factory.
      */
     public abstract GtidSetFactory getGtidSetFactory();
+
+    /**
+     * @return the character set registry
+     */
+    public abstract BinlogCharsetRegistry getCharsetRegistry();
 
     /**
      * Check whether tests request global lock usage.

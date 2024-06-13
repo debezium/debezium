@@ -42,7 +42,8 @@ public class MySqlDatabaseSchemaTest extends BinlogDatabaseSchemaTest<MySqlConne
                 BigIntUnsignedMode.LONG,
                 BinaryHandlingMode.BYTES,
                 MySqlValueConverters::adjustTemporal,
-                CommonConnectorConfig.EventConvertingFailureHandlingMode.WARN);
+                CommonConnectorConfig.EventConvertingFailureHandlingMode.WARN,
+                connectorConfig.getCharsetRegistry());
 
         return new MySqlDatabaseSchema(
                 connectorConfig,

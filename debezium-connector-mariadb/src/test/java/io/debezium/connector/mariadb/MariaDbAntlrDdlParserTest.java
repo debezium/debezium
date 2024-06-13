@@ -10,6 +10,7 @@ import java.util.List;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.binlog.BinlogAntlrDdlParserTest;
 import io.debezium.connector.mariadb.antlr.MariaDbAntlrDdlParser;
+import io.debezium.connector.mariadb.charset.MariaDbCharsetRegistry;
 import io.debezium.connector.mariadb.jdbc.MariaDbDefaultValueConverter;
 import io.debezium.connector.mariadb.jdbc.MariaDbValueConverters;
 import io.debezium.jdbc.JdbcValueConverters;
@@ -50,7 +51,8 @@ public class MariaDbAntlrDdlParserTest extends BinlogAntlrDdlParserTest<MariaDbV
                 JdbcValueConverters.BigIntUnsignedMode.PRECISE,
                 CommonConnectorConfig.BinaryHandlingMode.BYTES,
                 x -> x,
-                CommonConnectorConfig.EventConvertingFailureHandlingMode.WARN);
+                CommonConnectorConfig.EventConvertingFailureHandlingMode.WARN,
+                new MariaDbCharsetRegistry());
     }
 
     @Override
@@ -82,7 +84,7 @@ public class MariaDbAntlrDdlParserTest extends BinlogAntlrDdlParserTest<MariaDbV
 
         public MariaDbDdlParserWithSimpleTestListener(DdlChanges listener, boolean includeViews, boolean includeComments, Tables.TableFilter tableFilter,
                                                       MariaDbValueConverters converters) {
-            super(false, includeViews, includeComments, converters, tableFilter);
+            super(false, includeViews, includeComments, converters, tableFilter, new MariaDbCharsetRegistry());
             this.ddlChanges = listener;
         }
     }

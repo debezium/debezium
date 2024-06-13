@@ -18,12 +18,13 @@ import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.misc.Interval;
 import org.antlr.v4.runtime.tree.ParseTree;
 
+import io.debezium.annotation.VisibleForTesting;
 import io.debezium.antlr.AntlrDdlParser;
 import io.debezium.antlr.AntlrDdlParserListener;
 import io.debezium.antlr.DataTypeResolver;
+import io.debezium.connector.binlog.charset.BinlogCharsetRegistry;
 import io.debezium.connector.binlog.jdbc.BinlogSystemVariables;
 import io.debezium.connector.mariadb.antlr.listener.MariaDbAntlrDdlParserListener;
-import io.debezium.connector.mariadb.charset.CharsetMappingResolver;
 import io.debezium.connector.mariadb.jdbc.MariaDbValueConverters;
 import io.debezium.ddl.parser.mariadb.generated.MariaDBLexer;
 import io.debezium.ddl.parser.mariadb.generated.MariaDBParser;
@@ -48,25 +49,30 @@ public class MariaDbAntlrDdlParser extends AntlrDdlParser<MariaDBLexer, MariaDBP
     private final ConcurrentHashMap<String, String> charsetNameForDatabase = new ConcurrentHashMap<>();
     private final MariaDbValueConverters converters;
     private final Tables.TableFilter tableFilter;
+    private final BinlogCharsetRegistry charsetRegistry;
 
+    @VisibleForTesting
     public MariaDbAntlrDdlParser() {
         this(null, Tables.TableFilter.includeAll());
     }
 
+    @VisibleForTesting
     public MariaDbAntlrDdlParser(MariaDbValueConverters valueConverters) {
         this(valueConverters, Tables.TableFilter.includeAll());
     }
 
+    @VisibleForTesting
     public MariaDbAntlrDdlParser(MariaDbValueConverters valueConverters, Tables.TableFilter tableFilter) {
-        this(true, false, true, valueConverters, tableFilter);
+        this(true, false, true, valueConverters, tableFilter, null);
     }
 
     public MariaDbAntlrDdlParser(boolean throwWerrorsFromTreeWalk, boolean includeViews, boolean includeComments,
-                                 MariaDbValueConverters valueConverters, Tables.TableFilter tableFilter) {
+                                 MariaDbValueConverters valueConverters, Tables.TableFilter tableFilter, BinlogCharsetRegistry charsetRegistry) {
         super(throwWerrorsFromTreeWalk, includeViews, includeComments);
         systemVariables = new BinlogSystemVariables();
         this.converters = valueConverters;
         this.tableFilter = tableFilter;
+        this.charsetRegistry = charsetRegistry;
     }
 
     @Override
@@ -226,6 +232,15 @@ public class MariaDbAntlrDdlParser extends AntlrDdlParser<MariaDBLexer, MariaDBP
                         .setSuffixTokens(MariaDBParser.VARCHAR)));
 
         return dataTypeResolverBuilder.build();
+    }
+
+    /**
+     * Get the character set registry.
+     *
+     * @return the character set registry
+     */
+    public BinlogCharsetRegistry getCharsetRegistry() {
+        return charsetRegistry;
     }
 
     /**
@@ -461,9 +476,9 @@ public class MariaDbAntlrDdlParser extends AntlrDdlParser<MariaDBLexer, MariaDBP
         }
         else if (collationNode != null && collationNode.getText() != null) {
             final String collationName = withoutQuotes(collationNode.getText()).toLowerCase();
-            for (int index = 0; index < CharsetMappingResolver.getMapSize(); index++) {
-                if (collationName.equals(CharsetMappingResolver.getStaticCollationNameForCollationIndex(index))) {
-                    charsetName = CharsetMappingResolver.getStaticMariaDbCharsetNameForCollationIndex(index);
+            for (int index = 0; index < charsetRegistry.getCharsetMapSize(); index++) {
+                if (collationName.equals(charsetRegistry.getCollationNameForCollationIndex(index))) {
+                    charsetName = charsetRegistry.getCharsetNameForCollationIndex(index);
                     break;
                 }
             }

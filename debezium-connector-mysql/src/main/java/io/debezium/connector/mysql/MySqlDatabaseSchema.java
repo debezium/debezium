@@ -52,7 +52,8 @@ public class MySqlDatabaseSchema extends BinlogDatabaseSchema<MySqlPartition, My
                 false,
                 connectorConfig.isSchemaCommentsHistoryEnabled(),
                 valueConverter,
-                getTableFilter());
+                getTableFilter(),
+                connectorConfig.getCharsetRegistry());
     }
 
 }

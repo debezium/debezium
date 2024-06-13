@@ -44,6 +44,7 @@ import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode;
 import io.debezium.connector.binlog.BinlogGeometry;
 import io.debezium.connector.binlog.BinlogUnsignedIntegerConverter;
+import io.debezium.connector.binlog.charset.BinlogCharsetRegistry;
 import io.debezium.data.Json;
 import io.debezium.data.SpecialValueDecimal;
 import io.debezium.jdbc.JdbcValueConverters;
@@ -94,6 +95,7 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
     private static final Pattern TIMESTAMP_FIELD_PATTERN = Pattern.compile("([0-9]*)-([0-9]*)-([0-9]*) .*");
 
     private final EventConvertingFailureHandlingMode eventConvertingFailureHandlingMode;
+    private final BinlogCharsetRegistry charsetRegistry;
 
     /**
      * Create a new instance of the value converters that always uses UTC for the default time zone when
@@ -105,15 +107,18 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
      * @param binaryHandlingMode how binary columns should be treated
      * @param adjuster a temporal adjuster to make a database specific time before conversion
      * @param eventConvertingFailureHandlingMode how to handle conversion failures
+     * @param charsetRegistry the character set registry
      */
     public BinlogValueConverters(DecimalMode decimalMode,
                                  TemporalPrecisionMode temporalPrecisionMode,
                                  BigIntUnsignedMode bigIntUnsignedMode,
                                  BinaryHandlingMode binaryHandlingMode,
                                  TemporalAdjuster adjuster,
-                                 EventConvertingFailureHandlingMode eventConvertingFailureHandlingMode) {
+                                 EventConvertingFailureHandlingMode eventConvertingFailureHandlingMode,
+                                 BinlogCharsetRegistry charsetRegistry) {
         super(decimalMode, temporalPrecisionMode, ZoneOffset.UTC, adjuster, bigIntUnsignedMode, binaryHandlingMode);
         this.eventConvertingFailureHandlingMode = eventConvertingFailureHandlingMode;
+        this.charsetRegistry = charsetRegistry;
     }
 
     @Override
@@ -815,7 +820,9 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
 
     protected abstract List<String> extractEnumAndSetOptions(Column column);
 
-    protected abstract String getJavaEncodingForCharSet(String charSetName);
+    protected String getJavaEncodingForCharSet(String charSetName) {
+        return charsetRegistry.getJavaEncodingForCharSet(charSetName);
+    }
 
     /**
      * A utility method that adjusts <a href="https://dev.mysql.com/doc/refman/8.2/en/two-digit-years.html">ambiguous</a> 2-digit
