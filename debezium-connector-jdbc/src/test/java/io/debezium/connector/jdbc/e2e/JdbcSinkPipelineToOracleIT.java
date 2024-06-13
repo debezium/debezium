@@ -172,7 +172,11 @@ public class JdbcSinkPipelineToOracleIT extends AbstractJdbcSinkPipelineIT {
 
     @Override
     protected String getTimeType(Source source, boolean key, int precision) {
-        return "DATE";
+        if (key) {
+            return "TIMESTAMP(6)";
+        }
+        // Oracle only permits maximum of 6 digit precision
+        return String.format("TIMESTAMP(%d)", Math.min(6, precision));
     }
 
     @Override
