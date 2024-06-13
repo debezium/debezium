@@ -148,49 +148,18 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
         validateAndLoadSchemaHistory(connectorConfig, jdbcConnection::validateLogPosition, previousOffsets, schema, snapshotter);
 
         LoggingContext.PreviousContext previousContext = taskContext.configureLoggingContext(CONTEXT_NAME);
+
+        if (previousOffset == null) {
+            LOGGER.info("No previous offset found");
+        }
+        else {
+            LOGGER.info("Found previous offset {}", previousOffset);
+        }
+
         try {
-            // Print out the server information
-            SlotState slotInfo = null;
-            try {
-                if (LOGGER.isInfoEnabled()) {
-                    LOGGER.info(jdbcConnection.serverInfo().toString());
-                }
-                slotInfo = jdbcConnection.getReplicationSlotState(connectorConfig.slotName(), connectorConfig.plugin().getPostgresPluginName());
-            }
-            catch (SQLException e) {
-                LOGGER.warn("unable to load info of replication slot, Debezium will try to create the slot");
-            }
+            SlotState slotInfo = getSlotState(connectorConfig);
 
-            if (previousOffset == null) {
-                LOGGER.info("No previous offset found");
-            }
-            else {
-                LOGGER.info("Found previous offset {}", previousOffset);
-            }
-
-            SlotCreationResult slotCreatedInfo = null;
-            if (snapshotter.shouldStream()) {
-                replicationConnection = createReplicationConnection(this.taskContext,
-                        connectorConfig.maxRetries(), connectorConfig.retryDelay());
-
-                // we need to create the slot before we start streaming if it doesn't exist
-                // otherwise we can't stream back changes happening while the snapshot is taking place
-                if (slotInfo == null) {
-                    try {
-                        slotCreatedInfo = replicationConnection.createReplicationSlot().orElse(null);
-                    }
-                    catch (SQLException ex) {
-                        String message = "Creation of replication slot failed";
-                        if (ex.getMessage().contains("already exists")) {
-                            message += "; when setting up multiple connectors for the same database host, please make sure to use a distinct replication slot name for each.";
-                        }
-                        throw new DebeziumException(message, ex);
-                    }
-                }
-                else {
-                    slotCreatedInfo = null;
-                }
-            }
+            SlotCreationResult slotCreatedInfo = tryToCreateSlot(snapshotter, connectorConfig, slotInfo);
 
             try {
                 jdbcConnection.commit();
@@ -281,6 +250,49 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
         finally {
             previousContext.restore();
         }
+    }
+
+    private SlotCreationResult tryToCreateSlot(Snapshotter snapshotter, PostgresConnectorConfig connectorConfig, SlotState slotInfo) {
+
+        SlotCreationResult slotCreatedInfo = null;
+        if (snapshotter.shouldStream()) {
+            replicationConnection = createReplicationConnection(this.taskContext,
+                    connectorConfig.maxRetries(), connectorConfig.retryDelay());
+
+            // we need to create the slot before we start streaming if it doesn't exist
+            // otherwise we can't stream back changes happening while the snapshot is taking place
+            if (slotInfo == null) {
+                if (connectorConfig.isReadOnlyConnection()) {
+                    LOGGER.warn("Connector is configured to be in read-only mode but replication slot was not found.\n" +
+                            "The attempt to create it can fail. Please check you configuration in case.");
+                }
+                try {
+                    slotCreatedInfo = replicationConnection.createReplicationSlot().orElse(null);
+                }
+                catch (SQLException ex) {
+                    String message = "Creation of replication slot failed";
+                    if (ex.getMessage().contains("already exists")) {
+                        message += "; when setting up multiple connectors for the same database host, please make sure to use a distinct replication slot name for each.";
+                    }
+                    throw new DebeziumException(message, ex);
+                }
+            }
+        }
+        return slotCreatedInfo;
+    }
+
+    private SlotState getSlotState(PostgresConnectorConfig connectorConfig) {
+        SlotState slotInfo = null;
+        try {
+            if (LOGGER.isInfoEnabled()) {
+                LOGGER.info(jdbcConnection.serverInfo().toString());
+            }
+            slotInfo = jdbcConnection.getReplicationSlotState(connectorConfig.slotName(), connectorConfig.plugin().getPostgresPluginName());
+        }
+        catch (SQLException e) {
+            LOGGER.warn("unable to load info of replication slot, Debezium will try to create the slot");
+        }
+        return slotInfo;
     }
 
     public ReplicationConnection createReplicationConnection(PostgresTaskContext taskContext, int maxRetries, Duration retryDelay)

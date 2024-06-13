@@ -561,7 +561,10 @@ public class PostgresConnection extends JdbcConnection {
         ServerInfo serverInfo = new ServerInfo();
         query("SELECT version(), current_user, current_database()", rs -> {
             if (rs.next()) {
-                serverInfo.withServer(rs.getString(1)).withUsername(rs.getString(2)).withDatabase(rs.getString(3));
+                serverInfo
+                        .withServer(rs.getString(1))
+                        .withUsername(rs.getString(2))
+                        .withDatabase(rs.getString(3));
             }
         });
         String username = serverInfo.username();
@@ -578,6 +581,9 @@ public class PostgresConnection extends JdbcConnection {
                         }
                     });
         }
+
+        serverInfo.withMajorVersion(connection().getMetaData().getDatabaseMajorVersion());
+
         return serverInfo;
     }
 
