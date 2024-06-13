@@ -202,6 +202,12 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
         // test has not to be executed on read only
     }
 
+    @Test
+    @Override
+    public void snapshotPartitionedTable() throws Exception {
+        super.snapshotPartitionedTable();
+    }
+
     @Override
     protected void assertExpectedRecordsEnumPk(List<String> enumValues) throws InterruptedException {
 
