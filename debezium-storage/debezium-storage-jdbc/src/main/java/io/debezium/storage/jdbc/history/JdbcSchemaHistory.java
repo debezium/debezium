@@ -263,6 +263,7 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
                         ps.execute();
                         LOG.info("Created table in given database...");
                     }
+                    conn.commit();
                 }
             }, "initialize storage", false);
         }

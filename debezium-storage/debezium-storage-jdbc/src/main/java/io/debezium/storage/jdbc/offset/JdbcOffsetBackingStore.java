@@ -105,6 +105,7 @@ public class JdbcOffsetBackingStore implements OffsetBackingStore {
             try (var ps = conn.prepareStatement(config.getTableCreate())) {
                 ps.execute();
             }
+            conn.commit();
         }, "checking / creating table", false);
     }
 
