@@ -426,6 +426,9 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                 this::enqueueHeartbeat);
     }
 
+    // Use this method when you want to dispatch the heartbeat also to incremental snapshot.
+    // Currently, this is used by PostgreSQL for read-only incremental snapshot but doesn't suites well for
+    // MySQL since the dispatchHeartbeatEvent is called at every received message and not when there is no message from the DB log.
     public void dispatchHeartbeatEventAlsoToIncrementalSnapshot(P partition, OffsetContext offset) throws InterruptedException {
         heartbeat.heartbeat(
                 partition.getSourcePartition(),

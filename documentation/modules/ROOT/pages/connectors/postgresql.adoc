@@ -260,6 +260,25 @@ include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snaps
 include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot-kafka.adoc[leveloffset=+1]
 
 ifdef::community[]
+[id="postgresql-read-only-incremental-snapshots"]
+==== Read-only incremental snapshots
+
+The PostgreSQL connector allows for running incremental snapshots with a read-only connection to the database.
+To run an incremental snapshot with read-only access, the connector uses the current in-progress transaction as high and low watermarks.
+The state of a chunk's window is updated by comparing the txId of write-ahead-log events or the heartbeats against low and high watermarks.
+
+To switch to a read-only implementation, set the value of the xref:postgres-property-read-only[`read.only`] property to `true`.
+
+.Prerequisites
+
+* PostgreSQL greater than or equal to 13.
+
+==== Ad hoc read-only incremental snapshots
+
+When the PostgreSQL connection is read-only, you can use any of the {link-prefix}:{link-signalling}#sending-signals-to-a-debezium-connector[available signaling channels] without the requirement to use the `source` channel.
+endif::community[]
+
+ifdef::community[]
 [[connector-custom-snapshot]]
 === Custom snapshotter SPI
 include::{partialsdir}/modules/all-connectors/custom-snapshotter-spi.adoc[leveloffset=+3]
@@ -3645,6 +3664,12 @@ After the snapshot completes, {prodname} inserts a second entry to record the cl
 After the snapshot completes, this entry is removed.
 No entry is created for the signal to close the snapshot window.
 Set this option to prevent rapid growth of the signaling data collection.
+
+ifdef::community[]
+|[[postgres-property-read-only]]<<postgres-property-read-only, `+read.only+`>>
+|`false`
+|Switch to alternative incremental snapshot watermarks implementation to avoid writes to signal data collection
+endif::community[]
 
 |[[postgresql-property-xmin-fetch-interval-ms]]<<postgresql-property-xmin-fetch-interval-ms, `+xmin.fetch.interval.ms+`>>
 |`0`
