@@ -153,6 +153,11 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Oracl
     }
 
     @Override
+    protected String signalTableNameSanitized() {
+        return "DEBEZIUM.__DEBEZIUM_SIGNAL";
+    }
+
+    @Override
     protected Configuration.Builder config() {
         return TestHelper.defaultConfig()
                 .with(OracleConnectorConfig.SNAPSHOT_MODE, OracleConnectorConfig.SnapshotMode.NO_DATA)
