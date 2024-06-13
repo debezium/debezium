@@ -16,7 +16,6 @@ import io.debezium.connector.binlog.gtid.GtidSet;
 import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection;
 import io.debezium.connector.binlog.jdbc.BinlogFieldReader;
 import io.debezium.connector.binlog.jdbc.ConnectionConfiguration;
-import io.debezium.connector.mariadb.charset.CharsetMappingResolver;
 import io.debezium.connector.mariadb.gtid.MariaDbGtidSet;
 import io.debezium.connector.mariadb.gtid.MariaDbGtidSet.MariaDbGtid;
 
@@ -103,9 +102,5 @@ public class MariaDbConnection extends BinlogConnectorConnection {
 
         LOGGER.info("Final merged GTID set to use when connecting to MariaDB: {}", mergedGtidSet);
         return mergedGtidSet;
-    }
-
-    public static String getJavaEncodingForCharSet(String charSetName) {
-        return CharsetMappingResolver.getJavaEncodingForMariaDbCharSet(charSetName);
     }
 }

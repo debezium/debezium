@@ -12,6 +12,7 @@ import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMo
 import io.debezium.connector.binlog.BinlogValueConvertersTest;
 import io.debezium.connector.binlog.jdbc.BinlogValueConverters;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
+import io.debezium.connector.mysql.charset.MySqlCharsetRegistry;
 import io.debezium.connector.mysql.jdbc.MySqlValueConverters;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
@@ -35,7 +36,8 @@ public class MySqlValueConvertersTest extends BinlogValueConvertersTest<MySqlCon
                 bigIntUnsignedMode,
                 binaryHandlingMode,
                 temporalAdjuster,
-                eventConvertingFailureHandlingMode);
+                eventConvertingFailureHandlingMode,
+                new MySqlCharsetRegistry());
     }
 
     @Override

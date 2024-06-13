@@ -15,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.binlog.BinlogConnectorConfig;
+import io.debezium.connector.binlog.charset.BinlogCharsetRegistry;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -123,7 +124,7 @@ public abstract class BinlogFieldReader {
     /**
      * Read the column's character set.
      */
-    protected abstract String getCharacterSet(Column column) throws UnsupportedEncodingException;
+    protected abstract String getCharacterSet(Column column);
 
     /**
      * Common handler for logging invalid values.
@@ -140,5 +141,9 @@ public abstract class BinlogFieldReader {
 
     protected boolean hasValueConverter(Column column, TableId tableId) {
         return connectorConfig.customConverterRegistry().getValueConverter(tableId, column).isPresent();
+    }
+
+    protected BinlogCharsetRegistry getCharsetRegistry() {
+        return connectorConfig.getCharsetRegistry();
     }
 }

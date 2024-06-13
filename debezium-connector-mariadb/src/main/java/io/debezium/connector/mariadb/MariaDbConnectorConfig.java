@@ -22,7 +22,9 @@ import io.debezium.config.Field.ValidationOutput;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.connector.binlog.BinlogConnectorConfig;
+import io.debezium.connector.binlog.charset.BinlogCharsetRegistry;
 import io.debezium.connector.binlog.gtid.GtidSetFactory;
+import io.debezium.connector.mariadb.charset.MariaDbCharsetRegistry;
 import io.debezium.connector.mariadb.gtid.MariaDbGtidSetFactory;
 import io.debezium.connector.mariadb.history.MariaDbHistoryRecordComparator;
 import io.debezium.function.Predicates;
@@ -196,10 +198,12 @@ public class MariaDbConnectorConfig extends BinlogConnectorConfig {
     private final Predicate<String> gtidSourceFilter;
     private final SnapshotLockingMode snapshotLockingMode;
     private final SnapshotLockingStrategy snapshotLockingStrategy;
+    private final MariaDbCharsetRegistry charsetRegistry;
 
     public MariaDbConnectorConfig(Configuration config) {
         super(MariaDbConnector.class, config, DEFAULT_NON_STREAMING_FETCH_SIZE);
         this.gtidSetFactory = new MariaDbGtidSetFactory();
+        this.charsetRegistry = new MariaDbCharsetRegistry();
 
         final String gtidIncludes = config.getString(GTID_SOURCE_INCLUDES);
         final String gtidExcludes = config.getString(GTID_SOURCE_EXCLUDES);
@@ -248,6 +252,11 @@ public class MariaDbConnectorConfig extends BinlogConnectorConfig {
     @Override
     public Optional<SnapshotLockingMode> getSnapshotLockingMode() {
         return Optional.of(snapshotLockingMode);
+    }
+
+    @Override
+    public BinlogCharsetRegistry getCharsetRegistry() {
+        return charsetRegistry;
     }
 
     /**

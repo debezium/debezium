@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.mariadb.jdbc;
 
-import java.io.UnsupportedEncodingException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Calendar;
@@ -13,7 +12,6 @@ import java.util.Objects;
 
 import io.debezium.connector.binlog.jdbc.BinlogFieldReader;
 import io.debezium.connector.mariadb.MariaDbConnectorConfig;
-import io.debezium.connector.mariadb.charset.CharsetMappingResolver;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 
@@ -29,8 +27,8 @@ public class MariaDbFieldReader extends BinlogFieldReader {
     }
 
     @Override
-    protected String getCharacterSet(Column column) throws UnsupportedEncodingException {
-        return CharsetMappingResolver.getJavaEncodingForMariaDbCharSet(column.charsetName());
+    protected String getCharacterSet(Column column) {
+        return getCharsetRegistry().getJavaEncodingForCharSet(column.charsetName());
     }
 
     @Override

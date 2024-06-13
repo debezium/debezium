@@ -15,6 +15,7 @@ import com.github.shyiko.mysql.binlog.event.deserialization.AbstractRowsEventDat
 import io.debezium.annotation.Immutable;
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode;
+import io.debezium.connector.binlog.charset.BinlogCharsetRegistry;
 import io.debezium.connector.binlog.jdbc.BinlogValueConverters;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.jdbc.TemporalPrecisionMode;
@@ -49,19 +50,16 @@ public class MySqlValueConverters extends BinlogValueConverters {
      * @param binaryMode how binary columns should be represented
      * @param adjuster a temporal adjuster to make a database specific time modification before conversion
      * @param eventConvertingFailureHandlingMode how handle when converting failure
+     * @param charsetRegistry the binlog character set registry
      */
     public MySqlValueConverters(DecimalMode decimalMode,
                                 TemporalPrecisionMode temporalPrecisionMode,
                                 BigIntUnsignedMode bigIntUnsignedMode,
                                 BinaryHandlingMode binaryMode,
                                 TemporalAdjuster adjuster,
-                                EventConvertingFailureHandlingMode eventConvertingFailureHandlingMode) {
-        super(decimalMode, temporalPrecisionMode, bigIntUnsignedMode, binaryMode, adjuster, eventConvertingFailureHandlingMode);
-    }
-
-    @Override
-    protected String getJavaEncodingForCharSet(String charSetName) {
-        return MySqlConnection.getJavaEncodingForCharSet(charSetName);
+                                EventConvertingFailureHandlingMode eventConvertingFailureHandlingMode,
+                                BinlogCharsetRegistry charsetRegistry) {
+        super(decimalMode, temporalPrecisionMode, bigIntUnsignedMode, binaryMode, adjuster, eventConvertingFailureHandlingMode, charsetRegistry);
     }
 
     @Override

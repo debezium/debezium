@@ -10,6 +10,7 @@ import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.connector.binlog.BinlogDefaultValueTest;
 import io.debezium.connector.binlog.jdbc.BinlogDefaultValueConverter;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
+import io.debezium.connector.mysql.charset.MySqlCharsetRegistry;
 import io.debezium.connector.mysql.jdbc.MySqlDefaultValueConverter;
 import io.debezium.connector.mysql.jdbc.MySqlValueConverters;
 import io.debezium.jdbc.JdbcValueConverters;
@@ -35,7 +36,8 @@ public class MySqlDefaultValueTest extends BinlogDefaultValueTest<MySqlValueConv
                 bigIntUnsignedMode,
                 binaryHandlingMode,
                 x -> x,
-                CommonConnectorConfig.EventConvertingFailureHandlingMode.WARN);
+                CommonConnectorConfig.EventConvertingFailureHandlingMode.WARN,
+                new MySqlCharsetRegistry());
     }
 
     @Override

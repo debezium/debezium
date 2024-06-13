@@ -12,6 +12,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.connector.binlog.BinlogAntlrDdlParserTest;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
+import io.debezium.connector.mysql.charset.MySqlCharsetRegistry;
 import io.debezium.connector.mysql.jdbc.MySqlDefaultValueConverter;
 import io.debezium.connector.mysql.jdbc.MySqlValueConverters;
 import io.debezium.jdbc.JdbcValueConverters;
@@ -54,7 +55,8 @@ public class MySqlAntlrDdlParserTest
                 JdbcValueConverters.BigIntUnsignedMode.PRECISE,
                 BinaryHandlingMode.BYTES,
                 x -> x,
-                CommonConnectorConfig.EventConvertingFailureHandlingMode.WARN);
+                CommonConnectorConfig.EventConvertingFailureHandlingMode.WARN,
+                new MySqlCharsetRegistry());
     }
 
     @Override
@@ -86,7 +88,7 @@ public class MySqlAntlrDdlParserTest
 
         private MySqlDdlParserWithSimpleTestListener(DdlChanges changesListener, boolean includeViews, boolean includeComments, TableFilter tableFilter,
                                                      MySqlValueConverters converters) {
-            super(false, includeViews, includeComments, converters, tableFilter);
+            super(false, includeViews, includeComments, converters, tableFilter, new MySqlCharsetRegistry());
             this.ddlChanges = changesListener;
         }
     }

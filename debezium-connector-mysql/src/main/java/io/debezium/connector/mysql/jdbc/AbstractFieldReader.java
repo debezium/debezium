@@ -5,8 +5,6 @@
  */
 package io.debezium.connector.mysql.jdbc;
 
-import java.io.UnsupportedEncodingException;
-
 import io.debezium.connector.binlog.jdbc.BinlogFieldReader;
 import io.debezium.connector.mysql.MySqlConnectorConfig;
 import io.debezium.relational.Column;
@@ -31,7 +29,7 @@ public abstract class AbstractFieldReader extends BinlogFieldReader {
     }
 
     @Override
-    protected String getCharacterSet(Column column) throws UnsupportedEncodingException {
-        return MySqlConnection.getJavaEncodingForCharSet(column.charsetName());
+    protected String getCharacterSet(Column column) {
+        return getCharsetRegistry().getJavaEncodingForCharSet(column.charsetName());
     }
 }

@@ -40,7 +40,8 @@ public class DatabaseSchemaTest extends BinlogDatabaseSchemaTest<MariaDbConnecto
                 JdbcValueConverters.BigIntUnsignedMode.LONG,
                 CommonConnectorConfig.BinaryHandlingMode.BYTES,
                 MariaDbValueConverters::adjustTemporal,
-                CommonConnectorConfig.EventConvertingFailureHandlingMode.WARN);
+                CommonConnectorConfig.EventConvertingFailureHandlingMode.WARN,
+                connectorConfig.getCharsetRegistry());
 
         return new MariaDbDatabaseSchema(
                 connectorConfig,

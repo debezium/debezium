@@ -11,8 +11,6 @@ import java.util.function.Predicate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.mysql.cj.CharsetMapping;
-
 import io.debezium.DebeziumException;
 import io.debezium.connector.binlog.gtid.GtidSet;
 import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection;
@@ -125,18 +123,4 @@ public class MySqlConnection extends BinlogConnectorConnection {
         LOGGER.info("Final merged GTID set to use when connecting to MySQL: {}", mergedGtidSet);
         return mergedGtidSet;
     }
-
-    public static String getJavaEncodingForCharSet(String charSetName) {
-        return CharsetMappingWrapper.getJavaEncodingForMysqlCharSet(charSetName);
-    }
-
-    /**
-     * Helper to gain access to protected method
-     */
-    private final static class CharsetMappingWrapper extends CharsetMapping {
-        static String getJavaEncodingForMysqlCharSet(String charSetName) {
-            return CharsetMapping.getStaticJavaEncodingForMysqlCharset(charSetName);
-        }
-    }
-
 }

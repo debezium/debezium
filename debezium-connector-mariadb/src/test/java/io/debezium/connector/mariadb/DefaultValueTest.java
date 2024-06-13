@@ -10,6 +10,7 @@ import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMo
 import io.debezium.connector.binlog.BinlogDefaultValueTest;
 import io.debezium.connector.binlog.jdbc.BinlogDefaultValueConverter;
 import io.debezium.connector.mariadb.antlr.MariaDbAntlrDdlParser;
+import io.debezium.connector.mariadb.charset.MariaDbCharsetRegistry;
 import io.debezium.connector.mariadb.jdbc.MariaDbDefaultValueConverter;
 import io.debezium.connector.mariadb.jdbc.MariaDbValueConverters;
 import io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode;
@@ -36,7 +37,8 @@ public class DefaultValueTest extends BinlogDefaultValueTest<MariaDbValueConvert
                 bigIntUnsignedMode,
                 binaryHandlingMode,
                 x -> x,
-                EventConvertingFailureHandlingMode.WARN);
+                EventConvertingFailureHandlingMode.WARN,
+                new MariaDbCharsetRegistry());
     }
 
     @Override
