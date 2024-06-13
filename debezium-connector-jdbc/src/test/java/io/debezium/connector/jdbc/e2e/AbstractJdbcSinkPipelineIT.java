@@ -1608,14 +1608,6 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 // Emitted as seconds precision.
                 nanoSeconds = 0;
                 break;
-            case SQLSERVER:
-                if (!connect) {
-                    // todo: See DBZ-6222
-                    // SQL Server currently emits time-based precision values differently between snapshot/streaming.
-                    // During snapshot, they're emitted with microsecond precision, streaming uses milliseconds.
-                    nanoSeconds = source.getOptions().useSnapshot() ? 123456000 : 123000000;
-                }
-                break;
         }
 
         switch (sink.getType()) {
@@ -1623,14 +1615,10 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 if (source.getType().is(SourceType.POSTGRES)) {
                     nanoSeconds = connect ? 123000000 : 123456000;
                 }
-                else if (source.getType().is(SourceType.SQLSERVER)) {
-                    nanoSeconds = 123000000;
-                }
-                else {
+                else if (!source.getType().is(SourceType.SQLSERVER)) {
                     nanoSeconds = 0;
                 }
                 break;
-            case ORACLE:
             case DB2:
                 // TIME is only seconds precision
                 nanoSeconds = 0;
@@ -1661,19 +1649,8 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
 
         int nanoSeconds0 = 123000000;
         int nanoSeconds1 = isConnect ? 456000000 : 456789000;
-        if (source.getType().is(SourceType.SQLSERVER)) {
-            if (source.getOptions().useSnapshot()) {
-                // todo: See DBZ-6222
-                // SQL Server rounds TIME(n) to the nearest millisecond during snapshot.
-                nanoSeconds1 = isConnect ? 456000000 : 456789000;
-            }
-            else {
-                // SQL Server rounds TIME(n) to the nearest microsecond during streaming.
-                nanoSeconds1 = 457000000;
-            }
-        }
 
-        if (sink.getType().is(SinkType.ORACLE, SinkType.DB2)) {
+        if (sink.getType().is(/* SinkType.ORACLE, */ SinkType.DB2)) {
             nanoSeconds0 = 0;
             nanoSeconds1 = 0;
         }
@@ -1684,15 +1661,23 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 OffsetTime.of(1, 2, 3, nanoSeconds0, getCurrentSinkTimeOffset()),
                 OffsetTime.of(14, 15, 16, nanoSeconds1, getCurrentSinkTimeOffset()));
 
+        final int time3Precision;
+        if (sink.getType().is(SinkType.ORACLE) && !source.getOptions().isColumnTypePropagated()) {
+            time3Precision = 6;
+        }
+        else {
+            time3Precision = 3;
+        }
+
         assertDataTypes2(source,
                 sink,
                 List.of("time(3)", "time(6)"),
                 List.of(ts0, ts1),
                 expectedValues,
                 (record) -> {
-                    assertColumn(sink, record, "id0", getTimeType(source, true, 3));
+                    assertColumn(sink, record, "id0", getTimeType(source, true, time3Precision));
                     assertColumn(sink, record, "id1", getTimeType(source, true, 6));
-                    assertColumn(sink, record, "data0", getTimeType(source, false, 3));
+                    assertColumn(sink, record, "data0", getTimeType(source, false, time3Precision));
                     assertColumn(sink, record, "data1", getTimeType(source, false, 6));
                 },
                 this::getTimeAsOffsetTime);
@@ -1702,16 +1687,17 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
     @SkipWhenSource(value = { SourceType.ORACLE }, reason = "No TIME(n) data type support")
     @SkipWhenSource(value = { SourceType.MYSQL, SourceType.POSTGRES }, reason = "Max TIME(n) precision is 6")
     @WithTemporalPrecisionMode
-    @Disabled("See DBZ-6222 and the comment inline")
     public void testNanoTimeDataType(Source source, Sink sink) throws Exception {
-        // todo: see DBZ-6222
-        // SQL Server does not emit TIME(n) fields with micro nor nano second precision correctly.
-        // The received value during streaming is 51316457000000, which is rounded.
+        final boolean connect = source.getOptions().getTemporalPrecisionMode() == TemporalPrecisionMode.CONNECT;
+        int nanoSeconds = connect ? 456000000 : 456789000;
+        if (sink.getType().is(SinkType.DB2)) {
+            nanoSeconds = 0;
+        }
         assertDataTypeNonKeyOnly(source,
                 sink,
                 "time(7)",
                 List.of("'14:15:16.456789012'"),
-                List.of(OffsetTime.of(14, 15, 16, 456789000, getCurrentSinkTimeOffset())),
+                List.of(OffsetTime.of(14, 15, 16, nanoSeconds, getCurrentSinkTimeOffset())),
                 (record) -> assertColumn(sink, record, "data", getTimeType(source, false, 7)),
                 this::getTimeAsOffsetTime);
     }
