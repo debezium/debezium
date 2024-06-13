@@ -2,6 +2,45 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.7.0.Beta2
+June 13rd 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12429023)
+
+### New features since 2.7.0.Beta1
+
+* Allow skipping of table row count in snapshot phase [DBZ-7640](https://issues.redhat.com/browse/DBZ-7640)
+* Add heartbeat action query to SQL Server [DBZ-7801](https://issues.redhat.com/browse/DBZ-7801)
+* Read-only incremental snapshots for PostgreSQL [DBZ-7917](https://issues.redhat.com/browse/DBZ-7917)
+* Support truncation of byte arrays [DBZ-7925](https://issues.redhat.com/browse/DBZ-7925)
+
+
+### Breaking changes since 2.7.0.Beta1
+
+* Drop support for PostgreSQL 10 and 11 [DBZ-7128](https://issues.redhat.com/browse/DBZ-7128)
+
+
+### Fixes since 2.7.0.Beta1
+
+* Oracle property column.truncate.to.length.chars does not support length zero [DBZ-7079](https://issues.redhat.com/browse/DBZ-7079)
+* Debezium Server cannot pass empty string to Kafka config [DBZ-7767](https://issues.redhat.com/browse/DBZ-7767)
+* Unable To Exclude Column Using Configuration [DBZ-7813](https://issues.redhat.com/browse/DBZ-7813)
+* Oracle connector failed to work when the table name contains single quote [DBZ-7831](https://issues.redhat.com/browse/DBZ-7831)
+* Incorrect documentation for CE type  [DBZ-7926](https://issues.redhat.com/browse/DBZ-7926)
+* DDL statement couldn't be parsed [DBZ-7931](https://issues.redhat.com/browse/DBZ-7931)
+* SQL Server default value resolution for TIME data types causes precision loss [DBZ-7933](https://issues.redhat.com/browse/DBZ-7933)
+* Incorrect name of JMX Exporter k8s service [DBZ-7934](https://issues.redhat.com/browse/DBZ-7934)
+* OlrNetworkClient does not disconnect when error occurs [DBZ-7935](https://issues.redhat.com/browse/DBZ-7935)
+* Multiple ARRAY types in single table causing error [DBZ-7938](https://issues.redhat.com/browse/DBZ-7938)
+
+
+### Other changes since 2.7.0.Beta1
+
+* Create REST extension tests and infrastructure [DBZ-7785](https://issues.redhat.com/browse/DBZ-7785)
+* Introduce ROW_ID for OpenLogReplicator changes [DBZ-7823](https://issues.redhat.com/browse/DBZ-7823)
+* Test SqlServerConnectorIT#shouldStopRetriableRestartsAtConfiguredMaximumDuringStreaming is failing [DBZ-7936](https://issues.redhat.com/browse/DBZ-7936)
+* Add exception details when engine fails to commit offset [DBZ-7937](https://issues.redhat.com/browse/DBZ-7937)
+
+
+
 ## 2.7.0.Beta1
 June 6th 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12428104)
 
