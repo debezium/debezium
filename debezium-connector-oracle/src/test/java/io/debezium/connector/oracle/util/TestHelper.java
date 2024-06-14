@@ -612,20 +612,18 @@ public class TestHelper {
     }
 
     public static String getDefaultInfinispanEmbeddedCacheConfig(String cacheName) {
-        final String result = new org.infinispan.configuration.cache.ConfigurationBuilder()
+        return new org.infinispan.configuration.cache.ConfigurationBuilder()
                 .persistence()
                 .passivation(false)
                 .addSoftIndexFileStore()
                 .segmented(true)
                 .preload(true)
                 .shared(false)
-                .fetchPersistentState(true)
                 .ignoreModifications(false)
                 .dataLocation("./target/data")
                 .indexLocation("./target/data")
                 .build()
-                .toXMLString(cacheName);
-        return result;
+                .toStringConfiguration(cacheName);
     }
 
     public static String getDefaultInfinispanRemoteCacheConfig(String cacheName) {
