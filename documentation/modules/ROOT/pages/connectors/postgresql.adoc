@@ -265,13 +265,13 @@ ifdef::community[]
 
 The PostgreSQL connector allows for running incremental snapshots with a read-only connection to the database.
 To run an incremental snapshot with read-only access, the connector uses the current in-progress transaction as high and low watermarks.
-The state of a chunk's window is updated by comparing the txId of write-ahead-log events or the heartbeats against low and high watermarks.
+The state of a chunk's window is updated by comparing the transaction ID of write-ahead-log events or heartbeat events against low and high watermarks.
 
 To switch to a read-only implementation, set the value of the xref:postgres-property-read-only[`read.only`] property to `true`.
 
 .Prerequisites
 
-* PostgreSQL greater than or equal to 13.
+* PostgreSQL version 13 or later.
 
 ==== Ad hoc read-only incremental snapshots
 
@@ -3668,7 +3668,8 @@ Set this option to prevent rapid growth of the signaling data collection.
 ifdef::community[]
 |[[postgres-property-read-only]]<<postgres-property-read-only, `+read.only+`>>
 |`false`
-|Switch to alternative incremental snapshot watermarks implementation to avoid writes to signal data collection
+|Specifies whether a connector writes watermarks to the signal data collection to track the progress of an incremental snapshot.
+Set the value to `true` to enable a connector that has a read-only connection to the database to use an incremental snapshot watermarking strategy that does not require writing to the signal data collection.
 endif::community[]
 
 |[[postgresql-property-xmin-fetch-interval-ms]]<<postgresql-property-xmin-fetch-interval-ms, `+xmin.fetch.interval.ms+`>>
