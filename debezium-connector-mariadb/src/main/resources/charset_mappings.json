@@ -1,0 +1,1971 @@
+{
+  "character_sets": [
+    {
+      "name": "ascii",
+      "mblen": 1,
+      "priority": 0,
+      "encodings": [ "US-ASCII", "ASCII" ]
+    },
+    {
+      "name": "big5",
+      "mblen": 2,
+      "priority": 0,
+      "encodings": [ "Big5" ]
+    },
+    {
+      "name": "gbk",
+      "mblen": 2,
+      "priority": 0,
+      "encodings": [ "GBK" ]
+    },
+    {
+      "name": "sjis",
+      "mblen": 2,
+      "priority": 0,
+      "encodings": [ "SHIFT_JIS", "Cp943", "WINDOWS-31J" ]
+    },
+    {
+      "name": "cp932",
+      "mblen": 2,
+      "priority": 1,
+      "encodings": [ "GB2312" ]
+    },
+    {
+      "name": "gb2312",
+      "mblen": 2,
+      "priority": 0,
+      "encodings": [ "GB2312" ]
+    },
+    {
+      "name": "ujis",
+      "mblen": 3,
+      "priority": 0,
+      "encodings": [ "EUC_JP" ]
+    },
+    {
+      "name": "eucjpms",
+      "mblen": 3,
+      "priority": 0,
+      "encodings": [ "EUC_JP_Solaris" ],
+      "comment": "Added in MySQL 5.0.3"
+    },
+    {
+      "name": "gb18030",
+      "mblen": 4,
+      "priority": 0,
+      "encodings": [ "GB18030" ],
+      "comment": "Added in MySQL 5.74"
+    },
+    {
+      "name": "euckr",
+      "mblen": 2,
+      "priority": 0,
+      "encodings": [ "EUC-KR" ]
+    },
+    {
+      "name": "latin1",
+      "mblen": 1,
+      "priority": 1,
+      "encodings": [ "Cp1252", "ISO8859_1" ]
+    },
+    {
+      "name": "swe7",
+      "mblen": 1,
+      "priority": 0,
+      "encodings": [ "Cp1252" ]
+    },
+    {
+      "name": "hp8",
+      "mblen": 1,
+      "priority": 0,
+      "encodings": [ "Cp1252" ]
+    },
+    {
+      "name": "dec8",
+      "mblen": 1,
+      "priority": 0,
+      "encodings": [ "Cp1252" ]
+    },
+    {
+      "name": "armscii8",
+      "mblen": 1,
+      "priority": 0,
+      "encodings": [ "Cp1252" ]
+    },
+    {
+      "name": "geostd8",
+      "mblen": 1,
+      "priority": 0,
+      "encodings": [ "Cp1252" ]
+    },
+    {
+      "name": "latin2",
+      "mblen": 1,
+      "priority": 0,
+      "encodings": [ "ISO8859_2" ]
+    },
+    {
+      "name": "greek",
+      "mblen": 1,
+      "priority": 0,
+      "encodings": [ "ISO8859_7", "greek" ]
+    },
+    {
+      "name": "latin7",
+      "mblen": 1,
+      "priority": 0,
+      "encodings": [ "ISO-8859-13" ]
+    },
+    {
+      "name": "hebrew",
+      "mblen": 1,
+      "priority": 0,
+      "encodings": [ "ISO8859_8" ]
+    },
+    {
+      "name": "latin5",
+      "mblen": 1,
+      "priority": 0,
+      "encodings": [ "ISO8859_9" ]
+    },
+    {
+      "name": "cp850",
+      "mblen": 1,
+      "priority": 0,
+      "encodings": [ "Cp850", "Cp437" ]
+    },
+    {
+      "name": "cp852",
+      "mblen": 1,
+      "priority": 0,
+      "encodings": [ "Cp852" ]
+    },
+    {
+      "name": "keybcs2",
+      "mblen": 1,
+      "priority": 0,
+      "encodings": [ "Cp852" ]
+    },
+    {
+      "name": "cp866",
+      "mblen": 1,
+      "priority": 0,
+      "encodings": [ "Cp866" ]
+    },
+    {
+      "name": "koi8r",
+      "mblen": 1,
+      "priority": 1,
+      "encodings": [ "KOI8_R" ]
+    },
+    {
+      "name": "koi8u",
+      "mblen": 1,
+      "priority": 0,
+      "encodings": [ "KOI8_R" ]
+    },
+    {
+      "name": "tis620",
+      "mblen": 1,
+      "priority": 0,
+      "encodings": [ "TIS620" ]
+    },
+    {
+      "name": "cp1250",
+      "mblen": 1,
+      "priority": 0,
+      "encodings": [ "Cp1250" ]
+    },
+    {
+      "name": "cp1251",
+      "mblen": 1,
+      "priority": 1,
+      "encodings": [ "Cp1251" ]
+    },
+    {
+      "name": "cp1256",
+      "mblen": 1,
+      "priority": 0,
+      "encodings": [ "Cp1256" ]
+    },
+    {
+      "name": "cp1257",
+      "mblen": 1,
+      "priority": 0,
+      "encodings": [ "Cp1257" ]
+    },
+    {
+      "name": "macroman",
+      "mblen": 1,
+      "priority": 0,
+      "encodings": [ "MacRoman" ]
+    },
+    {
+      "name": "macce",
+      "mblen": 1,
+      "priority": 0,
+      "encodings": [ "MacCentralEurope" ]
+    },
+    {
+      "name": "utf8mb3",
+      "mblen": 3,
+      "priority": 0,
+      "encodings": [ "UTF-8" ],
+      "aliases": [ "utf8" ]
+    },
+    {
+      "name": "utf8mb4",
+      "mblen": 4,
+      "priority": 1,
+      "encodings": [ "UTF-8" ]
+    },
+    {
+      "name": "binary",
+      "mblen": 1,
+      "priority": 1,
+      "encodings": [ "ISO8859_1" ]
+    },
+    {
+      "name": "ucs2",
+      "mblen": 2,
+      "priority": 0,
+      "encodings": [ "UnicodeBig" ]
+    },
+    {
+      "name": "utf16",
+      "mblen": 4,
+      "priority": 0,
+      "encodings": [ "UTF-16" ]
+    },
+    {
+      "name": "utf16le",
+      "mblen": 4,
+      "priority": 0,
+      "encodings": [ "UTF-16LE" ]
+    },
+    {
+      "name": "utf32",
+      "mblen": 4,
+      "priority": 0,
+      "encodings": [ "UTF-32" ]
+    }
+  ],
+  "collation_mappings": [
+    {
+      "index": 1,
+      "collations": [ "big5_chinese_ci" ],
+      "priority": 1,
+      "charset": "big5"
+    },
+    {
+      "index": 2,
+      "collations": [ "latin2_czech_cs" ],
+      "priority": 0,
+      "charset": "latin2"
+    },
+    {
+      "index": 3,
+      "collations": [ "dec8_swedish_ci" ],
+      "priority": 0,
+      "charset": "dec8"
+    },
+    {
+      "index": 4,
+      "collations": [ "cp850_general_ci" ],
+      "priority": 1,
+      "charset": "cp850"
+    },
+    {
+      "index": 5,
+      "collations": [ "latin1_german1_ci" ],
+      "priority": 0,
+      "charset": "latin1"
+    },
+    {
+      "index": 6,
+      "collations": [ "hp8_english_ci" ],
+      "priority": 0,
+      "charset": "hp8"
+    },
+    {
+      "index": 7,
+      "collations": [ "koi8r_general_ci" ],
+      "priority": 0,
+      "charset": "koi8r"
+    },
+    {
+      "index": 8,
+      "collations": [ "latin1_swedish_ci" ],
+      "priority": 1,
+      "charset": "latin1"
+    },
+    {
+      "index": 9,
+      "collations": [ "latin2_general_ci" ],
+      "priority": 1,
+      "charset": "latin2"
+    },
+    {
+      "index": 10,
+      "collations": [ "swe7_swedish_ci" ],
+      "priority": 0,
+      "charset": "swe7"
+    },
+    {
+      "index": 11,
+      "collations": [ "ascii_general_ci" ],
+      "priority": 0,
+      "charset": "ascii"
+    },
+    {
+      "index": 12,
+      "collations": [ "ujis_japanese_ci" ],
+      "priority": 0,
+      "charset": "ujis"
+    },
+    {
+      "index": 13,
+      "collations": [ "sjis_japanese_ci" ],
+      "priority": 0,
+      "charset": "sjis"
+    },
+    {
+      "index": 14,
+      "collations": [ "cp1251_bulgarian_ci" ],
+      "priority": 0,
+      "charset": "cp1251"
+    },
+    {
+      "index": 15,
+      "collations": [ "latin1_danish_ci" ],
+      "priority": 0,
+      "charset": "latin1"
+    },
+    {
+      "index": 16,
+      "collations": [ "hebrew_general_ci" ],
+      "priority": 0,
+      "charset": "hebrew"
+    },
+    {
+      "index": 18,
+      "collations": [ "tis620_thai_ci" ],
+      "priority": 0,
+      "charset": "tis620"
+    },
+    {
+      "index": 19,
+      "collations": [ "euckr_korean_ci" ],
+      "priority": 0,
+      "charset": "euckr"
+    },
+    {
+      "index": 20,
+      "collations": [ "latin7_estonian_cs" ],
+      "priority": 0,
+      "charset": "latin7"
+    },
+    {
+      "index": 21,
+      "collations": [ "latin2_hungarian_ci" ],
+      "priority": 0,
+      "charset": "latin2"
+    },
+    {
+      "index": 22,
+      "collations": [ "koi8u_general_ci" ],
+      "priority": 0,
+      "charset": "koi8u"
+    },
+    {
+      "index": 23,
+      "collations": [ "cp1251_ukrainian_ci" ],
+      "priority": 0,
+      "charset": "cp1251"
+    },
+    {
+      "index": 24,
+      "collations": [ "gb2312_chinese_ci" ],
+      "priority": 0,
+      "charset": "gb2312"
+    },
+    {
+      "index": 25,
+      "collations": [ "greek_general_ci" ],
+      "priority": 0,
+      "charset": "greek"
+    },
+    {
+      "index": 26,
+      "collations": [ "cp1250_general_ci" ],
+      "priority": 1,
+      "charset": "cp1250"
+    },
+    {
+      "index": 27,
+      "collations": [ "latin2_croatian_ci" ],
+      "priority": 0,
+      "charset": "latin2"
+    },
+    {
+      "index": 28,
+      "collations": [ "gbk_chinese_ci" ],
+      "priority": 1,
+      "charset": "gbk"
+    },
+    {
+      "index": 29,
+      "collations": [ "cp1257_lithuanian_ci" ],
+      "priority": 0,
+      "charset": "cp1257"
+    },
+    {
+      "index": 30,
+      "collations": [ "latin5_turkish_ci" ],
+      "priority": 1,
+      "charset": "latin5"
+    },
+    {
+      "index": 31,
+      "collations": [ "latin1_german2_ci" ],
+      "priority": 0,
+      "charset": "latin1"
+    },
+    {
+      "index": 32,
+      "collations": [ "armscii8_general_ci" ],
+      "priority": 0,
+      "charset": "armscii8"
+    },
+    {
+      "index": 33,
+      "collations": [ "utf8mb3_general_ci", "utf8_general_ci" ],
+      "priority": 1,
+      "charset": "utf8mb3"
+    },
+    {
+      "index": 34,
+      "collations": [ "cp1250_czech_cs" ],
+      "priority": 0,
+      "charset": "cp1250"
+    },
+    {
+      "index": 35,
+      "collations": [ "ucs2_general_ci" ],
+      "priority": 1,
+      "charset": "ucs2"
+    },
+    {
+      "index": 36,
+      "collations": [ "cp866_general_ci" ],
+      "priority": 1,
+      "charset": "cp866"
+    },
+    {
+      "index": 37,
+      "collations": [ "keybcs2_general_ci" ],
+      "priority": 1,
+      "charset": "keybcs2"
+    },
+    {
+      "index": 38,
+      "collations": [ "macce_general_ci" ],
+      "priority": 1,
+      "charset": "macce"
+    },
+    {
+      "index": 39,
+      "collations": [ "macroman_general_ci" ],
+      "priority": 1,
+      "charset": "macroman"
+    },
+    {
+      "index": 40,
+      "collations": [ "cp852_general_ci" ],
+      "priority": 1,
+      "charset": "cp852"
+    },
+    {
+      "index": 41,
+      "collations": [ "latin7_general_ci" ],
+      "priority": 1,
+      "charset": "latin7"
+    },
+    {
+      "index": 42,
+      "collations": [ "latin7_general_cs" ],
+      "priority": 0,
+      "charset": "latin7"
+    },
+    {
+      "index": 43,
+      "collations": [ "macce_bin" ],
+      "priority": 0,
+      "charset": "macce"
+    },
+    {
+      "index": 44,
+      "collations": [ "cp1250_croatian_ci" ],
+      "priority": 0,
+      "charset": "cp1250"
+    },
+    {
+      "index": 45,
+      "collations": [ "utf8mb4_general_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 46,
+      "collations": [ "utf8mb4_bin" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 47,
+      "collations": [ "latin1_bin" ],
+      "priority": 0,
+      "charset": "latin1"
+    },
+    {
+      "index": 48,
+      "collations": [ "latin1_general_ci" ],
+      "priority": 0,
+      "charset": "latin1"
+    },
+    {
+      "index": 49,
+      "collations": [ "latin1_general_cs" ],
+      "priority": 0,
+      "charset": "latin1"
+    },
+    {
+      "index": 50,
+      "collations": [ "cp1251_bin" ],
+      "priority": 0,
+      "charset": "cp1251"
+    },
+    {
+      "index": 51,
+      "collations": [ "cp1251_general_ci" ],
+      "priority": 1,
+      "charset": "cp1251"
+    },
+    {
+      "index": 52,
+      "collations": [ "cp1251_general_cs" ],
+      "priority": 0,
+      "charset": "cp1251"
+    },
+    {
+      "index": 53,
+      "collations": [ "macroman_bin" ],
+      "priority": 0,
+      "charset": "macroman"
+    },
+    {
+      "index": 54,
+      "collations": [ "utf16_general_ci" ],
+      "priority": 1,
+      "charset": "utf16"
+    },
+    {
+      "index": 55,
+      "collations": [ "utf16_bin" ],
+      "priority": 0,
+      "charset": "utf16"
+    },
+    {
+      "index": 56,
+      "collations": [ "utf16le_general_ci" ],
+      "priority": 1,
+      "charset": "utf16le"
+    },
+    {
+      "index": 57,
+      "collations": [ "cp1256_general_ci" ],
+      "priority": 1,
+      "charset": "cp1256"
+    },
+    {
+      "index": 58,
+      "collations": [ "cp1257_bin" ],
+      "priority": 0,
+      "charset": "cp1257"
+    },
+    {
+      "index": 59,
+      "collations": [ "cp1257_general_ci" ],
+      "priority": 1,
+      "charset": "cp1257"
+    },
+    {
+      "index": 60,
+      "collations": [ "utf32_general_ci" ],
+      "priority": 1,
+      "charset": "utf32"
+    },
+    {
+      "index": 61,
+      "collations": [ "utf32_bin" ],
+      "priority": 0,
+      "charset": "utf32"
+    },
+    {
+      "index": 62,
+      "collations": [ "utf16le_bin" ],
+      "priority": 0,
+      "charset": "utf16le"
+    },
+    {
+      "index": 63,
+      "collations": [ "binary" ],
+      "priority": 1,
+      "charset": "binary"
+    },
+    {
+      "index": 64,
+      "collations": [ "armscii8_bin" ],
+      "priority": 0,
+      "charset": "armscii8"
+    },
+    {
+      "index": 65,
+      "collations": [ "ascii_bin" ],
+      "priority": 0,
+      "charset": "ascii"
+    },
+    {
+      "index": 66,
+      "collations": [ "cp1250_bin" ],
+      "priority": 0,
+      "charset": "cp1250"
+    },
+    {
+      "index": 67,
+      "collations": [ "cp1256_bin" ],
+      "priority": 0,
+      "charset": "cp1256"
+    },
+    {
+      "index": 68,
+      "collations": [ "cp866_bin" ],
+      "priority": 0,
+      "charset": "cp866"
+    },
+    {
+      "index": 69,
+      "collations": [ "dec8_bin" ],
+      "priority": 0,
+      "charset": "dec8"
+    },
+    {
+      "index": 70,
+      "collations": [ "greek_bin" ],
+      "priority": 0,
+      "charset": "greek"
+    },
+    {
+      "index": 71,
+      "collations": [ "hebrew_bin" ],
+      "priority": 0,
+      "charset": "hebrew"
+    },
+    {
+      "index": 72,
+      "collations": [ "hp8_bin" ],
+      "priority": 0,
+      "charset": "hp8"
+    },
+    {
+      "index": 73,
+      "collations": [ "keybcs2_bin" ],
+      "priority": 0,
+      "charset": "keybcs2"
+    },
+    {
+      "index": 74,
+      "collations": [ "koi8r_bin" ],
+      "priority": 0,
+      "charset": "koi8r"
+    },
+    {
+      "index": 75,
+      "collations": [ "koi8u_bin" ],
+      "priority": 0,
+      "charset": "koi8u"
+    },
+    {
+      "index": 76,
+      "collations": [ "utf8mb3_tolower_ci", "utf8_tolower_ci" ],
+      "priority": 0,
+      "charset": "utf8mb3"
+    },
+    {
+      "index": 77,
+      "collations": [ "latin2_bin" ],
+      "priority": 0,
+      "charset": "latin2"
+    },
+    {
+      "index": 78,
+      "collations": [ "latin5_bin" ],
+      "priority": 0,
+      "charset": "latin5"
+    },
+    {
+      "index": 79,
+      "collations": [ "latin7_bin" ],
+      "priority": 0,
+      "charset": "latin7"
+    },
+    {
+      "index": 80,
+      "collations": [ "cp850_bin" ],
+      "priority": 0,
+      "charset": "cp850"
+    },
+    {
+      "index": 81,
+      "collations": [ "cp852_bin" ],
+      "priority": 0,
+      "charset": "cp852"
+    },
+    {
+      "index": 82,
+      "collations": [ "swe7_bin" ],
+      "priority": 0,
+      "charset": "swe7"
+    },
+    {
+      "index": 83,
+      "collations": [ "utf8mb3_bin", "utf8_bin" ],
+      "priority": 0,
+      "charset": "utf8mb3"
+    },
+    {
+      "index": 84,
+      "collations": [ "big5_bin" ],
+      "priority": 0,
+      "charset": "big5"
+    },
+    {
+      "index": 85,
+      "collations": [ "euckr_bin" ],
+      "priority": 0,
+      "charset": "euckr"
+    },
+    {
+      "index": 86,
+      "collations": [ "gb2312_bin" ],
+      "priority": 0,
+      "charset": "gb2312"
+    },
+    {
+      "index": 87,
+      "collations": [ "gbk_bin" ],
+      "priority": 0,
+      "charset": "gbk"
+    },
+    {
+      "index": 88,
+      "collations": [ "sjis_bin" ],
+      "priority": 0,
+      "charset": "sjis"
+    },
+    {
+      "index": 89,
+      "collations": [ "tis620_bin" ],
+      "priority": 0,
+      "charset": "tis620"
+    },
+    {
+      "index": 90,
+      "collations": [ "ucs2_bin" ],
+      "priority": 0,
+      "charset": "ucs2"
+    },
+    {
+      "index": 91,
+      "collations": [ "ujis_bin" ],
+      "priority": 0,
+      "charset": "ujis"
+    },
+    {
+      "index": 92,
+      "collations": [ "geostd8_general_ci" ],
+      "priority": 0,
+      "charset": "geostd8"
+    },
+    {
+      "index": 93,
+      "collations": [ "geostd8_bin" ],
+      "priority": 0,
+      "charset": "geostd8"
+    },
+    {
+      "index": 94,
+      "collations": [ "latin1_spanish_ci" ],
+      "priority": 0,
+      "charset": "latin1"
+    },
+    {
+      "index": 95,
+      "collations": [ "cp932_japanese_ci" ],
+      "priority": 1,
+      "charset": "cp932"
+    },
+    {
+      "index": 96,
+      "collations": [ "cp932_bin" ],
+      "priority": 0,
+      "charset": "cp932"
+    },
+    {
+      "index": 97,
+      "collations": [ "eucjpms_japanese_ci" ],
+      "priority": 1,
+      "charset": "eucjpms"
+    },
+    {
+      "index": 98,
+      "collations": [ "eucjpms_bin" ],
+      "priority": 0,
+      "charset": "eucjpms"
+    },
+    {
+      "index": 99,
+      "collations": [ "cp1250_polish_ci" ],
+      "priority": 0,
+      "charset": "cp1250"
+    },
+    {
+      "index": 101,
+      "collations": [ "utf16_unicode_ci" ],
+      "priority": 0,
+      "charset": "utf16"
+    },
+    {
+      "index": 102,
+      "collations": [ "utf16_icelandic_ci" ],
+      "priority": 0,
+      "charset": "utf16"
+    },
+    {
+      "index": 103,
+      "collations": [ "utf16_latvian_ci" ],
+      "priority": 0,
+      "charset": "utf16"
+    },
+    {
+      "index": 104,
+      "collations": [ "utf16_romanian_ci" ],
+      "priority": 0,
+      "charset": "utf16"
+    },
+    {
+      "index": 105,
+      "collations": [ "utf16_slovenian_ci" ],
+      "priority": 0,
+      "charset": "utf16"
+    },
+    {
+      "index": 106,
+      "collations": [ "utf16_polish_ci" ],
+      "priority": 0,
+      "charset": "utf16"
+    },
+    {
+      "index": 107,
+      "collations": [ "utf16_estonian_ci" ],
+      "priority": 0,
+      "charset": "utf16"
+    },
+    {
+      "index": 108,
+      "collations": [ "utf16_spanish_ci" ],
+      "priority": 0,
+      "charset": "utf16"
+    },
+    {
+      "index": 109,
+      "collations": [ "utf16_swedish_ci" ],
+      "priority": 0,
+      "charset": "utf16"
+    },
+    {
+      "index": 110,
+      "collations": [ "utf16_turkish_ci" ],
+      "priority": 0,
+      "charset": "utf16"
+    },
+    {
+      "index": 111,
+      "collations": [ "utf16_czech_ci" ],
+      "priority": 0,
+      "charset": "utf16"
+    },
+    {
+      "index": 112,
+      "collations": [ "utf16_danish_ci" ],
+      "priority": 0,
+      "charset": "utf16"
+    },
+    {
+      "index": 113,
+      "collations": [ "utf16_lithuanian_ci" ],
+      "priority": 0,
+      "charset": "utf16"
+    },
+    {
+      "index": 114,
+      "collations": [ "utf16_slovak_ci" ],
+      "priority": 0,
+      "charset": "utf16"
+    },
+    {
+      "index": 115,
+      "collations": [ "utf16_spanish2_ci" ],
+      "priority": 0,
+      "charset": "utf16"
+    },
+    {
+      "index": 116,
+      "collations": [ "utf16_roman_ci" ],
+      "priority": 0,
+      "charset": "utf16"
+    },
+    {
+      "index": 117,
+      "collations": [ "utf16_persian_ci" ],
+      "priority": 0,
+      "charset": "utf16"
+    },
+    {
+      "index": 118,
+      "collations": [ "utf16_esperanto_ci" ],
+      "priority": 0,
+      "charset": "utf16"
+    },
+    {
+      "index": 119,
+      "collations": [ "utf16_hungarian_ci" ],
+      "priority": 0,
+      "charset": "utf16"
+    },
+    {
+      "index": 120,
+      "collations": [ "utf16_sinhala_ci" ],
+      "priority": 0,
+      "charset": "utf16"
+    },
+    {
+      "index": 121,
+      "collations": [ "utf16_german2_ci" ],
+      "priority": 0,
+      "charset": "utf16"
+    },
+    {
+      "index": 122,
+      "collations": [ "utf16_croatian_ci" ],
+      "priority": 0,
+      "charset": "utf16"
+    },
+    {
+      "index": 123,
+      "collations": [ "utf16_unicode_520_ci" ],
+      "priority": 0,
+      "charset": "utf16"
+    },
+    {
+      "index": 124,
+      "collations": [ "utf16_vietnamese_ci" ],
+      "priority": 0,
+      "charset": "utf16"
+    },
+    {
+      "index": 128,
+      "collations": [ "ucs2_unicode_ci" ],
+      "priority": 0,
+      "charset": "ucs2"
+    },
+    {
+      "index": 129,
+      "collations": [ "ucs2_icelandic_ci" ],
+      "priority": 0,
+      "charset": "ucs2"
+    },
+    {
+      "index": 130,
+      "collations": [ "ucs2_latvian_ci" ],
+      "priority": 0,
+      "charset": "ucs2"
+    },
+    {
+      "index": 131,
+      "collations": [ "ucs2_romanian_ci" ],
+      "priority": 0,
+      "charset": "ucs2"
+    },
+    {
+      "index": 132,
+      "collations": [ "ucs2_slovenian_ci" ],
+      "priority": 0,
+      "charset": "ucs2"
+    },
+    {
+      "index": 133,
+      "collations": [ "ucs2_polish_ci" ],
+      "priority": 0,
+      "charset": "ucs2"
+    },
+    {
+      "index": 134,
+      "collations": [ "ucs2_estonian_ci" ],
+      "priority": 0,
+      "charset": "ucs2"
+    },
+    {
+      "index": 135,
+      "collations": [ "ucs2_spanish_ci" ],
+      "priority": 0,
+      "charset": "ucs2"
+    },
+    {
+      "index": 136,
+      "collations": [ "ucs2_swedish_ci" ],
+      "priority": 0,
+      "charset": "ucs2"
+    },
+    {
+      "index": 137,
+      "collations": [ "ucs2_turkish_ci" ],
+      "priority": 0,
+      "charset": "ucs2"
+    },
+    {
+      "index": 138,
+      "collations": [ "ucs2_czech_ci" ],
+      "priority": 0,
+      "charset": "ucs2"
+    },
+    {
+      "index": 139,
+      "collations": [ "ucs2_danish_ci" ],
+      "priority": 0,
+      "charset": "ucs2"
+    },
+    {
+      "index": 140,
+      "collations": [ "ucs2_lithuanian_ci" ],
+      "priority": 0,
+      "charset": "ucs2"
+    },
+    {
+      "index": 141,
+      "collations": [ "ucs2_slovak_ci" ],
+      "priority": 0,
+      "charset": "ucs2"
+    },
+    {
+      "index": 142,
+      "collations": [ "ucs2_spanish2_ci" ],
+      "priority": 0,
+      "charset": "ucs2"
+    },
+    {
+      "index": 143,
+      "collations": [ "ucs2_roman_ci" ],
+      "priority": 0,
+      "charset": "ucs2"
+    },
+    {
+      "index": 144,
+      "collations": [ "ucs2_persian_ci" ],
+      "priority": 0,
+      "charset": "ucs2"
+    },
+    {
+      "index": 145,
+      "collations": [ "ucs2_esperanto_ci" ],
+      "priority": 0,
+      "charset": "ucs2"
+    },
+    {
+      "index": 146,
+      "collations": [ "ucs2_hungarian_ci" ],
+      "priority": 0,
+      "charset": "ucs2"
+    },
+    {
+      "index": 147,
+      "collations": [ "ucs2_sinhala_ci" ],
+      "priority": 0,
+      "charset": "ucs2"
+    },
+    {
+      "index": 148,
+      "collations": [ "ucs2_german2_ci" ],
+      "priority": 0,
+      "charset": "ucs2"
+    },
+    {
+      "index": 149,
+      "collations": [ "ucs2_croatian_ci" ],
+      "priority": 0,
+      "charset": "ucs2"
+    },
+    {
+      "index": 150,
+      "collations": [ "ucs2_unicode_520_ci" ],
+      "priority": 0,
+      "charset": "ucs2"
+    },
+    {
+      "index": 151,
+      "collations": [ "ucs2_vietnamese_ci" ],
+      "priority": 0,
+      "charset": "ucs2"
+    },
+    {
+      "index": 159,
+      "collations": [ "ucs2_general_mysql500_ci" ],
+      "priority": 0,
+      "charset": "ucs2"
+    },
+    {
+      "index": 160,
+      "collations": [ "utf32_unicode_ci" ],
+      "priority": 0,
+      "charset": "utf32"
+    },
+    {
+      "index": 161,
+      "collations": [ "utf32_icelandic_ci" ],
+      "priority": 0,
+      "charset": "utf32"
+    },
+    {
+      "index": 162,
+      "collations": [ "utf32_latvian_ci" ],
+      "priority": 0,
+      "charset": "utf32"
+    },
+    {
+      "index": 163,
+      "collations": [ "utf32_romanian_ci" ],
+      "priority": 0,
+      "charset": "utf32"
+    },
+    {
+      "index": 164,
+      "collations": [ "utf32_slovenian_ci" ],
+      "priority": 0,
+      "charset": "utf32"
+    },
+    {
+      "index": 165,
+      "collations": [ "utf32_polish_ci" ],
+      "priority": 0,
+      "charset": "utf32"
+    },
+    {
+      "index": 166,
+      "collations": [ "utf32_estonian_ci" ],
+      "priority": 0,
+      "charset": "utf32"
+    },
+    {
+      "index": 167,
+      "collations": [ "utf32_spanish_ci" ],
+      "priority": 0,
+      "charset": "utf32"
+    },
+    {
+      "index": 168,
+      "collations": [ "utf32_swedish_ci" ],
+      "priority": 0,
+      "charset": "utf32"
+    },
+    {
+      "index": 169,
+      "collations": [ "utf32_turkish_ci" ],
+      "priority": 0,
+      "charset": "utf32"
+    },
+    {
+      "index": 170,
+      "collations": [ "utf32_czech_ci" ],
+      "priority": 0,
+      "charset": "utf32"
+    },
+    {
+      "index": 171,
+      "collations": [ "utf32_danish_ci" ],
+      "priority": 0,
+      "charset": "utf32"
+    },
+    {
+      "index": 172,
+      "collations": [ "utf32_lithuanian_ci" ],
+      "priority": 0,
+      "charset": "utf32"
+    },
+    {
+      "index": 173,
+      "collations": [ "utf32_slovak_ci" ],
+      "priority": 0,
+      "charset": "utf32"
+    },
+    {
+      "index": 174,
+      "collations": [ "utf32_spanish2_ci" ],
+      "priority": 0,
+      "charset": "utf32"
+    },
+    {
+      "index": 175,
+      "collations": [ "utf32_roman_ci" ],
+      "priority": 0,
+      "charset": "utf32"
+    },
+    {
+      "index": 176,
+      "collations": [ "utf32_persian_ci" ],
+      "priority": 0,
+      "charset": "utf32"
+    },
+    {
+      "index": 177,
+      "collations": [ "utf32_esperanto_ci" ],
+      "priority": 0,
+      "charset": "utf32"
+    },
+    {
+      "index": 178,
+      "collations": [ "utf32_hungarian_ci" ],
+      "priority": 0,
+      "charset": "utf32"
+    },
+    {
+      "index": 179,
+      "collations": [ "utf32_sinhala_ci" ],
+      "priority": 0,
+      "charset": "utf32"
+    },
+    {
+      "index": 180,
+      "collations": [ "utf32_german2_ci" ],
+      "priority": 0,
+      "charset": "utf32"
+    },
+    {
+      "index": 181,
+      "collations": [ "utf32_croatian_ci" ],
+      "priority": 0,
+      "charset": "utf32"
+    },
+    {
+      "index": 182,
+      "collations": [ "utf32_unicode_520_ci" ],
+      "priority": 0,
+      "charset": "utf32"
+    },
+    {
+      "index": 183,
+      "collations": [ "utf32_vietnamese_ci" ],
+      "priority": 0,
+      "charset": "utf32"
+    },
+    {
+      "index": 192,
+      "collations": [ "utf8mb3_unicode_ci", "utf8_unicode_ci" ],
+      "priority": 0,
+      "charset": "utf8mb3"
+    },
+    {
+      "index": 193,
+      "collations": [ "utf8mb3_icelandic_ci", "utf8_icelandic_ci" ],
+      "priority": 0,
+      "charset": "utf8mb3"
+    },
+    {
+      "index": 194,
+      "collations": [ "utf8mb3_latvian_ci", "utf8_latvian_ci" ],
+      "priority": 0,
+      "charset": "utf8mb3"
+    },
+    {
+      "index": 195,
+      "collations": [ "utf8mb3_romanian_ci", "utf8_romanian_ci" ],
+      "priority": 0,
+      "charset": "utf8mb3"
+    },
+    {
+      "index": 196,
+      "collations": [ "utf8mb3_slovenian_ci", "utf8_slovenian_ci" ],
+      "priority": 0,
+      "charset": "utf8mb3"
+    },
+    {
+      "index": 197,
+      "collations": [ "utf8mb3_polish_ci", "utf8_polish_ci" ],
+      "priority": 0,
+      "charset": "utf8mb3"
+    },
+    {
+      "index": 198,
+      "collations": [ "utf8mb3_estonian_ci", "utf8_estonian_ci" ],
+      "priority": 0,
+      "charset": "utf8mb3"
+    },
+    {
+      "index": 199,
+      "collations": [ "utf8mb3_spanish_ci", "utf8_spanish_ci" ],
+      "priority": 0,
+      "charset": "utf8mb3"
+    },
+    {
+      "index": 200,
+      "collations": [ "utf8mb3_swedish_ci", "utf8_swedish_ci" ],
+      "priority": 0,
+      "charset": "utf8mb3"
+    },
+    {
+      "index": 201,
+      "collations": [ "utf8mb3_turkish_ci", "utf8_turkish_ci" ],
+      "priority": 0,
+      "charset": "utf8mb3"
+    },
+    {
+      "index": 202,
+      "collations": [ "utf8mb3_czech_ci", "utf8_czech_ci" ],
+      "priority": 0,
+      "charset": "utf8mb3"
+    },
+    {
+      "index": 203,
+      "collations": [ "utf8mb3_danish_ci", "utf8_danish_ci" ],
+      "priority": 0,
+      "charset": "utf8mb3"
+    },
+    {
+      "index": 204,
+      "collations": [ "utf8mb3_lithuanian_ci", "utf8_lithuanian_ci" ],
+      "priority": 0,
+      "charset": "utf8mb3"
+    },
+    {
+      "index": 205,
+      "collations": [ "utf8mb3_slovak_ci", "utf8_slovak_ci" ],
+      "priority": 0,
+      "charset": "utf8mb3"
+    },
+    {
+      "index": 206,
+      "collations": [ "utf8mb3_spanish2_ci", "utf8_spanish2_ci" ],
+      "priority": 0,
+      "charset": "utf8mb3"
+    },
+    {
+      "index": 207,
+      "collations": [ "utf8mb3_roman_ci", "utf8_roman_ci" ],
+      "priority": 0,
+      "charset": "utf8mb3"
+    },
+    {
+      "index": 208,
+      "collations": [ "utf8mb3_persian_ci", "utf8_persian_ci" ],
+      "priority": 0,
+      "charset": "utf8mb3"
+    },
+    {
+      "index": 209,
+      "collations": [ "utf8mb3_esperanto_ci", "utf8_esperanto_ci" ],
+      "priority": 0,
+      "charset": "utf8mb3"
+    },
+    {
+      "index": 210,
+      "collations": [ "utf8mb3_hungarian_ci", "utf8_hungarian_ci" ],
+      "priority": 0,
+      "charset": "utf8mb3"
+    },
+    {
+      "index": 211,
+      "collations": [ "utf8mb3_sinhala_ci", "utf8_sinhala_ci" ],
+      "priority": 0,
+      "charset": "utf8mb3"
+    },
+    {
+      "index": 212,
+      "collations": [ "utf8mb3_german2_ci", "utf8_german2_ci" ],
+      "priority": 0,
+      "charset": "utf8mb3"
+    },
+    {
+      "index": 213,
+      "collations": [ "utf8mb3_croatian_ci", "utf8_croatian_ci" ],
+      "priority": 0,
+      "charset": "utf8mb3"
+    },
+    {
+      "index": 214,
+      "collations": [ "utf8mb3_unicode_520_ci", "utf8_unicode_520_ci" ],
+      "priority": 0,
+      "charset": "utf8mb3"
+    },
+    {
+      "index": 215,
+      "collations": [ "utf8mb3_vietnamese_ci", "utf8_vietnamese_ci" ],
+      "priority": 0,
+      "charset": "utf8mb3"
+    },
+    {
+      "index": 223,
+      "collations": [ "utf8mb3_general_mysql500_ci", "utf8_general_mysql500_ci" ],
+      "priority": 0,
+      "charset": "utf8mb3"
+    },
+    {
+      "index": 224,
+      "collations": [ "utf8mb4_unicode_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 225,
+      "collations": [ "utf8mb4_icelandic_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 226,
+      "collations": [ "utf8mb4_latvian_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 227,
+      "collations": [ "utf8mb4_romanian_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 228,
+      "collations": [ "utf8mb4_slovenian_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 229,
+      "collations": [ "utf8mb4_polish_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 230,
+      "collations": [ "utf8mb4_estonian_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 231,
+      "collations": [ "utf8mb4_spanish_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 232,
+      "collations": [ "utf8mb4_swedish_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 233,
+      "collations": [ "utf8mb4_turkish_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 234,
+      "collations": [ "utf8mb4_czech_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 235,
+      "collations": [ "utf8mb4_danish_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 236,
+      "collations": [ "utf8mb4_lithuanian_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 237,
+      "collations": [ "utf8mb4_slovak_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 238,
+      "collations": [ "utf8mb4_spanish2_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 239,
+      "collations": [ "utf8mb4_roman_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 240,
+      "collations": [ "utf8mb4_persian_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 241,
+      "collations": [ "utf8mb4_esperanto_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 242,
+      "collations": [ "utf8mb4_hungarian_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 243,
+      "collations": [ "utf8mb4_sinhala_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 244,
+      "collations": [ "utf8mb4_german2_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 245,
+      "collations": [ "utf8mb4_croatian_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 246,
+      "collations": [ "utf8mb4_unicode_520_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 247,
+      "collations": [ "utf8mb4_vietnamese_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 248,
+      "collations": [ "gb18030_chinese_ci" ],
+      "priority": 1,
+      "charset": "gb18030"
+    },
+    {
+      "index": 249,
+      "collations": [ "gb18030_bin" ],
+      "priority": 0,
+      "charset": "gb18030"
+    },
+    {
+      "index": 250,
+      "collations": [ "gb18030_unicode_520_ci" ],
+      "priority": 0,
+      "charset": "gb18030"
+    },
+    {
+      "index": 255,
+      "collations": [ "utf8mb4_0900_ai_ci" ],
+      "priority": 1,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 256,
+      "collations": [ "utf8mb4_de_pb_0900_ai_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 257,
+      "collations": [ "utf8mb4_is_0900_ai_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 258,
+      "collations": [ "utf8mb4_lv_0900_ai_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 259,
+      "collations": [ "utf8mb4_ro_0900_ai_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 260,
+      "collations": [ "utf8mb4_sl_0900_ai_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 261,
+      "collations": [ "utf8mb4_pl_0900_ai_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 262,
+      "collations": [ "utf8mb4_et_0900_ai_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 263,
+      "collations": [ "utf8mb4_es_0900_ai_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 264,
+      "collations": [ "utf8mb4_sv_0900_ai_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 265,
+      "collations": [ "utf8mb4_tr_0900_ai_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 266,
+      "collations": [ "utf8mb4_cs_0900_ai_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 267,
+      "collations": [ "utf8mb4_da_0900_ai_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 268,
+      "collations": [ "utf8mb4_lt_0900_ai_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 269,
+      "collations": [ "utf8mb4_sk_0900_ai_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 270,
+      "collations": [ "utf8mb4_es_trad_0900_ai_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 271,
+      "collations": [ "utf8mb4_la_0900_ai_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 273,
+      "collations": [ "utf8mb4_eo_0900_ai_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 274,
+      "collations": [ "utf8mb4_hu_0900_ai_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 275,
+      "collations": [ "utf8mb4_hr_0900_ai_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 277,
+      "collations": [ "utf8mb4_vi_0900_ai_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 278,
+      "collations": [ "utf8mb4_0900_as_cs" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 279,
+      "collations": [ "utf8mb4_de_pb_0900_as_cs" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 280,
+      "collations": [ "utf8mb4_is_0900_as_cs" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 281,
+      "collations": [ "utf8mb4_lv_0900_as_cs" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 282,
+      "collations": [ "utf8mb4_ro_0900_as_cs" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 283,
+      "collations": [ "utf8mb4_sl_0900_as_cs" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 284,
+      "collations": [ "utf8mb4_pl_0900_as_cs" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 285,
+      "collations": [ "utf8mb4_et_0900_as_cs" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 286,
+      "collations": [ "utf8mb4_es_0900_as_cs" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 287,
+      "collations": [ "utf8mb4_sv_0900_as_cs" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 288,
+      "collations": [ "utf8mb4_tr_0900_as_cs" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 289,
+      "collations": [ "utf8mb4_cs_0900_as_cs" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 290,
+      "collations": [ "utf8mb4_da_0900_as_cs" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 291,
+      "collations": [ "utf8mb4_lt_0900_as_cs" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 292,
+      "collations": [ "utf8mb4_sk_0900_as_cs" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 293,
+      "collations": [ "utf8mb4_es_trad_0900_as_cs" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 294,
+      "collations": [ "utf8mb4_la_0900_as_cs" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 296,
+      "collations": [ "utf8mb4_eo_0900_as_cs" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 297,
+      "collations": [ "utf8mb4_hu_0900_as_cs" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 298,
+      "collations": [ "utf8mb4_hr_0900_as_cs" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 300,
+      "collations": [ "utf8mb4_vi_0900_as_cs" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 303,
+      "collations": [ "utf8mb4_ja_0900_as_cs" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 304,
+      "collations": [ "utf8mb4_ja_0900_as_cs_ks" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 305,
+      "collations": [ "utf8mb4_0900_as_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 306,
+      "collations": [ "utf8mb4_ru_0900_ai_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 307,
+      "collations": [ "utf8mb4_ru_0900_as_cs" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 308,
+      "collations": [ "utf8mb4_zh_0900_as_cs" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 309,
+      "collations": [ "utf8mb4_0900_bin" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 310,
+      "collations": [ "utf8mb4_nb_0900_ai_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 311,
+      "collations": [ "utf8mb4_nb_0900_as_cs" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 312,
+      "collations": [ "utf8mb4_nn_0900_ai_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 313,
+      "collations": [ "utf8mb4_nn_0900_as_cs" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 314,
+      "collations": [ "utf8mb4_sr_latn_0900_ai_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 315,
+      "collations": [ "utf8mb4_sr_latn_0900_as_cs" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 316,
+      "collations": [ "utf8mb4_bs_0900_ai_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 317,
+      "collations": [ "utf8mb4_bs_0900_as_cs" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 318,
+      "collations": [ "utf8mb4_bg_0900_ai_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 319,
+      "collations": [ "utf8mb4_bg_0900_as_cs" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 320,
+      "collations": [ "utf8mb4_gl_0900_ai_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 321,
+      "collations": [ "utf8mb4_gl_0900_as_cs" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 322,
+      "collations": [ "utf8mb4_mn_cyrl_0900_ai_ci" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    },
+    {
+      "index": 323,
+      "collations": [ "utf8mb4_mn_cyrl_0900_as_cs" ],
+      "priority": 0,
+      "charset": "utf8mb4"
+    }
+  ]
+}
