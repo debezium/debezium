@@ -263,7 +263,7 @@ ifdef::community[]
 [id="postgresql-read-only-incremental-snapshots"]
 ==== Read-only incremental snapshots
 
-The PostgreSQL connector allows for running incremental snapshots with a read-only connection to the database.
+You can configure a PostgreSQL connector that has a read-only connection to the database to run incremental snapshots without requiring a signal data collection table.
 To run an incremental snapshot with read-only access, the connector uses the current in-progress transaction as high and low watermarks.
 The state of a chunk's window is updated by comparing the transaction ID of write-ahead-log events or heartbeat events against low and high watermarks.
 
