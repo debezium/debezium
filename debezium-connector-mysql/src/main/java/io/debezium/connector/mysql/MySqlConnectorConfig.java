@@ -24,9 +24,8 @@ import io.debezium.config.Field.ValidationOutput;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.connector.binlog.BinlogConnectorConfig;
-import io.debezium.connector.binlog.charset.BinlogCharsetRegistry;
 import io.debezium.connector.binlog.gtid.GtidSetFactory;
-import io.debezium.connector.mysql.charset.MySqlCharsetRegistry;
+import io.debezium.connector.mysql.charset.MySqlCharsetRegistryServiceProvider;
 import io.debezium.connector.mysql.gtid.MySqlGtidSetFactory;
 import io.debezium.connector.mysql.history.MySqlHistoryRecordComparator;
 import io.debezium.function.Predicates;
@@ -231,12 +230,10 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
     private final Predicate<String> gtidSourceFilter;
     private final SnapshotLockingMode snapshotLockingMode;
     private final SnapshotLockingStrategy snapshotLockingStrategy;
-    private final MySqlCharsetRegistry charsetRegistry;
 
     public MySqlConnectorConfig(Configuration config) {
         super(MySqlConnector.class, config, DEFAULT_SNAPSHOT_FETCH_SIZE);
         this.gtidSetFactory = new MySqlGtidSetFactory();
-        this.charsetRegistry = new MySqlCharsetRegistry();
 
         this.snapshotLockingMode = SnapshotLockingMode.parse(config.getString(SNAPSHOT_LOCKING_MODE), SNAPSHOT_LOCKING_MODE.defaultValueAsString());
         this.snapshotLockingStrategy = new MySqlSnapshotLockingStrategy(snapshotLockingMode);
@@ -246,6 +243,8 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
         final String gtidSetExcludes = config.getString(GTID_SOURCE_EXCLUDES);
         this.gtidSourceFilter = gtidSetIncludes != null ? Predicates.includesUuids(gtidSetIncludes)
                 : (gtidSetExcludes != null ? Predicates.excludesUuids(gtidSetExcludes) : null);
+
+        getServiceRegistry().registerServiceProvider(new MySqlCharsetRegistryServiceProvider());
     }
 
     public Optional<SnapshotLockingMode> getSnapshotLockingMode() {
@@ -285,11 +284,6 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
     @Override
     protected HistoryRecordComparator getHistoryRecordComparator() {
         return new MySqlHistoryRecordComparator(gtidSourceFilter, getGtidSetFactory());
-    }
-
-    @Override
-    public BinlogCharsetRegistry getCharsetRegistry() {
-        return charsetRegistry;
     }
 
     /**

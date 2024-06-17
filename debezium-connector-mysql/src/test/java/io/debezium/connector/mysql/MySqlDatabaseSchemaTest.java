@@ -13,6 +13,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.BinlogDatabaseSchemaTest;
+import io.debezium.connector.binlog.charset.BinlogCharsetRegistry;
 import io.debezium.connector.mysql.jdbc.MySqlValueConverters;
 import io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
@@ -43,7 +44,7 @@ public class MySqlDatabaseSchemaTest extends BinlogDatabaseSchemaTest<MySqlConne
                 BinaryHandlingMode.BYTES,
                 MySqlValueConverters::adjustTemporal,
                 CommonConnectorConfig.EventConvertingFailureHandlingMode.WARN,
-                connectorConfig.getCharsetRegistry());
+                connectorConfig.getServiceRegistry().getService(BinlogCharsetRegistry.class));
 
         return new MySqlDatabaseSchema(
                 connectorConfig,

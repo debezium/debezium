@@ -144,6 +144,6 @@ public abstract class BinlogFieldReader {
     }
 
     protected BinlogCharsetRegistry getCharsetRegistry() {
-        return connectorConfig.getCharsetRegistry();
+        return connectorConfig.getServiceRegistry().getService(BinlogCharsetRegistry.class);
     }
 }
