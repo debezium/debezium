@@ -10,6 +10,7 @@ import org.apache.kafka.connect.data.Schema;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.binlog.BinlogConnectorConfig;
 import io.debezium.connector.binlog.BinlogDatabaseSchema;
+import io.debezium.connector.binlog.charset.BinlogCharsetRegistry;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.connector.mysql.jdbc.MySqlDefaultValueConverter;
 import io.debezium.connector.mysql.jdbc.MySqlValueConverters;
@@ -53,7 +54,7 @@ public class MySqlDatabaseSchema extends BinlogDatabaseSchema<MySqlPartition, My
                 connectorConfig.isSchemaCommentsHistoryEnabled(),
                 valueConverter,
                 getTableFilter(),
-                connectorConfig.getCharsetRegistry());
+                connectorConfig.getServiceRegistry().getService(BinlogCharsetRegistry.class));
     }
 
 }

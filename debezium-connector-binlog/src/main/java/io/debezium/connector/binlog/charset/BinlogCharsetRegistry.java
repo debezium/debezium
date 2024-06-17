@@ -5,12 +5,14 @@
  */
 package io.debezium.connector.binlog.charset;
 
+import io.debezium.service.Service;
+
 /**
  * Contract for handling binlog-based character set features
  *
  * @author Chris Cranford
  */
-public interface BinlogCharsetRegistry {
+public interface BinlogCharsetRegistry extends Service {
     /**
      * Get the size of the character set registry map.
      * @return the map size
