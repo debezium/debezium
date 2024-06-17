@@ -2490,8 +2490,8 @@ If your Oracle environment includes multiple destinations that satisfy that crit
 .Procedure
 * To specify the archive log destination that you want {prodname} to use, set the xref:oracle-property-log-mining-archive-destination-name[`log.mining.archive.destination.name`] property in the connector configuration. +
  +
-For example, in an database with two archive destination paths configured, `/path/one` and `/path/two`, these are associated with a destination name, column `DEST_NAME` in the `V$ARCHIVE_DEST_STATUS` table.
-If both destinations satisfy the criteria for Debezium (that is, `status` is `VALID` and `type` is `LOCAL`), to configure the connector to use the archive logs written to the `/path/two` path, set the value of `log.mining.archive.destination.name` to the value in `DEST_NAME` for that path from `V$ARCHIVE_DEST_STATUS`.
+For example, suppose that a database is configured with two archive destination paths, `/path/one` and `/path/two`, and that the `V$ARCHIVE_DEST_STATUS` table associates these paths with destination names that are specified in the column `DEST_NAME`.
+If both destinations satisfy the criteria for {prodname} -- that is, their `status` is `VALID` and their `type` is `LOCAL` -- to configure the connector to use the archive logs that the database writes to the `/path/two` path, set the value of `log.mining.archive.destination.name` to the value in the `DEST_NAME` column that is associated with `/path/two` in the `V$ARCHIVE_DEST_STATUS` table.
 For example, if the `DEST_NAME` is `LOG_ARCHIVE_DEST_3` for `/path/two`, you would configure Debezium as follows:
 
 [source,json]
@@ -2503,8 +2503,8 @@ For example, if the `DEST_NAME` is `LOG_ARCHIVE_DEST_3` for `/path/two`, you wou
 
 [NOTE]
 ====
-Do not set `log.mining.archive.destination.name` to the path where the archive logs are written by Oracle.
-Instead, this property should refer to the value in the `DEST_NAME` column in the `V$ARCHIVE_DEST_STATUS` table for the preferred row that satisfies your archive log retention policy.
+Do not set the value of `log.mining.archive.destination.name` to the path that the database uses for the archive logs.
+Set the property to the name of the archive log destination in the `DEST_NAME` column for a row in the `V$ARCHIVE_DEST_STATUS` table that satisfies your archive log retention policy.
 ====
 
 [WARNING]
