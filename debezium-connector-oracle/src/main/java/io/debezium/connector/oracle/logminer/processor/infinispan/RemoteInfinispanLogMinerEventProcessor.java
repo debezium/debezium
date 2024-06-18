@@ -12,18 +12,14 @@ import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFF
 
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Properties;
 
-import org.checkerframework.checker.units.qual.C;
 import org.infinispan.client.hotrod.RemoteCache;
 import org.infinispan.client.hotrod.RemoteCacheManager;
 import org.infinispan.client.hotrod.configuration.Configuration;
 import org.infinispan.client.hotrod.configuration.ConfigurationBuilder;
 import org.infinispan.client.hotrod.impl.ConfigurationProperties;
-import org.infinispan.commons.api.BasicCache;
 import org.infinispan.commons.configuration.XMLStringConfiguration;
-import org.infinispan.commons.util.CloseableIterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,9 +30,10 @@ import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OraclePartition;
-import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
+import io.debezium.connector.oracle.logminer.processor.CacheProvider;
+import io.debezium.connector.oracle.logminer.processor.LogMinerCache;
 import io.debezium.connector.oracle.logminer.processor.infinispan.marshalling.LogMinerEventMarshallerImpl;
 import io.debezium.connector.oracle.logminer.processor.infinispan.marshalling.TransactionMarshallerImpl;
 import io.debezium.pipeline.EventDispatcher;
@@ -64,10 +61,10 @@ public class RemoteInfinispanLogMinerEventProcessor extends AbstractInfinispanLo
     private final RemoteCacheManager cacheManager;
     private final boolean dropBufferOnStop;
 
-    private final RemoteCache<String, InfinispanTransaction> transactionCache;
-    private final RemoteCache<String, LogMinerEvent> eventCache;
-    private final RemoteCache<String, String> processedTransactionsCache;
-    private final RemoteCache<String, String> schemaChangesCache;
+    private final LogMinerCache<String, InfinispanTransaction> transactionCache;
+    private final LogMinerCache<String, LogMinerEvent> eventCache;
+    private final LogMinerCache<String, String> processedTransactionsCache;
+    private final LogMinerCache<String, String> schemaChangesCache;
 
     public RemoteInfinispanLogMinerEventProcessor(ChangeEventSourceContext context,
                                                   OracleConnectorConfig connectorConfig,
@@ -119,84 +116,23 @@ public class RemoteInfinispanLogMinerEventProcessor extends AbstractInfinispanLo
     }
 
     @Override
-    public BasicCache<String, InfinispanTransaction> getTransactionCache() {
+    public LogMinerCache<String, InfinispanTransaction> getTransactionCache() {
         return transactionCache;
     }
 
     @Override
-    public BasicCache<String, LogMinerEvent> getEventCache() {
+    public LogMinerCache<String, LogMinerEvent> getEventCache() {
         return eventCache;
     }
 
     @Override
-    public BasicCache<String, String> getSchemaChangesCache() {
+    public LogMinerCache<String, String> getSchemaChangesCache() {
         return schemaChangesCache;
     }
 
     @Override
-    public BasicCache<String, String> getProcessedTransactionsCache() {
+    public LogMinerCache<String, String> getProcessedTransactionsCache() {
         return processedTransactionsCache;
-    }
-
-    @Override
-    protected Scn getTransactionCacheMinimumScn() {
-        Scn minimumScn = Scn.NULL;
-        try (CloseableIterator<InfinispanTransaction> iterator = transactionCache.values().iterator()) {
-            while (iterator.hasNext()) {
-                final Scn transactionScn = iterator.next().getStartScn();
-                if (minimumScn.isNull()) {
-                    minimumScn = transactionScn;
-                }
-                else {
-                    if (transactionScn.compareTo(minimumScn) < 0) {
-                        minimumScn = transactionScn;
-                    }
-                }
-            }
-        }
-        return minimumScn;
-    }
-
-    @Override
-    protected Optional<InfinispanTransaction> getOldestTransactionInCache() {
-        InfinispanTransaction transaction = null;
-        try (CloseableIterator<InfinispanTransaction> iterator = transactionCache.values().iterator()) {
-            if (iterator.hasNext()) {
-                // Seed with the first element
-                transaction = iterator.next();
-                while (iterator.hasNext()) {
-                    final InfinispanTransaction entry = iterator.next();
-                    int comparison = entry.getStartScn().compareTo(transaction.getStartScn());
-                    if (comparison < 0) {
-                        // if entry has a smaller scn, it came before.
-                        transaction = entry;
-                    }
-                    else if (comparison == 0) {
-                        // if entry has an equal scn, compare the change times.
-                        if (entry.getChangeTime().isBefore(transaction.getChangeTime())) {
-                            transaction = entry;
-                        }
-                    }
-                }
-            }
-        }
-        return Optional.ofNullable(transaction);
-    }
-
-    @Override
-    protected String getFirstActiveTransactionKey() {
-        try (CloseableIterator<String> iterator = transactionCache.keySet().iterator()) {
-            if (iterator.hasNext()) {
-                return iterator.next();
-            }
-        }
-        return null;
-    }
-
-    @Override
-    protected void purgeCache(Scn minCacheScn) {
-        removeIf(processedTransactionsCache.entrySet().iterator(), entry -> Scn.valueOf(entry.getValue()).compareTo(minCacheScn) < 0);
-        removeIf(schemaChangesCache.entrySet().iterator(), entry -> Scn.valueOf(entry.getKey()).compareTo(minCacheScn) < 0);
     }
 
     private Properties getHotrodClientProperties(OracleConnectorConfig connectorConfig) {
@@ -215,14 +151,14 @@ public class RemoteInfinispanLogMinerEventProcessor extends AbstractInfinispanLo
         return properties;
     }
 
-    private <C, V> RemoteCache<C, V> createCache(String cacheName, OracleConnectorConfig connectorConfig, Field field) {
+    private <C, V> LogMinerCache<C, V> createCache(String cacheName, OracleConnectorConfig connectorConfig, Field field) {
         Objects.requireNonNull(cacheName);
 
         RemoteCache<C, V> cache = cacheManager.getCache(cacheName);
         if (cache != null) {
             // cache is already defined, simply return it
             LOGGER.info("Remote cache '{}' already defined.", cacheName);
-            return cache;
+            return new InfinispanLogMinerCache<>(cache);
         }
 
         final String cacheConfiguration = connectorConfig.getConfig().getString(field);
@@ -234,6 +170,6 @@ public class RemoteInfinispanLogMinerEventProcessor extends AbstractInfinispanLo
         }
 
         LOGGER.info("Created remote infinispan cache: {}", cacheName);
-        return cache;
+        return new InfinispanLogMinerCache<>(cache);
     }
 }
