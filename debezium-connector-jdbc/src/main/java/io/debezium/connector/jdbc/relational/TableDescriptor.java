@@ -12,7 +12,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import io.debezium.DebeziumException;
 import io.debezium.annotation.Immutable;
+import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 
 /**
  * Describes a relational table.
@@ -53,7 +55,16 @@ public class TableDescriptor {
     }
 
     public ColumnDescriptor getColumnByName(String columnName) {
-        return columns.get(columnName);
+        final ColumnDescriptor column = columns.get(columnName);
+        if (column == null) {
+            throw new DebeziumException(String.format(
+                    "Failed to find column '%s' in table '%s'. " +
+                            "If you have not enabled '%s', this could be related to column/field case differences.",
+                    columnName,
+                    id.getTableName(),
+                    JdbcSinkConnectorConfig.QUOTE_IDENTIFIERS));
+        }
+        return column;
     }
 
     public boolean hasColumn(String columnName) {
