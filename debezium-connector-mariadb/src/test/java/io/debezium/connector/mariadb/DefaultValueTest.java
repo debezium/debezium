@@ -7,15 +7,17 @@ package io.debezium.connector.mariadb;
 
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode;
+import io.debezium.connector.binlog.BinlogConnectorConfig;
 import io.debezium.connector.binlog.BinlogDefaultValueTest;
 import io.debezium.connector.binlog.jdbc.BinlogDefaultValueConverter;
 import io.debezium.connector.mariadb.antlr.MariaDbAntlrDdlParser;
-import io.debezium.connector.mariadb.charset.MariaDbCharsetRegistry;
 import io.debezium.connector.mariadb.jdbc.MariaDbDefaultValueConverter;
 import io.debezium.connector.mariadb.jdbc.MariaDbValueConverters;
+import io.debezium.connector.mariadb.util.MariaDbValueConvertersFactory;
 import io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 
 /**
  * @author Chris Cranford
@@ -31,14 +33,12 @@ public class DefaultValueTest extends BinlogDefaultValueTest<MariaDbValueConvert
                                                        TemporalPrecisionMode temporalPrecisionMode,
                                                        BigIntUnsignedMode bigIntUnsignedMode,
                                                        BinaryHandlingMode binaryHandlingMode) {
-        return new MariaDbValueConverters(
-                decimalMode,
+        return new MariaDbValueConvertersFactory().create(
+                RelationalDatabaseConnectorConfig.DecimalHandlingMode.parse(decimalMode.name()),
                 temporalPrecisionMode,
-                bigIntUnsignedMode,
+                BinlogConnectorConfig.BigIntUnsignedHandlingMode.parse(bigIntUnsignedMode.name()),
                 binaryHandlingMode,
-                x -> x,
-                EventConvertingFailureHandlingMode.WARN,
-                new MariaDbCharsetRegistry());
+                EventConvertingFailureHandlingMode.WARN);
     }
 
     @Override

@@ -8,15 +8,18 @@ package io.debezium.connector.mysql;
 
 import java.util.List;
 
-import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
+import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode;
 import io.debezium.connector.binlog.BinlogAntlrDdlParserTest;
+import io.debezium.connector.binlog.BinlogConnectorConfig;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.connector.mysql.charset.MySqlCharsetRegistry;
 import io.debezium.connector.mysql.jdbc.MySqlDefaultValueConverter;
 import io.debezium.connector.mysql.jdbc.MySqlValueConverters;
+import io.debezium.connector.mysql.util.MySqlValueConvertersFactory;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.ddl.DdlChanges;
 import io.debezium.relational.ddl.SimpleDdlParserListener;
@@ -49,14 +52,12 @@ public class MySqlAntlrDdlParserTest
 
     @Override
     protected MySqlValueConverters getValueConverters() {
-        return new MySqlValueConverters(
-                JdbcValueConverters.DecimalMode.DOUBLE,
+        return new MySqlValueConvertersFactory().create(
+                RelationalDatabaseConnectorConfig.DecimalHandlingMode.parse(JdbcValueConverters.DecimalMode.DOUBLE.name()),
                 TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS,
-                JdbcValueConverters.BigIntUnsignedMode.PRECISE,
+                BinlogConnectorConfig.BigIntUnsignedHandlingMode.parse(JdbcValueConverters.BigIntUnsignedMode.PRECISE.name()),
                 BinaryHandlingMode.BYTES,
-                x -> x,
-                CommonConnectorConfig.EventConvertingFailureHandlingMode.WARN,
-                new MySqlCharsetRegistry());
+                EventConvertingFailureHandlingMode.WARN);
     }
 
     @Override
