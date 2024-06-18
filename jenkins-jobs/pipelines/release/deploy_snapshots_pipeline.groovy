@@ -12,7 +12,7 @@ if (
 GIT_CREDENTIALS_ID = 'debezium-github'
 
 DEBEZIUM_DIR = 'debezium'
-HOME_DIR = '/home/centos'
+HOME_DIR = '/home/cloud-user'
 
 def additionalDirs = []
 node('Slave') {

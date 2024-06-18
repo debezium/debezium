@@ -45,7 +45,7 @@ else if (CHECK_BACKPORTS instanceof String) {
 
 GIT_CREDENTIALS_ID = 'debezium-github'
 JIRA_CREDENTIALS_ID = 'debezium-jira-pat'
-HOME_DIR = '/home/centos'
+HOME_DIR = '/home/cloud-user'
 GPG_DIR = 'gpg'
 
 DEBEZIUM_DIR = 'debezium'
