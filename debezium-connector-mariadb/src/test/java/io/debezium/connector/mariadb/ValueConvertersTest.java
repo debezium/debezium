@@ -9,14 +9,15 @@ import java.time.temporal.TemporalAdjuster;
 
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode;
+import io.debezium.connector.binlog.BinlogConnectorConfig;
 import io.debezium.connector.binlog.BinlogValueConvertersTest;
 import io.debezium.connector.binlog.jdbc.BinlogValueConverters;
 import io.debezium.connector.mariadb.antlr.MariaDbAntlrDdlParser;
-import io.debezium.connector.mariadb.charset.MariaDbCharsetRegistry;
-import io.debezium.connector.mariadb.jdbc.MariaDbValueConverters;
+import io.debezium.connector.mariadb.util.MariaDbValueConvertersFactory;
 import io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.ddl.DdlParser;
 
 /**
@@ -30,14 +31,13 @@ public class ValueConvertersTest extends BinlogValueConvertersTest<MariaDbConnec
                                                        BinaryHandlingMode binaryHandlingMode,
                                                        TemporalAdjuster temporalAdjuster,
                                                        EventConvertingFailureHandlingMode eventConvertingFailureHandlingMode) {
-        return new MariaDbValueConverters(
-                decimalMode,
+        return new MariaDbValueConvertersFactory().create(
+                RelationalDatabaseConnectorConfig.DecimalHandlingMode.parse(decimalMode.name()),
                 temporalPrecisionMode,
-                bigIntUnsignedMode,
+                BinlogConnectorConfig.BigIntUnsignedHandlingMode.parse(bigIntUnsignedMode.name()),
                 binaryHandlingMode,
                 temporalAdjuster,
-                eventConvertingFailureHandlingMode,
-                new MariaDbCharsetRegistry());
+                eventConvertingFailureHandlingMode);
     }
 
     @Override

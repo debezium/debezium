@@ -23,7 +23,6 @@ import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.binlog.BinlogEventMetadataProvider;
 import io.debezium.connector.binlog.BinlogSourceTask;
-import io.debezium.connector.binlog.charset.BinlogCharsetRegistry;
 import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection;
 import io.debezium.connector.binlog.jdbc.BinlogFieldReader;
 import io.debezium.connector.mariadb.jdbc.MariaDbConnection;
@@ -287,7 +286,7 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
                 connectorConfig.binaryHandlingMode(),
                 connectorConfig.isTimeAdjustedEnabled() ? MariaDbValueConverters::adjustTemporal : x -> x,
                 connectorConfig.getEventConvertingFailureHandlingMode(),
-                connectorConfig.getServiceRegistry().getService(BinlogCharsetRegistry.class));
+                connectorConfig.getServiceRegistry());
     }
 
     private BinlogFieldReader getFieldReader(MariaDbConnectorConfig connectorConfig) {

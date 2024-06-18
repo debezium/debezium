@@ -11,11 +11,12 @@ import java.util.Set;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.connector.binlog.BinlogConnectorConfig;
 import io.debezium.connector.binlog.BinlogDatabaseSchemaTest;
-import io.debezium.connector.binlog.charset.BinlogCharsetRegistry;
 import io.debezium.connector.mariadb.jdbc.MariaDbValueConverters;
-import io.debezium.jdbc.JdbcValueConverters;
+import io.debezium.connector.mariadb.util.MariaDbValueConvertersFactory;
 import io.debezium.jdbc.TemporalPrecisionMode;
+import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingMode;
 import io.debezium.relational.history.AbstractSchemaHistory;
 import io.debezium.schema.DefaultTopicNamingStrategy;
 import io.debezium.schema.SchemaNameAdjuster;
@@ -34,19 +35,15 @@ public class DatabaseSchemaTest extends BinlogDatabaseSchemaTest<MariaDbConnecto
     @Override
     protected MariaDbDatabaseSchema getSchema(Configuration config) {
         this.connectorConfig = getConnectorConfig(config);
-
-        final MariaDbValueConverters valueConverters = new MariaDbValueConverters(
-                JdbcValueConverters.DecimalMode.PRECISE,
-                TemporalPrecisionMode.ADAPTIVE,
-                JdbcValueConverters.BigIntUnsignedMode.LONG,
-                CommonConnectorConfig.BinaryHandlingMode.BYTES,
-                MariaDbValueConverters::adjustTemporal,
-                CommonConnectorConfig.EventConvertingFailureHandlingMode.WARN,
-                connectorConfig.getServiceRegistry().getService(BinlogCharsetRegistry.class));
-
         return new MariaDbDatabaseSchema(
                 connectorConfig,
-                valueConverters,
+                new MariaDbValueConvertersFactory().create(
+                        DecimalHandlingMode.PRECISE,
+                        TemporalPrecisionMode.ADAPTIVE,
+                        BinlogConnectorConfig.BigIntUnsignedHandlingMode.LONG,
+                        CommonConnectorConfig.BinaryHandlingMode.BYTES,
+                        MariaDbValueConverters::adjustTemporal,
+                        CommonConnectorConfig.EventConvertingFailureHandlingMode.WARN),
                 (TopicNamingStrategy) DefaultTopicNamingStrategy.create(connectorConfig),
                 SchemaNameAdjuster.create(),
                 false);

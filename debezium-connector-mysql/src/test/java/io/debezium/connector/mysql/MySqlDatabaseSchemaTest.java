@@ -12,12 +12,14 @@ import java.util.Set;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.config.Configuration;
+import io.debezium.connector.binlog.BinlogConnectorConfig;
 import io.debezium.connector.binlog.BinlogDatabaseSchemaTest;
-import io.debezium.connector.binlog.charset.BinlogCharsetRegistry;
 import io.debezium.connector.mysql.jdbc.MySqlValueConverters;
+import io.debezium.connector.mysql.util.MySqlValueConvertersFactory;
 import io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.history.AbstractSchemaHistory;
 import io.debezium.schema.DefaultTopicNamingStrategy;
 import io.debezium.schema.SchemaNameAdjuster;
@@ -36,19 +38,15 @@ public class MySqlDatabaseSchemaTest extends BinlogDatabaseSchemaTest<MySqlConne
     @Override
     protected MySqlDatabaseSchema getSchema(Configuration config) {
         this.connectorConfig = getConnectorConfig(config);
-
-        final MySqlValueConverters mySqlValueConverters = new MySqlValueConverters(
-                DecimalMode.PRECISE,
-                TemporalPrecisionMode.ADAPTIVE,
-                BigIntUnsignedMode.LONG,
-                BinaryHandlingMode.BYTES,
-                MySqlValueConverters::adjustTemporal,
-                CommonConnectorConfig.EventConvertingFailureHandlingMode.WARN,
-                connectorConfig.getServiceRegistry().getService(BinlogCharsetRegistry.class));
-
         return new MySqlDatabaseSchema(
                 connectorConfig,
-                mySqlValueConverters,
+                new MySqlValueConvertersFactory().create(
+                        RelationalDatabaseConnectorConfig.DecimalHandlingMode.parse(DecimalMode.PRECISE.name()),
+                        TemporalPrecisionMode.ADAPTIVE,
+                        BinlogConnectorConfig.BigIntUnsignedHandlingMode.parse(BigIntUnsignedMode.LONG.name()),
+                        BinaryHandlingMode.BYTES,
+                        MySqlValueConverters::adjustTemporal,
+                        CommonConnectorConfig.EventConvertingFailureHandlingMode.WARN),
                 (TopicNamingStrategy) DefaultTopicNamingStrategy.create(connectorConfig),
                 SchemaNameAdjuster.create(),
                 false);
