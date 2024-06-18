@@ -14,6 +14,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 import org.slf4j.Logger;
@@ -29,6 +30,7 @@ import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceM
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
 import io.debezium.connector.oracle.logminer.processor.AbstractLogMinerEventProcessor;
+import io.debezium.connector.oracle.logminer.processor.LogMinerCache;
 import io.debezium.connector.oracle.logminer.processor.LogMinerEventProcessor;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
@@ -41,6 +43,7 @@ import io.debezium.util.Loggings;
  *
  * @author Chris Cranford
  */
+// TODO: can this be a caching impl now as well, just with map
 public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor<MemoryTransaction> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MemoryLogMinerEventProcessor.class);
@@ -49,10 +52,11 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
     private final OracleOffsetContext offsetContext;
     private final LogMinerStreamingChangeEventSourceMetrics metrics;
 
+    private final HashMap<String, MemoryTransaction> transactionHashMap = new HashMap<>();
     /**
      * Cache of transactions, keyed based on the transaction's unique identifier
      */
-    private final Map<String, MemoryTransaction> transactionCache = new HashMap<>();
+    private final LogMinerCache<String, MemoryTransaction> transactionCache = new MemoryBasedLogMinerCache<>(transactionHashMap);
     /**
      * Cache of processed transactions (committed or rolled back), keyed based on the transaction's unique identifier.
      */
@@ -75,7 +79,7 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
     }
 
     @Override
-    protected Map<String, MemoryTransaction> getTransactionCache() {
+    public LogMinerCache<String, MemoryTransaction> getTransactionCache() {
         return transactionCache;
     }
 
@@ -95,17 +99,23 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
                 final String transactionPrefix = getTransactionIdPrefix(row.getTransactionId());
                 LOGGER.debug("Undo change refers to a transaction that has no explicit sequence, '{}'", row.getTransactionId());
                 LOGGER.debug("Checking all transactions with prefix '{}'", transactionPrefix);
-                for (String transactionKey : getTransactionCache().keySet()) {
+
+                getTransactionCache().forEach((transactionKey, v) -> {
                     if (transactionKey.startsWith(transactionPrefix)) {
-                        transaction = getTransactionCache().get(transactionKey);
-                        if (transaction != null && transaction.removeEventWithRowId(row.getRowId())) {
+                        MemoryTransaction found = getTransactionCache().get(transactionKey);
+                        // TODO: isn't found the same as v?
+                        if (found != v) {
+                            LOGGER.warn("HOW DID THIS HAPPEN?");
+                        }
+
+                        if (found != null && found.removeEventWithRowId(row.getRowId())) {
                             // We successfully found a transaction with the same XISUSN and XIDSLT and that
                             // transaction included a change for the specified row id.
                             Loggings.logDebugAndTraceRecord(LOGGER, row, "Undo change on table '{}' was applied to transaction '{}'", row.getTableId(), transactionKey);
-                            return;
                         }
                     }
-                }
+                });
+
                 Loggings.logWarningAndTraceRecord(LOGGER, row, "Cannot undo change on table '{}' since event with row-id {} was not found", row.getTableId(),
                         row.getRowId());
             }
@@ -167,8 +177,14 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
 
     @Override
     protected String getFirstActiveTransactionKey() {
-        final Iterator<String> keyIterator = transactionCache.keySet().iterator();
-        return keyIterator.hasNext() ? keyIterator.next() : null;
+        AtomicReference<String> result = new AtomicReference<>();
+        transactionCache.keys(keys -> {
+            Iterator<String> iterator = keys.iterator();
+            if (iterator.hasNext()) {
+                result.set(iterator.next());
+            }
+        });
+        return result.get();
     }
 
     @Override
@@ -273,33 +289,38 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
 
     @Override
     protected Scn getTransactionCacheMinimumScn() {
-        return transactionCache.values().stream()
-                .map(MemoryTransaction::getStartScn)
-                .min(Scn::compareTo)
-                .orElse(Scn.NULL);
+        AtomicReference<Scn> result = new AtomicReference<>();
+        transactionCache.values(stream -> {
+            result.set(stream.map(MemoryTransaction::getStartScn)
+                    .min(Scn::compareTo)
+                    .orElse(Scn.NULL));
+        });
+        return result.get();
     }
 
-    @Override
+    // TODO: extend cache processor?
     protected Optional<MemoryTransaction> getOldestTransactionInCache() {
-        MemoryTransaction transaction = null;
-        if (!transactionCache.isEmpty()) {
-            // Seed with the first element
-            transaction = transactionCache.values().iterator().next();
-            for (MemoryTransaction entry : transactionCache.values()) {
-                int comparison = entry.getStartScn().compareTo(transaction.getStartScn());
-                if (comparison < 0) {
-                    // if entry has a smaller scn, it came before.
-                    transaction = entry;
-                }
-                else if (comparison == 0) {
-                    // if entry has an equal scn, compare the change times.
-                    if (entry.getChangeTime().isBefore(transaction.getChangeTime())) {
-                        transaction = entry;
-                    }
-                }
+
+        return getTransactionCache().streamAndReturn(entryStream -> entryStream
+                .map(LogMinerCache.Entry::getValue)
+                .min(this::compareTransactions));
+    }
+
+    protected MemoryTransaction compareOldest(MemoryTransaction first, MemoryTransaction second) {
+        int comparison = first.getStartScn().compareTo(second.getStartScn());
+        if (comparison < 0) {
+            return second;
+        }
+        else if (comparison == 0) {
+            if (second.getChangeTime().isBefore(first.getChangeTime())) {
+                return second;
             }
         }
-        return Optional.ofNullable(transaction);
+        return first;
     }
 
+    protected int compareTransactions(MemoryTransaction first, MemoryTransaction second) {
+        return first.getStartScn().compareTo(second.getStartScn());
+
+    }
 }

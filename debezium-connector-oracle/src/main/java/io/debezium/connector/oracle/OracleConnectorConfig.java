@@ -36,6 +36,7 @@ import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.logminer.logwriter.LogWriterFlushStrategy;
 import io.debezium.connector.oracle.logminer.processor.LogMinerEventProcessor;
+import io.debezium.connector.oracle.logminer.processor.echache.EhcacheLogMinerEventProcessor;
 import io.debezium.connector.oracle.logminer.processor.infinispan.EmbeddedInfinispanLogMinerEventProcessor;
 import io.debezium.connector.oracle.logminer.processor.infinispan.RemoteInfinispanLogMinerEventProcessor;
 import io.debezium.connector.oracle.logminer.processor.memory.MemoryLogMinerEventProcessor;
@@ -373,7 +374,9 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     System.lineSeparator() +
                     "infinispan_embedded - This option uses an embedded Infinispan cache to buffer transaction data and persist it to disk." + System.lineSeparator() +
                     System.lineSeparator() +
-                    "infinispan_remote - This option uses a remote Infinispan cluster to buffer transaction data and persist it to disk.");
+                    "infinispan_remote - This option uses a remote Infinispan cluster to buffer transaction data and persist it to disk." +
+                    System.lineSeparator() +
+                    "ehcache - This option uses an embedded Ehcache cache to buffer transaction data and persist it to disk.");
 
     public static final Field LOG_MINING_BUFFER_TRANSACTION_EVENTS_THRESHOLD = Field.create("log.mining.buffer.transaction.events.threshold")
             .withDisplayName("The maximum number of events a transaction can have before being discarded.")
@@ -430,6 +433,38 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 26))
             .withValidation(OracleConnectorConfig::validateLogMiningInfinispanCacheConfiguration)
             .withDescription("Specifies the XML configuration for the Infinispan 'schema-changes' cache");
+
+    public static final Field LOG_MINING_BUFFER_EHCACHE_CACHE_PATH = Field.create("log.mining.buffer.ehcache.path")
+            .withDisplayName("Ehcache storage path configuration")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.LOW)
+            .withValidation(OracleConnectorConfig::validateLogMiningEhcacheCacheConfiguration)
+            .withDescription("Ehcache storage path configuration");
+
+    public static final Field LOG_MINING_BUFFER_EHCACHE_CACHE_TRANSACTION_SIZE_MB = Field.create("log.mining.buffer.ehcache.cache.transaction.size.mb")
+            .withDisplayName("Ehcache Transaction Cache size on disk tier in MB")
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withValidation(Field::isPositiveInteger)
+            .withDescription("Ehcache Transaction Cache size on disk tier in MB");
+
+    public static final Field LOG_MINING_BUFFER_EHCACHE_CACHE_RECENTTRANSACTIONS_SIZE_MB = Field.create("log.mining.buffer.ehcache.cache.recenttransaction.size.mb")
+            .withDisplayName("Ehcache Recently Processed Transactions Cache size on disk tier in MB")
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withValidation(Field::isPositiveInteger)
+            .withDescription("Ehcache Recently Processed Transactions Cache size on disk tier in MB");
+
+    public static final Field LOG_MINING_BUFFER_EHCACHE_CACHE_SCHEMACHANGES_SIZE_MB = Field.create("log.mining.buffer.ehcache.cache.schemachanges.size.mb")
+            .withDisplayName("Ehcache Schema Changes Cache size on disk tier in MB")
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withValidation(Field::isPositiveInteger)
+            .withDescription("Ehcache Schema Changes Cache size on disk tier in MB");
 
     public static final Field LOG_MINING_BUFFER_DROP_ON_STOP = Field.create("log.mining.buffer.drop.on.stop")
             .withDisplayName("Controls whether the buffer cache is dropped when connector is stopped")
@@ -682,6 +717,10 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_BUFFER_INFINISPAN_CACHE_EVENTS,
                     LOG_MINING_BUFFER_INFINISPAN_CACHE_PROCESSED_TRANSACTIONS,
                     LOG_MINING_BUFFER_INFINISPAN_CACHE_SCHEMA_CHANGES,
+                    LOG_MINING_BUFFER_EHCACHE_CACHE_PATH,
+                    LOG_MINING_BUFFER_EHCACHE_CACHE_TRANSACTION_SIZE_MB,
+                    LOG_MINING_BUFFER_EHCACHE_CACHE_RECENTTRANSACTIONS_SIZE_MB,
+                    LOG_MINING_BUFFER_EHCACHE_CACHE_SCHEMACHANGES_SIZE_MB,
                     LOG_MINING_BUFFER_TRANSACTION_EVENTS_THRESHOLD,
                     LOG_MINING_ARCHIVE_LOG_ONLY_SCN_POLL_INTERVAL_MS,
                     LOG_MINING_SCN_GAP_DETECTION_GAP_SIZE_MIN,
@@ -1424,6 +1463,21 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             }
         },
 
+        EHCACHE("ehcache") {
+            @Override
+            public LogMinerEventProcessor createProcessor(ChangeEventSourceContext context,
+                                                          OracleConnectorConfig connectorConfig,
+                                                          OracleConnection connection,
+                                                          EventDispatcher<OraclePartition, TableId> dispatcher,
+                                                          OraclePartition partition,
+                                                          OracleOffsetContext offsetContext,
+                                                          OracleDatabaseSchema schema,
+                                                          LogMinerStreamingChangeEventSourceMetrics metrics) {
+                return new EhcacheLogMinerEventProcessor(context, connectorConfig, connection, dispatcher, partition,
+                        offsetContext, schema, metrics);
+            }
+        },
+
         INFINISPAN_EMBEDDED("infinispan_embedded") {
             @Override
             public LogMinerEventProcessor createProcessor(ChangeEventSourceContext context,
@@ -1475,11 +1529,15 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         }
 
         public boolean isInfinispan() {
-            return !MEMORY.equals(this);
+            return INFINISPAN_EMBEDDED.equals(this) || INFINISPAN_REMOTE.equals(this);
         }
 
         public boolean isInfinispanEmbedded() {
             return isInfinispan() && INFINISPAN_EMBEDDED.equals(this);
+        }
+
+        public boolean isEhcache() {
+            return EHCACHE.equals(this);
         }
 
         public static LogMiningBufferType parse(String value) {
@@ -2031,6 +2089,15 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         final LogMiningBufferType bufferType = LogMiningBufferType.parse(config.getString(LOG_MINING_BUFFER_TYPE));
         int errors = 0;
         if (bufferType.isInfinispan()) {
+            errors = Field.isRequired(config, field, problems);
+        }
+        return errors;
+    }
+
+    public static int validateLogMiningEhcacheCacheConfiguration(Configuration config, Field field, ValidationOutput problems) {
+        final LogMiningBufferType bufferType = LogMiningBufferType.parse(config.getString(LOG_MINING_BUFFER_TYPE));
+        int errors = 0;
+        if (bufferType.isEhcache()) {
             errors = Field.isRequired(config, field, problems);
         }
         return errors;
