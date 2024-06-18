@@ -763,7 +763,7 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
 
     private String columnNameEqualsBinding(String fieldName, TableDescriptor table, SinkRecordDescriptor record) {
         final FieldDescriptor field = record.getFields().get(fieldName);
-        final String columnName = columnNamingStrategy.resolveColumnName(field.getColumnName());
+        final String columnName = resolveColumnName(field);
         final ColumnDescriptor column = table.getColumnByName(columnName);
         return toIdentifier(columnName) + "=" + field.getQueryBinding(column, record.getAfterStruct());
     }
