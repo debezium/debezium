@@ -823,7 +823,11 @@ The connector adds missing columns to the table by comparing the incoming event'
 |[[jdbc-property-table-name-format]]<<jdbc-property-table-name-format, `+table.name.format+`>>
 |`+${topic}+`
 |Specifies a string that determines how the destination table name is formatted, based on the topic name of the event.
-The placeholder, `+${topic}+`, is replaced by the topic name.
+The placeholder, `+${topic}+`, is replaced by the topic name. +
+ +
+This configuration can also be specified using the `+${source._field_}+` pattern to use values from the Debezium change event's `source` information block for more dynamic formats.
+For example, given a schema of `user` and the table name of `tab`, a value of `+${source.schema}_${source.table}+` would use a table name mapping of `user_tab`.
+This allows each incoming event to dynamically influence the target table name without necessarily writing a custom single message transformation.
 
 |[[jdbc-property-dialect-postgres-postgis-schema]]<<jdbc-property-dialect-postgres-postgis-schema, `+dialect.postgres.postgis.schema+`>>
 |`public`
