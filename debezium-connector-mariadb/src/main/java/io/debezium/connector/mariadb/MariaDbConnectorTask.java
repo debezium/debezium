@@ -26,7 +26,6 @@ import io.debezium.connector.binlog.BinlogSourceTask;
 import io.debezium.connector.binlog.charset.BinlogCharsetRegistry;
 import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection;
 import io.debezium.connector.binlog.jdbc.BinlogFieldReader;
-import io.debezium.connector.mariadb.charset.MariaDbCharsetRegistry;
 import io.debezium.connector.mariadb.jdbc.MariaDbConnection;
 import io.debezium.connector.mariadb.jdbc.MariaDbConnectionConfiguration;
 import io.debezium.connector.mariadb.jdbc.MariaDbFieldReader;
@@ -80,7 +79,6 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
 
     @Override
     protected ChangeEventSourceCoordinator<MariaDbPartition, MariaDbOffsetContext> start(Configuration configuration) {
-        final MariaDbCharsetRegistry charsetRegistry = new MariaDbCharsetRegistry();
         final Clock clock = Clock.system();
         final MariaDbConnectorConfig connectorConfig = new MariaDbConnectorConfig(configuration);
         final TopicNamingStrategy<TableId> topicNamingStrategy = connectorConfig.getTopicNamingStrategy(TOPIC_NAMING_STRATEGY);
