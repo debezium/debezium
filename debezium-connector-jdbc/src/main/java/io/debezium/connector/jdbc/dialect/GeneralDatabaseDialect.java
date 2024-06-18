@@ -672,9 +672,6 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
         final FieldDescriptor field = record.getFields().get(fieldName);
         final String columnName = resolveColumnName(field);
         final ColumnDescriptor column = table.getColumnByName(columnName);
-        if (column == null) {
-            throw new DebeziumException("Failed to find column " + columnName + " in table " + table.getId().getTableName());
-        }
 
         final Object value;
         if (record.getNonKeyFieldNames().contains(fieldName)) {
