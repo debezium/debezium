@@ -15,6 +15,7 @@ import java.util.stream.IntStream;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
 import org.bson.Document;
 import org.junit.After;
@@ -32,13 +33,13 @@ import com.mongodb.client.MongoClients;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig.CaptureScope;
-import io.debezium.connector.mongodb.connection.MongoDbConnections;
 import io.debezium.connector.mongodb.junit.MongoDbDatabaseProvider;
 import io.debezium.connector.mongodb.junit.MongoDbDatabaseVersionResolver;
 import io.debezium.connector.mongodb.junit.MongoDbPlatform;
 import io.debezium.data.Envelope;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
+import io.debezium.pipeline.ErrorHandler;
 import io.debezium.testing.testcontainers.MongoDbReplicaSet;
 import io.debezium.testing.testcontainers.util.DockerUtils;
 
@@ -158,7 +159,7 @@ public class MongoDbConnectorDatabaseRestrictedIT extends AbstractConnectorTest 
 
     @Test
     public void shouldFailWithoutPermissions() {
-        var logInterceptor = new LogInterceptor(MongoDbConnections.class);
+        var logInterceptor = new LogInterceptor(ErrorHandler.class);
 
         // Populate collection
         populateCollection(TEST_DATABASE, TEST_COLLECTION, INIT_DOCUMENT_COUNT);
@@ -169,12 +170,9 @@ public class MongoDbConnectorDatabaseRestrictedIT extends AbstractConnectorTest 
         // Start the connector ...
         start(MongoDbConnector.class, config);
 
-        // Connector should fail while authenticating with the database
-        Awaitility.await().atMost(10, TimeUnit.SECONDS)
-                .until(() -> logInterceptor.containsMessage("Error while attempting to Setting resume token"));
         // Connector should fail after 2 retries
-        // Awaitility.await().pollDelay(10, TimeUnit.SECONDS).timeout(30, TimeUnit.SECONDS).until(() -> !isEngineRunning.get());
-        // Assertions.assertThat(logInterceptor.containsMessage("The maximum number of 2 retries has been attempted")).isTrue();
+        Awaitility.await().pollDelay(10, TimeUnit.SECONDS).timeout(30, TimeUnit.SECONDS).until(() -> !isEngineRunning.get());
+        Assertions.assertThat(logInterceptor.containsMessage("The maximum number of 2 retries has been attempted")).isTrue();
     }
 
     protected void consumeAndVerifyFromInitialSnapshot(String topic, int expectedRecords) throws InterruptedException {
