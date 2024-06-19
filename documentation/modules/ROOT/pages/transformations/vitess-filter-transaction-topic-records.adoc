@@ -1,0 +1,30 @@
+:page-aliases: configuration/vitess-filter-transaction-topic-records.adoc
+[id="vitess-filter-transaction-topic-records"]
+= Vitess Filter Transaction Topic Records
+
+:toc:
+:toc-placement: macro
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+
+toc::[]
+
+When the Vitess connector is configured to provide transaction metadata, use the `FilterTransactionTopicRecords` SMT to prevent the connector from sending transaction boundary events to transaction topics.
+This transformation is designed for use only with the {prodname} connector for Vitess.
+
+
+To filter events, the SMT checks the key and value schemas of each record match and compares them to the values returned by `TransactionStructMaker`.
+The following example shows how to add the `FilterTransactionTopicRecords` SMT to the connector configuration to remove all transaction boundary event records that the connector emits, and prevent them from being saved to the transaction topic.
+[[example-vitess-filter-transaction-topic-records]]
+== Example: Configuring the `FilterTransactionTopicRecords` SMT to filter out all transaction boundary event records
+
+
+[source]
+----
+"connector.class": "io.debezium.connector.vitess.VitessConnector",
+...
+"transforms": "filterTransactionTopicRecords",
+"transforms.filterTransactionTopicRecords.type": "io.debezium.connector.vitess.transforms.FilterTransactionTopicRecords",
+...
+----

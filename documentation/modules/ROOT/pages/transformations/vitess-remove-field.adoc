@@ -1,0 +1,92 @@
+:page-aliases: configuration/vitess-remove-field.adoc
+[id="vitess-remove-field"]
+= Vitess Remove Field
+
+:toc:
+:toc-placement: macro
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+
+toc::[]
+
+The `RemoveField` SMT removes a specified field from the event record. 
+When the connector is configured to provide transaction metadata, use this SMT to remove the `transaction.id` field to avoid storing a duplicate entry of the VGTID.
+This transformation is designed for use only with the {prodname} connector for Vitess.
+
+The SMT uses the `field_names` configuration option to specify a comma-separated list of paths that identify the fields to remove. 
+The SMT removes each field that you specify from the event record and the event schema.
+The following example shows how to add the SMT to the connector configuration so that it removes specific fields from the change event records that the connector emits.
+
+[[example-vitess-remove-field.adoc]]
+== Example: Configuring the `RemoveField` SMT
+
+
+[source]
+----
+"connector.class": "io.debezium.connector.vitess.VitessConnector",
+...
+"transforms": "removeField",
+"transforms.removeField.type": "io.debezium.connector.vitess.transforms.RemoveField",
+"transforms.removeField.field_names": "transaction.id",
+...
+----
+
+The following example shows the value of a change event record before and after the transformation is applied.
+
+.Effect of applying the `RemoveField` SMT
+====
+Value before the SMT processes the record::
++
+[source, json]
+----
+{
+    "before": {...}
+    "after": {...}
+    "source": {...}
+    "transaction": {
+        "id": "[{\"keyspace\":\"test_unsharded_keyspace\",\"shard\":\"0\",\"gtid\":\"MySQL56/e03ece6c-4c04-11ec-8e20-0242ac110004:1-68\"}]",
+        "total_order": 1,
+        "data_collection_order": 1
+      }
+}
+----
+
+Value after the SMT processes the record::
++
+[source, json]
+----
+{
+    "before": {...}
+    "after": {...}
+    "source": {...}
+    "transaction": {
+        "total_order": 1,
+        "data_collection_order": 1
+      }
+}
+----
+====
+
+[[vitess-remove-field-options]]
+== Configuration options for the `RemoveField` SMT
+
+The following table lists the configuration options that you can use with the `RemoveField` SMT.
+
+.RemoveField SMT configuration options
+[cols="14%a,40%a,10%a, 16%a, 16%a, 10%a"]
+|===
+|Property
+|Description
+|Type
+|Default
+|Valid Values
+|Importance
+
+|[[remove-field-field-names]]<<remove-field-field-names, `fields_names`>>
+|A comma-separated list that specifies the paths of the fields to remove from the event record for example, `transaction.id`).
+|List
+|No default value
+|Non-empty list
+|High
+|===
