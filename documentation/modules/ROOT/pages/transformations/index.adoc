@@ -45,6 +45,19 @@ The following SMTs are provided by {prodname}:
 |xref:transformations/convert-cloudevent-to-saveable-form.adoc[Convert CloudEvents to Saveable Form]
 |Converts values of records deserialized by {prodname} CloudEvents converter to a structure suitable for {prodname} JDBC sink connector.
 
+|xref:transformations/vitess-use-local-vgtid.adoc[Vitess Use Local VGTID]
+|A transformation that reduces the size of VGTIDs that the Vitess connector emits.
+To reduce the amount of data in the event message, the SMT writes only the VGTID for the shard in which a change occurs. 
+The VGTIDs for other shards are removed.
+This transformation is designed for use only with the {prodname} connector for Vitess.
+
+|xref:transformations/vitess-remove-field.adoc[Vitess Remove Field]
+|The Vitess-specific transformation to remove fields to reduce the size of the messages written (e.g., redundant VGTID fields).
+
+|xref:transformations/vitess-filter-transaction-topic-records.adoc[Vitess Filter Transaction Topic Records]
+|A transformation that filters out all messages that the connector emits to the transaction topic (when transaction metadata is enabled).
+This transformation is designed for use only with the {prodname} connector for Vitess.
+
 |===
 
 By means of xref:transformations/applying-transformations-selectively.adoc[SMT Predicates] you can apply any of the transformations selectively, so that it modifies only that subset of change event messages that share a common characteristic.

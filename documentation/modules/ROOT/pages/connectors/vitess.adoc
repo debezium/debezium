@@ -256,6 +256,43 @@ The following example shows a data change event with ordered transaction metadat
 }
 ----
 
+[[vitess-efficient-transaction-metadata]]
+=== Efficient Transaction Metadata
+
+If you enable the connector to provide transaction metadata, it generates significantly more data. 
+Not only does the connector send additional messages to the transaction topics, but messages that it sends to the data change topics are larger, because they include a transaction metadata block.
+The added volume is due to the following factors:
+
+* The VGTID is stored twice, once as `source.vgtid`, and then again as `transaction.id`. 
+In keyspaces that include many shards, these VGTIDs can be quite large
+* In a sharded environment, the VGTID typically contains the VGTID for every shard. 
+In keyspaces with many shards, the amount of data in the VGTID field can be quite large.
+* The connector sends transaction topic messages for every transaction boundary event.
+Typically, keyspaces that include many shards tend to generate a high number of transaction boundary events.
+
+To enable the Vitess connector to encode transaction metadata without significantly increasing the volume of data produced, {prodname} provides several single message transformations (SMTs).
+The following SMTs are designed to reduce the amount of data in events that the Vitess connector emits:
+
+* xref:transformations/vitess-use-local-vgtid.adoc[Use Local VGTID]
+* xref:transformations/vitess-remove-field.adoc[Remove Field]
+* xref:transformations/vitess-filter-transaction-topic-records.adoc[Filter Transaction Topic Records]
+
+The following example shows an excerpt from the configuration of a Vitess connector that uses the preceding transformations:
+
+```
+}
+ [...]
+ "provide.transaction.metadata": "true",
+ "transaction.metadata.factory": "io.debezium.connector.vitess.pipeline.txmetadata.VitessOrderedTransactionMetadataFactory",
+ "transforms": "filterTransactionTopicRecords,removeField,useLocalVgtid",
+ "transforms.filterTransactionTopicRecords.type": "io.debezium.connector.vitess.transforms.FilterTransactionTopicRecords",
+ "transforms.removeField.type": "io.debezium.connector.vitess.transforms.RemoveField",
+ "transforms.removeField.field_names": "transaction.id",
+ "transforms.useLocalVgtid.type": "io.debezium.connector.vitess.transforms.UseLocalVgtid",
+ [...]
+}
+```
+
 // Type: assembly
 // ModuleID: descriptions-of-debezium-vitess-connector-data-change-events
 // Title: Descriptions of {prodname} Vitess connector data change events
