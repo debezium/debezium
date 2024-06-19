@@ -245,14 +245,11 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
                 .build();
     }
 
-    private MongoDbOffsetContext getPreviousOffset(MongoDbConnectorConfig connectorConfig, ReplicaSets replicaSets) {
-        MongoDbOffsetContext.Loader loader = new MongoDbOffsetContext.Loader(connectorConfig, replicaSets, taskContext.getMongoTaskId());
     private MongoDbOffsetContext getPreviousOffset(MongoDbConnectorConfig connectorConfig, ReplicaSets replicaSets, OffsetStorageReader offsetStorageReader) {
-        MongoDbOffsetContext.Loader loader = new MongoDbOffsetContext.Loader(connectorConfig, replicaSets);
+            MongoDbOffsetContext.Loader loader = new MongoDbOffsetContext.Loader(connectorConfig, replicaSets, taskContext.getMongoTaskId());
         Collection<Map<String, String>> partitions = loader.getPartitions();
 
         Map<Map<String, String>, Map<String, Object>> offsets = offsetStorageReader.offsets(partitions);
-        Map<Map<String, String>, Map<String, Object>> offsets = context.offsetStorageReader().offsets(partitions);
         if (!connectorConfig.getMultiTaskEnabled() || offsets.values().stream().anyMatch(Objects::isNull)) {
             final int prevGen = connectorConfig.getMultiTaskPrevGen();
 
