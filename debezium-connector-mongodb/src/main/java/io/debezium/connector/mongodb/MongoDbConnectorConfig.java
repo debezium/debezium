@@ -36,6 +36,7 @@ import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.connector.mongodb.connection.DefaultMongoDbAuthProvider;
 import io.debezium.connector.mongodb.connection.MongoDbAuthProvider;
+import io.debezium.connector.mongodb.shared.SharedMongoDbConnectorConfig;
 import io.debezium.data.Envelope;
 import io.debezium.schema.DefaultTopicNamingStrategy;
 import io.debezium.spi.schema.DataCollectionId;
@@ -44,7 +45,7 @@ import io.debezium.util.Strings;
 /**
  * The configuration properties.
  */
-public class MongoDbConnectorConfig extends CommonConnectorConfig {
+public class MongoDbConnectorConfig extends CommonConnectorConfig implements SharedMongoDbConnectorConfig {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbConnectorConfig.class);
 
@@ -619,16 +620,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withDefault(false)
             .withType(Type.BOOLEAN);
 
-    // MongoDb fields in Connection Group start from 1 (topic.prefix is 0)
-    public static final Field CONNECTION_STRING = Field.create("mongodb.connection.string")
-            .withDisplayName("Connection String")
-            .withType(Type.STRING)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 1))
-            .withWidth(Width.MEDIUM)
-            .withImportance(Importance.HIGH)
-            .withValidation(MongoDbConnectorConfig::validateConnectionString)
-            .withDescription("Database connection string.");
-
     public static final Field USER = Field.create("mongodb.user")
             .withDisplayName("User")
             .withType(Type.STRING)
@@ -1169,24 +1160,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         return 0;
     }
 
-    private static int validateConnectionString(Configuration config, Field field, ValidationOutput problems) {
-        String connectionStringValue = config.getString(field);
-
-        if (connectionStringValue == null) {
-            problems.accept(field, null, "Missing connection string");
-            return 1;
-        }
-
-        try {
-            ConnectionString cs = new ConnectionString(connectionStringValue);
-        }
-        catch (Exception e) {
-            problems.accept(field, connectionStringValue, "Invalid connection string");
-            return 1;
-        }
-        return 0;
-    }
-
     private static int validateFieldExcludeList(Configuration config, Field field, ValidationOutput problems) {
         int problemCount = 0;
         String fieldExcludeList = config.getString(FIELD_EXCLUDE_LIST);
@@ -1452,11 +1425,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
     private static int resolveSnapshotMaxThreads(Configuration config) {
         return config.getInteger(SNAPSHOT_MAX_THREADS);
-    }
-
-    private static ConnectionString resolveConnectionString(Configuration config) {
-        var connectionString = config.getString(MongoDbConnectorConfig.CONNECTION_STRING);
-        return new ConnectionString(connectionString);
     }
 
     @Override
