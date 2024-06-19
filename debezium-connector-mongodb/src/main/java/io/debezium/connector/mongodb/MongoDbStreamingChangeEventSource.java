@@ -22,7 +22,9 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 
+import io.debezium.converters.ByteBufferConverter;
 import org.apache.kafka.connect.errors.ConnectException;
+import org.apache.kafka.connect.storage.OffsetStorageWriter;
 import org.bson.BsonDocument;
 import org.bson.BsonInt32;
 import org.bson.BsonString;
@@ -87,6 +89,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
     private final ReplicaSets replicaSets;
     private final MongoDbTaskContext taskContext;
     private final Serialization serialization;
+    private final OffsetStorageWriter offsetStorageWriter;
 
     public MongoDbStreamingChangeEventSource(MongoDbConnectorConfig connectorConfig, MongoDbTaskContext taskContext,
                                              ReplicaSets replicaSets,
@@ -101,6 +104,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         this.taskContext = taskContext;
         this.pattern = !connectorConfig.getStripeAuditFilterPattern().isEmpty() ? Pattern.compile(connectorConfig.getStripeAuditFilterPattern()) : null;
         this.serialization = new JsonSerialization();
+        this.offsetStorageWriter = new OffsetStorageWriter(new EtcdOffsetBackingStore(), "namespace", new ByteBufferConverter(), new ByteBufferConverter());
 
     }
 
@@ -786,6 +790,13 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         }
 
         return true;
+    }
+
+    @Override
+    public void commitOffset(Map<String, ?> offset) {
+        System.out.println("Committing offset: " + offset);
+
+        offsetStorageWriter.offset(, offset);
     }
 
     private <T> boolean shouldFilterStripeAudit(ReplicaSetOplogContext oplogContext, T event, Function<T, Object> keyExtractor) {

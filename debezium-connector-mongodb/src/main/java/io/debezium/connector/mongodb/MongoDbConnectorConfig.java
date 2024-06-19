@@ -881,6 +881,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     private final int cursorMaxAwaitTimeMs;
     private final String stripeAuditFilterPattern;
     private final int incrementalSnapshotThreads;
+    private final String offsetStorageClass;
 
     private final int streamingShards;
 
@@ -912,6 +913,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         this.enableBson = config.getBoolean(MongoDbConnectorConfig.ENABLE_BSON, false);
         this.allowCmdCollection = config.getBoolean(MongoDbConnectorConfig.ALLOW_CMD_COLLECTION, false);
         this.stripeAuditFilterPattern = config.getString(MongoDbConnectorConfig.STRIPE_AUDIT_FILTER_PATTERN, "");
+        this.offsetStorageClass = config.getString(MongoDbConnectorConfig.OFFSET_STORAGE_CLASS, "");
 
         this.snapshotMaxThreads = resolveSnapshotMaxThreads(config);
         this.cursorMaxAwaitTimeMs = config.getInteger(MongoDbConnectorConfig.CURSOR_MAX_AWAIT_TIME_MS, 0);
@@ -1090,6 +1092,10 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
     public int getStreamingShardId() {
         return streamingShardId;
+    }
+
+    public String getOffsetStorageClass() {
+        return offsetStorageClass;
     }
 
     public int getCursorMaxAwaitTime() {

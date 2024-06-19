@@ -17,6 +17,21 @@
         </dependency>
         <dependency>
             <groupId>org.apache.kafka</groupId>
+            <artifactId>connect-runtime</artifactId>
+            <scope>provided</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.apache.kafka</groupId>
+                    <artifactId>kafka-log4j-appender</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>log4j</groupId>
+                    <artifactId>log4j</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
             <artifactId>connect-api</artifactId>
             <scope>provided</scope>
         </dependency>
@@ -83,6 +98,7 @@
             <artifactId>awaitility</artifactId>
             <scope>test</scope>
         </dependency>
+
     </dependencies>
     <properties>
         <!-- By default we need to run these 5 containers, although the two init containers exit quickly -->

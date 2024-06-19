@@ -140,7 +140,7 @@ public abstract class Metrics {
      * @return the JMX metric name
      */
     protected ObjectName metricName(String connectorType, Map<String, String> tags) {
-        final String metricName = "debezium." + connectorType.toLowerCase() + ":type=connector-metrics,"
+        final String metricName = "debezium." + connectorType.toLowerCase() + "connector-metrics,"
                 + tags.entrySet().stream()
                         .map(e -> e.getKey() + "=" + Sanitizer.jmxSanitize(e.getValue()))
                         .collect(Collectors.joining(","));

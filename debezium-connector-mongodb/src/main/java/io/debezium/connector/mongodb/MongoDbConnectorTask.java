@@ -16,10 +16,15 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
+import io.debezium.connector.common.OffsetReader;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.errors.ConnectException;
+import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.BsonTimestamp;
+import org.apache.kafka.connect.storage.OffsetBackingStore;
+import org.apache.kafka.connect.storage.OffsetStorageReader;
+import org.apache.kafka.connect.storage.OffsetStorageReaderImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,6 +33,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
+import io.debezium.connector.mongodb.MongoDbConnectorConfig.CaptureMode;
 import io.debezium.connector.mongodb.metrics.MongoDbChangeEventSourceMetricsFactory;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
@@ -75,6 +81,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
     private volatile MongoDbTaskContext taskContext;
     private volatile ErrorHandler errorHandler;
     private volatile MongoDbSchema schema;
+    private volatile OffsetStorageReader offsetStorageReader; // TODO handle closing of this thing
 
     @Override
     public String version() {
@@ -92,8 +99,10 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
         final Schema structSchema = connectorConfig.getSourceInfoStructMaker().schema();
         this.schema = new MongoDbSchema(taskContext.filters(), taskContext.topicSelector(), structSchema, schemaNameAdjuster, connectorConfig.getEnableBson());
 
+        this.offsetStorageReader = getOffsetStorageReader(connectorConfig);
+
         final ReplicaSets replicaSets = getReplicaSets(config);
-        final MongoDbOffsetContext previousOffset = getPreviousOffset(connectorConfig, replicaSets);
+        final MongoDbOffsetContext previousOffset = getPreviousOffset(connectorConfig, replicaSets, offsetStorageReader);
         final Clock clock = Clock.system();
 
         if (previousOffset != null) {
@@ -179,6 +188,16 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
         }
     }
 
+    private OffsetStorageReader getOffsetStorageReader(MongoDbConnectorConfig connectorConfig) {
+
+        if (!connectorConfig.getOffsetStorageClass().isEmpty()) {
+            OffsetBackingStore offsetBackingStore = loadOffsetBackingStore(connectorConfig);
+            return new OffsetStorageReaderImpl(offsetBackingStore, connectorConfig.getConnectorName(), new JsonConverter(), new JsonConverter());
+        }
+
+        return context.offsetStorageReader();
+    }
+
     @Override
     public List<SourceRecord> doPoll() throws InterruptedException {
         List<DataChangeEvent> records = queue.poll();
@@ -228,8 +247,11 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
 
     private MongoDbOffsetContext getPreviousOffset(MongoDbConnectorConfig connectorConfig, ReplicaSets replicaSets) {
         MongoDbOffsetContext.Loader loader = new MongoDbOffsetContext.Loader(connectorConfig, replicaSets, taskContext.getMongoTaskId());
+    private MongoDbOffsetContext getPreviousOffset(MongoDbConnectorConfig connectorConfig, ReplicaSets replicaSets, OffsetStorageReader offsetStorageReader) {
+        MongoDbOffsetContext.Loader loader = new MongoDbOffsetContext.Loader(connectorConfig, replicaSets);
         Collection<Map<String, String>> partitions = loader.getPartitions();
 
+        Map<Map<String, String>, Map<String, Object>> offsets = offsetStorageReader.offsets(partitions);
         Map<Map<String, String>, Map<String, Object>> offsets = context.offsetStorageReader().offsets(partitions);
         if (!connectorConfig.getMultiTaskEnabled() || offsets.values().stream().anyMatch(Objects::isNull)) {
             final int prevGen = connectorConfig.getMultiTaskPrevGen();
@@ -321,6 +343,11 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
         else {
             return null;
         }
+    }
+
+    private OffsetBackingStore loadOffsetBackingStore(MongoDbConnectorConfig connectorConfig) {
+        // TODO: load a etcd offset backing store from class path
+        return null;
     }
 
     private ReplicaSets getReplicaSets(Configuration config) {
