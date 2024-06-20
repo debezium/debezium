@@ -823,15 +823,15 @@ The connector adds missing columns to the table by comparing the incoming event'
 |[[jdbc-property-table-name-format]]<<jdbc-property-table-name-format, `+table.name.format+`>>
 |`+${topic}+`
 |Specifies a string that determines how the destination table name is formatted, based on the topic name of the event. +
-When the property is set to its default value, `+${topic}+`, when the connector reads an event from Kafka, it writes the event record to a destination table that is based on the name of the source topic . +
+When the property is set to its default value, `+${topic}+`, after the connector reads an event from Kafka, it writes the event record to a destination table with a name that matches the name of the source topic. +
  +
 You can also use this property to dynamically influence the names of target tables, based on values in incoming events.
 By applying this feature of the property, you can implement dynamic naming without having to write a custom single message transformation. +
  +
 To enable dynamic naming of output tables, set the value of this property to a pattern such as `+${source._field_}+`.
-This type of pattern instructs the connector to extract values from the `source` block of the {prodname} change event for use in constructing the table name.
+When you specify this type of pattern, the connector extracts values from the `source` block of the {prodname} change event, and then uses those values to construct the table name.
 For example, you might set the value of the property to the pattern `+${source.schema}_${source.table}+`.
-Based on this pattern, if the connector reads an event in which the source block contains the `schema` name value, `user`, and the `table` name value, `tab`, the connector writes the event record to a table with the name `user_tab`.
+Based on this pattern, if the connector reads an event in which the `schema` field in the source block contains the value, `user`, and the `table` field contains the value, `tab`, the connector writes the event record to a table with the name `user_tab`.
 
 |[[jdbc-property-dialect-postgres-postgis-schema]]<<jdbc-property-dialect-postgres-postgis-schema, `+dialect.postgres.postgis.schema+`>>
 |`public`
