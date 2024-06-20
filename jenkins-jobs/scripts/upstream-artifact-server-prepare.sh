@@ -60,7 +60,7 @@ prefix=""
 if [ "${ORACLE}" = "false" ] ; then
   rm debezium-connector-oracle*.zip
 else
-  cp "$MAVEN_REPO"/com/oracle/database/jdbc/ojdbc8/*/ojdbc8-*.jar jdbc/
+  cp "$MAVEN_REPO"/com/oracle/database/jdbc/ojdbc11/*/ojdbc11-*.jar jdbc/
   echo "Changing quay organisation to private rh-integration since ORACLE connector is included"
   ORGANISATION="rh_integration"
   prefix="dbz-"
