@@ -822,13 +822,13 @@ The connector adds missing columns to the table by comparing the incoming event'
 
 |[[jdbc-property-table-name-format]]<<jdbc-property-table-name-format, `+table.name.format+`>>
 |`+${topic}+`
-|Specifies a string that determines how the destination table name is formatted, based on the topic name of the event. +
+|Specifies a string pattern that the connector uses to construct the names of destination tables. +
 When the property is set to its default value, `+${topic}+`, after the connector reads an event from Kafka, it writes the event record to a destination table with a name that matches the name of the source topic. +
  +
-You can also use this property to dynamically influence the names of target tables, based on values in incoming events.
-By applying this feature of the property, you can implement dynamic naming without having to write a custom single message transformation. +
+You can also configure this property to extract values from specific fields in incoming event records and then use those values to dynamically generate the names of target tables.
+This ability to generate table names from values in the message source would otherwise require the use of a custom Kafka Connect single message transformation (SMT). +
  +
-To enable dynamic naming of output tables, set the value of this property to a pattern such as `+${source._field_}+`.
+To configure the property to dynamically generate the names of destination tables, set its value to a pattern such as `+${source._field_}+`.
 When you specify this type of pattern, the connector extracts values from the `source` block of the {prodname} change event, and then uses those values to construct the table name.
 For example, you might set the value of the property to the pattern `+${source.schema}_${source.table}+`.
 Based on this pattern, if the connector reads an event in which the `schema` field in the source block contains the value, `user`, and the `table` field contains the value, `tab`, the connector writes the event record to a table with the name `user_tab`.
