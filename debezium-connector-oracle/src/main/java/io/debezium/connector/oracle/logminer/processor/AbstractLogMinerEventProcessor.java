@@ -521,12 +521,16 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
 
         counters.commitCount++;
 
-        // The SAFE_RESUME_SCN is only populated on COMMIT operations.
-        safeResumeScn = row.getSafeResumeScn();
-
         int numEvents = (transaction == null) ? 0 : getTransactionEventCount(transaction);
         LOGGER.debug("Committing transaction {} with {} events (scn: {}, oldest buffer scn: {}): {}",
                 transactionId, numEvents, row.getScn(), smallestScn, row);
+
+        if (numEvents > 0) {
+            // The SAFE_RESUME_SCN is only populated on COMMIT operations.
+            // We only consume this on COMMIT events with captured CDC events, as restarting in the middle
+            // of a non-CDC event seems causes some tests to fail.
+            safeResumeScn = row.getSafeResumeScn();
+        }
 
         // When a COMMIT is received, regardless of the number of events it has, it still
         // must be recorded in the commit scn for the node to guarantee updates to the
