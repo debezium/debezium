@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Predicate;
 
@@ -138,6 +139,72 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
     }
 
     /**
+     * The set of predefined Compliance Mode options.
+     */
+    public enum ComplianceMode implements EnumeratedValue {
+        /**
+         * This options instructs connector to work with database as it would be running against MySQL 8.4 or bigger.
+         * Based on this option connector later swaps syntax for several queries like `SHOW MASTER STATUS`.
+         */
+        MYSQL_84_PLUS("8.4+"),
+
+        /**
+         * This mode is compliant with all mysql versions from 6.x to 8.3.x
+         */
+        MYSQL_DEFAULT("default");
+
+        private final String value;
+
+        ComplianceMode(String value) {
+            this.value = value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static ComplianceMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (ComplianceMode option : ComplianceMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static ComplianceMode parse(String value, String defaultValue) {
+            ComplianceMode complianceMode = parse(value);
+            if (Objects.isNull(complianceMode) && !Objects.isNull(defaultValue)) {
+                complianceMode = parse(defaultValue);
+            }
+            return complianceMode;
+        }
+
+        public String getShowMasterStatement() {
+            if (this == MYSQL_84_PLUS) {
+                return "SHOW BINARY LOG STATUS;";
+            }
+            return "SHOW MASTER STATUS;";
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+    }
+
+    /**
      * {@link Integer#MIN_VALUE Minimum value} used for fetch size hint.
      * See <a href="https://issues.jboss.org/browse/DBZ-94">DBZ-94</a> for details.
      */
@@ -201,6 +268,15 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
     public static final Field SOURCE_INFO_STRUCT_MAKER = CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER
             .withDefault(MySqlSourceInfoStructMaker.class.getName());
 
+    public static final Field COMPLIANCE_MODE = Field.create(DATABASE_CONFIG_PREFIX + "compliance.mode")
+            .withDisplayName("MySQL compliance")
+            .withEnum(ComplianceMode.class, ComplianceMode.MYSQL_84_PLUS)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("Sets the compliance mode for the MySQL database. Due to deprecated queries in MySQL 8.4, the connector has to "
+                    + "work differently for `MySQL<8.4` and `Mysql>=8.4`. ")
+            .withValidation(MySqlConnectorConfig::validateComplianceMode);
+
     private static final ConfigDefinition CONFIG_DEFINITION = BinlogConnectorConfig.CONFIG_DEFINITION.edit()
             .name("MySQL")
             .excluding(
@@ -229,6 +305,7 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
     private final Predicate<String> gtidSourceFilter;
     private final SnapshotLockingMode snapshotLockingMode;
     private final SnapshotLockingStrategy snapshotLockingStrategy;
+    private final ComplianceMode complianceMode;
 
     public MySqlConnectorConfig(Configuration config) {
         super(MySqlConnector.class, config, DEFAULT_SNAPSHOT_FETCH_SIZE);
@@ -242,6 +319,7 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
         final String gtidSetExcludes = config.getString(GTID_SOURCE_EXCLUDES);
         this.gtidSourceFilter = gtidSetIncludes != null ? Predicates.includesUuids(gtidSetIncludes)
                 : (gtidSetExcludes != null ? Predicates.excludesUuids(gtidSetExcludes) : null);
+        this.complianceMode = ComplianceMode.parse(config.getString(COMPLIANCE_MODE), COMPLIANCE_MODE.defaultValueAsString());
     }
 
     public Optional<SnapshotLockingMode> getSnapshotLockingMode() {
@@ -281,6 +359,10 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
     @Override
     protected HistoryRecordComparator getHistoryRecordComparator() {
         return new MySqlHistoryRecordComparator(gtidSourceFilter, getGtidSetFactory());
+    }
+
+    protected ComplianceMode getComplianceMode() {
+        return complianceMode;
     }
 
     /**
@@ -335,6 +417,28 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
         }
 
         // Everything checks out ok.
+        return 0;
+    }
+
+    /**
+     * Validate the compliance.mode configuration.
+     * Configuration must match one of the predefined options.
+     *
+     * @param config Current connector configuration
+     * @param field Compliance configuration field
+     * @param problems Possible problems in the configuration
+     * @return 0 if no issue found, 1 if error was encountered during validation
+     */
+    private static int validateComplianceMode(Configuration config, Field field, ValidationOutput problems) {
+        if (config.hasKey(COMPLIANCE_MODE.name())) {
+            final ComplianceMode complianceMode = ComplianceMode.parse(
+                    config.getString(MySqlConnectorConfig.COMPLIANCE_MODE));
+
+            if (Objects.isNull(complianceMode)) {
+                problems.accept(COMPLIANCE_MODE, complianceMode, "Must be a valid compliance value");
+                return 1;
+            }
+        }
         return 0;
     }
 }

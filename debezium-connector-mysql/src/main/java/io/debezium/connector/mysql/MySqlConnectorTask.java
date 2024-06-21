@@ -86,7 +86,7 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
 
         MainConnectionProvidingConnectionFactory<BinlogConnectorConnection> connectionFactory = new DefaultMainConnectionProvidingConnectionFactory<>(() -> {
             final MySqlConnectionConfiguration connectionConfig = new MySqlConnectionConfiguration(config);
-            return new MySqlConnection(connectionConfig, MySqlFieldReaderResolver.resolve(connectorConfig));
+            return new MySqlConnection(connectionConfig, MySqlFieldReaderResolver.resolve(connectorConfig), connectorConfig.getComplianceMode());
         });
 
         connection = connectionFactory.mainConnection();
@@ -188,7 +188,8 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
                         schemaNameAdjuster,
                         () -> new MySqlConnection(
                                 new MySqlConnectionConfiguration(heartbeatConfig),
-                                MySqlFieldReaderResolver.resolve(connectorConfig)),
+                                MySqlFieldReaderResolver.resolve(connectorConfig),
+                                connectorConfig.getComplianceMode()),
                         new BinlogHeartbeatErrorHandler()),
                 schemaNameAdjuster,
                 signalProcessor);
