@@ -56,7 +56,7 @@ Debezium のコードベースでを編集・ビルドする為には以下に�
 
 * [Git](https://git-scm.com) 2.2.1 or later
 * JDK 11 or later, e.g. [OpenJDK](http://openjdk.java.net/projects/jdk/)
-* [Apache Maven](https://maven.apache.org/index.html) 3.8.4
+* [Apache Maven](https://maven.apache.org/index.html) 3.9.8
 * [Docker Engine](https://docs.docker.com/engine/install/) or [Docker Desktop](https://docs.docker.com/desktop/) 1.9 or later
 
 インストール手順については上記のリンクを参照して下さい。インストールされているバージョンを確認する為には以下のコマンドを実行します:

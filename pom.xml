@@ -70,7 +70,7 @@
         <version.dependency.plugin>3.1.1</version.dependency.plugin>
         <version.enforcer.plugin>3.0.0-M2</version.enforcer.plugin>
 
-        <version.maven>3.8.4</version.maven>
+        <version.maven>3.9.8</version.maven>
         <version.jar.plugin>3.0.2</version.jar.plugin>
         <version.source.plugin>3.1.0</version.source.plugin>
         <version.assembly.plugin>3.1.1</version.assembly.plugin>
@@ -350,7 +350,7 @@
                         <configuration>
                             <rules>
                                 <requireMavenVersion>
-                                    <version>[${version.maven},3.8.5),[3.8.6,)</version>
+                                    <version>[${version.maven},)</version>
                                 </requireMavenVersion>
                             </rules>
                         </configuration>
