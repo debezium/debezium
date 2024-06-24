@@ -361,7 +361,9 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         if (row.getScn().compareTo(offsetContext.getSnapshotScn()) < 0) {
             Map<String, Scn> snapshotPendingTransactions = offsetContext.getSnapshotPendingTransactions();
             if (snapshotPendingTransactions == null || !snapshotPendingTransactions.containsKey(row.getTransactionId())) {
-                LOGGER.debug("Skipping event {} (SCN {}) because it is already encompassed by the initial snapshot", row.getEventType(), row.getScn());
+                LOGGER.debug("Skipping event {} (Transaction {} SCN {}) because it is already encompassed by the initial snapshot", row.getEventType(),
+                        row.getTransactionId(), row.getScn());
+                LOGGER.debug("\t{}", row);
                 return;
             }
         }
