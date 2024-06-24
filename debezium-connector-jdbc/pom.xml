@@ -28,7 +28,7 @@
         <version.assembly.plugin>3.5.0</version.assembly.plugin>
 
         <!-- Other artifact versions -->
-        <version.hibernate>6.2.18.Final</version.hibernate>
+        <version.hibernate>6.4.8.Final</version.hibernate>
         <version.c3p0>0.9.5.5</version.c3p0>
         <version.assertjdb>2.0.2</version.assertjdb>
 
