@@ -3079,7 +3079,7 @@ Can be used to avoid snapshot interruptions when starting multiple connectors in
 |[[sqlserver-property-streaming-delay-ms]]<<sqlserver-property-streaming-delay-ms, `+streaming.delay.ms+`>>
 |0
 |Specifies the time, in milliseconds, that the connector delays the start of the streaming process after it completes a snapshot.
-Setting a delay interval helps to prevent the connector from restarting snapshots in the event that a failure occurs immediately after the snapshot completes, but before the streaming process begins. 
+Setting a delay interval helps to prevent the connector from restarting snapshots in the event that a failure occurs immediately after the snapshot completes, but before the streaming process begins.
 Set a delay value that is higher than the value of the {link-kafka-docs}/#connectconfigs_offset.flush.interval.ms[`offset.flush.interval.ms`] property that is set for the Kafka Connect worker.
 
 |[[sqlserver-property-snapshot-fetch-size]]<<sqlserver-property-snapshot-fetch-size, `+snapshot.fetch.size+`>>
@@ -3517,7 +3517,7 @@ For information about how to expose the preceding metrics through JMX, see the {
 
 // Type: concept
 // ModuleID: monitoring-debezium-sqlserver-connectors-customized-mbean-names
-// Title: Customized names for Db2 connector snapshot and streaming MBean objects
+// Title: Customized names for SQL Server connector snapshot and streaming MBean objects
 [id="customized-mbean-names"]
 === Customized MBean names
 

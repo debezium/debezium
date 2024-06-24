@@ -195,7 +195,7 @@ Grant the user permission to read the database specified by the connector's xref
 Regardless of the `capture.scope` setting, the user requires permission to run the MongoDB https://www.mongodb.com/docs/manual/reference/command/hello/[hello] command.
 
 .Permission to read the `config.shards` collection
-Depending on your {prodname} environment, to enable the connector to perform offset consolidation, you must grant the connector user explicit permission to read the `config.shards` collection.  
+Depending on your {prodname} environment, to enable the connector to perform offset consolidation, you must grant the connector user explicit permission to read the `config.shards` collection.
 Permission to read the `config.shards` collection is required for the following connector environments:
 
 * Connectors upgraded from {prodname} 2.5 or earlier.
@@ -221,7 +221,7 @@ We recommend logical names begin with an alphabetic or underscore character, and
 [[mongodb-offset-consolidation]]
 === Offset consolidation
 
-The {prodname} MongoDB connector no longer supports `replica_set` connections to sharded MongoDB deployments. 
+The {prodname} MongoDB connector no longer supports `replica_set` connections to sharded MongoDB deployments.
 As a result, the offsets recorded by connector versions that used the `replica_set` connection mode are incompatible with the current version.
 
 To minimize the affects of the connection mode change, and to prevent the connector from running unnecessary snapshots, when the connector restarts after the upgrade, it runs a procedure to consolidate offsets.
@@ -1913,7 +1913,7 @@ Can be used to avoid snapshot interruptions when starting multiple connectors in
 |[[mongodb-property-streaming-delay-ms]]<<mongodb-property-streaming-delay-ms, `+streaming.delay.ms+`>>
 |0
 |Specifies the time, in milliseconds, that the connector delays the start of the streaming process after it completes a snapshot.
-Setting a delay interval helps to prevent the connector from restarting snapshots in the event that a failure occurs immediately after the snapshot completes, but before the streaming process begins. 
+Setting a delay interval helps to prevent the connector from restarting snapshots in the event that a failure occurs immediately after the snapshot completes, but before the streaming process begins.
 Set a delay value that is higher than the value of the {link-kafka-docs}/#connectconfigs_offset.flush.interval.ms[`offset.flush.interval.ms`] property that is set for the Kafka Connect worker.
 
 |[[mongodb-property-snapshot-fetch-size]]<<mongodb-property-snapshot-fetch-size, `+snapshot.fetch.size+`>>
@@ -2220,7 +2220,7 @@ The {link-prefix}:{link-debezium-monitoring}#monitoring-debezium[{prodname} moni
 
 // Type: concept
 // ModuleID: monitoring-debezium-mongodb-connectors-customized-mbean-names
-// Title: Customized names for Db2 connector snapshot and streaming MBean objects
+// Title: Customized names for MongoDB connector snapshot and streaming MBean objects
 === Customized MBean names
 
 include::{partialsdir}/modules/all-connectors/frag-common-mbean-name.adoc[leveloffset=+1,tags=mbeans-shared]

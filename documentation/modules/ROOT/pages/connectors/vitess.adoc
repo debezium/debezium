@@ -1323,7 +1323,7 @@ xref:{link-debezium-monitoring}#monitoring-debezium[{prodname} monitoring docume
 
 // Type: concept
 // ModuleID: monitoring-debezium-vitess-connectors-customized-mbean-names
-// Title: Customized names for Db2 connector snapshot and streaming MBean objects
+// Title: Customized names for Vitess connector snapshot and streaming MBean objects
 === Customized MBean names
 
 include::{partialsdir}/modules/all-connectors/frag-common-mbean-name.adoc[leveloffset=+1,tags=mbeans-shared]
