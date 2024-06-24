@@ -6,8 +6,14 @@
 package io.debezium.connector.oracle.util;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.ZoneId;
+import java.time.chrono.ChronoLocalDate;
+import java.time.chrono.Chronology;
+import java.time.chrono.Era;
+import java.time.chrono.IsoChronology;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
@@ -53,24 +59,55 @@ public final class TimestampUtils {
     public static Instant convertTimestampNoZoneToInstant(String value) {
         final Matcher toTimestampMatcher = TO_TIMESTAMP.matcher(value);
         if (toTimestampMatcher.matches()) {
-            final LocalDateTime dateTime;
             String text = toTimestampMatcher.group(1);
-            if (text.indexOf(" AM") > 0 || text.indexOf(" PM") > 0) {
-                dateTime = LocalDateTime.from(TIMESTAMP_AM_PM_SHORT_FORMATTER.parse(text.trim()));
-            }
-            else {
-                dateTime = LocalDateTime.from(TIMESTAMP_FORMATTER.parse(text.trim()));
-            }
-            return dateTime.atZone(GMT_ZONE_ID).toInstant();
+            return doConvertTimestampNoZoneToInstant(text);
         }
 
         final Matcher toDateMatcher = TO_DATE.matcher(value);
         if (toDateMatcher.matches()) {
-            return LocalDateTime.from(TIMESTAMP_FORMATTER.parse(toDateMatcher.group(1))).atZone(GMT_ZONE_ID).toInstant();
+            String data = toDateMatcher.group(1);
+            return doConvertDateToInstant(data);
         }
 
         // Unable to resolve value
-        return null;
+        return doConvertTimestampNoZoneToInstant(value);
+    }
+
+    private static Instant doConvertTimestampNoZoneToInstant(String text) {
+        final LocalDateTime dateTime;
+        if (text.trim().startsWith("-")) {
+            dateTime = getLocalDateTime(text.trim().substring(1, text.length()));
+            return IsoChronology.INSTANCE.date(dateTime).with(ChronoField.ERA, 0)
+                    .atTime(dateTime.getHour(), dateTime.getMinute(), dateTime.getSecond(), dateTime.getNano())
+                    .atZone(GMT_ZONE_ID).toInstant();
+        }
+        else {
+            dateTime = getLocalDateTime(text.trim());
+            return dateTime.atZone(GMT_ZONE_ID).toInstant();
+        }
+    }
+
+    private static LocalDateTime getLocalDateTime(String text) {
+        final LocalDateTime dateTime;
+        if (text.indexOf(" AM") > 0 || text.indexOf(" PM") > 0) {
+            dateTime = LocalDateTime.from(TIMESTAMP_AM_PM_SHORT_FORMATTER.parse(text));
+        }
+        else {
+            dateTime = LocalDateTime.from(TIMESTAMP_FORMATTER.parse(text));
+        }
+        return dateTime;
+    }
+
+    private static Instant doConvertDateToInstant(String value) {
+        // BC time starts with "-"
+        if (value.trim().startsWith("-")) {
+            LocalDate date = LocalDate.from(TIMESTAMP_FORMATTER.parse(value.trim().substring(1, value.length())));
+            Chronology chronology = IsoChronology.INSTANCE;
+            Era era = chronology.eraOf(0);
+            ChronoLocalDate chronoLocalDate = chronology.date(era, date.getYear(), date.getMonthValue(), date.getDayOfMonth());
+            return chronoLocalDate.atTime(LocalTime.MIDNIGHT).atZone(GMT_ZONE_ID).toInstant();
+        }
+        return LocalDateTime.from(TIMESTAMP_FORMATTER.parse(value.trim())).atZone(GMT_ZONE_ID).toInstant();
     }
 
     /**

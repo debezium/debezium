@@ -16,8 +16,13 @@ import io.debezium.bean.spi.BeanRegistryAware;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.oracle.OracleConnector;
 import io.debezium.connector.oracle.OracleOffsetContext;
+import io.debezium.relational.Column;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
+import io.debezium.relational.Table;
+import io.debezium.relational.TableId;
+import io.debezium.relational.Tables;
 import io.debezium.snapshot.spi.SnapshotQuery;
+import oracle.jdbc.OracleTypes;
 
 @ConnectorSpecific(connector = OracleConnector.class)
 public class SelectAllSnapshotQuery implements SnapshotQuery, BeanRegistryAware {
@@ -47,9 +52,33 @@ public class SelectAllSnapshotQuery implements SnapshotQuery, BeanRegistryAware 
         final OracleOffsetContext offset = (OracleOffsetContext) snapshotContext.offset;
 
         final String snapshotOffset = offset.getScn().toString();
-        String columns = String.join(", ", snapshotSelectColumns);
+
+        TableId table = TableId.parse(tableId);
+        String columns = getColumns(snapshotContext.tables.forTable(new TableId(snapshotContext.catalogName, table.catalog(), table.table())));
         assert snapshotOffset != null;
         return Optional.of(String.format("SELECT %s FROM %s AS OF SCN %s", columns, tableId, snapshotOffset));
+    }
 
+    private String getColumns(Table table) {
+        StringBuilder columnsSb = new StringBuilder();
+        for (Column column : table.columns()) {
+            switch (column.jdbcType()) {
+                case OracleTypes.TIMESTAMP:
+                case OracleTypes.TIMESTAMPLTZ:
+                    if (column.typeName().trim().equalsIgnoreCase("DATE")) {
+                        columnsSb.append(String.format("TO_CHAR(%s, 'SYYYY-MM-DD HH24:MI:SS') AS %s, ", column.name(), column.name()));
+                    }
+                    else {
+                        columnsSb.append(String.format("TO_CHAR(%s, 'SYYYY-MM-DD HH24:MI:SS.FF') AS %s, ", column.name(), column.name()));
+                    }
+                    break;
+                case OracleTypes.TIMESTAMPTZ:
+                    columnsSb.append(String.format("TO_CHAR(%s, 'SYYYY-MM-DD HH24:MI:SS.FFTZH:TZM') AS %s, ", column.name(), column.name()));
+                    break;
+                default:
+                    columnsSb.append(String.format("%s, ", column.name()));
+            }
+        }
+        return columnsSb.substring(0, columnsSb.length() - 2);
     }
 }

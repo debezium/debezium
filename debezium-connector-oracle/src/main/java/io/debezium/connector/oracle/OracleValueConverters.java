@@ -23,10 +23,8 @@ import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.SchemaBuilder;
-
 import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.connector.oracle.logminer.UnistrHelper;
@@ -43,7 +41,6 @@ import io.debezium.time.MicroDuration;
 import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.NumberConversions;
 import io.debezium.util.Strings;
-
 import oracle.jdbc.OracleTypes;
 import oracle.sql.BINARY_DOUBLE;
 import oracle.sql.BINARY_FLOAT;
@@ -663,15 +660,19 @@ public class OracleValueConverters extends JdbcValueConverters {
     @Override
     protected Object convertTimestampWithZone(Column column, Field fieldDefn, Object data) {
         if (data instanceof String) {
+            String datastr = ((String) data).trim();
             String s = (String) data;
             if (isHexToRawFunctionCall(s)) {
                 data = convertHexToRawFunctionToTimestamp(s);
             }
             else {
-                final Matcher toTimestampTzMatcher = TO_TIMESTAMP_TZ.matcher((String) data);
+                final Matcher toTimestampTzMatcher = TO_TIMESTAMP_TZ.matcher(datastr);
                 if (toTimestampTzMatcher.matches()) {
                     String dateText = toTimestampTzMatcher.group(1);
-                    data = ZonedDateTime.from(TIMESTAMP_TZ_FORMATTER.parse(dateText.trim()));
+                    data = convertToZonedDateTime(dateText);
+                }
+                else {
+                    data = convertToZonedDateTime(datastr);
                 }
             }
         }
@@ -686,6 +687,17 @@ public class OracleValueConverters extends JdbcValueConverters {
             catch (IllegalArgumentException e) {
             }
         });
+    }
+
+    private static Object convertToZonedDateTime(String dateText) {
+        Object data;
+        if (dateText.trim().startsWith("-")) {
+            data = ZonedDateTime.from(TIMESTAMP_TZ_FORMATTER.parse(dateText.trim().substring(1, dateText.length()))).with(ChronoField.ERA, 0);
+        }
+        else {
+            data = ZonedDateTime.from(TIMESTAMP_TZ_FORMATTER.parse(dateText.trim()));
+        }
+        return data;
     }
 
     protected Object convertTimestampWithLocalZone(Column column, Field fieldDefn, Object data) {
