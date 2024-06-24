@@ -703,6 +703,18 @@ CREATE TABLE T1 (
  "SQ_NUMBER" NUMBER(10),
  "PQ_NUMBER" NUMBER(10),
  CONSTRAINTS UQ1 UNIQUE ("SQ_NUMBER", "PQ_NUMBER"));
+CREATE TABLE DWH_INT_DBT.sensors_raw (
+  SOURCE                 VARCHAR2(50),
+  EVENTTS                VARCHAR2(30))
+  STORAGE (
+    BUFFER_POOL      DEFAULT
+    FLASH_CACHE      DEFAULT
+    CELL_FLASH_CACHE DEFAULT)
+  NOCOMPRESS
+  NOCACHE
+  RESULT_CACHE (MODE DEFAULT)
+  NOPARALLEL
+  NOMONITORING;
 -- Create index (Oracle 23+)
 create index hr.name IF NOT EXISTS on hr.table (id,data) tablespace ts;
 -- Create user (Oracle 23+)

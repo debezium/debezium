@@ -1982,6 +1982,7 @@ relational_table
           segment_attributes_clause? // LogMiner-specific
           (CACHE | NOCACHE)? (RESULT_CACHE '(' MODE (DEFAULT | FORCE) ')')?
           parallel_clause?
+          monitoring_nomonitoring?
           (ROWDEPENDENCIES | NOROWDEPENDENCIES)?
           (enable_disable_clause+)? row_movement_clause? logical_replication_clause? flashback_archive_clause? annotations_clause?
         ;
