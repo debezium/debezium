@@ -3804,7 +3804,7 @@ Use this property to prevent snapshot interruptions when you start multiple conn
 |[[oracle-property-streaming-delay-ms]]<<oracle-property-streaming-delay-ms, `+streaming.delay.ms+`>>
 |0
 |Specifies the time, in milliseconds, that the connector delays the start of the streaming process after it completes a snapshot.
-Setting a delay interval helps to prevent the connector from restarting snapshots in the event that a failure occurs immediately after the snapshot completes, but before the streaming process begins. 
+Setting a delay interval helps to prevent the connector from restarting snapshots in the event that a failure occurs immediately after the snapshot completes, but before the streaming process begins.
 Set a delay value that is higher than the value of the {link-kafka-docs}/#connectconfigs_offset.flush.interval.ms[`offset.flush.interval.ms`] property that is set for the Kafka Connect worker.
 
 |[[oracle-property-snapshot-fetch-size]]<<oracle-property-snapshot-fetch-size, `+snapshot.fetch.size+`>>
@@ -4244,7 +4244,7 @@ Please refer to the {link-prefix}:{link-debezium-monitoring}#monitoring-debezium
 
 // Type: concept
 // ModuleID: monitoring-debezium-oracle-connectors-customized-mbean-names
-// Title: Customized names for Db2 connector snapshot and streaming MBean objects
+// Title: Customized names for Oracle connector snapshot and streaming MBean objects
 === Customized MBean names
 
 include::{partialsdir}/modules/all-connectors/frag-common-mbean-name.adoc[leveloffset=+1,tags=mbeans-shared]
