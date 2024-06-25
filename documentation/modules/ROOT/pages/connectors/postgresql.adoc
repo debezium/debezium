@@ -85,6 +85,8 @@ The connector relies on and reflects the PostgreSQL logical decoding feature, wh
 
 * Logical decoding does not support DDL changes. This means that the connector is unable to report DDL change events back to consumers.
 * Logical decoding replication slots are supported on only `primary` servers. When there is a cluster of PostgreSQL servers, the connector can run on only the active `primary` server. It cannot run on `hot` or `warm` standby replicas. If the `primary` server fails or is demoted, the connector stops. After the `primary` server has recovered, you can restart the connector. If a different PostgreSQL server has been promoted to `primary`, adjust the connector configuration before restarting the connector.
+* Because logical decoding replication slots publish changes during commit -- and not post commit -- undesirable side-effects can occur. There are two main scenarios when clients can observe inconsistent states. First, publishing uncommitted changes when the master dies before replication completes. Second, publishing changes that cannot be read (i.e., read-after-write consistency) temporarily because they are being replicated. For example, an EmbeddedEngine consumer receives a notification of a row that was created but it cannot be read by a transaction. 
+
 
 Additionally, the `pgoutput` logical decoding output plug-in does not capture values for generated columns, resulting in missing data for these columns in the connector's output.
 
