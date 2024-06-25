@@ -1,0 +1,26 @@
+name: YugabyteDB PG parity sanity
+
+on:
+  push:
+    branches:
+      - ybdb-debezium-2.5.2
+  pull_request:
+    branches:
+      - ybdb-debezium-2.5.2
+
+jobs:
+  build:
+    name: "Build PG connector"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v4
+      
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: 17
+      
+      - name: Download dependencies
+        run: ./mvnw clean install -Dquick -pl debezium-connector-postgres -am
