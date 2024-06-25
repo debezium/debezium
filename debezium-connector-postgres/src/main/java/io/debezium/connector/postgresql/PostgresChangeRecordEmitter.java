@@ -109,8 +109,9 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter<P
                 case CREATE:
                     return null;
                 case UPDATE:
-                    // YB Note: For replica identity CHANGE, there is no old column value available.
-                    if (schema.getReplicaIdentity(tableId) == ReplicaIdentityInfo.ReplicaIdentity.CHANGE) {
+                    // YB Note: For replica identity CHANGE or DEFAULT, there is no old column value available.
+                    if (schema.getReplicaIdentity(tableId) == ReplicaIdentityInfo.ReplicaIdentity.CHANGE
+                            || schema.getReplicaIdentity(tableId) == ReplicaIdentityInfo.ReplicaIdentity.DEFAULT) {
                         return null;
                     }
 

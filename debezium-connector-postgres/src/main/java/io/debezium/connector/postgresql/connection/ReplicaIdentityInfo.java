@@ -49,7 +49,9 @@ public class ReplicaIdentityInfo {
         // YB Note: CHANGE is a YugabyteDB specific replica identity.
         NOTHING("UPDATE and DELETE events will not contain any old values"),
         FULL("UPDATE AND DELETE events will contain the previous values of all the columns"),
-        DEFAULT("UPDATE and DELETE events will contain previous values only for PK columns"),
+        // YB Note: In case of primary key updates, YugabyteDB sends a delete and an insert event
+        // unlike Postgres which sends a single update event with old primary key set in old tuple.
+        DEFAULT("Only DELETE events will contain previous values only for PK columns"),
         INDEX("UPDATE and DELETE events will contain previous values only for columns present in the REPLICA IDENTITY index"),
         UNKNOWN("Unknown REPLICA IDENTITY"),
         CHANGE("UPDATE events will contain values only for changed columns");

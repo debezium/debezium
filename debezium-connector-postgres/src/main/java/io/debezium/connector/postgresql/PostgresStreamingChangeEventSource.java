@@ -179,7 +179,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
             this.lastCompletelyProcessedLsn = replicationStream.get().startLsn();
 
             // Against YB, filtering of records based on Wal position is only enabled when connector config provide.transaction.metadata is set to false.
-            if(!YugabyteDBServer.isEnabled() || (YugabyteDBServer.isEnabled() && !connectorConfig.shouldProvideTransactionMetadata())) {
+            if (!YugabyteDBServer.isEnabled() || (YugabyteDBServer.isEnabled() && !connectorConfig.shouldProvideTransactionMetadata())) {
                 if (walPosition.searchingEnabled()) {
                     searchWalPosition(context, partition, this.effectiveOffset, stream, walPosition);
                     try {

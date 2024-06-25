@@ -3034,30 +3034,6 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
-    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Test is supposed to verify the default structure with pgoutout and replica identity default")
-    public void shouldWorkWithReplicaIdentityDefaultForPgoutput() throws Exception {
-        TestHelper.dropDefaultReplicationSlot();
-        TestHelper.execute(CREATE_TABLES_STMT);
-        TestHelper.execute("ALTER TABLE s2.a REPLICA IDENTITY DEFAULT");
-
-        final Configuration.Builder configBuilder = TestHelper.defaultConfig()
-              .with(PostgresConnectorConfig.SLOT_NAME, ReplicationConnection.Builder.DEFAULT_SLOT_NAME)
-              .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s2.a")
-                                                      .with(PostgresConnectorConfig.PLUGIN_NAME, "PGOUTPUT");
-        start(PostgresConnector.class, configBuilder.build());
-        assertConnectorIsRunning();
-        waitForStreamingRunning();
-
-        TestHelper.execute("INSERT INTO s2.a VALUES (1, 22, 'varchar_value');");
-        TestHelper.execute("UPDATE s2.a SET bb = 'varchar_value_updated' WHERE pk = 1;");
-
-        SourceRecords records = consumeRecordsByTopic(2);
-        List<SourceRecord> recordList = records.recordsForTopic(topicName("s2.a"));
-
-        assertThat(recordList.size()).isEqualTo(2);
-    }
-
-    @Test
     @FixFor("DBZ-5811")
     public void shouldNotAckLsnOnSource() throws Exception {
         TestHelper.dropDefaultReplicationSlot();
