@@ -1,0 +1,733 @@
+The following list describes advanced {connector-name} connector configuration properties.
+The default values for these properties rarely require changes.
+Therefore, you do not need to specify them in the connector configuration.
+
+ifdef::community[]
+[id="{context}-property-binlog-buffer-size"]
+xref:{context}-property-binlog-buffer-size[`binlog.buffer.size`]::
+The size of a look-ahead buffer used by the binlog reader.
+The default setting of `0` disables buffering. +
++
+Under specific conditions, it is possible that the {connector-name} binlog contains uncommitted data finished by a `ROLLBACK` statement.
+Typical examples are using savepoints or mixing temporary and regular table changes in a single transaction. +
++
+When a beginning of a transaction is detected then {prodname} tries to roll forward the binlog position and find either `COMMIT` or `ROLLBACK` so it can determine whether to stream the changes from the transaction.
+The size of the binlog buffer defines the maximum number of changes in the transaction that {prodname} can buffer while searching for transaction boundaries.
+If the size of the transaction is larger than the buffer then {prodname} must rewind and re-read the events that have not fit into the buffer while streaming. +
+
+[horizontal]
+Default value::: `0`
+
+NOTE: This feature is incubating. Feedback is encouraged. It is expected that this feature is not completely polished.
+endif::community[]
+
+
+[id="{context}-property-connect-keep-alive"]
+xref:{context}-property-connect-keep-alive[`connect.keep.alive`]::
+A Boolean value that specifies whether a separate thread should be used to ensure that the connection to the {connector-name} server or cluster is kept alive.
+[horizontal]
+Default value::: true
+
+[id="{context}-property-converters"]
+xref:{context}-property-converters[`converters`]::
+Enumerates a comma-separated list of the symbolic names of the {link-prefix}:{link-custom-converters}#custom-converters[custom converter] instances that the connector can use. +
+For example, `boolean`. +
+This property is required to enable the connector to use a custom converter.
+ +
+For each converter that you configure for a connector, you must also add a `.type` property, which specifies the fully-qualified name of the class that implements the converter interface.
+The `.type` property uses the following format: +
+ +
+`_<converterSymbolicName>_.type` +
+ +
+For example, +
+ +
+ boolean.type: io.debezium.connector.binlog.converters.TinyIntOneToBooleanConverter
+ +
+If you want to further control the behavior of a configured converter, you can add one or more configuration parameters to pass values to the converter.
+To associate these additional configuration parameter with a converter, prefix the parameter name with the symbolic name of the converter. +
+ +
+For example, to define a `selector` parameter that specifies the subset of columns that the `boolean` converter processes, add the following property: +
+
+ boolean.selector=db1.table1.*, db1.table2.column1
+
+[horizontal]
+Default value::: No default
+
+[id="{context}-property-custom-metric-tags"]
+xref:{context}-property-custom-metric-tags[`custom.metric.tags`]::
+Defines tags that customize MBean object names by adding metadata that provides contextual information.
+Specify a comma-separated list of key-value pairs.
+Each key represents a tag for the MBean object name, and the corresponding value represents a value for the key, for example,  +
+`k1=v1,k2=v2` +
+ +
+The connector appends the specified tags to the base MBean object name.
+Tags can help you to organize and categorize metrics data.
+You can define tags to identify particular application instances, environments, regions, versions, and so forth.
+For more information, see xref:customized-mbean-names[Customized MBean names].
+
+[horizontal]
+Default value::: No default
+
+[id="{context}-property-database-initial-statements"]
+xref:{context}-property-database-initial-statements[`database.initial.statements`]::
+A semicolon separated list of SQL statements to be executed when a JDBC connection, not the connection that is reading the transaction log, to the database is established.
+To specify a semicolon as a character in a SQL statement and not as a delimiter, use two semicolons, (`;;`). +
++
+The connector might establish JDBC connections at its own discretion, so this property is ony for configuring session parameters. It is not for executing DML statements.
+
+[horizontal]
+Default value::: No default
+
+[id="{context}-property-database-query-timeout-ms"]
+xref:{context}-property-database-query-timeout-ms[`database.query.timeout.ms`]::
+Specifies the time, in milliseconds, that the connector waits for a query to complete.
+Set the value to `0` (zero) to remove the timeout limit.
+
+[horizontal]
+Default value::: `600000` (10 minutes)
+
+[id="{context}-property-database-ssl-keystore"]
+xref:{context}-property-database-ssl-keystore[`database.ssl.keystore`]::
+An optional setting that specifies the location of the key store file.
+A key store file can be used for two-way authentication between the client and the {connector-name} server.
+
+Default value::: No default
+
+[id="{context}-property-database-ssl-keystore-password"]
+xref:{context}-property-database-ssl-keystore-password[`database.ssl.keystore.password`]::
+The password for the key store file.
+Specify a password only if the xref:{context}-property-database-ssl-keystore[`database.ssl.keystore`] is configured.
+
+Default value::: No default
+
+[id="{context}-property-database-ssl-mode"]
+xref:{context}-property-database-ssl-mode[`database.ssl.mode`]::
+Specifies whether the connector uses an encrypted connection.
+The following settings are available:
+
+`disabled`::: Specifies the use of an unencrypted connection.
+
+`preferred` (Default)::: The connector establishes an encrypted connection if the server supports secure connections.
+If the server does not support secure connections, the connector falls back to using an unencrypted connection.
+
+`required`::: The connector establishes an encrypted connection.
+If it is unable to establish an encrypted connection, the connector fails.
+
+`verify_ca`::: The connector behaves as when you set the `required` option, but it also verifies the server TLS certificate against the configured Certificate Authority (CA) certificates.
+If the server TLS certificate does not match any valid CA certificates, the connector fails. +
+
+`verify_identity`::: The connector behaves as when you set the `verify_ca` option, but it also verifies that the server certificate matches the host of the remote connection.
+
+[id="{context}-property-database-ssl-truststore"]
+xref:{context}-property-database-ssl-truststore[`database.ssl.truststore`]::
+The location of the trust store file for the server certificate verification.
+
+[horizontal]
+Default value::: No default
+
+[id="{context}-property-database-ssl-truststore-password"]
+xref:{context}-property-database-ssl-truststore-password[`database.ssl.truststore.password`]::
+The password for the trust store file.
+Used to check the integrity of the truststore, and unlock the truststore.
+
+[horizontal]
+Default value::: No default
+
+
+[id="{context}-property-enable-time-adjuster"]
+xref:{context}-property-enable-time-adjuster[`enable.time.adjuster`]::
+Boolean value that indicates whether the connector converts a 2-digit year specification to 4 digits.
+Set the value to `false` when conversion is fully delegated to the database. +
++
+{connector-name} users can insert year values with either 2-digits or 4-digits.
+2-digit values are mapped to a year in the range 1970 - 2069.
+By default, the connector performs the conversion.
+
+[horizontal]
+Default value::: `true`
+
+[id="{context}-property-errors-max-retries"]
+xref:{context}-property-errors-max-retries[`errors.max.retries`]::
+Specifies how the connector responds after an operation that results in a retriable error, such as a connection error. +
+Set one of the following options:
+
+`-1`::: No limit.
+The connector always restarts automatically, and retries the operation, regardless of the number of previous failures.
+
+`0`::: Disabled.
+The connector fails immediately, and never retries the operation.
+User intervention is required to restart the connector.
+
+`> 0`::: The connector restarts automatically until it reaches the specified maximum number of retries.
+After the next failure, the connector stops, and user intervention is required to restart it.
+
+[horizontal]
+Default value::: `-1`
+
+[id="{context}-property-event-converting-failure-handling-mode"]
+xref:{context}-property-event-converting-failure-handling-mode[`event.converting.failure.handling.mode`]::
+Specifies how the connector responds when it cannot convert a table record due to a mismatch between the data type of a column and the type specified by the {prodname} internal schema. +
+Set one of the following options:
+
+`fail`:::  An exception reports that conversion failed because the data type of the field did not match the schema type, and indicates that it might be necessary to restart the connector in `schema _only_recovery` mode to enable a successful conversion.
+`warn`::: The connector writes a `null` value to the event field for the column that failed conversion, writes a message to the warning log . +
+`skip`:::  The connector writes a `null` value to the event field for the column that failed conversion, and writes a message to the debug log.
+
+[horizontal]
+Default value::: `warn`
+
+[id="{context}-property-event-processing-failure-handling-mode"]
+xref:{context}-property-event-processing-failure-handling-mode[`event.processing.failure.handling.mode`]::
+Specifies how the connector handles failures that occur when processing events, for example, if it encounters a corrupted event.
+The following settings are available:
+
+`fail`::: The connector raises an exception that reports the problematic event and its position.
+The connector then stops.
+
+`warn`::: The connector does not raise an exception.
+Instead, it logs the problematic event and its position, and then skips the event.
+
+`ignore`::: The connector ignores the problematic event, and does not generate a log entry.
+
+[horizontal]
+Default value::: `fail`
+
+[id="{context}-property-heartbeat-action-query"]
+xref:{context}-property-heartbeat-action-query[`heartbeat.action.query`]::
+Specifies a query that the connector executes on the source database when the connector sends a heartbeat message. +
++
+For example, the following query periodically captures the state of the executed GTID set in the source database. +
++
+`INSERT INTO gtid_history_table (select @gtid_executed)`
+
+[horizontal]
+Default value::: No default
+
+[id="{context}-property-heartbeat-interval-ms"]
+xref:{context}-property-heartbeat-interval-ms[`heartbeat.interval.ms`]::
+Specifies how frequently the connector sends heartbeat messages to a Kafka topic.
+By default, the connector does not send heartbeat messages. +
++
+Heartbeat messages are useful for monitoring whether the connector is receiving change events from the database. Heartbeat messages might help decrease the number of change events that need to be re-sent when a connector restarts. To send heartbeat messages, set this property to a positive integer, which indicates the number of milliseconds between heartbeat messages.
+
+[horizontal]
+Default value::: `0`
+
+[id="{context}-property-incremental-snapshot-allow-schema-changes"]
+xref:{context}-property-incremental-snapshot-allow-schema-changes[`incremental.snapshot.allow.schema.changes`]::
+Specifies whether the connector allows schema changes during an incremental snapshot.
+When the value is set to `true`, the connector detects schema change during an incremental snapshot, and re-select a current chunk to avoid locking DDLs. +
+ +
+Changes to a primary key are not supported.
+Changing the primary during an incremental snapshot, can lead to incorrect results.
+A further limitation is that if a schema change affects only the default values of columns, then the change is not detected until the DDL is processed from the binlog stream.
+This does not affect the values of snapshot events, but the schema of these snapshot events may have outdated defaults.
+
+[horizontal]
+Default value::: `false`
+
+[id="{context}-property-incremental-snapshot-chunk-size"]
+xref:{context}-property-incremental-snapshot-chunk-size[`incremental.snapshot.chunk.size`]::
+The maximum number of rows that the connector fetches and reads into memory when it retrieves an incremental snapshot chunk.
+Increasing the chunk size provides greater efficiency, because the snapshot runs fewer snapshot queries of a greater size.
+However, larger chunk sizes also require more memory to buffer the snapshot data.
+Adjust the chunk size to a value that provides the best performance in your environment.
+
+[horizontal]
+Default value::: `1024`
+
+[id="{context}-property-incremental-snapshot-watermarking-strategy"]
+xref:{context}-property-incremental-snapshot-watermarking-strategy[`incremental.snapshot.watermarking.strategy`]::
+Specifies the watermarking mechanism that the connector uses during an incremental snapshot to deduplicate events that might be captured by an incremental snapshot and then recaptured after streaming resumes. +
+You can specify one of the following options:
+
+`insert_insert` (default)::: When you send a signal to initiate an incremental snapshot, for every chunk that {prodname} reads during the snapshot, it writes an entry to the signaling data collection to record the signal to open the snapshot window.
+After the snapshot completes, {prodname} inserts a second entry that records the signal to close the window.
+
+`insert_delete`::: When you send a signal to initiate an incremental snapshot, for every chunk that {prodname} reads, it writes a single entry to the signaling data collection to record the signal to open the snapshot window.
+After the snapshot completes, this entry is removed.
+No entry is created for the signal to close the snapshot window.
+Set this option to prevent rapid growth of the signaling data collection.
+
+[horizontal]
+Default value::: `insert_insert`
+
+[id="{context}-property-max-batch-size"]
+xref:{context}-property-max-batch-size[`max.batch.size`]::
+Positive integer value that specifies the maximum size of each batch of events that should be processed during each iteration of this connector.
+
+[horizontal]
+Default value::: `2048`
+
+[id="{context}-property-max-queue-size"]
+xref:{context}-property-max-queue-size[`max.queue.size`]::
+A positive integer value that specifies the maximum number of records that the blocking queue can hold.
+When {prodname} reads events streamed from the database, it places the events in the blocking queue before it writes them to Kafka.
+The blocking queue can provide backpressure for reading change events from the database
+in cases where the connector ingests messages faster than it can write them to Kafka, or when Kafka becomes unavailable.
+Events that are held in the queue are disregarded when the connector periodically records offsets.
+Always set `max.queue.size` to a value that is larger than the value of xref:{context}-property-max-batch-size[`max.batch.size`].
+
+[horizontal]
+Default value::: `8192`
+
+[id="{context}-property-max-queue-size-in-bytes"]
+xref:{context}-property-max-queue-size-in-bytes[`max.queue.size.in.bytes`]::
+A long integer value that specifies the maximum volume of the blocking queue in bytes.
+By default, volume limits are not specified for the blocking queue.
+To specify the number of bytes that the queue can consume, set this property to a positive long value. +
+If xref:{context}-property-max-queue-size[`max.queue.size`] is also set, writing to the queue is blocked when the size of the queue reaches the limit specified by either property.
+For example, if you set `max.queue.size=1000`, and `max.queue.size.in.bytes=5000`, writing to the queue is blocked after the queue contains 1000 records, or after the volume of the records in the queue reaches 5000 bytes.
+
+[horizontal]
+Default value::: `0`
+
+[id="{context}-property-min-row-count-to-stream-results"]
+xref:{context}-property-min-row-count-to-stream-results[`min.row.count.to.stream.results`]::
+During a snapshot, the connector queries each table for which the connector is configured to capture changes. The connector uses each query result to produce a read event that contains data for all rows in that table.
+This property determines whether the {connector-name} connector puts results for a table into memory, which is fast but requires large amounts of memory, or streams the results, which can be slower but work for very large tables. The setting of this property specifies the minimum number of rows a table must contain before the connector streams results. +
++
+To skip all table size checks and always stream all results during a snapshot, set this property to `0`.
+
+[horizontal]
+Default value::: `1000`
+
+[id="{context}-property-notification-enabled-channels"]
+xref:{context}-property-notification-enabled-channels[`notification.enabled.channels`]::
+List of notification channel names that are enabled for the connector.
+By default, the following channels are available:
+
+* `sink`
+* `log`
+* `jmx`
+ifdef::community[]
+Optionally, you can also implement a {link-prefix}:{link-notification}#debezium-notification-custom-channel[custom notification channel].
+endif::community[]
+
+[horizontal]
+Default value::: No default
+
+[id="{context}-property-poll-interval-ms"]
+xref:{context}-property-poll-interval-ms[`poll.interval.ms`]::
+Positive integer value that specifies the number of milliseconds the connector waits for new change events to appear before it starts processing a batch of events.
+
+[horizontal]
+Default value::: `500` (0.5 seconds)
+
+[id="{context}-property-provide-transaction-metadata"]
+xref:{context}-property-provide-transaction-metadata[`provide.transaction.metadata`]::
+Determines whether the connector generates events with transaction boundaries and enriches change event envelopes with transaction metadata. Specify `true` if you want the connector to do this.
+For more information, see xref:{context}-transaction-metadata[Transaction metadata].
+
+[horizontal]
+Default value::: `false`
+
+ifdef::community[]
+[id="{context}-property-read-only"]
+xref:{context}-property-read-only[`read.only`]::
+Specifies whether a connector writes watermarks to the signal data collection to track the progress of an incremental snapshot.
+Set the value to `true` to enable a connector that has a read-only connection to the database to use an incremental snapshot watermarking strategy that does not require writing to the signal data collection.
+
+[horizontal]
+Default value::: `false`
+endif::community[]
+
+[id="{context}-property-signal-data-collection"]
+xref:{context}-property-signal-data-collection[`signal.data.collection`]::
+Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}#debezium-signaling-enabling-source-signaling-channel[signals] to the connector. +
+Use the following format to specify the collection name: +
+`_<databaseName>_._<tableName>_`
+
+[horizontal]
+Default value::: No default
+
+[id="{context}-property-signal-enabled-channels"]
+xref:{context}-property-signal-enabled-channels[`signal.enabled.channels`]::
+List of the signaling channel names that are enabled for the connector.
+By default, the following channels are available:
+
+* `source`
+* `kafka`
+* `file`
+* `jmx`
+ifdef::community[]
+Optionally, you can also implement a {link-prefix}:{link-signalling}#debezium-signaling-enabling-custom-signaling-channel[custom signaling channel].
+endif::community[]
+
+[horizontal]
+Default value::: No default
+
+[id="{context}-property-skipped-operations"]
+xref:{context}-property-skipped-operations[`skipped.operations`]::
+A comma-separated list of operation types that will be skipped during streaming.
+The operations include: `c` for inserts/create, `u` for updates, `d` for deletes, `t` for truncates, and `none` to not skip any operations.
+By default, truncate operations are skipped.
+
+[horizontal]
+Default value::: `t`
+
+[id="{context}-property-snapshot-delay-ms"]
+xref:{context}-property-snapshot-delay-ms[`snapshot.delay.ms`]::
+An interval in milliseconds that the connector should wait before performing a snapshot when the connector starts. If you are starting multiple connectors in a cluster, this property is useful for avoiding snapshot interruptions, which might cause re-balancing of connectors.
+
+[horizontal]
+Default value::: No default
+
+[id="{context}-property-snapshot-fetch-size"]
+xref:{context}-property-snapshot-fetch-size[`snapshot.fetch.size`]::
+During a snapshot, the connector reads table content in batches of rows.
+This property specifies the maximum number of rows in a batch.
+
+[horizontal]
+Default value::: No default
+
+[id="{context}-property-snapshot-include-collection-list"]
+xref:{context}-property-snapshot-include-collection-list[`snapshot.include.collection.list`]::
+An optional, comma-separated list of regular expressions that match the fully-qualified names (`_<databaseName>.<tableName>_`) of the tables to include in a snapshot.
+The specified items must be named in the connector's xref:{context}-property-table-include-list[`table.include.list`] property.
+This property takes effect only if the connector's xref:{context}-property-snapshot-mode[`snapshot.mode`] property is set to a value other than `never`. +
+This property does not affect the behavior of incremental snapshots. +
+ +
+To match the name of a table, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the table; it does not match substrings that might be present in a table name.
+
+[horizontal]
+Default value::: All tables specified in the `table.include.list`.
+
+[id="{context}-property-snapshot-lock-timeout-ms"]
+xref:{context}-property-snapshot-lock-timeout-ms[`snapshot.lock.timeout.ms`]::
+Positive integer that specifies the maximum amount of time (in milliseconds) to wait to obtain table locks when performing a snapshot. If the connector cannot acquire table locks in this time interval, the snapshot fails.
+For more information, see
+ifdef::MYSQL[]
+xref:mysql-snapshots[how {connector-name} connectors perform database snapshots].
+endif::MYSQL[]
+ifdef::MARIADB[]
+xref:mariadb-snapshots[how {connector-name} connectors perform database snapshots].
+endif::MARIADB[]
+
+[horizontal]
+Default value::: `10000`
+
+[id="{context}-property-snapshot-locking-mode"]
+xref:{context}-property-snapshot-locking-mode[`snapshot.locking.mode`]::
+Specifies whether and for how long the connector holds the global {connector-name} read lock, which prevents any updates to the database while the connector is performing a snapshot.
+The following settings are available:
+
+`minimal`::: The connector holds the global read lock for only the initial phase of the snapshot during which it reads the database schemas and other metadata.
+During the next phase of the snapshot, the connector releases the lock as it selects all rows from each table.
+To perform the SELECT operation in a consistent fashion, the connector uses a REPEATABLE READ transaction.
+Although the release of the global read lock permits other {connector-name} clients to update the database, use of REPEATABLE READ isolation ensures a consistent snapshot, because the connector continues to read the same data for the duration of  the transaction. +
+
+`extended`::: Blocks all write operations for the duration of the snapshot.
+Use this setting if clients submit concurrent operations that are incompatible with the REPEATABLE READ isolation level in {connector-name}. +
+
+`none`::: Prevents the connector from acquiring any table locks during the snapshot.
+Although this option is allowed with all snapshot modes, it is safe to use _only_ if no schema changes occur while the snapshot is running.
+Tables that are defined with the MyISAM engine always acquire a table lock.
+As a result, such tables are locked even if you set this option.
+This behavior differs from tables that are defined by the InnoDB engine, which acquire row-level locks.
+
+ifdef::community[]
+`custom`::: The connector performs a snapshot according to the implementation specified by the xref:{context}-property-snapshot-locking-mode-custom-name[`snapshot.locking.mode.custom.name`] property, which is a custom implementation of the `io.debezium.spi.snapshot.SnapshotLock` interface.
+endif::community[]
+
+[horizontal]
+Default value::: `minimal`
+
+ifdef::community[]
+[id="{context}-property-snapshot-locking-mode-custom-name"]
+xref:{context}-property-snapshot-locking-mode-custom-name[`snapshot.locking.mode.custom.name`]::
+When xref:{context}-property-snapshot-locking-mode[`snapshot.locking.mode`] is set to `custom`, use this setting to specify the name of the custom implementation provided in the `name()` method that is defined by the 'io.debezium.spi.snapshot.SnapshotLock' interface.
+For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
+
+Default value::: No default
+endif::community[]
+
+[id="{context}-property-snapshot-max-threads"]
+xref:{context}-property-snapshot-max-threads[`snapshot.max.threads`]::
+Specifies the number of threads that the connector uses when performing an initial snapshot.
+To enable parallel initial snapshots, set the property to a value greater than 1.
+In a parallel initial snapshot, the connector processes multiple tables concurrently.
+
+ifdef::community[]
+Parallel initial snapshots is an incubating feature.
+endif::community[]
+ifdef::product[]
+[IMPORTANT]
+====
+Parallel initial snapshots is a Developer Preview feature only.
+Developer Preview software is not supported by Red{nbsp}Hat in any way and is not functionally complete or production-ready.
+Do not use Developer Preview software for production or business-critical workloads.
+Developer Preview software provides early access to upcoming product software in advance of its possible inclusion in a Red{nbsp}Hat product offering.
+Customers can use this software to test functionality and provide feedback during the development process.
+This software is subject to change or removal at any time, and has received limited testing.
+Red{nbsp}Hat might provide ways to submit feedback on Developer Preview software without an associated SLA.
+
+For more information about the support scope of Red{nbsp}Hat Developer Preview software, see link:https://access.redhat.com/support/offerings/devpreview/[Developer Preview Support Scope].
+====
+endif::product[]
+
+[horizontal]
+Default value::: `1`
+
+[id="{context}-property-snapshot-mode"]
+xref:{context}-property-snapshot-mode[`snapshot.mode`]::
+Specifies the criteria for running a snapshot when the connector starts.
+The following settings are available:
+
+`always`::: The connector performs a snapshot every time that it starts.
+The snapshot includes the structure and data of the captured tables.
+Specify this value to populate topics with a complete representation of the data from the captured tables every time that the connector starts.
+
+`initial` (default)::: The connector runs a snapshot only when no offsets have been recorded for the logical server name, or if it detects that an earlier snapshot failed to complete.
+After the snapshot completes, the connector begins to stream event records for subsequent database changes.
+
+`initial_only`::: The connector runs a snapshot only when no offsets have been recorded for the logical server name.
+After the snapshot completes, the connector stops.
+It does not transition to streaming to read change events from the binlog.
+
+`schema_only`::: Deprecated, see `no_data`.
+
+`no_data`::: The connector runs a snapshot that captures only the schema, but not any table data.
+Set this option if you do not need the topics to contain a consistent snapshot of the data, but you want to capture any schema changes that were applied after the last connector restart.
+
+`schema_only_recovery`::: Deprecated, see `recovery`.
+
+`recovery`:::  Set this option to restore a database schema history topic that is lost or corrupted.
+After a restart, the connector runs a snapshot that rebuilds the topic from the source tables.
+You can also set the property to periodically prune a database schema history topic that experiences unexpected growth. +
++
+[WARNING]
+====
+Do not use this mode to perform a snapshot if schema changes were committed to the database after the last connector shutdown.
+====
+`never`::: When the connector starts, rather than performing a snapshot, it immediately begins to stream event records for subsequent database changes.
+This option is under consideration for future deprecation, in favor of the `no_data` option.
+
+`when_needed`::: After the connector starts, it performs a snapshot only if it detects one of the following circumstances:
+
+* It cannot detect any topic offsets.
+* A previously recorded offset specifies a binlog position or GTID that is not available on the server.
+
+ifdef::community[]
+`configuration_based`::: With this option, you control snapshot behavior through a set of connector properties that have the prefix 'snapshot.mode.configuration.based'.
+endif::community[]
+
+ifdef::community[]
+`custom`::: The connector performs a snapshot according to the implementation specified by the xref:{context}-property-snapshot-mode-custom-name[`snapshot.mode.custom.name`] property, which defines a custom implementation of the `io.debezium.spi.snapshot.Snapshotter` interface.
+endif::community[]
+
+[horizontal]
+Default value::: `initial`
+
+ifdef::community[]
+[id="{context}-property-snapshot-mode-configuration-based-snapshot-data"]
+xref:{context}-property-snapshot-mode-configuration-based-snapshot-data[`snapshot.mode.configuration.based.snapshot.data`]::
+If the `snapshot.mode` is set to `configuration_based`, set this property to specify whether the connector includes table data when it performs a snapshot.
+
+[horizontal]
+Default value::: `false`
+endif::community[]
+
+ifdef::community[]
+[id="{context}-property-snapshot-mode-configuration-based-snapshot-on-data-error"]
+xref:{context}-property-snapshot-mode-configuration-based-snapshot-on-data-error[`snapshot.mode.configuration.based.snapshot.on.data.error`]::
+If the `snapshot.mode` is set to `configuration_based`, set this property to specify whether the connector includes table data in a snapshot in the event that data is no longer available in the transaction log.
+
+[horizontal]
+Default value::: `false`
+endif::community[]
+
+ifdef::community[]
+[id="{context}-property-snapshot-mode-configuration-based-snapshot-on-schema-error"]
+xref:{context}-property-snapshot-mode-configuration-based-snapshot-on-schema-error[`snapshot.mode.configuration.based.snapshot.on.schema.error`]::
+If the `snapshot.mode` is set to `configuration_based`, set this property to specify whether the connector includes table schema in a snapshot if the schema history topic is not available.
+
+[horizontal]
+Default value::: `false`
+endif::community[]
+
+ifdef::community[]
+[id="{context}-property-snapshot-mode-configuration-based-snapshot-schema"]
+xref:{context}-property-snapshot-mode-configuration-based-snapshot-schema[`snapshot.mode.configuration.based.snapshot.schema`]::
+If the `snapshot.mode` is set to `configuration_based`, set this property to specify whether the connector includes the table schema when it performs a snapshot.
+
+[horizontal]
+Default value::: `false`
+endif::community[]
+
+ifdef::community[]
+[id="{context}-property-snapshot-mode-configuration-based-start-stream"]
+xref:{context}-property-snapshot-mode-configuration-based-start-stream[`snapshot.mode.configuration.based.start.stream`]::
+If the `snapshot.mode` is set to `configuration_based`, set this property to specify whether the connector begins to stream change events after a snapshot completes.
+
+[horizontal]
+Default value::: `false`
+endif::community[]
+
+ifdef::community[]
+[id="{context}-property-snapshot-mode-custom-name"]
+xref:{context}-property-snapshot-mode-custom-name[`snapshot.mode.custom.name`]::
+If `snapshot.mode` is set to `custom`, use this setting to specify the name of the custom implementation that is provided in the `name()` method that is defined in the 'io.debezium.spi.snapshot.Snapshotter' interface.
+After a connector restart, {prodname} calls the specified custom implementation to determine whether to perform a snapshot.
+For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
+
+[horizontal]
+Default value::: No default
+endif::community[]
+
+[id="{context}-property-snapshot-query-mode"]
+xref:{context}-property-snapshot-query-mode[`snapshot.query.mode`]::
+Specifies how the connector queries data while performing a snapshot. +
+Set one of the following options:
+
+`select_all` (default)::: The connector uses a `select all` query to retrieve rows from captured tables, optionally adjusting the columns selected based on the column `include` and `exclude` list configurations.
+
+ifdef::community[]
+`custom`::: The connector performs a snapshot query according to the implementation specified by the xref:{context}-property-snapshot-snapshot-query-mode-custom-name[`snapshot.query.mode.custom.name`] property, which defines a custom implementation of the `io.debezium.spi.snapshot.SnapshotQuery` interface. +
+endif::community[]
++
+This setting enables you to manage snapshot content in a more flexible manner compared to using the xref:{context}-property-snapshot-select-statement-overrides[`snapshot.select.statement.overrides`] property.
+
+[horizontal]
+Default value::: `select_all`
+
+ifdef::community[]
+[id="{context}-property-snapshot-snapshot-query-mode-custom-name"]
+xref:{context}-property-snapshot-snapshot-query-mode-custom-name[`snapshot.query.mode.custom.name`]::
+When xref:{context}-property-snapshot-query-mode[`snapshot.query.mode`] is set as `custom`, use this setting to specify the name of the custom implementation provided in the `name()` method that is defined by the 'io.debezium.spi.snapshot.SnapshotQuery' interface.
+For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
+
+[horizontal]
+Default value::: No default
+endif::community[]
+
+[id="{context}-property-snapshot-select-statement-overrides"]
+xref:{context}-property-snapshot-select-statement-overrides[`snapshot.select.statement.overrides`]::
+Specifies the table rows to include in a snapshot.
+Use the property if you want a snapshot to include only a subset of the rows in a table.
+This property affects snapshots only.
+It does not apply to events that the connector reads from the log.
+ +
+The property contains a comma-separated list of fully-qualified table names in the form `_<databaseName>.<tableName>_`. For example, +
++
+`+"snapshot.select.statement.overrides": "inventory.products,customers.orders"+` +
++
+For each table in the list, add a further configuration property that specifies the `SELECT` statement for the connector to run on the table when it takes a snapshot.
+The specified `SELECT` statement determines the subset of table rows to include in the snapshot.
+Use the following format to specify the name of this `SELECT` statement property: +
++
+`snapshot.select.statement.overrides._<databaseName>_._<tableName>_`
+For example,
+`snapshot.select.statement.overrides.customers.orders` +
+ +
+From a `customers.orders` table that includes the soft-delete column, `delete_flag`, add the following properties if you want a snapshot to include only those records that are not soft-deleted:
++
+----
+"snapshot.select.statement.overrides": "customer.orders",
+"snapshot.select.statement.overrides.customer.orders": "SELECT * FROM [customers].[orders] WHERE delete_flag = 0 ORDER BY id DESC"
+----
++
+In the resulting snapshot, the connector includes only the records for which `delete_flag = 0`.
+
+[horizontal]
+Default value::: No default
+
+
+[id="{context}-property-snapshot-tables-order-by-row-count"]
+xref:{context}-property-snapshot-tables-order-by-row-count[`snapshot.tables.order.by.row.count`]::
+Specifies the order in which the connector processes tables when it performs an initial snapshot.
+Set one of the following options:
+
+`descending`::: The connector snapshots tables in order, based on the number of rows from the highest to the lowest.
+`ascending`::: The connector snapshots tables in order, based on the number of rows, from lowest to highest.
+`disabled`::: The connector disregards row count when performing an initial snapshot.
+
+[horizontal]
+Default value::: `disabled`
+
+ifdef::community[]
+[id="{context}-property-source-struct-version"]
+xref:{context}-property-source-struct-version[`source.struct.version`]::
+Schema version for the `source` block in {prodname} events.  {prodname} 0.10 introduced a few breaking changes to the structure of the `source` block in order to unify the exposed structure across all the connectors. +
++
+By setting this option to `v1`, the structure used in earlier versions can be produced. However, this setting is not recommended and is planned for removal in a future {prodname} version.
+endif::community[]
+
+[horizontal]
+Default value::: `v2`
+
+[id="{context}-property-streaming-delay-ms"]
+xref:"{context}-property-streaming-delay-ms[`streaming.delay.ms`]::
+Specifies the time, in milliseconds, that the connector delays the start of the streaming process after it completes a snapshot.
+Setting a delay interval helps to prevent the connector from restarting snapshots in the event that a failure occurs immediately after the snapshot completes, but before the streaming process begins.
+Set a delay value that is higher than the value of the {link-kafka-docs}/#connectconfigs_offset.flush.interval.ms[`offset.flush.interval.ms`] property that is set for the Kafka Connect worker.
+
+[horizontal]
+Default value::: `0`
+
+[id="{context}-property-table-ignore-builtin"]
+xref:{context}-property-table-ignore-builtin[`table.ignore.builtin`]::
+A Boolean value that specifies whether built-in system tables should be ignored.
+This applies regardless of the table include and exclude lists.
+By default, changes that occur to the values in system tables are excluded from capture, and {prodname} does not generate events for system table changes.
+
+[horizontal]
+Default value::: `true`
+
+[id="{context}-property-topic-cache-size"]
+xref:{context}-property-topic-cache-size[`topic.cache.size`]::
+Specifies the number of topic names that can be stored in memory in a bounded concurrent hash map.
+The connector uses the cache to help determine the topic name that corresponds to a data collection.
+
+[horizontal]
+Default value::: `10000`
+
+[id="{context}-property-topic-delimiter"]
+xref:{context}-property-topic-delimiter[`topic.delimiter`]::
+Specifies the delimiter that the connector inserts between components of the topic name.
+
+[horizontal]
+Default value::: `.`
+
+[id="{context}-property-topic-heartbeat-prefix"]
+xref:{context}-property-topic-heartbeat-prefix[`topic.heartbeat.prefix`]::
+Specifies the name of the topic to which the connector sends heartbeat messages.
+The topic name takes the following format: +
++
+_topic.heartbeat.prefix_._topic.prefix_ +
++
+For example, if the topic prefix is `fulfillment`, the default topic name is `__debezium-heartbeat.fulfillment`.
+
+[horizontal]
+Default value::: `__debezium-heartbeat`
+
+[id="{context}-property-topic-naming-strategy"]
+xref:{context}-property-topic-naming-strategy[`topic.naming.strategy`]::
+The name of the `TopicNamingStrategy` class that the connector uses.
+The specified strategy determines how the connector names the topics that store event records for data changes, schema changes, transactions, heartbeats, and so forth.
+
+[horizontal]
+Default value::: `io.debezium.schema.DefaultTopicNamingStrategy`
+
+[id="{context}-property-topic-transaction"]
+xref:{context}-property-topic-transaction[`topic.transaction`]::
+Specifies the name of the topic to which the connector sends transaction metadata messages.
+The topic name takes the following pattern: +
++
+_topic.prefix_._topic.transaction_ +
++
+For example, if the topic prefix is `fulfillment`, the default topic name is `fulfillment.transaction`.
+
+[horizontal]
+Default value::: `transaction`
+
+[id="{context}-property-use-nongraceful-disconnect"]
+xref:{context}-property-use-nongraceful-disconnect[`use.nongraceful.disconnect`]::
+A Boolean value that specifies whether the binary log client's keepalive thread sets the `SO_LINGER` socket option to  `0` to immediately close stale TCP connections. +
+Set the value to `true` if the connector experiences deadlocks in `SSLSocketImpl.close`. +
+ifdef::community[]
+For more information, see https://github.com/osheroff/mysql-binlog-connector-java/issues/133[Issue 133] in the https://github.com/osheroff/mysql-binlog-connector-java[mysql-binlog-connector-java] GitHub repository.
+endif::community[]
+[horizontal]
+Default value::: false
