@@ -78,10 +78,14 @@ import io.debezium.util.VariableLatch;
  * the running thread (e.g., as is the case with {@link ExecutorService#shutdownNow()}).
  *
  * @author Randall Hauch
+ *
+ * @deprecated Use {@link io.debezium.embedded.async.AsyncEmbeddedEngine} instead.
  */
+@Deprecated
 @ThreadSafe
 public final class EmbeddedEngine implements DebeziumEngine<SourceRecord>, EmbeddedEngineConfig {
 
+    @Deprecated
     public static final class EngineBuilder implements Builder<SourceRecord> {
         private Configuration config;
         private DebeziumEngine.ChangeConsumer<SourceRecord> handler;
