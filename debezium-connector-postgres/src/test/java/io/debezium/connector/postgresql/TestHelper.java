@@ -129,7 +129,7 @@ public final class TestHelper {
      */
     public static PostgresConnectorConfig.LogicalDecoder decoderPlugin() {
         final String s = System.getProperty(PostgresConnectorConfig.PLUGIN_NAME.name());
-        return (s == null || s.length() == 0) ? PostgresConnectorConfig.LogicalDecoder.PGOUTPUT : PostgresConnectorConfig.LogicalDecoder.parse(s);
+        return (s == null || s.length() == 0) ? PostgresConnectorConfig.LogicalDecoder.YBOUTPUT : PostgresConnectorConfig.LogicalDecoder.parse(s);
     }
 
     /**
@@ -286,7 +286,7 @@ public final class TestHelper {
         builder.with(CommonConnectorConfig.TOPIC_PREFIX, TEST_SERVER)
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, true)
                 .with(PostgresConnectorConfig.STATUS_UPDATE_INTERVAL_MS, 100)
-                .with(PostgresConnectorConfig.PLUGIN_NAME, "PGOUTPUT")
+                .with(PostgresConnectorConfig.PLUGIN_NAME, "YBOUTPUT")
                 .with(PostgresConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
                 .with(PostgresConnectorConfig.MAX_RETRIES, 2)
                 .with(PostgresConnectorConfig.RETRY_DELAY_MS, 2000);
@@ -294,7 +294,6 @@ public final class TestHelper {
         if (testNetworkTimeout != null && testNetworkTimeout.length() != 0) {
             builder.with(PostgresConnectorConfig.STATUS_UPDATE_INTERVAL_MS, Integer.parseInt(testNetworkTimeout));
         }
-        LOGGER.info("VKVK plugin name is {}", builder.build().getString("plugin.name"));
         return builder;
     }
 

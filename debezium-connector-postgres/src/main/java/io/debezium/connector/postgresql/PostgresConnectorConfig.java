@@ -392,6 +392,11 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             public boolean supportsLogicalDecodingMessage() {
                 return true;
             }
+
+            @Override
+            public boolean isYBOutput() {
+                return false;
+            }
         },
         DECODERBUFS("decoderbufs") {
             @Override
@@ -413,6 +418,37 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             public boolean supportsLogicalDecodingMessage() {
                 return false;
             }
+
+            @Override
+            public boolean isYBOutput() {
+                return false;
+            }
+        },
+        YBOUTPUT("yboutput") {
+            @Override
+            public MessageDecoder messageDecoder(MessageDecoderContext config, PostgresConnection connection) {
+                return new PgOutputMessageDecoder(config, connection);
+            }
+
+            @Override
+            public String getPostgresPluginName() {
+                return getValue();
+            }
+
+            @Override
+            public boolean supportsTruncate() {
+                return false;
+            }
+
+            @Override
+            public boolean supportsLogicalDecodingMessage() {
+                return true;
+            }
+
+            @Override
+            public boolean isYBOutput() {
+                return true;
+            }
         };
 
         private final String decoderName;
@@ -431,6 +467,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         public String getValue() {
             return decoderName;
         }
+
+        public abstract boolean isYBOutput();
 
         public abstract String getPostgresPluginName();
 
@@ -508,6 +546,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withDescription("The name of the Postgres logical decoding plugin installed on the server. " +
                     "Supported values are '" + LogicalDecoder.DECODERBUFS.getValue()
                     + "' and '" + LogicalDecoder.PGOUTPUT.getValue()
+                    + "' and '" + LogicalDecoder.YBOUTPUT.getValue()
                     + "'. " +
                     "Defaults to '" + LogicalDecoder.DECODERBUFS.getValue() + "'.");
 

@@ -46,11 +46,13 @@ public class ReplicaIdentityInfo {
      * Table REPLICA IDENTITY information.
      */
     public enum ReplicaIdentity {
+        // YB Note: CHANGE is a YugabyteDB specific replica identity.
         NOTHING("UPDATE and DELETE events will not contain any old values"),
         FULL("UPDATE AND DELETE events will contain the previous values of all the columns"),
         DEFAULT("UPDATE and DELETE events will contain previous values only for PK columns"),
         INDEX("UPDATE and DELETE events will contain previous values only for columns present in the REPLICA IDENTITY index"),
-        UNKNOWN("Unknown REPLICA IDENTITY");
+        UNKNOWN("Unknown REPLICA IDENTITY"),
+        CHANGE("UPDATE events will contain values only for changed columns");
 
         private final String description;
 
@@ -67,7 +69,8 @@ public class ReplicaIdentityInfo {
             this.description = description;
         }
 
-        static ReplicaIdentityInfo.ReplicaIdentity parseFromDB(String s) {
+        // YB Note: CHANGE is a YugabyteDB specific replica identity.
+        public static ReplicaIdentityInfo.ReplicaIdentity parseFromDB(String s) {
             switch (s) {
                 case "n":
                     return NOTHING;
@@ -77,6 +80,8 @@ public class ReplicaIdentityInfo {
                     return INDEX;
                 case "f":
                     return FULL;
+                case "c":
+                    return CHANGE;
                 default:
                     return UNKNOWN;
             }

@@ -146,7 +146,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     }
 
     protected void initPublication() {
-        if (PostgresConnectorConfig.LogicalDecoder.PGOUTPUT.equals(plugin)) {
+        if (PostgresConnectorConfig.LogicalDecoder.PGOUTPUT.equals(plugin) || PostgresConnectorConfig.LogicalDecoder.YBOUTPUT.equals(plugin)) {
             LOGGER.info("Initializing PgOutput logical decoder publication");
             try {
                 // Unless the autocommit is disabled the SELECT publication query will stay running
