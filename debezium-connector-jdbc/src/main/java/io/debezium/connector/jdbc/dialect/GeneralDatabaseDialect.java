@@ -514,8 +514,9 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
         if (ColumnTypeResolutionMode.LEGACY.equals(connectorConfig.getColumnTypeResolutionMode())) {
             switch (jdbcType) {
                 case Types.VARCHAR:
-                case Types.NVARCHAR:
                     return getTypeName(Types.LONGVARCHAR);
+                case Types.NVARCHAR:
+                    return getTypeName(Types.LONGNVARCHAR);
                 case Types.VARBINARY:
                     return getTypeName(Types.LONGVARBINARY);
                 default:
