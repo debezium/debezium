@@ -285,10 +285,14 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     }
 
     protected void setSnapshotTransactionIsolationLevel(boolean isOnDemand) throws SQLException {
-        LOGGER.info("Setting isolation level");
-        String transactionStatement = snapshotter.snapshotTransactionIsolationLevelStatement(slotCreatedInfo, isOnDemand);
-        LOGGER.info("Opening transaction with statement {}", transactionStatement);
-        jdbcConnection.executeWithoutCommitting(transactionStatement);
+        if (!YugabyteDBServer.isEnabled() || connectorConfig.isYbConsistentSnapshotEnabled()) {
+            LOGGER.info("Setting isolation level");
+            String transactionStatement = snapshotter.snapshotTransactionIsolationLevelStatement(slotCreatedInfo, isOnDemand);
+            LOGGER.info("Opening transaction with statement {}", transactionStatement);
+            jdbcConnection.executeWithoutCommitting(transactionStatement);
+        } else {
+            LOGGER.info("Skipping setting snapshot time, snapshot data will not be consistent");
+        }
     }
 
     /**
