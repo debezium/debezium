@@ -11,7 +11,7 @@ BEGIN
       SELECT FROM pg_catalog.pg_roles
       WHERE  rolname = 'role_1') THEN
 
-      REASSIGN OWNED BY role_1 TO postgres;
+      REASSIGN OWNED BY role_1 TO yugabyte;
       DROP OWNED BY role_1;
       DROP ROLE IF EXISTS role_1;
    END IF;
@@ -27,7 +27,7 @@ BEGIN
       SELECT FROM pg_catalog.pg_roles
       WHERE  rolname = 'role_2') THEN
 
-      REASSIGN OWNED BY role_2 TO postgres;
+      REASSIGN OWNED BY role_2 TO yugabyte;
       DROP OWNED BY role_2;
       DROP ROLE IF EXISTS role_2;
    END IF;
@@ -43,12 +43,12 @@ CREATE SCHEMA s2;
 CREATE ROLE role_1;
 GRANT ALL ON SCHEMA s1 TO role_1;
 GRANT ALL ON SCHEMA s2 TO role_1;
-GRANT CREATE ON DATABASE postgres TO role_1;
+GRANT CREATE ON DATABASE yugabyte TO role_1;
 
 CREATE ROLE role_2 WITH REPLICATION LOGIN PASSWORD 'role_2_pass';
 GRANT ALL ON SCHEMA s1 TO role_2;
 GRANT ALL ON SCHEMA s2 TO role_2;
-GRANT CONNECT ON DATABASE postgres TO role_2;
+GRANT CONNECT ON DATABASE yugabyte TO role_2;
 
 -- Create tables using r1
 SET ROLE role_1;

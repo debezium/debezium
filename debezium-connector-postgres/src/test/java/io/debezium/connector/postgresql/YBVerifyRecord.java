@@ -27,4 +27,9 @@ public class YBVerifyRecord extends VerifyRecord {
     hasValidKey(record, pkField, pk);
     isValidUpdate(record, true);
   }
+
+  public static void isValidDelete(SourceRecord record, String pkField, int pk) {
+    hasValidKey(record, pkField, pk);
+    isValidDelete(record, true);
+  }
 }

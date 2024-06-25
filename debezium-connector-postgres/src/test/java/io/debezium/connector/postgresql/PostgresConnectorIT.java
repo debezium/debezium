@@ -1170,7 +1170,6 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         assertRecordsAfterInsert(2, 3, 3);
     }
 
-    @Ignore("YB Note: alter replica identity unsupported, see https://github.com/yugabyte/yugabyte-db/issues/21599")
     @Test
     public void shouldUpdateReplicaIdentity() throws Exception {
 
@@ -1199,11 +1198,14 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
             assertEquals(ReplicaIdentityInfo.ReplicaIdentity.FULL, connection.readReplicaIdentityInfo(tableIds1).getReplicaIdentity());
             assertEquals(ReplicaIdentityInfo.ReplicaIdentity.DEFAULT, connection.readReplicaIdentityInfo(tableIds2).getReplicaIdentity());
             assertThat(logInterceptor.containsMessage(String.format("Replica identity set to FULL for table '%s'", tableIds1))).isTrue();
-            assertThat(logInterceptor.containsMessage(String.format("Replica identity for table '%s' is already DEFAULT", tableIds2))).isTrue();
+
+            // YB Note: Fails because we do not get this message when replica identity is already set.
+//            assertThat(logInterceptor.containsMessage(String.format("Replica identity for table '%s' is already DEFAULT", tableIds2))).isTrue();
+            // YB Note: Adding an alternate log message.
+            assertThat(logInterceptor.containsMessage(String.format("Replica identity set to DEFAULT for table '%s'", tableIds2))).isTrue();
         }
     }
 
-    @Ignore("YB Note: alter replica identity unsupported, see https://github.com/yugabyte/yugabyte-db/issues/21599")
     @Test
     public void shouldUpdateReplicaIdentityWithRegExp() throws Exception {
 
@@ -1235,7 +1237,6 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         }
     }
 
-    @Ignore("YB Note: alter replica identity unsupported, see https://github.com/yugabyte/yugabyte-db/issues/21599")
     @Test
     public void shouldNotUpdateReplicaIdentityWithRegExpDuplicated() throws Exception {
 
@@ -1264,7 +1265,6 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         assertThat(logInterceptor.containsStacktraceElement("More than one Regular expressions matched table s2.b")).isTrue();
     }
 
-    @Ignore("YB Note: alter replica identity unsupported, see https://github.com/yugabyte/yugabyte-db/issues/21599")
     @Test
     public void shouldUpdateReplicaIdentityWithOneTable() throws Exception {
 
@@ -1294,7 +1294,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         }
     }
 
-    @Ignore("YB Note: alter replica identity unsupported, see https://github.com/yugabyte/yugabyte-db/issues/21599")
+    @Ignore("YB Note: alter replica identity INDEX is unsupported")
     @Test
     public void shouldUpdateReplicaIdentityUsingIndex() throws Exception {
 
@@ -1332,7 +1332,6 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         }
     }
 
-    @Ignore("YB Note: alter replica identity unsupported, see https://github.com/yugabyte/yugabyte-db/issues/21599")
     @Test
     public void shouldLogOwnershipErrorForReplicaIdentityUpdate() throws Exception {
 
@@ -1361,7 +1360,6 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         assertThat(logInterceptor.containsMessage(String.format("Replica identity could not be updated because of lack of privileges"))).isTrue();
     }
 
-    @Ignore("YB Note: alter replica identity unsupported, see https://github.com/yugabyte/yugabyte-db/issues/21599")
     @Test
     public void shouldCheckTablesToUpdateReplicaIdentityAreCaptured() throws Exception {
 
@@ -1384,6 +1382,9 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         // Waiting for Replica Identity is updated
         waitForAvailableRecords(5, TimeUnit.SECONDS);
 
+        // YB Note: The following block only checks if a certain log message has appeared or not.
+        // In our case, we can alter the replica identity but the actual replica identity for a table
+        // will remain what is set at the time of replication slot creation.
         try (PostgresConnection connection = TestHelper.create()) {
             TableId tableIds1 = new TableId("", "s1", "a");
             assertEquals(ReplicaIdentityInfo.ReplicaIdentity.FULL.toString(), connection.readReplicaIdentityInfo(tableIds1).toString());
@@ -2824,7 +2825,6 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
         Struct value = (Struct) record.value();
         if (value.getStruct("after") != null) {
-            // TODO Vaibhav: make the assertions configurable depending on replica identity
             assertThat(value.getStruct("after").getStruct("bb").getString("value")).isEqualTo("tes");
         }
 
@@ -3650,7 +3650,6 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         System.out.println(recordsForTopic.get(0));
     }
 
-    @Ignore("YB Note: alter replica identity unsupported, see https://github.com/yugabyte/yugabyte-db/issues/21599")
     @Test
     @FixFor("DBZ-5295")
     public void shouldReselectToastColumnsOnPrimaryKeyChange() throws Exception {
@@ -3673,15 +3672,15 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
         SourceRecord record = recordsForTopic.get(0);
         Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
-        assertThat(after.get("pk")).isEqualTo(1);
-        assertThat(after.get("data")).isEqualTo(toastValue1);
-        assertThat(after.get("data2")).isEqualTo(toastValue2);
+        assertThat(after.getStruct("pk").get("value")).isEqualTo(1);
+        assertThat(after.getStruct("data").get("value")).isEqualTo(toastValue1);
+        assertThat(after.getStruct("data2").get("value")).isEqualTo(toastValue2);
 
-        // See https://github.com/yugabyte/yugabyte-db/issues/21591
         TestHelper.execute("UPDATE s1.dbz5295 SET pk = 2 WHERE pk = 1;");
 
         // The update of the primary key causes a DELETE and a CREATE, mingled with a TOMBSTONE
-        records = consumeRecordsByTopic(3);
+        // YB Note: Consuming additional records since there are going to be heartbeat records as well.
+        records =  consumeRecordsByTopic(3 + 2);
         recordsForTopic = records.recordsForTopic(topicName("s1.dbz5295"));
         assertThat(recordsForTopic).hasSize(3);
 
@@ -3699,9 +3698,9 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         record = recordsForTopic.get(2);
         YBVerifyRecord.isValidInsert(record, "pk", 2);
         after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
-        assertThat(after.get("pk")).isEqualTo(2);
-        assertThat(after.get("data")).isEqualTo(toastValue1);
-        assertThat(after.get("data2")).isEqualTo(toastValue2);
+        assertThat(after.getStruct("pk").get("value")).isEqualTo(2);
+        assertThat(after.getStruct("data").get("value")).isEqualTo(toastValue1);
+        assertThat(after.getStruct( "data2").get("value")).isEqualTo(toastValue2);
     }
 
     @Test
