@@ -516,6 +516,8 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
                 case Types.VARCHAR:
                 case Types.NVARCHAR:
                     return getTypeName(Types.LONGVARCHAR);
+                case Types.VARBINARY:
+                    return getTypeName(Types.LONGVARBINARY);
                 default:
                     return ddlTypeRegistry.getTypeName(jdbcType, dialect);
             }
@@ -526,6 +528,8 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
                     return getTypeName(jdbcType, dialect.getMaxVarcharLength());
                 case Types.NVARCHAR:
                     return getTypeName(jdbcType, dialect.getMaxNVarcharLength());
+                case Types.VARBINARY:
+                    return getTypeName(jdbcType, dialect.getMaxVarbinaryLength());
                 default:
                     return ddlTypeRegistry.getTypeName(jdbcType, dialect);
             }
