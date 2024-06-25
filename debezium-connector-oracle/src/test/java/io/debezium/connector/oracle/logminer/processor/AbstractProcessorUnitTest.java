@@ -12,13 +12,16 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Calendar;
 
 import org.junit.After;
 import org.junit.Before;
@@ -376,12 +379,16 @@ public abstract class AbstractProcessorUnitTest<T extends AbstractLogMinerEventP
         final OracleConnectorConfig config = new OracleConnectorConfig(getConfig().build());
         try (T processor = getProcessor(config)) {
             final ResultSet rs = Mockito.mock(ResultSet.class);
-            Mockito.when(rs.next()).thenReturn(true, false);
-            Mockito.when(rs.getString(1)).thenReturn("101");
-            Mockito.when(rs.getString(2)).thenReturn("insert into \"DEBEZIUM\".\"ABC\"(\"ID\",\"DATA\") values ('1','test');");
-            Mockito.when(rs.getInt(3)).thenReturn(EventType.INSERT.getValue());
-            Mockito.when(rs.getString(7)).thenReturn("ABC");
-            Mockito.when(rs.getString(8)).thenReturn("DEBEZIUM");
+            Mockito.when(rs.next()).thenReturn(true, true, false);
+            Mockito.when(rs.getString(1)).thenReturn("101", "102");
+            Mockito.when(rs.getString(2)).thenReturn("insert into \"DEBEZIUM\".\"ABC\"(\"ID\",\"DATA\") values ('1','test');", "commit");
+            Mockito.when(rs.getInt(3)).thenReturn(EventType.INSERT.getValue(), EventType.COMMIT.getValue());
+            Mockito.when(rs.getTimestamp(Mockito.eq(4), Mockito.any(Calendar.class))).thenReturn(Timestamp.from(Instant.now()), Timestamp.from(Instant.now()));
+            Mockito.when(rs.getBytes(5)).thenReturn("12345".getBytes(StandardCharsets.UTF_8), "12345".getBytes(StandardCharsets.UTF_8));
+            Mockito.when(rs.getString(7)).thenReturn("ABC", "");
+            Mockito.when(rs.getString(8)).thenReturn("DEBEZIUM", "");
+            Mockito.when(rs.getInt(17)).thenReturn(1, 1);
+            Mockito.when(rs.getString(21)).thenReturn(null, "102");
 
             final PreparedStatement ps = Mockito.mock(PreparedStatement.class);
             Mockito.when(processor.createQueryStatement()).thenReturn(ps);

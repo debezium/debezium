@@ -58,13 +58,13 @@ public class LogMinerQueryBuilderTest {
 
     private static final String LOG_MINER_QUERY_BASE = "SELECT SCN, SQL_REDO, OPERATION_CODE, TIMESTAMP, " +
             "XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, USERNAME, ROW_ID, ROLLBACK, RS_ID, STATUS, INFO, SSN, " +
-            "THREAD#, DATA_OBJ#, DATA_OBJV#, DATA_OBJD# FROM V$LOGMNR_CONTENTS " +
+            "THREAD#, DATA_OBJ#, DATA_OBJV#, DATA_OBJD#, SAFE_RESUME_SCN FROM V$LOGMNR_CONTENTS " +
             "WHERE SCN > ? AND SCN <= ?";
 
     private static final String PDB_PREDICATE = "SRC_CON_NAME = '${pdbName}'";
 
     private static final String OPERATION_CODES_LOB_ENABLED = "1,2,3,6,7,9,10,11,29,34,36,68,70,71,255";
-    private static final String OPERATION_CODES_LOB_DISABLED = "1,2,3,7,34,36,255";
+    private static final String OPERATION_CODES_LOB_DISABLED = "1,2,3,6,7,34,36,255";
     private static final String OPERATION_CODES_LOB_DISABLED_AND_PERSISTENT_BUFFER = "1,2,3,6,7,34,36,255";
 
     private static final String OPERATION_CODES_PREDICATE = "(OPERATION_CODE IN (${operationCodes})${operationDdl})";
