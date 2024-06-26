@@ -55,7 +55,7 @@ public class MongoDbConnectorCollectionRestrictedIT extends AbstractConnectorTes
         LOGGER.info("Starting {}...", mongo);
         mongo.start();
         LOGGER.info("Setting up users");
-        mongo.createUser(TEST_USER, TEST_PWD, AUTH_DATABASE, "read:" + TEST_DATABASE, "readCollection");
+        mongo.createUser(TEST_USER, TEST_PWD, AUTH_DATABASE, "read:" + TEST_DATABASE);
     }
 
     @AfterClass
