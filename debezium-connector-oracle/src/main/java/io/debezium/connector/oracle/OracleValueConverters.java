@@ -660,19 +660,18 @@ public class OracleValueConverters extends JdbcValueConverters {
     @Override
     protected Object convertTimestampWithZone(Column column, Field fieldDefn, Object data) {
         if (data instanceof String) {
-            String datastr = ((String) data).trim();
             String s = (String) data;
             if (isHexToRawFunctionCall(s)) {
                 data = convertHexToRawFunctionToTimestamp(s);
             }
             else {
-                final Matcher toTimestampTzMatcher = TO_TIMESTAMP_TZ.matcher(datastr);
+                final Matcher toTimestampTzMatcher = TO_TIMESTAMP_TZ.matcher(s);
                 if (toTimestampTzMatcher.matches()) {
                     String dateText = toTimestampTzMatcher.group(1);
                     data = convertToZonedDateTime(dateText);
                 }
                 else {
-                    data = convertToZonedDateTime(datastr);
+                    data = convertToZonedDateTime(s);
                 }
             }
         }
@@ -692,10 +691,10 @@ public class OracleValueConverters extends JdbcValueConverters {
     private static Object convertToZonedDateTime(String dateText) {
         Object data;
         if (dateText.trim().startsWith("-")) {
-            data = ZonedDateTime.from(TIMESTAMP_TZ_FORMATTER.parse(dateText.trim().substring(1, dateText.length()))).with(ChronoField.ERA, 0);
+            data = ZonedDateTime.from(TIMESTAMP_TZ_FORMATTER.parse(dateText.substring(1, dateText.length()))).with(ChronoField.ERA, 0);
         }
         else {
-            data = ZonedDateTime.from(TIMESTAMP_TZ_FORMATTER.parse(dateText.trim()));
+            data = ZonedDateTime.from(TIMESTAMP_TZ_FORMATTER.parse(dateText.substring(1, dateText.length())));
         }
         return data;
     }

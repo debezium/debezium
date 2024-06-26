@@ -364,7 +364,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
         return Arrays.asList(ALL_TABLES);
     }
 
-    protected abstract boolean insertRecordsDuringTest();
+    protected abstract boolean insertRecordsDuringTest() throws SQLException;
 
     protected abstract Builder connectorConfig();
 

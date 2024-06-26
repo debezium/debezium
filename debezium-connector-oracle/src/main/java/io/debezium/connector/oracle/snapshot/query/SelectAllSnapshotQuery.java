@@ -20,7 +20,6 @@ import io.debezium.relational.Column;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
-import io.debezium.relational.Tables;
 import io.debezium.snapshot.spi.SnapshotQuery;
 import oracle.jdbc.OracleTypes;
 
@@ -60,25 +59,25 @@ public class SelectAllSnapshotQuery implements SnapshotQuery, BeanRegistryAware 
     }
 
     private String getColumns(Table table) {
-        StringBuilder columnsSb = new StringBuilder();
+        StringBuilder columnsList = new StringBuilder();
         for (Column column : table.columns()) {
             switch (column.jdbcType()) {
                 case OracleTypes.TIMESTAMP:
                 case OracleTypes.TIMESTAMPLTZ:
-                    if (column.typeName().trim().equalsIgnoreCase("DATE")) {
-                        columnsSb.append(String.format("TO_CHAR(%s, 'SYYYY-MM-DD HH24:MI:SS') AS %s, ", column.name(), column.name()));
+                    if (column.typeName().equalsIgnoreCase("DATE")) {
+                        columnsList.append(String.format("TO_CHAR(%s, 'SYYYY-MM-DD HH24:MI:SS') AS %s, ", column.name(), column.name()));
                     }
                     else {
-                        columnsSb.append(String.format("TO_CHAR(%s, 'SYYYY-MM-DD HH24:MI:SS.FF') AS %s, ", column.name(), column.name()));
+                        columnsList.append(String.format("TO_CHAR(%s, 'SYYYY-MM-DD HH24:MI:SS.FF') AS %s, ", column.name(), column.name()));
                     }
                     break;
                 case OracleTypes.TIMESTAMPTZ:
-                    columnsSb.append(String.format("TO_CHAR(%s, 'SYYYY-MM-DD HH24:MI:SS.FFTZH:TZM') AS %s, ", column.name(), column.name()));
+                    columnsList.append(String.format("TO_CHAR(%s, 'SYYYY-MM-DD HH24:MI:SS.FFTZH:TZM') AS %s, ", column.name(), column.name()));
                     break;
                 default:
-                    columnsSb.append(String.format("%s, ", column.name()));
+                    columnsList.append(String.format("%s, ", column.name()));
             }
         }
-        return columnsSb.substring(0, columnsSb.length() - 2);
+        return columnsList.substring(0, columnsList.length() - 2);
     }
 }

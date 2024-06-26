@@ -75,14 +75,14 @@ public final class TimestampUtils {
 
     private static Instant doConvertTimestampNoZoneToInstant(String text) {
         final LocalDateTime dateTime;
-        if (text.trim().startsWith("-")) {
-            dateTime = getLocalDateTime(text.trim().substring(1, text.length()));
+        if (text.startsWith("-")) {
+            dateTime = getLocalDateTime(text.substring(1, text.length()));
             return IsoChronology.INSTANCE.date(dateTime).with(ChronoField.ERA, 0)
                     .atTime(dateTime.getHour(), dateTime.getMinute(), dateTime.getSecond(), dateTime.getNano())
                     .atZone(GMT_ZONE_ID).toInstant();
         }
         else {
-            dateTime = getLocalDateTime(text.trim());
+            dateTime = getLocalDateTime(text.substring(1, text.length()));
             return dateTime.atZone(GMT_ZONE_ID).toInstant();
         }
     }
@@ -100,14 +100,14 @@ public final class TimestampUtils {
 
     private static Instant doConvertDateToInstant(String value) {
         // BC time starts with "-"
-        if (value.trim().startsWith("-")) {
-            LocalDate date = LocalDate.from(TIMESTAMP_FORMATTER.parse(value.trim().substring(1, value.length())));
+        if (value.startsWith("-")) {
+            LocalDate date = LocalDate.from(TIMESTAMP_FORMATTER.parse(value.substring(1, value.length())));
             Chronology chronology = IsoChronology.INSTANCE;
             Era era = chronology.eraOf(0);
             ChronoLocalDate chronoLocalDate = chronology.date(era, date.getYear(), date.getMonthValue(), date.getDayOfMonth());
             return chronoLocalDate.atTime(LocalTime.MIDNIGHT).atZone(GMT_ZONE_ID).toInstant();
         }
-        return LocalDateTime.from(TIMESTAMP_FORMATTER.parse(value.trim())).atZone(GMT_ZONE_ID).toInstant();
+        return LocalDateTime.from(TIMESTAMP_FORMATTER.parse(value.substring(1, value.length()))).atZone(GMT_ZONE_ID).toInstant();
     }
 
     /**

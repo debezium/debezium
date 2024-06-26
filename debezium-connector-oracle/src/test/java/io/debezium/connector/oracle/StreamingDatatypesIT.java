@@ -67,13 +67,8 @@ public class StreamingDatatypesIT extends AbstractOracleDatatypesTest {
     }
 
     @Override
-    protected boolean insertRecordsDuringTest() {
-        try {
-            connection.executeWithoutCommitting("ALTER SESSION SET TIME_ZONE = '00:00'");
-        }
-        catch (SQLException e) {
-            // ignore
-        }
+    protected boolean insertRecordsDuringTest() throws SQLException {
+        connection.executeWithoutCommitting("ALTER SESSION SET TIME_ZONE = '00:00'");
         return true;
     }
 }
