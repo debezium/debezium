@@ -5,23 +5,20 @@
  */
 package io.debezium.connector.jdbc.e2e;
 
-import io.debezium.connector.jdbc.junit.jupiter.Sink;
-import io.debezium.connector.jdbc.junit.jupiter.SinkType;
-import io.debezium.connector.jdbc.junit.jupiter.e2e.ForSource;
-import io.debezium.connector.jdbc.junit.jupiter.e2e.WithTemporalPrecisionMode;
+import java.sql.ResultSet;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.TestTemplate;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 import io.debezium.connector.jdbc.junit.jupiter.PostgresSinkDatabaseContextProvider;
+import io.debezium.connector.jdbc.junit.jupiter.Sink;
+import io.debezium.connector.jdbc.junit.jupiter.e2e.ForSource;
+import io.debezium.connector.jdbc.junit.jupiter.e2e.WithTemporalPrecisionMode;
 import io.debezium.connector.jdbc.junit.jupiter.e2e.source.Source;
 import io.debezium.connector.jdbc.junit.jupiter.e2e.source.SourceType;
-
-import java.sql.ResultSet;
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
-import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Implementation of the JDBC sink connector multi-source pipeline that writes to PostgreSQL.
