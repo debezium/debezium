@@ -220,6 +220,15 @@ public class MongoUtils {
             return client.getDatabase(database).watch(pipeline.getStages(), BsonDocument.class);
         }
 
+        // capture scope is collection
+        if (config.getCaptureScope() == MongoDbConnectorConfig.CaptureScope.COLLECTION) {
+            var captureTarget = config.getCaptureTarget().orElseThrow();
+            var database = captureTarget.split("\\.")[0];
+            var collection = captureTarget.split("\\.")[1];
+            LOGGER.info("Change stream is restricted to '{}' collection", collection);
+            return client.getDatabase(database).getCollection(collection).watch(pipeline.getStages(), BsonDocument.class);
+        }
+
         // capture scope is deployment
         return client.watch(pipeline.getStages(), BsonDocument.class);
     }
