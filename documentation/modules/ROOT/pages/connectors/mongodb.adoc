@@ -190,6 +190,9 @@ Grant the user permission to read any database.
 `capture.scope` is set to `database`::
 Grant the user permission to read the database specified by the connector's xref:mongodb-property-capture-target[`capture.target`] property.
 
+`capture.scope` is set to `collection`::
+Grant the user permission to read the collection specified by the connector's xref:mongodb-property-capture-target[`capture.target`] property.
+
 .Permission to use the MongoDB `hello` command
 
 Regardless of the `capture.scope` setting, the user requires permission to run the MongoDB https://www.mongodb.com/docs/manual/reference/command/hello/[hello] command.
@@ -1751,6 +1754,13 @@ Set this property to one of the following values:
 [WARNING]
 ====
 To support {link-prefix}:{link-signalling}#[{prodname} signaling], if you set `capture.scope` to `database`, the xref:mongodb-property-signal-data-collection[signaling data collection] must reside in a database that is specified by the xref:mongodb-property-capture-target[`capture.target`] property.
+====
+
+`collection`:: Opens a change stream cursor for a single collection to watch for changes to that collection.
++
+[NOTE]
+====
+When `capture.scope` is set to `collection`, the connector does not support {link-prefix}:{link-signalling}#[{prodname} signaling].
 ====
 
 |[[mongodb-property-capture-target]]<<mongodb-property-capture-target, `+capture.target+`>>
