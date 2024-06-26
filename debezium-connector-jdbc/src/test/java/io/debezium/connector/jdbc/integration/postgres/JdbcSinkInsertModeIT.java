@@ -7,7 +7,6 @@ package io.debezium.connector.jdbc.integration.postgres;
 
 import java.sql.SQLException;
 import java.sql.Timestamp;
-import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
@@ -27,6 +26,7 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
+import org.postgresql.PGStatement;
 import org.postgresql.geometric.PGpoint;
 import org.postgresql.util.PGobject;
 
@@ -228,8 +228,8 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1);
 
-        getSink().assertColumnType(tableAssert, "timestamp_infinity-", Timestamp.class, Timestamp.valueOf(LocalDateTime.of(292269055, 12, 3, 0, 0, 0)));
-        getSink().assertColumnType(tableAssert, "timestamp_infinity+", Timestamp.class, Timestamp.valueOf(LocalDateTime.of(292278994, 8, 17, 0, 0, 0)));
+        getSink().assertColumnType(tableAssert, "timestamp_infinity-", Timestamp.class, new Timestamp(PGStatement.DATE_NEGATIVE_INFINITY));
+        getSink().assertColumnType(tableAssert, "timestamp_infinity+", Timestamp.class, new Timestamp(PGStatement.DATE_POSITIVE_INFINITY));
         getSink().assertColumnType(tableAssert, "range_with_infinity", String.class, "[2010-01-01 14:30, +infinity)");
 
     }
