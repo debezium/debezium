@@ -14,7 +14,6 @@ import org.apache.kafka.connect.errors.ConnectException;
 
 import io.debezium.connector.jdbc.ValueBindDescriptor;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
-import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 import io.debezium.connector.jdbc.type.AbstractTimestampType;
 import io.debezium.connector.jdbc.type.Type;
 import io.debezium.time.ZonedTimestamp;
@@ -41,16 +40,6 @@ public class ZonedTimestampType extends AbstractTimestampType {
     }
 
     @Override
-    public String getQueryBinding(ColumnDescriptor column, Schema schema, Object value) {
-
-        if (POSITIVE_INFINITY.equals(value) || NEGATIVE_INFINITY.equals(value)) {
-            return "cast(? as timestamptz)";
-        }
-
-        return super.getQueryBinding(column, schema, value);
-    }
-
-    @Override
     public List<ValueBindDescriptor> bind(int index, Schema schema, Object value) {
 
         if (value == null) {
@@ -73,12 +62,10 @@ public class ZonedTimestampType extends AbstractTimestampType {
         final ZonedDateTime zdt;
 
         if (POSITIVE_INFINITY.equals(value)) {
-            zdt = ZonedDateTime.parse(getDialect().getTimestampPositiveInfinityValue(), ZonedTimestamp.FORMATTER)
-                    .withZoneSameInstant(getDatabaseTimeZone().toZoneId());
+            zdt = ZonedDateTime.parse(getDialect().getTimestampPositiveInfinityValue(), ZonedTimestamp.FORMATTER);
         }
         else {
-            zdt = ZonedDateTime.parse(getDialect().getTimestampNegativeInfinityValue(), ZonedTimestamp.FORMATTER)
-                    .withZoneSameInstant(getDatabaseTimeZone().toZoneId());
+            zdt = ZonedDateTime.parse(getDialect().getTimestampNegativeInfinityValue(), ZonedTimestamp.FORMATTER);
         }
 
         return List.of(new ValueBindDescriptor(index, zdt.toOffsetDateTime(), getJdbcBindType()));
