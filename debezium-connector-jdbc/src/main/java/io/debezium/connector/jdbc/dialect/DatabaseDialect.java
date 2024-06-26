@@ -361,6 +361,20 @@ public interface DatabaseDialect {
     String getTypeName(int jdbcType, Size size);
 
     /**
+     * +Infinity value for a timestamp.
+     *
+     * @return the +infinity representation for timestamp.
+     */
+    String getTimestampPositiveInfinityValue();
+
+    /**
+     * -Infinity value for a timestamp.
+     *
+     * @return the -infinity representation for timestamp.
+     */
+    String getTimestampNegativeInfinityValue();
+
+    /**
      * Bind the specified value to the query.
      *
      * @param field      the field being bound, should never be {@code null}

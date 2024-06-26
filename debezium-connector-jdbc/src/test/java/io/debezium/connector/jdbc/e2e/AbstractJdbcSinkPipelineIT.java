@@ -2568,6 +2568,35 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 ResultSet::getString);
     }
 
+    @TestTemplate
+    @ForSource(value = { SourceType.POSTGRES }, reason = "The infinity value is valid only for PostgreSQL")
+    @WithTemporalPrecisionMode
+    public void testTimestampWithTimeZoneDataTypeWithInfinityValue(Source source, Sink sink) throws Exception {
+
+        final List<String> values = List.of("'-infinity'", "'infinity'");
+
+        List<ZonedDateTime> expectedValues = List.of();
+        if (sink.getType().is(SinkType.POSTGRES)) {
+
+            // expectedValues = values;
+        }
+        else if (sink.getType().is(SinkType.MYSQL)) {
+            expectedValues = List.of(ZonedDateTime.of(1970, 1, 1, 0, 0, 1, 0, ZoneOffset.UTC),
+                    ZonedDateTime.of(2038, 1, 19, 3, 14, 7, 0, ZoneOffset.UTC));
+        }
+
+        assertDataTypesNonKeyOnly(source,
+                sink,
+                List.of("timestamptz", "timestamptz"),
+                values,
+                expectedValues,
+                (record) -> {
+                    assertColumn(sink, record, "data0", getTimestampWithTimezoneType(source, false, 6));
+                    assertColumn(sink, record, "data1", getTimestampWithTimezoneType(source, false, 6));
+                },
+                (rs, index) -> rs.getTimestamp(index).toInstant().atZone(ZoneOffset.UTC));
+    }
+
     // todo: remaining data types need tests and/or type system mapping support
     // GEOMETRY (MySql/PostgreSQL)
     // LINESTRING (MySQL)
