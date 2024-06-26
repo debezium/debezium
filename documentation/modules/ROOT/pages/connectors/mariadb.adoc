@@ -266,7 +266,7 @@ include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloff
 [id="mariadb-truncate-events"]
 === _truncate_ events
 
-include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=tombstone-events]
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=truncate-events]
 
 // Type: reference
 // ModuleID: how-debezium-mariadb-connectors-map-data-types
@@ -359,7 +359,7 @@ For MariaDB, GTIDs are enabled by default and no additional configuration is nec
 [[mariadb-session-timeouts]]
 === Configuring session timeouts
 
-include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=enabling-binlog]
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=cfg-session-timeouts]
 
 // Type: procedure
 // ModuleID: enabling-query-log-events-for-debezium-mariadb-connectors
@@ -396,7 +396,7 @@ mariadb> binlog_annotate_row_events=ON
 [[validate-binlog-row-value-options]]
 === Validating binlog row value options
 
-include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=validate=binlog-row-options]
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=validate-binlog-row-options]
 
 
 // Type: assembly
@@ -407,6 +407,7 @@ include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloff
 
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=deployment]
 
+ifdef::product[]
 // Type: concept
 [id="openshift-streams-mariadb-connector-deployment"]
 === MariaDB connector deployment using {StreamsName}
@@ -422,12 +423,12 @@ include::{partialsdir}/modules/all-connectors/proc-using-streams-to-deploy-a-deb
 === Deploying {prodname} MariaDB connectors by building a custom Kafka Connect container image from a Dockerfile
 
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=deploy-via-dockerfile]
-
+endif::product[]
 
 ifdef::community[]
 [[mariadb-example-configuration]]
 === MariaDB connector configuration example
-
+endif::community[]
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=connector-config-example]
 
 [[mariadb-adding-configuration]]
@@ -451,11 +452,10 @@ endif::product[]
 
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=connector-props-intro]
 
-
 [id="mariadb-required-connector-configuration-properties"]
 ==== Required {prodname} MariaDB connector configuration properties
 
-include::{partialsdir}/modules/all-connectors/ref-mariadb-mysql-rqd-connector-cfg-props.adoc[leveloffset=+1,]
+include::{partialsdir}/modules/all-connectors/ref-mariadb-mysql-rqd-connector-cfg-props.adoc[leveloffset=+1]
 
 [id="mariadb-advanced-connector-configuration-properties"]
 ==== Advanced {prodname} MariaDB connector configuration properties
@@ -536,5 +536,6 @@ include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-schema-hi
 // Title: How {prodname} MariaDB connectors handle faults and problems
 [[mariadb-when-things-go-wrong]]
 == Behavior when things go wrong
-
-include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=wrong-things]
+:MARIADB:
+//  include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=wrong-things]
+:!MARIADB:
