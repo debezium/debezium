@@ -2421,6 +2421,7 @@ mysql> enforce_gtid_consistency=ON
 mysql> show global variables like '%GTID%';
 ----
 
++
 .Result
 [source,SQL]
 ----
@@ -2432,6 +2433,7 @@ mysql> show global variables like '%GTID%';
 +--------------------------+-------+
 ----
 
++
 .Descriptions of GTID options
 [cols="3,7",options="header",subs="+attributes"]
 |===
