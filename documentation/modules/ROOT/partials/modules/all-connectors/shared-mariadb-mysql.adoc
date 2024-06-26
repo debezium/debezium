@@ -658,7 +658,7 @@ Or when {prodname} connects to the database instance through a user account that
 * xref:{context}-capturing-data-from-new-tables-with-schema-changes[Capturing data from tables not captured by the initial snapshot (schema change)]
 * Setting the xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.store.only.captured.tables.ddl`] property to specify the tables from which to capture schema information.
 * Setting the xref:{context}-property-database-history-store-only-captured-databases-ddl[`schema.history.internal.store.only.captured.databases.ddl`] property to specify the logical databases from which to capture schema changes.
-end::snapshot-captures-history-all[]
+end::why-snapshot-captures-history-all[]
 
 
 
@@ -1028,7 +1028,7 @@ CREATE TABLE customers (
 
 Every change event that captures a change to the `customers` table has the same event key schema. For as long as the `customers` table has the previous definition, every change event that captures a change to the `customers` table has the following key structure. In JSON, it looks like this:
 
-[source,json,index=0]
+[source,json,index=0,subs="+attributes"]
 ----
 {
  "schema": { <1>
@@ -1993,8 +1993,8 @@ The time zone will be queried from the server by default.
 ifdef::MARIADB[]
 If this fails, it must be specified explicitly by the database `timezone` {connector-name} configuration option.
 For example, if the database’s time zone (either globally or configured for the connector by means of the `timezone` option) is "America/Los_Angeles", the TIMESTAMP value "2018-06-20 06:37:03" is represented by a `ZonedTimestamp` with the value "2018-06-20T13:37:03Z".
-
 endif::MARIADB[]
+
 The time zone of the JVM running Kafka Connect and {prodname} does not affect these conversions.
 
 More details about properties related to temporal values are in the documentation for xref:{context}-connector-properties[{connector-name} connector configuration properties].
@@ -2054,7 +2054,7 @@ a|`org.apache.kafka.connect.data.Timestamp` +
 Represents the number of milliseconds since the epoch, and does not include time zone information.
 
 |===
-end::temporal-types-cont[]
+end::temporal-data-types[]
 
 
 
@@ -2306,14 +2306,14 @@ This {connector-name} user must have appropriate permissions on all databases fo
 
 . Create the {connector-name} user:
 +
-[source,SQL]
+[source,SQL,subs="+attributes"]
 ----
 {context}> CREATE USER 'user'@'localhost' IDENTIFIED BY 'password';
 ----
 
 . Grant the required permissions to the user:
 +
-[source,SQL]
+[source,SQL,subs="+attributes"]
 ----
 {context}> GRANT SELECT, RELOAD, SHOW DATABASES, REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 'user' IDENTIFIED BY 'password';
 ----
@@ -2324,11 +2324,13 @@ IMPORTANT: If using a hosted option such as Amazon RDS or Amazon Aurora that doe
 
 . Finalize the user's permissions:
 +
-[source,SQL]
+[source,SQL,subs="+attributes"]
 ----
 {context}> FLUSH PRIVILEGES;
 ----
-[[permissions-explained-{context}-connector]]
+
++
+[id="permissions-explained-{context}-connector"]
 .Descriptions of user permissions
 [cols="3,7",options="header",subs="+attributes"]
 |===
@@ -2376,7 +2378,7 @@ end::creating-a-db-user[]
 
 tag::enabling-binlog[]
 You must enable binary logging for {connector-name} replication.
-The binary logs record transaction updates for replication tools to propagate changes.
+The binary logs record transaction updates in a way that enables replicas to propagate those changes.
 
 .Prerequisites
 
@@ -2385,7 +2387,7 @@ The binary logs record transaction updates for replication tools to propagate ch
 
 .Procedure
 
-. Check whether the `log-bin`options is enabled:
+. Check whether the `log-bin` option is enabled:
 +
 ifdef::MARIADB[]
 [source,SQL]
@@ -2396,17 +2398,17 @@ endif::MARIADB[]
 ifdef::MYSQL[]
 [source,SQL]
 ----
-// for MySql 5.x
+// for MySQL 5.x
 mysql> SELECT variable_value as "BINARY LOGGING STATUS (log-bin) ::"
 FROM information_schema.global_variables WHERE variable_name='log_bin';
-// for MySql 8.x
+// for MySQL 8.x
 mysql> SELECT variable_value as "BINARY LOGGING STATUS (log-bin) ::"
 FROM performance_schema.global_variables WHERE variable_name='log_bin';
 ----
 endif::MYSQL[]
 . If the binlog is `OFF`, add the properties in the following table to the configuration file for the {connector-name} server:
 +
-[source,properties]
+[source,properties,subs="+attributes"]
 ----
 server-id         = 223344 # Querying variable is called server_id, e.g. SELECT variable_value FROM information_schema.global_variables WHERE variable_name='server_id';
 log_bin                     = {context}-bin
@@ -2418,7 +2420,7 @@ binlog_expire_logs_seconds  = 864000
 . Confirm your changes by checking the binlog status once more:
 +
 ifdef::MARIADB[]
-[source,SQL]
+[source,SQL,subs="+attributes"]
 ----
 {context}> SHOW VARIABLES LIKE '%log_bin%';
 ----
@@ -2426,10 +2428,10 @@ endif::MARIADB[]
 ifdef::MYSQL[]
 [source,SQL]
 ----
-// for MySql 5.x
+// for MySQL 5.x
 {context}> SELECT variable_value as "BINARY LOGGING STATUS (log-bin) ::"
 FROM information_schema.global_variables WHERE variable_name='log_bin';
-// for MySql 8.x
+// for MySQL 8.x
 {context}> SELECT variable_value as "BINARY LOGGING STATUS (log-bin) ::"
 FROM performance_schema.global_variables WHERE variable_name='log_bin';
 ----
@@ -2437,7 +2439,8 @@ endif::MYSQL[]
 . If you run {connector-name} on Amazon RDS, you must enable automated backups for your database instance for binary logging to occur.
 If the database instance is not configured to perform automated backups, the binlog is disabled, even if you apply the settings described in the previous steps.
 
-[[binlog-configuration-properties-{context}-connector]]
++
+[id="binlog-configuration-properties-{context}-connector"]
 .Descriptions of {connector-name} binlog configuration properties
 [cols="1,4",options="header",subs="+attributes"]
 |===
@@ -2496,6 +2499,7 @@ You can prevent this behavior by configuring `interactive_timeout` and `wait_tim
 {context}> wait_timeout=<duration-in-seconds>
 ----
 
++
 .Descriptions of {connector-name} session timeout options
 [cols="3,7",options="header",subs="+attributes"]
 |===
@@ -2507,7 +2511,7 @@ For more information see the:
 ifdef::MARIADB[]
 link:https://mariadb.com/kb/en/server-system-variables/#interactive_timeout[MariaDB documentation].
 endif::MARIADB[]
-ifdef::MYSQL::[]
+ifdef::MYSQL[]
 link:https://dev.mysql.com/doc/refman/{mysql-version}/en/server-system-variables.html#sysvar_interactive_timeout[MySQL documentation].
 endif::MYSQL[]
 |`wait_timeout`
@@ -2527,7 +2531,8 @@ end::cfg-session-timeouts[]
 === Validating binlog row value options
 
 tag::validate-binlog-row-options[]
-Check `binlog_row_value_options` variable, and make sure that value is **not** set to `PARTIAL_JSON`, since in such case connector might fail to consume *UPDATE* events.
+Verify the setting of the `binlog_row_value_options` variable in the database.
+To enable the connector to consume *UPDATE* events, this variable must be set to a value other than `PARTIAL_JSON`.
 
 .Prerequisites
 
@@ -2544,7 +2549,8 @@ Check `binlog_row_value_options` variable, and make sure that value is **not** s
 {context}> show global variables where variable_name = 'binlog_row_value_options';
 ----
 
-. Result
++
+.Result
 +
 [source,SQL]
 ----
@@ -2615,6 +2621,7 @@ This is the preferred method.
 .Additional resources
 
 * xref:descriptions-of-debezium-{context}-connector-configuration-properties[]
+endif::product[]
 end::deployment[]
 
 
@@ -2895,6 +2902,7 @@ The service records the configuration and starts one connector task that perform
 * Connects to the {connector-name} database.
 * Reads change-data tables for tables in capture mode.
 * Streams change event records to Kafka topics.
+endif::community[]
 end::connector-config-example[]
 
 
@@ -3002,7 +3010,7 @@ Details are in the following sections:
 * xref:{context}-purges-binlog-files-used-by-debezium[]
 
 endif::product[]
-
+////
 [id="debezium-{context}-connector-configuration-and-startup-errors"]
 Configuration and startup errors::
 
@@ -3062,3 +3070,4 @@ If the snapshot is disabled, the connector fails with an error.
 
 See xref:{context}-snapshots[snapshots] for details about how {connector-name} connectors perform initial snapshots.
 end::wrong-things[]
+////
