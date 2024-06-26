@@ -347,7 +347,18 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
          *
          * Additionally, the signaling collection has to reside under {@link MongoDbConnectorConfig#CAPTURE_TARGET}
          */
-        DATABASE("database");
+        DATABASE("database"),
+
+        /**
+         * Capture changes from collection.
+         * <p>
+         * The MongoDB user used by debezium needs the following permissions/roles
+         * <ul>
+         *     <li>read role for collection specified by {@link MongoDbConnectorConfig#CAPTURE_TARGET}</li>
+         * </ul>
+         *
+         */
+        COLLECTION("collection");
 
         private final String value;
 
@@ -902,7 +913,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withDescription("The scope of captured changes. "
                     + "Options include: "
                     + "'deployment' (the default) to capture changes from the entire MongoDB deployment; "
-                    + "'database' to capture changes from a specific MongoDB database");
+                    + "'database' to capture changes from a specific MongoDB database"
+                    + "'collection' to capture changes from a specific MongoDB collection");
 
     public static final Field CAPTURE_TARGET = Field.create("capture.target")
             .withDisplayName("Capture target")
@@ -911,7 +923,9 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 4))
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
-            .withDescription("Name of captured database for " + CAPTURE_SCOPE.name() + "=" + CaptureScope.DATABASE.value);
+            .withDescription("The target to capture changes from. "
+                    + "For 'database' scope, this is the database name. "
+                    + "For 'collection' scope, this is the collection name as <databaseName>.<collectionName>.");
 
     protected static final Field TASK_ID = Field.create("mongodb.task.id")
             .withDescription("Internal use only")
