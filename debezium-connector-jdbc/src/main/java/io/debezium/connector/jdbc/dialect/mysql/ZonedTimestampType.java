@@ -7,9 +7,6 @@ package io.debezium.connector.jdbc.dialect.mysql;
 
 import java.sql.Types;
 
-import org.apache.kafka.connect.data.Schema;
-
-import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 import io.debezium.connector.jdbc.type.Type;
 import io.debezium.time.ZonedTimestamp;
 
@@ -21,12 +18,6 @@ import io.debezium.time.ZonedTimestamp;
 public class ZonedTimestampType extends io.debezium.connector.jdbc.type.debezium.ZonedTimestampType {
 
     public static final ZonedTimestampType INSTANCE = new ZonedTimestampType();
-
-    @Override
-    public String getQueryBinding(ColumnDescriptor column, Schema schema, Object value) {
-
-        return getDialect().getQueryBindingWithValueCast(column, schema, this);
-    }
 
     @Override
     protected int getJdbcBindType() {

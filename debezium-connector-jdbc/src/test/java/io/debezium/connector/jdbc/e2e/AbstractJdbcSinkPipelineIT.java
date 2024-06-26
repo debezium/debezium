@@ -2576,9 +2576,10 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
         final List<String> values = List.of("'-infinity'", "'infinity'");
 
         List<ZonedDateTime> expectedValues = List.of();
-        if (sink.getType().is(SinkType.POSTGRES)) {
+        if (sink.getType().is(SinkType.SQLSERVER)) {
 
-            // expectedValues = values;
+            expectedValues = List.of(ZonedDateTime.of(1, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC),
+                    ZonedDateTime.of(9999, 12, 31, 23, 59, 59, 0, ZoneOffset.UTC));
         }
         else if (sink.getType().is(SinkType.MYSQL)) {
             expectedValues = List.of(ZonedDateTime.of(1970, 1, 1, 0, 0, 1, 0, ZoneOffset.UTC),

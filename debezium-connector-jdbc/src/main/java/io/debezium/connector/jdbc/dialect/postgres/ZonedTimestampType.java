@@ -8,7 +8,10 @@ package io.debezium.connector.jdbc.dialect.postgres;
 import java.sql.Types;
 import java.util.List;
 
+import org.apache.kafka.connect.data.Schema;
+
 import io.debezium.connector.jdbc.ValueBindDescriptor;
+import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 import io.debezium.connector.jdbc.type.Type;
 import io.debezium.time.ZonedTimestamp;
 
@@ -20,6 +23,16 @@ import io.debezium.time.ZonedTimestamp;
 public class ZonedTimestampType extends io.debezium.connector.jdbc.type.debezium.ZonedTimestampType {
 
     public static final ZonedTimestampType INSTANCE = new ZonedTimestampType();
+
+    @Override
+    public String getQueryBinding(ColumnDescriptor column, Schema schema, Object value) {
+
+        if (POSITIVE_INFINITY.equals(value) || NEGATIVE_INFINITY.equals(value)) {
+            return "cast(? as timestamptz)";
+        }
+
+        return super.getQueryBinding(column, schema, value);
+    }
 
     @Override
     protected List<ValueBindDescriptor> infinityTimestampValue(int index, Object value) {
