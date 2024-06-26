@@ -5,8 +5,6 @@
  */
 package io.debezium.connector.jdbc.dialect;
 
-import static io.debezium.connector.jdbc.JdbcSinkConnectorConfig.ColumnTypeResolutionMode;
-
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
@@ -511,29 +509,15 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
         // for us as we were relying on Hibernate for column type resolution, and now column types
         // are being resolved differently. This code aims to retain the Debezium 2.x resolution
         // functionality.
-        if (ColumnTypeResolutionMode.LEGACY.equals(connectorConfig.getColumnTypeResolutionMode())) {
-            switch (jdbcType) {
-                case Types.VARCHAR:
-                    return getTypeName(Types.LONGVARCHAR);
-                case Types.NVARCHAR:
-                    return getTypeName(Types.LONGNVARCHAR);
-                case Types.VARBINARY:
-                    return getTypeName(Types.LONGVARBINARY);
-                default:
-                    return ddlTypeRegistry.getTypeName(jdbcType, dialect);
-            }
-        }
-        else {
-            switch (jdbcType) {
-                case Types.VARCHAR:
-                    return getTypeName(jdbcType, dialect.getMaxVarcharLength());
-                case Types.NVARCHAR:
-                    return getTypeName(jdbcType, dialect.getMaxNVarcharLength());
-                case Types.VARBINARY:
-                    return getTypeName(jdbcType, dialect.getMaxVarbinaryLength());
-                default:
-                    return ddlTypeRegistry.getTypeName(jdbcType, dialect);
-            }
+        switch (jdbcType) {
+            case Types.VARCHAR:
+                return getTypeName(Types.LONGVARCHAR);
+            case Types.NVARCHAR:
+                return getTypeName(Types.LONGNVARCHAR);
+            case Types.VARBINARY:
+                return getTypeName(Types.LONGVARBINARY);
+            default:
+                return ddlTypeRegistry.getTypeName(jdbcType, dialect);
         }
     }
 
