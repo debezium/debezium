@@ -220,7 +220,7 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
         final SinkRecord createInfinityRecord = factory.createRecordWithSchemaValue(topicName, (byte) 1,
                 List.of("timestamp_infinity-", "timestamp_infinity+", "range_with_infinity"),
                 List.of(zonedTimestampSchema, zonedTimestampSchema, rangeSchema),
-                Arrays.asList(new Object[]{ "-infinity", "+infinity", "[2010-01-01 14:30, +infinity)" }));
+                Arrays.asList(new Object[]{ "-infinity", "infinity", "[2010-01-01 14:30, infinity)" }));
         consume(createInfinityRecord);
 
         final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName(createInfinityRecord));
@@ -230,7 +230,7 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
 
         getSink().assertColumnType(tableAssert, "timestamp_infinity-", Timestamp.class, new Timestamp(PGStatement.DATE_NEGATIVE_INFINITY));
         getSink().assertColumnType(tableAssert, "timestamp_infinity+", Timestamp.class, new Timestamp(PGStatement.DATE_POSITIVE_INFINITY));
-        getSink().assertColumnType(tableAssert, "range_with_infinity", String.class, "[2010-01-01 14:30, +infinity)");
+        getSink().assertColumnType(tableAssert, "range_with_infinity", String.class, "[2010-01-01 14:30, infinity)");
 
     }
 

@@ -142,6 +142,16 @@ public class MySqlDatabaseDialect extends GeneralDatabaseDialect {
     }
 
     @Override
+    public String getTimestampPositiveInfinityValue() {
+        return "2038-01-19T03:14:07+00:00";
+    }
+
+    @Override
+    public String getTimestampNegativeInfinityValue() {
+        return "1970-01-01T00:00:01+00:00";
+    }
+
+    @Override
     public String getAlterTablePrefix() {
         return "ADD COLUMN (";
     }
