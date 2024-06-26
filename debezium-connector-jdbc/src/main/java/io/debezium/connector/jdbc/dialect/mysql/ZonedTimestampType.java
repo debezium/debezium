@@ -6,13 +6,10 @@
 package io.debezium.connector.jdbc.dialect.mysql;
 
 import java.sql.Types;
-import java.time.ZonedDateTime;
-import java.util.List;
 
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.errors.ConnectException;
 
-import io.debezium.connector.jdbc.ValueBindDescriptor;
+import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 import io.debezium.connector.jdbc.type.Type;
 import io.debezium.time.ZonedTimestamp;
 
@@ -26,19 +23,13 @@ public class ZonedTimestampType extends io.debezium.connector.jdbc.type.debezium
     public static final ZonedTimestampType INSTANCE = new ZonedTimestampType();
 
     @Override
-    public List<ValueBindDescriptor> bind(int index, Schema schema, Object value) {
+    public String getQueryBinding(ColumnDescriptor column, Schema schema, Object value) {
 
-        if (value == null) {
-            return List.of(new ValueBindDescriptor(index, null));
-        }
-        if (value instanceof String) {
+        return getDialect().getQueryBindingWithValueCast(column, schema, this);
+    }
 
-            final ZonedDateTime zdt = ZonedDateTime.parse((String) value, ZonedTimestamp.FORMATTER).withZoneSameInstant(getDatabaseTimeZone().toZoneId());
-
-            return List.of(new ValueBindDescriptor(index, zdt.toOffsetDateTime(), Types.TIMESTAMP)); // TIMESTAMP_WITH_TIMEZONE not supported
-        }
-
-        throw new ConnectException(String.format("Unexpected %s value '%s' with type '%s'", getClass().getSimpleName(),
-                value, value.getClass().getName()));
+    @Override
+    protected int getJdbcBindType() {
+        return Types.TIMESTAMP; // TIMESTAMP_WITH_TIMEZONE not supported
     }
 }

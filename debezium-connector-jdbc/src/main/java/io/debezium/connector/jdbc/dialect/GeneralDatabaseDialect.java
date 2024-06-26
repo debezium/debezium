@@ -10,6 +10,8 @@ import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.sql.Types;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
@@ -524,6 +526,16 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
     @Override
     public String getTypeName(int jdbcType, Size size) {
         return ddlTypeRegistry.getTypeName(jdbcType, size);
+    }
+
+    @Override
+    public String getTimestampPositiveInfinityValue() {
+        return Timestamp.from(Instant.MAX).toString();
+    }
+
+    @Override
+    public String getTimestampNegativeInfinityValue() {
+        return Timestamp.from(Instant.MIN).toString();
     }
 
     @Override
