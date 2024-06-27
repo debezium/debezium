@@ -152,6 +152,16 @@ public class OracleDatabaseDialect extends GeneralDatabaseDialect {
     }
 
     @Override
+    public String getTimestampPositiveInfinityValue() {
+        return "9999-12-31T23:59:59+00:00";
+    }
+
+    @Override
+    public String getTimestampNegativeInfinityValue() {
+        return "-4712-01-01T00:00:00+00:00";
+    }
+
+    @Override
     protected String resolveColumnNameFromField(String fieldName) {
         String columnName = super.resolveColumnNameFromField(fieldName);
         if (!getConfig().isQuoteIdentifiers()) {
