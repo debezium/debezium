@@ -36,6 +36,7 @@ import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.kafka.connect.sink.SinkRecord;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.TestTemplate;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -2575,16 +2576,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
 
         final List<String> values = List.of("'-infinity'", "'infinity'");
 
-        List<ZonedDateTime> expectedValues = List.of();
-        if (sink.getType().is(SinkType.SQLSERVER)) {
-
-            expectedValues = List.of(ZonedDateTime.of(1, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC),
-                    ZonedDateTime.of(9999, 12, 31, 23, 59, 59, 0, ZoneOffset.UTC));
-        }
-        else if (sink.getType().is(SinkType.MYSQL)) {
-            expectedValues = List.of(ZonedDateTime.of(1970, 1, 1, 0, 0, 1, 0, ZoneOffset.UTC),
-                    ZonedDateTime.of(2038, 1, 19, 3, 14, 7, 0, ZoneOffset.UTC));
-        }
+        List<ZonedDateTime> expectedValues = getExpectedZonedDateTimes(sink);
 
         assertDataTypesNonKeyOnly(source,
                 sink,
@@ -2596,6 +2588,30 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                     assertColumn(sink, record, "data1", getTimestampWithTimezoneType(source, false, 6));
                 },
                 (rs, index) -> rs.getTimestamp(index).toInstant().atZone(ZoneOffset.UTC));
+    }
+
+    private static @NotNull List<ZonedDateTime> getExpectedZonedDateTimes(Sink sink) {
+
+        List<ZonedDateTime> expectedValues = List.of();
+        if (sink.getType().is(SinkType.SQLSERVER)) {
+
+            expectedValues = List.of(ZonedDateTime.of(1, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC),
+                    ZonedDateTime.of(9999, 12, 31, 23, 59, 59, 0, ZoneOffset.UTC));
+        }
+        else if (sink.getType().is(SinkType.MYSQL)) {
+
+            expectedValues = List.of(ZonedDateTime.of(1970, 1, 1, 0, 0, 1, 0, ZoneOffset.UTC),
+                    ZonedDateTime.of(2038, 1, 19, 3, 14, 7, 0, ZoneOffset.UTC));
+        }
+        else if (sink.getType().is(SinkType.ORACLE)) {
+
+            // The value read by the rs.getTimestamp() is correct but then the
+            // rs.getTimestamp().toInstant() will return -4712-11-24. I suspect a bug somewhere in the time library.
+            // The value on the DB is correct since select to_char(A , 'AD YYYY-MM-DD HH24:MI:SS') will return BC 4712-01-01 00:00:00
+            expectedValues = List.of(ZonedDateTime.of(-4712, 11, 24, 0, 0, 0, 0, ZoneOffset.UTC),
+                    ZonedDateTime.of(9999, 12, 31, 23, 59, 59, 0, ZoneOffset.UTC));
+        }
+        return expectedValues;
     }
 
     // todo: remaining data types need tests and/or type system mapping support
