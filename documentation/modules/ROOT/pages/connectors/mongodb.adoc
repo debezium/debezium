@@ -1760,7 +1760,12 @@ To support {link-prefix}:{link-signalling}#[{prodname} signaling], if you set `c
 +
 [NOTE]
 ====
-When `capture.scope` is set to `collection`, the connector does not support {link-prefix}:{link-signalling}#[{prodname} signaling].
+This feature is currently in incubating state, i.e. exact semantics, configuration options etc. may change in future revisions, based on the feedback we receive.
+====
++
+[WARNING]
+====
+When `capture.scope` is set to `collection`, the connector does not support {link-prefix}:{link-signalling}#[{prodname} signaling] via the `source` channel which is enabled by default. Due to this limitation the connector also does not support incremental snapshots.
 ====
 
 |[[mongodb-property-capture-target]]<<mongodb-property-capture-target, `+capture.target+`>>
