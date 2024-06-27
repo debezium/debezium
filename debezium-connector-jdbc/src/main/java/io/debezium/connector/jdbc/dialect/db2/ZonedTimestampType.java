@@ -9,12 +9,7 @@ import java.sql.Timestamp;
 import java.time.ZonedDateTime;
 import java.util.List;
 
-import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.errors.ConnectException;
-
 import io.debezium.connector.jdbc.ValueBindDescriptor;
-import io.debezium.connector.jdbc.dialect.DatabaseDialect;
-import io.debezium.connector.jdbc.type.AbstractTimestampType;
 import io.debezium.connector.jdbc.type.Type;
 import io.debezium.time.ZonedTimestamp;
 
@@ -23,34 +18,28 @@ import io.debezium.time.ZonedTimestamp;
  *
  * @author Chris Cranford
  */
-public class ZonedTimestampType extends AbstractTimestampType {
+public class ZonedTimestampType extends io.debezium.connector.jdbc.type.debezium.ZonedTimestampType {
 
     public static final ZonedTimestampType INSTANCE = new ZonedTimestampType();
 
-    @Override
-    public String[] getRegistrationKeys() {
-        return new String[]{ ZonedTimestamp.SCHEMA_NAME };
+    protected List<ValueBindDescriptor> infinityTimestampValue(int index, Object value) {
+        final ZonedDateTime zdt;
+
+        if (POSITIVE_INFINITY.equals(value)) {
+            zdt = ZonedDateTime.parse(getDialect().getTimestampPositiveInfinityValue(), ZonedTimestamp.FORMATTER);
+        }
+        else {
+            zdt = ZonedDateTime.parse(getDialect().getTimestampNegativeInfinityValue(), ZonedTimestamp.FORMATTER);
+        }
+
+        return List.of(new ValueBindDescriptor(index, Timestamp.valueOf((zdt.toLocalDateTime()))));
     }
 
     @Override
-    public String getDefaultValueBinding(DatabaseDialect dialect, Schema schema, Object value) {
-        return dialect.getFormattedTimestampWithTimeZone((String) value);
-    }
+    protected List<ValueBindDescriptor> normalTimestampValue(int index, Object value) {
 
-    @Override
-    public List<ValueBindDescriptor> bind(int index, Schema schema, Object value) {
+        final ZonedDateTime zdt = ZonedDateTime.parse((String) value, ZonedTimestamp.FORMATTER).withZoneSameInstant(getDatabaseTimeZone().toZoneId());
 
-        if (value == null) {
-            return List.of(new ValueBindDescriptor(index, null));
-        }
-        if (value instanceof String) {
-
-            final ZonedDateTime zdt = ZonedDateTime.parse((String) value, ZonedTimestamp.FORMATTER).withZoneSameInstant(getDatabaseTimeZone().toZoneId());
-
-            return List.of(new ValueBindDescriptor(index, Timestamp.from(zdt.toInstant())));
-        }
-
-        throw new ConnectException(String.format("Unexpected %s value '%s' with type '%s'", getClass().getSimpleName(),
-                value, value.getClass().getName()));
+        return List.of(new ValueBindDescriptor(index, Timestamp.from(zdt.toInstant())));
     }
 }
