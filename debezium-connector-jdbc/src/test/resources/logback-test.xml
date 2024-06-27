@@ -28,4 +28,12 @@
         <appender-ref ref="CONSOLE" />
     </logger>
 
+    <!-- To enable Hibernate loggin set lebel to debug -->
+    <logger name="org.hibernate.SQL" level="off">
+        <appender-ref ref="CONSOLE" />
+    </logger>
+    <!-- To enable Hibernate loggin set lebel to trace -->
+    <logger name="org.hibernate.type" level="off">
+        <appender-ref ref="CONSOLE" />
+    </logger>
 </configuration>

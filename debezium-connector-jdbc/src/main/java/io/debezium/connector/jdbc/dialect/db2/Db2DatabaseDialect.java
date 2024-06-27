@@ -129,6 +129,16 @@ public class Db2DatabaseDialect extends GeneralDatabaseDialect {
     }
 
     @Override
+    public String getTimestampPositiveInfinityValue() {
+        return "9999-12-31T23:59:59+00:00";
+    }
+
+    @Override
+    public String getTimestampNegativeInfinityValue() {
+        return "0001-01-01T00:00:00+00:00";
+    }
+
+    @Override
     public String getUpsertStatement(TableDescriptor table, SinkRecordDescriptor record) {
         final SqlStatementBuilder builder = new SqlStatementBuilder();
         builder.append("merge into ");
