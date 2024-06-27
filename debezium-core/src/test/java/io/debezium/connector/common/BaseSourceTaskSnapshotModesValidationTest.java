@@ -267,7 +267,7 @@ public class BaseSourceTaskSnapshotModesValidationTest {
         }
 
         @Override
-        protected void resetErrorHandlerRetriesIfNeeded() {
+        protected void resetErrorHandlerRetriesIfNeeded(List<SourceRecord> records) {
             // do nothing as we don't have a coordinator mocked
         }
 
