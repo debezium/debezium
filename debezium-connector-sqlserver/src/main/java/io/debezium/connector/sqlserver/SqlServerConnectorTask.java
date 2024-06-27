@@ -182,7 +182,7 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
     }
 
     @Override
-    protected void resetErrorHandlerRetriesIfNeeded() {
+    protected void resetErrorHandlerRetriesIfNeeded(List<SourceRecord> records) {
         // Reset the retries if all partitions have streamed without exceptions at least once after a restart
         if (coordinator.getErrorHandler().getRetries() > 0 && ((SqlServerChangeEventSourceCoordinator) coordinator).firstStreamingIterationCompletedSuccessfully()) {
             coordinator.getErrorHandler().resetRetries();

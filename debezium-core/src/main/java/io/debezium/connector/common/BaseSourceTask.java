@@ -289,7 +289,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             final List<SourceRecord> records = doPoll();
             logStatistics(records);
 
-            resetErrorHandlerRetriesIfNeeded();
+            resetErrorHandlerRetriesIfNeeded(records);
 
             return records;
         }
@@ -340,12 +340,12 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
      * Should be called to reset the error handler's retry counter upon a successful poll or when known
      * that the connector task has recovered from a previous failure state.
      */
-    protected void resetErrorHandlerRetriesIfNeeded() {
+    protected void resetErrorHandlerRetriesIfNeeded(List<SourceRecord> records) {
         // When a connector throws a retriable error, the task is not re-created and instead the previous
         // error handler is passed into the new error handler, propagating the retry count. This method
-        // allows resetting that counter when a successful poll iteration step happens so that when a
+        // allows resetting that counter when a successful poll iteration step contains new records  so that when a
         // future failure is thrown, the maximum retry count can be utilized.
-        if (coordinator.getErrorHandler().getRetries() > 0) {
+        if (!records.isEmpty() && coordinator.getErrorHandler().getRetries() > 0) {
             coordinator.getErrorHandler().resetRetries();
         }
     }
