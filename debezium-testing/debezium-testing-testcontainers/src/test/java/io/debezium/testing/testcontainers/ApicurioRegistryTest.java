@@ -63,8 +63,7 @@ public class ApicurioRegistryTest {
 
     private static final ApicurioRegistryContainer apicurioContainer = new ApicurioRegistryContainer().withNetwork(network);
 
-    private static final KafkaContainer kafkaContainer = new KafkaContainer()
-            .withNetwork(network);
+    private static final KafkaContainer kafkaContainer = DebeziumKafkaContainer.defaultKRaftContainer(network);
 
     public static final PostgreSQLContainer<?> postgresContainer = new PostgreSQLContainer<>(ImageNames.POSTGRES_DOCKER_IMAGE_NAME)
             .withNetwork(network)
