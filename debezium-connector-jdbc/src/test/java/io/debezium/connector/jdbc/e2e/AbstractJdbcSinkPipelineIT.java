@@ -2593,7 +2593,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
     private static @NotNull List<ZonedDateTime> getExpectedZonedDateTimes(Sink sink) {
 
         List<ZonedDateTime> expectedValues = List.of();
-        if (sink.getType().is(SinkType.SQLSERVER)) {
+        if (sink.getType().is(SinkType.SQLSERVER) && sink.getType().is(SinkType.DB2)) {
 
             expectedValues = List.of(ZonedDateTime.of(1, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC),
                     ZonedDateTime.of(9999, 12, 31, 23, 59, 59, 0, ZoneOffset.UTC));
