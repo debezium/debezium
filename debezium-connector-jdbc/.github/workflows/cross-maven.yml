@@ -57,7 +57,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: 17
+          java-version: 21
       - name: Cache Maven packages
         uses: actions/cache@v4
         id: cache
