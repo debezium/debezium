@@ -2,6 +2,54 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.7.0.Final
+June 28th 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12429396)
+
+### New features since 2.7.0.Beta2
+
+* Suport collection scoped streaming [DBZ-7760](https://issues.redhat.com/browse/DBZ-7760)
+* Allow stoping DS instance by scaling to zero via annotation [DBZ-7953](https://issues.redhat.com/browse/DBZ-7953)
+* Support heartbeat events in vitess-connector [DBZ-7962](https://issues.redhat.com/browse/DBZ-7962)
+
+
+### Breaking changes since 2.7.0.Beta2
+
+None
+
+
+### Fixes since 2.7.0.Beta2
+
+* Unable to use resume token of some documents with composite IDs [DBZ-6522](https://issues.redhat.com/browse/DBZ-6522)
+* Quarkus generates VSC kubernetes annotations pointing to a fork [DBZ-7415](https://issues.redhat.com/browse/DBZ-7415)
+* MongoDB documentation still mentions replica_set connection mode  [DBZ-7862](https://issues.redhat.com/browse/DBZ-7862)
+* Clarify documentation for log.mining.archive.destination.name Oracle configuration property [DBZ-7939](https://issues.redhat.com/browse/DBZ-7939)
+* Ad-hoc snapshot raises ORA-00911 when table name uses non-standard characters requiring quotations [DBZ-7942](https://issues.redhat.com/browse/DBZ-7942)
+* Exclude signaling data collection from the snapshot process [DBZ-7944](https://issues.redhat.com/browse/DBZ-7944)
+* JDBC sink time tests fail due to increased precision with SQL Server [DBZ-7949](https://issues.redhat.com/browse/DBZ-7949)
+* Commit is not called after DDLs in JDBC stores [DBZ-7951](https://issues.redhat.com/browse/DBZ-7951)
+* Database case sensitivity can lead to NullPointerException on column lookups [DBZ-7956](https://issues.redhat.com/browse/DBZ-7956)
+* Debezium ibmi connector drops journal entries [DBZ-7957](https://issues.redhat.com/browse/DBZ-7957)
+* Error counter reset in poll() can cause infinite retries [DBZ-7964](https://issues.redhat.com/browse/DBZ-7964)
+* Oracle DDL parser fails using NOMONITORING clause [DBZ-7967](https://issues.redhat.com/browse/DBZ-7967)
+* Invalid default DSimage used for nighly/snapshot operator version [DBZ-7970](https://issues.redhat.com/browse/DBZ-7970)
+* Mongo Oversized Document FAQ documentation issue [DBZ-7987](https://issues.redhat.com/browse/DBZ-7987)
+* Cassandra connector does not work with 2.6.1 Server [DBZ-7988](https://issues.redhat.com/browse/DBZ-7988)
+* Testcontainers tests fails on newer versions of Docker [DBZ-7986](https://issues.redhat.com/browse/DBZ-7986)
+
+
+### Other changes since 2.7.0.Beta2
+
+* Document the use of the "source" prefix usage for table name formats [DBZ-6618](https://issues.redhat.com/browse/DBZ-6618)
+* Remove dependency on MySQL driver, add custom CharacterSet Mapper [DBZ-7783](https://issues.redhat.com/browse/DBZ-7783)
+* Rebase website-builder image on Ruby 3.2 [DBZ-7916](https://issues.redhat.com/browse/DBZ-7916)
+* Warn about incompatible usage of read.only property for PostgreSQL  [DBZ-7947](https://issues.redhat.com/browse/DBZ-7947)
+* Run JDBC sink tests for any relational connector pull requests [DBZ-7948](https://issues.redhat.com/browse/DBZ-7948)
+* Bump Quarkus to 3.12.0 for Quarkus Outbox Extension [DBZ-7961](https://issues.redhat.com/browse/DBZ-7961)
+* Bump Hibernate dependency to 6.4.8.Final [DBZ-7969](https://issues.redhat.com/browse/DBZ-7969)
+* Deprecated EmbeddedEngine [DBZ-7976](https://issues.redhat.com/browse/DBZ-7976)
+
+
+
 ## 2.7.0.Beta2
 June 13rd 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12429023)
 
