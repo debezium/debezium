@@ -1271,8 +1271,17 @@ public class JdbcConnection implements AutoCloseable {
                     continue;
                 }
 
+                // Get the real position of the columns
+                Optional<Map<String, Integer>> columnsPosition = getColumnsPosition(catalogName, schemaName, tableName);
+
                 // add all included columns
                 readTableColumn(columnMetadata, tableId, columnFilter).ifPresent(column -> {
+                    columnsPosition.ifPresent(map -> {
+                        Integer realPos = map.get(column.name());
+                        if (null != realPos) {
+                            column.position(realPos);
+                        }
+                    });
                     columnsByTable.computeIfAbsent(tableId, t -> new ArrayList<>())
                             .add(column.create());
                 });
@@ -1668,5 +1677,9 @@ public class JdbcConnection implements AutoCloseable {
             }
         });
         return results;
+    }
+
+    protected Optional<Map<String, Integer>> getColumnsPosition(String catalogName, String schemaName, String tableName) throws SQLException {
+        return Optional.empty();
     }
 }
