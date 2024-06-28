@@ -31,7 +31,7 @@
         <!-- Set formatting default goals -->
         <format.formatter.goal>format</format.formatter.goal>
         <format.imports.goal>sort</format.imports.goal>
-        <format.imports.source.compliance>15</format.imports.source.compliance>
+        <format.imports.source.compliance>${debezium.java.source}</format.imports.source.compliance>
 
         <!-- No debug options by default -->
         <debug.argline />
