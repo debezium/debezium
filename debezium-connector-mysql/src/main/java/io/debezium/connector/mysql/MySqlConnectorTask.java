@@ -198,6 +198,25 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
         NotificationService<MySqlPartition, MySqlOffsetContext> notificationService = new NotificationService<>(getNotificationChannels(),
                 connectorConfig, SchemaFactory.get(), dispatcher::enqueueNotification);
 
+        final MysqlEventDispatcher<MySqlPartition, TableId> mysqlEventDispatcher = new MysqlEventDispatcher<>(
+                connectorConfig,
+                topicNamingStrategy,
+                schema,
+                queue,
+                connectorConfig.getTableFilters().dataCollectionFilter(),
+                DataChangeEvent::new,
+                null,
+                metadataProvider,
+                connectorConfig.createHeartbeat(
+                        topicNamingStrategy,
+                        schemaNameAdjuster,
+                        () -> new MySqlConnection(
+                                new MySqlConnectionConfiguration(heartbeatConfig),
+                                MySqlFieldReaderResolver.resolve(connectorConfig)),
+                        new BinlogHeartbeatErrorHandler()),
+                schemaNameAdjuster,
+                signalProcessor
+        );
         ChangeEventSourceCoordinator<MySqlPartition, MySqlOffsetContext> coordinator = new ChangeEventSourceCoordinator<>(
                 previousOffsets,
                 errorHandler,
@@ -207,7 +226,7 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
                         connectorConfig,
                         connectionFactory,
                         errorHandler,
-                        dispatcher,
+                        mysqlEventDispatcher,
                         clock,
                         schema,
                         taskContext,

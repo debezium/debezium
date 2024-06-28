@@ -69,10 +69,10 @@ public abstract class BinlogSourceTask<P extends Partition, O extends OffsetCont
                         + "required for this connector to work properly. Change the database configuration to use a "
                         + "binlog_format=ROW and restart the connector.");
             }
-            if (!connection.isBinlogRowImageFull()) {
+            if (!connection.isBinlogRowImageFullOrNoblob()) {
                 throw new DebeziumException("The database server is not configured to use a FULL binlog_row_image, which is "
                         + "required for this connector to work properly. Change the database configuration to use a "
-                        + "binlog_row_image=FULL and restart the connector.");
+                        + "binlog_row_image=FULL|NOBLOB and restart the connector.");
             }
         }
     }
