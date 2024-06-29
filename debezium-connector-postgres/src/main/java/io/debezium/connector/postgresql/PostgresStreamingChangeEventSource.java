@@ -43,12 +43,6 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
 
     private static final String KEEP_ALIVE_THREAD_NAME = "keep-alive";
 
-    /**
-     * Number of received events without sending anything to Kafka which will
-     * trigger a "WAL backlog growing" warning.
-     */
-    private static final int GROWING_WAL_WARNING_LOG_INTERVAL = 10_000;
-
     private static final Logger LOGGER = LoggerFactory.getLogger(PostgresStreamingChangeEventSource.class);
 
     // PGOUTPUT decoder sends the messages with larger time gaps than other decoders
@@ -401,7 +395,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
             numberOfEventsSinceLastEventSentOrWalGrowingWarning++;
         }
 
-        if (numberOfEventsSinceLastEventSentOrWalGrowingWarning > GROWING_WAL_WARNING_LOG_INTERVAL && !dispatcher.heartbeatsEnabled()) {
+        if (numberOfEventsSinceLastEventSentOrWalGrowingWarning > connectorConfig.getGrowingWalWarningLogInterval() && !dispatcher.heartbeatsEnabled()) {
             LOGGER.warn("Received {} events which were all filtered out, so no offset could be committed. "
                     + "This prevents the replication slot from acknowledging the processed WAL offsets, "
                     + "causing a growing backlog of non-removeable WAL segments on the database server. "
