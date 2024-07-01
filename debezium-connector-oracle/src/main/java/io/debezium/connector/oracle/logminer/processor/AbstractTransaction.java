@@ -24,6 +24,7 @@ public abstract class AbstractTransaction implements Transaction {
     private final Instant changeTime;
     private final String userName;
     private final Integer redoThreadId;
+    private boolean hasLobEvent;
 
     public AbstractTransaction(String transactionId, Scn startScn, Instant changeTime, String userName, Integer redoThreadId) {
         this.transactionId = transactionId;
@@ -56,6 +57,16 @@ public abstract class AbstractTransaction implements Transaction {
     @Override
     public int getRedoThreadId() {
         return redoThreadId == null ? -1 : redoThreadId;
+    }
+
+    @Override
+    public boolean hasLobEvent() {
+        return hasLobEvent;
+    }
+
+    @Override
+    public void setHasLobEvent() {
+        hasLobEvent = true;
     }
 
     @Override

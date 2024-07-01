@@ -58,6 +58,16 @@ public interface Transaction {
     int getNextEventId();
 
     /**
+     * @return true if at least one event is a LOB type event
+     */
+    boolean hasLobEvent();
+
+    /**
+     * if any LOB event is captured, set flag = true
+     */
+    void setHasLobEvent();
+
+    /**
      * Get the redo thread that the transaction participated on.
      *
      * @return the redo thread number

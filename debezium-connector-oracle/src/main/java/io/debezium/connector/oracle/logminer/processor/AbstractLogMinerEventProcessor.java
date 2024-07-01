@@ -350,6 +350,11 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                 return;
             }
 
+            if (isTransactionUserInExcludeList(row.getUserName())) {
+                LOGGER.debug("Skipping event {} (SCN {}) because user is excluded", row.getEventType(), row.getScn());
+                return;
+            }
+
             // DDL events get filtered inside the DDL handler
             // We do the non-DDL ones here to cover multiple switch handlers in one place.
             if (!EventType.DDL.equals(row.getEventType()) && !tableFilter.isIncluded(row.getTableId())) {
@@ -597,7 +602,9 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         metrics.calculateLagFromSource(row.getChangeTime());
 
         if (transaction != null) {
-            finalizeTransactionCommit(transactionId, commitScn);
+            if (transaction.hasLobEvent()) {
+                cacheRecentlyCommittedTransaction(transactionId, commitScn);
+            }
             cleanupAfterTransactionRemovedFromCache(transaction, false);
             metrics.setActiveTransactionCount(getTransactionCache().size());
         }
@@ -685,12 +692,12 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
     protected abstract Iterator<LogMinerEvent> getTransactionEventIterator(T transaction);
 
     /**
-     * Finalizes the commit of a transaction.
+     * Caches transaction as recently processed.
      *
      * @param transactionId the transaction's unique identifier, should not be {@code null}
      * @param commitScn the transaction's system change number, should not be {@code null}
      */
-    protected abstract void finalizeTransactionCommit(String transactionId, Scn commitScn);
+    protected abstract void cacheRecentlyCommittedTransaction(String transactionId, Scn commitScn);
 
     /**
      * Returns only the first transaction id in the transaction buffer.
@@ -720,14 +727,29 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
     }
 
     /**
+     * Check if user is in excluded list
+     * @param userName  database user name
+     * @return  true if in excluded list
+     */
+    protected boolean isTransactionUserInExcludeList(String userName) {
+        return userName != null && (connectorConfig.getLogMiningUsernameExcludes().contains(userName));
+    }
+
+    /**
      * Handle processing a LogMinerEventRow for a {@code ROLLBACK} event.
      *
      * @param row the result set row
      */
     protected void handleRollback(LogMinerEventRow row) {
-        if (getTransactionCache().containsKey(row.getTransactionId())) {
+        String transactionId = row.getTransactionId();
+        if (getTransactionCache().containsKey(transactionId)) {
             LOGGER.debug("Transaction {} was rolled back.", row.getTransactionId());
-            finalizeTransactionRollback(row.getTransactionId(), row.getScn());
+            boolean hasLobEvent = getTransactionCache().get(transactionId).hasLobEvent();
+            getTransactionCache().remove(transactionId);
+            getAbandonedTransactionsCache().remove(transactionId);
+            if (hasLobEvent) {
+                cacheRecentlyRolledBackTransaction(row.getTransactionId(), row.getScn());
+            }
             metrics.setActiveTransactionCount(getTransactionCache().size());
         }
         else {
@@ -745,7 +767,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
      * @param transactionId the unique transaction identifier, never {@code null}
      * @param rollbackScn the rollback transaction's system change number, never {@code null}
      */
-    protected abstract void finalizeTransactionRollback(String transactionId, Scn rollbackScn);
+    protected abstract void cacheRecentlyRolledBackTransaction(String transactionId, Scn rollbackScn);
 
     /**
      * Handle processing a LogMinerEventRow for a {@code DDL} event.
@@ -1489,6 +1511,14 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
      * @return the minimum system change number, never {@code null} but could be {@link Scn#NULL}.
      */
     protected abstract Scn getTransactionCacheMinimumScn();
+
+    /**
+     * Gets the minimum SCN stored in the transaction cache which belongs to a transaction with LOB event.
+     * @return the minimum system change number of a transaction containing LOB event, never {@code null} but could be {@link Scn#NULL}.
+     */
+    protected Scn getLobTransactionCacheMinimumScn() {
+        return getTransactionCacheMinimumScn();
+    }
 
     /**
      * Get the oldest transaction in the cache.
