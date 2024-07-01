@@ -55,14 +55,24 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>11</maven.compiler.target>
+        <!-- Required Java versions -->
+        <debezium.java.source>21</debezium.java.source>
 
-        <maven.compiler.release>11</maven.compiler.release>
-        <maven.compiler.testRelease>11</maven.compiler.testRelease>
+        <!-- Java version used for connectors and core libraries -->
+        <debezium.java.connector.target>17</debezium.java.connector.target>
+
+        <!-- Java version used for Debezium spcific components - Server, Operator, Outbox -->
+        <debezium.java.specific.target>17</debezium.java.specific.target>
+
+
+        <maven.compiler.source>${debezium.java.source}</maven.compiler.source>
+        <maven.compiler.target>${debezium.java.connector.target}</maven.compiler.target>
+
+        <maven.compiler.release>${debezium.java.connector.target}</maven.compiler.release>
+        <maven.compiler.testRelease>${debezium.java.connector.target}</maven.compiler.testRelease>
 
         <!-- Enforce JDK 11 for building (handled via JBoss parent POM)-->
-        <jdk.min.version>11</jdk.min.version>
+        <jdk.min.version>${debezium.java.source}</jdk.min.version>
 
         <!-- Maven Plugins -->
         <version.compiler.plugin>3.8.1</version.compiler.plugin>
@@ -84,7 +94,7 @@
         <version.surefire.plugin>3.1.2</version.surefire.plugin>
         <version.checkstyle.plugin>3.1.1</version.checkstyle.plugin>
         <version.release.plugin>2.5.3</version.release.plugin>
-        <version.impsort>1.8.0</version.impsort>
+        <version.impsort>1.11.0</version.impsort>
         <version.failsafe.plugin>${version.surefire.plugin}</version.failsafe.plugin>
         <version.checkstyle>10.1</version.checkstyle>
         <version.revapi.plugin>0.11.5</version.revapi.plugin>
