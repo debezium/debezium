@@ -14,7 +14,7 @@ The following table lists the streaming metrics that are available.
 
 |[[connectors-strm-metric-totalnumberofeventsseen_{context}]]<<connectors-strm-metric-totalnumberofeventsseen_{context}, `TotalNumberOfEventsSeen`>>
 |`long`
-|The total number of data change events reported by the source database since the last connector start, or since a metrics reset. 
+|The total number of data change events reported by the source database since the last connector start, or since a metrics reset.
 Represents the data change workload for {prodname} to process.
 
 |[[connectors-strm-metric-totalnumberofcreateeventsseen_{context}]]<<connectors-strm-metric-totalnumberofcreateeventsseen_{context}, `TotalNumberOfCreateEventsSeen`>>
@@ -75,3 +75,50 @@ The values will incorporate any differences between the clocks on the machines w
 |The current volume, in bytes, of records in the queue.
 
 |===
+
+ifdef::MARIADB,MYSQL[]
+The {prodname} {connector-name} connector also provides the following additional streaming metrics:
+
+.Descriptions of additional {connector-name} streaming metrics
+[cols="3,2,5",options="header"]
+|===
+|Attribute |Type |Description
+
+|[[binlog-filename]]<<binlog-filename,`+BinlogFilename+`>>
+|`string`
+|The name of the binlog file that the connector has most recently read.
+
+|[[binlog-position]]<<binlog-position,`+BinlogPosition+`>>
+|`long`
+|The most recent position (in bytes) within the binlog that the connector has read.
+
+|[[is-gtid-mode-enabled]]<<is-gtid-mode-enabled,`+IsGtidModeEnabled+`>>
+|`boolean`
+|Flag that denotes whether the connector is currently tracking GTIDs from MariaDB server.
+
+|[[gtid-set]]<<gtid-set,`+GtidSet+`>>
+|`string`
+|The string representation of the most recent GTID set processed by the connector when reading the binlog.
+
+|[[number-of-skipped-events]]<<number-of-skipped-events,`+NumberOfSkippedEvents+`>>
+|`long`
+|The number of events that have been skipped by the MariaDB connector. Typically events are skipped due to a malformed or unparseable event from MariaDB's binlog.
+
+|[[number-of-disconnects]]<<number-of-disconnects,`+NumberOfDisconnects+`>>
+|`long`
+|The number of disconnects by the MariaDB connector.
+
+|[[number-of-rolled-back-transactions]]<<number-of-rolled-back-transactions,`+NumberOfRolledBackTransactions+`>>
+|`long`
+|The number of processed transactions that were rolled back and not streamed.
+
+|[[number-of-not-well-formed-transactions]]<<number-of-not-well-formed-transactions,`+NumberOfNotWellFormedTransactions+`>>
+|`long`
+|The number of transactions that have not conformed to the expected protocol of `BEGIN` + `COMMIT`/`ROLLBACK`. This value should be `0` under normal conditions.
+
+|[[number-of-large-transactions]]<<number-of-large-transactions,`+NumberOfLargeTransactions+`>>
+|`long`
+|The number of transactions that have not fit into the look-ahead buffer. For optimal performance, this value should be significantly smaller than `NumberOfCommittedTransactions` and `NumberOfRolledBackTransactions`.
+
+|===
+endif::MARIADB,MYSQL[]
