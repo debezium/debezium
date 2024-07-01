@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.oracle;
 
+import java.io.Serializable;
 import java.math.BigInteger;
 import java.util.Objects;
 
@@ -13,7 +14,9 @@ import java.util.Objects;
  *
  * @author Chris Cranford
  */
-public class Scn implements Comparable<Scn> {
+public class Scn implements Comparable<Scn>, Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     /**
      * Represents an Scn that implies the maximum possible value of an SCN, useful as a placeholder.
