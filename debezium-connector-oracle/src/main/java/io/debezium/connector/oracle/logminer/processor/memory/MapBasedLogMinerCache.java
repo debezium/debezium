@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
@@ -76,9 +77,9 @@ public class MapBasedLogMinerCache<K, V> implements LogMinerCache<K, V> {
     }
 
     @Override
-    public Stream<Entry<K, V>> stream() {
-        return map.entrySet().stream()
-                .map(e -> new LogMinerCache.Entry<>(e.getKey(), e.getValue()));
+    public void stream(Consumer<Stream<Entry<K, V>>> streamConsumer) {
+        streamConsumer.accept(map.entrySet().stream()
+                .map(e -> new LogMinerCache.Entry<>(e.getKey(), e.getValue())));
     }
 
     @Override

@@ -173,8 +173,14 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
 
     @Override
     protected String getFirstActiveTransactionKey() {
-        final Iterator<String> keyIterator = transactionCache.keys().iterator();
-        return keyIterator.hasNext() ? keyIterator.next() : null;
+        AtomicReference<String> result = new AtomicReference<>();
+        transactionCache.keys(keys -> {
+            Iterator<String> iterator = keys.iterator();
+            if (iterator.hasNext()) {
+                result.set(iterator.next());
+            }
+        });
+        return result.get();
     }
 
     @Override
@@ -279,10 +285,13 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
 
     @Override
     protected Scn getTransactionCacheMinimumScn() {
-        return transactionCache.values()
-                .map(MemoryTransaction::getStartScn)
-                .min(Scn::compareTo)
-                .orElse(Scn.NULL);
+        AtomicReference<Scn> result = new AtomicReference<>();
+        transactionCache.values(stream -> {
+            result.set(stream.map(MemoryTransaction::getStartScn)
+                    .min(Scn::compareTo)
+                    .orElse(Scn.NULL));
+        });
+        return result.get();
     }
 
     // TODO: extend cache processor?

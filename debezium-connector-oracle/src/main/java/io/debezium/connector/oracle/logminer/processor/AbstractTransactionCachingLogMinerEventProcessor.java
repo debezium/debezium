@@ -16,7 +16,6 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -73,15 +72,15 @@ public abstract class AbstractTransactionCachingLogMinerEventProcessor<T extends
     }
 
     protected void reCreateInMemoryCache() {
-        try (Stream<String> trStream = getTransactionCache().keys()) {
+        getTransactionCache().keys(trStream -> {
             trStream.forEach(tr -> {
-                try (Stream<String> eventStream = getEventCache().keys()) {
+                getEventCache().keys(eventStream -> {
                     int count = (int) eventStream.filter(e -> e.startsWith(tr + "-")).count();
                     LOGGER.info("Re-creating in memory cache of event count for transaction '" + tr + "'. No of events found: " + count);
                     inMemoryPendingTransactionsCache.initKey(tr, count);
-                }
+                });
             });
-        }
+        });
     }
 
     /**
@@ -104,9 +103,9 @@ public abstract class AbstractTransactionCachingLogMinerEventProcessor<T extends
         LOGGER.info("\tSchema Changes      : {}", getSchemaChangesCache().size());
         LOGGER.info("\tEvents              : {}", getEventCache().size());
         if (!getEventCache().isEmpty() && LOGGER.isDebugEnabled()) {
-            try (Stream<String> stream = getEventCache().keys()) {
+            getEventCache().keys(stream -> {
                 stream.forEach(eventKey -> LOGGER.debug("\t\tFound Key: {}", eventKey));
-            }
+            });
         }
     }
 
@@ -208,9 +207,11 @@ public abstract class AbstractTransactionCachingLogMinerEventProcessor<T extends
     }
 
     protected List<String> getTransactionKeysWithPrefix(String prefix) {
-        try (Stream<String> stream = getEventCache().keys()) {
-            return stream.filter(k -> k.startsWith(prefix)).collect(Collectors.toList());
-        }
+        AtomicReference<List<String>> result = new AtomicReference<>();
+        getEventCache().keys(stream -> {
+            result.set(stream.filter(k -> k.startsWith(prefix)).collect(Collectors.toList()));
+        });
+        return result.get();
     }
 
     @Override

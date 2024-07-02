@@ -8,16 +8,17 @@ package io.debezium.connector.oracle.logminer.processor;
 import java.util.Optional;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 public interface LogMinerCache<K, V> {
-    default Stream<K> keys() {
-        return stream().map(Entry::getKey);
+    default void keys(Consumer<Stream<K>> keyStream) {
+        stream(entryStream -> keyStream.accept(entryStream.map(Entry::getKey)));
     }
 
-    default Stream<V> values() {
-        return stream().map(Entry::getValue);
+    default void values(Consumer<Stream<V>> valueStream) {
+        stream(entryStream -> valueStream.accept(entryStream.map(Entry::getValue)));
     }
 
     boolean isEmpty();
@@ -42,7 +43,7 @@ public interface LogMinerCache<K, V> {
 
     Optional<Entry<K, V>> first();
 
-    Stream<Entry<K, V>> stream();
+    void stream(Consumer<Stream<Entry<K, V>>> entryStream);
 
     class Entry<K, V> {
         private final K key;

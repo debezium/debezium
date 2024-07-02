@@ -10,8 +10,10 @@ import java.util.Iterator;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -109,12 +111,16 @@ public class EhcacheLogMinerCache<K, V> implements LogMinerCache<K, V> {
 
     @Override
     public Optional<Entry<K, V>> first() {
-        return stream().map(e -> new LogMinerCache.Entry<>(e.getKey(), e.getValue())).findFirst();
+        final AtomicReference<Optional<Entry<K, V>>> ref = new AtomicReference<>(Optional.empty());
+        stream(s -> ref.set(s.map(e -> new LogMinerCache.Entry<>(e.getKey(), e.getValue())).findFirst()));
+        return ref.get();
     }
 
     @Override
-    public Stream<Entry<K, V>> stream() {
-        return StreamSupport.stream(cache.spliterator(), false)
-                .map(e -> new LogMinerCache.Entry<>(e.getKey(), e.getValue()));
+    public void stream(Consumer<Stream<Entry<K, V>>> streamConsumer) {
+        try (Stream<Entry<K, V>> stream = StreamSupport.stream(cache.spliterator(), false)
+                .map(e -> new Entry<>(e.getKey(), e.getValue()))) {
+            streamConsumer.accept(stream);
+        }
     }
 }

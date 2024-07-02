@@ -27,7 +27,6 @@ import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -263,11 +262,11 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
 
                 if (metrics.getNumberOfActiveTransactions() > 0 && LOGGER.isDebugEnabled()) {
                     // This is wrapped in try-with-resources specifically for Infinispan performance
-                    try (Stream<T> stream = getTransactionCache().values()) {
+                    getTransactionCache().values(values -> {
                         LOGGER.debug("All active transactions: {}",
-                                stream.map(t -> t.getTransactionId() + " (" + t.getStartScn() + ")")
+                                values.map(t -> t.getTransactionId() + " (" + t.getStartScn() + ")")
                                         .collect(Collectors.joining(",")));
-                    }
+                    });
                 }
 
                 metrics.setLastProcessedRowsCount(counters.rows);
@@ -1591,10 +1590,8 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
                         LOGGER.debug("List of transactions in the cache before transactions being abandoned: [{}]",
                                 String.join(",", abandonedTransactionKeys));
 
-                        try (Stream<String> s = transactionCache.keys()) {
-                            LOGGER.debug("List of transactions in the cache after transactions being abandoned: [{}]",
-                                    s.collect(Collectors.joining(",")));
-                        }
+                        transactionCache.keys(keys -> LOGGER.debug("List of transactions in the cache after transactions being abandoned: [{}]",
+                                keys.collect(Collectors.joining(","))));
                     }
 
                     // Update the oldest scn metric are transaction abandonment
@@ -1663,7 +1660,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
                 getLastProcessedScnChangeTime(), retention.toMinutes());
 
         AtomicReference<Scn> calculatedLastScn = new AtomicReference<>(Scn.NULL);
-        try (Stream<T> values = getTransactionCache().values()) {
+        getTransactionCache().values(values -> {
             values.forEach(transaction -> {
                 final Instant changeTime = transaction.getChangeTime();
                 final long diffMinutes = Duration.between(getLastProcessedScnChangeTime(), changeTime).abs().toMinutes();
@@ -1678,7 +1675,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
                             s -> s.isNull() || s.compareTo(transaction.getStartScn()) < 0 ? transaction.getStartScn() : s);
                 }
             });
-        }
+        });
 
         return calculatedLastScn.get();
     }
