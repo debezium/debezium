@@ -66,9 +66,16 @@ public interface Transaction {
 
     /**
      * Helper method that resets the event identifier back to {@code 0}.
-     *
+     * <p>
      * This should be called when a transaction {@code START} event is detected in the event stream.
      * This is required when LOB support is enabled to facilitate the re-mining of existing events.
      */
     void start();
+
+    default String getEventId(int index) {
+        if (index < 0 || index >= getNumberOfEvents()) {
+            throw new IndexOutOfBoundsException("Index " + index + "outside the transaction " + getTransactionId() + " event list bounds");
+        }
+        return getTransactionId() + "-" + index;
+    }
 }

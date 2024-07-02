@@ -3,16 +3,14 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.oracle.logminer.processor.infinispan;
-
-import org.infinispan.commons.api.BasicCache;
+package io.debezium.connector.oracle.logminer.processor;
 
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 
 /**
  * @author Chris Cranford
  */
-public interface CacheProvider extends AutoCloseable {
+public interface CacheProvider<T extends Transaction> extends AutoCloseable {
 
     /**
      * The name for the transaction cache
@@ -49,7 +47,7 @@ public interface CacheProvider extends AutoCloseable {
      *
      * @return the transaction cache, never {@code null}
      */
-    BasicCache<String, InfinispanTransaction> getTransactionCache();
+    LogMinerCache<String, T> getTransactionCache();
 
     /**
      * Get the LogMiner events cache
@@ -61,7 +59,7 @@ public interface CacheProvider extends AutoCloseable {
      *
      * @return the evnts cache, never {@code null}
      */
-    BasicCache<String, LogMinerEvent> getEventCache();
+    LogMinerCache<String, LogMinerEvent> getEventCache();
 
     /**
      * Get the Schema Changes cache
@@ -73,7 +71,7 @@ public interface CacheProvider extends AutoCloseable {
      *
      * @return the schema changes cache, never {@code null}
      */
-    BasicCache<String, String> getSchemaChangesCache();
+    LogMinerCache<String, String> getSchemaChangesCache();
 
     /**
      * Get the processed transactions cache
@@ -85,5 +83,5 @@ public interface CacheProvider extends AutoCloseable {
      *
      * @return the processed transactions cache, never {@code null}
      */
-    BasicCache<String, String> getProcessedTransactionsCache();
+    LogMinerCache<String, String> getProcessedTransactionsCache();
 }
