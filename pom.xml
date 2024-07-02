@@ -163,8 +163,8 @@
         <version.com.google.protobuf.protoc>3.25.2</version.com.google.protobuf.protoc>
 
         <!-- Infinispan version for Oracle and Debezium Server sink -->
-        <version.infinispan>14.0.20.Final</version.infinispan>
-        <version.infinispan.protostream>4.6.2.Final</version.infinispan.protostream>
+        <version.infinispan>14.0.29.Final</version.infinispan>
+        <version.infinispan.protostream>4.6.5.Final</version.infinispan.protostream>
 
         <!-- RocketMQ version for RocketMQ storage and Server sink -->
         <version.rocketmq>5.1.4</version.rocketmq>
