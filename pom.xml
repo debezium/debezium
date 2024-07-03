@@ -62,7 +62,7 @@
         <debezium.java.connector.target>17</debezium.java.connector.target>
 
         <!-- Java version used for Debezium spcific components - Server, Operator, Outbox -->
-        <debezium.java.specific.target>17</debezium.java.specific.target>
+        <debezium.java.specific.target>21</debezium.java.specific.target>
 
 
         <maven.compiler.source>${debezium.java.source}</maven.compiler.source>
