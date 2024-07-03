@@ -1,0 +1,1 @@
+include::../{partialsdir}/modules/all-connectors/ref-deploy-mysql-connector-yaml.adoc[]
