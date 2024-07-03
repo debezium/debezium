@@ -522,8 +522,6 @@ endif::MYSQL[]
 ifdef::MARIADB[]
 a|Start a transaction with link:https://mariadb.com/kb/en/set-transaction/#repeatable-read[repeatable read semantics] to ensure that all subsequent reads within the transaction are done against the _consistent snapshot_.
 endif::MARIADB[]
-//  |5
-//  |Read and filter the names of the databases and tables.
 
 |5
 a|Read the current binlog position.
@@ -2592,6 +2590,7 @@ ifdef::MYSQL[]
 . Download the {prodname} link:{link-mysql-plugin-snapshot}[MySQL connector plug-in].
 endif::MYSQL[]
 endif::[]
+
 ifeval::['{page-version}' != 'master']
 ifdef::MARIADB[]
 . Download the {prodname} link:https://repo1.maven.org/maven2/io/debezium/debezium-connector-mariadb/{debezium-version}/debezium-connector-mariadb-{debezium-version}-plugin.tar.gz[MariaDB connector plug-in].
@@ -2848,10 +2847,10 @@ oc apply -f inventory-connector.yaml
 +
 The preceding command registers `inventory-connector` and the connector starts to run against the `inventory` database as defined in the `KafkaConnector` CR.
 
-endif::product[]
 end::deploy-via-dockerfile[]
 
 tag::connector-config-example[]
+ifdef::community[]
 Following is an example of the configuration for a connector instance that captures data from a {connector-name} server on port 3306 at 192.168.99.100, which we logically name `fullfillment`.
 Typically, you configure the {prodname} {connector-name} connector in a JSON file by setting the configuration properties that are available for the connector.
 
@@ -2913,6 +2912,7 @@ end::connector-config-example[]
 === Adding connector configuration
 
 tag::add-connector-cfg[]
+ifdef::community[]
 To start running a {connector-name} connector, configure a connector configuration, and add the configuration to your Kafka Connect cluster.
 
 .Prerequisites
@@ -3010,7 +3010,7 @@ Details are in the following sections:
 * xref:{context}-purges-binlog-files-used-by-debezium[]
 
 endif::product[]
-////
+
 [id="debezium-{context}-connector-configuration-and-startup-errors"]
 Configuration and startup errors::
 
@@ -3070,4 +3070,3 @@ If the snapshot is disabled, the connector fails with an error.
 
 See xref:{context}-snapshots[snapshots] for details about how {connector-name} connectors perform initial snapshots.
 end::wrong-things[]
-////

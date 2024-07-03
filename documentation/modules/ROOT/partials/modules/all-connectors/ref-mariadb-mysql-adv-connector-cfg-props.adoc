@@ -15,14 +15,14 @@ Typical examples are using savepoints or mixing temporary and regular table chan
 When a beginning of a transaction is detected then {prodname} tries to roll forward the binlog position and find either `COMMIT` or `ROLLBACK` so it can determine whether to stream the changes from the transaction.
 The size of the binlog buffer defines the maximum number of changes in the transaction that {prodname} can buffer while searching for transaction boundaries.
 If the size of the transaction is larger than the buffer then {prodname} must rewind and re-read the events that have not fit into the buffer while streaming. +
- +
++
 NOTE: This feature is incubating. Feedback is encouraged. It is expected that this feature is not completely polished.
 endif::community[]
 
 
 [id="{context}-property-connect-keep-alive"]
 xref:{context}-property-connect-keep-alive[`connect.keep.alive`]::
-Default value: true +
+Default value: `true` +
 A Boolean value that specifies whether a separate thread should be used to ensure that the connection to the {connector-name} server or cluster is kept alive.
 
 
@@ -83,7 +83,7 @@ Set the value to `0` (zero) to remove the timeout limit.
 
 [id="{context}-property-database-ssl-keystore"]
 xref:{context}-property-database-ssl-keystore[`database.ssl.keystore`]::
-Default value:
+Default value: No default +
 An optional setting that specifies the location of the key store file.
 A key store file can be used for two-way authentication between the client and the {connector-name} server.
 
@@ -444,10 +444,10 @@ xref:{context}-property-snapshot-max-threads[`snapshot.max.threads`]::
 Default value: `1` +
 Specifies the number of threads that the connector uses when performing an initial snapshot.
 To enable parallel initial snapshots, set the property to a value greater than 1.
-In a parallel initial snapshot, the connector processes multiple tables concurrently.
-
+In a parallel initial snapshot, the connector processes multiple tables concurrently. +
++
 ifdef::community[]
-Parallel initial snapshots is an incubating feature.
+NOTE: Parallel initial snapshots is an incubating feature.
 endif::community[]
 ifdef::product[]
 [IMPORTANT]

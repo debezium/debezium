@@ -62,7 +62,6 @@ There is support for the {prodname} MariaDB connector to use hosted options such
 Because these hosted options do not allow a global read lock, table-level locks are used to create the _consistent snapshot_.
 
 // Type: concept
-// ModuleID: how-debezium-mariadb-connectors-handle-database-schema-changes
 // Title: How {prodname} MariaDB connectors handle database schema changes
 [[mariadb-schema-history-topic]]
 === Schema history topic
@@ -70,7 +69,6 @@ Because these hosted options do not allow a global read lock, table-level locks 
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=schema-history]
 
 // Type: concept
-// ModuleID: how-debezium-mariadb-connectors-expose-database-schema-changes
 // Title: How {prodname} MariaDB connectors expose database schema changes
 [id="mariadb-schema-change-topic"]
 === Schema change topic
@@ -80,7 +78,6 @@ include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloff
 
 // Type: concept
 // Title: How {prodname} MariaDB connectors perform database snapshots
-// ModuleID: how-debezium-mariadb-connectors-perform-database-snapshots
 [[mariadb-snapshots]]
 === Snapshots
 
@@ -94,6 +91,7 @@ include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloff
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=initial-snap-global]
 
 // Type: concept
+// ModuleID: workflow-of-mariadb-connector-initial-snapshots-that-use-table-level-locks
 [id="initial-snapshot-workflow-with-table-level-locks"]
 ==== Initial snapshots that use table-level locks
 
@@ -174,11 +172,6 @@ include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloff
 
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=adhoc-ro-incremental]
 
-// Type: continue
-[id="mariadb-snapshot-events"]
-=== Operation type of snapshot events
-
-The MariaDB connector emits snapshot events as `READ` operations `("op" : "r")`.
 endif::community[]
 
 ifdef::community[]
@@ -194,7 +187,6 @@ endif::community[]
 include::{partialsdir}/modules/all-connectors/con-connector-blocking-snapshot.adoc[leveloffset=+3]
 
 // Type: concept
-// ModuleID: default-names-of-kafka-topics-that-receive-debezium-mariadb-change-event-records
 // Title: Default names of Kafka topics that receive {prodname} MariaDB change event records
 [[mariadb-topic-names]]
 === Topic names
@@ -302,7 +294,9 @@ include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloff
 
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=spatial-data-types]
 
-[[debezium-mariadb-connector-converters]]
+// Type: concept
+// Title: Custom converters for mapping {connector-name} data to alternative data types
+[id="debezium-mariadb-connector-converters"]
 == Custom converters
 
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=custom-converters]
@@ -310,7 +304,6 @@ include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloff
 === `TINYINT(1)` to Boolean
 
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=tinyint-boolean-conv]
-
 
 === JDBC sink data types
 
@@ -411,11 +404,13 @@ ifdef::product[]
 // Type: concept
 [id="openshift-streams-mariadb-connector-deployment"]
 === MariaDB connector deployment using {StreamsName}
+
 include::{partialsdir}/modules/all-connectors/con-connector-streams-deployment.adoc[leveloffset=+1]
 
 //Type: procedure
 [id="using-streams-to-deploy-a-debezium-mariadb-connector"]
 === Using {StreamsName} to deploy a {prodname} MariaDB connector
+
 include::{partialsdir}/modules/all-connectors/proc-using-streams-to-deploy-a-debezium-mysql-sqlserver-connector.adoc[leveloffset=+1]
 
 // Type: procedure
@@ -429,10 +424,13 @@ ifdef::community[]
 [[mariadb-example-configuration]]
 === MariaDB connector configuration example
 endif::community[]
+
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=connector-config-example]
 
+ifdef::community[]
 [[mariadb-adding-configuration]]
 === Adding connector configuration
+endif::community[]
 
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=add-connector-cfg]
 
@@ -446,7 +444,6 @@ endif::product[]
 
 // Type: reference
 // Title: Descriptions of {prodname} MariaDB connector configuration properties
-// ModuleID: descriptions-of-debezium-mariadb-connector-configuration-properties
 [[mariadb-connector-properties]]
 === Connector properties
 
@@ -467,17 +464,17 @@ include::{partialsdir}/modules/all-connectors/ref-mariadb-mysql-adv-connector-cf
 
 include::{partialsdir}/modules/all-connectors/ref-connector-configuration-database-history-properties.adoc[leveloffset=+1]
 
-[id="debezium-{context}-connector-kafka-signals-configuration-properties"]
+[id="debezium-mariadb-connector-kafka-signals-configuration-properties"]
 ==== {prodname} connector Kafka signals configuration properties
 
 include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-signals-configuration-properties.adoc[leveloffset=+1]
 
-[id="debezium-{context}-connector-kafka-notifications-configuration-properties"]
+[id="debezium-mariadb-connector-kafka-notifications-configuration-properties"]
 ==== {prodname} connector sink notifications configuration properties
 
 include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-notification-configuration-properties.adoc[leveloffset=+1]
 
-[id="debezium-{context}-connector-pass-through-database-driver-configuration-properties"]
+[id="debezium-mariadb-connector-pass-through-database-driver-configuration-properties"]
 ==== {prodname} connector pass-through database driver configuration properties
 
 include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-database-driver-configuration-properties.adoc[leveloffset=+1]
@@ -536,6 +533,5 @@ include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-schema-hi
 // Title: How {prodname} MariaDB connectors handle faults and problems
 [[mariadb-when-things-go-wrong]]
 == Behavior when things go wrong
-:MARIADB:
-//  include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=wrong-things]
-:!MARIADB:
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=wrong-things]
