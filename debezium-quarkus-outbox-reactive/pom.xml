@@ -15,9 +15,11 @@
     <packaging>pom</packaging>
 
     <properties>
-        <!-- Quarkus has moved to Java 17 as baseline -->
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
+        <!-- Java version used for Debezium specific components - Server, Operator, Outbox -->
+        <debezium.java.specific.target>21</debezium.java.specific.target>
+
+        <maven.compiler.source>${debezium.java.specific.target}</maven.compiler.source>
+        <maven.compiler.target>${debezium.java.specific.target}</maven.compiler.target>
     </properties>
 
     <dependencyManagement>

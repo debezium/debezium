@@ -14,6 +14,14 @@
     <name>Debezium Quarkus :: Outbox</name>
     <packaging>pom</packaging>
 
+    <properties>
+        <!-- Java version used for Debezium specific components - Server, Operator, Outbox -->
+        <debezium.java.specific.target>21</debezium.java.specific.target>
+
+        <maven.compiler.source>${debezium.java.specific.target}</maven.compiler.source>
+        <maven.compiler.target>${debezium.java.specific.target}</maven.compiler.target>
+    </properties>
+
     <dependencyManagement>
         <dependencies>
             <dependency>
