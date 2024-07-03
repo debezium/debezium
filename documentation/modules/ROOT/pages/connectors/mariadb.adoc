@@ -38,28 +38,7 @@ include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloff
 [id="supported-mariadb-topologies"]
 === Supported MariaDB topologies
 
-The {prodname} MariaDB connector supports the following MariaDB topologies:
-
-Standalone::
-When a single MariaDB server is used, the server must have the binlog enabled so the {prodname} MariaDB connector can monitor the server. This is often acceptable, since the binary log can also be used as an incremental link:https://mariadb.com/kb/en/backup-and-restore-overview/[backup]. In this case, the MariaDB connector always connects to and follows this standalone MariaDB server instance.
-
-Primary and replica::
-The {prodname} MariaDB connector can follow one of the primary servers or one of the replicas (_if that replica has its binlog enabled_), but the connector sees changes in only the cluster that is visible to that server. Generally, this is not a problem except for the multi-primary topologies.
-+
-The connector records its position in the server’s binlog, which is different on each server in the cluster. Therefore, the connector must follow just one MariaDB server instance. If that server fails, that server must be restarted or recovered before the connector can continue.
-
-High available clusters::
-A variety of link:https://mariadb.com/docs/server/architecture/use-cases/high-availability/[high availability] solutions exist for MariaDB, and they make it significantly easier to tolerate and almost immediately recover from problems and failures. HA MariaDB clusters use GTIDs so that replicas are able to keep track of all changes on any of the primary servers.
-
-Multi-primary::
-link:https://mariadb.com/kb/en/galera-cluster/[Galera cluster replication] uses one or more MariaDB replica nodes that each replicate from multiple primary servers. This is a powerful way to aggregate the replication of multiple MariaDB clusters.
-+
-A {prodname} MariaDB connector can use these multi-primary MariaDB replicas as sources, and can fail over to different multi-primary MariaDB replicas as long as the new replica is caught up to the old replica. That is, the new replica has all transactions that were seen on the first replica. This works even if the connector is using only a subset of databases and/or tables, as the connector can be configured to include or exclude specific GTID sources when attempting to reconnect to a new multi-primary MariaDB replica and find the correct position in the binlog.
-
-Hosted::
-There is support for the {prodname} MariaDB connector to use hosted options such as Amazon RDS and Amazon Aurora.
-+
-Because these hosted options do not allow a global read lock, table-level locks are used to create the _consistent snapshot_.
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=supported-topos]
 
 // Type: concept
 // Title: How {prodname} MariaDB connectors handle database schema changes
@@ -84,15 +63,13 @@ include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloff
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=snapshots]
 
 // Type: concept
-// ModuleID: debezium-mariadb-description-of-the-workflow-for-initial-snapshots-that-use-a-global-read-lock
-[id="initial-snapshot-workflow-with-global-read-lock"]
+[id="mariadb-initial-snapshot-workflow-with-global-read-lock"]
 ==== Initial snapshots that use a global read lock
 
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=initial-snap-global]
 
 // Type: concept
-// ModuleID: workflow-of-mariadb-connector-initial-snapshots-that-use-table-level-locks
-[id="initial-snapshot-workflow-with-table-level-locks"]
+[id="mariadb-initial-snapshot-workflow-with-table-level-locks"]
 ==== Initial snapshots that use table-level locks
 
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=initial-snap-table-lock]
@@ -121,8 +98,7 @@ include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloff
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=cap-tbls-not-in-initial-schema-chg]
 
 // Type: concept
-// ModuleID: debezium-mariadb-ad-hoc-snapshots
-[id="mariadb-ad-hoc-snapshots"]
+[id="debezium-mariadb-ad-hoc-snapshots"]
 === Ad hoc snapshots
 
 include::{partialsdir}/modules/all-connectors/con-connector-ad-hoc-snapshots.adoc[leveloffset=+1]
@@ -401,13 +377,14 @@ include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloff
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=deployment]
 
 ifdef::product[]
+
 // Type: concept
 [id="openshift-streams-mariadb-connector-deployment"]
 === MariaDB connector deployment using {StreamsName}
 
 include::{partialsdir}/modules/all-connectors/con-connector-streams-deployment.adoc[leveloffset=+1]
 
-//Type: procedure
+// Type: procedure
 [id="using-streams-to-deploy-a-debezium-mariadb-connector"]
 === Using {StreamsName} to deploy a {prodname} MariaDB connector
 
@@ -529,7 +506,6 @@ include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-schema-history-metrics.adoc[leveloffset=+1]
 
 // Type: concept
-// ModuleID: how-debezium-mariadb-connectors-handle-faults-and-problems
 // Title: How {prodname} MariaDB connectors handle faults and problems
 [[mariadb-when-things-go-wrong]]
 == Behavior when things go wrong

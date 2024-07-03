@@ -28,13 +28,79 @@ Information and procedures for using a {prodname} {connector-name} connector are
 * xref:setting-up-{context}-to-run-a-debezium-connector[]
 * xref:deployment-of-debezium-{context}-connectors[]
 * xref:monitoring-debezium-{context}-connector-performance[]
-* xref:how-debezium-{context}-connectors-handle-faults-and-problems[]
+* xref:{context}-when-things-go-wrong[]
 
 endif::product[]
 end::mariadb-mysql-intro[]
 
 
 
+
+=== Supported topologies
+
+tag::supported-topos[]
+The {prodname} MariaDB connector supports the following {connector-name} topologies:
+
+Standalone::
+When a single {connector-name} server is used, the server must have the binlog enabled so the {prodname} {connector-name} connector can monitor the server.
+This is often acceptable, since the binary log can also be used as an incremental
+ifdef::MARIADB[]
+link:https://mariadb.com/kb/en/backup-and-restore-overview/
+endif::MARIADB[]
+ifdef::MYSQL[]
+link:https://dev.mysql.com/doc/refman/{mysql-version}/en/backup-methods.html
+endif::MYSQL[]
+[backup].
+In this case, the {connector-name} connector always connects to and follows this standalone {connector-name} server instance.
+
+Primary and replica::
+The {prodname} {connector-name} connector can follow one of the primary servers, or one of the replicas (_if that replica has its binlog enabled_), but the connector detects changes only in the cluster that is visible to that server.
+Generally, this is not a problem except for the multi-primary topologies.
++
+The connector records its position in the server’s binlog, which is different on each server in the cluster.
+Therefore, the connector must follow just one {connector-name} server instance.
+If that server fails, that server must be restarted or recovered before the connector can continue.
+
+High available clusters::
+A variety of
+ifdef::MARIADB[]
+link:https://mariadb.com/docs/server/architecture/use-cases/high-availability/
+endif::MARIADB[]
+ifdef::MYSQL[]
+https://dev.mysql.com/doc/mysql-ha-scalability/en/
+endif::MYSQL[]
+[high availability] solutions exist for {connector-name}, and they make it significantly easier to tolerate and almost immediately recover from problems and failures.
+Because
+ifdef::MYSQL[]
+most
+endif::MYSQL[]
+HA {connector-name} clusters use GTIDs, replicas are able to track all of the changes that occur on any primary server.
+
+
+
+Multi-primary::
+ifdef::MYSQL[]
+link:https://dev.mysql.com/doc/refman/{mysql-version}/en/mysql-cluster-replication-multi-source.html[Network Database (NDB) cluster replication]
+endif::MYSQL[]
+ifdef::MARIADB[]
+link:https://mariadb.com/kb/en/galera-cluster/[Galera cluster replication]
+endif::MARIADB[]
+uses one or more {connector-name} replica nodes that each replicate from multiple primary servers.
+Cluster replication provides a powerful way to aggregate the replication of multiple {connector-name} clusters.
+ifdef::MYSQL[]
+This topology requires the use of GTIDs.
+endif::MYSQL[]
++
+A {prodname} {connector-name} connector can use these multi-primary {connector-name} replicas as sources, and can fail over to different multi-primary {connector-name} replicas as long as the new replica is caught up to the old replica.
+That is, the new replica has all transactions that were seen on the first replica.
+This works even if the connector is using only a subset of databases and/or tables, because the connector can be configured to include or exclude specific GTID sources when attempting to reconnect to a new multi-primary {connector-name} replica and find the correct position in the binlog.
+
+Hosted::
+The {prodname} {connector-name} connector can use hosted database options such as Amazon RDS and Amazon Aurora.
++
+Because these hosted options do not permit the use of global read locks, the connector uses table-level locks when it creates a consistent snapshot.
+
+end::supported-topos[]
 
 
 
@@ -51,13 +117,12 @@ ifdef::product[]
 Details are in the following topics:
 
 * xref:{context}-topologies-supported-by-debezium-connectors[]
-* xref:supplemental-configuration-for-connecting-debezium-to-{context}[]
-* xref:how-debezium-{context}-connectors-handle-database-schema-changes[]
-* xref:how-debezium-{context}-connectors-expose-database-schema-changes[]
-* xref:how-debezium-{context}-connectors-perform-database-snapshots[]
+* xref:{context}-schema-history-topic[]
+* xref:{context}-schema-change-topic[]
+* xref:{context}-snapshots[]
 * xref:debezium-{context}-ad-hoc-snapshots[]
 * xref:debezium-{context}-incremental-snapshots[]
-* xref:default-names-of-kafka-topics-that-receive-debezium-{context}-change-event-records[]
+* xref:{context}-topic-names[]
 
 endif::product[]
 end::how-connector-works-intro[]
@@ -381,7 +446,7 @@ endif::product[]
 
 The connector completes a series of tasks when it performs the snapshot.
 The exact steps vary with the snapshot mode and with the table locking policy that is in effect for the database.
-The {prodname} {connector-name} connector completes different steps when it performs an initial snapshot that uses a xref:initial-snapshot-workflow-with-global-read-lock[global read lock] or xref:initial-snapshot-workflow-with-table-level-locks[table-level locks].
+The {prodname} {connector-name} connector completes different steps when it performs an initial snapshot that uses a xref:{context}-initial-snapshot-workflow-with-global-read-lock[global read lock] or xref:{context}-initial-snapshot-workflow-with-table-level-locks[table-level locks].
 end::snapshots[]
 
 
@@ -392,7 +457,7 @@ end::snapshots[]
 tag::initial-snap-global[]
 You can customize the way that the connector creates snapshots by changing the value of the `snapshot.mode` property.
 If you configure a different snapshot mode, the connector completes the snapshot by using a modified version of this workflow.
-For information about the snapshot process in environments that do not permit global read locks, see the xref:snapshot-workflow-with-table-level-locks[snapshot workflow for table-level locks].
+For information about the snapshot process in environments that do not permit global read locks, see the xref:{context}-snapshot-workflow-with-table-level-locks[snapshot workflow for table-level locks].
 
 .Default workflow that the {prodname} {connector-name} connector uses to perform an initial snapshot with a global read lock
 The following table shows the steps in the workflow that {prodname} follows to create a snapshot with a global read lock.
@@ -496,10 +561,9 @@ If the {prodname} {connector-name} connector detects that global read locks are 
 For the connector to perform a snapshot that uses table-level locks, the database account that the {prodname} connector uses to connect to {connector-name} must have `LOCK TABLES` privileges.
 
 .Default workflow that the {prodname} {connector-name} connector uses to perform an initial snapshot with table-level locks
-The following workflow lists the steps that {prodname} takes to create a snapshot with table-level read locks.
-For information about the snapshot process in environments that do not permit global read locks, see the xref:initial-snapshot-workflow-with-global-read-lock[snapshot workflow for global read locks].
+The following table shows the steps in the workflow that {prodname} follows to create a snapshot with table-level read locks.
+For information about the snapshot process in environments that do not permit global read locks, see the xref:{context}-initial-snapshot-workflow-with-global-read-lock[snapshot workflow for global read locks].
 
-[id="snapshot-workflow-with-table-level-locks"]
 [cols="1,9",options="header",subs="+attributes"]
 |===
 |Step |Action
@@ -576,7 +640,7 @@ Specify this value to populate topics with a complete representation of the data
 After the snapshot completes, the connector begins to stream event records for subsequent database changes.
 
 |`initial`
-|The connector performs a database snapshot as described in the xref:initial-snapshot-workflow-with-global-read-lock[default workflow for creating an initial snapshot].
+|The connector performs a database snapshot as described in the xref:{context}-initial-snapshot-workflow-with-global-read-lock[default workflow for creating an initial snapshot].
 After the snapshot completes, the connector begins to stream event records for subsequent database changes.
 
 |`initial_only`
@@ -587,7 +651,7 @@ After the snapshot completes, the connector stops, and does not stream event rec
 |Deprecated, see `no_data`.
 
 |`no_data`
-|The connector captures the structure of all relevant tables, performing all the steps described in the xref:initial-snapshot-workflow-with-global-read-lock[default workflow for creating an initial snapshot], except that it does not create `READ` events to represent the data set at the point of the connector's start-up (Step 7.2).
+|The connector captures the structure of all relevant tables, performing all the steps described in the xref:{context}-initial-snapshot-workflow-with-global-read-lock[default workflow for creating an initial snapshot], except that it does not create `READ` events to represent the data set at the point of the connector's start-up (Step 7.2).
 
 |`never`
 |When the connector starts, rather than performing a snapshot, it immediately begins to stream event records for subsequent database changes.
@@ -1676,7 +1740,8 @@ end::tombstone-events[]
 
 tag::truncate-events[]
 A  _truncate_ change event signals that a table has been truncated.
-The message key is `null` in this case, the message value looks like this:
+The message key of a _truncate_ event is `null`.
+The message value resembles the following example:
 
 [source,json,indent=0,subs="+attributes"]
 ----
@@ -2619,7 +2684,7 @@ This is the preferred method.
 
 .Additional resources
 
-* xref:descriptions-of-debezium-{context}-connector-configuration-properties[]
+* xref:{context}-connector-properties[]
 endif::product[]
 end::deployment[]
 
@@ -2710,12 +2775,12 @@ The preceding commands build a container image with the name `debezium-container
 The container registry must be available to the OpenShift instance where you want to deploy the image.
 Enter one of the following commands:
 +
-[source,shell,subs="attributes,+quotes"]
+[source,shell,subs="+attributes,+quotes"]
 ----
 podman push _<myregistry.io>_/debezium-container-for-{context}:latest
 ----
 +
-[source,shell,subs="attributes,+quotes"]
+[source,shell,subs="+attributes,+quotes"]
 ----
 docker push _<myregistry.io>_/debezium-container-for-{context}:latest
 ----
@@ -2960,9 +3025,9 @@ end::connector-props-intro[]
 tag::monitoring-intro[]
 The {prodname} {connector-name} connector provides three types of metrics that are in addition to the built-in support for JMX metrics that Zookeeper, Kafka, and Kafka Connect provide.
 
-* xref:mariadb-snapshot-metrics[Snapshot metrics] provide information about connector operation while performing a snapshot.
-* xref:mariadb-streaming-metrics[Streaming metrics] provide information about connector operation when the connector is reading the binlog.
-* xref:mariadb-schema-history-metrics[Schema history metrics] provide information about the status of the connector's schema history.
+* xref:{context}-snapshot-metrics[Snapshot metrics] provide information about connector operation while performing a snapshot.
+* xref:{context}-streaming-metrics[Streaming metrics] provide information about connector operation when the connector is reading the binlog.
+* xref:{context}-schema-history-metrics[Schema history metrics] provide information about the status of the connector's schema history.
 
 {link-prefix}:{link-debezium-monitoring}#monitoring-debezium[{prodname} monitoring documentation] provides details for how to expose these metrics by using JMX.
 
@@ -2976,7 +3041,7 @@ end::monitoring-intro[]
 tag::streaming-metrics-intro[]
 Transaction-related attributes are available only if binlog event buffering is enabled.
 ifdef::community[]
-See xref:mariadb-property-binlog-buffer-size[`binlog.buffer.size`] in the advanced connector configuration properties for more details.
+See xref:{context}-property-binlog-buffer-size[`binlog.buffer.size`] in the advanced connector configuration properties for more details.
 endif::community[]
 end::streaming-metrics-intro[]
 
