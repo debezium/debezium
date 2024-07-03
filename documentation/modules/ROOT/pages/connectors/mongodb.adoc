@@ -348,10 +348,7 @@ For more information about BSON string types in MongoDB, see the https://www.mon
 
 .Incremental snapshots for sharded clusters
 
-To use incremental snapshots with sharded MongoDB clusters, you must set specific values for the following properties:
-
-* Set xref:mongodb-property-mongodb-connection-mode[`mongodb.connection.mode`] to `sharded`.
-* Set xref:mongodb-property-incremental-snapshot-chunk-size[`incremental.snapshot.chunk.size`] to a value that is high enough to compensate for the link:https://www.mongodb.com/docs/manual/administration/change-streams-production-recommendations/#sharded-clusters[increased complexity] of change stream pipelines.
+To use incremental snapshots with sharded MongoDB clusters, you must set xref:mongodb-property-incremental-snapshot-chunk-size[`incremental.snapshot.chunk.size`] to a value that is high enough to compensate for the link:https://www.mongodb.com/docs/manual/administration/change-streams-production-recommendations/#sharded-clusters[increased complexity] of change stream pipelines.
 
 // Type: procedure
 // ModuleID: debezium-mongodb-triggering-an-incremental-snapshot
