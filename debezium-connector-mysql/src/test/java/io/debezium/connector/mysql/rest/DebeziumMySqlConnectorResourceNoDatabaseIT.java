@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.mysql.rest;
 
-import static io.debezium.testing.testcontainers.testhelper.RestExtensionTestInfrastructure.DATABASE;
+import static io.debezium.testing.testcontainers.testhelper.TestInfrastructureHelper.DATABASE;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.Matchers.hasKey;
@@ -18,7 +18,7 @@ import org.junit.Test;
 
 import io.debezium.connector.mysql.Module;
 import io.debezium.connector.mysql.MySqlConnector;
-import io.debezium.testing.testcontainers.testhelper.RestExtensionTestInfrastructure;
+import io.debezium.testing.testcontainers.testhelper.TestInfrastructureHelper;
 
 public class DebeziumMySqlConnectorResourceNoDatabaseIT {
 
@@ -30,19 +30,19 @@ public class DebeziumMySqlConnectorResourceNoDatabaseIT {
 
     @Before
     public void start() {
-        RestExtensionTestInfrastructure.setupDebeziumContainer(Module.version(), DebeziumMySqlConnectRestExtension.class.getName());
-        RestExtensionTestInfrastructure.startContainers(DATABASE.NONE);
+        TestInfrastructureHelper.setupDebeziumContainer(Module.version(), DebeziumMySqlConnectRestExtension.class.getName());
+        TestInfrastructureHelper.startContainers(DATABASE.NONE);
     }
 
     @After
     public void stop() {
-        RestExtensionTestInfrastructure.stopContainers();
+        TestInfrastructureHelper.stopContainers();
     }
 
     @Test
     public void testVersionEndpoint() {
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when()
                 .get(DebeziumMySqlConnectorResource.BASE_PATH + DebeziumMySqlConnectorResource.VERSION_ENDPOINT)
                 .then().log().all()
@@ -53,7 +53,7 @@ public class DebeziumMySqlConnectorResourceNoDatabaseIT {
     @Test
     public void testSchemaEndpoint() {
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when()
                 .get(DebeziumMySqlConnectorResource.BASE_PATH + DebeziumMySqlConnectorResource.SCHEMA_ENDPOINT)
                 .then().log().all()

@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.mongodb.junit;
 
+import org.testcontainers.containers.Network;
+
 import io.debezium.testing.testcontainers.MongoDbDeployment;
 import io.debezium.testing.testcontainers.MongoDbReplicaSet;
 import io.debezium.testing.testcontainers.MongoDbShardedCluster;
@@ -19,6 +21,8 @@ public final class MongoDbDatabaseProvider {
 
     // Should be aligned with definition in pom.xml
     public static final String MONGO_DOCKER_DESKTOP_PORT_DEFAULT = "27017:27117";
+
+    private static Network NETWORK = null;
 
     private static MongoDbReplicaSet.Builder dockerReplicaSetBuilder() {
         // will be used only in environment with docker desktop
@@ -36,7 +40,11 @@ public final class MongoDbDatabaseProvider {
      * @return MongoDb Replica set
      */
     public static MongoDbReplicaSet dockerReplicaSet() {
-        return dockerReplicaSetBuilder().build();
+        var replicaSet = dockerReplicaSetBuilder();
+        if (NETWORK != null) {
+            replicaSet.network(NETWORK);
+        }
+        return replicaSet.build();
     }
 
     /**
@@ -45,7 +53,11 @@ public final class MongoDbDatabaseProvider {
      * @return MongoDb Replica set
      */
     public static MongoDbReplicaSet dockerAuthReplicaSet() {
-        return dockerReplicaSetBuilder().authEnabled(true).build();
+        var replicaSet = dockerReplicaSetBuilder().authEnabled(true);
+        if (NETWORK != null) {
+            replicaSet.network(NETWORK);
+        }
+        return replicaSet.build();
     }
 
     /**
@@ -53,7 +65,7 @@ public final class MongoDbDatabaseProvider {
      *
      * @return MongoDb Replica set
      */
-    public static MongoDbShardedCluster mongoDbShardedCluster() {
+    private static MongoDbShardedCluster.Builder mongoDbShardedClusterBuilder() {
         // will be used only in environment with docker desktop
         var portResolver = ParsingPortResolver.parseProperty(MONGO_DOCKER_DESKTOP_PORT_PROPERTY, MONGO_DOCKER_DESKTOP_PORT_DEFAULT);
         var shardSize = Integer.parseInt(System.getProperty(MONGO_SHARD_SIZE, "2"));
@@ -63,7 +75,20 @@ public final class MongoDbDatabaseProvider {
                 .shardCount(shardSize)
                 .replicaCount(replicaSize)
                 .routerCount(1)
-                .portResolver(portResolver)
+                .portResolver(portResolver);
+    }
+
+    public static MongoDbShardedCluster mongoDbShardedCluster() {
+        var cluster = mongoDbShardedClusterBuilder();
+        if (NETWORK != null) {
+            cluster.network(NETWORK);
+        }
+        return cluster.build();
+    }
+
+    public static MongoDbShardedCluster mongoDbShardedCluster(Network network) {
+        return mongoDbShardedClusterBuilder()
+                .network(network)
                 .build();
     }
 
@@ -74,6 +99,17 @@ public final class MongoDbDatabaseProvider {
      * @return MongoDb replica-set deployment
      */
     public static MongoDbDeployment externalOrDockerReplicaSet() {
+        var platform = MongoDbDatabaseVersionResolver.getPlatform();
+        return platform.provider.get();
+    }
+
+    /**
+     * Creates MongoDB replica-set abstraction either for external database or a local MongoDB replica-set container with the provided container Network.
+     *
+     * @return MongoDb replica-set deployment
+     */
+    public static MongoDbDeployment externalOrDockerReplicaSet(Network network) {
+        NETWORK = network;
         var platform = MongoDbDatabaseVersionResolver.getPlatform();
         return platform.provider.get();
     }

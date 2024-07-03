@@ -17,7 +17,7 @@ import org.junit.Test;
 
 import io.debezium.connector.mariadb.MariaDbConnector;
 import io.debezium.connector.mariadb.Module;
-import io.debezium.testing.testcontainers.testhelper.RestExtensionTestInfrastructure;
+import io.debezium.testing.testcontainers.testhelper.TestInfrastructureHelper;
 
 /**
  * @author Chris Cranford
@@ -33,19 +33,19 @@ public class DebeziumMariaDbConnectorResourceNoDatabaseIT {
 
     @Before
     public void start() {
-        RestExtensionTestInfrastructure.setupDebeziumContainer(Module.version(), DebeziumMariaDbConnectRestExtension.class.getName());
-        RestExtensionTestInfrastructure.startContainers(RestExtensionTestInfrastructure.DATABASE.NONE);
+        TestInfrastructureHelper.setupDebeziumContainer(Module.version(), DebeziumMariaDbConnectRestExtension.class.getName());
+        TestInfrastructureHelper.startContainers(TestInfrastructureHelper.DATABASE.NONE);
     }
 
     @After
     public void stop() {
-        RestExtensionTestInfrastructure.stopContainers();
+        TestInfrastructureHelper.stopContainers();
     }
 
     @Test
     public void testVersionEndpoint() {
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when()
                 .get(DebeziumMariaDbConnectorResource.BASE_PATH + DebeziumMariaDbConnectorResource.VERSION_ENDPOINT)
                 .then().log().all()
@@ -56,7 +56,7 @@ public class DebeziumMariaDbConnectorResourceNoDatabaseIT {
     @Test
     public void testSchemaEndpoint() {
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when()
                 .get(DebeziumMariaDbConnectorResource.BASE_PATH + DebeziumMariaDbConnectorResource.SCHEMA_ENDPOINT)
                 .then().log().all()
