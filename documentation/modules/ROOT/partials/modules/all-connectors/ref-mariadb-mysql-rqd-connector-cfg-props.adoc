@@ -2,7 +2,7 @@ The following configuration properties are _required_ unless a default value is 
 
 [id="{context}-property-bigint-unsigned-handling-mode"]
 xref:{context}-property-bigint-unsigned-handling-mode[`bigint.unsigned.handling.mode`]::
-[horizontal]
+ +
 Default value: `long` +
 Specifies how the connector represents BIGINT UNSIGNED columns in change events.
 Set one of the following options:
@@ -339,8 +339,8 @@ This setting does not affect how the connector records schema changes in its int
 [id="{context}-property-include-schema-comments"]
 xref:{context}-property-include-schema-comments[`include.schema.comments`]::
 Default value: `false` +
-Boolean value that specifies whether the connector parses and publishes table and column comments on metadata objects.
-
+Boolean value that specifies whether the connector parses and publishes table and column comments on metadata objects. +
++
 NOTE: When you set this option to `true`, the schema comments that the connector includes can add a significant amount of string data to each schema object.
 Increasing the number and size of logical schema objects increases the amount of memory that the connector uses.
 
