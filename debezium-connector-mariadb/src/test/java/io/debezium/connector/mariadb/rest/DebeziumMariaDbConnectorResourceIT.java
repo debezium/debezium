@@ -27,7 +27,7 @@ import io.debezium.connector.mariadb.Module;
 import io.debezium.storage.kafka.history.KafkaSchemaHistory;
 import io.debezium.testing.testcontainers.Connector;
 import io.debezium.testing.testcontainers.ConnectorConfiguration;
-import io.debezium.testing.testcontainers.testhelper.RestExtensionTestInfrastructure;
+import io.debezium.testing.testcontainers.testhelper.TestInfrastructureHelper;
 import io.restassured.http.ContentType;
 
 /**
@@ -44,13 +44,13 @@ public class DebeziumMariaDbConnectorResourceIT {
 
     @Before
     public void start() {
-        RestExtensionTestInfrastructure.setupDebeziumContainer(Module.version(), DebeziumMariaDbConnectRestExtension.class.getName());
-        RestExtensionTestInfrastructure.startContainers(RestExtensionTestInfrastructure.DATABASE.MARIADB);
+        TestInfrastructureHelper.setupDebeziumContainer(Module.version(), DebeziumMariaDbConnectRestExtension.class.getName());
+        TestInfrastructureHelper.startContainers(TestInfrastructureHelper.DATABASE.MARIADB);
     }
 
     @After
     public void stop() {
-        RestExtensionTestInfrastructure.stopContainers();
+        TestInfrastructureHelper.stopContainers();
     }
 
     @Test
@@ -58,7 +58,7 @@ public class DebeziumMariaDbConnectorResourceIT {
         ConnectorConfiguration config = getMariaDbConnectorConfiguration(1);
 
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when().contentType(ContentType.JSON).accept(ContentType.JSON).body(config.toJson())
                 .put(DebeziumMariaDbConnectorResource.BASE_PATH + DebeziumMariaDbConnectorResource.VALIDATE_CONNECTION_ENDPOINT)
                 .then().log().all()
@@ -73,7 +73,7 @@ public class DebeziumMariaDbConnectorResourceIT {
 
         Locale.setDefault(new Locale("en", "US")); // to enforce errormessages in English
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when().contentType(ContentType.JSON).accept(ContentType.JSON).body(config.toJson())
                 .put(DebeziumMariaDbConnectorResource.BASE_PATH + DebeziumMariaDbConnectorResource.VALIDATE_CONNECTION_ENDPOINT)
                 .then().log().all()
@@ -88,7 +88,7 @@ public class DebeziumMariaDbConnectorResourceIT {
     @Test
     public void testInvalidConnection() {
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when().contentType(ContentType.JSON).accept(ContentType.JSON).body("{\"connector.class\": \"" + MariaDbConnector.class.getName() + "\"}")
                 .put(DebeziumMariaDbConnectorResource.BASE_PATH + DebeziumMariaDbConnectorResource.VALIDATE_CONNECTION_ENDPOINT)
                 .then().log().all()
@@ -108,7 +108,7 @@ public class DebeziumMariaDbConnectorResourceIT {
         ConnectorConfiguration config = getMariaDbConnectorConfiguration(1);
 
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when().contentType(ContentType.JSON).accept(ContentType.JSON).body(config.toJson())
                 .put(DebeziumMariaDbConnectorResource.BASE_PATH + DebeziumMariaDbConnectorResource.VALIDATE_FILTERS_ENDPOINT)
                 .then().log().all()
@@ -132,7 +132,7 @@ public class DebeziumMariaDbConnectorResourceIT {
                 .with("table.include.list", "inventory\\.product.*");
 
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when().contentType(ContentType.JSON).accept(ContentType.JSON).body(config.toJson())
                 .put(DebeziumMariaDbConnectorResource.BASE_PATH + DebeziumMariaDbConnectorResource.VALIDATE_FILTERS_ENDPOINT)
                 .then().log().all()
@@ -152,7 +152,7 @@ public class DebeziumMariaDbConnectorResourceIT {
                 .with("database.include.list", "inventory");
 
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when().contentType(ContentType.JSON).accept(ContentType.JSON).body(config.toJson())
                 .put(DebeziumMariaDbConnectorResource.BASE_PATH + DebeziumMariaDbConnectorResource.VALIDATE_FILTERS_ENDPOINT)
                 .then().log().all()
@@ -176,7 +176,7 @@ public class DebeziumMariaDbConnectorResourceIT {
                 .with("database.include.list", "+");
 
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when().contentType(ContentType.JSON).accept(ContentType.JSON).body(config.toJson())
                 .put(DebeziumMariaDbConnectorResource.BASE_PATH + DebeziumMariaDbConnectorResource.VALIDATE_FILTERS_ENDPOINT)
                 .then().log().all()
@@ -196,7 +196,7 @@ public class DebeziumMariaDbConnectorResourceIT {
                 .with("database.exclude.list", "+");
 
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when().contentType(ContentType.JSON).accept(ContentType.JSON).body(config.toJson())
                 .put(DebeziumMariaDbConnectorResource.BASE_PATH + DebeziumMariaDbConnectorResource.VALIDATE_FILTERS_ENDPOINT)
                 .then().log().all()
@@ -215,16 +215,16 @@ public class DebeziumMariaDbConnectorResourceIT {
         ConnectorConfiguration config = getMariaDbConnectorConfiguration(1);
 
         var connectorName = "my-mariadb-connector";
-        RestExtensionTestInfrastructure.getDebeziumContainer().registerConnector(
+        TestInfrastructureHelper.getDebeziumContainer().registerConnector(
                 connectorName,
                 config);
 
-        RestExtensionTestInfrastructure.getDebeziumContainer().ensureConnectorState(connectorName, Connector.State.RUNNING);
-        RestExtensionTestInfrastructure.waitForConnectorTaskStatus(connectorName, 0, Connector.State.RUNNING);
-        RestExtensionTestInfrastructure.getDebeziumContainer().waitForStreamingRunning("mariadb", config.asProperties().getProperty("topic.prefix"));
+        TestInfrastructureHelper.getDebeziumContainer().ensureConnectorState(connectorName, Connector.State.RUNNING);
+        TestInfrastructureHelper.waitForConnectorTaskStatus(connectorName, 0, Connector.State.RUNNING);
+        TestInfrastructureHelper.getDebeziumContainer().waitForStreamingRunning("mariadb", config.asProperties().getProperty("topic.prefix"));
 
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when().contentType(ContentType.JSON).accept(ContentType.JSON).body(config.toJson())
                 .get(DebeziumMariaDbConnectorResource.BASE_PATH + DebeziumMariaDbConnectorResource.CONNECTOR_METRICS_ENDPOINT, connectorName)
                 .then().log().all()
@@ -237,12 +237,12 @@ public class DebeziumMariaDbConnectorResourceIT {
     }
 
     public static ConnectorConfiguration getMariaDbConnectorConfiguration(int id, String... options) {
-        final ConnectorConfiguration config = ConnectorConfiguration.forJdbcContainer(RestExtensionTestInfrastructure.getMariaDbContainer())
+        final ConnectorConfiguration config = ConnectorConfiguration.forJdbcContainer(TestInfrastructureHelper.getMariaDbContainer())
                 .with(MariaDbConnectorConfig.USER.name(), "debezium")
                 .with(MariaDbConnectorConfig.PASSWORD.name(), "dbz")
                 .with(MariaDbConnectorConfig.SNAPSHOT_MODE.name(), "never") // temporarily disable snapshot mode globally until we can check if connectors inside testcontainers are in SNAPSHOT or STREAMING mode (wait for snapshot finished!)
                 .with(MariaDbConnectorConfig.TOPIC_PREFIX.name(), "dbserver" + id)
-                .with(KafkaSchemaHistory.BOOTSTRAP_SERVERS.name(), RestExtensionTestInfrastructure.KAFKA_HOSTNAME + ":9092")
+                .with(KafkaSchemaHistory.BOOTSTRAP_SERVERS.name(), TestInfrastructureHelper.KAFKA_HOSTNAME + ":9092")
                 .with(KafkaSchemaHistory.TOPIC.name(), "dbhistory.inventory")
                 .with(MariaDbConnectorConfig.SERVER_ID.name(), Long.valueOf(5555 + id - 1))
                 // basic container does not support SSL out of the box

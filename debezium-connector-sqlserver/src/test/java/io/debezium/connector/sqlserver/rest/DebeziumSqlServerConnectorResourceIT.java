@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.sqlserver.rest;
 
-import static io.debezium.testing.testcontainers.testhelper.RestExtensionTestInfrastructure.DATABASE;
+import static io.debezium.testing.testcontainers.testhelper.TestInfrastructureHelper.DATABASE;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.hasItems;
@@ -28,7 +28,7 @@ import io.debezium.connector.sqlserver.SqlServerConnectorConfig;
 import io.debezium.storage.kafka.history.KafkaSchemaHistory;
 import io.debezium.testing.testcontainers.Connector;
 import io.debezium.testing.testcontainers.ConnectorConfiguration;
-import io.debezium.testing.testcontainers.testhelper.RestExtensionTestInfrastructure;
+import io.debezium.testing.testcontainers.testhelper.TestInfrastructureHelper;
 import io.restassured.http.ContentType;
 
 public class DebeziumSqlServerConnectorResourceIT {
@@ -41,13 +41,13 @@ public class DebeziumSqlServerConnectorResourceIT {
 
     @Before
     public void start() throws URISyntaxException {
-        RestExtensionTestInfrastructure.setupDebeziumContainer(Module.version(), DebeziumSqlServerConnectRestExtension.class.getName());
-        RestExtensionTestInfrastructure.startContainers(DATABASE.SQLSERVER);
+        TestInfrastructureHelper.setupDebeziumContainer(Module.version(), DebeziumSqlServerConnectRestExtension.class.getName());
+        TestInfrastructureHelper.startContainers(DATABASE.SQLSERVER);
     }
 
     @After
     public void stop() {
-        RestExtensionTestInfrastructure.stopContainers();
+        TestInfrastructureHelper.stopContainers();
     }
 
     @Test
@@ -55,7 +55,7 @@ public class DebeziumSqlServerConnectorResourceIT {
         ConnectorConfiguration config = getSqlServerConnectorConfiguration(1);
 
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when().contentType(ContentType.JSON).accept(ContentType.JSON).body(config.toJson())
                 .put(DebeziumSqlServerConnectorResource.BASE_PATH + DebeziumSqlServerConnectorResource.VALIDATE_CONNECTION_ENDPOINT)
                 .then().log().all()
@@ -70,7 +70,7 @@ public class DebeziumSqlServerConnectorResourceIT {
 
         Locale.setDefault(new Locale("en", "US")); // to enforce errormessages in English
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when().contentType(ContentType.JSON).accept(ContentType.JSON).body(config.toJson())
                 .put(DebeziumSqlServerConnectorResource.BASE_PATH + DebeziumSqlServerConnectorResource.VALIDATE_CONNECTION_ENDPOINT)
                 .then().log().all()
@@ -86,7 +86,7 @@ public class DebeziumSqlServerConnectorResourceIT {
     @Test
     public void testInvalidConnection() {
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when().contentType(ContentType.JSON).accept(ContentType.JSON).body("{\"connector.class\": \"" + SqlServerConnector.class.getName() + "\"}")
                 .put(DebeziumSqlServerConnectorResource.BASE_PATH + DebeziumSqlServerConnectorResource.VALIDATE_CONNECTION_ENDPOINT)
                 .then().log().all()
@@ -107,7 +107,7 @@ public class DebeziumSqlServerConnectorResourceIT {
         ConnectorConfiguration config = getSqlServerConnectorConfiguration(1);
 
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when().contentType(ContentType.JSON).accept(ContentType.JSON).body(config.toJson())
                 .put(DebeziumSqlServerConnectorResource.BASE_PATH + DebeziumSqlServerConnectorResource.VALIDATE_FILTERS_ENDPOINT)
                 .then().log().all()
@@ -130,7 +130,7 @@ public class DebeziumSqlServerConnectorResourceIT {
                 .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST.name(), "inventory\\.product.*");
 
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when().contentType(ContentType.JSON).accept(ContentType.JSON).body(config.toJson())
                 .put(DebeziumSqlServerConnectorResource.BASE_PATH + DebeziumSqlServerConnectorResource.VALIDATE_FILTERS_ENDPOINT)
                 .then().log().all()
@@ -151,7 +151,7 @@ public class DebeziumSqlServerConnectorResourceIT {
                 .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST.name(), "+");
 
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when().contentType(ContentType.JSON).accept(ContentType.JSON).body(config.toJson())
                 .put(DebeziumSqlServerConnectorResource.BASE_PATH + DebeziumSqlServerConnectorResource.VALIDATE_FILTERS_ENDPOINT)
                 .then().log().all()
@@ -171,7 +171,7 @@ public class DebeziumSqlServerConnectorResourceIT {
                 .with(SqlServerConnectorConfig.TABLE_EXCLUDE_LIST.name(), "+");
 
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when().contentType(ContentType.JSON).accept(ContentType.JSON).body(config.toJson())
                 .put(DebeziumSqlServerConnectorResource.BASE_PATH + DebeziumSqlServerConnectorResource.VALIDATE_FILTERS_ENDPOINT)
                 .then().log().all()
@@ -190,17 +190,17 @@ public class DebeziumSqlServerConnectorResourceIT {
         ConnectorConfiguration config = getSqlServerConnectorConfiguration(1);
 
         var connectorName = "my-sqlserver-connector";
-        RestExtensionTestInfrastructure.getDebeziumContainer().registerConnector(
+        TestInfrastructureHelper.getDebeziumContainer().registerConnector(
                 connectorName,
                 config);
 
-        RestExtensionTestInfrastructure.getDebeziumContainer().ensureConnectorState(connectorName, Connector.State.RUNNING);
-        RestExtensionTestInfrastructure.waitForConnectorTaskStatus(connectorName, 0, Connector.State.RUNNING);
-        RestExtensionTestInfrastructure.getDebeziumContainer().waitForStreamingRunning("sql_server", config.asProperties().getProperty("topic.prefix"), "streaming",
+        TestInfrastructureHelper.getDebeziumContainer().ensureConnectorState(connectorName, Connector.State.RUNNING);
+        TestInfrastructureHelper.waitForConnectorTaskStatus(connectorName, 0, Connector.State.RUNNING);
+        TestInfrastructureHelper.getDebeziumContainer().waitForStreamingRunning("sql_server", config.asProperties().getProperty("topic.prefix"), "streaming",
                 String.valueOf(0));
 
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when().contentType(ContentType.JSON).accept(ContentType.JSON).body(config.toJson())
                 .get(DebeziumSqlServerConnectorResource.BASE_PATH + DebeziumSqlServerConnectorResource.CONNECTOR_METRICS_ENDPOINT, connectorName)
                 .then().log().all()
@@ -217,10 +217,10 @@ public class DebeziumSqlServerConnectorResourceIT {
     }
 
     public static ConnectorConfiguration getSqlServerConnectorConfiguration(int id, String... options) {
-        final ConnectorConfiguration config = ConnectorConfiguration.forJdbcContainer(RestExtensionTestInfrastructure.getSqlServerContainer())
+        final ConnectorConfiguration config = ConnectorConfiguration.forJdbcContainer(TestInfrastructureHelper.getSqlServerContainer())
                 .with(ConnectorConfiguration.USER, "sa")
                 .with(ConnectorConfiguration.PASSWORD, "Password!")
-                .with(KafkaSchemaHistory.BOOTSTRAP_SERVERS.name(), RestExtensionTestInfrastructure.KAFKA_HOSTNAME + ":9092")
+                .with(KafkaSchemaHistory.BOOTSTRAP_SERVERS.name(), TestInfrastructureHelper.KAFKA_HOSTNAME + ":9092")
                 .with(KafkaSchemaHistory.TOPIC.name(), "dbhistory.inventory")
                 .with(SqlServerConnectorConfig.DATABASE_NAMES.name(), "testDB,testDB2")
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE.name(), "initial")

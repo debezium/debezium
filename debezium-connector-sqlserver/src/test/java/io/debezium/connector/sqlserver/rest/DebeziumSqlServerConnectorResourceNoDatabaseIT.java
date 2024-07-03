@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.sqlserver.rest;
 
-import static io.debezium.testing.testcontainers.testhelper.RestExtensionTestInfrastructure.DATABASE;
+import static io.debezium.testing.testcontainers.testhelper.TestInfrastructureHelper.DATABASE;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.Matchers.hasKey;
@@ -18,7 +18,7 @@ import org.junit.Test;
 
 import io.debezium.connector.sqlserver.Module;
 import io.debezium.connector.sqlserver.SqlServerConnector;
-import io.debezium.testing.testcontainers.testhelper.RestExtensionTestInfrastructure;
+import io.debezium.testing.testcontainers.testhelper.TestInfrastructureHelper;
 
 public class DebeziumSqlServerConnectorResourceNoDatabaseIT {
 
@@ -31,19 +31,19 @@ public class DebeziumSqlServerConnectorResourceNoDatabaseIT {
 
     @Before
     public void start() {
-        RestExtensionTestInfrastructure.setupDebeziumContainer(Module.version(), DebeziumSqlServerConnectRestExtension.class.getName());
-        RestExtensionTestInfrastructure.startContainers(DATABASE.NONE);
+        TestInfrastructureHelper.setupDebeziumContainer(Module.version(), DebeziumSqlServerConnectRestExtension.class.getName());
+        TestInfrastructureHelper.startContainers(DATABASE.NONE);
     }
 
     @After
     public void stop() {
-        RestExtensionTestInfrastructure.stopContainers();
+        TestInfrastructureHelper.stopContainers();
     }
 
     @Test
     public void testVersionEndpoint() {
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when()
                 .get(DebeziumSqlServerConnectorResource.BASE_PATH + DebeziumSqlServerConnectorResource.VERSION_ENDPOINT)
                 .then().log().all()
@@ -54,7 +54,7 @@ public class DebeziumSqlServerConnectorResourceNoDatabaseIT {
     @Test
     public void testSchemaEndpoint() {
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when()
                 .get(DebeziumSqlServerConnectorResource.BASE_PATH + DebeziumSqlServerConnectorResource.SCHEMA_ENDPOINT)
                 .then().log().all()
