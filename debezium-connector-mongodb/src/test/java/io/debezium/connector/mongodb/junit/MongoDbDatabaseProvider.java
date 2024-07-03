@@ -40,11 +40,13 @@ public final class MongoDbDatabaseProvider {
      * @return MongoDb Replica set
      */
     public static MongoDbReplicaSet dockerReplicaSet() {
-        var replicaSet = dockerReplicaSetBuilder();
+        var replicaSetBuilder = dockerReplicaSetBuilder();
         if (NETWORK != null) {
-            replicaSet.network(NETWORK);
+            replicaSetBuilder.network(NETWORK);
         }
-        return replicaSet.build();
+        var replicaSet = replicaSetBuilder.build();
+        NETWORK = null;
+        return replicaSet;
     }
 
     /**
@@ -53,11 +55,13 @@ public final class MongoDbDatabaseProvider {
      * @return MongoDb Replica set
      */
     public static MongoDbReplicaSet dockerAuthReplicaSet() {
-        var replicaSet = dockerReplicaSetBuilder().authEnabled(true);
+        var replicaSetBuilder = dockerReplicaSetBuilder().authEnabled(true);
         if (NETWORK != null) {
-            replicaSet.network(NETWORK);
+            replicaSetBuilder.network(NETWORK);
         }
-        return replicaSet.build();
+        var replicaSet = replicaSetBuilder.build();
+        NETWORK = null;
+        return replicaSet;
     }
 
     /**
@@ -79,11 +83,13 @@ public final class MongoDbDatabaseProvider {
     }
 
     public static MongoDbShardedCluster mongoDbShardedCluster() {
-        var cluster = mongoDbShardedClusterBuilder();
+        var clusterBuilder = mongoDbShardedClusterBuilder();
         if (NETWORK != null) {
-            cluster.network(NETWORK);
+            clusterBuilder.network(NETWORK);
         }
-        return cluster.build();
+        var shardedCluster = clusterBuilder.build();
+        NETWORK = null;
+        return shardedCluster;
     }
 
     public static MongoDbShardedCluster mongoDbShardedCluster(Network network) {
