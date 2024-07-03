@@ -191,8 +191,6 @@ public class TestInfrastructureHelper {
                 .until(() -> !TestInfrastructureHelper.getDebeziumContainer().isRunning());
     }
 
-
-
     public static void setupDebeziumContainer(String connectorVersion, String restExtensionClasses, String debeziumContainerImageVersion) {
         if (null != DEBEZIUM_CONTAINER && DEBEZIUM_CONTAINER.isRunning()) {
             DEBEZIUM_CONTAINER.stop();
