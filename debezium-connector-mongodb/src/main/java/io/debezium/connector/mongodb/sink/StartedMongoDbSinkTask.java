@@ -12,7 +12,6 @@ import java.util.List;
 import java.util.OptionalLong;
 import java.util.stream.Collectors;
 
-import io.debezium.DebeziumException;
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.sink.SinkRecord;
@@ -25,6 +24,7 @@ import com.mongodb.client.MongoClient;
 import com.mongodb.client.model.BulkWriteOptions;
 import com.mongodb.client.model.WriteModel;
 
+import io.debezium.DebeziumException;
 import io.debezium.dlq.ErrorReporter;
 
 final class StartedMongoDbSinkTask implements AutoCloseable {
