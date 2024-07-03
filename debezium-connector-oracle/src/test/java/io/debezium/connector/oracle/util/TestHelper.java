@@ -41,7 +41,7 @@ import io.debezium.storage.file.history.FileSchemaHistory;
 import io.debezium.storage.kafka.history.KafkaSchemaHistory;
 import io.debezium.testing.testcontainers.ConnectorConfiguration;
 import io.debezium.testing.testcontainers.OracleContainer;
-import io.debezium.testing.testcontainers.testhelper.RestExtensionTestInfrastructure;
+import io.debezium.testing.testcontainers.testhelper.TestInfrastructureHelper;
 import io.debezium.util.Strings;
 import io.debezium.util.Testing;
 
@@ -731,7 +731,7 @@ public class TestHelper {
                 : connectionConfiguration.getString(PDB_NAME);
         return connectionConfiguration.edit()
                 .with(JdbcConfiguration.HOSTNAME.name(), "localhost")
-                .with(JdbcConfiguration.PORT, RestExtensionTestInfrastructure.getOracleContainer().getMappedPort(OracleContainer.ORACLE_PORT))
+                .with(JdbcConfiguration.PORT, TestInfrastructureHelper.getOracleContainer().getMappedPort(OracleContainer.ORACLE_PORT))
                 .with(JdbcConfiguration.DATABASE, dbName)
                 .build();
     }
@@ -818,12 +818,12 @@ public class TestHelper {
     }
 
     public static ConnectorConfiguration getOracleConnectorConfiguration(int id, String... options) {
-        OracleContainer oracleContainer = RestExtensionTestInfrastructure.getOracleContainer();
+        OracleContainer oracleContainer = TestInfrastructureHelper.getOracleContainer();
         final ConnectorConfiguration config = ConnectorConfiguration.forJdbcContainer(oracleContainer)
                 .with(OracleConnectorConfig.PDB_NAME.name(), oracleContainer.ORACLE_PDB_NAME)
                 .with(OracleConnectorConfig.DATABASE_NAME.name(), oracleContainer.ORACLE_DBNAME)
                 .with(OracleConnectorConfig.TOPIC_PREFIX.name(), "dbserver" + id)
-                .with(KafkaSchemaHistory.BOOTSTRAP_SERVERS.name(), RestExtensionTestInfrastructure.KAFKA_HOSTNAME + ":9092")
+                .with(KafkaSchemaHistory.BOOTSTRAP_SERVERS.name(), TestInfrastructureHelper.KAFKA_HOSTNAME + ":9092")
                 .with(KafkaSchemaHistory.TOPIC.name(), "dbhistory.oracle");
 
         if (options != null && options.length > 0) {

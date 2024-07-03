@@ -10,6 +10,7 @@ import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import org.awaitility.Awaitility;
@@ -34,9 +35,9 @@ import io.debezium.testing.testcontainers.MongoDbReplicaSet;
 import io.debezium.testing.testcontainers.OracleContainer;
 import io.debezium.testing.testcontainers.util.MoreStartables;
 
-public class RestExtensionTestInfrastructure {
+public class TestInfrastructureHelper {
 
-    public static final String KAFKA_HOSTNAME = "kafka-dbz-ui";
+    public static final String KAFKA_HOSTNAME = "kafka-dbz";
     public static final int CI_CONTAINER_STARTUP_TIME = 90;
     private static final String DEBEZIUM_CONTAINER_IMAGE_VERSION_LATEST = "latest";
 
@@ -47,12 +48,15 @@ public class RestExtensionTestInfrastructure {
         MONGODB,
         ORACLE,
         MARIADB,
-        NONE
+        NONE,
+        DEBEZIUM_ONLY
     }
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(RestExtensionTestInfrastructure.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(TestInfrastructureHelper.class);
 
     private static final Network NETWORK = Network.newNetwork();
+
+    private static final Pattern VERSION_PATTERN = Pattern.compile("^[1-9]\\d*\\.\\d+");
 
     private static final GenericContainer<?> KAFKA_CONTAINER = new GenericContainer<>(
             DockerImageName.parse("quay.io/debezium/kafka:" + DEBEZIUM_CONTAINER_IMAGE_VERSION_LATEST).asCompatibleSubstituteFor("kafka"))
@@ -113,6 +117,10 @@ public class RestExtensionTestInfrastructure {
             .withNetworkAliases("oracledb")
             .withLogConsumer(new Slf4jLogConsumer(LOGGER));
 
+    public static Network getNetwork() {
+        return NETWORK;
+    }
+
     private static Supplier<Stream<Startable>> getContainers(DATABASE database) {
         final Startable dbStartable;
         switch (database) {
@@ -135,6 +143,7 @@ public class RestExtensionTestInfrastructure {
                 dbStartable = MARIADB_CONTAINER;
                 break;
             case NONE:
+            case DEBEZIUM_ONLY:
             default:
                 dbStartable = null;
                 break;
@@ -144,6 +153,9 @@ public class RestExtensionTestInfrastructure {
             return () -> Stream.of(KAFKA_CONTAINER, dbStartable, DEBEZIUM_CONTAINER);
         }
         else {
+            if (DATABASE.DEBEZIUM_ONLY.equals(database)) {
+                return () -> Stream.of(DEBEZIUM_CONTAINER);
+            }
             return () -> Stream.of(KAFKA_CONTAINER, DEBEZIUM_CONTAINER);
         }
     }
@@ -173,9 +185,18 @@ public class RestExtensionTestInfrastructure {
         setupDebeziumContainer(connectorVersion, restExtensionClassses, DEBEZIUM_CONTAINER_IMAGE_VERSION_LATEST);
     }
 
+    private static void waitForDebeziumContainerIsStopped() {
+        Awaitility.await()
+                .atMost(DebeziumContainer.waitTimeForRecords() * 5L, TimeUnit.SECONDS)
+                .until(() -> !TestInfrastructureHelper.getDebeziumContainer().isRunning());
+    }
+
+
+
     public static void setupDebeziumContainer(String connectorVersion, String restExtensionClasses, String debeziumContainerImageVersion) {
         if (null != DEBEZIUM_CONTAINER && DEBEZIUM_CONTAINER.isRunning()) {
             DEBEZIUM_CONTAINER.stop();
+            waitForDebeziumContainerIsStopped();
         }
         final String registry = debeziumContainerImageVersion.startsWith("1.2") ? "" : "quay.io/";
         final String debeziumVersion = debeziumContainerImageVersion.startsWith("1.2") ? "1.2.5.Final" : connectorVersion;
@@ -186,12 +207,46 @@ public class RestExtensionTestInfrastructure {
                 .withBuildArg("BASE_IMAGE", baseImageName)
                 .withBuildArg("DEBEZIUM_VERSION", debeziumVersion))
                 .withEnv("ENABLE_DEBEZIUM_SCRIPTING", "true")
-                .withEnv("CONNECT_REST_EXTENSION_CLASSES", restExtensionClasses)
                 .withNetwork(NETWORK)
                 .withKafka(KAFKA_CONTAINER.getNetwork(), KAFKA_HOSTNAME + ":9092")
                 .withLogConsumer(new Slf4jLogConsumer(LOGGER))
                 .enableJMX()
                 .dependsOn(KAFKA_CONTAINER);
+        if (null != restExtensionClasses && !restExtensionClasses.isEmpty()) {
+            DEBEZIUM_CONTAINER.withEnv("CONNECT_REST_EXTENSION_CLASSES", restExtensionClasses);
+        }
+    }
+
+    public static void defaultDebeziumContainer(String debeziumContainerImageVersion) {
+        if (null != DEBEZIUM_CONTAINER && DEBEZIUM_CONTAINER.isRunning()) {
+            DEBEZIUM_CONTAINER.stop();
+            waitForDebeziumContainerIsStopped();
+        }
+        if (null == debeziumContainerImageVersion) {
+            debeziumContainerImageVersion = DEBEZIUM_CONTAINER_IMAGE_VERSION_LATEST;
+        }
+        else {
+            var matcher = VERSION_PATTERN.matcher(debeziumContainerImageVersion);
+            if (matcher.find()) {
+                debeziumContainerImageVersion = matcher.toMatchResult().group();
+            }
+            else {
+                throw new RuntimeException("Cannot parse version: " + debeziumContainerImageVersion);
+            }
+        }
+        final String registry = debeziumContainerImageVersion.startsWith("1.2") ? "" : "quay.io/";
+        String imageName = registry + "debezium/connect:" + debeziumContainerImageVersion;
+        DEBEZIUM_CONTAINER = new DebeziumContainer(DockerImageName.parse(imageName))
+                .withEnv("ENABLE_DEBEZIUM_SCRIPTING", "true")
+                .withNetwork(NETWORK)
+                .withKafka(KAFKA_CONTAINER.getNetwork(), KAFKA_HOSTNAME + ":9092")
+                .withLogConsumer(new Slf4jLogConsumer(LOGGER))
+                .enableJMX()
+                .dependsOn(KAFKA_CONTAINER);
+    }
+
+    public static void defaultDebeziumContainer() {
+        defaultDebeziumContainer(null);
     }
 
     public static GenericContainer<?> getKafkaContainer() {
@@ -231,6 +286,6 @@ public class RestExtensionTestInfrastructure {
                 // this needs to be set to at least a minimum of ~65-70 seconds because PostgreSQL now
                 // retries on certain failure conditions with a 10s between them.
                 .atMost(120, TimeUnit.SECONDS)
-                .until(() -> RestExtensionTestInfrastructure.getDebeziumContainer().getConnectorTaskState(connectorName, taskNumber) == state);
+                .until(() -> TestInfrastructureHelper.getDebeziumContainer().getConnectorTaskState(connectorName, taskNumber) == state);
     }
 }

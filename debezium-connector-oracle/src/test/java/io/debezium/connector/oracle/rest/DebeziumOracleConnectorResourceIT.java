@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.oracle.rest;
 
-import static io.debezium.testing.testcontainers.testhelper.RestExtensionTestInfrastructure.DATABASE;
+import static io.debezium.testing.testcontainers.testhelper.TestInfrastructureHelper.DATABASE;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.hasItems;
@@ -26,7 +26,7 @@ import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.testing.testcontainers.Connector;
 import io.debezium.testing.testcontainers.ConnectorConfiguration;
-import io.debezium.testing.testcontainers.testhelper.RestExtensionTestInfrastructure;
+import io.debezium.testing.testcontainers.testhelper.TestInfrastructureHelper;
 import io.restassured.http.ContentType;
 
 public class DebeziumOracleConnectorResourceIT {
@@ -38,17 +38,17 @@ public class DebeziumOracleConnectorResourceIT {
     @BeforeClass
     public static void checkConditionAndStart() {
         Assume.assumeTrue("Skipping DebeziumOracleConnectorResourceIT tests when assembly profile is not active!", IS_ASSEMBLY_PROFILE_ACTIVE);
-        RestExtensionTestInfrastructure.setupDebeziumContainer(Module.version(), DebeziumOracleConnectRestExtension.class.getName());
-        RestExtensionTestInfrastructure.startContainers(DATABASE.ORACLE);
+        TestInfrastructureHelper.setupDebeziumContainer(Module.version(), DebeziumOracleConnectRestExtension.class.getName());
+        TestInfrastructureHelper.startContainers(DATABASE.ORACLE);
         TestHelper.loadTestData(TestHelper.getOracleConnectorConfiguration(1), "rest/data.sql");
-        ORACLE_USERNAME = RestExtensionTestInfrastructure.getOracleContainer().getUsername();
+        ORACLE_USERNAME = TestInfrastructureHelper.getOracleContainer().getUsername();
         running = true;
     }
 
     @AfterClass
     public static void stop() {
         if (IS_ASSEMBLY_PROFILE_ACTIVE && running) {
-            RestExtensionTestInfrastructure.stopContainers();
+            TestInfrastructureHelper.stopContainers();
         }
     }
 
@@ -57,7 +57,7 @@ public class DebeziumOracleConnectorResourceIT {
         ConnectorConfiguration config = TestHelper.getOracleConnectorConfiguration(1);
 
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when().contentType(ContentType.JSON).accept(ContentType.JSON).body(config.toJson())
                 .put(DebeziumOracleConnectorResource.BASE_PATH + DebeziumOracleConnectorResource.VALIDATE_CONNECTION_ENDPOINT)
                 .then().log().all()
@@ -72,7 +72,7 @@ public class DebeziumOracleConnectorResourceIT {
 
         Locale.setDefault(new Locale("en", "US")); // to enforce errormessages in English
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when().contentType(ContentType.JSON).accept(ContentType.JSON).body(config.toJson())
                 .put(DebeziumOracleConnectorResource.BASE_PATH + DebeziumOracleConnectorResource.VALIDATE_CONNECTION_ENDPOINT)
                 .then().log().all()
@@ -87,7 +87,7 @@ public class DebeziumOracleConnectorResourceIT {
     @Test
     public void testInvalidConnection() {
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when().contentType(ContentType.JSON).accept(ContentType.JSON).body("{\"connector.class\": \"" + OracleConnector.class.getName() + "\"}")
                 .put(DebeziumOracleConnectorResource.BASE_PATH + DebeziumOracleConnectorResource.VALIDATE_CONNECTION_ENDPOINT)
                 .then().log().all()
@@ -108,7 +108,7 @@ public class DebeziumOracleConnectorResourceIT {
         ConnectorConfiguration config = TestHelper.getOracleConnectorConfiguration(1);
 
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when().contentType(ContentType.JSON).accept(ContentType.JSON).body(config.toJson())
                 .put(DebeziumOracleConnectorResource.BASE_PATH + DebeziumOracleConnectorResource.VALIDATE_FILTERS_ENDPOINT)
                 .then().log().all()
@@ -141,7 +141,7 @@ public class DebeziumOracleConnectorResourceIT {
                 .with("table.include.list", ORACLE_USERNAME.toUpperCase() + "\\.DEBEZIUM_TABLE.*");
 
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when().contentType(ContentType.JSON).accept(ContentType.JSON).body(config.toJson())
                 .put(DebeziumOracleConnectorResource.BASE_PATH + DebeziumOracleConnectorResource.VALIDATE_FILTERS_ENDPOINT)
                 .then().log().all()
@@ -165,7 +165,7 @@ public class DebeziumOracleConnectorResourceIT {
                 .with("table.include.list", "+");
 
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when().contentType(ContentType.JSON).accept(ContentType.JSON).body(config.toJson())
                 .put(DebeziumOracleConnectorResource.BASE_PATH + DebeziumOracleConnectorResource.VALIDATE_FILTERS_ENDPOINT)
                 .then().log().all()
@@ -184,16 +184,16 @@ public class DebeziumOracleConnectorResourceIT {
         ConnectorConfiguration config = TestHelper.getOracleConnectorConfiguration(1);
 
         var connectorName = "my-oracle-connector";
-        RestExtensionTestInfrastructure.getDebeziumContainer().registerConnector(
+        TestInfrastructureHelper.getDebeziumContainer().registerConnector(
                 connectorName,
                 config.with(OracleConnectorConfig.USER.name(), TestHelper.CONNECTOR_USER));
 
-        RestExtensionTestInfrastructure.getDebeziumContainer().ensureConnectorState(connectorName, Connector.State.RUNNING);
-        RestExtensionTestInfrastructure.waitForConnectorTaskStatus(connectorName, 0, Connector.State.RUNNING);
-        RestExtensionTestInfrastructure.getDebeziumContainer().waitForStreamingRunning("oracle", config.asProperties().getProperty("topic.prefix"));
+        TestInfrastructureHelper.getDebeziumContainer().ensureConnectorState(connectorName, Connector.State.RUNNING);
+        TestInfrastructureHelper.waitForConnectorTaskStatus(connectorName, 0, Connector.State.RUNNING);
+        TestInfrastructureHelper.getDebeziumContainer().waitForStreamingRunning("oracle", config.asProperties().getProperty("topic.prefix"));
 
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when().contentType(ContentType.JSON).accept(ContentType.JSON).body(config.toJson())
                 .get(DebeziumOracleConnectorResource.BASE_PATH + DebeziumOracleConnectorResource.CONNECTOR_METRICS_ENDPOINT, connectorName)
                 .then().log().all()
