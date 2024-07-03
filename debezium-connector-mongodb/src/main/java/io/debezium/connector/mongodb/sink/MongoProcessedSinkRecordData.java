@@ -16,8 +16,8 @@ import org.slf4j.LoggerFactory;
 import com.mongodb.MongoNamespace;
 import com.mongodb.client.model.WriteModel;
 
-import io.debezium.connector.mongodb.sink.converters.SinkRecordConverter;
 import io.debezium.connector.mongodb.sink.converters.SinkDocument;
+import io.debezium.connector.mongodb.sink.converters.SinkRecordConverter;
 import io.debezium.connector.mongodb.sink.eventhandler.relational.RelationalEventHandler;
 
 public class MongoProcessedSinkRecordData {

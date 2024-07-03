@@ -11,6 +11,9 @@ import com.mongodb.client.model.WriteModel;
 
 import io.debezium.connector.mongodb.sink.converters.SinkDocument;
 
+/**
+ * Strategy for different write models to MongoDB (replace, update, insert/append only, etc).
+ */
 public interface WriteModelStrategy {
 
     WriteModel<BsonDocument> createWriteModel(SinkDocument document);
