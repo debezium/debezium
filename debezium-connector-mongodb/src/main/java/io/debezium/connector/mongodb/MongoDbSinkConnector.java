@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.mongodb.sink;
+package io.debezium.connector.mongodb;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -16,6 +16,10 @@ import org.apache.kafka.connect.sink.SinkConnector;
 
 import io.debezium.annotation.Immutable;
 import io.debezium.config.Configuration;
+import io.debezium.connector.mongodb.sink.Module;
+import io.debezium.connector.mongodb.sink.MongoDbSinkConnectorConfig;
+import io.debezium.connector.mongodb.sink.MongoDbSinkConnectorTask;
+import io.debezium.connector.mongodb.sink.SinkConnection;
 
 public class MongoDbSinkConnector extends SinkConnector {
 
@@ -62,6 +66,7 @@ public class MongoDbSinkConnector extends SinkConnector {
         MongoDbSinkConnectorConfig sinkConfig;
         try {
             sinkConfig = new MongoDbSinkConnectorConfig(Configuration.from(connectorConfigs));
+            sinkConfig.validate();
         }
         catch (Exception e) {
             return config;

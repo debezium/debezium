@@ -79,12 +79,7 @@ public class MongoProcessedSinkRecordData {
         }
         catch (Exception e) {
             exception = e;
-            // if (config.logErrors()) {
             LOGGER.error("Unable to process record {}", sinkRecord, e);
-            // }
-            // if (!config.tolerateErrors()) {
-            // throw e;
-            // }
         }
         return Optional.empty();
     }

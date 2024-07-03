@@ -90,36 +90,13 @@ public class MongoDbSinkConnectorConfig implements SharedMongoDbConnectorConfig,
             .withDescription("Specifies how many records to attempt to batch together into the destination table, when possible. " +
                     "You can also configure the connector’s underlying consumer’s max.poll.records using consumer.override.max.poll.records in the connector configuration.");
 
-    // public static final Field FIELD_INCLUDE_LIST_FIELD = Field.create(FIELD_INCLUDE_LIST)
-    // .withDisplayName("Include Fields")
-    // .withType(ConfigDef.Type.LIST)
-    // .withGroup(Field.createGroupEntry(Field.Group.FILTERS, 1))
-    // .withWidth(ConfigDef.Width.LONG)
-    // .withImportance(ConfigDef.Importance.MEDIUM)
-    // .withValidation(Field::isListOfRegex)
-    // .withDescription("A comma-separated list of regular expressions matching fully-qualified names of fields that "
-    // + "should be included in change events. The field names must be delimited by the format <topic>:<field> ");
-
-    // public static final Field FIELD_EXCLUDE_LIST_FIELD = Field.create(FIELD_EXCLUDE_LIST)
-    // .withDisplayName("Exclude Fields")
-    // .withType(ConfigDef.Type.LIST)
-    // .withGroup(Field.createGroupEntry(Field.Group.FILTERS, 2))
-    // .withWidth(ConfigDef.Width.LONG)
-    // .withImportance(ConfigDef.Importance.MEDIUM)
-    // .withValidation(Field::isListOfRegex)
-    // .withDescription("A comma-separated list of regular expressions matching fully-qualified names of fields that "
-    // + "should be excluded from change events. The field names must be delimited by the format <topic>:<field> ");
-
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
             .connector(
                     SINK_DATABASE_NAME,
                     CONNECTION_STRING,
                     TABLE_NAMING_STRATEGY_FIELD,
                     COLUMN_NAMING_STRATEGY_FIELD,
-                    BATCH_SIZE_FIELD
-            // FIELD_INCLUDE_LIST_FIELD,
-            // FIELD_EXCLUDE_LIST_FIELD
-            )
+                    BATCH_SIZE_FIELD)
             .create();
 
     /**
@@ -141,7 +118,6 @@ public class MongoDbSinkConnectorConfig implements SharedMongoDbConnectorConfig,
 
     private final String sinkDatabaseName;
     private final String tableNameFormat;
-    // private final Set<String> dataTypeMapping;
     private final TableNamingStrategy tableNamingStrategy;
     private final ColumnNamingStrategy columnNamingStrategy;
     private FieldFilterFactory.FieldNameFilter fieldsFilter;
@@ -186,7 +162,7 @@ public class MongoDbSinkConnectorConfig implements SharedMongoDbConnectorConfig,
         return config.validateAndRecord(fields, problems);
     }
 
-    protected static ConfigDef configDef() {
+    public static ConfigDef configDef() {
         return CONFIG_DEFINITION.configDef();
     }
 
@@ -194,9 +170,6 @@ public class MongoDbSinkConnectorConfig implements SharedMongoDbConnectorConfig,
         return batchSize;
     }
 
-    // public Set<String> getDataTypeMapping() {
-    // return dataTypeMapping;
-    // }
     public TableNamingStrategy getTableNamingStrategy() {
         return tableNamingStrategy;
     }
@@ -204,10 +177,6 @@ public class MongoDbSinkConnectorConfig implements SharedMongoDbConnectorConfig,
     public ColumnNamingStrategy getColumnNamingStrategy() {
         return columnNamingStrategy;
     }
-
-    // public FieldFilterFactory.FieldNameFilter getFieldsFilter() {
-    // return fieldsFilter;
-    // }
 
     public String getContextName() {
         return Module.contextName();
