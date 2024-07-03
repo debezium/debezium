@@ -16,8 +16,6 @@ import java.util.function.Function;
 import org.apache.kafka.connect.runtime.SinkConnectorConfig;
 import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
-import org.hamcrest.CoreMatchers;
-import org.hamcrest.MatcherAssert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,7 +23,6 @@ import com.mongodb.client.MongoDatabase;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
-import io.debezium.connector.mongodb.sink.MongoDbSinkConnector;
 import io.debezium.connector.mongodb.sink.MongoDbSinkConnectorConfig;
 import io.debezium.testing.testcontainers.Connector;
 import io.debezium.testing.testcontainers.ConnectorConfiguration;
@@ -115,8 +112,8 @@ public interface SinkConnectorIT {
                 .until(() -> listCollections(DATABASE_NAME).size() >= 6);
         List<String> collections = listCollections(DATABASE_NAME);
         LOGGER.debug("List collections: {}", Arrays.toString(collections.toArray()));
-        Assertions.assertThat(listCollections(DATABASE_NAME).size()).isEqualTo(6);
-        MatcherAssert.assertThat(collections, CoreMatchers.hasItems("dbserver1_inventory_addresses", "dbserver1_inventory_orders", "dbserver1_inventory_customers",
-                "dbserver1_inventory_products_on_hand", "dbserver1_inventory_geom", "dbserver1_inventory_products"));
+        Assertions.assertThat(listCollections(DATABASE_NAME)).hasSize(6);
+        Assertions.assertThat(collections).containsExactlyInAnyOrder("dbserver1_inventory_addresses", "dbserver1_inventory_orders", "dbserver1_inventory_customers",
+                "dbserver1_inventory_products_on_hand", "dbserver1_inventory_geom", "dbserver1_inventory_products");
     }
 }
