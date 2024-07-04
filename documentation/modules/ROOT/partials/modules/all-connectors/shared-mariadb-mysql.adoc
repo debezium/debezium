@@ -457,7 +457,7 @@ end::snapshots[]
 tag::initial-snap-global[]
 You can customize the way that the connector creates snapshots by changing the value of the `snapshot.mode` property.
 If you configure a different snapshot mode, the connector completes the snapshot by using a modified version of this workflow.
-For information about the snapshot process in environments that do not permit global read locks, see the xref:{context}-snapshot-workflow-with-table-level-locks[snapshot workflow for table-level locks].
+For information about the snapshot process in environments that do not permit global read locks, see the xref:{context}-initial-snapshot-workflow-with-table-level-locks[snapshot workflow for table-level locks].
 
 .Default workflow that the {prodname} {connector-name} connector uses to perform an initial snapshot with a global read lock
 The following table shows the steps in the workflow that {prodname} follows to create a snapshot with a global read lock.
