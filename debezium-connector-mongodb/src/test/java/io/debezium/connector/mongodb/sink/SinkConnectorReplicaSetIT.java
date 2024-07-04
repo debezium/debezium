@@ -6,17 +6,15 @@
 package io.debezium.connector.mongodb.sink;
 
 import static io.debezium.connector.mongodb.TestHelper.cleanDatabase;
-import static org.hamcrest.CoreMatchers.is;
 
 import org.junit.After;
 import org.junit.AfterClass;
-import org.junit.Assume;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import io.debezium.connector.mongodb.AbstractMongoConnectorIT;
-import io.debezium.connector.mongodb.junit.MongoDbDatabaseProvider;
+import io.debezium.connector.mongodb.sink.junit.NetworkIsolatedMongoDbDatabaseProvider;
 import io.debezium.testing.testcontainers.MongoDbDeployment;
 import io.debezium.testing.testcontainers.testhelper.TestInfrastructureHelper;
 import io.debezium.testing.testcontainers.util.DockerUtils;
@@ -32,11 +30,8 @@ public class SinkConnectorReplicaSetIT extends AbstractMongoConnectorIT implemen
 
     @BeforeClass
     public static void beforeAll() {
-        Assume.assumeThat("Skipping DebeziumMongoDbConnectorResourceIT tests when assembly profile is not active!",
-                System.getProperty("isAssemblyProfileActive", "false"),
-                is("true"));
         DockerUtils.enableFakeDnsIfRequired();
-        mongo = MongoDbDatabaseProvider.externalOrDockerReplicaSet(TestInfrastructureHelper.getNetwork());
+        mongo = new NetworkIsolatedMongoDbDatabaseProvider(TestInfrastructureHelper.getNetwork()).dockerReplicaSet();
         mongo.start();
     }
 
