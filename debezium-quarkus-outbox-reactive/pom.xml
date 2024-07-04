@@ -15,9 +15,16 @@
     <packaging>pom</packaging>
 
     <properties>
-        <!-- Quarkus has moved to Java 17 as baseline -->
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
+        <!-- JDK version is controlled by Debezium Parent, do not change! -->
+        <!--    the compiler setting may be different from the parent -->
+        <!--    thus the setting must be here and use the referenced properties -->
+        <!--    e.g. different setting may be required due to quarkus version -->
+        <maven.compiler.source>${debezium.java.source}</maven.compiler.source>
+        <maven.compiler.target>${debezium.java.specific.target}</maven.compiler.target>
+        <maven.compiler.release>${debezium.java.specific.target}</maven.compiler.release>
+        <maven.compiler.testSource>${debezium.java.source}</maven.compiler.testSource>
+        <maven.compiler.testTarget>${debezium.java.specific.target}</maven.compiler.testTarget>
+        <maven.compiler.testRelease>${debezium.java.specific.target}</maven.compiler.testRelease>
     </properties>
 
     <dependencyManagement>
