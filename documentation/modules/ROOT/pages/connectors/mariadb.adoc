@@ -472,7 +472,6 @@ include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloff
 include::{partialsdir}/modules/all-connectors/frag-common-mbean-name.adoc[leveloffset=+1,tags=mbeans-shared]
 
 // Type: reference
-// ModuleID: monitoring-debezium-during-snapshots-of-mariadb-databases
 // Title: Monitoring {prodname} during snapshots of MariaDB databases
 [[mariadb-snapshot-metrics]]
 === Snapshot metrics
@@ -484,7 +483,6 @@ include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-snapshot-
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-incremental-snapshot-metrics.adoc[leveloffset=+1]
 
 // Type: reference
-// ModuleID: monitoring-debezium-mariadb-connector-record-streaming
 // Title: Monitoring {prodname} MariaDB connector record streaming
 [[mariadb-streaming-metrics]]
 === Streaming metrics
@@ -498,7 +496,6 @@ include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming
 //   Moved table of connector-specific metrics to conditonalized section of the preceding shared file.
 
 // Type: reference
-// ModuleID: monitoring-debezium-mariadb-connector-schema-history
 // Title: Monitoring {prodname} MariaDB connector schema history
 [[mariadb-schema-history-metrics]]
 === Schema history metrics
