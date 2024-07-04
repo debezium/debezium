@@ -3,9 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.mongodb;
-
-import static io.debezium.testing.testcontainers.testhelper.TestInfrastructureHelper.DATABASE;
+package io.debezium.connector.mongodb.sink;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -23,11 +21,14 @@ import com.mongodb.client.MongoDatabase;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
-import io.debezium.connector.mongodb.sink.MongoDbSinkConnectorConfig;
+import io.debezium.connector.mongodb.Module;
+import io.debezium.connector.mongodb.MongoDbSinkConnector;
+import io.debezium.connector.mongodb.TestHelper;
 import io.debezium.testing.testcontainers.Connector;
 import io.debezium.testing.testcontainers.ConnectorConfiguration;
 import io.debezium.testing.testcontainers.MongoDbDeployment;
 import io.debezium.testing.testcontainers.testhelper.TestInfrastructureHelper;
+import io.debezium.testing.testcontainers.testhelper.TestInfrastructureHelper.DATABASE;
 
 public interface SinkConnectorIT {
 
