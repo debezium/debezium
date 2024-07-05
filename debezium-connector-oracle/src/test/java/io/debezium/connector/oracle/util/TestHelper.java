@@ -383,7 +383,7 @@ public class TestHelper {
         Configuration jdbcConfig = config.subset(DATABASE_PREFIX, true);
 
         try (OracleConnection jdbcConnection = new OracleConnection(JdbcConfiguration.adapt(jdbcConfig))) {
-            if ((new OracleConnectorConfig(defaultConfig().build())).getPdbName() != null) {
+            if (!Strings.isNullOrEmpty((new OracleConnectorConfig(defaultConfig().build())).getPdbName())) {
                 jdbcConnection.resetSessionToCdb();
             }
             jdbcConnection.execute("ALTER SYSTEM SWITCH LOGFILE");
@@ -398,7 +398,7 @@ public class TestHelper {
         Configuration jdbcConfig = config.subset(DATABASE_PREFIX, true);
 
         try (OracleConnection jdbcConnection = new OracleConnection(JdbcConfiguration.adapt(jdbcConfig))) {
-            if ((new OracleConnectorConfig(defaultConfig().build())).getPdbName() != null) {
+            if (!Strings.isNullOrEmpty((new OracleConnectorConfig(defaultConfig().build())).getPdbName())) {
                 jdbcConnection.resetSessionToCdb();
             }
             return jdbcConnection.queryAndMap("SELECT COUNT(GROUP#) FROM V$LOG", rs -> {
