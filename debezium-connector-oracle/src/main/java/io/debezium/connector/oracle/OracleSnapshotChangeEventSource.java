@@ -64,7 +64,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
 
     @Override
     protected SnapshotContext<OraclePartition, OracleOffsetContext> prepare(OraclePartition partition, boolean onDemand) {
-        if (connectorConfig.getPdbName() != null) {
+        if (!Strings.isNullOrBlank(connectorConfig.getPdbName())) {
             jdbcConnection.setSessionToPdb(connectorConfig.getPdbName());
         }
 
@@ -74,7 +74,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     @Override
     protected void connectionPoolConnectionCreated(RelationalSnapshotContext<OraclePartition, OracleOffsetContext> snapshotContext,
                                                    JdbcConnection connection) {
-        if (connectorConfig.getPdbName() != null) {
+        if (!Strings.isNullOrBlank(connectorConfig.getPdbName())) {
             ((OracleConnection) connection).setSessionToPdb(connectorConfig.getPdbName());
         }
     }
@@ -250,7 +250,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
 
     @Override
     public void close() {
-        if (connectorConfig.getPdbName() != null) {
+        if (!Strings.isNullOrBlank(connectorConfig.getPdbName())) {
             jdbcConnection.resetSessionToCdb();
         }
     }
