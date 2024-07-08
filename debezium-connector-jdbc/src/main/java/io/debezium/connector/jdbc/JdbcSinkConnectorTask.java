@@ -123,6 +123,15 @@ public class JdbcSinkConnectorTask extends SinkTask {
     }
 
     @Override
+    public void open(Collection<TopicPartition> partitions) {
+        if (LOGGER.isTraceEnabled()) {
+            for (TopicPartition partition : partitions) {
+                LOGGER.trace("Requested open TopicPartition request for '{}'", partition);
+            }
+        }
+    }
+
+    @Override
     public void close(Collection<TopicPartition> partitions) {
         for (TopicPartition partition : partitions) {
             if (offsets.containsKey(partition)) {
