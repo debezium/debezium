@@ -27,6 +27,6 @@ The connector also provides the following additional snapshot metrics when an in
 |===
 
 ifdef::MARIADB,MYSQL[]
-The {prodname} MariaDB connector also provides the `HoldingGlobalLock` custom snapshot metric.
+The {prodname} {connector-name} connector also provides the `HoldingGlobalLock` custom snapshot metric.
 This metric is set to a Boolean value that indicates whether the connector currently holds a global or table write lock.
 endif::MARIADB,MYSQL[]
