@@ -94,7 +94,7 @@ The {prodname} {connector-name} connector also provides the following additional
 
 |[[is-gtid-mode-enabled]]<<is-gtid-mode-enabled,`+IsGtidModeEnabled+`>>
 |`boolean`
-|Flag that denotes whether the connector is currently tracking GTIDs from MariaDB server.
+|Flag that denotes whether the connector is currently tracking GTIDs from {connector-name} server.
 
 |[[gtid-set]]<<gtid-set,`+GtidSet+`>>
 |`string`
