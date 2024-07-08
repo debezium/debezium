@@ -2927,7 +2927,7 @@ Optionally, you can ignore, mask, or truncate columns that contain sensitive dat
 {
     "name": "inventory-connector", // <1>
     "config": {
-        "connector.class": "io.debezium.connector.{context}.MariaDbConnector", // <2>
+        "connector.class": "io.debezium.connector.{context}.{connector-name}Connector", // <2>
         "database.hostname": "192.168.99.100", // <3>
         "database.port": "3306", // <4>
         "database.user": "debezium-user", // <5>
