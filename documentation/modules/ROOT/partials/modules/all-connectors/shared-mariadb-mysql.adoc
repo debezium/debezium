@@ -3067,12 +3067,12 @@ endif::community[]
 ifdef::product[]
 Details are in the following sections:
 
-* xref:debezium-{context}-connector-configuration-and-startup-errors[]
-* xref:{context}-becomes-unavailable-while-debezium-is-running[]
-* xref:debezium-{context}-kafka-connect-process-stops-gracefully[]
-* xref:debezium-{context}-kafka-connect-process-crashes[]
-* xref:debezium-{context}-kafka-process-becomes-unavailable[]
-* xref:{context}-purges-binlog-files-used-by-debezium[]
+* xref:debezium-{context}-connector-configuration-and-startup-errors[Configuration and startup errors]
+* xref:{context}-becomes-unavailable-while-debezium-is-running[{connector-name} becomes unavailable]
+* xref:debezium-{context}-kafka-connect-process-stops-gracefully[Kafka Connect stops gracefully]
+* xref:debezium-{context}-kafka-connect-process-crashes[Kafka Connect process crashes]
+* xref:debezium-{context}-kafka-process-becomes-unavailable[Kafka becomes unavailable]
+* xref:{context}-purges-binlog-files-used-by-debezium[{connector-name} purges binlog files]
 
 endif::product[]
 
