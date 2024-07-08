@@ -102,7 +102,7 @@ The {prodname} {connector-name} connector also provides the following additional
 
 |[[number-of-skipped-events]]<<number-of-skipped-events,`+NumberOfSkippedEvents+`>>
 |`long`
-|The number of events that have been skipped by the MariaDB connector. Typically events are skipped due to a malformed or unparseable event from MariaDB's binlog.
+|The number of events that have been skipped by the {connector-name} connector. Typically events are skipped due to a malformed or unparseable event from {connector-name}'s binlog.
 
 |[[number-of-disconnects]]<<number-of-disconnects,`+NumberOfDisconnects+`>>
 |`long`
