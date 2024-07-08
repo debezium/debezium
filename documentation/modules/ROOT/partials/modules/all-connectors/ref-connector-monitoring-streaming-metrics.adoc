@@ -106,7 +106,7 @@ The {prodname} {connector-name} connector also provides the following additional
 
 |[[number-of-disconnects]]<<number-of-disconnects,`+NumberOfDisconnects+`>>
 |`long`
-|The number of disconnects by the MariaDB connector.
+|The number of disconnects by the {connector-name} connector.
 
 |[[number-of-rolled-back-transactions]]<<number-of-rolled-back-transactions,`+NumberOfRolledBackTransactions+`>>
 |`long`
