@@ -383,7 +383,7 @@ public class JdbcConnection implements AutoCloseable {
     }
 
     public synchronized JdbcConnection rollback() throws SQLException {
-        if (!isConnected()) {
+        if (!isValid()) {
             return this;
         }
         Connection conn = connection();
@@ -890,9 +890,9 @@ public class JdbcConnection implements AutoCloseable {
     }
 
     public synchronized Connection connection(boolean executeOnConnect) throws SQLException {
-        if (!isConnected()) {
+        if (!isValid()) {
             conn = factory.connect(JdbcConfiguration.adapt(config));
-            if (!isConnected()) {
+            if (!isValid()) {
                 throw new SQLException("Unable to obtain a JDBC connection");
             }
             // Always run the initial operations on this new connection
