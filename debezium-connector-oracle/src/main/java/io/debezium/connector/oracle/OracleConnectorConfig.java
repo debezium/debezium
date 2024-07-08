@@ -621,6 +621,14 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withValidation(Field::isNonNegativeInteger)
             .withDescription("The number of attempts to retry database errors during snapshots before failing.");
 
+    public static final Field LOG_MINING_USE_SAFE_RESUME_SCN = Field.createInternal("log.mining.use.safe.resume.scn")
+            .withDisplayName("Enables use of the LogMiner SAFE_RESUME_SCN column")
+            .withType(Type.BOOLEAN)
+            .withDefault(false)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("When enabled, the next mining iteration will resume based on the last commit's SAFE_RESUME_SCN value.");
+
     @Deprecated
     public static final Field LOG_MINING_CONTINUOUS_MINE = Field.create("log.mining.continuous.mine")
             .withDisplayName("Should log mining session configured with CONTINUOUS_MINE setting?")
@@ -701,6 +709,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_MAX_SCN_DEVIATION_MS,
                     LOG_MINING_SCHEMA_CHANGES_USERNAME_EXCLUDE_LIST,
                     LOG_MINING_INCLUDE_REDO_SQL,
+                    LOG_MINING_USE_SAFE_RESUME_SCN,
                     OLR_SOURCE,
                     OLR_HOST,
                     OLR_PORT,
@@ -774,6 +783,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final Set<String> logMiningSchemaChangesUsernameExcludes;
     private final Boolean logMiningIncludeRedoSql;
     private final boolean logMiningContinuousMining;
+    private final boolean logMiningUseSafeResumeScn;
 
     private final String openLogReplicatorSource;
     private final String openLogReplicatorHostname;
@@ -843,6 +853,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningSchemaChangesUsernameExcludes = Strings.setOf(config.getString(LOG_MINING_SCHEMA_CHANGES_USERNAME_EXCLUDE_LIST), String::new);
         this.logMiningIncludeRedoSql = config.getBoolean(LOG_MINING_INCLUDE_REDO_SQL);
         this.logMiningContinuousMining = config.getBoolean(LOG_MINING_CONTINUOUS_MINE);
+        this.logMiningUseSafeResumeScn = config.getBoolean(LOG_MINING_USE_SAFE_RESUME_SCN);
 
         // OpenLogReplicator
         this.openLogReplicatorSource = config.getString(OLR_SOURCE);
@@ -1893,6 +1904,15 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      */
     public boolean isLogMiningIncludeRedoSql() {
         return logMiningIncludeRedoSql;
+    }
+
+    /**
+     * Returns whether to use the LogMiner {@code SAFE_RESUME_SCN} resume position.
+     *
+     * @return whether to use the safe resume scn position logic
+     */
+    public boolean isLogMiningUseSafeResumeScn() {
+        return logMiningUseSafeResumeScn;
     }
 
     /**
