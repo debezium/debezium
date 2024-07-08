@@ -278,3 +278,4 @@ HenkvanDyk,Henk van Dyk
 TimoWilhelm,Timo Wilhelm
 ashishbinu,Ashish Binu
 wltmlx,Lukas Langegger
+GitHubSergei,Sergey Kazakov
