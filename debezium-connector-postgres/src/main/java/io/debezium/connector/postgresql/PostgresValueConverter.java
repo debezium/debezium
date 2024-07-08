@@ -803,7 +803,9 @@ public class PostgresValueConverter extends JdbcValueConverters {
     }
 
     protected Object convertMoney(Column column, Field fieldDefn, Object data, DecimalMode mode) {
-        return convertValue(column, fieldDefn, data, BigDecimal.ZERO.setScale(moneyFractionDigits), (r) -> {
+        var fallback = decimalMode.equals(decimalMode.STRING) ? BigDecimal.ZERO.setScale(moneyFractionDigits).toString()
+                : decimalMode.equals(decimalMode.DOUBLE) ? BigDecimal.ZERO.setScale(moneyFractionDigits).doubleValue() : BigDecimal.ZERO.setScale(moneyFractionDigits);
+        return convertValue(column, fieldDefn, data, fallback, (r) -> {
             switch (mode) {
                 case DOUBLE:
                     if (data instanceof BigDecimal) {
