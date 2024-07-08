@@ -39,7 +39,7 @@ end::mariadb-mysql-intro[]
 === Supported topologies
 
 tag::supported-topos[]
-The {prodname} MariaDB connector supports the following {connector-name} topologies:
+The {prodname} {connector-name} connector supports the following {connector-name} topologies:
 
 Standalone::
 When a single {connector-name} server is used, the server must have the binlog enabled so the {prodname} {connector-name} connector can monitor the server.
