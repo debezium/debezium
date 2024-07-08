@@ -549,7 +549,6 @@ include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloff
 include::{partialsdir}/modules/all-connectors/frag-common-mbean-name.adoc[leveloffset=+1,tags=mbeans-shared]
 
 // Type: reference
-// ModuleID: monitoring-debezium-during-snapshots-of-mysql-databases
 // Title: Monitoring {prodname} during snapshots of MySQL databases
 [[mysql-snapshot-metrics]]
 === Snapshot metrics
@@ -561,7 +560,6 @@ include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-snapshot-
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-incremental-snapshot-metrics.adoc[leveloffset=+1]
 
 // Type: reference
-// ModuleID: monitoring-debezium-mysql-connector-record-streaming
 // Title: Monitoring {prodname} MySQL connector record streaming
 [[mysql-streaming-metrics]]
 === Streaming metrics
@@ -573,7 +571,6 @@ include::{partialsdir}/modules/all-connectors/frag-common-mbean-name.adoc[levelo
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
 
 // Type: reference
-// ModuleID: monitoring-debezium-mysql-connector-schema-history
 // Title: Monitoring {prodname} MySQL connector schema history
 [[mysql-schema-history-metrics]]
 === Schema history metrics
