@@ -23,9 +23,9 @@ import io.debezium.time.ZonedTimestamp;
  *
  * @author Chris Cranford
  */
-public class ZonedTimestampType extends AbstractTimestampType {
+public class DebeziumZonedTimestampType extends AbstractTimestampType {
 
-    public static final ZonedTimestampType INSTANCE = new ZonedTimestampType();
+    public static final DebeziumZonedTimestampType INSTANCE = new DebeziumZonedTimestampType();
     public static final String POSITIVE_INFINITY = "infinity";
     public static final String NEGATIVE_INFINITY = "-infinity";
 
