@@ -55,8 +55,8 @@ Whenever {prodname} processes a new change event, it invokes the configured conv
 
 [NOTE]
 ====
-The instructions that follow apply to {prodname} relational database connectors only.
-You cannot use this information to create a custom converter for the {prodname} MongoDB connector.
+The instructions that follow apply to {prodname} relational database source connectors only.
+You cannot use this information to create a custom converter for the {prodname} MongoDB connector, or for the {prodname} JDBC sink connector.
 ====
 
 // Type: assembly
@@ -219,6 +219,12 @@ These compile dependencies must be included in your project's `pom.xml`, as show
 Custom converters act on specific columns or column types in a source table to specify how to convert the data types in the source to Kafka Connect schema types.
 To use a custom converter with a connector, you deploy the converter JAR file alongside the connector file, and then configure the connector to use the converter.
 
+[IMPORTANT]
+====
+Custom converters are designed to modify messages emitted by {prodname} source connectors.
+You cannot configure the {prodname} JDBC sink connector to use a custom converter.
+====
+
 // Type: procedure
 [id="deploying-a-debezium-custom-converter"]
 === Deploying a custom converter
@@ -238,8 +244,14 @@ NOTE: To use a converter with multiple connectors, you must place a copy of the 
 [id="configuring-a-connectors-to-use-a-custom-converter"]
 === Configuring a connector to use a custom converter
 
-To enable a connector to use the custom converter, you add properties to the connector configuration that specify the converter name and class.
-If the converter requires further information to customize the formats of specific data types, you can also define other coniguration options to provide that information.
+To enable a connector to use the custom converter, add properties to specify the name and class of the converter to the configuration of a {prodname} source connector.
+You cannot configure the {prodname} JDBC sink connector to use a custom converter.
+If the converter requires further information to customize the formats of specific data types, you can define other configuration options to provide that information.
+
+.Prerequisites
+
+* You xref:implementing-a-custom-converter[created] and xref:deploying-a-debezium-custom-converter[deployed a custom converter].
+* A {prodname} source connector is deployed.
 
 .Procedure
 
