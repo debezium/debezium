@@ -540,15 +540,14 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     public static final Field PLUGIN_NAME = Field.create("plugin.name")
             .withDisplayName("Plugin")
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION, 0))
-            .withEnum(LogicalDecoder.class, LogicalDecoder.DECODERBUFS)
+            .withEnum(LogicalDecoder.class, LogicalDecoder.YBOUTPUT)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
             .withDescription("The name of the Postgres logical decoding plugin installed on the server. " +
-                    "Supported values are '" + LogicalDecoder.DECODERBUFS.getValue()
-                    + "' and '" + LogicalDecoder.PGOUTPUT.getValue()
+                    "Supported values are '" + LogicalDecoder.PGOUTPUT.getValue()
                     + "' and '" + LogicalDecoder.YBOUTPUT.getValue()
                     + "'. " +
-                    "Defaults to '" + LogicalDecoder.DECODERBUFS.getValue() + "'.");
+                    "Defaults to '" + LogicalDecoder.YBOUTPUT.getValue() + "'.");
 
     public static final Field SLOT_NAME = Field.create("slot.name")
             .withDisplayName("Slot")
