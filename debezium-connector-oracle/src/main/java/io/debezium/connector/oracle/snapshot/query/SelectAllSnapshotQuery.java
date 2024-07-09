@@ -21,6 +21,7 @@ import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.snapshot.spi.SnapshotQuery;
+
 import oracle.jdbc.OracleTypes;
 
 @ConnectorSpecific(connector = OracleConnector.class)
