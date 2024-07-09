@@ -5,8 +5,8 @@
  */
 package io.debezium.connector.jdbc.dialect.postgres;
 
-import static io.debezium.connector.jdbc.type.debezium.ZonedTimestampType.NEGATIVE_INFINITY;
-import static io.debezium.connector.jdbc.type.debezium.ZonedTimestampType.POSITIVE_INFINITY;
+import static io.debezium.connector.jdbc.type.debezium.DebeziumZonedTimestampType.NEGATIVE_INFINITY;
+import static io.debezium.connector.jdbc.type.debezium.DebeziumZonedTimestampType.POSITIVE_INFINITY;
 
 import java.sql.Connection;
 import java.sql.SQLException;

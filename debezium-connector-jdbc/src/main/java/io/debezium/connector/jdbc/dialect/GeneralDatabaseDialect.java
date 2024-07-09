@@ -69,6 +69,7 @@ import io.debezium.connector.jdbc.type.connect.ConnectStringType;
 import io.debezium.connector.jdbc.type.connect.ConnectTimeType;
 import io.debezium.connector.jdbc.type.connect.ConnectTimestampType;
 import io.debezium.connector.jdbc.type.debezium.DateType;
+import io.debezium.connector.jdbc.type.debezium.DebeziumZonedTimestampType;
 import io.debezium.connector.jdbc.type.debezium.MicroTimeType;
 import io.debezium.connector.jdbc.type.debezium.MicroTimestampType;
 import io.debezium.connector.jdbc.type.debezium.NanoTimeType;
@@ -77,7 +78,6 @@ import io.debezium.connector.jdbc.type.debezium.TimeType;
 import io.debezium.connector.jdbc.type.debezium.TimestampType;
 import io.debezium.connector.jdbc.type.debezium.VariableScaleDecimalType;
 import io.debezium.connector.jdbc.type.debezium.ZonedTimeType;
-import io.debezium.connector.jdbc.type.debezium.ZonedTimestampType;
 import io.debezium.util.Strings;
 
 /**
@@ -636,7 +636,7 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
         registerType(NanoTimeType.INSTANCE);
         registerType(NanoTimestampType.INSTANCE);
         registerType(ZonedTimeType.INSTANCE);
-        registerType(ZonedTimestampType.INSTANCE);
+        registerType(DebeziumZonedTimestampType.INSTANCE);
         registerType(VariableScaleDecimalType.INSTANCE);
 
         // Supported connect data types

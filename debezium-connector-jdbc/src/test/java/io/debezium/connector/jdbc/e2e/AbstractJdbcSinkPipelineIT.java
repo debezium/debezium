@@ -36,7 +36,6 @@ import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.kafka.connect.sink.SinkRecord;
-import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.TestTemplate;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -2590,7 +2589,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 (rs, index) -> rs.getTimestamp(index).toInstant().atZone(ZoneOffset.UTC));
     }
 
-    private static @NotNull List<ZonedDateTime> getExpectedZonedDateTimes(Sink sink) {
+    private static List<ZonedDateTime> getExpectedZonedDateTimes(Sink sink) {
 
         List<ZonedDateTime> expectedValues = List.of();
         if (sink.getType().is(SinkType.SQLSERVER) && sink.getType().is(SinkType.DB2)) {
