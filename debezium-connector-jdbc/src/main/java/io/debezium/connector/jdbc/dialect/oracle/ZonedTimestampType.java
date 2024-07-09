@@ -10,6 +10,7 @@ import java.util.List;
 
 import io.debezium.connector.jdbc.ValueBindDescriptor;
 import io.debezium.connector.jdbc.type.Type;
+import io.debezium.connector.jdbc.type.debezium.DebeziumZonedTimestampType;
 import io.debezium.time.ZonedTimestamp;
 
 /**
@@ -17,7 +18,7 @@ import io.debezium.time.ZonedTimestamp;
  *
  * @author Chris Cranford
  */
-public class ZonedTimestampType extends io.debezium.connector.jdbc.type.debezium.ZonedTimestampType {
+public class ZonedTimestampType extends DebeziumZonedTimestampType {
 
     public static final ZonedTimestampType INSTANCE = new ZonedTimestampType();
 
