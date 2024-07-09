@@ -84,11 +84,11 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: jdbc
-      - name: Set up Java 17
+      - name: Set up Java 21
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: 17
+          java-version: 21
       - name: Load Debezium core cache
         uses: actions/cache/restore@v4
         with:
@@ -113,11 +113,11 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: jdbc
-      - name: Set up Java 17
+      - name: Set up Java 21
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: 17
+          java-version: 21
       - name: Load Debezium core cache
         uses: actions/cache/restore@v4
         with:
@@ -142,11 +142,11 @@ jobs:
   #        uses: actions/checkout@v4
   #        with:
   #          path: jdbc
-  #      - name: Set up Java 17
+  #      - name: Set up Java 21
   #        uses: actions/setup-java@v4
   #        with:
   #          distribution: 'temurin'
-  #          java-version: 17
+  #          java-version: 21
   #      - name: Load Debezium core cache
   #        uses: actions/cache/restore@v4
   #        with:
@@ -171,11 +171,11 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: jdbc
-      - name: Set up Java 17
+      - name: Set up Java 21
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: 17
+          java-version: 21
       - name: Load Debezium core cache
         uses: actions/cache/restore@v4
         with:
@@ -200,11 +200,11 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: jdbc
-      - name: Set up Java 17
+      - name: Set up Java 21
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: 17
+          java-version: 21
       - name: Load Debezium core cache
         uses: actions/cache/restore@v4
         with:
