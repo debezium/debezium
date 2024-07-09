@@ -37,7 +37,8 @@ You can configure the post processor to reselect the following column types:
  * Columns that contain the `unavailable.value.placeholder` sentinel value.
 
 
-NOTE: You can use the `ReselectColumnsPostProcessor` post processor only with {prodname} SQL database connectors.
+NOTE: You can use the `ReselectColumnsPostProcessor` post processor only with {prodname} source connectors that emit change event records from a relational database. +
+The post processor is not designed to work with the {prodname} MongoDB connector or the {prodname} JDBC sink connector.
 
 ifdef::product[]
 For details about using the `ReselectColumnsPostProcessor` post processor, see the following topics:
