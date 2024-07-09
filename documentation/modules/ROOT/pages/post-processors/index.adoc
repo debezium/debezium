@@ -21,3 +21,9 @@ In turn, this access enhances efficiency when performing tasks that rely on such
 |Re-selects specific columns that may not have been provided by the change event, such as TOASTed columns or Oracle LOB columns that were not modified by the current event's change.
 
 |===
+
+[IMPORTANT]
+====
+Post processors are designed to modify change event records emitted by {prodname} source connectors only. +
+You cannot configure the {prodname} JDBC sink connector to use a post processor.
+====
