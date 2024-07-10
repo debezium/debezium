@@ -2342,9 +2342,10 @@ For details about setting up Oracle for use with the {prodname} connector, see t
 * xref:preparing-oracle-databases-for-use-with-debezium[]
 * xref:resizing-oracle-redo-logs-to-accommodate-the-data-dictionary[]
 * xref:creating-an-oracle-user-for-the-debezium-oracle-connector[]
-* xref:support-for-oracle-standby-databases[]
+* xref:running-the-connector-with-an-oracle-standby-database[]
 
 endif::product[]
+
 // Type: concept
 // Title: Compatibility of the {prodname} Oracle connector with Oracle installation types
 [id="compatibility-of-the-debezium-oracle-connector-with-oracle-installation-types"]
@@ -2660,11 +2661,58 @@ Without these grants, the connector cannot operate.
 
 |===
 
-// Type: concept
+// Type: assembly
 // Title: Running the connector with an Oracle standby database
 // ModuleID: running-the-connector-with-an-oracle-standby-database
 [id="support-for-oracle-standby-databases"]
 === Standby databases
+
+A standby database provides a synchronized copy of the primary instance.
+In the event of a primary database failure, standby databases provide for continuous availability, and disaster recovery.
+Oracle makes use of both physical and logical standby databases.
+
+A physical standby is an exact, block-for-block copy of the primary production database, and its system change number (SCN) values are identical to those of the primary.
+The {prodname} Oracle connector cannot capture change events directly from a physical standby database, because a physical standbys do not accept external connections.
+After a physical standby is converted to the primary database, the connector can access to capture events just as it would from any other primary database.
+
+A logical standby contains the same logical data as the primary, but data might be stored in a different physical manner.
+SCN offsets in a logical standby differ from the offsets in the primary database.
+You can xref:configuring-the-debezium-oracle-connector-to-capture-events-from-a-logical-standby[configure the {prodname} Oracle connector to capture changes from a logical standby database].
+
+
+// Type: concept
+// Title: Capturing data from an Oracke failover database
+// ModuleID: capturing-data-from-an-oracle-failover-database
+==== Failover databases
+
+When you set up a failover database, it is generally best practice to use a physical standby database rather than a logical standby database.
+A physical standby maintains a more consistent state with the primary database than does a logical standby.
+Physical standbys contain an exact replica of the primary data, and the system change number (SCN) values of the standby are identical to those of the primary.
+In a {prodname} environment, after the database fails over to physical standby, the presence of consistent SCN values ensure that the connector can find the last processed SCN value.
+
+A physical standby is locked in a read-only mode, with managed recovery running to maintain synchronization.
+When a database is in standby mode, it does not accept external JDBC connections from clients, and it cannot be accessed by external application.
+
+After a failure event, to permit {prodname} to connect to the former physical standby,a DBA must perform several actions to enable failover to the standby, and promote it the the primary database.
+The following list identifies some of the key actions:
+
+* Cancel managed recovery on the standby.
+* Complete the active recovery process.
+* Convert the standby to the primary role.
+* Open the new primary to client read and write operations.
+
+After the former physical standby is available for normal use, you can configure the {prodname} Oracle connector to connect to it.
+To enable the connector to capture from the new primary, edit the database hostname in the connector configuration, replacing the hostname of the original primary with the hostname of the new primary.
+
+// Type: procedure
+[id="configuring-the-debezium-oracle-connector-to-capture-events-from-a-logical-standby"]
+==== Configuring the {prodname} Oracle connector to capture events from a logical standby
+
+When the {prodname} connector for Oracle connects to a primary database, it uses an internal flush table to manage the flush cycles of the Oracle Log Writer Buffer (LGWR) process.
+The flush process requires that the user account through which the connector accesses the database has permission to create and write to this flush table.
+However, a logical stand-by database typically permits read-only access, preventing the connector from writing to the database.
+You can modify the connector configuration to enable the connector to capture events from a logical standby.
+
 ifdef::product[]
 [IMPORTANT]
 ====
@@ -2679,22 +2727,25 @@ Red{nbsp}Hat might provide ways to submit feedback on Developer Preview software
 For more information about the support scope of Red{nbsp}Hat Developer Preview software, see link:https://access.redhat.com/support/offerings/devpreview/[Developer Preview Support Scope].
 ====
 endif::product[]
+
 ifdef::community[]
-An Oracle database can be configured with either a physical or a logical standby environment to provide for recovery after of a production failure.
-At this time, the {prodname} Oracle connector cannot use a physical or logical standby database as the change event source.
-There is an open https://issues.redhat.com/browse/DBZ-3866[Jira issue] to investigate this support.
-
-=== Failover databases
-
-It is customary for a logical or physical standby to exist in the case of an Oracle production failure.
-When a failure occurs and the standby instance is promoted to production, the database must be opened for read/write transactions before the {prodname} Oracle connector can connect to the database.
-
-In the case of a physical standby, the standby is an exact copy of production, which implies that the SCN values are identical.
-When using a physical standby, it is sufficient to reconfigure the {prodname} Oracle connector to use the hostname of the standby once the database is open.
-
-In the case of a logical standby, the standby is not an exact copy of the production database, so the SCN offsets in the standby differ from those in the production database.
-If you use a logical standby, to help ensure that {prodname} does not miss any change events, after the database is open, configure a new connector and perform a new database snapshot.
+[WARNING]
+====
+The ability to use the connector with a logical standby in an incubating state and can change without notice.
+There is an open https://issues.redhat.com/browse/DBZ-3866[Jira issue] to investigate support for capturing changes from a physical standby.
+====
 endif::community[]
+
+.Procedure
+
+* To enable {prodname} to capture events from an Oracle read-only logical standby database, add the following property to the connector configuration, to disable creation and management of the flush table:
++
+```
+internal.log.mining.read.only=true
+```
+The preceding setting prevents the database from creating and updating the `LOG_MINING_FLUSH` table.
+You can use the `internal.log.mining.read.only` property with an Oracle Standalone database, or with an Oracle RAC installation.
+
 
 // Type: assembly
 // ModuleID: deployment-of-debezium-oracle-connectors
