@@ -443,7 +443,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
             throw error;
         }
         else {
-            LOGGER.info("All tasks have stated successfully.");
+            LOGGER.info("All tasks have started successfully.");
         }
     }
 
