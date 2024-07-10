@@ -972,6 +972,16 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     public static final Field SOURCE_INFO_STRUCT_MAKER = CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER
             .withDefault(PostgresSourceInfoStructMaker.class.getName());
 
+    public static final Field GROWING_WAL_WARNING_LOG_INTERVAL = Field.create("wal.growing.warning.log.interval")
+            .withDisplayName("Interval between log messages about growing WAL")
+            .withType(Type.INT)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 101))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("Number of received events without sending anything to Kafka which will trigger a WAL backlog growing warning.")
+            .withDefault(10_000)
+            .withValidation(Field::isNonNegativeInteger);
+
     private final LogicalDecodingMessageFilter logicalDecodingMessageFilter;
     private final HStoreHandlingMode hStoreHandlingMode;
     private final IntervalHandlingMode intervalHandlingMode;
@@ -1131,6 +1141,10 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     @Override
     protected SourceInfoStructMaker<? extends AbstractSourceInfo> getSourceInfoStructMaker(Version version) {
         return getSourceInfoStructMaker(SOURCE_INFO_STRUCT_MAKER, Module.name(), Module.version(), this);
+    }
+
+    protected int getGrowingWalWarningLogInterval() {
+        return getConfig().getInteger(GROWING_WAL_WARNING_LOG_INTERVAL);
     }
 
     private static final ConfigDefinition CONFIG_DEFINITION = RelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
