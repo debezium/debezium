@@ -843,7 +843,10 @@ The Spanner connector represents changes to rows with events that are structured
 |`STRING`
 |`STRING`
 
+|`FLOAT32`
 |`FLOAT`
+
+|`FLOAT64`
 |`DOUBLE`
 
 |`NUMERIC`
