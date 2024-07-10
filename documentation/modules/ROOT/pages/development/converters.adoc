@@ -221,8 +221,8 @@ To use a custom converter with a connector, you deploy the converter JAR file al
 
 [IMPORTANT]
 ====
-Custom converters are designed to modify messages emitted by {prodname} source connectors.
-You cannot configure the {prodname} JDBC sink connector to use a custom converter.
+Custom converters are designed to modify messages emitted by {prodname} relational database source connectors.
+You cannot configure either the {prodname} MongoDB connector, or the {prodname} JDBC sink connector to use a custom converter.
 ====
 
 // Type: procedure
@@ -251,7 +251,7 @@ If the converter requires further information to customize the formats of specif
 .Prerequisites
 
 * You xref:implementing-a-custom-converter[created] and xref:deploying-a-debezium-custom-converter[deployed a custom converter].
-* A {prodname} source connector is deployed.
+* A {prodname} relational database source connector is deployed.
 
 .Procedure
 
