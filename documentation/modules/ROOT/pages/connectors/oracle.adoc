@@ -2681,7 +2681,7 @@ You can xref:configuring-the-debezium-oracle-connector-to-capture-events-from-a-
 
 
 // Type: concept
-// Title: Capturing data from an Oracke failover database
+// Title: Capturing data from an Oracle failover database
 // ModuleID: capturing-data-from-an-oracle-failover-database
 ==== Failover databases
 
