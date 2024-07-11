@@ -2470,7 +2470,7 @@ To enable the connector to capture from the new primary, edit the database hostn
 When the {prodname} connector for Oracle connects to a primary database, it uses an internal flush table to manage the flush cycles of the Oracle Log Writer Buffer (LGWR) process.
 The flush process requires that the user account through which the connector accesses the database has permission to create and write to this flush table.
 However, a logical stand-by database typically permits read-only access, preventing the connector from writing to the database.
-You can modify the connector configuration to enable the connector to capture events from a logical standby.
+You can modify the connector configuration to enable the connector to capture events from a logical standby, or the DBA can create a new writable tablespace in which the connector can store the flush table.
 
 ifdef::product[]
 [IMPORTANT]
