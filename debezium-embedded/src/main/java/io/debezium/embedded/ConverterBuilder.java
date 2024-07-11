@@ -149,7 +149,7 @@ public class ConverterBuilder<R> {
     }
 
     private List<Header<byte[]>> convertHeaders(
-                                                SourceRecord record, String topicName, HeaderConverter headerConverter) {
+            SourceRecord record, String topicName, HeaderConverter headerConverter) {
         List<Header<byte[]>> headers = new ArrayList<>();
 
         for (org.apache.kafka.connect.header.Header header : record.headers()) {
@@ -170,6 +170,12 @@ public class ConverterBuilder<R> {
 
         if (isFormat(format, Json.class) || isFormat(format, JsonByteArray.class)) {
             converterConfig = converterConfig.edit().withDefault(FIELD_CLASS, "org.apache.kafka.connect.json.JsonConverter").build();
+        }
+        else if (isFormat(format, ClientProvided.class)) {
+            if (converterConfig.getString(FIELD_CLASS) == null) {
+                throw new DebeziumException(
+                        "`" + ClientProvided.class.getSimpleName().toLowerCase() + "`" + " header converter requires a '" + FIELD_CLASS + "' configuration");
+            }
         }
         else {
             throw new DebeziumException("Header Converter '" + format.getSimpleName() + "' is not supported");
@@ -217,6 +223,13 @@ public class ConverterBuilder<R> {
         }
         else if (isFormat(format, SimpleString.class)) {
             converterConfig = converterConfig.edit().withDefault(FIELD_CLASS, "org.apache.kafka.connect.storage.StringConverter").build();
+        }
+        else if (isFormat(format, ClientProvided.class)) {
+            if (converterConfig.getString(FIELD_CLASS) == null) {
+                throw new DebeziumException(
+                        "`" + ClientProvided.class.getSimpleName().toLowerCase() + "`" + (key ? " key" : " value") + " converter requires a '" + FIELD_CLASS
+                                + "' configuration");
+            }
         }
         else {
             throw new DebeziumException("Converter '" + format.getSimpleName() + "' is not supported");
