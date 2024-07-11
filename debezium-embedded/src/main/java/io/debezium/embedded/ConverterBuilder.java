@@ -149,7 +149,7 @@ public class ConverterBuilder<R> {
     }
 
     private List<Header<byte[]>> convertHeaders(
-            SourceRecord record, String topicName, HeaderConverter headerConverter) {
+                                                SourceRecord record, String topicName, HeaderConverter headerConverter) {
         List<Header<byte[]>> headers = new ArrayList<>();
 
         for (org.apache.kafka.connect.header.Header header : record.headers()) {
