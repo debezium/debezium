@@ -238,6 +238,11 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     }
 
     public Connection createSnapshotConnection() throws SQLException {
+
+        if (!jdbcConnection.isValid()) {
+            jdbcConnection.reconnect();
+        }
+
         Connection connection = jdbcConnection.connection();
         connection.setAutoCommit(false);
         return connection;
