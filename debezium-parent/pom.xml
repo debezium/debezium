@@ -4,7 +4,7 @@
   <parent>
     <groupId>io.debezium</groupId>
     <artifactId>debezium-build-parent</artifactId>
-    <version>2.5.2.ybpg.20241-SNAPSHOT.1</version>
+    <version>dz.2.5.2.yb.2024.1-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
 
