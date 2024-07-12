@@ -11,6 +11,8 @@ import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 
+import io.debezium.testing.testcontainers.util.dns.FakeDns;
+
 public class DockerUtils {
 
     public static final String CONTAINER_VM_LOG_SKIP = "container.vm.log.skip";
@@ -50,7 +52,7 @@ public class DockerUtils {
         var prop = System.getProperty(CONTAINER_VM_LOG_SKIP, "false");
         var propertySkip = Boolean.parseBoolean(prop);
 
-        if (propertySkip || skip || !isContainerVM() || FakeDns.getInstance().isInstalled()) {
+        if (propertySkip || skip || !isContainerVM() || FakeDns.getInstance().isEnabled()) {
             return;
         }
 
@@ -78,7 +80,7 @@ public class DockerUtils {
      */
     public static void enableFakeDnsIfRequired() {
         if (isContainerVM()) {
-            FakeDns.getInstance().install();
+            FakeDns.getInstance().enable();
         }
     }
 
@@ -86,7 +88,7 @@ public class DockerUtils {
      * Disables {@link FakeDns} if enabled
      */
     public static void disableFakeDns() {
-        FakeDns.getInstance().restore();
+        FakeDns.getInstance().disable();
     }
 
     /**
@@ -105,7 +107,7 @@ public class DockerUtils {
      * @param address resolution address
      */
     public static void addFakeDnsEntry(String hostname, InetAddress address) {
-        if (FakeDns.getInstance().isInstalled()) {
+        if (FakeDns.getInstance().isEnabled()) {
             FakeDns.getInstance().addResolution(hostname, address);
         }
     }
@@ -126,7 +128,7 @@ public class DockerUtils {
      * @param address resolution address
      */
     public static void removeFakeDnsEntry(String hostname, InetAddress address) {
-        if (FakeDns.getInstance().isInstalled()) {
+        if (FakeDns.getInstance().isEnabled()) {
             FakeDns.getInstance().removeResolution(hostname, address);
         }
     }

@@ -10,7 +10,7 @@ import org.bson.BsonDocument;
 import io.debezium.connector.mongodb.TestHelper;
 import io.debezium.testing.testcontainers.MongoDbDeployment;
 import io.debezium.testing.testcontainers.util.DockerUtils;
-import io.debezium.testing.testcontainers.util.FakeDns;
+import io.debezium.testing.testcontainers.util.dns.FakeDns;
 
 /**
  * DocumentDb representation of {@link MongoDbDeployment}
@@ -27,7 +27,7 @@ public class DocumentDb extends MongoDbExternal {
     @Override
     public void start() {
         // DocumentDB requires SSH tunneling and custom DNS resolution
-        var dns = FakeDns.getInstance().install();
+        var dns = FakeDns.getInstance().enable();
         getHosts().forEach(DockerUtils::addFakeDnsEntry);
 
         // Enable change streams
