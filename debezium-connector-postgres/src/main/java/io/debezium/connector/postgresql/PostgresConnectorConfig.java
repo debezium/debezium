@@ -11,6 +11,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 import io.debezium.data.Envelope;
 import io.debezium.heartbeat.Heartbeat;
@@ -532,10 +533,20 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     protected static final int DEFAULT_PORT = 5_433;
     protected static final int DEFAULT_SNAPSHOT_FETCH_SIZE = 10_240;
     protected static final int DEFAULT_MAX_RETRIES = 6;
+    public static final Pattern YB_HOSTNAME_PATTERN = Pattern.compile("^[a-zA-Z0-9-_.,:]+$");
 
     public static final Field PORT = RelationalDatabaseConnectorConfig.PORT
             .withDefault(DEFAULT_PORT);
 
+    public static final Field HOSTNAME = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.HOSTNAME)
+            .withDisplayName("Hostname")
+            .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 2))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.HIGH)
+            .required()
+            .withValidation(PostgresConnectorConfig::validateYBHostname)
+            .withDescription("Resolvable hostname or IP address of the database server.");
 
     public static final Field PLUGIN_NAME = Field.create("plugin.name")
             .withDisplayName("Plugin")
@@ -1290,7 +1301,25 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         });
     }
 
+    protected static int validateYBHostname(Configuration config, Field field, Field.ValidationOutput problems) {
+        String hostName = config.getString(field);
+        int problemCount = 0;
 
+        if (!Strings.isNullOrBlank(hostName)) {
+            if (hostName.contains(",") && !hostName.contains(":")) {
+                // Basic validation for cases when a user has only specified comma separated IPs which is not the correct format.
+                problems.accept(field, hostName, hostName + " has invalid format (specify mutiple hosts in the format ip1:port1,ip2:port2,ip3:port3)");
+                ++problemCount;
+            }
+
+            if (!YB_HOSTNAME_PATTERN.asPredicate().test(hostName)) {
+                problems.accept(field, hostName, hostName + " has invalid format (only the underscore, hyphen, dot, comma, colon and alphanumeric characters are allowed)");
+                ++problemCount;
+            }
+        }
+
+        return problemCount;
+    }
 
 
 }
