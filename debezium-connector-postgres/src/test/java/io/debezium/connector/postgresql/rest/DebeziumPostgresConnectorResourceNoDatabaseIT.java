@@ -17,7 +17,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import io.debezium.connector.postgresql.Module;
-import io.debezium.connector.postgresql.PostgresConnector;
+import io.debezium.connector.postgresql.YugabyteDBConnector;
 import io.debezium.testing.testcontainers.testhelper.RestExtensionTestInfrastructure;
 
 public class DebeziumPostgresConnectorResourceNoDatabaseIT {
@@ -65,7 +65,7 @@ public class DebeziumPostgresConnectorResourceNoDatabaseIT {
                 .body("properties.isEmpty()", is(false))
                 .body("x-connector-id", is("postgres"))
                 .body("x-version", is(Module.version()))
-                .body("x-className", is(PostgresConnector.class.getName()))
+                .body("x-className", is(YugabyteDBConnector.class.getName()))
                 .body("properties", hasKey("topic.prefix"))
                 .body("properties", hasKey("plugin.name"))
                 .body("properties", hasKey("slot.name"))

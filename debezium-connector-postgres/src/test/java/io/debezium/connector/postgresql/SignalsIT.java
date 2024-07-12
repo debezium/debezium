@@ -70,7 +70,7 @@ public class SignalsIT extends AbstractConnectorTest {
                 .with(PostgresConnectorConfig.SIGNAL_DATA_COLLECTION, "s1.debezium_signal")
                 .with(CommonConnectorConfig.SIGNAL_POLL_INTERVAL_MS, "500")
                 .build();
-        start(PostgresConnector.class, config);
+        start(YugabyteDBConnector.class, config);
         assertConnectorIsRunning();
         TestHelper.waitForDefaultReplicationSlotBeActive();
 
@@ -105,7 +105,7 @@ public class SignalsIT extends AbstractConnectorTest {
                 .with(CommonConnectorConfig.SIGNAL_POLL_INTERVAL_MS, "500")
                 .with(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS, "")
                 .build();
-        start(PostgresConnector.class, config);
+        start(YugabyteDBConnector.class, config);
         assertConnectorIsRunning();
         TestHelper.waitForDefaultReplicationSlotBeActive();
 
@@ -138,7 +138,7 @@ public class SignalsIT extends AbstractConnectorTest {
                 .with(PostgresConnectorConfig.SIGNAL_DATA_COLLECTION, "s1.debezium_signal")
                 .with(CommonConnectorConfig.SIGNAL_POLL_INTERVAL_MS, "500")
                 .build();
-        start(PostgresConnector.class, config);
+        start(YugabyteDBConnector.class, config);
         assertConnectorIsRunning();
         TestHelper.waitForDefaultReplicationSlotBeActive();
 
@@ -218,7 +218,7 @@ public class SignalsIT extends AbstractConnectorTest {
                 .with(CommonConnectorConfig.SIGNAL_POLL_INTERVAL_MS, "500")
                 .with(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS, "jmx")
                 .build();
-        start(PostgresConnector.class, config);
+        start(YugabyteDBConnector.class, config);
         assertConnectorIsRunning();
         TestHelper.waitForDefaultReplicationSlotBeActive();
 
@@ -244,7 +244,7 @@ public class SignalsIT extends AbstractConnectorTest {
                 .with(CommonConnectorConfig.SIGNAL_POLL_INTERVAL_MS, "500")
                 .with(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS, "jmx")
                 .build();
-        start(PostgresConnector.class, config);
+        start(YugabyteDBConnector.class, config);
         assertConnectorIsRunning();
         TestHelper.waitForDefaultReplicationSlotBeActive();
 

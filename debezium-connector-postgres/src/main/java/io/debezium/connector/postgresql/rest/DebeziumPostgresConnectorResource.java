@@ -16,11 +16,11 @@ import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 
+import io.debezium.connector.postgresql.YugabyteDBConnector;
 import org.apache.kafka.connect.health.ConnectClusterState;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.Module;
-import io.debezium.connector.postgresql.PostgresConnector;
 import io.debezium.rest.ConnectionValidationResource;
 import io.debezium.rest.FilterValidationResource;
 import io.debezium.rest.MetricsResource;
@@ -36,7 +36,7 @@ import io.debezium.rest.model.MetricsDescriptor;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class DebeziumPostgresConnectorResource
-        implements SchemaResource, ConnectionValidationResource<PostgresConnector>, FilterValidationResource<PostgresConnector>, MetricsResource {
+        implements SchemaResource, ConnectionValidationResource<YugabyteDBConnector>, FilterValidationResource<YugabyteDBConnector>, MetricsResource {
 
     public static final String BASE_PATH = "/debezium/postgres";
     public static final String VERSION_ENDPOINT = "/version";
@@ -53,8 +53,8 @@ public class DebeziumPostgresConnectorResource
     }
 
     @Override
-    public PostgresConnector getConnector() {
-        return new PostgresConnector();
+    public YugabyteDBConnector getConnector() {
+        return new YugabyteDBConnector();
     }
 
     @Override

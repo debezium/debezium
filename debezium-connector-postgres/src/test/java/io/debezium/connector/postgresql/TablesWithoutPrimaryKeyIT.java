@@ -44,7 +44,7 @@ public class TablesWithoutPrimaryKeyIT extends AbstractRecordsProducerTest {
     public void shouldProcessFromSnapshot() throws Exception {
         TestHelper.execute(STATEMENTS);
 
-        start(PostgresConnector.class, TestHelper.defaultConfig()
+        start(YugabyteDBConnector.class, TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_ONLY)
                 .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "nopk")
                 .build());
@@ -66,7 +66,7 @@ public class TablesWithoutPrimaryKeyIT extends AbstractRecordsProducerTest {
     public void shouldProcessFromSnapshotOld() throws Exception {
         TestHelper.execute(STATEMENTS);
 
-        start(PostgresConnector.class, TestHelper.defaultConfig()
+        start(YugabyteDBConnector.class, TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_ONLY)
                 .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "nopk")
                 .build());
@@ -86,7 +86,7 @@ public class TablesWithoutPrimaryKeyIT extends AbstractRecordsProducerTest {
 
     @Test
     public void shouldProcessFromStreaming() throws Exception {
-        start(PostgresConnector.class, TestHelper.defaultConfig()
+        start(YugabyteDBConnector.class, TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
                 .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "nopk")
                 .build());
@@ -125,7 +125,7 @@ public class TablesWithoutPrimaryKeyIT extends AbstractRecordsProducerTest {
 
     @Test
     public void shouldProcessFromStreamingOld() throws Exception {
-        start(PostgresConnector.class, TestHelper.defaultConfig()
+        start(YugabyteDBConnector.class, TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
                 .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "nopk")
                 .build());

@@ -39,7 +39,7 @@ public class YugabyteReplicaIdentityIT extends AbstractConnectorTest {
   private static final String INSERT_STMT = "INSERT INTO s1.a (aa) VALUES (1);" +
      "INSERT INTO s2.a (aa) VALUES (1);";
 
-  private PostgresConnector connector;
+  private YugabyteDBConnector connector;
 
   @BeforeClass
   public static void beforeClass() throws SQLException {
@@ -68,7 +68,7 @@ public class YugabyteReplicaIdentityIT extends AbstractConnectorTest {
                              .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.NEVER.getValue())
                              .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                              .build();
-    start(PostgresConnector.class, config);
+    start(YugabyteDBConnector.class, config);
     assertConnectorIsRunning();
 
     // YB Note: Added a wait for replication slot to be active.
@@ -106,7 +106,7 @@ public class YugabyteReplicaIdentityIT extends AbstractConnectorTest {
                              .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.NEVER.getValue())
                              .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                              .build();
-    start(PostgresConnector.class, config);
+    start(YugabyteDBConnector.class, config);
     assertConnectorIsRunning();
 
     // YB Note: Added a wait for replication slot to be active.
@@ -148,7 +148,7 @@ public class YugabyteReplicaIdentityIT extends AbstractConnectorTest {
                              .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.NEVER.getValue())
                              .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                              .build();
-    start(PostgresConnector.class, config);
+    start(YugabyteDBConnector.class, config);
     assertConnectorIsRunning();
 
     // YB Note: Added a wait for replication slot to be active.
@@ -206,7 +206,7 @@ public class YugabyteReplicaIdentityIT extends AbstractConnectorTest {
                              .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.NEVER.getValue())
                              .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                              .build();
-    start(PostgresConnector.class, config);
+    start(YugabyteDBConnector.class, config);
     assertConnectorIsRunning();
 
     // YB Note: Added a wait for replication slot to be active.
@@ -241,7 +241,7 @@ public class YugabyteReplicaIdentityIT extends AbstractConnectorTest {
                              .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.NEVER.getValue())
                              .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                              .build();
-    start(PostgresConnector.class, config);
+    start(YugabyteDBConnector.class, config);
     assertConnectorIsRunning();
 
     // YB Note: Added a wait for replication slot to be active.
@@ -282,7 +282,7 @@ public class YugabyteReplicaIdentityIT extends AbstractConnectorTest {
                              .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.NEVER.getValue())
                              .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                              .build();
-    start(PostgresConnector.class, config);
+    start(YugabyteDBConnector.class, config);
     assertConnectorIsRunning();
 
     // YB Note: Added a wait for replication slot to be active.
@@ -324,7 +324,7 @@ public class YugabyteReplicaIdentityIT extends AbstractConnectorTest {
                              .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.NEVER.getValue())
                              .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                              .build();
-    start(PostgresConnector.class, config);
+    start(YugabyteDBConnector.class, config);
     assertConnectorIsRunning();
 
     // YB Note: Added a wait for replication slot to be active.

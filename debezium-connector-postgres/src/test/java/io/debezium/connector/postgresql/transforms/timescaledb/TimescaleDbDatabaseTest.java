@@ -9,6 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.SQLException;
 
+import io.debezium.connector.postgresql.YugabyteDBConnector;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -19,7 +20,6 @@ import org.testcontainers.images.builder.Transferable;
 import org.testcontainers.lifecycle.Startables;
 
 import io.debezium.config.Configuration;
-import io.debezium.connector.postgresql.PostgresConnector;
 import io.debezium.connector.postgresql.PostgresConnectorConfig;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.connector.postgresql.TestHelper;
@@ -94,7 +94,7 @@ public class TimescaleDbDatabaseTest extends AbstractConnectorTest {
     public void shouldTransformChunks() throws Exception {
         Testing.Print.enable();
 
-        start(PostgresConnector.class, config);
+        start(YugabyteDBConnector.class, config);
         waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
 
         insertData();
@@ -112,7 +112,7 @@ public class TimescaleDbDatabaseTest extends AbstractConnectorTest {
     public void shouldTransformAggregates() throws Exception {
         Testing.Print.enable();
 
-        start(PostgresConnector.class, config);
+        start(YugabyteDBConnector.class, config);
         waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
 
         insertData();
@@ -142,7 +142,7 @@ public class TimescaleDbDatabaseTest extends AbstractConnectorTest {
     public void shouldTransformCompressedChunks() throws Exception {
         Testing.Print.enable();
 
-        start(PostgresConnector.class, config);
+        start(YugabyteDBConnector.class, config);
         waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
 
         insertData();

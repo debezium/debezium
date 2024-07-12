@@ -15,7 +15,7 @@ import io.debezium.config.Configuration;
 public class PostgresConnectorConfigDefTest extends ConfigDefinitionMetadataTest {
 
     public PostgresConnectorConfigDefTest() {
-        super(new PostgresConnector());
+        super(new YugabyteDBConnector());
     }
 
     @Test

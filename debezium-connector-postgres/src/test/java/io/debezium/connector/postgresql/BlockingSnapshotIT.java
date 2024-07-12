@@ -78,8 +78,8 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
     }
 
     @Override
-    protected Class<PostgresConnector> connectorClass() {
-        return PostgresConnector.class;
+    protected Class<YugabyteDBConnector> connectorClass() {
+        return YugabyteDBConnector.class;
     }
 
     @Override

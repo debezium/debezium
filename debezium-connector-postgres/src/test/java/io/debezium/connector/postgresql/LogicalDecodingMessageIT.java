@@ -76,7 +76,7 @@ public class LogicalDecodingMessageIT extends AbstractConnectorTest {
         TestHelper.execute(SETUP_TABLES_STMT);
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.LOGICAL_DECODING_MESSAGE_PREFIX_EXCLUDE_LIST, ".*");
-        start(PostgresConnector.class, configBuilder.build());
+        start(YugabyteDBConnector.class, configBuilder.build());
         assertConnectorIsRunning();
         waitForSnapshotToBeCompleted();
 
@@ -99,7 +99,7 @@ public class LogicalDecodingMessageIT extends AbstractConnectorTest {
         TestHelper.execute(SETUP_TABLES_STMT);
         Configuration.Builder configBuilder = TestHelper.defaultConfig();
 
-        start(PostgresConnector.class, configBuilder.build());
+        start(YugabyteDBConnector.class, configBuilder.build());
         assertConnectorIsRunning();
         waitForSnapshotToBeCompleted();
 
@@ -138,7 +138,7 @@ public class LogicalDecodingMessageIT extends AbstractConnectorTest {
         TestHelper.execute(SETUP_TABLES_STMT);
         Configuration.Builder configBuilder = TestHelper.defaultConfig();
 
-        start(PostgresConnector.class, configBuilder.build());
+        start(YugabyteDBConnector.class, configBuilder.build());
         assertConnectorIsRunning();
         waitForSnapshotToBeCompleted();
 
@@ -180,7 +180,7 @@ public class LogicalDecodingMessageIT extends AbstractConnectorTest {
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.BINARY_HANDLING_MODE, "base64");
 
-        start(PostgresConnector.class, configBuilder.build());
+        start(YugabyteDBConnector.class, configBuilder.build());
         assertConnectorIsRunning();
         waitForSnapshotToBeCompleted();
 
@@ -206,7 +206,7 @@ public class LogicalDecodingMessageIT extends AbstractConnectorTest {
         TestHelper.execute(SETUP_TABLES_STMT);
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.LOGICAL_DECODING_MESSAGE_PREFIX_EXCLUDE_LIST, "excluded_prefix, prefix:excluded");
-        start(PostgresConnector.class, configBuilder.build());
+        start(YugabyteDBConnector.class, configBuilder.build());
         assertConnectorIsRunning();
         waitForSnapshotToBeCompleted();
 
@@ -232,7 +232,7 @@ public class LogicalDecodingMessageIT extends AbstractConnectorTest {
         TestHelper.execute(SETUP_TABLES_STMT);
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.LOGICAL_DECODING_MESSAGE_PREFIX_INCLUDE_LIST, "included_prefix, prefix:included, ano.*er_included");
-        start(PostgresConnector.class, configBuilder.build());
+        start(YugabyteDBConnector.class, configBuilder.build());
         assertConnectorIsRunning();
         waitForSnapshotToBeCompleted();
 

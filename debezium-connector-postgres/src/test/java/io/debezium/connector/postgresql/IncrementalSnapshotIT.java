@@ -41,7 +41,7 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.util.Collect;
 import io.debezium.util.Testing;
 
-public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<PostgresConnector> {
+public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<YugabyteDBConnector> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(IncrementalSnapshotIT.class);
 
@@ -134,8 +134,8 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
     }
 
     @Override
-    protected Class<PostgresConnector> connectorClass() {
-        return PostgresConnector.class;
+    protected Class<YugabyteDBConnector> connectorClass() {
+        return YugabyteDBConnector.class;
     }
 
     @Override

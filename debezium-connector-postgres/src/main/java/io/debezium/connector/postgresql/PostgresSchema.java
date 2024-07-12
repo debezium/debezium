@@ -32,7 +32,7 @@ import io.debezium.relational.Tables;
 import io.debezium.spi.topic.TopicNamingStrategy;
 
 /**
- * Component that records the schema information for the {@link PostgresConnector}. The schema information contains
+ * Component that records the schema information for the {@link YugabyteDBConnector}. The schema information contains
  * the {@link Tables table definitions} and the Kafka Connect {@link #schemaFor(TableId) Schema}s for each table, where the
  * {@link Schema} excludes any columns that have been {@link PostgresConnectorConfig#COLUMN_EXCLUDE_LIST specified} in the
  * configuration.

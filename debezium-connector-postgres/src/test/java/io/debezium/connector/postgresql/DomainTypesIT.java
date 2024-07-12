@@ -43,7 +43,7 @@ public class DomainTypesIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-3657")
     public void shouldNotChokeOnDomainTypeInArray() throws Exception {
-        start(PostgresConnector.class, TestHelper.defaultConfig()
+        start(YugabyteDBConnector.class, TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
                 .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "domaintypes")
                 .build());
@@ -63,7 +63,7 @@ public class DomainTypesIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-3657")
     public void shouldExportDomainTypeInArrayAsUnknown() throws Exception {
-        start(PostgresConnector.class, TestHelper.defaultConfig()
+        start(YugabyteDBConnector.class, TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
                 .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "domaintypes")
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)

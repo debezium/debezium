@@ -34,7 +34,7 @@ import io.debezium.testing.testcontainers.util.ContainerImageVersions;
 import io.debezium.util.Testing;
 
 /**
- * Integration test for {@link PostgresConnector} using an {@link EmbeddedEngine} and Testcontainers infrastructure for when Postgres is shutdown during streaming
+ * Integration test for {@link YugabyteDBConnector} using an {@link EmbeddedEngine} and Testcontainers infrastructure for when Postgres is shutdown during streaming
  */
 public class PostgresShutdownIT extends AbstractConnectorTest {
 
@@ -114,7 +114,7 @@ public class PostgresShutdownIT extends AbstractConnectorTest {
         String initialHeartbeat = postgresConnection.queryAndMap(
                 "SELECT ts FROM s1.heartbeat;",
                 postgresConnection.singleResultMapper(rs -> rs.getString("ts"), "Could not fetch keepalive info"));
-        start(PostgresConnector.class, configBuilder.build());
+        start(YugabyteDBConnector.class, configBuilder.build());
         assertConnectorIsRunning();
 
         waitForSnapshotToBeCompleted("postgres", TestHelper.TEST_SERVER);

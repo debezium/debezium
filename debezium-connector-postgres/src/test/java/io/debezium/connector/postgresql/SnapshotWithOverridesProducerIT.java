@@ -86,7 +86,7 @@ public class SnapshotWithOverridesProducerIT extends AbstractRecordsProducerTest
     }
 
     private void buildProducer(Configuration.Builder config) {
-        start(PostgresConnector.class, config
+        start(YugabyteDBConnector.class, config
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_ONLY)
                 .build());
         assertConnectorIsRunning();

@@ -11,7 +11,6 @@ import java.util.Objects;
 import java.util.OptionalLong;
 import java.util.concurrent.atomic.AtomicReference;
 
-import io.debezium.connector.postgresql.connection.*;
 import org.apache.kafka.connect.errors.ConnectException;
 import com.yugabyte.core.BaseConnection;
 import org.slf4j.Logger;
@@ -166,7 +165,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
             // such that the connection times out. We must enable keep
             // alive to ensure that it doesn't time out
             ReplicationStream stream = this.replicationStream.get();
-            stream.startKeepAlive(Threads.newSingleThreadExecutor(PostgresConnector.class, connectorConfig.getLogicalName(), KEEP_ALIVE_THREAD_NAME));
+            stream.startKeepAlive(Threads.newSingleThreadExecutor(YugabyteDBConnector.class, connectorConfig.getLogicalName(), KEEP_ALIVE_THREAD_NAME));
 
             initSchema();
 
@@ -201,7 +200,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
 
                     replicationStream.set(replicationConnection.startStreaming(walPosition.getLastEventStoredLsn(), walPosition));
                     stream = this.replicationStream.get();
-                    stream.startKeepAlive(Threads.newSingleThreadExecutor(PostgresConnector.class, connectorConfig.getLogicalName(), KEEP_ALIVE_THREAD_NAME));
+                    stream.startKeepAlive(Threads.newSingleThreadExecutor(YugabyteDBConnector.class, connectorConfig.getLogicalName(), KEEP_ALIVE_THREAD_NAME));
                 }
             } else {
                 LOGGER.info("Connector config provide.transaction.metadata is set to true. Therefore, skip records filtering in order to ship entire transactions.");

@@ -58,7 +58,7 @@ public class PostgresSkipMessagesWithoutChangeConfigIT extends AbstractConnector
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.NEVER)
                 .build();
 
-        start(PostgresConnector.class, config);
+        start(YugabyteDBConnector.class, config);
         waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
 
         TestHelper.execute("INSERT INTO updates_test.debezium_test (id,white,black) VALUES (1,1,1);");
@@ -98,7 +98,7 @@ public class PostgresSkipMessagesWithoutChangeConfigIT extends AbstractConnector
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.NEVER)
                 .build();
 
-        start(PostgresConnector.class, config);
+        start(YugabyteDBConnector.class, config);
         waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
 
         TestHelper.execute("INSERT INTO updates_test.debezium_test (id,white,black) VALUES (1,1,1);");
@@ -136,7 +136,7 @@ public class PostgresSkipMessagesWithoutChangeConfigIT extends AbstractConnector
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.NEVER)
                 .build();
 
-        start(PostgresConnector.class, config);
+        start(YugabyteDBConnector.class, config);
         waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
 
         TestHelper.execute("INSERT INTO updates_test.debezium_test (id,white,black) VALUES (1,1,1);");
@@ -177,7 +177,7 @@ public class PostgresSkipMessagesWithoutChangeConfigIT extends AbstractConnector
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.NEVER)
                 .build();
 
-        start(PostgresConnector.class, config);
+        start(YugabyteDBConnector.class, config);
         waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
 
         TestHelper.execute("INSERT INTO updates_test.debezium_test (id,white,black) VALUES (1,1,1);");

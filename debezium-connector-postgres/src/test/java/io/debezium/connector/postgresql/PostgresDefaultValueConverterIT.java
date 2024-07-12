@@ -52,7 +52,7 @@ public class PostgresDefaultValueConverterIT extends AbstractConnectorTest {
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue())
                 .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "s1");
-        start(PostgresConnector.class, configBuilder.build());
+        start(YugabyteDBConnector.class, configBuilder.build());
         assertConnectorIsRunning();
 
         waitForSnapshotToBeCompleted("postgres", TestHelper.TEST_SERVER);
@@ -69,7 +69,7 @@ public class PostgresDefaultValueConverterIT extends AbstractConnectorTest {
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue())
                 .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "s1");
-        start(PostgresConnector.class, configBuilder.build());
+        start(YugabyteDBConnector.class, configBuilder.build());
         assertConnectorIsRunning();
 
         waitForSnapshotToBeCompleted("postgres", TestHelper.TEST_SERVER);
@@ -99,7 +99,7 @@ public class PostgresDefaultValueConverterIT extends AbstractConnectorTest {
         TestHelper.execute(ddl);
 
         Configuration config = TestHelper.defaultConfig().build();
-        start(PostgresConnector.class, config);
+        start(YugabyteDBConnector.class, config);
 
         waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
 

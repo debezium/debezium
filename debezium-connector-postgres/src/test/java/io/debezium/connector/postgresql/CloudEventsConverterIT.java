@@ -16,11 +16,11 @@ import io.debezium.converters.AbstractCloudEventsConverterTest;
 import io.debezium.jdbc.JdbcConnection;
 
 /**
- * Integration test for {@link io.debezium.converters.CloudEventsConverter} with {@link PostgresConnector}
+ * Integration test for {@link io.debezium.converters.CloudEventsConverter} with {@link YugabyteDBConnector}
  *
  * @author Roman Kudryashov
  */
-public class CloudEventsConverterIT extends AbstractCloudEventsConverterTest<PostgresConnector> {
+public class CloudEventsConverterIT extends AbstractCloudEventsConverterTest<YugabyteDBConnector> {
 
     private static final String SETUP_SCHEMA = "DROP SCHEMA IF EXISTS s1 CASCADE;" +
             "CREATE SCHEMA s1;";
@@ -51,8 +51,8 @@ public class CloudEventsConverterIT extends AbstractCloudEventsConverterTest<Pos
     }
 
     @Override
-    protected Class<PostgresConnector> getConnectorClass() {
-        return PostgresConnector.class;
+    protected Class<YugabyteDBConnector> getConnectorClass() {
+        return YugabyteDBConnector.class;
     }
 
     @Override
