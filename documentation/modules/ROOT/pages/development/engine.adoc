@@ -441,7 +441,7 @@ class JsonChangeConsumer implements DebeziumEngine.ChangeConsumer<ChangeEvent<St
 // Create the engine with this configuration ...
 DebeziumEngine<ChangeEvent<String, String>> engine = DebeziumEngine.create(Json.class)
         .using(props)
-        .notifying(new MyChangeConsumer())
+        .notifying(new JsonChangeConsumer())
         .build();
 ----
 
