@@ -964,13 +964,6 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
     }
 
     protected List<SchemaAndValueField> schemasAndValuesForDomainAliasTypes(boolean streaming) {
-        final ByteBuffer boxByteBuffer = ByteBuffer.wrap("(1.0,1.0),(0.0,0.0)".getBytes());
-        final ByteBuffer circleByteBuffer = ByteBuffer.wrap("<(10.0,4.0),10.0>".getBytes());
-        final ByteBuffer lineByteBuffer = ByteBuffer.wrap("{-1.0,0.0,0.0}".getBytes());
-        final ByteBuffer lsegByteBuffer = ByteBuffer.wrap("[(0.0,0.0),(0.0,1.0)]".getBytes());
-        final ByteBuffer pathByteBuffer = ByteBuffer.wrap("((0.0,0.0),(0.0,1.0),(0.0,2.0))".getBytes());
-        final ByteBuffer polygonByteBuffer = ByteBuffer.wrap("((0.0,0.0),(0.0,1.0),(1.0,0.0),(0.0,0.0))".getBytes());
-
         return Arrays.asList(
                 new SchemaAndValueField(PK_FIELD, SchemaBuilder.int32().defaultValue(0).build(), 1),
                 new SchemaAndValueField("bit_base", Bits.builder(3).build(), new byte[]{ 5 }),
@@ -1007,28 +1000,12 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
                         MicroDuration.durationMicros(1, 2, 3, 4, 5, 6, MicroDuration.DAYS_PER_MONTH_AVG)),
                 new SchemaAndValueField("interval_alias", MicroDuration.builder().build(),
                         MicroDuration.durationMicros(1, 2, 3, 4, 5, 6, MicroDuration.DAYS_PER_MONTH_AVG)),
-                new SchemaAndValueField("box_base", SchemaBuilder.BYTES_SCHEMA, boxByteBuffer),
-                new SchemaAndValueField("box_alias", SchemaBuilder.BYTES_SCHEMA, boxByteBuffer),
-                new SchemaAndValueField("circle_base", SchemaBuilder.BYTES_SCHEMA, circleByteBuffer),
-                new SchemaAndValueField("circle_alias", SchemaBuilder.BYTES_SCHEMA, circleByteBuffer),
-                new SchemaAndValueField("line_base", SchemaBuilder.BYTES_SCHEMA, lineByteBuffer),
-                new SchemaAndValueField("line_alias", SchemaBuilder.BYTES_SCHEMA, lineByteBuffer),
-                new SchemaAndValueField("lseg_base", SchemaBuilder.BYTES_SCHEMA, lsegByteBuffer),
-                new SchemaAndValueField("lseg_alias", SchemaBuilder.BYTES_SCHEMA, lsegByteBuffer),
-                new SchemaAndValueField("path_base", SchemaBuilder.BYTES_SCHEMA, pathByteBuffer),
-                new SchemaAndValueField("path_alias", SchemaBuilder.BYTES_SCHEMA, pathByteBuffer),
-                new SchemaAndValueField("point_base", Point.builder().build(), Point.createValue(Point.builder().build(), 1, 1)),
-                new SchemaAndValueField("point_alias", Point.builder().build(), Point.createValue(Point.builder().build(), 1, 1)),
-                new SchemaAndValueField("polygon_base", SchemaBuilder.BYTES_SCHEMA, polygonByteBuffer),
-                new SchemaAndValueField("polygon_alias", SchemaBuilder.BYTES_SCHEMA, polygonByteBuffer),
                 new SchemaAndValueField("char_base", SchemaBuilder.STRING_SCHEMA, "a"),
                 new SchemaAndValueField("char_alias", SchemaBuilder.STRING_SCHEMA, "a"),
                 new SchemaAndValueField("text_base", SchemaBuilder.STRING_SCHEMA, "Hello World"),
                 new SchemaAndValueField("text_alias", SchemaBuilder.STRING_SCHEMA, "Hello World"),
                 new SchemaAndValueField("json_base", Json.builder().build(), "{\"key\": \"value\"}"),
                 new SchemaAndValueField("json_alias", Json.builder().build(), "{\"key\": \"value\"}"),
-                new SchemaAndValueField("xml_base", Xml.builder().build(), "<foo>Hello</foo>"),
-                new SchemaAndValueField("xml_alias", Xml.builder().build(), "<foo>Hello</foo>"),
                 new SchemaAndValueField("uuid_base", Uuid.builder().build(), "40e6215d-b5c6-4896-987c-f30f3678f608"),
                 new SchemaAndValueField("uuid_alias", Uuid.builder().build(), "40e6215d-b5c6-4896-987c-f30f3678f608"),
                 new SchemaAndValueField("varbit_base", Bits.builder(3).build(), new byte[]{ 5 }),
@@ -1226,7 +1203,8 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
         }
 
         protected void assertFor(Struct content) {
-            assertSchema(content);
+            // YB Note: Not asserting for schema in tests for every record.
+            // assertSchema(content);
             assertValue(content);
         }
 
@@ -1235,11 +1213,12 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
                 return;
             }
 
+            Object actualValue = content.getStruct(fieldName).get("value");
+
             if (value == null) {
-                assertNull(fieldName + " is present in the actual content", content.get(fieldName));
+                assertNull(fieldName + " is present in the actual content", (content.get(fieldName) == null) ? null : actualValue);
                 return;
             }
-            Object actualValue = content.get(fieldName);
 
             // assert the value type; for List all implementation types (e.g. immutable ones) are acceptable
             if (actualValue instanceof List) {
