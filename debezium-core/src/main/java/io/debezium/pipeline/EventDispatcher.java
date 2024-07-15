@@ -5,6 +5,8 @@
  */
 package io.debezium.pipeline;
 
+import static io.debezium.config.CommonConnectorConfig.WatermarkStrategy.INSERT_DELETE;
+
 import java.time.Instant;
 import java.util.Collection;
 import java.util.EnumSet;
@@ -304,7 +306,8 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                     }
 
                     private boolean isASignalEventToProcess(T dataCollectionId, Operation operation) {
-                        return operation == Operation.CREATE &&
+                        return (operation == Operation.CREATE ||
+                                (operation == Operation.DELETE && connectorConfig.getIncrementalSnapshotWatermarkingStrategy() == INSERT_DELETE)) &&
                                 connectorConfig.isSignalDataCollection(dataCollectionId);
                     }
                 });

@@ -1460,8 +1460,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     }
 
     @Override
-    public Optional<String[]> parseSignallingMessage(Struct value) {
-        final String after = value.getString(Envelope.FieldName.AFTER);
+    public Optional<String[]> parseSignallingMessage(Struct value, String fieldName) {
+        final String after = value.getString(fieldName);
         if (after == null) {
             LOGGER.warn("After part of signal '{}' is missing", value);
             return Optional.empty();

@@ -39,15 +39,6 @@ public class DeleteWindowCloser<P extends Partition, T extends DataCollectionId>
             x.setString(1, chunkId + "-open");
         });
 
-        // Since the close event is not written into signal data collection we need to explicit close the window.
-        try {
-            incrementalSnapshotChangeEventSource.closeWindow((P) partition, chunkId + "-close", offsetContext);
-        }
-        catch (InterruptedException e) {
-            LOGGER.warn("Failed to close window {} successful.", chunkId);
-            Thread.currentThread().interrupt();
-        }
-
         jdbcConnection.commit();
     }
 }
