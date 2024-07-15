@@ -25,6 +25,7 @@ alter table table1 add primary key (id);
 alter table table1 add primary key table_pk (id);
 alter table table1 add primary key `table_pk` (id);
 alter table table1 add primary key `table_pk` (`id`);
+alter table table1 add column yes varchar(255)  default '' null;
 alter table add_test add column if not exists col1 varchar(255);
 alter table add_test add column if not exists col4 varchar(255);
 alter table add_test add index if not exists ix_add_test_col1 using btree (col1) comment 'test index';
