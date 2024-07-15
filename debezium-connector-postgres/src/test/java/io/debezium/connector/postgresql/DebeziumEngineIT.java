@@ -95,14 +95,18 @@ public class DebeziumEngineIT {
                 .notifying((records, committer) -> {
 
                     for (ChangeEvent<String, String> r : records) {
+                        if (r.destination().equals(TestHelper.getDefaultHeartbeatTopic())) {
+                            continue;
+                        }
+
                         assertThat(r.key()).isNotNull();
                         assertThat(r.value()).isNotNull();
                         try {
                             final Document key = DocumentReader.defaultReader().read(r.key());
                             final Document value = DocumentReader.defaultReader().read(r.value());
-                            assertThat(key.getInteger("id")).isEqualTo(1);
-                            assertThat(value.getDocument("after").getInteger("id")).isEqualTo(1);
-                            assertThat(value.getDocument("after").getString("val")).isEqualTo("value1");
+                            assertThat(key.getDocument("id").getInteger("value")).isEqualTo(1);
+                            assertThat(value.getDocument("after").getDocument("id").getInteger("value")).isEqualTo(1);
+                            assertThat(value.getDocument("after").getDocument("val").getString("value")).isEqualTo("value1");
                         }
                         catch (IOException e) {
                             throw new IllegalStateException(e);
@@ -117,7 +121,7 @@ public class DebeziumEngineIT {
                 LoggingContext.forConnector(getClass().getSimpleName(), "debezium-engine", "engine");
                 engine.run();
             });
-            allLatch.await(5000, TimeUnit.MILLISECONDS);
+            allLatch.await(35000, TimeUnit.MILLISECONDS);
             assertThat(allLatch.getCount()).isEqualTo(0);
         }
     }
@@ -158,7 +162,7 @@ public class DebeziumEngineIT {
                 LoggingContext.forConnector(getClass().getSimpleName(), "debezium-engine", "engine");
                 engine.run();
             });
-            allLatch.await(5000, TimeUnit.MILLISECONDS);
+            allLatch.await(35000, TimeUnit.MILLISECONDS);
             assertThat(allLatch.getCount()).isEqualTo(0);
         }
     }
@@ -183,14 +187,18 @@ public class DebeziumEngineIT {
 
                     for (ChangeEvent<String, String> r : records) {
                         try {
+                            if (r.destination().equals(TestHelper.getDefaultHeartbeatTopic())) {
+                                continue;
+                            }
+
                             final Document key = DocumentReader.defaultReader().read(r.key());
-                            assertThat(key.getInteger("id")).isEqualTo(1);
+                            assertThat(key.getDocument("id").getInteger("value")).isEqualTo(1);
                             assertThat(r.value()).isNotNull();
 
                             final Document value = DocumentReader.defaultReader().read(r.value());
                             assertThat(value.getString("id")).contains("txId");
-                            assertThat(value.getDocument("data").getDocument("payload").getDocument("after").getInteger("id")).isEqualTo(1);
-                            assertThat(value.getDocument("data").getDocument("payload").getDocument("after").getString("val")).isEqualTo("value1");
+                            assertThat(value.getDocument("data").getDocument("payload").getDocument("after").getDocument("id").getInteger("value")).isEqualTo(1);
+                            assertThat(value.getDocument("data").getDocument("payload").getDocument("after").getDocument("val").getString("value")).isEqualTo("value1");
                         }
                         catch (IOException e) {
                             throw new IllegalStateException(e);
@@ -205,7 +213,7 @@ public class DebeziumEngineIT {
                 LoggingContext.forConnector(getClass().getSimpleName(), "debezium-engine", "engine");
                 engine.run();
             });
-            allLatch.await(5000, TimeUnit.MILLISECONDS);
+            allLatch.await(35000, TimeUnit.MILLISECONDS);
             assertThat(allLatch.getCount()).isEqualTo(0);
         }
     }

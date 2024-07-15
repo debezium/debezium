@@ -77,9 +77,9 @@ public class PostgresSkipMessagesWithoutChangeConfigIT extends AbstractConnector
         final List<SourceRecord> recordsForTopic = records.recordsForTopic(topicName("updates_test.debezium_test"));
         assertThat(recordsForTopic).hasSize(3);
         Struct secondMessage = ((Struct) recordsForTopic.get(1).value()).getStruct(Envelope.FieldName.AFTER);
-        assertThat(secondMessage.get("white")).isEqualTo(2);
+        assertThat(secondMessage.getStruct("white").getInt32("value")).isEqualTo(2);
         Struct thirdMessage = ((Struct) recordsForTopic.get(2).value()).getStruct(Envelope.FieldName.AFTER);
-        assertThat(thirdMessage.get("white")).isEqualTo(3);
+        assertThat(thirdMessage.getStruct("white").getInt32("value")).isEqualTo(3);
     }
 
     @Test
@@ -117,9 +117,9 @@ public class PostgresSkipMessagesWithoutChangeConfigIT extends AbstractConnector
         final List<SourceRecord> recordsForTopic = records.recordsForTopic(topicName("updates_test.debezium_test"));
         assertThat(recordsForTopic).hasSize(3);
         Struct secondMessage = ((Struct) recordsForTopic.get(1).value()).getStruct(Envelope.FieldName.AFTER);
-        assertThat(secondMessage.get("white")).isEqualTo(2);
+        assertThat(secondMessage.getStruct("white").getInt32("value")).isEqualTo(2);
         Struct thirdMessage = ((Struct) recordsForTopic.get(2).value()).getStruct(Envelope.FieldName.AFTER);
-        assertThat(thirdMessage.get("white")).isEqualTo(3);
+        assertThat(thirdMessage.getStruct("white").getInt32("value")).isEqualTo(3);
     }
 
     @Test
@@ -154,11 +154,11 @@ public class PostgresSkipMessagesWithoutChangeConfigIT extends AbstractConnector
         final List<SourceRecord> recordsForTopic = records.recordsForTopic(topicName("updates_test.debezium_test"));
         assertThat(recordsForTopic).hasSize(4);
         Struct secondMessage = ((Struct) recordsForTopic.get(1).value()).getStruct(Envelope.FieldName.AFTER);
-        assertThat(secondMessage.get("white")).isEqualTo(1);
+        assertThat(secondMessage.getStruct("white").getInt32("value")).isEqualTo(1);
         Struct thirdMessage = ((Struct) recordsForTopic.get(2).value()).getStruct(Envelope.FieldName.AFTER);
-        assertThat(thirdMessage.get("white")).isEqualTo(2);
+        assertThat(thirdMessage.getStruct("white").getInt32("value")).isEqualTo(2);
         Struct forthMessage = ((Struct) recordsForTopic.get(3).value()).getStruct(Envelope.FieldName.AFTER);
-        assertThat(forthMessage.get("white")).isEqualTo(3);
+        assertThat(forthMessage.getStruct("white").getInt32("value")).isEqualTo(3);
     }
 
     @Test
@@ -196,11 +196,11 @@ public class PostgresSkipMessagesWithoutChangeConfigIT extends AbstractConnector
 
         assertThat(recordsForTopic).hasSize(4);
         Struct secondMessage = ((Struct) recordsForTopic.get(1).value()).getStruct(Envelope.FieldName.AFTER);
-        assertThat(secondMessage.get("white")).isEqualTo(1);
+        assertThat(secondMessage.getStruct("white").getInt32("value")).isEqualTo(1);
         Struct thirdMessage = ((Struct) recordsForTopic.get(2).value()).getStruct(Envelope.FieldName.AFTER);
-        assertThat(thirdMessage.get("white")).isEqualTo(2);
+        assertThat(thirdMessage.getStruct("white").getInt32("value")).isEqualTo(2);
         Struct forthMessage = ((Struct) recordsForTopic.get(3).value()).getStruct(Envelope.FieldName.AFTER);
-        assertThat(forthMessage.get("white")).isEqualTo(3);
+        assertThat(forthMessage.getStruct("white").getInt32("value")).isEqualTo(3);
     }
 
 }

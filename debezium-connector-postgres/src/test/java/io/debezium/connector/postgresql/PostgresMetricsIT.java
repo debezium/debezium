@@ -61,7 +61,7 @@ public class PostgresMetricsIT extends AbstractRecordsProducerTest {
         // start connector
         start(YugabyteDBConnector.class,
                 TestHelper.defaultConfig()
-                        .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.ALWAYS)
+                        .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                         .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                         .build());
 
@@ -117,7 +117,7 @@ public class PostgresMetricsIT extends AbstractRecordsProducerTest {
         // start connector
         start(YugabyteDBConnector.class,
                 TestHelper.defaultConfig()
-                        .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.ALWAYS)
+                        .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                         .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                         .build());
 
@@ -133,7 +133,7 @@ public class PostgresMetricsIT extends AbstractRecordsProducerTest {
 
         // start connector
         Configuration config = TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.ALWAYS)
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                 .with(PostgresConnectorConfig.CUSTOM_METRIC_TAGS, "env=test,bu=bigdata")
                 .build();

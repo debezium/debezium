@@ -1424,9 +1424,9 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         TestHelper.execute("CREATE TABLE s1.b (pk SERIAL, aa integer, bb integer, PRIMARY KEY(pk));");
         TestHelper.execute("ALTER TABLE s1.a ADD COLUMN bb integer;");
         TestHelper.execute("INSERT INTO s1.a (aa, bb) VALUES (2, 2); "
-                            + "INSERT INTO s1.a (aa, bb) VALUES (3, 3); "
-                            + "INSERT INTO s1.b (aa, bb) VALUES (4, 4); "
-                            + "INSERT INTO s2.a (aa) VALUES (5);");
+                + "INSERT INTO s1.a (aa, bb) VALUES (3, 3); "
+                + "INSERT INTO s1.b (aa, bb) VALUES (4, 4); "
+                + "INSERT INTO s2.a (aa) VALUES (5);");
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)

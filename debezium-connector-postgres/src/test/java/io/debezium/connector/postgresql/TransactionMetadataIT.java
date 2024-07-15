@@ -82,11 +82,12 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
                 .build();
         start(YugabyteDBConnector.class, config);
         assertConnectorIsRunning();
-        TestHelper.waitForDefaultReplicationSlotBeActive();
 
         waitForAvailableRecords(100, TimeUnit.MILLISECONDS);
         // there shouldn't be any snapshot records
         assertNoRecordsToConsume();
+
+        TestHelper.waitFor(Duration.ofSeconds(15));
 
         // insert and verify 2 new records
         TestHelper.execute(INSERT_STMT);

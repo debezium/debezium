@@ -28,6 +28,8 @@ import io.debezium.junit.EqualityCheck;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.junit.logging.LogInterceptor;
 
+// TODO Vaibhav: Enabling this test doesn't make sense unless we populate the default value of the
+//   columns in the schema.
 public class PostgresDefaultValueConverterIT extends AbstractConnectorTest {
 
     @Before
@@ -143,17 +145,18 @@ public class PostgresDefaultValueConverterIT extends AbstractConnectorTest {
     private void assertDefaultValueChangeRecord(SourceRecord sourceRecord) {
         final Schema valueSchema = sourceRecord.valueSchema();
 
-        assertThat(((Struct) sourceRecord.value()).getStruct("after").getInt32("dint")).isNull();
-        assertThat(((Struct) sourceRecord.value()).getStruct("after").getString("dvc1")).isNull();
-        assertThat(((Struct) sourceRecord.value()).getStruct("after").getString("dvc2")).isEqualTo("NULL");
-        assertThat(((Struct) sourceRecord.value()).getStruct("after").getString("dvc3")).isEqualTo("MYVALUE");
-        assertThat(((Struct) sourceRecord.value()).getStruct("after").getString("dvc4")).isEqualTo("NULL");
-        assertThat(((Struct) sourceRecord.value()).getStruct("after").getString("dvc5")).isEqualTo("NULL::character varying");
-        assertThat(((Struct) sourceRecord.value()).getStruct("after").getString("dvc6")).isNull();
-        assertThat(((Struct) sourceRecord.value()).getStruct("after").getInt64("dt1")).isNotNull();
-        assertThat(((Struct) sourceRecord.value()).getStruct("after").getInt32("dt2")).isNotNull();
-        assertThat(((Struct) sourceRecord.value()).getStruct("after").getInt64("dt3")).isNotNull();
+        assertThat(((Struct) sourceRecord.value()).getStruct("after").getStruct("dint").get("value")).isNull();
+        assertThat(((Struct) sourceRecord.value()).getStruct("after").getStruct("dvc1").get("value")).isNull();
+        assertThat(((Struct) sourceRecord.value()).getStruct("after").getStruct("dvc2").get("value")).isEqualTo("NULL");
+        assertThat(((Struct) sourceRecord.value()).getStruct("after").getStruct("dvc3").get("value")).isEqualTo("MYVALUE");
+        assertThat(((Struct) sourceRecord.value()).getStruct("after").getStruct("dvc4").get("value")).isEqualTo("NULL");
+        assertThat(((Struct) sourceRecord.value()).getStruct("after").getStruct("dvc5").get("value")).isEqualTo("NULL::character varying");
+        assertThat(((Struct) sourceRecord.value()).getStruct("after").getStruct("dvc6").get("value")).isNull();
+        assertThat(((Struct) sourceRecord.value()).getStruct("after").getStruct("dt1").get("value")).isNotNull();
+        assertThat(((Struct) sourceRecord.value()).getStruct("after").getStruct("dt2").get("value")).isNotNull();
+        assertThat(((Struct) sourceRecord.value()).getStruct("after").getStruct("dt3").get("value")).isNotNull();
 
+        // YB Note: We do not populate the default value while sending replication messages.
         assertThat(valueSchema.field("after").schema().field("dint").schema().defaultValue()).isNull();
         assertThat(valueSchema.field("after").schema().field("dvc1").schema().defaultValue()).isNull();
         assertThat(valueSchema.field("after").schema().field("dvc2").schema().defaultValue()).isEqualTo("NULL");
