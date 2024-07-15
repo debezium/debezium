@@ -3203,6 +3203,7 @@ keywordsCanBeId
     | XA
     | XA_RECOVER_ADMIN
     | XML
+    | YES
     // MariaDB-specific only
     | BINLOG_MONITOR
     | BINLOG_REPLAY
