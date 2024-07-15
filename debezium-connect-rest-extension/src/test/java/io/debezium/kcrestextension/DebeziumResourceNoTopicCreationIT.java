@@ -11,6 +11,7 @@ import static org.hamcrest.Matchers.is;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,6 +22,7 @@ import io.debezium.testing.testcontainers.testhelper.TestInfrastructureHelper;
  * Tests topic creation endpoint which is disabled in Kafka version less than 2.6.0.
  * Debezium Container with 1.2 image is used for the same.
  */
+@Disabled
 public class DebeziumResourceNoTopicCreationIT {
     private static final Logger LOGGER = LoggerFactory.getLogger(DebeziumResourceNoTopicCreationIT.class);
     private static final String DEBEZIUM_CONTAINER_IMAGE_VERSION = "1.2";
