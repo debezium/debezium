@@ -11,6 +11,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -693,8 +694,8 @@ public class LogMinerStreamingChangeEventSourceMetrics
                 ", commitScn=" + commitScn +
                 ", oldestScn=" + oldestScn +
                 ", oldestScnTime=" + oldestScnTime +
-                ", currentLogFileNames=" + currentLogFileNames +
-                ", redoLogStatuses=" + redoLogStatuses +
+                ", currentLogFileNames=" + Arrays.asList(currentLogFileNames.get()) +
+                ", redoLogStatuses=" + Arrays.asList(redoLogStatuses.get()) +
                 ", databaseZoneOffset=" + databaseZoneOffset +
                 ", batchSize=" + batchSize +
                 ", logSwitchCount=" + logSwitchCount +
@@ -721,7 +722,7 @@ public class LogMinerStreamingChangeEventSourceMetrics
                 ", processGlobalAreaMemory=" + processGlobalAreaMemory +
                 ", abandonedTransactionIds=" + abandonedTransactionIds +
                 ", rolledBackTransactionIds=" + rolledBackTransactionIds +
-                "} " + super.toString();
+                "} ";
     }
 
     /**
@@ -780,6 +781,11 @@ public class LogMinerStreamingChangeEventSourceMetrics
         Duration getTotal() {
             return total.get();
         }
+
+        @Override
+        public String toString() {
+            return String.format("{min=%s,max=%s,total=%s}", min.get(), max.get(), total.get());
+        }
     }
 
     /**
@@ -820,6 +826,11 @@ public class LogMinerStreamingChangeEventSourceMetrics
         public long getMax() {
             return max.get();
         }
+
+        @Override
+        public String toString() {
+            return String.format("{value=%d,max=%d}", value.get(), max.get());
+        }
     }
 
     /**
@@ -848,6 +859,11 @@ public class LogMinerStreamingChangeEventSourceMetrics
 
         public Set<T> getAll() {
             return this.cache.get().keySet();
+        }
+
+        @Override
+        public String toString() {
+            return getAll().toString();
         }
     }
 
