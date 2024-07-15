@@ -324,7 +324,7 @@ jobs:
     strategy:
       # Runs each combination concurrently
       matrix:
-        profile: [ "assembly", "assembly,postgres-16,pgoutput-decoder" ]
+        profile: [ "assembly,postgres-12", "assembly,postgres-16,pgoutput-decoder" ]
       fail-fast: false
     name: "PostgreSQL - ${{ matrix.profile }}"
     needs: [ check_style, file_changes ]
