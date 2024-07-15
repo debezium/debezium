@@ -1620,8 +1620,8 @@ public abstract class CommonConnectorConfig {
         return signalEnabledChannels;
     }
 
-    public Optional<String[]> parseSignallingMessage(Struct value) {
-        final Struct after = value.getStruct(Envelope.FieldName.AFTER);
+    public Optional<String[]> parseSignallingMessage(Struct value, String fieldName) {
+        final Struct after = value.getStruct(fieldName);
         if (after == null) {
             LOGGER.warn("After part of signal '{}' is missing", value);
             return Optional.empty();
