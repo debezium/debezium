@@ -99,7 +99,7 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource extends BinlogRea
                     }
                 }
             });
-            jdbcConnection.commit();
+//            jdbcConnection.commit();
         }
         catch (SQLException e) {
             throw new DebeziumException(e);
