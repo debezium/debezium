@@ -37,7 +37,6 @@ import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.connector.mongodb.connection.DefaultMongoDbAuthProvider;
 import io.debezium.connector.mongodb.connection.MongoDbAuthProvider;
 import io.debezium.connector.mongodb.shared.SharedMongoDbConnectorConfig;
-import io.debezium.data.Envelope;
 import io.debezium.schema.DefaultTopicNamingStrategy;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Strings;
@@ -1428,8 +1427,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
     }
 
     @Override
-    public Optional<String[]> parseSignallingMessage(Struct value) {
-        final String after = value.getString(Envelope.FieldName.AFTER);
+    public Optional<String[]> parseSignallingMessage(Struct value, String fieldName) {
+        final String after = value.getString(fieldName);
         if (after == null) {
             LOGGER.warn("After part of signal '{}' is missing", value);
             return Optional.empty();
