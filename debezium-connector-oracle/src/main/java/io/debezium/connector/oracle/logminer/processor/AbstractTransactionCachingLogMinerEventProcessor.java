@@ -193,17 +193,6 @@ public abstract class AbstractTransactionCachingLogMinerEventProcessor<T extends
 
     @Override
     protected T getAndRemoveTransactionFromCache(String transactionId) {
-        // // todo: Infinispan bug?
-        // // When interacting with ISPN with a remote server configuration, the expected
-        // // behavior was that calling the remove method on the cache would return the
-        // // existing entry and remove it from the cache; however it always returned null.
-        // //
-        // // For now, we're going to use get to obtain the value and then remove it after-the-fact.
-        // final T transaction = getTransactionCache().get(transactionId);
-        // if (transaction != null) {
-        // getTransactionCache().remove(transactionId);
-        // }
-        // return transaction;
         return getTransactionCache().remove(transactionId);
     }
 
