@@ -197,20 +197,29 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
         LOGGER.trace("Adding data collections names {} to snapshot", dataCollectionIds);
         final List<DataCollection<T>> newDataCollectionIds = dataCollectionIds.stream()
                 .map(buildDataCollection(additionalCondition, surrogateKey))
+                .filter(Optional::isPresent)
+                .map(Optional::get)
                 .collect(Collectors.toList());
         addTablesIdsToSnapshot(newDataCollectionIds);
         this.correlationId = correlationId;
         return newDataCollectionIds;
     }
 
-    private Function<String, DataCollection<T>> buildDataCollection(List<AdditionalCondition> additionalCondition, String surrogateKey) {
+    private Function<String, Optional<DataCollection<T>>> buildDataCollection(List<AdditionalCondition> additionalCondition, String surrogateKey) {
         return expandedCollectionName -> {
             String filter = additionalCondition.stream()
                     .filter(condition -> condition.getDataCollection().matcher(expandedCollectionName).matches())
                     .map(AdditionalCondition::getFilter)
                     .findFirst()
                     .orElse("");
-            return new DataCollection<T>((T) TableId.parse(expandedCollectionName, useCatalogBeforeSchema), filter, surrogateKey);
+            try {
+                TableId parsedTable = TableId.parse(expandedCollectionName, useCatalogBeforeSchema);
+                return Optional.of(new DataCollection<T>((T) parsedTable, filter, surrogateKey));
+            }
+            catch (Exception e) {
+                LOGGER.warn("Unable to parse table identifier from {}. Skipping it.", expandedCollectionName);
+                return Optional.empty();
+            }
         };
     }
 
