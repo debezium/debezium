@@ -476,6 +476,10 @@ node('release-node') {
                             it.replaceFirst('<version>.+</version>\n    </parent>', "<version>$DEVELOPMENT_VERSION</version>\n    </parent>")
                         }
                     }
+                    if (id == "operator") {
+                        // For operator, we need to build with k8update profile to update manifests back to dev version
+                        sh "mvn clean package -Pk8update -DskipTests -DskipITs"
+                    }
                     sh "git commit -a -m '[release] New parent $DEVELOPMENT_VERSION for development'"
                     if (!DRY_RUN) {
                         withCredentials([usernamePassword(credentialsId: GIT_CREDENTIALS_ID, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
