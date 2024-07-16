@@ -554,6 +554,21 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
     }
 
     @Test
+    public void snapshotWithRegexDataCollectionsNotExist() throws Exception {
+
+        LogInterceptor interceptor = new LogInterceptor(AbstractIncrementalSnapshotChangeEventSource.class);
+
+        populateTable();
+        startConnector();
+        sendAdHocSnapshotSignal(".*notExist");
+
+        // Wait until the stop has been processed, verifying it was removed from the snapshot.
+        Awaitility.await().atMost(60, TimeUnit.SECONDS)
+                .until(() -> interceptor.containsMessage("Skipping read chunk because snapshot is not running"));
+
+    }
+
+    @Test
     @FixFor("DBZ-6945")
     public void snapshotWithDuplicateDataCollections() throws Exception {
         populateTable();
