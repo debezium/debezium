@@ -188,6 +188,7 @@ RENAME TABLE old_table TO tmp_table, new_table TO old_table, tmp_table TO new_ta
 RENAME TABLE table_b TO table_a;
 RENAME TABLE current_db.tbl_name TO other_db.tbl_name;
 rename table debezium_all_types_old to debezium_all_types, test_json_object_old wait 10 to test_json_object;
+RENAME TABLE IF EXISTS EMPLOYEE TO employee;
 #end
 #begin
 -- Truncate table
