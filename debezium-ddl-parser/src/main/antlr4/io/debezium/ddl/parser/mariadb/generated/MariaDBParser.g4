@@ -832,7 +832,7 @@ dropSequence // sequence is MariaDB-specific only
 //    Other DDL statements
 
 renameTable
-    : RENAME TABLE renameTableClause (',' renameTableClause)*
+    : RENAME TABLE ifExists? renameTableClause (',' renameTableClause)*
     ;
 
 renameTableClause
