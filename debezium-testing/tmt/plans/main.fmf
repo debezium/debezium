@@ -21,7 +21,6 @@ prepare:
     how: install
     package:
       - wget
-      - java-17-openjdk-devel
       - xz
       - make
       - git
@@ -40,14 +39,22 @@ prepare:
       sudo yum install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin
       sudo systemctl enable docker --now
 
-  - name: Install mvn
+  - name: Install sdkman and Java
     how: shell
     script: |
-      mkdir -p /usr/share/maven /usr/share/maven/ref
-      curl -fsSL -o /tmp/apache-maven.tar.gz https://apache.osuosl.org/maven/maven-3/3.8.8/binaries/apache-maven-3.8.8-bin.tar.gz
-      tar -xzf /tmp/apache-maven.tar.gz -C /usr/share/maven --strip-components=1
-      rm -f /tmp/apache-maven.tar.gz
-      ln -s /usr/share/maven/bin/mvn /usr/bin/mvn
+      curl -s "https://get.sdkman.io" | bash
+      source ${HOME}/.sdkman/bin/sdkman-init.sh && yes | sdk install java 21.0.3-tem || true
+
+
+  - name: Set Java 21 as default
+    how: shell
+    script: |
+      source ${HOME}/.sdkman/bin/sdkman-init.sh && yes | sdk default java 21.0.3-tem || true
+
+  - name: Install Maven
+    how: shell
+    script: |
+      source ${HOME}/.sdkman/bin/sdkman-init.sh && yes | sdk install maven 3.9.8 || true
 
   - name: Disable Chronyd service
     how: shell
