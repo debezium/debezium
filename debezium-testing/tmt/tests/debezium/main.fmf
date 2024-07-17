@@ -2,7 +2,7 @@ test:
   ./test.sh
 duration: 2h
 environment:
-  MAVEN_ARGS: "-U -am -fae -Papicurio -Dinsecure.repositories=WARN -pl debezium-bom --no-transfer-progress"
+  CUSTOM_MAVEN_ARGS: "-U -am -fae -Papicurio -Dinsecure.repositories=WARN --no-transfer-progress -pl debezium-bom"
 
 /mysql:
   summary: Run mysql connector functional tests
