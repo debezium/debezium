@@ -50,8 +50,7 @@ public class DebeziumContainerTest {
 
     private static final Network network = Network.newNetwork();
 
-    private static final KafkaContainer kafkaContainer = new KafkaContainer()
-            .withNetwork(network);
+    private static final KafkaContainer kafkaContainer = DebeziumKafkaContainer.defaultKRaftContainer(network);
 
     public static PostgreSQLContainer<?> postgresContainer = new PostgreSQLContainer<>(ImageNames.POSTGRES_DOCKER_IMAGE_NAME)
             .withNetwork(network)
