@@ -869,4 +869,20 @@ public class OracleConnection extends JdbcConnection {
     interface ObjectIdentifierConsumer {
         void apply(Long objectId, Long dataObjectId);
     }
+
+    @Override
+    protected Optional<Map<String, Integer>> getColumnsPosition(String catalogName, String schemaName, String tableName) throws SQLException {
+        return prepareQueryAndMap(
+                "SELECT COLUMN_NAME, SEGMENT_COLUMN_ID FROM ALL_TAB_COLS WHERE OWNER=? AND TABLE_NAME=? AND COLUMN_ID <> SEGMENT_COLUMN_ID",
+                ps -> {
+                    ps.setString(1, schemaName);
+                    ps.setString(2, tableName);
+                }, rs -> {
+                    Map<String, Integer> posMap = new HashMap<>();
+                    while (rs.next()) {
+                        posMap.put(rs.getString(1), rs.getInt(2));
+                    }
+                    return posMap.isEmpty() ? Optional.empty() : Optional.of(posMap);
+                });
+    }
 }
