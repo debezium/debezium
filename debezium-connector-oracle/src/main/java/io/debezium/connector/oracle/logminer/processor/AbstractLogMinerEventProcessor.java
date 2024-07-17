@@ -360,19 +360,21 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                     }
                     // Special use case where the table has been dropped and purged, and we are processing an
                     // old event for the table that comes prior to the drop.
-                    LOGGER.info("Found DML for dropped table in history with object-id based table name {}.", row.getTableId().table());
+                    LOGGER.debug("Found DML for dropped table in history with object-id based table name {}.", row.getTableId().table());
                     for (TableId tableId : schema.tableIds()) {
-                        LOGGER.info("Processing table id '{}'", tableId);
+                        LOGGER.debug("Processing table id '{}'", tableId);
                         Table table = schema.tableFor(tableId);
-                        for (Attribute attribute : table.attributes()) {
-                            LOGGER.info("Attribute {} with value {}", attribute.name(), attribute.value());
+                        if (LOGGER.isDebugEnabled()) {
+                            for (Attribute attribute : table.attributes()) {
+                                LOGGER.debug("Attribute {} with value {}", attribute.name(), attribute.value());
+                            }
                         }
                         Attribute attribute = table.attributeWithName("OBJECT_ID");
                         if (attribute != null) {
-                            LOGGER.info("Found table '{}' with object id {}", table.id(), attribute.asLong());
+                            LOGGER.debug("Found table '{}' with object id {}", table.id(), attribute.asLong());
                         }
                         if (attribute != null && attribute.asLong().equals(row.getObjectId())) {
-                            LOGGER.info("Table lookup resolved to '{}'", table.id());
+                            LOGGER.debug("Table lookup resolved to '{}'", table.id());
                             row.setTableId(table.id());
                             break;
                         }
