@@ -236,6 +236,13 @@ jobs:
 
       - name: Download dependencies (Debezium Server)
         if: steps.maven-cache-check.outputs.cache-hit != 'true'
+        # There are some corner cases where dependencies change and core no longer defines the
+        # dependency; however Debezium Server due to checking out main, may still refer to it.
+        # In this case, if the artifact fetch fails, we shouldn't fail the job.  Fixing the
+        # dependency in the Debezium Server repository with the same Jira issue tag as the
+        # main repository's PR will run the build based on the PR changes in main, and will
+        # allow validating the Debezium Server build separately.
+        continue-on-error: true
         run: >
           ./server/mvnw -B -ntp clean install -f server/pom.xml
           -Dformat.skip=true
