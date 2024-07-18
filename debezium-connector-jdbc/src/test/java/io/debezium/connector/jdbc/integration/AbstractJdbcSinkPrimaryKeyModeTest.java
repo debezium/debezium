@@ -292,13 +292,19 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
 
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
-        try {
-            consume(factory.createRecord(topicName));
-            stopSinkConnector();
-        }
-        catch (Exception e) {
-            assertThat(e.getCause().getCause().getMessage()).contains("At least one primary.key.fields field name should be specified");
-        }
+        final SinkRecord createRecord = factory.createRecordNoKey(topicName);
+        consume(createRecord);
+
+        final String destinationTableName = destinationTableName(createRecord);
+
+        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName);
+        tableAssert.exists().hasNumberOfColumns(3);
+
+        getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1);
+        getSink().assertColumnType(tableAssert, "name", ValueType.TEXT, "John Doe");
+        getSink().assertColumnType(tableAssert, "nick_name$", ValueType.TEXT, "John Doe$");
+
+        assertHasPrimaryKeyColumns(destinationTableName, "id", "name", "nick_name$");
     }
 
     @ParameterizedTest
@@ -396,6 +402,7 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
         }
         else if (caseInsensitive) {
             pkColumnNames = pkColumnNames.stream().map(String::toLowerCase).collect(Collectors.toList());
+            assertThat(pkColumnNames.size()).isEqualTo(columnNames.length);
             for (int columnIndex = 0; columnIndex < columnNames.length; ++columnIndex) {
                 assertThat(pkColumnNames).contains(columnNames[columnIndex].toLowerCase(), Index.atIndex(columnIndex));
             }

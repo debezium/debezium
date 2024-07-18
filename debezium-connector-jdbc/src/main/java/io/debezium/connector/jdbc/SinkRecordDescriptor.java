@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
@@ -396,30 +397,25 @@ public class SinkRecordDescriptor {
         }
 
         private void applyRecordValueAsPrimaryKey(SinkRecord record, boolean flattened) {
-            if (primaryKeyFields.isEmpty()) {
-                throw new ConnectException("At least one " + JdbcSinkConnectorConfig.PRIMARY_KEY_FIELDS +
-                        " field name should be specified when resolving keys from the record's value.");
-            }
 
             final Schema valueSchema = record.valueSchema();
             if (valueSchema == null) {
                 throw new ConnectException("Configured primary key mode 'record_value' cannot have null schema");
             }
-            else if (flattened) {
-                for (Field field : record.valueSchema().fields()) {
-                    if (primaryKeyFields.contains(field.name())) {
-                        addKeyField(record.topic(), field);
-                    }
-                }
+
+            Stream<Field> recordFields;
+            if (flattened) {
+                recordFields = record.valueSchema().fields().stream();
             }
             else {
-                final Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
-                for (Field field : after.schema().fields()) {
-                    if (primaryKeyFields.contains(field.name())) {
-                        addKeyField(record.topic(), field);
-                    }
-                }
+                recordFields = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER).schema().fields().stream();
             }
+
+            if (!primaryKeyFields.isEmpty()) {
+                recordFields = recordFields.filter(field -> primaryKeyFields.contains(field.name()));
+            }
+
+            recordFields.forEach(field -> addKeyField(record.topic(), field));
         }
 
         private void applyPrimitiveRecordKeyAsPrimaryKey(Schema keySchema) {
