@@ -13,6 +13,8 @@ import java.nio.ByteOrder;
 import java.nio.charset.Charset;
 import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.StandardCharsets;
+import java.sql.Blob;
+import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.Duration;
@@ -332,6 +334,21 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
             return super.convertReal(column, fieldDefn, data);
         }
         return super.convertFloat(column, fieldDefn, data);
+    }
+
+    @Override
+    protected Object convertBinary(Column column, Field fieldDefn, Object data, BinaryHandlingMode mode) {
+        // During snapshots, the JDBC ResultSet returns Blob instances
+        if (data instanceof Blob) {
+            try {
+                final Blob blob = (Blob) data;
+                data = blob.getBytes(1, (int) blob.length());
+            }
+            catch (SQLException e) {
+                throw new DebeziumException("Failed to parse and read BLOB data for column " + column.name(), e);
+            }
+        }
+        return super.convertBinary(column, fieldDefn, data, mode);
     }
 
     @Override
