@@ -1771,6 +1771,10 @@ See xref:vitess-data-types[how Vitess connectors map data types] for the list of
 |`io.debezium.schema.SchemaTopicNamingStrategy`
 |The name of the TopicNamingStrategy class that should be used to determine the topic name for data change, schema change, transaction, heartbeat event etc., defaults to `SchemaTopicNamingStrategy`.
 
+|[[vitess-property-override-data-change-topic-prefix]]<<vitess-property-override-data-change-topic-prefix, `override.data.change.topic.prefix`>>
+|No default
+|If the topic naming strategy `io.debezium.connector.vitess.TableTopicNamingStrategy` is used, this property is used in place of `topic.prefix` to create the data change topic name.
+
 |[[vitess-property-topic-delimiter]]<<vitess-property-topic-delimiter, `topic.delimiter`>>
 |`.`
 |Specify the delimiter for topic name, defaults to `.`.
