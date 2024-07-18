@@ -17,6 +17,9 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.bson.BsonDocument;
 import org.slf4j.Logger;
@@ -56,8 +59,10 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
     private final EventFetcher<TResult> fetcher;
     private final ExecutorService executor;
     private final DelayStrategy throttler;
-
     private BsonDocument lastResumeToken = null;
+    private final Lock lock = new ReentrantLock();
+    private final Condition condition = lock.newCondition();
+    private volatile boolean paused = false;
 
     /**
      * Combination of change stream event and resume token
@@ -281,6 +286,9 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
 
         private boolean enqueue(ResumableChangeStreamEvent<TResult> event) throws InterruptedException {
             var available = this.capacity.tryAcquire(QUEUE_OFFER_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+            if (!isRunning()) {
+                return false;
+            }
             if (!available) {
                 LOGGER.warn("Unable to acquire buffer lock, buffer queue is likely full");
                 return false;
@@ -328,7 +336,14 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
 
     @Override
     public ResumableChangeStreamEvent<TResult> tryNext() {
-        var event = pollWithDelay();
+        ResumableChangeStreamEvent<TResult> event = null;
+        try {
+            event = pollWithDelay();
+        }
+        catch (Exception e) {
+            LOGGER.error("Error while polling for event:", e);
+        }
+
         if (event != null) {
             lastResumeToken = event.resumeToken;
         }
@@ -355,16 +370,46 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
      *
      * @return event or null if not available within time limit
      */
-    private ResumableChangeStreamEvent<TResult> pollWithDelay() {
+    private ResumableChangeStreamEvent<TResult> pollWithDelay() throws InterruptedException {
         boolean slept;
         ResumableChangeStreamEvent<TResult> event;
 
+        lock.lock();
+        try {
+            while (paused) {
+                condition.await();
+            }
+        }
+        finally {
+            lock.unlock();
+        }
         do {
             event = fetcher.poll();
             slept = throttler.sleepWhen(event == null);
         } while (slept);
 
         return event;
+    }
+
+    public void pause() {
+        lock.lock();
+        try {
+            paused = true;
+        }
+        finally {
+            lock.unlock();
+        }
+    }
+
+    public void resume() {
+        lock.lock();
+        try {
+            paused = false;
+            condition.signalAll();
+        }
+        finally {
+            lock.unlock();
+        }
     }
 
     @Override

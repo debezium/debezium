@@ -103,7 +103,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
 
         try (var cursor = BufferingChangeStreamCursor.fromIterable(stream, taskContext, streamingMetrics, clock).start()) {
             while (context.isRunning()) {
-                waitWhenStreamingPaused(context);
+                waitWhenStreamingPaused(context, cursor);
                 var resumableEvent = cursor.tryNext();
                 if (resumableEvent == null) {
                     continue;
@@ -124,12 +124,14 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         }
     }
 
-    private void waitWhenStreamingPaused(ChangeEventSourceContext context) {
+    private void waitWhenStreamingPaused(ChangeEventSourceContext context, BufferingChangeStreamCursor cursor) {
         if (context.isPaused()) {
             errorHandled(() -> {
                 LOGGER.info("Streaming will now pause");
                 context.streamingPaused();
+                cursor.pause();
                 context.waitSnapshotCompletion();
+                cursor.resume();
                 LOGGER.info("Streaming resumed");
             });
         }
