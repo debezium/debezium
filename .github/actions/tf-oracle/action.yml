@@ -1,0 +1,25 @@
+name: "Test Oracle"
+description: "Runs tests for Oracle"
+
+inputs:
+  compose:
+    description: "Image for oracle tests like debezium-tf-2130"
+    required: true
+  version:
+    description: "Oracle version like 21.3.0"
+    required: true
+  key:
+    description: "TF API key"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Schedule test on Testing Farm
+      uses: sclorg/testing-farm-as-github-action@v2
+      with:
+        api_key: ${{ inputs.key }}
+        tmt_plan_regex: "oracle"
+        pull_request_status_name: "Oracle Testsuite -- ${{ inputs.version }}"
+        compose: ${{ inputs.compose }}
+        variables: "ORACLE_VERSION=${{ inputs.version }};TEST_PROFILE=oracle"

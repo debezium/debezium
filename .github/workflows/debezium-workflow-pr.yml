@@ -367,6 +367,28 @@ jobs:
         with:
           maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
 
+  # Approx 2-3h
+  test_oracle:
+    name: "Oracle tests on testing farm"
+    needs: [ check_style, file_changes ]
+    strategy:
+      matrix:
+        index: [0, 1, 2, 3, 4]
+    env:
+      versions: ("19.3.0", "19.3.0-xs", "21.3.0", "21.3.0-xs", "23.3.0")
+      composes: ("debezium-tf-1930", "debezium-tf-1930-xs", "debezium-tf-2130", "debezium-tf-2130-xs", "debezium-tf-2330")
+    runs-on: ubuntu-latest
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.oracle-changed == 'true' || needs.file_changes.outputs.oracle-ddl-parser-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' }}
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v4
+
+      - uses: ./.github/actions/tf-oracle
+        with:
+          compose: ${{ env.composes[matrix.index] }}
+          version: ${{ env.versions[matrix.index] }}
+          key: ${{ secrets.TF_PUBLIC_API_KEY }}
+
   # Approx 2m
   build_outbox:
     name: "Quarkus Outbox Extension"
