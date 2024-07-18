@@ -30,6 +30,7 @@ import io.debezium.schema.FieldNameSelector;
 import io.debezium.schema.FieldNameSelector.FieldNamer;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.transforms.outbox.EventRouterConfigDefinition.JsonPayloadNullFieldBehavior;
+import io.debezium.util.Strings;
 
 public class JsonSchemaData {
     private final JsonPayloadNullFieldBehavior jsonPayloadNullFieldBehavior;
@@ -69,7 +70,8 @@ public class JsonSchemaData {
                 final SchemaBuilder schemaBuilder = SchemaBuilder.struct().name(key).optional();
                 node.fields().forEachRemaining(entry -> {
                     final String fieldName = fieldNamer.fieldNameFor(entry.getKey());
-                    final Schema fieldSchema = toConnectSchema(key + "." + fieldName, entry.getValue());
+                    final String fieldKey = (Strings.isNullOrBlank(key) ? "" : key + ".") + fieldName;
+                    final Schema fieldSchema = toConnectSchema(fieldKey, entry.getValue());
                     if (fieldSchema != null && !hasField(schemaBuilder, fieldName)) {
                         schemaBuilder.field(fieldName, fieldSchema);
                     }
