@@ -15,6 +15,7 @@ import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.transforms.ExtractField;
 import org.apache.kafka.connect.transforms.Flatten;
 import org.apache.kafka.connect.transforms.InsertField;
+import org.apache.kafka.connect.transforms.ReplaceField;
 
 /**
  * A set of utilities for more easily creating various kinds of transformations.
@@ -58,6 +59,14 @@ public class ConnectRecordUtil {
         delegateConfig.put("static.value", value);
         insertDelegate.configure(delegateConfig);
         return insertDelegate;
+    }
+
+    public static <R extends ConnectRecord<R>> ReplaceField<R> dropFieldFromValueDelegate(String field) {
+        ReplaceField<R> dropFieldDelegate = new ReplaceField.Value<>();
+        Map<String, String> delegateConfig = new HashMap<>();
+        delegateConfig.put("exclude", field);
+        dropFieldDelegate.configure(delegateConfig);
+        return dropFieldDelegate;
     }
 
     public static <R extends ConnectRecord<R>> Flatten<R> flattenValueDelegate(String delimiter) {
