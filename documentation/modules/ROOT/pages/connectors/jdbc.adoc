@@ -156,6 +156,12 @@ To avoid this problem, apply the following settings in your environment:
 * Create the database table and primary key mappings in advance.
 ====
 
+[IMPORTANT]
+====
+If a column maps to a data type that isn't permitted as a primary key for your target database, an explicit list of columns will be necessary in `primary.key.fields` excluding such columns.
+Consult your specific database vendor's documentation for what data types are and are not permissible.
+====
+
 // Type: procedure
 // Title: Configuring the {prodname} JDBC connector to delete rows when consuming `DELETE` or _tombstone_ events
 // ModuleID: debezium-jdbc-connector-configuring-the-connector-to-delete-rows
@@ -803,7 +809,7 @@ You can set the xref:jdbc-property-primary-key-fields[`primary.key.fields`] prop
 When xref:jdbc-property-primary-key-mode[`primary.key.mode`] is set to `record_key` and the event's key is a primitive type, it is expected that this property specifies the column name to be used for the key. +
  +
 When the xref:jdbc-property-primary-key-mode[`primary.key.mode`] is set to `record_key` with a non-primitive key, or `record_value`, it is expected that this property specifies a comma-separated list of field names from either the key or value.
-If the xref:jdbc-property-primary-key-mode[`primary.key.mode`] is set to `record_key` with a non-primitive key, or `record_value`, and this property is not specifies, the connector derives the primary key from all fields of either the record key or record value, depending on the specified mode.
+If the xref:jdbc-property-primary-key-mode[`primary.key.mode`] is set to `record_key` with a non-primitive key, or `record_value`, and this property is not specified, the connector derives the primary key from all fields of either the record key or record value, depending on the specified mode.
 
 |[[jdbc-property-quote-identifiers]]<<jdbc-property-quote-identifiers, `+quote.identifiers+`>>
 |`false`
