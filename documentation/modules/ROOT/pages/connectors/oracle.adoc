@@ -2431,8 +2431,8 @@ In the event of a primary database failure, standby databases provide for contin
 Oracle makes use of both physical and logical standby databases.
 
 A physical standby is an exact, block-for-block copy of the primary production database, and its system change number (SCN) values are identical to those of the primary.
-The {prodname} Oracle connector cannot capture change events directly from a physical standby database, because a physical standbys do not accept external connections.
-After a physical standby is converted to the primary database, the connector can access to capture events just as it would from any other primary database.
+The {prodname} Oracle connector cannot capture change events directly from a physical standby database, because physical standbys do not accept external connections.
+Only after a physical standby is converted to the primary database, can the connector access it to capture events, just as it would from any other primary database.
 
 A logical standby contains the same logical data as the primary, but data might be stored in a different physical manner.
 SCN offsets in a logical standby differ from the offsets in the primary database.
