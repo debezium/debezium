@@ -1773,7 +1773,9 @@ See xref:vitess-data-types[how Vitess connectors map data types] for the list of
 
 |[[vitess-property-override-data-change-topic-prefix]]<<vitess-property-override-data-change-topic-prefix, `override.data.change.topic.prefix`>>
 |No default
-|If the topic naming strategy `io.debezium.connector.vitess.TableTopicNamingStrategy` is used, this property is used in place of `topic.prefix` to create the data change topic name.
+|Specifies the prefix that the connector uses to create the names of data change topics when xref:vitess-property-topic-naming-strategy[topic.naming.strategy] is set to `io.debezium.connector.vitess.TableTopicNamingStrategy`.
+The connector uses the value of this property instead of the specified xref:vitess-property-topic-prefix[`topic.prefix`]. 
+
 
 |[[vitess-property-topic-delimiter]]<<vitess-property-topic-delimiter, `topic.delimiter`>>
 |`.`
