@@ -53,8 +53,10 @@ public interface JdbcConfiguration extends Configuration {
     Field PORT = Field.create("port", "Port of the database");
 
     /**
-    * This line will be supplemented with the database connection URL
-    */
+     * Specifies custom flags to be appended to the PostgreSQL JDBC connection string.
+     * This allows for fine-tuning of the connection parameters to address specific use cases and requirements.
+     * For example, disabling prepared statements by setting '?prepareThreshold=0'.
+     */
     Field JDBC_CONNECTION_FLAGS = Field.create("jdbc.connection.flags")
             .withDisplayName("This line will be supplemented with the database connection URL")
             .withType(Type.STRING)
