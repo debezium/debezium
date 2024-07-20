@@ -80,6 +80,7 @@ public class TimescaleDbDatabaseTest extends AbstractConnectorTest {
                 .with("transforms.timescaledb.database.user", "postgres")
                 .with("transforms.timescaledb.database.password", "postgres")
                 .with("transforms.timescaledb.database.dbname", "postgres")
+                .with("transforms.timescaledb.database.jdbc.connection.flags", "")
                 .build();
     }
 

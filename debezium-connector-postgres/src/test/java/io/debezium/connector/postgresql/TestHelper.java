@@ -283,7 +283,8 @@ public final class TestHelper {
                 .withDefault(JdbcConfiguration.HOSTNAME, hostname)
                 .withDefault(JdbcConfiguration.PORT, port)
                 .withDefault(JdbcConfiguration.USER, "postgres")
-                .withDefault(JdbcConfiguration.PASSWORD, "postgres");
+                .withDefault(JdbcConfiguration.PASSWORD, "postgres")
+                .withDefault(JdbcConfiguration.JDBC_CONNECTION_FLAGS, "");
     }
 
     public static JdbcConfiguration defaultJdbcConfig() {

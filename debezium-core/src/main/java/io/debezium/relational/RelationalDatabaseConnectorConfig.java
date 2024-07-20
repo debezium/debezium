@@ -223,6 +223,14 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withValidation(Field::isInteger)
             .withDescription("Port of the database server.");
 
+    public static final Field JDBC_CONNECTION_FLAGS = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.JDBC_CONNECTION_FLAGS)
+            .withDisplayName("JDBC connection flags")
+            .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 34))
+            .withWidth(Width.LONG)
+            .withImportance(Importance.HIGH)
+            .withDescription("This line will be supplemented with the database connection URL.");
+
     public static final Field USER = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.USER)
             .withDisplayName("User")
             .withType(Type.STRING)

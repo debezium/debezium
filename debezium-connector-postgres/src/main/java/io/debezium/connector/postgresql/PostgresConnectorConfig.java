@@ -550,6 +550,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     public static final Field PORT = RelationalDatabaseConnectorConfig.PORT
             .withDefault(DEFAULT_PORT);
 
+    public static final Field JDBC_CONNECTION_FLAGS = RelationalDatabaseConnectorConfig.JDBC_CONNECTION_FLAGS;
     public static final Field PLUGIN_NAME = Field.create("plugin.name")
             .withDisplayName("Plugin")
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION, 0))
@@ -1014,6 +1015,10 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return getConfig().getInteger(PORT);
     }
 
+    public String jdbcConnectionFlags() {
+        return getConfig().getString(JDBC_CONNECTION_FLAGS);
+    }
+
     public String databaseName() {
         return getConfig().getString(DATABASE_NAME);
     }
@@ -1142,6 +1147,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     USER,
                     PASSWORD,
                     DATABASE_NAME,
+                    JDBC_CONNECTION_FLAGS,
                     QUERY_TIMEOUT_MS,
                     PLUGIN_NAME,
                     SLOT_NAME,

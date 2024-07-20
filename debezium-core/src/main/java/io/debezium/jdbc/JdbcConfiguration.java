@@ -53,6 +53,15 @@ public interface JdbcConfiguration extends Configuration {
     Field PORT = Field.create("port", "Port of the database");
 
     /**
+    * This line will be supplemented with the database connection URL
+    */
+    Field JDBC_CONNECTION_FLAGS = Field.create("jdbc.connection.flags")
+            .withDisplayName("This line will be supplemented with the database connection URL")
+            .withType(Type.STRING)
+            .withDefault("")
+            .withValidation(Field::isOptional);
+
+    /**
      * A semicolon separated list of SQL statements to be executed when the connection to database is established.
      * Typical use-case is setting of session parameters. There is no default value.
      */
@@ -85,7 +94,7 @@ public interface JdbcConfiguration extends Configuration {
      * {@link #PASSWORD}, {@link #HOSTNAME}, and {@link #PORT}.
      */
     Set<String> ALL_KNOWN_FIELDS = Collect.unmodifiableSet(Field::name, DATABASE, USER, PASSWORD, HOSTNAME, PORT, ON_CONNECT_STATEMENTS,
-            CONNECTION_FACTORY_CLASS, CONNECTION_TIMEOUT_MS, QUERY_TIMEOUT_MS);
+            JDBC_CONNECTION_FLAGS, CONNECTION_FACTORY_CLASS, CONNECTION_TIMEOUT_MS, QUERY_TIMEOUT_MS);
 
     /**
      * Obtain a {@link JdbcConfiguration} adapter for the given {@link Configuration}.
@@ -184,6 +193,16 @@ public interface JdbcConfiguration extends Configuration {
          */
         default Builder withConnectionFactoryClass(String connectionFactoryClass) {
             return with(CONNECTION_FACTORY_CLASS, connectionFactoryClass);
+        }
+
+        /**
+         * Use the given connection factory class in the resulting configuration.
+         *
+         * @param jdbcConnectionFlags connection string
+         * @return this builder object so methods can be chained together; never null
+         */
+        default Builder withJdbcConnectionFlags(String jdbcConnectionFlags) {
+            return with(JDBC_CONNECTION_FLAGS, jdbcConnectionFlags);
         }
 
         /**
@@ -401,6 +420,15 @@ public interface JdbcConfiguration extends Configuration {
      */
     default String getConnectionFactoryClassName() {
         return getString(CONNECTION_FACTORY_CLASS);
+    }
+
+    /**
+     * Get the connection string property from the configuration.
+     *
+     * @return the specified value, or null if there is none.
+     */
+    default String getJdbcConnectionFlags() {
+        return getString(JDBC_CONNECTION_FLAGS);
     }
 
     /**

@@ -185,7 +185,8 @@ public class JdbcConnection implements AutoCloseable {
                     JdbcConfiguration.PORT,
                     JdbcConfiguration.USER,
                     JdbcConfiguration.PASSWORD,
-                    JdbcConfiguration.DATABASE);
+                    JdbcConfiguration.DATABASE,
+                    JdbcConfiguration.JDBC_CONNECTION_FLAGS);
             String url = findAndReplace(urlPattern, props, varsWithDefaults);
             if (LOGGER.isTraceEnabled()) {
                 LOGGER.trace("Props: {}", propsWithMaskedPassword(props));
@@ -229,7 +230,8 @@ public class JdbcConnection implements AutoCloseable {
                     JdbcConfiguration.PORT,
                     JdbcConfiguration.USER,
                     JdbcConfiguration.PASSWORD,
-                    JdbcConfiguration.DATABASE);
+                    JdbcConfiguration.DATABASE,
+                    JdbcConfiguration.JDBC_CONNECTION_FLAGS);
             String url = findAndReplace(urlPattern, props, varsWithDefaults);
             if (LOGGER.isTraceEnabled()) {
                 LOGGER.trace("Props: {}", propsWithMaskedPassword(props));
@@ -1097,7 +1099,7 @@ public class JdbcConnection implements AutoCloseable {
     public String connectionString(String urlPattern) {
         Properties props = config.asProperties();
         return findAndReplace(urlPattern, props, JdbcConfiguration.DATABASE, JdbcConfiguration.HOSTNAME, JdbcConfiguration.PORT,
-                JdbcConfiguration.USER, JdbcConfiguration.PASSWORD);
+                JdbcConfiguration.USER, JdbcConfiguration.PASSWORD, JdbcConfiguration.JDBC_CONNECTION_FLAGS);
     }
 
     /**

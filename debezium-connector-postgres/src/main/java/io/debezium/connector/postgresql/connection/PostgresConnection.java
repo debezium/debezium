@@ -78,10 +78,11 @@ public class PostgresConnection extends JdbcConnection {
     private static Logger LOGGER = LoggerFactory.getLogger(PostgresConnection.class);
 
     private static final String URL_PATTERN = "jdbc:postgresql://${" + JdbcConfiguration.HOSTNAME + "}:${"
-            + JdbcConfiguration.PORT + "}/${" + JdbcConfiguration.DATABASE + "}";
+            + JdbcConfiguration.PORT + "}/${" + JdbcConfiguration.DATABASE + "}${" + JdbcConfiguration.JDBC_CONNECTION_FLAGS + "}";
     protected static final ConnectionFactory FACTORY = JdbcConnection.patternBasedFactory(URL_PATTERN,
             org.postgresql.Driver.class.getName(),
-            PostgresConnection.class.getClassLoader(), JdbcConfiguration.PORT.withDefault(PostgresConnectorConfig.PORT.defaultValueAsString()));
+            PostgresConnection.class.getClassLoader(), JdbcConfiguration.PORT.withDefault(PostgresConnectorConfig.PORT.defaultValueAsString()),
+            JdbcConfiguration.JDBC_CONNECTION_FLAGS);
 
     /**
      * Obtaining a replication slot may fail if there's a pending transaction. We're retrying to get a slot for 30 min.
