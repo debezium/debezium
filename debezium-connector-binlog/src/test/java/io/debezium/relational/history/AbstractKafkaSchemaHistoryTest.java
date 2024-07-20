@@ -397,6 +397,17 @@ public abstract class AbstractKafkaSchemaHistoryTest<P extends BinlogPartition, 
     }
 
     @Test
+    @FixFor("DBZ-8083")
+    public void shouldValidateNonEmptyTopicName() {
+        Configuration config = Configuration.create()
+                .with(KafkaSchemaHistory.TOPIC, "")
+                .build();
+
+        final Map<String, ConfigValue> issues = config.validate(KafkaSchemaHistory.ALL_FIELDS);
+        assertThat(issues.keySet()).contains(KafkaSchemaHistory.TOPIC.name());
+    }
+
+    @Test
     @FixFor("DBZ-2144")
     public void shouldValidateMandatoryValues() {
         Configuration config = Configuration.create()

@@ -111,7 +111,7 @@ public class KafkaSchemaHistory extends AbstractSchemaHistory {
             .withWidth(Width.LONG)
             .withImportance(Importance.HIGH)
             .withDescription("The name of the topic for the database schema history")
-            .withValidation(KafkaSchemaHistory.forKafka(Field::isRequired));
+            .withValidation(forKafka(Field::isRequired), Field::isNonEmptyString);
 
     public static final Field BOOTSTRAP_SERVERS = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "kafka.bootstrap.servers")
             .withDisplayName("Kafka broker addresses")

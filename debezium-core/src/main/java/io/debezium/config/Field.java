@@ -1331,6 +1331,15 @@ public final class Field {
         return 1;
     }
 
+    public static int isNonEmptyString(Configuration config, Field field, ValidationOutput problems) {
+        String value = config.getString(field);
+        if (value == null || value.length() > 0) {
+            return 0;
+        }
+        problems.accept(field, value, "A non-empty string value is expected");
+        return 1;
+    }
+
     public static int isShort(Configuration config, Field field, ValidationOutput problems) {
         String value = config.getString(field);
         if (value == null) {
