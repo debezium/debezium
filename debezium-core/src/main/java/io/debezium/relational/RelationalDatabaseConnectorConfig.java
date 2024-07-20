@@ -228,7 +228,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withType(Type.STRING)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 34))
             .withWidth(Width.LONG)
-            .withImportance(Importance.HIGH)
+            .withImportance(Importance.LOW)
             .withDescription("Specifies custom flags to be appended to the PostgreSQL JDBC connection string. " +
                     "This allows for fine-tuning of the connection parameters to address specific use cases and requirements. " +
                     "For example, disabling prepared statements by setting '?prepareThreshold=0'.");
