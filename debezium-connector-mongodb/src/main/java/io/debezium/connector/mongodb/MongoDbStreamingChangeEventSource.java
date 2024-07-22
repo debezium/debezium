@@ -101,9 +101,9 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         final SplitEventHandler<BsonDocument> splitHandler = new SplitEventHandler<>();
         final ChangeStreamIterable<BsonDocument> stream = initChangeStream(client, effectiveOffset);
 
-        try (var cursor = BufferingChangeStreamCursor.fromIterable(stream, taskContext, streamingMetrics, clock).start()) {
+        try (var cursor = BufferingChangeStreamCursor.fromIterable(stream, taskContext, context, streamingMetrics, clock).start()) {
             while (context.isRunning()) {
-                waitWhenStreamingPaused(context, cursor);
+                waitWhenStreamingPaused(context);
                 var resumableEvent = cursor.tryNext();
                 if (resumableEvent == null) {
                     continue;
@@ -124,14 +124,12 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         }
     }
 
-    private void waitWhenStreamingPaused(ChangeEventSourceContext context, BufferingChangeStreamCursor cursor) {
+    private void waitWhenStreamingPaused(ChangeEventSourceContext context) {
         if (context.isPaused()) {
             errorHandled(() -> {
                 LOGGER.info("Streaming will now pause");
                 context.streamingPaused();
-                cursor.pause();
                 context.waitSnapshotCompletion();
-                cursor.resume();
                 LOGGER.info("Streaming resumed");
             });
         }
