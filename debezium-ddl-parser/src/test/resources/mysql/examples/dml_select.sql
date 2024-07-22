@@ -323,3 +323,6 @@ FROM
     (SELECT @sum := 0) AS init
 ORDER BY
     some_order_column;
+
+-- statement is supported as the field name
+SELECT REPLACE(statement, ' ','') as statement from your_table;
