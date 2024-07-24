@@ -135,8 +135,8 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
         private final Clock clock;
         private int noMessageIterations = 0;
         private final Lock lock = new ReentrantLock();
-        private final Condition snapshotFinished = lock.newCondition();
-        private boolean paused;
+        private final Condition resumed = lock.newCondition();
+        private volatile boolean paused;
 
         public EventFetcher(ChangeStreamIterable<TResult> stream,
                             int capacity,
@@ -194,23 +194,33 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
             running.set(false);
         }
 
-        public void resumeStreaming() {
+        public boolean isPaused() {
+            return paused;
+        }
+
+        public void pause() {
+            paused = true;
+            LOGGER.trace("Event buffering will now pause.");
+        }
+
+        public void resume() {
             lock.lock();
             try {
-                snapshotFinished.signalAll();
-                LOGGER.trace("Streaming will now resume.");
+                paused = false;
+                resumed.signalAll();
+                LOGGER.trace("Event buffering will now resume.");
             }
             finally {
                 lock.unlock();
             }
         }
 
-        public void waitSnapshotCompletion() throws InterruptedException {
+        public void waitIfPaused() throws InterruptedException {
             lock.lock();
             try {
                 while (paused) {
-                    LOGGER.trace("Waiting for snapshot to be completed.");
-                    snapshotFinished.await();
+                    LOGGER.trace("Waiting until buffering is resumed.");
+                    resumed.await();
                 }
             }
             finally {
@@ -255,6 +265,7 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
             }
             catch (InterruptedException e) {
                 LOGGER.error("Fetcher thread interrupted", e);
+                Thread.currentThread().interrupt();
                 throw new DebeziumException("Fetcher thread interrupted", e);
             }
             catch (Throwable e) {
@@ -273,7 +284,7 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
             while (isRunning()) {
                 if (!repeat) {
                     if (paused) {
-                        waitSnapshotCompletion();
+                        waitIfPaused();
                     }
                     var maybeEvent = fetchEvent(cursor);
                     if (maybeEvent.isEmpty()) {
@@ -399,12 +410,15 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
     }
 
     public void resume() {
-        fetcher.paused = false;
-        fetcher.resumeStreaming();
+        fetcher.resume();
     }
 
     public void pause() {
-        fetcher.paused = true;
+        fetcher.pause();
+    }
+
+    public boolean isPaused() {
+        return fetcher.isPaused();
     }
 
     @Override
