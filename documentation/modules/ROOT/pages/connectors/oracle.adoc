@@ -3878,7 +3878,7 @@ Using a value of `0` will use the JDBC driver's default fetch size.
 See xref:oracle-transaction-metadata[Transaction Metadata] for additional details.
 
 |[[oracle-property-log-mining-strategy]]<<oracle-property-log-mining-strategy, `+log.mining.strategy+`>>
-|`redo_log_catalog`
+|`online_catalog`
 |Specifies the mining strategy that controls how Oracle LogMiner builds and uses a given data dictionary for resolving table and column ids to names. +
  +
 `redo_log_catalog`:: Writes the data dictionary to the online redo logs causing more archive logs to be generated over time.
