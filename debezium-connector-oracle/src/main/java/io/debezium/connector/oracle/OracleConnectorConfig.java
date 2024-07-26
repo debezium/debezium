@@ -153,7 +153,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     public static final Field LOG_MINING_STRATEGY = Field.create("log.mining.strategy")
             .withDisplayName("Log Mining Strategy")
-            .withEnum(LogMiningStrategy.class, LogMiningStrategy.CATALOG_IN_REDO)
+            .withEnum(LogMiningStrategy.class, LogMiningStrategy.ONLINE_CATALOG)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.HIGH)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 8))
