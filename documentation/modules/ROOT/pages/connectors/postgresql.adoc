@@ -3774,6 +3774,11 @@ include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-s
 
 include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-notification-configuration-properties.adoc[leveloffset=+1]
 
+[id="debezium-{context}-connector-pass-through-database-driver-configuration-properties"]
+==== {prodname} connector pass-through database driver configuration properties
+
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-database-driver-configuration-properties.adoc[leveloffset=+1]
+
 // Type: assembly
 // ModuleID: monitoring-debezium-postgresql-connector-performance
 // Title: Monitoring {prodname} PostgreSQL connector performance
