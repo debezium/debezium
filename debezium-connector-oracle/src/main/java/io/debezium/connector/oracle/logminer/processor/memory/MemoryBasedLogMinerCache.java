@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.oracle.logminer.processor.memory;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -18,8 +19,8 @@ public class MemoryBasedLogMinerCache<K, V> implements LogMinerCache<K, V> {
 
     private final Map<K, V> map;
 
-    public MemoryBasedLogMinerCache(Map<K, V> map) {
-        this.map = map;
+    public MemoryBasedLogMinerCache() {
+        this.map = new HashMap<>();
     }
 
     @Override
