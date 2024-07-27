@@ -107,7 +107,7 @@ public abstract class AbstractTransactionCachingLogMinerEventProcessor<T extends
 
     protected Optional<T> getOldestTransactionInCache() {
         return getTransactionCache().streamAndReturn(stream -> stream.map(LogMinerCache.Entry::getValue)
-                .min(this::compareStartScn));
+                .min(this::oldestTransactionComparison));
     }
 
     @Override

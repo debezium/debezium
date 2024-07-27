@@ -1676,6 +1676,14 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
         return first.getStartScn().compareTo(second.getStartScn());
     }
 
+    protected int oldestTransactionComparison(T first, T second) {
+        int comparison = compareStartScn(first, second);
+        if (comparison == 0) {
+            comparison = first.getChangeTime().compareTo(second.getChangeTime());
+        }
+        return comparison;
+    }
+
     /**
      * Wrapper for all counter variables
      *
