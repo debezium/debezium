@@ -17,21 +17,19 @@ public class InMemoryPendingTransactionsCache {
      */
     private final Map<String, Integer> pendingTransactionInEventsCache = new HashMap<>();
 
-    public Integer getNumPending(String transactionId) {
+    public int getNumPending(String transactionId) {
         return pendingTransactionInEventsCache.getOrDefault(transactionId, 0);
     }
 
-    public String putOrIncrement(String transactionId) {
-        final Integer i = pendingTransactionInEventsCache.getOrDefault(transactionId, 0);
-        pendingTransactionInEventsCache.put(transactionId, i + 1);
-        return transactionId;
+    public void putOrIncrement(String transactionId) {
+        pendingTransactionInEventsCache.compute(transactionId, (k, value) -> {
+            value = value == null ? 0 : value;
+            return value + 1;
+        });
     }
 
     public void decrement(String transactionId) {
-        final int i = pendingTransactionInEventsCache.getOrDefault(transactionId, 0);
-        if (i > 0) {
-            pendingTransactionInEventsCache.put(transactionId, i - 1);
-        }
+        pendingTransactionInEventsCache.compute(transactionId, (k, value) -> value == null || value == 0 ? 0 : value - 1);
     }
 
     public void initKey(String transactionId, int count) {

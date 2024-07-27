@@ -5,8 +5,6 @@
  */
 package io.debezium.connector.oracle.logminer.processor.memory;
 
-import java.util.HashMap;
-
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
@@ -30,13 +28,10 @@ import io.debezium.relational.TableId;
  */
 public class MemoryLogMinerEventProcessor extends AbstractTransactionCachingLogMinerEventProcessor<MemoryTransaction> {
 
-    /**
-     * Cache of transactions, keyed based on the transaction's unique identifier
-     */
-    private final LogMinerCache<String, MemoryTransaction> transactionCache = new MemoryBasedLogMinerCache<>(new HashMap<>());
-    private final LogMinerCache<String, LogMinerEvent> eventCache = new MemoryBasedLogMinerCache<>(new HashMap<>());
-    private final LogMinerCache<String, String> schemaCache = new MemoryBasedLogMinerCache<>(new HashMap<>());
-    private final LogMinerCache<String, String> processedTransactionsCache = new MemoryBasedLogMinerCache<>(new HashMap<>());
+    private final LogMinerCache<String, MemoryTransaction> transactionCache = new MemoryBasedLogMinerCache<>();
+    private final LogMinerCache<String, LogMinerEvent> eventCache = new MemoryBasedLogMinerCache<>();
+    private final LogMinerCache<String, String> schemaCache = new MemoryBasedLogMinerCache<>();
+    private final LogMinerCache<String, String> processedTransactionsCache = new MemoryBasedLogMinerCache<>();
 
     public MemoryLogMinerEventProcessor(ChangeEventSourceContext context,
                                         OracleConnectorConfig connectorConfig,
