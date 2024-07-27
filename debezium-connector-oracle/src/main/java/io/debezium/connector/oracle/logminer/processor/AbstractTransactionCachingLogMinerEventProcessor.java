@@ -13,9 +13,7 @@ import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -120,60 +118,43 @@ public abstract class AbstractTransactionCachingLogMinerEventProcessor<T extends
 
     @Override
     protected void removeEventWithRowId(LogMinerEventRow row) {
-        List<String> eventKeys = getTransactionKeysWithPrefix(row.getTransactionId() + "-");
+        // locate the events based solely on XIDUSN and XIDSLT.
+        String basePrefix = getTransactionIdPrefix(row.getTransactionId());
+        List<String> eventKeysForBasePrefix = getTransactionKeysWithPrefix(basePrefix);
+
+        String transactionIdPrefix = row.getTransactionId() + "-";
+
+        // filter the existing list down to the events for the transaction
+        List<String> eventKeys = eventKeysForBasePrefix.stream()
+                .filter(k -> k.startsWith(transactionIdPrefix))
+                .toList();
+
         if (eventKeys.isEmpty() && isTransactionIdWithNoSequence(row.getTransactionId())) {
             // This means that Oracle LogMiner found an event that should be undone but its corresponding
             // undo entry was read in a prior mining session and the transaction's sequence could not be
-            // resolved. In this case, lets locate the transaction based solely on XIDUSN and XIDSLT.
-            final String transactionPrefix = getTransactionIdPrefix(row.getTransactionId());
+            // resolved.
+
             LOGGER.debug("Undo change refers to a transaction that has no explicit sequence, '{}'", row.getTransactionId());
-            LOGGER.debug("Checking all transactions with prefix '{}'", transactionPrefix);
-            eventKeys = getTransactionKeysWithPrefix(transactionPrefix);
-            if (!eventKeys.isEmpty()) {
-                // Enforce that the keys are always reverse sorted.
-                eventKeys.sort(EventKeySortComparator.INSTANCE.reversed());
-
-                for (String eventKey : eventKeys) {
-                    final LogMinerEvent event = getEventCache().get(eventKey);
-                    if (event != null && event.getRowId().equals(row.getRowId())) {
-                        Loggings.logDebugAndTraceRecord(LOGGER, row, "Undo change on table '{}' applied to transaction '{}'", row.getTableId(), eventKey);
-                        getEventCache().remove(eventKey);
-                        inMemoryPendingTransactionsCache.decrement(row.getTransactionId());
-                        return;
-                    }
-                }
-                Loggings.logWarningAndTraceRecord(LOGGER, row, "Cannot undo change on table '{}' since event with row-id {} was not found.", row.getTableId(),
-                        row.getRowId());
-            }
-            else if (!getConfig().isLobEnabled()) {
-                Loggings.logWarningAndTraceRecord(LOGGER, row, "Cannot undo change on table '{}' since transaction '{}' was not found.", row.getTableId(),
-                        row.getTransactionId());
-            }
+            LOGGER.debug("Checking all transactions with prefix '{}'", basePrefix);
+            eventKeys = eventKeysForBasePrefix;
         }
-        else {
-            // Enforce that the keys are always reverse sorted.
-            eventKeys.sort(EventKeySortComparator.INSTANCE.reversed());
 
-            for (String eventKey : eventKeys) {
-                final LogMinerEvent event = getEventCache().get(eventKey);
-                if (event != null && event.getRowId().equals(row.getRowId())) {
-                    LOGGER.debug("Undo applied for event {}.", event);
-                    getEventCache().remove(eventKey);
-                    inMemoryPendingTransactionsCache.decrement(row.getTransactionId());
-                    return;
-                }
-            }
-            Loggings.logWarningAndTraceRecord(LOGGER, row, "Cannot undo change on table '{}' since event with row-id {} was not found.", row.getTableId(),
-                    row.getRowId());
+        if (!eventKeys.isEmpty()) {
+            removeEvents(row, eventKeys);
+        }
+        else if (!getConfig().isLobEnabled()) {
+            Loggings.logWarningAndTraceRecord(LOGGER, row, "Cannot undo change on table '{}' since transaction '{}' was not found.", row.getTableId(),
+                    row.getTransactionId());
         }
     }
 
     protected List<String> getTransactionKeysWithPrefix(String prefix) {
-        AtomicReference<List<String>> result = new AtomicReference<>();
-        getEventCache().keys(stream -> {
-            result.set(stream.filter(k -> k.startsWith(prefix)).collect(Collectors.toList()));
-        });
-        return result.get();
+        // Enforce that the keys are always reverse sorted.
+        return getEventCache()
+                .streamAndReturn(stream -> stream.map(LogMinerCache.Entry::getKey)
+                        .filter(k -> k.startsWith(prefix))
+                        .sorted(EventKeySortComparator.INSTANCE.reversed())
+                        .toList());
     }
 
     @Override
@@ -234,7 +215,7 @@ public abstract class AbstractTransactionCachingLogMinerEventProcessor<T extends
     @Override
     protected void handleSchemaChange(LogMinerEventRow row) throws InterruptedException {
         super.handleSchemaChange(row);
-        if (row.getTableName() != null) {
+        if (row.getTableName() != null && getConfig().isLobEnabled()) {
             getSchemaChangesCache().put(row.getScn().toString(), row.getTableId().identifier());
         }
     }
@@ -302,7 +283,7 @@ public abstract class AbstractTransactionCachingLogMinerEventProcessor<T extends
      */
     private static class EventKeySortComparator implements Comparator<String> {
 
-        public static EventKeySortComparator INSTANCE = new EventKeySortComparator();
+        public static final EventKeySortComparator INSTANCE = new EventKeySortComparator();
 
         @Override
         public int compare(String o1, String o2) {
@@ -431,5 +412,19 @@ public abstract class AbstractTransactionCachingLogMinerEventProcessor<T extends
                 return nextEvent;
             }
         };
+    }
+
+    private void removeEvents(LogMinerEventRow row, List<String> eventKeys) {
+        for (String eventKey : eventKeys) {
+            final LogMinerEvent event = getEventCache().get(eventKey);
+            if (event != null && event.getRowId().equals(row.getRowId())) {
+                Loggings.logDebugAndTraceRecord(LOGGER, row, "Undo change on table '{}' applied to transaction '{}'", row.getTableId(), eventKey);
+                getEventCache().remove(eventKey);
+                inMemoryPendingTransactionsCache.decrement(row.getTransactionId());
+                return;
+            }
+        }
+        Loggings.logWarningAndTraceRecord(LOGGER, row, "Cannot undo change on table '{}' since event with row-id {} was not found.", row.getTableId(),
+                row.getRowId());
     }
 }
