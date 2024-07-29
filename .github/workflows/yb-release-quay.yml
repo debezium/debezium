@@ -1,0 +1,74 @@
+name: Publish YugabyteDBConnector
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version of the connector to be released"
+        required: true
+        type: string
+      isSnapshotBuild:
+        description: "Snapshot build?"
+        required: true
+        type: boolean
+        default: true
+
+permissions: write-all
+
+jobs:
+  build:
+    name: "Publish YugabyteDBConnector"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v4
+      
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: 17
+      
+      - name: Compile jar file
+        run: ./mvnw clean install -Dquick -pl debezium-connector-postgres -am
+      - name: Login to Quay.io
+        uses: docker/login-action@v2
+        with:
+          registry: quay.io
+          username: ${{ secrets.QUAY_BOT_USERNAME }}
+          password: ${{ secrets.QUAY_BOT_TOKEN }}
+      - name: Build docker image
+        run: docker build . -t quay.io/yugabyte/ybdb-debezium:${{ inputs.version }} --platform linux/amd64
+      - name: Push image to Quay
+        run: docker push quay.io/yugabyte/ybdb-debezium:${{ inputs.version }}
+      - name: Create GitHub release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ inputs.version }}
+          release_name: Release ${{ inputs.version }}
+          draft: true
+          prerelease: ${{ inputs.isSnapshotBuild }}
+      - name: Upload fat jar to GitHub release
+        id: upload-release-asset-fat-jar
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./debezium-connector-postgres/target/debezium-connector-yugabytedb-dz.2.5.2.yb.2024.1-SNAPSHOT-jar-with-dependencies.jar
+          asset_name: debezium-connector-postgres-${{ inputs.version }}-jar-with-dependencies.jar
+          asset_content_type: application/java-archive
+    #   Commenting the code to upload a light jar for the time being.
+    #   - name: Upload fat jar to GitHub release
+    #     id: upload-release-asset-jar
+    #     uses: actions/upload-release-asset@v1
+    #     env:
+    #       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #     with:
+    #       upload_url: ${{ steps.create_release.outputs.upload_url }}
+    #       asset_path: ./debezium-connector-postgresql/target/debezium-connector-postgres-*.jar
+    #       asset_name: debezium-connector-postgresql-${{ inputs.version }}.jar
+    #       asset_content_type: application/java-archive
