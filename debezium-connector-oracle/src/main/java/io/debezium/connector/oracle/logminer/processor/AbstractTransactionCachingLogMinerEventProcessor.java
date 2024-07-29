@@ -367,10 +367,9 @@ public abstract class AbstractTransactionCachingLogMinerEventProcessor<T extends
                 endScn = getLastProcessedScn();
             }
 
-            // update offsets
-            offsetContext.setScn(endScn);
+            offsetContext.setScn(minCacheScn.isNull() ? endScn : minCacheScn.subtract(Scn.valueOf(1)));
             metrics.setOldestScnDetails(minCacheScn, minCacheScnChangeTime);
-            metrics.setOffsetScn(endScn);
+            metrics.setOffsetScn(offsetContext.getScn());
 
             // optionally dispatch a heartbeat event
             dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
