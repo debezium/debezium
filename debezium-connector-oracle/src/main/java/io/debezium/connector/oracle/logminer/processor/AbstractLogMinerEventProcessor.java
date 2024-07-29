@@ -442,8 +442,10 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
 
         final T transaction = getAndRemoveTransactionFromCache(transactionId);
         if (transaction == null) {
+            if (!offsetContext.getCommitScn().hasCommitAlreadyBeenHandled(row)) {
+                LOGGER.debug("Transaction {} not found in cache with SCN {}, no events to commit.", transactionId, row.getScn());
+            }
             handleCommitNotFoundInBuffer(row);
-            LOGGER.debug("Transaction {} not found, commit skipped.", transactionId);
             return;
         }
 

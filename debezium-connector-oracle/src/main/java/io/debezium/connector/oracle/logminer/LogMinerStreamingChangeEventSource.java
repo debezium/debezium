@@ -187,7 +187,13 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                         }
 
                         Instant start = Instant.now();
-                        endScn = calculateEndScn(jdbcConnection, startScn, endScn);
+
+                        endScn = calculateUpperBounds(startScn, endScn);
+                        if (endScn.isNull()) {
+                            LOGGER.debug("Requested delay of mining by one iteration");
+                            pauseBetweenMiningSessions();
+                            continue;
+                        }
 
                         // This is a small window where when archive log only mode has completely caught up to the last
                         // record in the archive logs that both the start and end values are identical. In this use
@@ -195,39 +201,6 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                         if (archiveLogOnlyMode && startScn.equals(endScn)) {
                             pauseBetweenMiningSessions();
                             continue;
-                        }
-
-                        final Duration deviation = connectorConfig.getLogMiningMaxScnDeviation();
-                        if (!deviation.isZero()) {
-                            Optional<Scn> deviatedScn = calculateDeviatedEndScn(startScn, endScn, deviation);
-                            if (deviatedScn.isEmpty()) {
-                                pauseBetweenMiningSessions();
-                                continue;
-                            }
-                            endScn = deviatedScn.get();
-                        }
-
-                        final Scn minOpenRedoThreadLastScn = jdbcConnection.getRedoThreadState()
-                                .getThreads()
-                                .stream()
-                                .filter(RedoThread::isOpen)
-                                .map(RedoThread::getLastRedoScn)
-                                .min(Scn::compareTo)
-                                .orElse(Scn.NULL);
-
-                        if (!minOpenRedoThreadLastScn.isNull()) {
-                            if (minOpenRedoThreadLastScn.compareTo(endScn) < 0) {
-                                // There are situations where on first start-up that the startScn may be higher
-                                // than the last flushed redo thread SCN, in which case we should delay by one
-                                // iteration until the startScn is before the minOpenRedoTheadLastScn
-                                if (minOpenRedoThreadLastScn.compareTo(startScn) < 0) {
-                                    pauseBetweenMiningSessions();
-                                    continue;
-                                }
-                                LOGGER.info("Minimum Redo Log Flush SCN is {}, using range {} to {} instead of {} to {}.", minOpenRedoThreadLastScn, startScn,
-                                        minOpenRedoThreadLastScn, startScn, endScn);
-                                endScn = minOpenRedoThreadLastScn;
-                            }
                         }
 
                         flushStrategy.flush(jdbcConnection.getCurrentScn());
@@ -733,85 +706,126 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     }
 
     /**
-     * Calculates the mining session's end system change number.
+     * Calculates the upper mining range SCN boundary
      *
-     * This calculation is based upon a sliding window algorithm to where if the connector is falling behind,
-     * the mining session's end point will be calculated based on the batch size and either be increased up
-     * to the maximum batch size or reduced to as low as the minimum batch size.
-     *
-     * Additionally, this method calculates and maintains a sliding algorithm for the sleep time between the
-     * mining sessions, increasing the pause up to the maximum sleep time if the connector is not behind or
-     * is mining too quick and reducing the pause down to the mimum sleep time if the connector has fallen
-     * behind and needs to catch-up faster.
-     *
-     * @param connection database connection, should not be {@code null}
-     * @param startScn upcoming mining session's starting change number, should not be {@code null}
-     * @param prevEndScn last mining session's ending system change number, can be {@code null}
-     * @return the ending system change number to be used for the upcoming mining session, never {@code null}
+     * @param startScn the starting position for the SCN mining range
+     * @param prevEndScn the previous iteration's end position for the SCN mining range
+     * @return the newly calculated upper boundary, or {@link Scn#NULL} if the loop should pause.
      * @throws SQLException if the current max system change number cannot be obtained from the database
      */
-    private Scn calculateEndScn(OracleConnection connection, Scn startScn, Scn prevEndScn) throws SQLException {
-        Scn currentScn = archiveLogOnlyMode
-                ? getMaxArchiveLogScn(currentLogFiles)
-                : connection.getCurrentScn();
-        streamingMetrics.setCurrentScn(currentScn);
+    private Scn calculateUpperBounds(Scn startScn, Scn prevEndScn) throws SQLException {
+        Scn upperBoundsScn = archiveLogOnlyMode ? getMaxArchiveLogScn(currentLogFiles) : jdbcConnection.getCurrentScn();
+        streamingMetrics.setCurrentScn(jdbcConnection.getCurrentScn());
 
-        // Add the current batch size to the starting system change number
-        final Scn currentBatchSizeScn = Scn.valueOf(streamingMetrics.getBatchSize());
-        Scn topScnToMine = startScn.add(currentBatchSizeScn);
+        final Scn batchUpperBoundsScn = startScn.add(Scn.valueOf(streamingMetrics.getBatchSize()));
+        final Scn defaultBatchSize = Scn.valueOf(connectorConfig.getLogMiningBatchSizeDefault());
 
-        // Control adjusting batch size
-        boolean topMiningScnInFarFuture = false;
-        final Scn defaultBatchScn = Scn.valueOf(connectorConfig.getLogMiningBatchSizeDefault());
-        if (topScnToMine.subtract(currentScn).compareTo(defaultBatchScn) > 0) {
+        // Initially set the upper bounds based on batch size
+        // The following logic will alter this value as needed based on specific rules
+        Scn result = batchUpperBoundsScn;
+
+        // Check if the batch upper bounds is greater than the current upper bounds
+        // If it isn't, there is no need to update the batch size
+        boolean batchUpperBoundsScnAfterCurrentScn = false;
+        if (batchUpperBoundsScn.subtract(upperBoundsScn).compareTo(defaultBatchSize) > 0) {
+            // Don't update the batch size, batch upper bounds currently large enough
             updateBatchSize(false);
-            topMiningScnInFarFuture = true;
+            batchUpperBoundsScnAfterCurrentScn = true;
         }
-        if (currentScn.subtract(topScnToMine).compareTo(defaultBatchScn) > 0) {
+
+        if (upperBoundsScn.subtract(batchUpperBoundsScn).compareTo(defaultBatchSize) > 0) {
+            // Update batch size because the database upper position is greater than the batch size
             updateBatchSize(true);
         }
 
-        // Control sleep time to reduce database impact
-        if (currentScn.compareTo(topScnToMine) < 0) {
-            if (!topMiningScnInFarFuture) {
+        if (upperBoundsScn.compareTo(batchUpperBoundsScn) < 0) {
+            if (!batchUpperBoundsScnAfterCurrentScn) {
                 updateSleepTime(true);
             }
-            LOGGER.debug("Using current SCN {} as end SCN.", currentScn);
-            return currentScn;
+            // Batch upperbounds greater than database max possible read position.
+            // Cap it at the max possible database read position
+            LOGGER.debug("Batch upper bounds {} exceeds maximum read position, capping to {}.", batchUpperBoundsScn, upperBoundsScn);
+            result = upperBoundsScn;
         }
         else {
-            if (prevEndScn != null && topScnToMine.compareTo(prevEndScn) <= 0) {
-                LOGGER.debug("Max batch size too small, using current SCN {} as end SCN.", currentScn);
-                return currentScn;
+            if (prevEndScn != null && batchUpperBoundsScn.compareTo(prevEndScn) <= 0) {
+                // Batch size is too small, make a large leap and use current SCN
+                LOGGER.debug("Batch size upper bounds {} too small, using maximum read position {} instead.", batchUpperBoundsScn, upperBoundsScn);
+                result = upperBoundsScn;
             }
-            updateSleepTime(false);
-            if (topScnToMine.compareTo(startScn) < 0) {
-                LOGGER.debug("Top SCN calculation resulted in end before start SCN, using current SCN {} as end SCN.", currentScn);
-                return currentScn;
-            }
-
-            if (prevEndScn != null) {
-                final Scn deltaScn = currentScn.subtract(prevEndScn);
-                if (deltaScn.compareTo(Scn.valueOf(connectorConfig.getLogMiningScnGapDetectionGapSizeMin())) > 0) {
-                    Optional<Instant> prevEndScnTimestamp = connection.getScnToTimestamp(prevEndScn);
-                    if (prevEndScnTimestamp.isPresent()) {
-                        Optional<Instant> currentScnTimestamp = connection.getScnToTimestamp(currentScn);
-                        if (currentScnTimestamp.isPresent()) {
-                            long timeDeltaMs = ChronoUnit.MILLIS.between(prevEndScnTimestamp.get(), currentScnTimestamp.get());
-                            if (timeDeltaMs < connectorConfig.getLogMiningScnGapDetectionTimeIntervalMaxMs()) {
-                                LOGGER.warn("Detected possible SCN gap, using current SCN, startSCN {}, prevEndScn {} timestamp {}, current SCN {} timestamp {}.",
-                                        startScn,
-                                        prevEndScn, prevEndScnTimestamp.get(), currentScn, currentScnTimestamp.get());
-                                return currentScn;
+            else {
+                updateSleepTime(false);
+                if (batchUpperBoundsScn.compareTo(startScn) < 0) {
+                    // Batch SCN calculation resulted in a value before start SCN, fallback to max read position
+                    LOGGER.debug("Batch upper bounds {} is before start SCN {}, fallback to maximum read position {}.", batchUpperBoundsScn, startScn, upperBoundsScn);
+                    result = upperBoundsScn;
+                }
+                else if (prevEndScn != null) {
+                    final Scn deltaScn = upperBoundsScn.subtract(prevEndScn);
+                    if (deltaScn.compareTo(Scn.valueOf(connectorConfig.getLogMiningScnGapDetectionGapSizeMin())) > 0) {
+                        Optional<Instant> prevEndScnTimestamp = jdbcConnection.getScnToTimestamp(prevEndScn);
+                        if (prevEndScnTimestamp.isPresent()) {
+                            Optional<Instant> upperBoundsScnTimestamp = jdbcConnection.getScnToTimestamp(upperBoundsScn);
+                            if (upperBoundsScnTimestamp.isPresent()) {
+                                long deltaTime = ChronoUnit.MILLIS.between(prevEndScnTimestamp.get(), upperBoundsScnTimestamp.get());
+                                if (deltaTime < connectorConfig.getLogMiningScnGapDetectionTimeIntervalMaxMs()) {
+                                    LOGGER.warn(
+                                            "Detected possible SCN gap, using upperBounds SCN, startSCN {}, prevEndSCN {}, timestamp {}, upperBounds SCN {} timestamp {}.",
+                                            startScn, prevEndScn, prevEndScnTimestamp.get(), upperBoundsScn, upperBoundsScnTimestamp.get());
+                                    result = upperBoundsScn;
+                                }
                             }
                         }
                     }
                 }
             }
-
-            LOGGER.debug("Using Top SCN calculation {} as end SCN. currentScn {}, startScn {}", topScnToMine, currentScn, startScn);
-            return topScnToMine;
         }
+
+        // If the connector is configured with maximum SCN deviation, apply the deviation time.
+        // This rolls the current maximum read SCN position back based on the deviation duration.
+        final Duration deviation = connectorConfig.getLogMiningMaxScnDeviation();
+        if (!deviation.isZero()) {
+            Optional<Scn> deviatedScn = calculateDeviatedEndScn(startScn, result, deviation);
+            if (deviatedScn.isEmpty()) {
+                return Scn.NULL;
+            }
+            LOGGER.debug("Adjusted upper bounds {} based on deviation to {}.", result, deviatedScn.get());
+            result = deviatedScn.get();
+        }
+
+        // Retrieve the redo thread state and get the minimum flushed SCN across all open redo threads
+        final Scn minOpenRedoThreadLastScn = jdbcConnection.getRedoThreadState()
+                .getThreads()
+                .stream()
+                .filter(RedoThread::isOpen)
+                .map(RedoThread::getLastRedoScn)
+                .min(Scn::compareTo)
+                .orElse(Scn.NULL);
+
+        // If there is a minimum flushed SCN across Open redo threads, and it is before the currently
+        // assigned maximum read position, we should attempt to cap the maximum read position based
+        // on the redo thread data.
+        if (!minOpenRedoThreadLastScn.isNull()) {
+            if (minOpenRedoThreadLastScn.compareTo(result) < 0) {
+                // There are situations where on first start-up that the startScn may be higher
+                // than the last flushed redo thread SCN, in which case we should delay by one
+                // iteration until the startScn is before the minOpenRedoThreadLastScn
+                if (minOpenRedoThreadLastScn.compareTo(startScn) < 0) {
+                    return Scn.NULL;
+                }
+                LOGGER.debug("Adjusting upper bounds {} to minimum read thread flush SCN {}.", result, minOpenRedoThreadLastScn);
+                result = minOpenRedoThreadLastScn;
+            }
+        }
+
+        if (result.compareTo(startScn) <= 0) {
+            // Final sanity check to prevent ORA-01281: SCN range specified is invalid
+            LOGGER.debug("Final upper bounds {} matches start read position, delay required.", result);
+            return Scn.NULL;
+        }
+
+        LOGGER.debug("Final upper bounds range is {}.", result);
+        return result;
     }
 
     /**
