@@ -34,6 +34,7 @@ import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningBufferType;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OraclePartition;
+import io.debezium.connector.oracle.RedoThreadState.RedoThread;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.logwriter.CommitLogWriterFlushStrategy;
 import io.debezium.connector.oracle.logminer.logwriter.LogWriterFlushStrategy;
@@ -204,6 +205,29 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                                 continue;
                             }
                             endScn = deviatedScn.get();
+                        }
+
+                        final Scn minOpenRedoThreadLastScn = jdbcConnection.getRedoThreadState()
+                                .getThreads()
+                                .stream()
+                                .filter(RedoThread::isOpen)
+                                .map(RedoThread::getLastRedoScn)
+                                .min(Scn::compareTo)
+                                .orElse(Scn.NULL);
+
+                        if (!minOpenRedoThreadLastScn.isNull()) {
+                            if (minOpenRedoThreadLastScn.compareTo(endScn) < 0) {
+                                // There are situations where on first start-up that the startScn may be higher
+                                // than the last flushed redo thread SCN, in which case we should delay by one
+                                // iteration until the startScn is before the minOpenRedoTheadLastScn
+                                if (minOpenRedoThreadLastScn.compareTo(startScn) < 0) {
+                                    pauseBetweenMiningSessions();
+                                    continue;
+                                }
+                                LOGGER.info("Minimum Redo Log Flush SCN is {}, using range {} to {} instead of {} to {}.", minOpenRedoThreadLastScn, startScn,
+                                        minOpenRedoThreadLastScn, startScn, endScn);
+                                endScn = minOpenRedoThreadLastScn;
+                            }
                         }
 
                         flushStrategy.flush(jdbcConnection.getCurrentScn());
