@@ -198,8 +198,10 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
     private boolean isAttachExceptionRetriable(StreamsException e) {
         return e.getErrorCode() == 26653
                 || e.getErrorCode() == 23656
+                || e.getErrorCode() == 26928
                 || e.getMessage().contains("did not start properly and is currently in state")
-                || e.getMessage().contains("Timeout occurred while starting XStream process");
+                || e.getMessage().contains("Timeout occurred while starting XStream process")
+                || e.getMessage().contains("Unable to communicate with XStream apply coordinator process");
     }
 
     private byte[] convertScnToPosition(Scn scn) {
