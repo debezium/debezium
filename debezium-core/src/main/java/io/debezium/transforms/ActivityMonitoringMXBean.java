@@ -7,6 +7,9 @@ package io.debezium.transforms;
 
 import java.util.Map;
 
+/**
+ * Exposes advanced metrics used for monitoring DB activity.
+ */
 public interface ActivityMonitoringMXBean {
 
     Map<String, Long> getNumberOfCreateEventsSeen();
@@ -14,4 +17,8 @@ public interface ActivityMonitoringMXBean {
     Map<String, Long> getNumberOfDeleteEventsSeen();
 
     Map<String, Long> getNumberOfUpdateEventsSeen();
+
+    void pause();
+
+    void resume();
 }

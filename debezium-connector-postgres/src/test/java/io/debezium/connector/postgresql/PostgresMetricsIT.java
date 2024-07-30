@@ -14,9 +14,11 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import javax.management.InstanceNotFoundException;
+import javax.management.MBeanException;
 import javax.management.MBeanServer;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
+import javax.management.ReflectionException;
 import javax.management.openmbean.TabularDataSupport;
 
 import org.awaitility.Awaitility;
@@ -178,6 +180,39 @@ public class PostgresMetricsIT extends AbstractRecordsProducerTest {
         assertStreamingMetrics(true);
     }
 
+    @Test
+    public void testPauseAndResumeAdvancedStreamingMetrics() throws Exception {
+        // Setup
+        TestHelper.execute(INIT_STATEMENTS);
+
+        // start connector
+        start(PostgresConnector.class,
+                TestHelper.defaultConfig()
+                        .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                        .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
+                        .with(PostgresConnectorConfig.ADVANCED_METRICS_ENABLE, Boolean.TRUE)
+                        .build());
+
+        assertSnapshotNotExecutedMetrics();
+        assertStreamingMetrics(true);
+
+        invokeOperation(getStreamingMetricsObjectName(), "pause");
+        insertRecords();
+        assertAdvancedMetrics(2);
+
+        invokeOperation(getStreamingMetricsObjectName(), "resume");
+        insertRecords();
+        assertAdvancedMetrics(4);
+    }
+
+    private void insertRecords() throws InterruptedException {
+        // Wait for the streaming to begin
+        TestConsumer consumer = testConsumer(2, "public");
+        TestHelper.execute(INSERT_STATEMENTS);
+        consumer.await(TestHelper.waitTimeForRecords() * 30L, TimeUnit.SECONDS);
+        Thread.sleep(Duration.ofSeconds(2).toMillis());
+    }
+
     private void assertSnapshotMetrics() throws Exception {
         final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
 
@@ -258,17 +293,32 @@ public class PostgresMetricsIT extends AbstractRecordsProducerTest {
         // Assertions.assertThat(mBeanServer.getAttribute(getStreamingMetricsObjectName(), "CapturedTables")).isEqualTo(new String[] {"public.simple"});
 
         if (checkAdvancedMetrics) {
-            TabularDataSupport numberOfCreateEventsSeen = (TabularDataSupport) mBeanServer.getAttribute(getStreamingMetricsObjectName(), "NumberOfCreateEventsSeen");
-
-            String values = numberOfCreateEventsSeen.values().stream()
-                    .limit(1)
-                    .toList()
-                    .get(0)
-                    .toString();
-            assertThat(values).isEqualTo(
-                    "javax.management.openmbean.CompositeDataSupport(compositeType=javax.management.openmbean.CompositeType(name=java.util.Map<java.lang.String, java.lang.Long>,items=((itemName=key,itemType=javax.management.openmbean.SimpleType(name=java.lang.String)),(itemName=value,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)))),contents={key=public.simple, value=2})");
+            assertAdvancedMetrics(2);
         }
+    }
 
+    public void assertAdvancedMetrics(int expectedInsert) throws Exception {
+
+        final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
+
+        TabularDataSupport numberOfCreateEventsSeen = (TabularDataSupport) mBeanServer.getAttribute(getStreamingMetricsObjectName(), "NumberOfCreateEventsSeen");
+
+        String values = numberOfCreateEventsSeen.values().stream()
+                .limit(1)
+                .toList()
+                .get(0)
+                .toString();
+        assertThat(values).isEqualTo(
+                "javax.management.openmbean.CompositeDataSupport(compositeType=javax.management.openmbean.CompositeType(name=java.util.Map<java.lang.String, java.lang.Long>,items=((itemName=key,itemType=javax.management.openmbean.SimpleType(name=java.lang.String)),(itemName=value,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)))),contents={key=public.simple, value="
+                        + expectedInsert + "})");
+    }
+
+    private void invokeOperation(ObjectName objectName, String operation)
+            throws MalformedObjectNameException, ReflectionException, InstanceNotFoundException, MBeanException {
+
+        MBeanServer server = ManagementFactory.getPlatformMBeanServer();
+
+        server.invoke(objectName, operation, new Object[]{}, new String[]{});
     }
 
     private void assertStreamingWithCustomMetrics(Map<String, String> customMetricTags) throws Exception {
