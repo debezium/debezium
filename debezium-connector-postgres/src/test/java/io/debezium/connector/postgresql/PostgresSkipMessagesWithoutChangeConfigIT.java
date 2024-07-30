@@ -20,14 +20,14 @@ import org.junit.Test;
 import io.debezium.config.Configuration;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 
 /**
  * Integration Tests for config skip.messages.without.change
  *
  * @author Ronak Jain
  */
-public class PostgresSkipMessagesWithoutChangeConfigIT extends AbstractConnectorTest {
+public class PostgresSkipMessagesWithoutChangeConfigIT extends AbstractAsyncEngineConnectorTest {
 
     @Before
     public void before() throws Exception {

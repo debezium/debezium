@@ -24,12 +24,12 @@ import io.debezium.connector.postgresql.PostgresConnectorConfig;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.connector.postgresql.TestHelper;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.testing.testcontainers.ImageNames;
 import io.debezium.util.Testing;
 
-public class TimescaleDbDatabaseTest extends AbstractConnectorTest {
+public class TimescaleDbDatabaseTest extends AbstractAsyncEngineConnectorTest {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TimescaleDbDatabaseTest.class);
 

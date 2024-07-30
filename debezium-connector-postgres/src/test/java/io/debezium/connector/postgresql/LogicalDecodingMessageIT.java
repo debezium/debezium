@@ -32,7 +32,7 @@ import io.debezium.connector.postgresql.junit.SkipTestDependingOnDecoderPluginNa
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 
 /**
@@ -40,7 +40,7 @@ import io.debezium.junit.SkipWhenDatabaseVersion;
  *
  * @author Lairen Hightower
  */
-public class LogicalDecodingMessageIT extends AbstractConnectorTest {
+public class LogicalDecodingMessageIT extends AbstractAsyncEngineConnectorTest {
 
     private static final String CREATE_TABLES_STMT = "DROP SCHEMA IF EXISTS s1 CASCADE;" +
             "CREATE SCHEMA s1; " +

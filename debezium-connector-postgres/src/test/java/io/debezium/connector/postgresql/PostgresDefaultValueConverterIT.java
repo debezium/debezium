@@ -29,12 +29,12 @@ import io.debezium.data.Envelope;
 import io.debezium.data.Json;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.EqualityCheck;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.junit.logging.LogInterceptor;
 
-public class PostgresDefaultValueConverterIT extends AbstractConnectorTest {
+public class PostgresDefaultValueConverterIT extends AbstractAsyncEngineConnectorTest {
 
     @Before
     public void before() throws SQLException {
