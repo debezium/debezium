@@ -17,6 +17,7 @@ import javax.management.InstanceNotFoundException;
 import javax.management.MBeanServer;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
+import javax.management.openmbean.TabularDataSupport;
 
 import org.awaitility.Awaitility;
 import org.junit.After;
@@ -122,7 +123,7 @@ public class PostgresMetricsIT extends AbstractRecordsProducerTest {
                         .build());
 
         assertSnapshotMetrics();
-        assertStreamingMetrics();
+        assertStreamingMetrics(false);
     }
 
     @Test
@@ -157,7 +158,24 @@ public class PostgresMetricsIT extends AbstractRecordsProducerTest {
                         .build());
 
         assertSnapshotNotExecutedMetrics();
-        assertStreamingMetrics();
+        assertStreamingMetrics(false);
+    }
+
+    @Test
+    public void testAdvancedStreamingMetrics() throws Exception {
+        // Setup
+        TestHelper.execute(INIT_STATEMENTS);
+
+        // start connector
+        start(PostgresConnector.class,
+                TestHelper.defaultConfig()
+                        .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                        .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
+                        .with(PostgresConnectorConfig.ADVANCED_METRICS_ENABLE, Boolean.TRUE)
+                        .build());
+
+        assertSnapshotNotExecutedMetrics();
+        assertStreamingMetrics(true);
     }
 
     private void assertSnapshotMetrics() throws Exception {
@@ -220,7 +238,7 @@ public class PostgresMetricsIT extends AbstractRecordsProducerTest {
         assertThat(mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "SnapshotCompleted")).isEqualTo(false);
     }
 
-    private void assertStreamingMetrics() throws Exception {
+    private void assertStreamingMetrics(boolean checkAdvancedMetrics) throws Exception {
         final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
 
         // Wait for the streaming to begin
@@ -238,6 +256,19 @@ public class PostgresMetricsIT extends AbstractRecordsProducerTest {
         assertThat(mBeanServer.getAttribute(getStreamingMetricsObjectName(), "TotalNumberOfEventsSeen")).isEqualTo(2L);
         // todo: this does not seem to be populated?
         // Assertions.assertThat(mBeanServer.getAttribute(getStreamingMetricsObjectName(), "CapturedTables")).isEqualTo(new String[] {"public.simple"});
+
+        if (checkAdvancedMetrics) {
+            TabularDataSupport numberOfCreateEventsSeen = (TabularDataSupport) mBeanServer.getAttribute(getStreamingMetricsObjectName(), "NumberOfCreateEventsSeen");
+
+            String values = numberOfCreateEventsSeen.values().stream()
+                    .limit(1)
+                    .toList()
+                    .get(0)
+                    .toString();
+            assertThat(values).isEqualTo(
+                    "javax.management.openmbean.CompositeDataSupport(compositeType=javax.management.openmbean.CompositeType(name=java.util.Map<java.lang.String, java.lang.Long>,items=((itemName=key,itemType=javax.management.openmbean.SimpleType(name=java.lang.String)),(itemName=value,itemType=javax.management.openmbean.SimpleType(name=java.lang.Long)))),contents={key=public.simple, value=2})");
+        }
+
     }
 
     private void assertStreamingWithCustomMetrics(Map<String, String> customMetricTags) throws Exception {

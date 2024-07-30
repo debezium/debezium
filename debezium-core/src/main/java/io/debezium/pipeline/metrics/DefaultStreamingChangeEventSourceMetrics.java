@@ -20,6 +20,7 @@ import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.spi.schema.DataCollectionId;
+import io.debezium.transforms.ActivityMonitoringMeter;
 
 /**
  * The default implementation of metrics related to the streaming phase of a connector.
@@ -32,12 +33,14 @@ public class DefaultStreamingChangeEventSourceMetrics<P extends Partition> exten
 
     private final ConnectionMeter connectionMeter;
     private final StreamingMeter streamingMeter;
+    private final ActivityMonitoringMeter activityMonitoringMeter;
 
     public <T extends CdcSourceTaskContext> DefaultStreamingChangeEventSourceMetrics(T taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
                                                                                      EventMetadataProvider metadataProvider) {
         super(taskContext, "streaming", changeEventQueueMetrics, metadataProvider);
         streamingMeter = new StreamingMeter(taskContext, metadataProvider);
         connectionMeter = new ConnectionMeter();
+        activityMonitoringMeter = new ActivityMonitoringMeter();
     }
 
     public <T extends CdcSourceTaskContext> DefaultStreamingChangeEventSourceMetrics(T taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
@@ -45,6 +48,7 @@ public class DefaultStreamingChangeEventSourceMetrics<P extends Partition> exten
         super(taskContext, changeEventQueueMetrics, metadataProvider, tags);
         streamingMeter = new StreamingMeter(taskContext, metadataProvider);
         connectionMeter = new ConnectionMeter();
+        activityMonitoringMeter = new ActivityMonitoringMeter();
     }
 
     @Override
@@ -80,6 +84,9 @@ public class DefaultStreamingChangeEventSourceMetrics<P extends Partition> exten
     public void onEvent(P partition, DataCollectionId source, OffsetContext offset, Object key, Struct value, Operation operation) {
         super.onEvent(partition, source, offset, key, value, operation);
         streamingMeter.onEvent(source, offset, key, value);
+        if (taskContext.getConfig().isAdvancedMetricsEnabled()) {
+            activityMonitoringMeter.onEvent(source, offset, key, value, operation);
+        }
     }
 
     @Override
@@ -96,5 +103,21 @@ public class DefaultStreamingChangeEventSourceMetrics<P extends Partition> exten
         super.reset();
         streamingMeter.reset();
         connectionMeter.reset();
+        activityMonitoringMeter.reset();
+    }
+
+    @Override
+    public Map<String, Long> getNumberOfCreateEventsSeen() {
+        return activityMonitoringMeter.getNumberOfCreateEventsSeen();
+    }
+
+    @Override
+    public Map<String, Long> getNumberOfDeleteEventsSeen() {
+        return activityMonitoringMeter.getNumberOfDeleteEventsSeen();
+    }
+
+    @Override
+    public Map<String, Long> getNumberOfUpdateEventsSeen() {
+        return activityMonitoringMeter.getNumberOfUpdateEventsSeen();
     }
 }
