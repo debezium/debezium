@@ -60,7 +60,7 @@ function handleGitHistoryCommitMessageIssueKeys {
 }
 
 # Repositories to check for existence of commits
-declare -a DEBEZIUM_REPOS=("debezium" "debezium-server" "debezium-operator" "debezium-connector-db2" "debezium-connector-cassandra" "debezium-connector-vitess" "debezium-connector-spanner" "debezium-connector-jdbc" "container-images")
+declare -a DEBEZIUM_REPOS=("debezium" "debezium-server" "debezium-operator" "debezium-connector-db2" "debezium-connector-cassandra" "debezium-connector-vitess" "debezium-connector-spanner" "container-images")
 
 # Obtain all issue keys that are part of the fixed version
 echo "Getting issues from Jira for project $PROJECT_NAME and version $FIX_VERSION"
