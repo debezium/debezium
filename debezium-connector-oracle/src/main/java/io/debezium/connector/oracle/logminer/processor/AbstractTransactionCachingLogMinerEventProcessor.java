@@ -13,7 +13,10 @@ import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
+import java.util.TreeMap;
+import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -160,8 +163,16 @@ public abstract class AbstractTransactionCachingLogMinerEventProcessor<T extends
         return getEventCache()
                 .streamAndReturn(stream -> stream.map(LogMinerCache.Entry::getKey)
                         .filter(k -> k.startsWith(prefix))
-                        .sorted(EventKeySortComparator.INSTANCE.reversed())
-                        .toList());
+                        .collect(
+                                Collectors.toMap(
+                                        Function.identity(),
+                                        x -> Boolean.TRUE,
+                                        (v1, v2) -> {
+                                            throw new IllegalStateException();
+                                        },
+                                        () -> new TreeMap<>(EventKeySortComparator.INSTANCE.reversed())))
+                        .keySet())
+                .stream().toList();
     }
 
     @Override
