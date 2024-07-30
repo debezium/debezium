@@ -274,6 +274,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
      * @param stateBeforeStop {@link State} of the engine when the shutdown was requested.
      */
     private void close(final State stateBeforeStop) {
+        stopConnector(tasks, stateBeforeStop);
         if (headerConverter != null) {
             try {
                 headerConverter.close();
@@ -282,7 +283,6 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
                 LOGGER.warn("Failed to close header converter: ", e);
             }
         }
-        stopConnector(tasks, stateBeforeStop);
         shutDownLatch.countDown();
     }
 
