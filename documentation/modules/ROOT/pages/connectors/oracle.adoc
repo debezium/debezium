@@ -2272,8 +2272,8 @@ If the default mapping for `NUMBER(1)` data types does not meet your needs, you 
 [source]
 ----
 converters=number-to-boolean
-converters.number-to-boolean.type=io.debezium.connector.oracle.converters.NumberOneToBooleanConverter
-converters.number-to-boolean.selector=.*.MY_TABLE.DATA
+number-to-boolean.type=io.debezium.connector.oracle.converters.NumberOneToBooleanConverter
+number-to-boolean.selector=.*.MY_TABLE.DATA
 ----
 
 In the preceding example, the `selector` property is optional.
@@ -2291,8 +2291,8 @@ Similarly, downstream consumers that do not support these values can also encoun
 [source]
 ----
 converters=number-zero-scale
-converters.number-zero-scale.type=io.debezium.connector.oracle.converters.NumberToZeroScaleConverter
-converters.number-zero-scale.decimal.mode=precise
+number-zero-scale.type=io.debezium.connector.oracle.converters.NumberToZeroScaleConverter
+number-zero-scale.decimal.mode=precise
 ----
 
 In the preceding example, the `decimal.mode` property specifies how the connector emits decimal values.
@@ -2313,8 +2313,8 @@ The following example shows how to add the `RawToStringConverter` to the connect
 [source]
 ----
 converters=raw-to-string
-converters.raw-to-string.type=io.debezium.connector.oracle.converters.RawToStringConverter
-converters.raw-to-string.selector=.*.MY_TABLE.DATA
+raw-to-string.type=io.debezium.connector.oracle.converters.RawToStringConverter
+raw-to-string.selector=.*.MY_TABLE.DATA
 ----
 
 In the preceding example, the `selector` property enables you to define a regular expression that specifies the tables or columns that the converter processes.
