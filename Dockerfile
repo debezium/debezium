@@ -17,7 +17,7 @@ RUN rm -rf debezium-connector-vitess
 WORKDIR /
 
 # Copy the Debezium Connector for Postgres adapted for YugabyteDB
-COPY debezium-connector-postgres/target/debezium-connector-postgres-*.jar $KAFKA_CONNECT_PLUGINS_DIR/debezium-connector-postgres
+COPY debezium-connector-postgres/target/debezium-connector-yugabytedb-*.jar $KAFKA_CONNECT_PLUGINS_DIR/debezium-connector-postgres
 
 # Set the TLS version to be used by Kafka processes
 ENV KAFKA_OPTS="-Djdk.tls.client.protocols=TLSv1.2 -javaagent:/kafka/etc/jmx_prometheus_javaagent-0.17.2.jar=8080:/kafka/etc/jmx-exporter/metrics.yml"
