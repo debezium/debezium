@@ -1546,6 +1546,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
         metrics.incrementOversizedTransactionCount();
     }
 
+    //this implementation is different
     @Override
     public void abandonTransactions(Duration retention) throws InterruptedException {
         if (!Duration.ZERO.equals(retention)) {
@@ -1556,12 +1557,12 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
                 if (!smallestScn.isNull() && thresholdScn.compareTo(smallestScn) >= 0) {
                     LogMinerCache<String, T> transactionCache = getTransactionCache();
 
-                    Map<String, T> abandonedT = transactionCache.streamAndReturn(stream -> stream
+                    Map<String, T> abandoned = transactionCache.streamAndReturn(stream -> stream
                             .filter(e -> e.getValue().getStartScn().compareTo(thresholdScn) <= 0)
                             .collect(Collectors.toMap(LogMinerCache.Entry::getKey, LogMinerCache.Entry::getValue)));
 
                     boolean first = true;
-                    for (Map.Entry<String, T> entry : abandonedT.entrySet()) {
+                    for (Map.Entry<String, T> entry : abandoned.entrySet()) {
                         if (first) {
                             LOGGER.warn("All transactions with SCN <= {} will be abandoned.", thresholdScn);
                             first = false;
@@ -1582,7 +1583,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
 
                     if (LOGGER.isDebugEnabled()) {
                         LOGGER.debug("List of transactions in the cache before transactions being abandoned: [{}]",
-                                String.join(",", abandonedT.keySet()));
+                                String.join(",", abandoned.keySet()));
 
                         transactionCache.keys(keys -> LOGGER.debug("List of transactions in the cache after transactions being abandoned: [{}]",
                                 keys.collect(Collectors.joining(","))));
