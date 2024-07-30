@@ -97,7 +97,7 @@ public abstract class AbstractTransactionCachingLogMinerEventProcessor<T extends
         return getProcessedTransactionsCache().containsKey(transactionId);
     }
 
-    //from EmbeddedInfinispanLogMinerEventProcessor, impl is different
+    // from EmbeddedInfinispanLogMinerEventProcessor, impl is different
     @Override
     protected Scn getTransactionCacheMinimumScn() {
         return getTransactionCache().streamAndReturn(stream -> stream.map(LogMinerCache.Entry::getValue)
@@ -106,20 +106,20 @@ public abstract class AbstractTransactionCachingLogMinerEventProcessor<T extends
                 .orElse(Scn.NULL));
     }
 
-    //from EmbeddedInfinispanLogMinerEventProcessor, impl is different
+    // from EmbeddedInfinispanLogMinerEventProcessor, impl is different
     protected Optional<T> getOldestTransactionInCache() {
         return getTransactionCache().streamAndReturn(stream -> stream.map(LogMinerCache.Entry::getValue)
                 .min(this::oldestTransactionComparison));
     }
 
-    //from EmbeddedInfinispanLogMinerEventProcessor, impl is different
+    // from EmbeddedInfinispanLogMinerEventProcessor, impl is different
     @Override
     protected String getFirstActiveTransactionKey() {
         return getTransactionCache()
                 .streamAndReturn(stream -> stream.map(LogMinerCache.Entry::getKey).findFirst()).orElse(null);
     }
 
-    //this impl is different
+    // this impl is different
     @Override
     protected void removeEventWithRowId(LogMinerEventRow row) {
         // locate the events based solely on XIDUSN and XIDSLT.
@@ -179,7 +179,7 @@ public abstract class AbstractTransactionCachingLogMinerEventProcessor<T extends
         return getSchemaChangesCache().containsKey(row.getScn().toString());
     }
 
-    //different from AbstractInfinispanLogMinerEventProcessor
+    // different from AbstractInfinispanLogMinerEventProcessor
     @Override
     protected T getAndRemoveTransactionFromCache(String transactionId) {
         return getTransactionCache().remove(transactionId);
