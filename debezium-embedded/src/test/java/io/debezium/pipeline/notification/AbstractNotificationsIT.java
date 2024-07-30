@@ -274,7 +274,7 @@ public abstract class AbstractNotificationsIT<T extends SourceConnector> extends
                 .with(SinkNotificationChannel.NOTIFICATION_TOPIC, "io.debezium.notification")
                 .with(CommonConnectorConfig.NOTIFICATION_ENABLED_CHANNELS, "sink"));
 
-        assertConnectorIsRunning();
+        waitForStreamingRunning(connector(), server(), "streaming", task());
     }
 
     private void assertTableNotificationsSentToJmx(List<Notification> notifications, String tableName) {
