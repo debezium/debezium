@@ -483,6 +483,15 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord>, Embed
                 finally {
                     // Close the offset storage and finally the connector ...
                     stopOffsetStoreAndConnector(connector, connectorClassName, offsetStore, connectorCallback);
+                    // Close the transformation chain.
+                    if (transformations != null) {
+                        try {
+                            transformations.close();
+                        }
+                        catch (IOException e) {
+                            fail("Failed to close transformations: ", e);
+                        }
+                    }
                 }
             }
             catch (EmbeddedEngineRuntimeException e) {
