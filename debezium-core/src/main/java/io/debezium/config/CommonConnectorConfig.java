@@ -82,6 +82,7 @@ public abstract class CommonConnectorConfig {
     protected final boolean snapshotModeConfigurationBasedSnapshotOnSchemaError;
     protected final boolean snapshotModeConfigurationBasedSnapshotOnDataError;
     protected final boolean isLogPositionCheckEnabled;
+    protected final boolean isAdvancedMetricsEnabled;
 
     /**
      * The set of predefined versions e.g. for source struct maker version
@@ -1075,6 +1076,16 @@ public abstract class CommonConnectorConfig {
             .optional()
             .withDescription("When enabled the connector checks if the position stored in the offset is still available in the log");
 
+    public static final Field ADVANCED_METRICS_ENABLE = Field.createInternal("advanced.metrics.enable")
+            .withDisplayName("Enable/Disable advance metrics")
+            .withType(Type.BOOLEAN)
+            .withDefault(false)
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 31))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .optional()
+            .withDescription("When enabled the connector will emit advanced streaming metrics");
+
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
             .connector(
                     EVENT_PROCESSING_FAILURE_HANDLING_MODE,
@@ -1099,7 +1110,8 @@ public abstract class CommonConnectorConfig {
                     QUERY_FETCH_SIZE,
                     MAX_RETRIES_ON_ERROR,
                     INCREMENTAL_SNAPSHOT_WATERMARKING_STRATEGY,
-                    LOG_POSITION_CHECK_ENABLED)
+                    LOG_POSITION_CHECK_ENABLED,
+                    ADVANCED_METRICS_ENABLE)
             .events(
                     CUSTOM_CONVERTERS,
                     CUSTOM_POST_PROCESSORS,
@@ -1213,6 +1225,7 @@ public abstract class CommonConnectorConfig {
         this.snapshotModeConfigurationBasedSnapshotOnSchemaError = config.getBoolean(SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_ON_SCHEMA_ERROR);
         this.snapshotModeConfigurationBasedSnapshotOnDataError = config.getBoolean(SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_ON_DATA_ERROR);
         this.isLogPositionCheckEnabled = config.getBoolean(LOG_POSITION_CHECK_ENABLED);
+        this.isAdvancedMetricsEnabled = config.getBoolean(ADVANCED_METRICS_ENABLE);
 
         this.signalingDataCollectionId = !Strings.isNullOrBlank(this.signalingDataCollection)
                 ? TableId.parse(this.signalingDataCollection)
@@ -1578,6 +1591,10 @@ public abstract class CommonConnectorConfig {
 
     public boolean isLogPositionCheckEnabled() {
         return isLogPositionCheckEnabled;
+    }
+
+    public boolean isAdvancedMetricsEnabled() {
+        return isAdvancedMetricsEnabled;
     }
 
     public EnumeratedValue snapshotQueryMode() {
