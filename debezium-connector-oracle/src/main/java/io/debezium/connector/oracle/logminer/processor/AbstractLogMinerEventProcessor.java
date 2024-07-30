@@ -1542,7 +1542,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
         metrics.incrementOversizedTransactionCount();
     }
 
-    //this implementation is different
+    // this implementation is different
     @Override
     public void abandonTransactions(Duration retention) throws InterruptedException {
         if (!Duration.ZERO.equals(retention)) {
