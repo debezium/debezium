@@ -36,7 +36,6 @@ import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.connector.mongodb.connection.DefaultMongoDbAuthProvider;
 import io.debezium.connector.mongodb.connection.MongoDbAuthProvider;
-import io.debezium.data.Envelope;
 import io.debezium.schema.DefaultTopicNamingStrategy;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Strings;
