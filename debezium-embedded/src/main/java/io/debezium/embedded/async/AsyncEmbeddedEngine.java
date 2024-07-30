@@ -283,6 +283,14 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
                 LOGGER.warn("Failed to close header converter: ", e);
             }
         }
+        if (transformations != null) {
+            try {
+                transformations.close();
+            }
+            catch (IOException e) {
+                LOGGER.warn("Failed to close transformations: ", e);
+            }
+        }
         shutDownLatch.countDown();
     }
 
