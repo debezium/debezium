@@ -38,7 +38,7 @@ spec:
           - type: jar
             url: https://repo1.maven.org/maven2/org/apache/groovy/groovy-json{groovy-version}/groovy-json-{groovy-version}.jar
           - type: jar          // <11>
-            url: https://repo1.maven.org/maven2/com/oracle/database/jdbc/ojdbc8/{ojdbc8-version}/ojdbc8-{ojdbc8-version}.jar
+            url: https://repo1.maven.org/maven2/com/oracle/database/jdbc/ojdbc11/{ojdbc11-version}/ojdbc11-{ojdbc11-version}.jar
 
   bootstrapServers: debezium-kafka-cluster-kafka-bootstrap:9093
 

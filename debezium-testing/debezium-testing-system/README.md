@@ -28,8 +28,8 @@ ORACLE_ARTIFACT_DIR="${PWD}/oracle-libs/${ORACLE_ARTIFACT_VERSION}.0"
 
 mkdir -p ${ORACLE_ARTIFACT_DIR}
 cd ${ORACLE_ARTIFACT_DIR}
-mvn install:install-file -DgroupId=com.oracle.instantclient -DartifactId=ojdbc8 \
-    -Dversion=${ORACLE_ARTIFACT_VERSION} -Dpackaging=jar -Dfile=ojdbc8.jar \
+mvn install:install-file -DgroupId=com.oracle.instantclient -DartifactId=ojdbc11 \
+    -Dversion=${ORACLE_ARTIFACT_VERSION} -Dpackaging=jar -Dfile=ojdbc11.jar \
     -Dmaven.repo.local=${MAVEN_REPO}
 mvn install:install-file -DgroupId=com.oracle.instantclient -DartifactId=xstreams \
     -Dversion=${ORACLE_INSTANTCLIENT_ARTIFACT_VERSION} -Dpackaging=jar -Dfile=xstreams.jar \
