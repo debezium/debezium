@@ -2279,9 +2279,9 @@ To help ensure that {connector-name} emits `BOOLEAN` columns uniformly, you can 
 [source]
 ----
 converters=tinyint-one-to-boolean
-converters.tinyint-one-to-boolean.type=io.debezium.connector.binlog.converters.TinyIntOneToBooleanConverter
-converters.tinyint-one-to-boolean.selector=.*.MY_TABLE.DATA
-converters.tinyint-one-to-boolean.length.checker=false
+tinyint-one-to-boolean.type=io.debezium.connector.binlog.converters.TinyIntOneToBooleanConverter
+tinyint-one-to-boolean.selector=.*.MY_TABLE.DATA
+tinyint-one-to-boolean.length.checker=false
 ----
 
 In the preceding example, the `selector` and `length.checker` properties are optional.
@@ -2306,11 +2306,11 @@ For the JDBC sink connector to consistently consume changes from both the snapsh
 [source]
 ----
 converters=jdbc-sink
-converters.jdbc-sink.type=io.debezium.connector.binlog.converters.JdbcSinkDataTypesConverter
-converters.jdbc-sink.selector.boolean=.*.MY_TABLE.BOOL_COL
-converters.jdbc-sink.selector.real=.*.MY_TABLE.REAL_COL
-converters.jdbc-sink.selector.string=.*.MY_TABLE.STRING_COL
-converters.jdbc-sink.treat.real.as.double=true
+jdbc-sink.type=io.debezium.connector.binlog.converters.JdbcSinkDataTypesConverter
+jdbc-sink.selector.boolean=.*.MY_TABLE.BOOL_COL
+jdbc-sink.selector.real=.*.MY_TABLE.REAL_COL
+jdbc-sink.selector.string=.*.MY_TABLE.STRING_COL
+jdbc-sink.treat.real.as.double=true
 ----
 
 In the preceding example, the `selector.*` and `treat.real.as.double` configuration properties are optional.
