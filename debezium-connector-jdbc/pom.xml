@@ -5,6 +5,7 @@
         <groupId>io.debezium</groupId>
         <artifactId>debezium-parent</artifactId>
         <version>3.0.0-SNAPSHOT</version>
+        <relativePath>../debezium-parent/pom.xml</relativePath>
     </parent>
 
     <modelVersion>4.0.0</modelVersion>
@@ -13,25 +14,11 @@
     <name>Debezium JDBC Sink Connector</name>
     <packaging>jar</packaging>
 
-    <scm>
-        <connection>scm:git:git@github.com:debezium/debezium-connector-jdbc.git</connection>
-        <developerConnection>scm:git:git@github.com:debezium/debezium-connector-jdbc.git</developerConnection>
-        <url>https://github.com/debezium/debezium-connector-jdbc</url>
-        <tag>HEAD</tag>
-    </scm>
-
     <properties>
-        <!-- Debezium parent -->
-        <version.debezium>${project.version}</version.debezium>
-
-        <!-- Parent overrides -->
-        <version.assembly.plugin>3.5.0</version.assembly.plugin>
-
         <!-- Other artifact versions -->
         <version.hibernate>6.4.8.Final</version.hibernate>
         <version.c3p0>0.9.5.5</version.c3p0>
         <version.assertjdb>2.0.2</version.assertjdb>
-
         <!--
         By default only run the integration tests for MySQL, PostgreSQL, and SQL Server.
         Other tags include it-db2 and it-oracle for the DB2 and Oracle integration tests.
@@ -47,89 +34,6 @@
         <test.tags>it-mysql,it-postgresql,it-sqlserver</test.tags>
     </properties>
 
-    <repositories>
-        <repository>
-            <id>oss</id>
-            <name>OSS Sonatype Nexus</name>
-            <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
-            <releases>
-                <enabled>true</enabled>
-                <updatePolicy>never</updatePolicy>
-            </releases>
-            <snapshots>
-                <enabled>true</enabled>
-                <updatePolicy>never</updatePolicy>
-            </snapshots>
-        </repository>
-    </repositories>
-
-    <!-- Managing versions here to ensure the right ones are applied during releases -->
-    <dependencyManagement>
-        <dependencies>
-            <!-- Debezium Artifacts -->
-            <dependency>
-                <groupId>io.debezium</groupId>
-                <artifactId>debezium-core</artifactId>
-                <version>${version.debezium}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.debezium</groupId>
-                <artifactId>debezium-embedded</artifactId>
-                <version>${version.debezium}</version>
-            </dependency>
-
-            <!-- Building -->
-            <dependency>
-                <groupId>io.debezium</groupId>
-                <artifactId>debezium-ide-configs</artifactId>
-                <version>${version.debezium}</version>
-                <scope>provided</scope>
-            </dependency>
-            <dependency>
-                <groupId>io.debezium</groupId>
-                <artifactId>debezium-checkstyle</artifactId>
-                <version>${version.debezium}</version>
-                <scope>provided</scope>
-            </dependency>
-            <dependency>
-                <groupId>io.debezium</groupId>
-                <artifactId>debezium-assembly-descriptors</artifactId>
-                <version>${version.debezium}</version>
-                <scope>provided</scope>
-            </dependency>
-            <dependency>
-                <groupId>io.debezium</groupId>
-                <artifactId>debezium-revapi</artifactId>
-                <version>${version.debezium}</version>
-                <scope>provided</scope>
-            </dependency>
-
-            <!-- Testing -->
-            <dependency>
-                <groupId>io.debezium</groupId>
-                <artifactId>debezium-core</artifactId>
-                <version>${version.debezium}</version>
-                <type>test-jar</type>
-                <scope>test</scope>
-            </dependency>
-            <dependency>
-                <groupId>io.debezium</groupId>
-                <artifactId>debezium-embedded</artifactId>
-                <version>${version.debezium}</version>
-                <type>test-jar</type>
-                <scope>test</scope>
-            </dependency>
-
-            <!-- Dependency version overrides -->
-            <dependency>
-                <groupId>com.mchange</groupId>
-                <artifactId>c3p0</artifactId>
-                <version>${version.c3p0}</version>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
-
-
     <dependencies>
         <!-- Debezium -->
         <dependency>
@@ -141,13 +45,11 @@
         <dependency>
             <groupId>org.apache.kafka</groupId>
             <artifactId>connect-api</artifactId>
-            <version>${version.kafka}</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.kafka</groupId>
             <artifactId>connect-runtime</artifactId>
-            <version>${version.kafka}</version>
             <scope>provided</scope>
             <exclusions>
                 <exclusion>
@@ -164,28 +66,6 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- Building -->
-        <dependency>
-            <groupId>io.debezium</groupId>
-            <artifactId>debezium-ide-configs</artifactId>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.debezium</groupId>
-            <artifactId>debezium-checkstyle</artifactId>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.debezium</groupId>
-            <artifactId>debezium-assembly-descriptors</artifactId>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.debezium</groupId>
-            <artifactId>debezium-revapi</artifactId>
-            <scope>provided</scope>
-        </dependency>
-
         <!-- Hibernate -->
         <dependency>
             <groupId>org.hibernate.orm</groupId>
@@ -196,6 +76,13 @@
             <groupId>org.hibernate.orm</groupId>
             <artifactId>hibernate-c3p0</artifactId>
             <version>${version.hibernate}</version>
+        </dependency>
+
+        <!-- Connection pool -->
+        <dependency>
+            <groupId>com.mchange</groupId>
+            <artifactId>c3p0</artifactId>
+            <version>${version.c3p0}</version>
         </dependency>
 
         <!-- Testing -->
@@ -222,21 +109,18 @@
         <dependency>
             <groupId>io.debezium</groupId>
             <artifactId>debezium-core</artifactId>
-            <version>${version.debezium}</version>
             <type>test-jar</type>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>io.debezium</groupId>
             <artifactId>debezium-embedded</artifactId>
-            <version>${version.debezium}</version>
             <type>test-jar</type>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>io.debezium</groupId>
             <artifactId>debezium-testing-testcontainers</artifactId>
-            <version>${version.debezium}</version>
             <scope>test</scope>
         </dependency>
         <dependency>

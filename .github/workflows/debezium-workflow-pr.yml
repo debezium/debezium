@@ -630,28 +630,12 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mysql-changed == 'true' || needs.file_changes.outputs.mysql-ddl-parser-changed == 'true' || needs.file_changes.outputs.mariadb-changed == 'true' || needs.file_changes.outputs.postgresql-changed == 'true' || needs.file_changes.outputs.sqlserver-changed == 'true' || needs.file_changes.outputs.sqlserver-changed == 'true' || needs.file_changes.outputs.db2-changed == 'true' }}
     steps:
-      - name: Checkout Action (Debezium Core)
+      - name: Checkout Action
         uses: actions/checkout@v4
-        with:
-          path: core
 
-      - name: Checkout Action (JDBC)
-        uses: actions/checkout@v4
+      - uses: ./.github/actions/build-debezium-jdbc
         with:
-          repository: debezium/debezium-connector-jdbc
-          path: jdbc
-
-      - uses: ./core/.github/actions/setup-java
-
-      - uses: ./core/.github/actions/maven-cache
-        with:
-          # We specifically only use the hash of the pom files from the core repository
-          key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
-
-      - uses: ./core/.github/actions/build-debezium-jdbc
-        with:
-          path-core: core
-          path-jdbc: jdbc
+          maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
 
   build_debezium_server:
     name: "Debezium Server"
