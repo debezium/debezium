@@ -27,7 +27,14 @@ public class ActivityMonitoringMeter implements ActivityMonitoringMXBean {
     private final ActivityCounter updateCount = new ActivityCounter();
     private final ActivityCounter deleteCount = new ActivityCounter();
 
+    private boolean isPaused = false;
+
     public void onEvent(DataCollectionId source, OffsetContext offset, Object key, Struct value, Envelope.Operation operation) {
+
+        if (isPaused) {
+            LOGGER.trace("ActivityMonitoringMeter is paused, no metric will be collected.");
+            return;
+        }
 
         LOGGER.trace("Received record {} with key {}", value, key);
         String tableName = source.identifier();
@@ -61,6 +68,16 @@ public class ActivityMonitoringMeter implements ActivityMonitoringMXBean {
     @Override
     public Map<String, Long> getNumberOfUpdateEventsSeen() {
         return updateCount.getCounter();
+    }
+
+    @Override
+    public void pause() {
+        isPaused = true;
+    }
+
+    @Override
+    public void resume() {
+        isPaused = false;
     }
 
     public void reset() {

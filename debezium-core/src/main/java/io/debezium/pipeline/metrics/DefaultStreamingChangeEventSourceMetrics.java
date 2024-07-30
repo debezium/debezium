@@ -107,6 +107,16 @@ public class DefaultStreamingChangeEventSourceMetrics<P extends Partition> exten
     }
 
     @Override
+    public void pause() {
+        activityMonitoringMeter.pause();
+    }
+
+    @Override
+    public void resume() {
+        activityMonitoringMeter.resume();
+    }
+
+    @Override
     public Map<String, Long> getNumberOfCreateEventsSeen() {
         return activityMonitoringMeter.getNumberOfCreateEventsSeen();
     }
