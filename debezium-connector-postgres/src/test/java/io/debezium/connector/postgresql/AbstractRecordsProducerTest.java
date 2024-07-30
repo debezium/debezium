@@ -72,7 +72,7 @@ import io.debezium.data.Xml;
 import io.debezium.data.geometry.Geography;
 import io.debezium.data.geometry.Geometry;
 import io.debezium.data.geometry.Point;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.junit.TestLogger;
 import io.debezium.relational.TableId;
@@ -94,7 +94,7 @@ import io.debezium.util.Testing;
  *
  * @author Horia Chiorean (hchiorea@redhat.com)
  */
-public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest {
+public abstract class AbstractRecordsProducerTest extends AbstractAsyncEngineConnectorTest {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractRecordsProducerTest.class);
 

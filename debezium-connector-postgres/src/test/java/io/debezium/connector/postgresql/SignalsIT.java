@@ -30,11 +30,11 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.connector.postgresql.spi.CustomActionProvider;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.signal.actions.Log;
 
-public class SignalsIT extends AbstractConnectorTest {
+public class SignalsIT extends AbstractAsyncEngineConnectorTest {
 
     private static final String INSERT_STMT = "INSERT INTO s1.a (aa) VALUES (1);";
     private static final String SETUP_TABLES_STMT = "DROP SCHEMA IF EXISTS s1 CASCADE;" +

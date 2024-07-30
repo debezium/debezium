@@ -26,11 +26,11 @@ import io.debezium.connector.postgresql.junit.SkipTestDependingOnDecoderPluginNa
 import io.debezium.custom.snapshotter.CustomTestSnapshot;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 
-public class CustomSnapshotterIT extends AbstractConnectorTest {
+public class CustomSnapshotterIT extends AbstractAsyncEngineConnectorTest {
 
     private static final String INSERT_STMT = "INSERT INTO s1.a (aa) VALUES (1);" +
             "INSERT INTO s2.a (aa) VALUES (1);";
