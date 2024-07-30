@@ -31,8 +31,7 @@ public class MongoDbTaskContext extends CdcSourceTaskContext {
      * @param config the configuration
      */
     public MongoDbTaskContext(Configuration config) {
-        super(Module.contextName(),
-                config.getString(CommonConnectorConfig.TOPIC_PREFIX),
+        super(new MongoDbConnectorConfig(config),
                 config.getString(MongoDbConnectorConfig.TASK_ID),
                 new MongoDbConnectorConfig(config).getCustomMetricTags(),
                 Collections::emptySet);
