@@ -30,31 +30,30 @@ public class CdcSourceTaskContext {
     private final String taskId;
     private final Map<String, String> customMetricTags;
     private final Clock clock;
+    private final CommonConnectorConfig config;
 
     /**
      * Obtains the data collections captured at the point of invocation.
      */
     private final Supplier<Collection<? extends DataCollectionId>> collectionsSupplier;
 
-    public CdcSourceTaskContext(String connectorType,
-                                String connectorName,
+    public CdcSourceTaskContext(CommonConnectorConfig config,
                                 String taskId,
                                 Map<String, String> customMetricTags,
                                 Supplier<Collection<? extends DataCollectionId>> collectionsSupplier) {
-        this.connectorType = connectorType;
-        this.connectorName = connectorName;
+        this.connectorType = config.getContextName();
+        this.connectorName = config.getLogicalName();
         this.taskId = taskId;
         this.customMetricTags = customMetricTags;
         this.collectionsSupplier = collectionsSupplier != null ? collectionsSupplier : Collections::emptyList;
-
+        this.config = config;
         this.clock = Clock.system();
     }
 
-    public CdcSourceTaskContext(String connectorType,
-                                String connectorName,
+    public CdcSourceTaskContext(CommonConnectorConfig config,
                                 Map<String, String> customMetricTags,
                                 Supplier<Collection<? extends DataCollectionId>> collectionsSupplier) {
-        this(connectorType, connectorName, "0", customMetricTags, collectionsSupplier);
+        this(config, "0", customMetricTags, collectionsSupplier);
     }
 
     /**
@@ -113,5 +112,9 @@ public class CdcSourceTaskContext {
 
     public Map<String, String> getCustomMetricTags() {
         return customMetricTags;
+    }
+
+    public CommonConnectorConfig getConfig() {
+        return config;
     }
 }

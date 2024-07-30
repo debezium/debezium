@@ -21,7 +21,7 @@ public class BinlogTaskContext<T extends RelationalDatabaseSchema> extends CdcSo
     private final BinaryLogClient binaryLogClient;
 
     public BinlogTaskContext(BinlogConnectorConfig config, T schema) {
-        super(config.getContextName(), config.getLogicalName(), config.getCustomMetricTags(), schema::tableIds);
+        super(config, config.getCustomMetricTags(), schema::tableIds);
         this.schema = schema;
         this.binaryLogClient = new BinaryLogClient(config.getHostName(), config.getPort(), config.getUserName(), config.getPassword());
     }
