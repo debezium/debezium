@@ -21,14 +21,14 @@ import org.junit.Test;
 import io.debezium.config.Configuration;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 
 /**
  * Integration test to verify postgres money types defined in public schema.
  *
  * @author Harvey Yue
  */
-public class PostgresMoneyIT extends AbstractConnectorTest {
+public class PostgresMoneyIT extends AbstractAsyncEngineConnectorTest {
 
     @Before
     public void before() throws Exception {
