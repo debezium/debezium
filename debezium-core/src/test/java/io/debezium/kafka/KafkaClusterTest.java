@@ -17,6 +17,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.kafka.common.serialization.IntegerSerializer;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.apache.kafka.server.config.ZkConfigs;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -28,8 +29,6 @@ import io.debezium.junit.SkipTestRule;
 import io.debezium.util.Collect;
 import io.debezium.util.Stopwatch;
 import io.debezium.util.Testing;
-
-import kafka.server.KafkaConfig;
 
 /**
  * @author Randall Hauch
@@ -48,7 +47,7 @@ public class KafkaClusterTest {
         cluster = new KafkaCluster().usingDirectory(dataDir)
                 .deleteDataPriorToStartup(true)
                 .deleteDataUponShutdown(true)
-                .withKafkaConfiguration(Collect.propertiesOf(KafkaConfig.ZkSessionTimeoutMsProp(), "20000"));
+                .withKafkaConfiguration(Collect.propertiesOf(ZkConfigs.ZK_SESSION_TIMEOUT_MS_CONFIG, "20000"));
     }
 
     @After
