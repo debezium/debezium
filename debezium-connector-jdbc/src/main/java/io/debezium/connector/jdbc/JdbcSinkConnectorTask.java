@@ -244,7 +244,7 @@ public class JdbcSinkConnectorTask extends SinkTask {
         // Kafka Connect implementation at this point, it's a fair workaround.
         //
         if (record instanceof InternalSinkRecord) {
-            return ((InternalSinkRecord) record).originalRecord().topic();
+            return ((InternalSinkRecord) record).context().original().topic();
         }
         return null;
     }
