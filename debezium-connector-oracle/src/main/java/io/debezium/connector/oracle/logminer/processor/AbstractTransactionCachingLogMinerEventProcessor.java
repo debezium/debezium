@@ -13,8 +13,6 @@ import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
-import java.util.TreeMap;
-import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -163,16 +161,9 @@ public abstract class AbstractTransactionCachingLogMinerEventProcessor<T extends
         return getEventCache()
                 .streamAndReturn(stream -> stream.map(LogMinerCache.Entry::getKey)
                         .filter(k -> k.startsWith(prefix))
-                        .collect(
-                                Collectors.toMap(
-                                        Function.identity(),
-                                        x -> Boolean.TRUE,
-                                        (v1, v2) -> {
-                                            throw new IllegalStateException();
-                                        },
-                                        () -> new TreeMap<>(EventKeySortComparator.INSTANCE.reversed())))
-                        .keySet())
-                .stream().toList();
+                        .sorted(EventKeySortComparator.INSTANCE.reversed())
+                        .collect(Collectors.toList()) // must use Collectors.toList to avoid bug in ISPN for now
+                );
     }
 
     @Override
