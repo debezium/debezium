@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.oracle.logminer.events;
 
+import java.io.Serializable;
 import java.time.Instant;
 import java.util.Objects;
 
@@ -16,7 +17,9 @@ import io.debezium.relational.TableId;
  *
  * @author Chris Cranford
  */
-public class LogMinerEvent {
+public class LogMinerEvent implements Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     private final EventType eventType;
     private final Scn scn;

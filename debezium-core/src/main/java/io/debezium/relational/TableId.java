@@ -5,9 +5,9 @@
  */
 package io.debezium.relational;
 
+import java.io.Serializable;
 import java.util.List;
 
-import io.debezium.annotation.Immutable;
 import io.debezium.relational.Selectors.TableIdToStringMapper;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Collect;
@@ -17,8 +17,9 @@ import io.debezium.util.Collect;
  *
  * @author Randall Hauch
  */
-@Immutable
-public final class TableId implements DataCollectionId, Comparable<TableId> {
+public class TableId implements DataCollectionId, Comparable<TableId>, Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     /**
      * Parse the supplied string, extracting up to the first 3 parts into a TableID.
@@ -117,10 +118,10 @@ public final class TableId implements DataCollectionId, Comparable<TableId> {
         return new TableId(parts[0], parts[1], parts[2]); // catalog, schema & table
     }
 
-    private final String catalogName;
-    private final String schemaName;
-    private final String tableName;
-    private final String id;
+    private String catalogName;
+    private String schemaName;
+    private String tableName;
+    private String id;
 
     /**
      * Create a new table identifier.
@@ -138,6 +139,9 @@ public final class TableId implements DataCollectionId, Comparable<TableId> {
         this.tableName = tableName;
         assert this.tableName != null;
         this.id = tableIdMapper == null ? tableId(this.catalogName, this.schemaName, this.tableName) : tableIdMapper.toString(this);
+    }
+
+    public TableId() {
     }
 
     /**
