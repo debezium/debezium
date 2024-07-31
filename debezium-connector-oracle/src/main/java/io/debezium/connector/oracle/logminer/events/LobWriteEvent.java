@@ -48,6 +48,11 @@ public class LobWriteEvent extends LogMinerEvent {
     }
 
     @Override
+    public boolean isLobEvent() {
+        return true;
+    }
+
+    @Override
     public String toString() {
         return "LobWriteEvent{" +
                 "offset=" + offset + ", " +

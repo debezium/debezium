@@ -90,6 +90,7 @@ public class LogMinerStreamingChangeEventSourceMetrics
 
     private final LRUSet<String> abandonedTransactionIds = new LRUSet<>(TRANSACTION_ID_SET_SIZE);
     private final LRUSet<String> rolledBackTransactionIds = new LRUSet<>(TRANSACTION_ID_SET_SIZE);
+    private final AtomicLong recentlyProcessedTransactions = new AtomicLong();
 
     public LogMinerStreamingChangeEventSourceMetrics(CdcSourceTaskContext taskContext,
                                                      ChangeEventQueueMetrics changeEventQueueMetrics,
@@ -137,6 +138,7 @@ public class LogMinerStreamingChangeEventSourceMetrics
         rolledBackTransactionIds.reset();
 
         oldestScnTime.set(null);
+        recentlyProcessedTransactions.set(0);
     }
 
     @Override
@@ -225,6 +227,19 @@ public class LogMinerStreamingChangeEventSourceMetrics
     @Override
     public long getNumberOfOversizedTransactions() {
         return oversizedTransactionCount.get();
+    }
+
+    @Override
+    public long getRecentlyProcessedTransactions() {
+        return recentlyProcessedTransactions.get();
+    }
+
+    public void incrementRecentlyProcessedTransactions() {
+        recentlyProcessedTransactions.incrementAndGet();
+    }
+
+    public void setRecentlyProcessedTransactions(long counter) {
+        recentlyProcessedTransactions.set(counter);
     }
 
     @Override

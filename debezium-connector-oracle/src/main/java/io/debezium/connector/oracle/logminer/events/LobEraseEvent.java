@@ -23,4 +23,9 @@ public class LobEraseEvent extends LogMinerEvent {
     public LobEraseEvent(EventType eventType, Scn scn, TableId tableId, String rowId, String rsId, Instant changeTime) {
         super(eventType, scn, tableId, rowId, rsId, changeTime);
     }
+
+    @Override
+    public boolean isLobEvent() {
+        return true;
+    }
 }

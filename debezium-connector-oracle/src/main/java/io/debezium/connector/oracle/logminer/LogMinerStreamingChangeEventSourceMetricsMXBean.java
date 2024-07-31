@@ -364,4 +364,8 @@ public interface LogMinerStreamingChangeEventSourceMetricsMXBean
      */
     Set<String> getRolledBackTransactionIds();
 
+    /**
+     * @return number of transactions in recently processed transactions cache
+     */
+    long getRecentlyProcessedTransactions();
 }
