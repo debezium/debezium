@@ -207,7 +207,12 @@ The source configuration uses the same configuration properties that are describ
 |[[debezium-source-offset-storage]]<<debezium-source-offset-storage, `debezium.source.offset.storage`>>
 |`org.apache.kafka.connect.storage.FileOffsetBackingStore`
 |Class to use for storing and retrieving offsets for non-Kafka deployments.
-To use Redis to store offsets, use `io.debezium.storage.redis.offset.RedisOffsetBackingStore`
+Available options
+
+* `org.apache.kafka.connect.storage.FileOffsetBackingStore` for non-Kafka deployments  
+* `org.apache.kafka.connect.storage.MemoryOffsetBackingStore` volatile store for test environments
+* `io.debezium.storage.jdbc.offset.JdbcOffsetBackingStore` for database using JDBC
+* `io.debezium.storage.redis.offset.RedisOffsetBackingStore` for Redis deployments
 
 |[[debezium-source-offset-storage-file-filename]]<<debezium-source-offset-storage-file-filename, `debezium.source.offset.storage.file.filename`>>
 |
