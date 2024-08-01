@@ -262,8 +262,8 @@ There are also other options available
 
 * `io.debezium.storage.file.history.FileSchemaHistory` for non-Kafka deployments
 * `io.debezium.relational.history.MemorySchemaHistory` volatile store for test environments
-* `io.debezium.storage.redis.history.RedisSchemaHistory` for Redis deploments
-* `io.debezium.storage.redis.history.RocketMqSchemaHistory` for RocketMQ deploments
+* `io.debezium.storage.redis.history.RedisSchemaHistory` for Redis deployments
+* `io.debezium.storage.rocketmq.history.RocketMqSchemaHistory` for RocketMQ deployments
 
 |[[debezium-source-database-history-file-filename]]<<debezium-source-database-history-file-filename, `debezium.source.schema.history.internal.file.filename`>>
 |
