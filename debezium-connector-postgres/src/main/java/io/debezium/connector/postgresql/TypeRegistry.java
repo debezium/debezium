@@ -47,6 +47,9 @@ public class TypeRegistry {
     public static final String TYPE_NAME_HSTORE = "hstore";
     public static final String TYPE_NAME_LTREE = "ltree";
     public static final String TYPE_NAME_ISBN = "isbn";
+    public static final String TYPE_NAME_VECTOR = "vector";
+    public static final String TYPE_NAME_HALF_VECTOR = "halfvec";
+    public static final String TYPE_NAME_SPARSE_VECTOR = "sparsevec";
 
     public static final String TYPE_NAME_HSTORE_ARRAY = "_hstore";
     public static final String TYPE_NAME_GEOGRAPHY_ARRAY = "_geography";
@@ -111,6 +114,10 @@ public class TypeRegistry {
     private int ltreeOid = Integer.MIN_VALUE;
     private int isbnOid = Integer.MIN_VALUE;
 
+    private int vectorOid = Integer.MIN_VALUE;
+    private int halfVectorOid = Integer.MIN_VALUE;
+    private int sparseVectorOid = Integer.MIN_VALUE;
+
     private int hstoreArrayOid = Integer.MIN_VALUE;
     private int geometryArrayOid = Integer.MIN_VALUE;
     private int geographyArrayOid = Integer.MIN_VALUE;
@@ -170,6 +177,15 @@ public class TypeRegistry {
         }
         else if (TYPE_NAME_ISBN.equals(type.getName())) {
             isbnOid = type.getOid();
+        }
+        else if (TYPE_NAME_VECTOR.equals(type.getName())) {
+            vectorOid = type.getOid();
+        }
+        else if (TYPE_NAME_HALF_VECTOR.equals(type.getName())) {
+            halfVectorOid = type.getOid();
+        }
+        else if (TYPE_NAME_SPARSE_VECTOR.equals(type.getName())) {
+            sparseVectorOid = type.getOid();
         }
     }
 
@@ -315,6 +331,30 @@ public class TypeRegistry {
      */
     public int ltreeArrayOid() {
         return ltreeArrayOid;
+    }
+
+    /**
+    *
+    * @return OID for PgVector's {@code VECTOR} type of this PostgreSQL instance
+    */
+    public int vectorOid() {
+        return vectorOid;
+    }
+
+    /**
+    *
+    * @return OID for PgVector's {@code VECTOR} type of this PostgreSQL instance
+    */
+    public int halfVectorOid() {
+        return halfVectorOid;
+    }
+
+    /**
+    *
+    * @return OID for PgVector's {@code VECTOR} type of this PostgreSQL instance
+    */
+    public int sparseVectorOid() {
+        return sparseVectorOid;
     }
 
     /**
