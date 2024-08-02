@@ -11,13 +11,13 @@
 :connector-class: MySql
 :connector-name: MySQL
 :include-list-example: inventory.*
+:MYSQL:
 ifdef::community[]
 :toc:
 :toc-placement: macro
 :linkattrs:
 :icons: font
 :source-highlighter: highlight.js
-:MYSQL:
 toc::[]
 endif::community[]
 
