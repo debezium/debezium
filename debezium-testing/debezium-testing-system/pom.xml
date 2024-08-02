@@ -464,7 +464,7 @@
       <artifactId>debezium-connector-jdbc</artifactId>
       <type>test-jar</type>
       <scope>test</scope>
-      <version>${version.debezium.jdbc.tests}</version>
+      <version>${version.debezium.connector}</version>
     </dependency>
 
     <dependency>
