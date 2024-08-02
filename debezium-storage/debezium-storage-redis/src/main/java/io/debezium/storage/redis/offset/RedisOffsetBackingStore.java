@@ -20,7 +20,6 @@ import org.slf4j.LoggerFactory;
 import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.Configuration;
 import io.debezium.storage.redis.RedisClient;
-import io.debezium.storage.redis.RedisClientConnectionException;
 import io.debezium.storage.redis.RedisConnection;
 import io.smallrye.mutiny.Uni;
 
@@ -107,9 +106,6 @@ public class RedisOffsetBackingStore extends MemoryOffsetBackingStore {
                         f -> {
                             LOGGER.warn("Reading from Redis offset store failed with " + f);
                             LOGGER.warn("Will retry");
-                        })
-                .onFailure(RedisClientConnectionException.class).invoke(
-                        f -> {
                             LOGGER.warn("Attempting to reconnect to Redis");
                             this.connect();
                         })
@@ -150,9 +146,6 @@ public class RedisOffsetBackingStore extends MemoryOffsetBackingStore {
                             f -> {
                                 LOGGER.warn("Writing to Redis offset store failed with " + f);
                                 LOGGER.warn("Will retry");
-                            })
-                    .onFailure(RedisClientConnectionException.class).invoke(
-                            f -> {
                                 LOGGER.warn("Attempting to reconnect to Redis");
                                 this.connect();
                             })
