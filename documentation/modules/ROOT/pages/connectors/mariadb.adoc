@@ -11,13 +11,13 @@
 :connector-class: MariaDb
 :connector-name: MariaDB
 :include-list-example: inventory.*
+:MARIADB:
 ifdef::community[]
 :toc:
 :toc-placement: macro
 :linkattrs:
 :icons: font
 :source-highlighter: highlight.js
-:MARIADB:
 
 toc::[]
 endif::community[]
