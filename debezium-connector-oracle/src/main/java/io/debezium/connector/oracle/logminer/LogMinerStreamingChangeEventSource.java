@@ -83,7 +83,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     private final LogFileCollector logCollector;
 
     private Scn startScn; // startScn is the **exclusive** lower bound for mining
-    private Scn endScn;
+    private Scn endScn = Scn.NULL;
     private Scn snapshotScn;
     private List<LogFile> currentLogFiles;
     private List<BigInteger> currentRedoLogSequences;
@@ -748,7 +748,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
             result = upperBoundsScn;
         }
         else {
-            if (prevEndScn != null && batchUpperBoundsScn.compareTo(prevEndScn) <= 0) {
+            if (!prevEndScn.isNull() && batchUpperBoundsScn.compareTo(prevEndScn) <= 0) {
                 // Batch size is too small, make a large leap and use current SCN
                 LOGGER.debug("Batch size upper bounds {} too small, using maximum read position {} instead.", batchUpperBoundsScn, upperBoundsScn);
                 result = upperBoundsScn;
@@ -760,7 +760,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                     LOGGER.debug("Batch upper bounds {} is before start SCN {}, fallback to maximum read position {}.", batchUpperBoundsScn, startScn, upperBoundsScn);
                     result = upperBoundsScn;
                 }
-                else if (prevEndScn != null) {
+                else if (!prevEndScn.isNull()) {
                     final Scn deltaScn = upperBoundsScn.subtract(prevEndScn);
                     if (deltaScn.compareTo(Scn.valueOf(connectorConfig.getLogMiningScnGapDetectionGapSizeMin())) > 0) {
                         Optional<Instant> prevEndScnTimestamp = jdbcConnection.getScnToTimestamp(prevEndScn);
