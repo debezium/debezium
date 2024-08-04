@@ -1,5 +1,5 @@
 // AsciiDoc Attributes
-
+// DO NOT EDIT - generated from antora.yml
 :debezium-version: 2.7.0.Final
 :debezium-kafka-version: 3.7.0
 :debezium-docker-label: 2.7

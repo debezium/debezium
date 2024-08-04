@@ -15,7 +15,7 @@ def parse_antora_yaml(file_path):
 # Function to write attributes to an AsciiDoc file
 def write_asciidoc(attributes, output_file):
     with open(output_file, 'w') as file:
-        file.write("// AsciiDoc Attributes\n\n")
+        file.write("// AsciiDoc Attributes\n// DO NOT EDIT - generated from antora.yml\n")
         for key, value in attributes.items():
             file.write(f":{key}: {value}\n")
 
