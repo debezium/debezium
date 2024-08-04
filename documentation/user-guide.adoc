@@ -18,6 +18,7 @@ include::modules/ROOT/pages/architecture.adoc[leveloffset=+2]
 //connectors
 
 include::modules/ROOT/pages/connectors/mysql.adoc[leveloffset=+1]
+include::modules/ROOT/pages/connectors/mariadb.adoc[leveloffset=+1]
 include::modules/ROOT/pages/connectors/postgresql.adoc[leveloffset=+1]
 include::modules/ROOT/pages/connectors/mongodb.adoc[leveloffset=+1]
 include::modules/ROOT/pages/connectors/sqlserver.adoc[leveloffset=+1]
