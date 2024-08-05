@@ -93,8 +93,13 @@ public class RecordAndMetadataHeaderImpl extends RecordAndMetadataBaseImpl imple
 
     private SchemaAndValue getHeaderSchemaAndValue(Headers headers, String headerName, boolean isOptional) {
         Header header = headers.lastHeader(headerName);
-        if (header == null && !isOptional) {
-            throw new RuntimeException("Header `" + headerName + "` was not provided");
+        if (header == null) {
+            if (isOptional) {
+                return SchemaAndValue.NULL;
+            }
+            else {
+                throw new RuntimeException("Header `" + headerName + "` was not provided");
+            }
         }
         return jsonHeaderConverter.toConnectData(null, header.value());
     }
