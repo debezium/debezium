@@ -211,7 +211,6 @@ public abstract class AbstractEventRouterTest<T extends SourceConnector> extends
     @Test
     @FixFor({ "DBZ-1169", "DBZ-3940" })
     public void shouldSupportAllFeatures() throws Exception {
-        startConnectorWithNoSnapshot();
 
         final StringBuilder placements = new StringBuilder();
         placements.append(envelope(getFieldSchemaVersion(), "eventVersion")).append(",");
@@ -227,6 +226,8 @@ public abstract class AbstractEventRouterTest<T extends SourceConnector> extends
         outboxEventRouter.configure(config);
 
         alterTableWithExtra4Fields();
+
+        startConnectorWithNoSnapshot();
 
         databaseConnection().execute(createInsert(
                 "f9171eb6-19f3-4579-9206-0e179d2ebad7",
@@ -282,7 +283,6 @@ public abstract class AbstractEventRouterTest<T extends SourceConnector> extends
     @Test
     @FixFor({ "DBZ-1707", "DBZ-3940" })
     public void shouldConvertMicrosecondsTimestampToMilliseconds() throws Exception {
-        startConnectorWithNoSnapshot();
 
         outboxEventRouter = new EventRouter<>();
         final Map<String, String> config = new HashMap<>();
@@ -290,6 +290,8 @@ public abstract class AbstractEventRouterTest<T extends SourceConnector> extends
         outboxEventRouter.configure(config);
 
         alterTableWithTimestampField();
+
+        startConnectorWithNoSnapshot();
 
         databaseConnection().execute(createInsert(
                 "f9171eb6-19f3-4579-9206-0e179d2ebad7",
@@ -314,7 +316,6 @@ public abstract class AbstractEventRouterTest<T extends SourceConnector> extends
     @Test
     @FixFor({ "DBZ-1320", "DBZ-3940" })
     public void shouldNotProduceTombstoneEventForNullPayload() throws Exception {
-        startConnectorWithNoSnapshot();
 
         final StringBuilder placements = new StringBuilder();
         placements.append(envelope(getFieldSchemaVersion(), "eventVersion")).append(",");
@@ -331,6 +332,8 @@ public abstract class AbstractEventRouterTest<T extends SourceConnector> extends
         outboxEventRouter.configure(config);
 
         alterTableWithExtra4Fields();
+
+        startConnectorWithNoSnapshot();
 
         databaseConnection().execute(createInsert(
                 "a9d76f78-bda6-48d3-97ed-13a146163218",
@@ -374,7 +377,6 @@ public abstract class AbstractEventRouterTest<T extends SourceConnector> extends
     @Test
     @FixFor({ "DBZ-1320", "DBZ-3940" })
     public void shouldProduceTombstoneEventForNullPayload() throws Exception {
-        startConnectorWithNoSnapshot();
 
         final StringBuilder placements = new StringBuilder();
         placements.append(envelope(getFieldSchemaVersion(), "eventVersion")).append(",");
@@ -392,6 +394,8 @@ public abstract class AbstractEventRouterTest<T extends SourceConnector> extends
         outboxEventRouter.configure(config);
 
         alterTableWithExtra4Fields();
+
+        startConnectorWithNoSnapshot();
 
         databaseConnection().execute(createInsert(
                 "a9d76f78-bda6-48d3-97ed-13a146163218",
@@ -433,7 +437,6 @@ public abstract class AbstractEventRouterTest<T extends SourceConnector> extends
     @Test
     @FixFor({ "DBZ-1320", "DBZ-3940" })
     public void shouldProduceTombstoneEventForEmptyPayload() throws Exception {
-        startConnectorWithNoSnapshot();
 
         outboxEventRouter = new EventRouter<>();
         final Map<String, String> config = new HashMap<>();
@@ -441,6 +444,9 @@ public abstract class AbstractEventRouterTest<T extends SourceConnector> extends
         outboxEventRouter.configure(config);
 
         alterTableModifyPayload();
+
+        startConnectorWithNoSnapshot();
+
         databaseConnection().execute(createInsert(
                 "a9d76f78-bda6-48d3-97ed-13a146163218",
                 "UserUpdated",
