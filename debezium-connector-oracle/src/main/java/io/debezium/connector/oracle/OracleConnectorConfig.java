@@ -36,6 +36,7 @@ import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.logminer.logwriter.LogWriterFlushStrategy;
 import io.debezium.connector.oracle.logminer.processor.LogMinerEventProcessor;
+import io.debezium.connector.oracle.logminer.processor.ehcache.EhcacheLogMinerEventProcessor;
 import io.debezium.connector.oracle.logminer.processor.infinispan.EmbeddedInfinispanLogMinerEventProcessor;
 import io.debezium.connector.oracle.logminer.processor.infinispan.RemoteInfinispanLogMinerEventProcessor;
 import io.debezium.connector.oracle.logminer.processor.memory.MemoryLogMinerEventProcessor;
@@ -373,7 +374,9 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     System.lineSeparator() +
                     "infinispan_embedded - This option uses an embedded Infinispan cache to buffer transaction data and persist it to disk." + System.lineSeparator() +
                     System.lineSeparator() +
-                    "infinispan_remote - This option uses a remote Infinispan cluster to buffer transaction data and persist it to disk.");
+                    "infinispan_remote - This option uses a remote Infinispan cluster to buffer transaction data and persist it to disk." + System.lineSeparator() +
+                    System.lineSeparator() +
+                    "ehcache - Use ehcache in embedded mode to buffer transaction data and persist it to disk.");
 
     public static final Field LOG_MINING_BUFFER_TRANSACTION_EVENTS_THRESHOLD = Field.create("log.mining.buffer.transaction.events.threshold")
             .withDisplayName("The maximum number of events a transaction can have before being discarded.")
@@ -621,6 +624,35 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withValidation(Field::isNonNegativeInteger)
             .withDescription("The number of attempts to retry database errors during snapshots before failing.");
 
+    public static final Field LOG_MINING_BUFFER_EHCACHE_STORAGE_PATH = Field.create("log.mining.buffer.ehcache.storage.path")
+            .withType(Type.STRING)
+            .withValidation(OracleConnectorConfig::validateEhcacheFieldRequired)
+            .withDescription("The persistent location where the Ehcache off-heap files should be stored.");
+
+    public static final Field LOG_MINING_BUFFER_EHCACHE_CACHE_TRANSACTIONS_BYTES = Field.create("log.mining.buffer.ehcache.cache.transactions.bytes")
+            .withType(Type.LONG)
+            .withDefault(0)
+            .withValidation(OracleConnectorConfig::validateEhcacheBytesFieldRequired)
+            .withDescription("The size of the Ehcache transaction cache in bytes");
+
+    public static final Field LOG_MINING_BUFFER_EHCACHE_CACHE_PROCESSED_TRANSACTIONS_BYTES = Field.create("log.mining.buffer.ehcache.cache.processedtransactions.bytes")
+            .withType(Type.LONG)
+            .withDefault(0)
+            .withValidation(OracleConnectorConfig::validateEhcacheBytesFieldRequired)
+            .withDescription("The size of the Ehcache processed transaction cache in bytes");
+
+    public static final Field LOG_MINING_BUFFER_EHCACHE_CACHE_SCHEMA_CHANGES_BYTES = Field.create("log.mining.buffer.ehcache.cache.schemachanges.bytes")
+            .withType(Type.LONG)
+            .withDefault(0)
+            .withValidation(OracleConnectorConfig::validateEhcacheBytesFieldRequired)
+            .withDescription("The size of the Ehcache schema changes cache in bytes");
+
+    public static final Field LOG_MINING_BUFFER_EHCACHE_CACHE_EVENTS_BYTES = Field.create("log.mining.buffer.ehcache.cache.events.bytes")
+            .withType(Type.LONG)
+            .withDefault(0)
+            .withValidation(OracleConnectorConfig::validateEhcacheBytesFieldRequired)
+            .withDescription("The size of the Ehcache transaction events cache in bytes");
+
     @Deprecated
     public static final Field LOG_MINING_CONTINUOUS_MINE = Field.create("log.mining.continuous.mine")
             .withDisplayName("Should log mining session configured with CONTINUOUS_MINE setting?")
@@ -705,7 +737,12 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     OLR_HOST,
                     OLR_PORT,
                     SNAPSHOT_DATABASE_ERRORS_MAX_RETRIES,
-                    LOG_MINING_CONTINUOUS_MINE)
+                    LOG_MINING_CONTINUOUS_MINE,
+                    LOG_MINING_BUFFER_EHCACHE_STORAGE_PATH,
+                    LOG_MINING_BUFFER_EHCACHE_CACHE_TRANSACTIONS_BYTES,
+                    LOG_MINING_BUFFER_EHCACHE_CACHE_PROCESSED_TRANSACTIONS_BYTES,
+                    LOG_MINING_BUFFER_EHCACHE_CACHE_SCHEMA_CHANGES_BYTES,
+                    LOG_MINING_BUFFER_EHCACHE_CACHE_EVENTS_BYTES)
             .events(SOURCE_INFO_STRUCT_MAKER)
             .create();
 
@@ -775,6 +812,12 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final Boolean logMiningIncludeRedoSql;
     private final boolean logMiningContinuousMining;
 
+    private final String logMiningBufferEhcacheStoragePath;
+    private final long logMiningBufferEhcacheTransactionCacheSizeBytes;
+    private final long logMiningBufferEhcacheProcessedTransactionsCacheSizeBytes;
+    private final long logMiningBufferEhcacheSchemaChangesCacheSizeBytes;
+    private final long logMiningBufferEhcacheEventsCacheSizeBytes;
+
     private final String openLogReplicatorSource;
     private final String openLogReplicatorHostname;
     private final Integer openLogReplicatorPort;
@@ -843,6 +886,12 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningSchemaChangesUsernameExcludes = Strings.setOf(config.getString(LOG_MINING_SCHEMA_CHANGES_USERNAME_EXCLUDE_LIST), String::new);
         this.logMiningIncludeRedoSql = config.getBoolean(LOG_MINING_INCLUDE_REDO_SQL);
         this.logMiningContinuousMining = config.getBoolean(LOG_MINING_CONTINUOUS_MINE);
+
+        this.logMiningBufferEhcacheStoragePath = config.getString(LOG_MINING_BUFFER_EHCACHE_STORAGE_PATH);
+        this.logMiningBufferEhcacheTransactionCacheSizeBytes = config.getLong(LOG_MINING_BUFFER_EHCACHE_CACHE_TRANSACTIONS_BYTES);
+        this.logMiningBufferEhcacheProcessedTransactionsCacheSizeBytes = config.getLong(LOG_MINING_BUFFER_EHCACHE_CACHE_PROCESSED_TRANSACTIONS_BYTES);
+        this.logMiningBufferEhcacheSchemaChangesCacheSizeBytes = config.getLong(LOG_MINING_BUFFER_EHCACHE_CACHE_SCHEMA_CHANGES_BYTES);
+        this.logMiningBufferEhcacheEventsCacheSizeBytes = config.getLong(LOG_MINING_BUFFER_EHCACHE_CACHE_EVENTS_BYTES);
 
         // OpenLogReplicator
         this.openLogReplicatorSource = config.getString(OLR_SOURCE);
@@ -1452,6 +1501,21 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                 return new RemoteInfinispanLogMinerEventProcessor(context, connectorConfig, connection, dispatcher,
                         partition, offsetContext, schema, metrics);
             }
+        },
+
+        EHCACHE("ehcache") {
+            @Override
+            public LogMinerEventProcessor createProcessor(ChangeEventSourceContext context,
+                                                          OracleConnectorConfig connectorConfig,
+                                                          OracleConnection connection,
+                                                          EventDispatcher<OraclePartition, TableId> dispatcher,
+                                                          OraclePartition partition,
+                                                          OracleOffsetContext offsetContext,
+                                                          OracleDatabaseSchema schema,
+                                                          LogMinerStreamingChangeEventSourceMetrics metrics) {
+                return new EhcacheLogMinerEventProcessor(context, connectorConfig, connection, dispatcher,
+                        partition, offsetContext, schema, metrics);
+            }
         };
 
         private final String value;
@@ -1475,11 +1539,15 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         }
 
         public boolean isInfinispan() {
-            return !MEMORY.equals(this);
+            return INFINISPAN_EMBEDDED.equals(this) || INFINISPAN_REMOTE.equals(this);
         }
 
         public boolean isInfinispanEmbedded() {
-            return isInfinispan() && INFINISPAN_EMBEDDED.equals(this);
+            return INFINISPAN_EMBEDDED.equals(this);
+        }
+
+        public boolean isEhcache() {
+            return EHCACHE.equals(this);
         }
 
         public static LogMiningBufferType parse(String value) {
@@ -1932,6 +2000,26 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         return openLogReplicatorPort;
     }
 
+    public String getLogMiningBufferEhcacheStoragePath() {
+        return logMiningBufferEhcacheStoragePath;
+    }
+
+    public long getLogMiningBufferEhcacheTransactionCacheSizeBytes() {
+        return logMiningBufferEhcacheTransactionCacheSizeBytes;
+    }
+
+    public long getLogMiningBufferEhcacheProcessedTransactionsCacheSizeBytes() {
+        return logMiningBufferEhcacheProcessedTransactionsCacheSizeBytes;
+    }
+
+    public long getLogMiningBufferEhcacheSchemaChangesCacheSizeBytes() {
+        return logMiningBufferEhcacheSchemaChangesCacheSizeBytes;
+    }
+
+    public long getLogMiningBufferEhcacheEventsCacheSizeBytes() {
+        return logMiningBufferEhcacheEventsCacheSizeBytes;
+    }
+
     @Override
     public String getConnectorName() {
         return Module.name();
@@ -2114,6 +2202,24 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                                     LOB_ENABLED.name(), LOG_MINING_STRATEGY.name(), LOB_ENABLED.name()));
                     return 1;
                 }
+            }
+        }
+        return 0;
+    }
+
+    public static int validateEhcacheFieldRequired(Configuration config, Field field, ValidationOutput problems) {
+        if (ConnectorAdapter.LOG_MINER.equals(ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER)))) {
+            if (LogMiningBufferType.parse(config.getString(LOG_MINING_BUFFER_TYPE)).isEhcache()) {
+                return Field.isRequired(config, field, problems);
+            }
+        }
+        return 0;
+    }
+
+    public static int validateEhcacheBytesFieldRequired(Configuration config, Field field, ValidationOutput problems) {
+        if (ConnectorAdapter.LOG_MINER.equals(ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER)))) {
+            if (LogMiningBufferType.parse(config.getString(LOG_MINING_BUFFER_TYPE)).isEhcache()) {
+                return Field.isPositiveLong(config, field, problems);
             }
         }
         return 0;
