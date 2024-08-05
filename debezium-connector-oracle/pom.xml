@@ -85,6 +85,11 @@
             <artifactId>protobuf-java-util</artifactId>
             <version>${version.com.google.protobuf}</version>
         </dependency>
+        <dependency>
+            <groupId>org.ehcache</groupId>
+            <artifactId>ehcache</artifactId>
+            <version>3.9.6</version>
+        </dependency>
 
         <!-- Testing -->
         <dependency>
@@ -729,6 +734,17 @@
                     </plugin>
                 </plugins>
             </build>
+        </profile>
+        <!-- This profile should be used for testing connector with EhCache only -->
+        <profile>
+            <id>oracle-ehcache</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <properties>
+                <log.mining.buffer.type.name>ehcache</log.mining.buffer.type.name>
+            </properties>
+            <!-- todo: when using this profile, enforce oracle-xstream being mutually exclusive -->
         </profile>
         <profile>
             <id>apicurio</id>
