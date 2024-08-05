@@ -2,6 +2,7 @@ package io.debezium.connector.postgresql;
 
 import io.debezium.config.Configuration;
 import io.debezium.data.Envelope;
+import io.debezium.data.VerifyRecord;
 import io.debezium.embedded.AbstractConnectorTest;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -61,11 +62,22 @@ public class YugabyteReplicaIdentityIT extends AbstractConnectorTest {
   }
 
   @Test
-  public void shouldProduceOldValuesWithReplicaIdentityFull() throws Exception {
+  public void oldValuesWithReplicaIdentityFullForPgOutput() throws Exception {
+    shouldProduceOldValuesWithReplicaIdentityFull(PostgresConnectorConfig.LogicalDecoder.PGOUTPUT);
+  }
+
+  @Test
+  public void oldValuesWithReplicaIdentityFullForYbOutput() throws Exception {
+    shouldProduceOldValuesWithReplicaIdentityFull(PostgresConnectorConfig.LogicalDecoder.YBOUTPUT);
+  }
+
+  public void shouldProduceOldValuesWithReplicaIdentityFull(PostgresConnectorConfig.LogicalDecoder logicalDecoder) throws Exception {
     TestHelper.execute("ALTER TABLE s1.a REPLICA IDENTITY FULL;");
+    TestHelper.execute("ALTER TABLE s2.a REPLICA IDENTITY FULL;");
 
     Configuration config = TestHelper.defaultConfig()
                              .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.NEVER.getValue())
+                             .with(PostgresConnectorConfig.PLUGIN_NAME, logicalDecoder.getPostgresPluginName())
                              .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                              .build();
     start(YugabyteDBConnector.class, config);
@@ -88,22 +100,44 @@ public class YugabyteReplicaIdentityIT extends AbstractConnectorTest {
     SourceRecord insertRecord = records.get(0);
     SourceRecord updateRecord = records.get(1);
 
-    YBVerifyRecord.isValidInsert(insertRecord, PK_FIELD, 1);
-    YBVerifyRecord.isValidUpdate(updateRecord, PK_FIELD, 1);
+    if (logicalDecoder.isYBOutput()) {
+      YBVerifyRecord.isValidInsert(insertRecord, PK_FIELD, 1);
+      YBVerifyRecord.isValidUpdate(updateRecord, PK_FIELD, 1);
+    } else {
+      VerifyRecord.isValidInsert(insertRecord, PK_FIELD, 1);
+      VerifyRecord.isValidUpdate(updateRecord, PK_FIELD, 1);
+    }
 
     Struct updateRecordValue = (Struct) updateRecord.value();
     assertThat(updateRecordValue.get(Envelope.FieldName.AFTER)).isNotNull();
     assertThat(updateRecordValue.get(Envelope.FieldName.BEFORE)).isNotNull();
-    assertThat(updateRecordValue.getStruct(Envelope.FieldName.BEFORE).getStruct("aa").getInt32("value")).isEqualTo(1);
-    assertThat(updateRecordValue.getStruct(Envelope.FieldName.AFTER).getStruct("aa").getInt32("value")).isEqualTo(12345);
+
+    if (logicalDecoder.isYBOutput()) {
+      assertThat(updateRecordValue.getStruct(Envelope.FieldName.BEFORE).getStruct("aa").getInt32("value")).isEqualTo(1);
+      assertThat(updateRecordValue.getStruct(Envelope.FieldName.AFTER).getStruct("aa").getInt32("value")).isEqualTo(12345);
+    } else {
+      assertThat(updateRecordValue.getStruct(Envelope.FieldName.BEFORE).get("aa")).isEqualTo(1);
+      assertThat(updateRecordValue.getStruct(Envelope.FieldName.AFTER).get("aa")).isEqualTo(12345);
+    }
   }
 
   @Test
-  public void shouldProduceExpectedValuesWithReplicaIdentityDefault() throws Exception {
+  public void replicaIdentityDefaultWithPgOutput() throws Exception {
+    shouldProduceExpectedValuesWithReplicaIdentityDefault(PostgresConnectorConfig.LogicalDecoder.PGOUTPUT);
+  }
+
+  @Test
+  public void replicaIdentityDefaultWithYbOutput() throws Exception {
+    shouldProduceExpectedValuesWithReplicaIdentityDefault(PostgresConnectorConfig.LogicalDecoder.YBOUTPUT);
+  }
+
+  public void shouldProduceExpectedValuesWithReplicaIdentityDefault(PostgresConnectorConfig.LogicalDecoder logicalDecoder) throws Exception {
+    TestHelper.execute("ALTER TABLE s1.a REPLICA IDENTITY DEFAULT;");
     TestHelper.execute("ALTER TABLE s2.a REPLICA IDENTITY DEFAULT;");
 
     Configuration config = TestHelper.defaultConfig()
                              .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.NEVER.getValue())
+                             .with(PostgresConnectorConfig.PLUGIN_NAME, logicalDecoder.getPostgresPluginName())
                              .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                              .build();
     start(YugabyteDBConnector.class, config);
@@ -126,17 +160,28 @@ public class YugabyteReplicaIdentityIT extends AbstractConnectorTest {
     SourceRecord insertRecord = records.get(0);
     SourceRecord updateRecord = records.get(1);
 
-    YBVerifyRecord.isValidInsert(insertRecord, PK_FIELD, 1);
-    YBVerifyRecord.isValidUpdate(updateRecord, PK_FIELD, 1);
+    if (logicalDecoder.isYBOutput()) {
+      YBVerifyRecord.isValidInsert(insertRecord, PK_FIELD, 1);
+      YBVerifyRecord.isValidUpdate(updateRecord, PK_FIELD, 1);
+    } else {
+      VerifyRecord.isValidInsert(insertRecord, PK_FIELD, 1);
+      VerifyRecord.isValidUpdate(updateRecord, PK_FIELD, 1);
+    }
 
     Struct updateRecordValue = (Struct) updateRecord.value();
     assertThat(updateRecordValue.get(Envelope.FieldName.AFTER)).isNotNull();
     assertThat(updateRecordValue.get(Envelope.FieldName.BEFORE)).isNull();
 
     // After field will have entries for all the columns.
-    assertThat(updateRecordValue.getStruct(Envelope.FieldName.AFTER).getStruct("pk").getInt32("value")).isEqualTo(1);
-    assertThat(updateRecordValue.getStruct(Envelope.FieldName.AFTER).getStruct("aa").getInt32("value")).isEqualTo(12345);
-    assertThat(updateRecordValue.getStruct(Envelope.FieldName.AFTER).getStruct("bb").getString("value")).isEqualTo("random text value");
+    if (logicalDecoder.isYBOutput()) {
+      assertThat(updateRecordValue.getStruct(Envelope.FieldName.AFTER).getStruct("pk").getInt32("value")).isEqualTo(1);
+      assertThat(updateRecordValue.getStruct(Envelope.FieldName.AFTER).getStruct("aa").getInt32("value")).isEqualTo(12345);
+      assertThat(updateRecordValue.getStruct(Envelope.FieldName.AFTER).getStruct("bb").getString("value")).isEqualTo("random text value");
+    } else {
+      assertThat(updateRecordValue.getStruct(Envelope.FieldName.AFTER).get("pk")).isEqualTo(1);
+      assertThat(updateRecordValue.getStruct(Envelope.FieldName.AFTER).get("aa")).isEqualTo(12345);
+      assertThat(updateRecordValue.getStruct(Envelope.FieldName.AFTER).get("bb")).isEqualTo("random text value");
+    }
   }
 
   @Test
@@ -200,6 +245,7 @@ public class YugabyteReplicaIdentityIT extends AbstractConnectorTest {
 
       Details: https://www.postgresql.org/docs/current/logical-replication-publication.html
      */
+    TestHelper.execute("ALTER TABLE s1.a REPLICA IDENTITY NOTHING;");
     TestHelper.execute("ALTER TABLE s2.a REPLICA IDENTITY NOTHING;");
 
     Configuration config = TestHelper.defaultConfig()
@@ -235,10 +281,21 @@ public class YugabyteReplicaIdentityIT extends AbstractConnectorTest {
   }
 
   @Test
-  public void shouldHaveBeforeImageForDeletesForReplicaIdentityFull() throws Exception {
+  public void beforeImageForDeleteWithReplicaIdentityFullAndPgOutput() throws Exception {
+    shouldHaveBeforeImageForDeletesForReplicaIdentityFull(PostgresConnectorConfig.LogicalDecoder.PGOUTPUT);
+  }
+
+  @Test
+  public void beforeImageForDeleteWithReplicaIdentityFullAndYbOutput() throws Exception {
+    shouldHaveBeforeImageForDeletesForReplicaIdentityFull(PostgresConnectorConfig.LogicalDecoder.YBOUTPUT);
+  }
+
+  public void shouldHaveBeforeImageForDeletesForReplicaIdentityFull(PostgresConnectorConfig.LogicalDecoder logicalDecoder) throws Exception {
+    TestHelper.execute("ALTER TABLE s1.a REPLICA IDENTITY FULL;");
     TestHelper.execute("ALTER TABLE s2.a REPLICA IDENTITY FULL;");
     Configuration config = TestHelper.defaultConfig()
                              .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.NEVER.getValue())
+                             .with(PostgresConnectorConfig.PLUGIN_NAME, logicalDecoder.getPostgresPluginName())
                              .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                              .build();
     start(YugabyteDBConnector.class, config);
@@ -261,25 +318,47 @@ public class YugabyteReplicaIdentityIT extends AbstractConnectorTest {
     SourceRecord insertRecord = records.get(0);
     SourceRecord deleteRecord = records.get(1);
 
-    YBVerifyRecord.isValidInsert(insertRecord, PK_FIELD, 1);
-    YBVerifyRecord.isValidDelete(deleteRecord, PK_FIELD, 1);
+    if (logicalDecoder.isYBOutput()) {
+      YBVerifyRecord.isValidInsert(insertRecord, PK_FIELD, 1);
+      YBVerifyRecord.isValidDelete(deleteRecord, PK_FIELD, 1);
+    } else {
+      VerifyRecord.isValidInsert(insertRecord, PK_FIELD, 1);
+      VerifyRecord.isValidDelete(deleteRecord, PK_FIELD, 1);
+    }
 
     Struct deleteRecordValue = (Struct) deleteRecord.value();
     assertThat(deleteRecordValue.get(Envelope.FieldName.AFTER)).isNull();
     assertThat(deleteRecordValue.get(Envelope.FieldName.BEFORE)).isNotNull();
 
     // Before field will have entries for all the columns.
-    assertThat(deleteRecordValue.getStruct(Envelope.FieldName.BEFORE).getStruct("pk").getInt32("value")).isEqualTo(1);
-    assertThat(deleteRecordValue.getStruct(Envelope.FieldName.BEFORE).getStruct("aa").getInt32("value")).isEqualTo(22);
-    assertThat(deleteRecordValue.getStruct(Envelope.FieldName.BEFORE).getStruct("bb").getString("value")).isEqualTo("random text value");
+    if (logicalDecoder.isYBOutput()) {
+      assertThat(deleteRecordValue.getStruct(Envelope.FieldName.BEFORE).getStruct("pk").getInt32("value")).isEqualTo(1);
+      assertThat(deleteRecordValue.getStruct(Envelope.FieldName.BEFORE).getStruct("aa").getInt32("value")).isEqualTo(22);
+      assertThat(deleteRecordValue.getStruct(Envelope.FieldName.BEFORE).getStruct("bb").getString("value")).isEqualTo("random text value");
+    } else {
+      assertThat(deleteRecordValue.getStruct(Envelope.FieldName.BEFORE).get("pk")).isEqualTo(1);
+      assertThat(deleteRecordValue.getStruct(Envelope.FieldName.BEFORE).get("aa")).isEqualTo(22);
+      assertThat(deleteRecordValue.getStruct(Envelope.FieldName.BEFORE).get("bb")).isEqualTo("random text value");
+    }
   }
 
   @Test
-  public void shouldHaveBeforeImageForDeletesForReplicaIdentityDefault() throws Exception {
+  public void beforeImageForDeleteWithReplicaIdentityDefaultAndPgOutput() throws Exception {
+    shouldHaveBeforeImageForDeletesForReplicaIdentityDefault(PostgresConnectorConfig.LogicalDecoder.PGOUTPUT);
+  }
+
+  @Test
+  public void beforeImageForDeleteWithReplicaIdentityDefaultAndYbOutput() throws Exception {
+    shouldHaveBeforeImageForDeletesForReplicaIdentityDefault(PostgresConnectorConfig.LogicalDecoder.YBOUTPUT);
+  }
+
+  public void shouldHaveBeforeImageForDeletesForReplicaIdentityDefault(PostgresConnectorConfig.LogicalDecoder logicalDecoder) throws Exception {
+    TestHelper.execute("ALTER TABLE s1.a REPLICA IDENTITY DEFAULT;");
     TestHelper.execute("ALTER TABLE s2.a REPLICA IDENTITY DEFAULT;");
 
     Configuration config = TestHelper.defaultConfig()
                              .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.NEVER.getValue())
+                             .with(PostgresConnectorConfig.PLUGIN_NAME, logicalDecoder.getPostgresPluginName())
                              .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                              .build();
     start(YugabyteDBConnector.class, config);
@@ -302,17 +381,28 @@ public class YugabyteReplicaIdentityIT extends AbstractConnectorTest {
     SourceRecord insertRecord = records.get(0);
     SourceRecord deleteRecord = records.get(1);
 
-    YBVerifyRecord.isValidInsert(insertRecord, PK_FIELD, 1);
-    YBVerifyRecord.isValidDelete(deleteRecord, PK_FIELD, 1);
+    if (logicalDecoder.isYBOutput()) {
+      YBVerifyRecord.isValidInsert(insertRecord, PK_FIELD, 1);
+      YBVerifyRecord.isValidDelete(deleteRecord, PK_FIELD, 1);
+    } else {
+      VerifyRecord.isValidInsert(insertRecord, PK_FIELD, 1);
+      VerifyRecord.isValidDelete(deleteRecord, PK_FIELD, 1);
+    }
 
     Struct deleteRecordValue = (Struct) deleteRecord.value();
     assertThat(deleteRecordValue.get(Envelope.FieldName.AFTER)).isNull();
     assertThat(deleteRecordValue.get(Envelope.FieldName.BEFORE)).isNotNull();
 
     // Before field will have entries only for the primary key columns.
-    assertThat(deleteRecordValue.getStruct(Envelope.FieldName.BEFORE).getStruct("pk").getInt32("value")).isEqualTo(1);
-    assertThat(deleteRecordValue.getStruct(Envelope.FieldName.BEFORE).getStruct("aa").getInt32("value")).isNull();
-    assertThat(deleteRecordValue.getStruct(Envelope.FieldName.BEFORE).getStruct("bb").getString("value")).isNull();
+    if (logicalDecoder.isYBOutput()) {
+      assertThat(deleteRecordValue.getStruct(Envelope.FieldName.BEFORE).getStruct("pk").getInt32("value")).isEqualTo(1);
+      assertThat(deleteRecordValue.getStruct(Envelope.FieldName.BEFORE).getStruct("aa").getInt32("value")).isNull();
+      assertThat(deleteRecordValue.getStruct(Envelope.FieldName.BEFORE).getStruct("bb").getString("value")).isNull();
+    } else {
+      assertThat(deleteRecordValue.getStruct(Envelope.FieldName.BEFORE).get("pk")).isEqualTo(1);
+      assertThat(deleteRecordValue.getStruct(Envelope.FieldName.BEFORE).get("aa")).isNull();
+      assertThat(deleteRecordValue.getStruct(Envelope.FieldName.BEFORE).get("bb")).isNull();
+    }
   }
 
   @Test
