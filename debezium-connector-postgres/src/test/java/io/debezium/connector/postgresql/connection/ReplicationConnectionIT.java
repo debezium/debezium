@@ -122,6 +122,89 @@ public class ReplicationConnectionIT {
         }
     }
 
+    @Test(expected = SQLException.class)
+    public void shouldNotRetryIfSlotCreationFailsWithoutTimeoutError() throws Exception {
+        LogInterceptor interceptor = new LogInterceptor(PostgresReplicationConnection.class);
+        try (ReplicationConnection conn1 = TestHelper.createForReplication("test1", false)) {
+            conn1.createReplicationSlot();
+            // try to create the replication slot with same name again
+            try (ReplicationConnection conn2 = TestHelper.createForReplication("test1", false)) {
+                conn2.createReplicationSlot();
+                fail("Should not be able to create 2 replication slots on same db and plugin");
+            }
+            catch (Exception e) {
+                assertFalse(interceptor.containsWarnMessage("and retrying, attempt number"));
+                assertTrue(e.getMessage().contains("ERROR: replication slot \"test1\" already exists"));
+                throw e;
+            }
+        }
+    }
+
+    @Test(expected = DebeziumException.class)
+    public void shouldRetryAndFailIfSlotCreationFailsWithTimeoutErrorOnLimitedRetries() throws Exception {
+        LogInterceptor interceptor = new LogInterceptor(PostgresReplicationConnection.class);
+        // open a transaction and don't commit it, so the slot creation will fail with timeout error
+        String statement = "DROP TABLE IF EXISTS table_with_pk;" +
+                "CREATE TABLE table_with_pk (a SERIAL, b VARCHAR(30), c TIMESTAMP NOT NULL, PRIMARY KEY(a, c));" +
+                "INSERT INTO table_with_pk (b, c) VALUES('val1', now()); ";
+        PostgresConnection connection = TestHelper.executeWithoutCommit(statement);
+        try (ReplicationConnection conn1 = TestHelper.createForReplication("test1", false,
+                new PostgresConnectorConfig(TestHelper.defaultConfig()
+                        .with(PostgresConnectorConfig.MAX_RETRIES, 1)
+                        .with(PostgresConnectorConfig.RETRY_DELAY_MS, 10)
+                        .with(PostgresConnectorConfig.CREATE_SLOT_COMMAND_TIMEOUT, 2)
+                        .build()))) {
+            conn1.createReplicationSlot();
+        }
+        catch (Exception e) {
+            assertTrue(interceptor.containsWarnMessage("and retrying, attempt number"));
+            assertTrue(e.getCause().getMessage().contains("ERROR: canceling statement due to user request"));
+            assertTrue(e.getMessage().contains("query to create replication slot timed out"));
+            throw e;
+        }
+        finally {
+            connection.commit();
+        }
+    }
+
+    @Test
+    public void shouldSucceedIfSlotCreationSucceedsAfterTimeoutErrors() throws Exception {
+        LogInterceptor interceptor = new LogInterceptor(PostgresReplicationConnection.class);
+        // open a transaction and don't commit it, so the slot creation will fail with timeout
+        String statement = "DROP TABLE IF EXISTS table_with_pk;" +
+                "CREATE TABLE table_with_pk (a SERIAL, b VARCHAR(30), c TIMESTAMP NOT NULL, PRIMARY KEY(a, c));" +
+                "INSERT INTO table_with_pk (b, c) VALUES('val1', now()); ";
+        PostgresConnection connection = TestHelper.executeWithoutCommit(statement);
+        try (ReplicationConnection conn1 = TestHelper.createForReplication("test1", false,
+                new PostgresConnectorConfig(TestHelper.defaultConfig()
+                        .with(PostgresConnectorConfig.MAX_RETRIES, 1)
+                        .with(PostgresConnectorConfig.RETRY_DELAY_MS, 10)
+                        .with(PostgresConnectorConfig.CREATE_SLOT_COMMAND_TIMEOUT, 2)
+                        .build()))) {
+            conn1.createReplicationSlot();
+        }
+        catch (Exception e) {
+            assertTrue(interceptor.containsWarnMessage("and retrying, attempt number"));
+            assertTrue(e.getCause().getMessage().contains("ERROR: canceling statement due to user request"));
+            assertTrue(e.getMessage().contains("query to create replication slot timed out"));
+        }
+        finally {
+            connection.commit();
+        }
+        // slot creation should be successful as there are no open transactions now
+        try (ReplicationConnection conn2 = TestHelper.createForReplication("test1", false,
+                new PostgresConnectorConfig(TestHelper.defaultConfig()
+                        .with(PostgresConnectorConfig.MAX_RETRIES, 1)
+                        .with(PostgresConnectorConfig.RETRY_DELAY_MS, 10)
+                        .with(PostgresConnectorConfig.CREATE_SLOT_COMMAND_TIMEOUT, 2)
+                        .build()))) {
+            conn2.createReplicationSlot();
+        }
+        catch (Exception e) {
+            fail("Should be able to create replication slot after no active transactions are present.");
+        }
+    }
+
     @Test
     public void shouldCloseConnectionOnInvalidSlotName() throws Exception {
         final int closeRetries = 60;
