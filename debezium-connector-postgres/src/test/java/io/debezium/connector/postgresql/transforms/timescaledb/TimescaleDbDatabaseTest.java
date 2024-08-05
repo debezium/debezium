@@ -168,7 +168,7 @@ public class TimescaleDbDatabaseTest extends AbstractAsyncEngineConnectorTest {
 
     private void dropPublication(PostgresConnection connection) {
         try {
-            connection.execute("DROP PUBLICATION dbz_publication");
+            connection.execute("DROP PUBLICATION IF EXISTS dbz_publication");
         }
         catch (Exception e) {
             LOGGER.debug("Error while dropping publication", e);
