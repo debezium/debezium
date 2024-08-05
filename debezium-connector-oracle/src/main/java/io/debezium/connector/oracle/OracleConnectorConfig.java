@@ -364,7 +364,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     public static final Field LOG_MINING_BUFFER_TYPE = Field.create("log.mining.buffer.type")
             .withDisplayName("Controls which buffer type implementation to be used")
-            .withEnum(LogMiningBufferType.class, LogMiningBufferType.MEMORY)
+            .withEnum(LogMiningBufferType.class, LogMiningBufferType.EHCACHE)
             .withValidation(OracleConnectorConfig::validateLogMiningBufferType)
             .withImportance(Importance.LOW)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 21))
