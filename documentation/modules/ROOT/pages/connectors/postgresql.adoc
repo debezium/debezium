@@ -1912,6 +1912,37 @@ For format details, see http://www.opengeospatial.org/standards/sfa[Open Geospat
 
 |===
 
+[id="postgresql-pgvector-types"]
+=== PgVector types
+
+The PostgreSQL connector supports all link:https://github.com/pgvector/pgvector[pgvector extension data types].
+
+.Mappings of pgvector data types
+[cols="25%a,20%a,55%a",options="header"]
+|===
+|pgvector data type
+|Literal type (schema type)
+|Semantic type (schema name) and Notes
+
+|`VECTOR`
+|`ARRAY (FLOAT64)`
+|`io.debezium.data.Vector` +
+
+|`HALFVEC`
+|`ARRAY (FLOAT32)`
+|`io.debezium.data.HalfVector` +
+
+|`SPARSEVEC`
+|`STRUCT`
+|`io.debezium.data.SparseVector` +
+ +
+Contains a structure with two fields: +
+
+* `dimensions (INT16)` - Dimensions (total length of the sparse vector) of the sparse vector.
+* `vector (MAP (INT16, FLOAT64))` - A map representing the sparse vector. Each value is is a combination of index of vector element (starting with `1`) and the value of the element.
+
+|===
+
 [id="postgresql-toasted-values"]
 === Toasted values
 PostgreSQL has a hard limit on the page size.
