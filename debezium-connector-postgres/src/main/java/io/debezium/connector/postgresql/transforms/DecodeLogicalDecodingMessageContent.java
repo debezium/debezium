@@ -7,6 +7,7 @@ package io.debezium.connector.postgresql.transforms;
 
 import static io.debezium.connector.postgresql.LogicalDecodingMessageMonitor.DEBEZIUM_LOGICAL_DECODING_MESSAGE_CONTENT_KEY;
 import static io.debezium.connector.postgresql.LogicalDecodingMessageMonitor.DEBEZIUM_LOGICAL_DECODING_MESSAGE_KEY;
+import static io.debezium.connector.postgresql.PostgresSchemaFactory.POSTGRES_LOGICAL_DECODING_MESSAGE_MONITOR_VALUE_SCHEMA_NAME;
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 
 import java.util.Map;
@@ -19,15 +20,16 @@ import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.transforms.ReplaceField;
 import org.apache.kafka.connect.transforms.Transformation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import io.debezium.DebeziumException;
 import io.debezium.Module;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -48,8 +50,6 @@ import io.debezium.util.BoundedConcurrentHashMap;
 public class DecodeLogicalDecodingMessageContent<R extends ConnectRecord<R>> implements Transformation<R>, Versioned {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DecodeLogicalDecodingMessageContent.class);
-
-    private static final String POSTGRES_LOGICAL_DECODING_MESSAGE_SCHEMA_NAME = "io.debezium.connector.postgresql.MessageValue";
 
     private BoundedConcurrentHashMap<Schema, Schema> logicalDecodingMessageContentSchemaCache;
     private ObjectMapper objectMapper;
@@ -76,7 +76,7 @@ public class DecodeLogicalDecodingMessageContent<R extends ConnectRecord<R>> imp
     @Override
     public R apply(final R record) {
         // ignore all messages that are not logical decoding messages
-        if (!Objects.equals(record.valueSchema().name(), POSTGRES_LOGICAL_DECODING_MESSAGE_SCHEMA_NAME)) {
+        if (!Objects.equals(record.valueSchema().name(), POSTGRES_LOGICAL_DECODING_MESSAGE_MONITOR_VALUE_SCHEMA_NAME)) {
             LOGGER.debug("Ignore not a logical decoding message. Message key: \"{}\"", record.key());
             return record;
         }
@@ -105,7 +105,7 @@ public class DecodeLogicalDecodingMessageContent<R extends ConnectRecord<R>> imp
                 "Retrieve content of a logical decoding message");
 
         if (logicalDecodingMessageStruct.schema().field(DEBEZIUM_LOGICAL_DECODING_MESSAGE_CONTENT_KEY).schema().type() != Schema.Type.BYTES) {
-            throw new DataException("The content of a logical decoding message is non-binary");
+            throw new DebeziumException("The content of a logical decoding message is non-binary");
         }
 
         byte[] logicalDecodingMessageContentBytes = logicalDecodingMessageStruct.getBytes(DEBEZIUM_LOGICAL_DECODING_MESSAGE_CONTENT_KEY);
@@ -114,25 +114,25 @@ public class DecodeLogicalDecodingMessageContent<R extends ConnectRecord<R>> imp
 
     private Struct convertLogicalDecodingMessageContentBytesToStruct(byte[] logicalDecodingMessageContent) {
         final String logicalDecodingMessageContentString = new String(logicalDecodingMessageContent);
-        try {
-            // parse and get Jackson JsonNode
-            final JsonNode logicalDecodingMessageContentJson = parseLogicalDecodingMessageContentJsonString(logicalDecodingMessageContentString);
-            // get schema of a logical decoding message content
-            Schema logicalDecodingMessageContentSchema = jsonSchemaData.toConnectSchema(null, logicalDecodingMessageContentJson);
-            // get Struct of a logical decoding message content
-            return (Struct) jsonSchemaData.toConnectData(logicalDecodingMessageContentJson, logicalDecodingMessageContentSchema);
-        }
-        catch (Exception e) {
-            LOGGER.warn("Conversion of logical decoding message content failed", e);
-            throw new DataException("Conversion of logical decoding message content failed");
-        }
+        // parse and get Jackson JsonNode
+        final JsonNode logicalDecodingMessageContentJson = parseLogicalDecodingMessageContentJsonString(logicalDecodingMessageContentString);
+        // get schema of a logical decoding message content
+        Schema logicalDecodingMessageContentSchema = jsonSchemaData.toConnectSchema(null, logicalDecodingMessageContentJson);
+        // get Struct of a logical decoding message content
+        return (Struct) jsonSchemaData.toConnectData(logicalDecodingMessageContentJson, logicalDecodingMessageContentSchema);
     }
 
-    private JsonNode parseLogicalDecodingMessageContentJsonString(String logicalDecodingMessageContentJsonString) throws Exception {
+    private JsonNode parseLogicalDecodingMessageContentJsonString(String logicalDecodingMessageContentJsonString) {
         if (logicalDecodingMessageContentJsonString.startsWith("{") || logicalDecodingMessageContentJsonString.startsWith("[")) {
-            return objectMapper.readTree(logicalDecodingMessageContentJsonString);
+            try {
+                return objectMapper.readTree(logicalDecodingMessageContentJsonString);
+            }
+            catch (JsonProcessingException e) {
+                throw new DebeziumException(e);
+            }
         }
-        throw new Exception("Unable to parse logical decoding message content JSON string starting with '" + logicalDecodingMessageContentJsonString.charAt(0) + "'");
+        throw new DebeziumException(
+                "Unable to parse logical decoding message content JSON string '" + logicalDecodingMessageContentJsonString + "'");
     }
 
     private R removeLogicalDecodingMessageContentField(R record) {
