@@ -82,6 +82,11 @@ public class PGTableSchemaBuilder extends TableSchemaBuilder {
     super(valueConverterProvider, defaultValueConverter, connectorConfig.schemaNameAdjuster(),
       connectorConfig.customConverterRegistry(), connectorConfig.getSourceInfoStructMaker().schema(),
       connectorConfig.getFieldNamer(), multiPartitionMode);
+
+    if (!connectorConfig.plugin().isYBOutput()) {
+      throw new DebeziumException("Class not supposed to be used with the plugin " + connectorConfig.plugin().getPostgresPluginName() + ", check configuration");
+    }
+
     this.schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
     this.valueConverterProvider = valueConverterProvider;
     this.defaultValueConverter = Optional.ofNullable(defaultValueConverter)
@@ -293,6 +298,7 @@ public class PGTableSchemaBuilder extends TableSchemaBuilder {
                   result.put(fields[i], null);
                 }
               } else {
+                value = converter.convert(value);
                 result.put(fields[i], value);
               }
             }

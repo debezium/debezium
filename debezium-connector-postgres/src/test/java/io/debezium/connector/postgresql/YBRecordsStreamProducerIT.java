@@ -129,6 +129,7 @@ public class YBRecordsStreamProducerIT extends AbstractRecordsProducerTest {
     public void before() throws Exception {
         // ensure the slot is deleted for each test
         TestHelper.dropAllSchemas();
+        TestHelper.dropPublication();
 //        TestHelper.executeDDL("init_postgis.ddl");
         String statements = "CREATE SCHEMA IF NOT EXISTS public;" +
                 "DROP TABLE IF EXISTS test_table;" +
@@ -646,7 +647,16 @@ public class YBRecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    public void verifyAllWorkingTypesInATable() throws Exception {
+    public void verifyAllWorkingTypesInATableWithYbOutput() throws Exception {
+        verifyAllWorkingTypesInATable(PostgresConnectorConfig.LogicalDecoder.YBOUTPUT);
+    }
+
+    @Test
+    public void verifyAllWorkingTypesInATableWithPgOutput() throws Exception {
+        verifyAllWorkingTypesInATable(PostgresConnectorConfig.LogicalDecoder.PGOUTPUT);
+    }
+
+    public void verifyAllWorkingTypesInATable(PostgresConnectorConfig.LogicalDecoder logicalDecoder) throws Exception {
         String createStmt = "CREATE TABLE all_types (id serial PRIMARY KEY, bigintcol bigint, " +
                               "bitcol bit(5), varbitcol varbit(5), booleanval boolean, " +
                               "byteaval bytea, ch char(5), vchar varchar(25), cidrval cidr, " +
@@ -658,10 +668,20 @@ public class YBRecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         execute(createStmt);
 
+        if (logicalDecoder == PostgresConnectorConfig.LogicalDecoder.PGOUTPUT) {
+            LOGGER.info("Changing replica identity of the table to default");
+            TestHelper.execute("ALTER TABLE all_types REPLICA IDENTITY DEFAULT;");
+            TestHelper.waitFor(Duration.ofSeconds(10));
+        }
+
+        TestHelper.dropPublication();
+
         start(YugabyteDBConnector.class,
               TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.all_types")
+                .with(PostgresConnectorConfig.PUBLICATION_AUTOCREATE_MODE, "filtered")
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, "never")
+                .with(PostgresConnectorConfig.PLUGIN_NAME, logicalDecoder.getPostgresPluginName())
                 .build());
         assertConnectorIsRunning();
         waitForStreamingToStart();
@@ -684,37 +704,47 @@ public class YBRecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         SourceRecord record = consumer.remove();
 
-        assertValueField(record, "after/bigintcol/value", 123456);
-        assertValueField(record, "after/bitcol/value", new byte[]{27});
-        assertValueField(record, "after/varbitcol/value", new byte[]{21});
-        assertValueField(record, "after/booleanval/value", false);
-        assertValueField(record, "after/byteaval/value", ByteBuffer.wrap(HexConverter.convertFromHex("01")));
-        assertValueField(record, "after/ch/value", "five5");
-        assertValueField(record, "after/vchar/value", "sample_text");
-        assertValueField(record, "after/cidrval/value", "10.1.0.0/16");
-        assertValueField(record, "after/dt/value", 19047);
-        assertValueField(record, "after/dp/value", 12.345);
-        assertValueField(record, "after/inetval/value", "127.0.0.1");
-        assertValueField(record, "after/intervalval/value", 2505600000000L);
-        assertValueField(record, "after/jsonval/value", "{\"a\":\"b\"}");
-        assertValueField(record, "after/jsonbval/value", "{\"a\": \"b\"}");
-        assertValueField(record, "after/mc/value", "2c:54:91:88:c9:e3");
-        assertValueField(record, "after/mc8/value", "22:00:5c:03:55:08:01:02");
-        assertValueField(record, "after/mn/value", 100.50);
-        assertValueField(record, "after/rl/value", 32.145);
-        assertValueField(record, "after/si/value", 12);
-        assertValueField(record, "after/i4r/value", "[2,10)");
-        assertValueField(record, "after/i8r/value", "[101,200)");
-        assertValueField(record, "after/nr/value", "(10.45,21.32)");
-        assertValueField(record, "after/tsr/value", "(\"1970-01-01 00:00:00\",\"2000-01-01 12:00:00\")");
-        assertValueField(record, "after/tstzr/value", "(\"2017-07-04 18:00:30+05:30\",\"2021-07-04 12:30:30+05:30\")");
-        assertValueField(record, "after/dr/value", "[2019-10-08,2021-10-07)");
-        assertValueField(record, "after/txt/value", "text to verify behaviour");
-        assertValueField(record, "after/tm/value", 46052000000L);
-        assertValueField(record, "after/tmtz/value", "06:30:00Z");
-        assertValueField(record, "after/ts/value", 1637841600123456L);
-        assertValueField(record, "after/tstz/value", "2021-11-25T06:30:00.000000Z");
-        assertValueField(record, "after/uuidval/value", "ffffffff-ffff-ffff-ffff-ffffffffffff");
+        assertValueField(record, getResolvedColumnName("after/bigintcol", logicalDecoder), 123456);
+        assertValueField(record, getResolvedColumnName("after/bitcol", logicalDecoder), new byte[]{27});
+        assertValueField(record, getResolvedColumnName("after/varbitcol", logicalDecoder), new byte[]{21});
+        assertValueField(record, getResolvedColumnName("after/booleanval", logicalDecoder), false);
+        assertValueField(record, getResolvedColumnName("after/byteaval", logicalDecoder), ByteBuffer.wrap(HexConverter.convertFromHex("01")));
+        assertValueField(record, getResolvedColumnName("after/ch", logicalDecoder), "five5");
+        assertValueField(record, getResolvedColumnName("after/vchar", logicalDecoder), "sample_text");
+        assertValueField(record, getResolvedColumnName("after/cidrval", logicalDecoder), "10.1.0.0/16");
+        assertValueField(record, getResolvedColumnName("after/dt", logicalDecoder), 19047);
+        assertValueField(record, getResolvedColumnName("after/dp", logicalDecoder), 12.345);
+        assertValueField(record, getResolvedColumnName("after/inetval", logicalDecoder), "127.0.0.1");
+        assertValueField(record, getResolvedColumnName("after/intervalval", logicalDecoder), 2505600000000L);
+        assertValueField(record, getResolvedColumnName("after/jsonval", logicalDecoder), "{\"a\":\"b\"}");
+        assertValueField(record, getResolvedColumnName("after/jsonbval", logicalDecoder), "{\"a\": \"b\"}");
+        assertValueField(record, getResolvedColumnName("after/mc", logicalDecoder), "2c:54:91:88:c9:e3");
+        assertValueField(record, getResolvedColumnName("after/mc8", logicalDecoder), "22:00:5c:03:55:08:01:02");
+        assertValueField(record, getResolvedColumnName("after/mn", logicalDecoder), 100.50);
+        assertValueField(record, getResolvedColumnName("after/rl", logicalDecoder), 32.145);
+        assertValueField(record, getResolvedColumnName("after/si", logicalDecoder), 12);
+        assertValueField(record, getResolvedColumnName("after/i4r", logicalDecoder), "[2,10)");
+        assertValueField(record, getResolvedColumnName("after/i8r", logicalDecoder), "[101,200)");
+        assertValueField(record, getResolvedColumnName("after/nr", logicalDecoder), "(10.45,21.32)");
+        assertValueField(record, getResolvedColumnName("after/tsr", logicalDecoder), "(\"1970-01-01 00:00:00\",\"2000-01-01 12:00:00\")");
+        assertValueField(record, getResolvedColumnName("after/tstzr", logicalDecoder), "(\"2017-07-04 18:00:30+05:30\",\"2021-07-04 12:30:30+05:30\")");
+        assertValueField(record, getResolvedColumnName("after/dr", logicalDecoder), "[2019-10-08,2021-10-07)");
+        assertValueField(record, getResolvedColumnName("after/txt", logicalDecoder), "text to verify behaviour");
+        assertValueField(record, getResolvedColumnName("after/tm", logicalDecoder), 46052000000L);
+        assertValueField(record, getResolvedColumnName("after/tmtz", logicalDecoder), "06:30:00Z");
+        assertValueField(record, getResolvedColumnName("after/ts", logicalDecoder), 1637841600123456L);
+        assertValueField(record, getResolvedColumnName("after/tstz", logicalDecoder), "2021-11-25T06:30:00.000000Z");
+        assertValueField(record, getResolvedColumnName("after/uuidval", logicalDecoder), "ffffffff-ffff-ffff-ffff-ffffffffffff");
+    }
+
+    private String getResolvedColumnName(String columnName, PostgresConnectorConfig.LogicalDecoder logicalDecoder) {
+        if (logicalDecoder == PostgresConnectorConfig.LogicalDecoder.PGOUTPUT) {
+            return columnName;
+        } else if (logicalDecoder == PostgresConnectorConfig.LogicalDecoder.YBOUTPUT) {
+            return columnName + "/value";
+        } else {
+            throw new RuntimeException("Logical decoder name value incorrect, check configuration");
+        }
     }
 
     @Ignore
