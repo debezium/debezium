@@ -29,14 +29,14 @@ public class PostgresSchemaFactory extends SchemaFactory {
     /*
      * Postgres LogicalDecodingMessageMonitor schema
      */
+    public static final String POSTGRES_LOGICAL_DECODING_MESSAGE_MONITOR_VALUE_SCHEMA_NAME = "io.debezium.connector.postgresql.MessageValue";
+    private static final int POSTGRES_LOGICAL_DECODING_MESSAGE_MONITOR_VALUE_SCHEMA_VERSION = 1;
+
     private static final String POSTGRES_LOGICAL_DECODING_MESSAGE_MONITOR_KEY_SCHEMA_NAME = "io.debezium.connector.postgresql.MessageKey";
     private static final int POSTGRES_LOGICAL_DECODING_MESSAGE_MONITOR_KEY_SCHEMA_VERSION = 1;
 
     private static final String POSTGRES_LOGICAL_DECODING_MESSAGE_MONITOR_BLOCK_SCHEMA_NAME = "io.debezium.connector.postgresql.Message";
     private static final int POSTGRES_LOGICAL_DECODING_MESSAGE_MONITOR_BLOCK_SCHEMA_VERSION = 1;
-
-    private static final String POSTGRES_LOGICAL_DECODING_MESSAGE_MONITOR_VALUE_SCHEMA_NAME = "io.debezium.connector.postgresql.MessageValue";
-    private static final int POSTGRES_LOGICAL_DECODING_MESSAGE_MONITOR_VALUE_SCHEMA_VERSION = 1;
 
     public Schema logicalDecodingMessageMonitorKeySchema(SchemaNameAdjuster adjuster) {
         return SchemaBuilder.struct()

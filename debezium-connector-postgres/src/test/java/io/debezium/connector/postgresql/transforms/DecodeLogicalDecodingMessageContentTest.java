@@ -19,7 +19,6 @@ import java.util.List;
 
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
@@ -27,6 +26,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
 
+import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnector;
 import io.debezium.connector.postgresql.SourceInfo;
@@ -87,9 +87,9 @@ public class DecodeLogicalDecodingMessageContentTest extends AbstractConnectorTe
         List<SourceRecord> recordsForTopic = records.recordsForTopic(topicName("message"));
         assertThat(recordsForTopic).hasSize(1);
 
-        Exception exception = assertThrows(DataException.class, () -> decodeLogicalDecodingMessageContent.apply(recordsForTopic.get(0)));
+        Exception exception = assertThrows(DebeziumException.class, () -> decodeLogicalDecodingMessageContent.apply(recordsForTopic.get(0)));
 
-        assertThat(exception.getMessage()).isEqualTo("Conversion of logical decoding message content failed");
+        assertThat(exception.getMessage()).isEqualTo("Unable to parse logical decoding message content JSON string ''");
     }
 
     @Test
