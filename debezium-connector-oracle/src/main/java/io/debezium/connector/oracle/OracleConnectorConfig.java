@@ -626,27 +626,32 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     public static final Field LOG_MINING_BUFFER_EHCACHE_STORAGE_PATH = Field.create("log.mining.buffer.ehcache.storage.path")
             .withType(Type.STRING)
-            .withValidation(OracleConnectorConfig::validateEhcacheFieldRequired);
+            .withValidation(OracleConnectorConfig::validateEhcacheFieldRequired)
+            .withDescription("The persistent location where the Ehcache off-heap files should be stored.");
 
     public static final Field LOG_MINING_BUFFER_EHCACHE_CACHE_TRANSACTIONS_BYTES = Field.create("log.mining.buffer.ehcache.cache.transactions.bytes")
             .withType(Type.LONG)
             .withDefault(0)
-            .withValidation(OracleConnectorConfig::validateEhcacheBytesFieldRequired);
+            .withValidation(OracleConnectorConfig::validateEhcacheBytesFieldRequired)
+            .withDescription("The size of the Ehcache transaction cache in bytes");
 
     public static final Field LOG_MINING_BUFFER_EHCACHE_CACHE_PROCESSED_TRANSACTIONS_BYTES = Field.create("log.mining.buffer.ehcache.cache.processedtransactions.bytes")
             .withType(Type.LONG)
             .withDefault(0)
-            .withValidation(OracleConnectorConfig::validateEhcacheBytesFieldRequired);
+            .withValidation(OracleConnectorConfig::validateEhcacheBytesFieldRequired)
+            .withDescription("The size of the Ehcache processed transaction cache in bytes");
 
     public static final Field LOG_MINING_BUFFER_EHCACHE_CACHE_SCHEMA_CHANGES_BYTES = Field.create("log.mining.buffer.ehcache.cache.schemachanges.bytes")
             .withType(Type.LONG)
             .withDefault(0)
-            .withValidation(OracleConnectorConfig::validateEhcacheBytesFieldRequired);
+            .withValidation(OracleConnectorConfig::validateEhcacheBytesFieldRequired)
+            .withDescription("The size of the Ehcache schema changes cache in bytes");
 
     public static final Field LOG_MINING_BUFFER_EHCACHE_CACHE_EVENTS_BYTES = Field.create("log.mining.buffer.ehcache.cache.events.bytes")
             .withType(Type.LONG)
             .withDefault(0)
-            .withValidation(OracleConnectorConfig::validateEhcacheBytesFieldRequired);
+            .withValidation(OracleConnectorConfig::validateEhcacheBytesFieldRequired)
+            .withDescription("The size of the Ehcache transaction events cache in bytes");
 
     @Deprecated
     public static final Field LOG_MINING_CONTINUOUS_MINE = Field.create("log.mining.continuous.mine")
