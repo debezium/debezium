@@ -19,7 +19,7 @@ public abstract class AbstractSerializerStream implements AutoCloseable {
 
     /**
      * The supplied value arrays can now be populated with {@link OracleValueConverters#UNAVAILABLE_VALUE}
-     * which is simple java object.  This cannot be represented as a string in the cached Infinispan record
+     * which is simple java object.  This cannot be represented as a string in the cached Ehcache record
      * and so this sentinel is used to translate the runtime object representation to a serializable form
      * and back during cache to object conversion.
      */
