@@ -2604,10 +2604,12 @@ This is only required when the Oracle installation has container database suppor
 |4
 |FLASHBACK ANY TABLE
 |Enables the connector to perform Flashback queries, which is how the connector performs the initial snapshot of data.
+Optionally, rather than granting `FLASHBACK` permission on all tables, you can grant the FLASHBACK privilege for specific tables only.
 
 |5
 |SELECT ANY TABLE
 |Enables the connector to read any table.
+Optionally, rather than granting `SELECT` permission on all tables, you can grant the `SELECT` privilege for specific tables only.
 
 |6
 |SELECT_CATALOG_ROLE
