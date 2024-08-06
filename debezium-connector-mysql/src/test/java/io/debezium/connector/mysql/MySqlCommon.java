@@ -17,6 +17,7 @@ import io.debezium.connector.binlog.util.BinlogTestConnection;
  * @author Chris Cranford
  */
 public interface MySqlCommon extends BinlogConnectorTest<MySqlConnector> {
+
     @Override
     default String getConnectorName() {
         return Module.name();
