@@ -1,0 +1,214 @@
+#
+# Copyright Debezium Authors
+#
+# Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+#
+# Cross CI workflow is triggered on a `pull_request` event.
+# It builds the Debezium core before building the Db2 connector basing on either the `master` branch or the `pull_request` branch.
+# If a `pull_request` with same branch name is present in the Debezium's upstream core repository, then the core build of this `pull_request`
+# will be based on `pull_request` branch of user's Debezium core repository.
+# Otherwise the core build of this `pull_request` will be based on the `master` branch of Debezium's upstream core repository.
+
+name: Cross Maven CI
+
+on:
+  pull_request:
+    branches:
+      - main
+      - 1.*
+      - 2.*
+    paths-ignore:
+      - '*.md'
+
+jobs:
+  build_core:
+    runs-on: ubuntu-latest
+    outputs:
+      coreHash: ${{ steps.core_hash.outputs.hash }}
+    steps:
+      - name: Check if pull request branch exists in debezium main repository
+        id: branch
+        env:
+          branch_name: ${{ github.head_ref }}
+        run: |
+          curl --silent -X "GET" https://api.github.com/repos/debezium/debezium/pulls | jq '.[] | {branch: .head.ref}' | jq -r '.branch' >> SORTED_PULLS.txt
+
+          while IFS=" " read -r BRANCH;
+          do
+            if grep -q "$branch_name" <<< "$BRANCH"; then
+              echo "BRANCH_FOUND=true" >> $GITHUB_OUTPUT
+            fi
+          done < SORTED_PULLS.txt
+      - name: Checkout core repository with pull request branch
+        if: ${{ steps.branch.outputs.BRANCH_FOUND == 'true' }}
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.pull_request.user.login }}/debezium
+          ref: ${{ github.head_ref }}
+          path: core
+      - name: Checkout core repository with default base branch
+        if: ${{ steps.branch.outputs.BRANCH_FOUND != 'true' }}
+        uses: actions/checkout@v4
+        with:
+          repository: debezium/debezium
+          ref: ${{ github.base_ref }}
+          path: core
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: 17
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        id: cache
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-debezium-core-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-maven-debezium-core-${{ hashFiles('**/pom.xml') }}
+      - name: Maven build core
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: ./core/mvnw clean install -f core/pom.xml -pl debezium-bom,debezium-core,debezium-embedded,debezium-storage -am -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+      - name: Output core cache hash
+        id: core_hash
+        run: |
+          echo "hash=${{ hashFiles('**/pom.xml') }}" >> "$GITHUB_OUTPUT"
+
+  # Build step that checks out the source, builds, and includes the integration and the
+  # end to end tests for DB2 as part of the build step.
+  build_db2:
+    name: Build and test (Db2)
+    needs: [ build_core ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout JDBC sink connector
+        uses: actions/checkout@v4
+        with:
+          path: jdbc
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: 17
+      - name: Load Debezium core cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-debezium-core-${{ needs.build_core.outputs.coreHash}}
+      - name: Build sink
+        run: ./jdbc/mvnw clean install -f jdbc/pom.xml -B -Passembly -Dtest.tags=it-db2,e2e-db2 -Dsource.connectors=mysql,postgres,sqlserver
+
+  # Build step that checks out the source, builds, and includes the integration and the
+  # end to end tests for MySQL as part of the build step.
+  build_mysql:
+    name: Build and test (MySQL)
+    needs: [ build_core ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout core repository
+        uses: actions/checkout@v4
+        with:
+          repository: debezium/debezium
+          path: core
+      - name: Checkout JDBC sink connector
+        uses: actions/checkout@v4
+        with:
+          path: jdbc
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: 17
+      - name: Load Debezium core cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-debezium-core-${{ needs.build_core.outputs.coreHash}}
+      - name: Build sink
+        run: ./jdbc/mvnw clean install -f jdbc/pom.xml -B -Passembly -Dtest.tags=it-mysql,e2e-mysql -Dsource.connectors=mysql,postgres,sqlserver
+
+  # Build step that checks out the source, builds, and includes the integration and the
+  # end to end tests for Oracle as part of the build step.
+  #  build_oracle:
+  #    name: Build and test (Oracle)
+  #    needs: [build_core]
+  #    runs-on: ubuntu-latest
+  #    steps:
+  #      - name: Checkout core repository
+  #        uses: actions/checkout@v4
+  #        with:
+  #          repository: debezium/debezium
+  #          path: core
+  #      - name: Checkout JDBC sink connector
+  #        uses: actions/checkout@v4
+  #        with:
+  #          path: jdbc
+  #      - name: Set up Java 17
+  #        uses: actions/setup-java@v4
+  #        with:
+  #          distribution: 'temurin'
+  #          java-version: 17
+  #      - name: Load Debezium core cache
+  #        uses: actions/cache/restore@v4
+  #        with:
+  #          path: ~/.m2/repository
+  #          key: ${{ runner.os }}-maven-debezium-core-${{ needs.build_core.outputs.coreHash}}
+  #      - name: Build sink
+  #        run: ./jdbc/mvnw clean install -f jdbc/pom.xml -B -Passembly -Dtest.tags=it-oracle,e2e-oracle -Dsource.connectors=mysql,postgres,sqlserver
+
+  # Build step that checks out the source, builds, and includes the integration and the
+  # end to end tests for PostgreSQL as part of the build step.
+  build_postgresql:
+    name: Build and test (PostgreSQL)
+    needs: [ build_core ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout core repository
+        uses: actions/checkout@v4
+        with:
+          repository: debezium/debezium
+          path: core
+      - name: Checkout JDBC sink connector
+        uses: actions/checkout@v4
+        with:
+          path: jdbc
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: 17
+      - name: Load Debezium core cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-debezium-core-${{ needs.build_core.outputs.coreHash}}
+      - name: Build sink
+        run: ./jdbc/mvnw clean install -f jdbc/pom.xml -B -Passembly -Dtest.tags=it-postgresql,e2e-postgresql -Dsource.connectors=mysql,postgres,sqlserver
+
+  # Build step that checks out the source, builds, and includes the integration and the
+  # end to end tests for SQL Server as part of the build step.
+  build_sqlserver:
+    name: Build and test (SQL Server)
+    needs: [ build_core ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout core repository
+        uses: actions/checkout@v4
+        with:
+          repository: debezium/debezium
+          path: core
+      - name: Checkout JDBC sink connector
+        uses: actions/checkout@v4
+        with:
+          path: jdbc
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: 17
+      - name: Load Debezium core cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-debezium-core-${{ needs.build_core.outputs.coreHash}}
+      - name: Build sink
+        run: ./jdbc/mvnw clean install -f jdbc/pom.xml -B -Passembly -Dtest.tags=it-sqlserver,e2e-sqlserver -Dsource.connectors=mysql,postgres,sqlserver
