@@ -1913,11 +1913,11 @@ For format details, see http://www.opengeospatial.org/standards/sfa[Open Geospat
 |===
 
 [id="postgresql-pgvector-types"]
-=== PgVector types
+=== pgvector types
 
 The PostgreSQL connector supports all link:https://github.com/pgvector/pgvector[pgvector extension data types].
 
-.Mappings of pgvector data types
+.Mappings of PostgreSQL `pgvector` data types
 [cols="25%a,20%a,55%a",options="header"]
 |===
 |pgvector data type
@@ -1934,12 +1934,16 @@ The PostgreSQL connector supports all link:https://github.com/pgvector/pgvector[
 
 |`SPARSEVEC`
 |`STRUCT`
-|`io.debezium.data.SparseVector` +
- +
-Contains a structure with two fields: +
+|`io.debezium.data.SparseVector` 
+ 
+Contains a structure that includes the following fields: 
 
-* `dimensions (INT16)` - Dimensions (total length of the sparse vector) of the sparse vector.
-* `vector (MAP (INT16, FLOAT64))` - A map representing the sparse vector. Each value is is a combination of index of vector element (starting with `1`) and the value of the element.
+`dimensions (INT16)`:: The total length of the sparse vector.
+`vector (MAP (INT16, FLOAT64))`:: A map that represents the sparse vector.  +
+Each map value includes the following elements:
+
+* Index number of the vector element (starting with `1`).
+* Value of the vector element.
 
 |===
 
