@@ -521,13 +521,47 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         initPublication();
 
         try (Statement stmt = pgConnection().createStatement()) {
+            stmt.setQueryTimeout(toIntExact(connectorConfig.createSlotCommandTimeout()));
             String createCommand = String.format(
                     "CREATE_REPLICATION_SLOT \"%s\" %s LOGICAL %s",
                     slotName,
                     tempPart,
                     plugin.getPostgresPluginName());
             LOGGER.info("Creating replication slot with command {}", createCommand);
-            stmt.execute(createCommand);
+
+            final int maxRetries = connectorConfig.maxRetries();
+            final Duration delay = connectorConfig.retryDelay();
+            int tryCount = 0;
+            while (true) {
+                try {
+                    stmt.execute(createCommand);
+                    break;
+                }
+                catch (SQLException ex) {
+                    // intercept the statement timeout error and retry
+                    if (ex.getMessage().contains("canceling statement due to user request")) {
+                        String message = "Creation of replication slot failed; " +
+                                "query to create replication slot timed out, please make sure that there are no long running queries on the database.";
+                        if (++tryCount > maxRetries) {
+                            throw new DebeziumException(message, ex);
+                        }
+                        else {
+                            LOGGER.warn("{} Waiting for {} and retrying, attempt number {} over {}", message, delay, tryCount, maxRetries, ex);
+                            final Metronome metronome = Metronome.parker(delay, Clock.SYSTEM);
+                            try {
+                                metronome.pause();
+                            }
+                            catch (InterruptedException e) {
+                                LOGGER.warn("Slot creation retry sleep interrupted by exception: {}", e.getMessage());
+                                Thread.currentThread().interrupt();
+                            }
+                        }
+                    }
+                    else {
+                        throw ex;
+                    }
+                }
+            }
             // when we are in Postgres 9.4+, we can parse the slot creation info,
             // otherwise, it returns nothing
             if (canExportSnapshot) {

@@ -594,6 +594,14 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     "Whether or not to seek to the last known offset on the replication slot." +
                             "Enabling this option results in startup failure if the slot is re-created instead of data loss.");
 
+    public static final Field CREATE_SLOT_COMMAND_TIMEOUT = Field.createInternal("create.slot.command.timeout")
+            .withDisplayName("Replication slot creation timeout")
+            .withType(Type.LONG)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION, 4))
+            .withDefault(90L)
+            .withImportance(Importance.LOW)
+            .withDescription("The timeout in seconds for the creation of the replication slot.");
+
     public static final Field PUBLICATION_NAME = Field.create("publication.name")
             .withDisplayName("Publication")
             .withType(Type.STRING)
@@ -1036,6 +1044,10 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     public boolean slotSeekToKnownOffsetOnStart() {
         return getConfig().getBoolean(SLOT_SEEK_TO_KNOWN_OFFSET);
+    }
+
+    public long createSlotCommandTimeout() {
+        return getConfig().getLong(CREATE_SLOT_COMMAND_TIMEOUT);
     }
 
     public String publicationName() {
