@@ -209,6 +209,39 @@ public final class TestHelper {
     }
 
     /**
+     * Executes a JDBC statement using the default jdbc config without committing the connection
+     *
+     * @param statement A SQL statement
+     * @param furtherStatements Further SQL statement(s)
+     *
+     * @return the PostgresConnection instance; never null
+     */
+    public static PostgresConnection executeWithoutCommit(String statement, String... furtherStatements) {
+        if (furtherStatements != null) {
+            for (String further : furtherStatements) {
+                statement = statement + further;
+            }
+        }
+
+        try {
+            PostgresConnection connection = create();
+            connection.setAutoCommit(false);
+            connection.executeWithoutCommitting(statement);
+            Connection jdbcConn = connection.connection();
+            if (statement.endsWith("ROLLBACK;")) {
+                jdbcConn.rollback();
+            }
+            return connection;
+        }
+        catch (RuntimeException e) {
+            throw e;
+        }
+        catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
      * Drops all the public non system schemas from the DB.
      *
      * @throws SQLException if anything fails.
