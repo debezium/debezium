@@ -125,10 +125,10 @@ public class ReplicationConnectionIT {
     @Test(expected = SQLException.class)
     public void shouldNotRetryIfSlotCreationFailsWithoutTimeoutError() throws Exception {
         LogInterceptor interceptor = new LogInterceptor(PostgresReplicationConnection.class);
-        try (ReplicationConnection conn1 = TestHelper.createForReplication("test1", false)) {
+        try (ReplicationConnection conn1 = TestHelper.createForReplication("testslot1", false)) {
             conn1.createReplicationSlot();
             // try to create the replication slot with same name again
-            try (ReplicationConnection conn2 = TestHelper.createForReplication("test1", false)) {
+            try (ReplicationConnection conn2 = TestHelper.createForReplication("testslot1", false)) {
                 conn2.createReplicationSlot();
                 fail("Should not be able to create 2 replication slots on same db and plugin");
             }
@@ -148,7 +148,7 @@ public class ReplicationConnectionIT {
                 "CREATE TABLE table_with_pk (a SERIAL, b VARCHAR(30), c TIMESTAMP NOT NULL, PRIMARY KEY(a, c));" +
                 "INSERT INTO table_with_pk (b, c) VALUES('val1', now()); ";
         PostgresConnection connection = TestHelper.executeWithoutCommit(statement);
-        try (ReplicationConnection conn1 = TestHelper.createForReplication("test1", false,
+        try (ReplicationConnection conn1 = TestHelper.createForReplication("testslot2", false,
                 new PostgresConnectorConfig(TestHelper.defaultConfig()
                         .with(PostgresConnectorConfig.MAX_RETRIES, 1)
                         .with(PostgresConnectorConfig.RETRY_DELAY_MS, 10)
@@ -175,7 +175,7 @@ public class ReplicationConnectionIT {
                 "CREATE TABLE table_with_pk (a SERIAL, b VARCHAR(30), c TIMESTAMP NOT NULL, PRIMARY KEY(a, c));" +
                 "INSERT INTO table_with_pk (b, c) VALUES('val1', now()); ";
         PostgresConnection connection = TestHelper.executeWithoutCommit(statement);
-        try (ReplicationConnection conn1 = TestHelper.createForReplication("test1", false,
+        try (ReplicationConnection conn1 = TestHelper.createForReplication("testslot3", false,
                 new PostgresConnectorConfig(TestHelper.defaultConfig()
                         .with(PostgresConnectorConfig.MAX_RETRIES, 1)
                         .with(PostgresConnectorConfig.RETRY_DELAY_MS, 10)
@@ -192,7 +192,7 @@ public class ReplicationConnectionIT {
             connection.commit();
         }
         // slot creation should be successful as there are no open transactions now
-        try (ReplicationConnection conn2 = TestHelper.createForReplication("test1", false,
+        try (ReplicationConnection conn2 = TestHelper.createForReplication("testslot3", false,
                 new PostgresConnectorConfig(TestHelper.defaultConfig()
                         .with(PostgresConnectorConfig.MAX_RETRIES, 1)
                         .with(PostgresConnectorConfig.RETRY_DELAY_MS, 10)
