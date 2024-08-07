@@ -44,17 +44,6 @@ Currently, you can request `incremental` or `blocking` snapshots.
 The format of the names is the same as for the `signal.data.collection` configuration option.
 
 ifeval::['{context}' != 'mongodb']
-|`[.line-through]#additional-condition#`
-|_N/A_
-| An optional string, which specifies a condition based on the column(s) of the {data-collection}(s), to capture a
-subset of the contents of the {data-collection}(s). +
-
-[NOTE]
-====
-This property is deprecated.
-To specify criteria for defining the subset of data that you want the snapshot to capture, use the `additional-conditions` parameter.
-====
-
 |`additional-conditions`
 |_N/A_
 |An optional array that specifies a set of additional conditions that the connector evaluates to determine the subset of records to include in a snapshot. +
@@ -66,7 +55,6 @@ You can apply different filters to each {data-collection}.
 `filter`:: Specifies column values that must be present in a database record for the snapshot to include it, for example,  `"color='blue'"`. +
  +
 The values that you assign to the `filter` parameter are the same types of values that you might specify in the `WHERE` clause of `SELECT` statements when you set the `snapshot.select.statement.overrides` property for a blocking snapshot.
-In earlier {prodname} releases, an explicit `filter` parameter was not defined for snapshot signals; instead, filter criteria were implied by the values that were specified for the now deprecated  `additional-condition` parameter.
 endif::[]
 
 ifeval::['{context}' != 'mongodb']
