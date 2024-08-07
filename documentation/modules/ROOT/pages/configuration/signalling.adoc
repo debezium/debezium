@@ -202,14 +202,6 @@ Currently {prodname} supports the `incremental` and `blocking` types.
 | An array of comma-separated regular expressions that match the fully-qualified names of the data collections to include in the snapshot. +
 Specify the names by using the same format as is required for the `signal.data.collection` configuration option.
 
-|`[.line-through]#additional-condition#`
-|_N/A_
-| An optional string that specifies a condition that the connector evaluates to designate a subset of records to include in a snapshot. +
- +
-[NOTE]
-====
-This property is deprecated and should be replaced by the `additional-conditions` property.
-====
 
 |`additional-conditions`
 |_N/A_
@@ -272,15 +264,6 @@ Currently {prodname} supports the `incremental` and `blocking` types.
 |_N/A_
 | An array of comma-separated regular expressions that match the fully-qualified names of the tables to include in the snapshot. +
 Specify the names by using the same format as is required for the xref:{context}-property-signal-data-collection[signal.data.collection] configuration option.
-
-|`[.line-through]#additional-condition#`
-|_N/A_
-| An optional string that specifies a condition that the connector evaluates to designate a subset of records to include in a snapshot. +
-
-[NOTE]
-====
-This property is deprecated and should be replaced by the `additional-conditions` property.
-====
 
 |`additional-conditions`
 |_N/A_
