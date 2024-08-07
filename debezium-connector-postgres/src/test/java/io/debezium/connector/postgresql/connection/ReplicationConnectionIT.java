@@ -134,7 +134,7 @@ public class ReplicationConnectionIT {
             }
             catch (Exception e) {
                 assertFalse(interceptor.containsWarnMessage("and retrying, attempt number"));
-                assertTrue(e.getMessage().contains("ERROR: replication slot \"test1\" already exists"));
+                assertTrue(e.getMessage().contains("ERROR: replication slot \"testslot1\" already exists"));
                 throw e;
             }
         }
