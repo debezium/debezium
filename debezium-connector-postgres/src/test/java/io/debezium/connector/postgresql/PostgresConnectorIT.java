@@ -264,6 +264,17 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
+    public void shouldThrowErrorIfDecimalHandlingModePreciseIsUsed() throws Exception {
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, RelationalDatabaseConnectorConfig.DecimalHandlingMode.PRECISE);
+
+        start(YugabyteDBConnector.class, configBuilder.build(), (success, msg, error) -> {
+            assertFalse(success);
+            assertThat(error.getMessage().contains("Decimal handling mode PRECISE is unsupported, please use DOUBLE or STRING")).isTrue();
+        });
+    }
+
+    @Test
     public void shouldValidateReplicationSlotName() throws Exception {
         Configuration config = Configuration.create()
                 .with(PostgresConnectorConfig.SLOT_NAME, "xx-aa")

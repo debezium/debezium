@@ -13,11 +13,13 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
+import io.debezium.DebeziumException;
 import io.debezium.data.Envelope;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.heartbeat.HeartbeatConnectionProvider;
 import io.debezium.heartbeat.HeartbeatErrorHandler;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import org.apache.kafka.common.config.ConfigDef;
@@ -547,6 +549,16 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .required()
             .withValidation(PostgresConnectorConfig::validateYBHostname)
             .withDescription("Resolvable hostname or IP address of the database server.");
+
+    public static final Field DECIMAL_HANDLING_MODE = Field.create("decimal.handling.mode")
+            .withDisplayName("Decimal Handling")
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 2))
+            .withEnum(DecimalHandlingMode.class, DecimalHandlingMode.DOUBLE)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("Specify how DECIMAL and NUMERIC columns should be represented in change events, including: "
+                    + "'string' uses string to represent values; "
+                    + "'double' represents values using Java's 'double', which may not offer the precision but will be far easier to use in consumers.");
 
     public static final Field PLUGIN_NAME = Field.create("plugin.name")
             .withDisplayName("Plugin")
@@ -1103,6 +1115,19 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             return Strings.hexStringToByteArray(placeholder.substring(4));
         }
         return placeholder.getBytes();
+    }
+
+    @Override
+    public JdbcValueConverters.DecimalMode getDecimalMode() {
+        JdbcValueConverters.DecimalMode decimalMode = DecimalHandlingMode
+                .parse(getConfig().getString(DECIMAL_HANDLING_MODE))
+                .asDecimalMode();
+
+        if (decimalMode == JdbcValueConverters.DecimalMode.PRECISE) {
+            throw new DebeziumException("Decimal handling mode PRECISE is unsupported, please use DOUBLE or STRING");
+        } else {
+            return decimalMode;
+        }
     }
 
     public Optional<ReplicaIdentityMapper> replicaIdentityMapper() {
