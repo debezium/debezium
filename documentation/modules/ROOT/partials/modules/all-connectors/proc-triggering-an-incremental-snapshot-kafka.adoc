@@ -22,15 +22,6 @@ See the next section for more details.
 | An array of comma-separated regular expressions that match the fully-qualified names of tables to include in the snapshot. +
 Specify the names by using the same format as is required for the xref:{context}-property-signal-data-collection[signal.data.collection] configuration option.
 
-|`[.line-through]#additional-condition#`
-|_N/A_
-| An optional string that specifies a condition that the connector evaluates to designate a subset of records to include in a snapshot. +
-
-[NOTE]
-====
-This property is deprecated and should be replaced by the `additional-conditions` property.
-====
-
 |`additional-conditions`
 |_N/A_
 | An optional array of additional conditions that specifies criteria that the connector evaluates to designate a subset of records to include in a snapshot. +
@@ -41,7 +32,6 @@ You can apply different filters to each {data-collection}.
 `filter`:: Specifies column values that must be present in a database record for the snapshot to include it, for example,  `"color='blue'"`. +
  +
 The values that you assign to the `filter` parameter are the same types of values that you might specify in the `WHERE` clause of `SELECT` statements when you set the `snapshot.select.statement.overrides` property for a blocking snapshot.
-In earlier {prodname} releases, an explicit `filter` parameter was not defined for snapshot signals; instead, filter criteria were implied by the values that were specified for the now deprecated `additional-condition` parameter.
 |===
 
 An example of the execute-snapshot Kafka message:
