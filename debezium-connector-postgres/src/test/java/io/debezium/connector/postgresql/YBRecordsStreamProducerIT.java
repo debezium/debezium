@@ -78,6 +78,7 @@ import java.time.Instant;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -671,6 +672,8 @@ public class YBRecordsStreamProducerIT extends AbstractRecordsProducerTest {
         if (logicalDecoder == PostgresConnectorConfig.LogicalDecoder.PGOUTPUT) {
             LOGGER.info("Changing replica identity of the table to default");
             TestHelper.execute("ALTER TABLE all_types REPLICA IDENTITY DEFAULT;");
+            TestHelper.execute("ALTER TABLE test_table REPLICA IDENTITY DEFAULT;");
+            TestHelper.execute("ALTER TABLE table_with_interval REPLICA IDENTITY DEFAULT;");
             TestHelper.waitFor(Duration.ofSeconds(10));
         }
 
@@ -746,6 +749,380 @@ public class YBRecordsStreamProducerIT extends AbstractRecordsProducerTest {
             throw new RuntimeException("Logical decoder name value incorrect, check configuration");
         }
     }
+
+    @Test
+    public void verifyUpdatesForColumnsOfAllTypesForYbOutput() throws Exception {
+        verifyUpdatesForColumnsOfAllTypes(PostgresConnectorConfig.LogicalDecoder.YBOUTPUT);
+    }
+
+    @Test
+    public void verifyUpdatesForColumnsOfAllTypesForPgOutput() throws Exception {
+        verifyUpdatesForColumnsOfAllTypes(PostgresConnectorConfig.LogicalDecoder.PGOUTPUT);
+    }
+
+    public void verifyUpdatesForColumnsOfAllTypes(PostgresConnectorConfig.LogicalDecoder logicalDecoder) throws Exception {
+        String createStmt = "CREATE TABLE all_types (id serial PRIMARY KEY, bigintcol bigint, " +
+                "bitcol bit(5), varbitcol varbit(5), booleanval boolean, " +
+                "byteaval bytea, ch char(5), vchar varchar(25), cidrval cidr, " +
+                "dt date, dp double precision, inetval inet, intervalval interval, " +
+                "jsonval json, jsonbval jsonb, mc macaddr, mc8 macaddr8, mn money, " +
+                "rl real, si smallint, i4r int4range, i8r int8range, " +
+                "nr numrange, tsr tsrange, tstzr tstzrange, dr daterange, txt text, " +
+                "tm time, tmtz timetz, ts timestamp, tstz timestamptz, uuidval uuid)";
+
+        execute(createStmt);
+
+        if (logicalDecoder == PostgresConnectorConfig.LogicalDecoder.PGOUTPUT) {
+            LOGGER.info("Changing replica identity of all the tables to default");
+            TestHelper.execute("ALTER TABLE all_types REPLICA IDENTITY DEFAULT;");
+            TestHelper.execute("ALTER TABLE test_table REPLICA IDENTITY DEFAULT;");
+            TestHelper.execute("ALTER TABLE table_with_interval REPLICA IDENTITY DEFAULT;");
+            TestHelper.waitFor(Duration.ofSeconds(10));
+        }
+
+        TestHelper.dropDefaultReplicationSlot();
+        TestHelper.dropPublication();
+
+        start(YugabyteDBConnector.class,
+                TestHelper.defaultConfig()
+                        .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.all_types")
+                        .with(PostgresConnectorConfig.PUBLICATION_AUTOCREATE_MODE, "filtered")
+                        .with(PostgresConnectorConfig.SNAPSHOT_MODE, "never")
+                        .with(PostgresConnectorConfig.PLUGIN_NAME, logicalDecoder.getPostgresPluginName())
+                        .build());
+        assertConnectorIsRunning();
+        waitForStreamingToStart();
+        consumer = testConsumer(1);
+
+        String insertStmt =
+                "INSERT INTO all_types (bigintcol, bitcol, varbitcol, booleanval, byteaval, ch, vchar, cidrval, dt, " +
+                        "dp, inetval, intervalval, jsonval, jsonbval, mc, mc8, mn, rl, si, i4r, i8r, nr, tsr, tstzr, dr, " +
+                        "txt, tm, tmtz, ts, tstz, uuidval) VALUES (123456, '11011', '10101', FALSE, E'\\\\001', 'five5', " +
+                        "'sample_text', '10.1.0.0/16', '2022-02-24', 12.345, '127.0.0.1', " +
+                        "'2020-03-10 00:00:00'::timestamp-'2020-02-10 00:00:00'::timestamp, '{\"a\":\"b\"}', " +
+                        "'{\"a\":\"b\"}', '2C:54:91:88:C9:E3', '22:00:5c:03:55:08:01:02', '$100.5', " +
+                        "32.145, 12, '(1, 10)', '(100, 200)', '(10.45, 21.32)', " +
+                        "'(1970-01-01 00:00:00, 2000-01-01 12:00:00)', '(2017-07-04 12:30:30 UTC, 2021-07-04 12:30:30+05:30)', " +
+                        "'(2019-10-07, 2021-10-07)', 'text to verify behaviour', '12:47:32', '12:00:00+05:30', " +
+                        "'2021-11-25 12:00:00.123456', '2021-11-25 12:00:00+05:30', 'ffffffff-ffff-ffff-ffff-ffffffffffff');";
+
+        consumer.expects(1);
+        executeAndWait(insertStmt);
+
+        SourceRecord record = consumer.remove();
+
+        assertValueField(record, getResolvedColumnName("after/bigintcol", logicalDecoder), 123456);
+        assertValueField(record, getResolvedColumnName("after/bitcol", logicalDecoder), new byte[]{27});
+        assertValueField(record, getResolvedColumnName("after/varbitcol", logicalDecoder), new byte[]{21});
+        assertValueField(record, getResolvedColumnName("after/booleanval", logicalDecoder), false);
+        assertValueField(record, getResolvedColumnName("after/byteaval", logicalDecoder), ByteBuffer.wrap(HexConverter.convertFromHex("01")));
+        assertValueField(record, getResolvedColumnName("after/ch", logicalDecoder), "five5");
+        assertValueField(record, getResolvedColumnName("after/vchar", logicalDecoder), "sample_text");
+        assertValueField(record, getResolvedColumnName("after/cidrval", logicalDecoder), "10.1.0.0/16");
+        assertValueField(record, getResolvedColumnName("after/dt", logicalDecoder), 19047);
+        assertValueField(record, getResolvedColumnName("after/dp", logicalDecoder), 12.345);
+        assertValueField(record, getResolvedColumnName("after/inetval", logicalDecoder), "127.0.0.1");
+        assertValueField(record, getResolvedColumnName("after/intervalval", logicalDecoder), 2505600000000L);
+        assertValueField(record, getResolvedColumnName("after/jsonval", logicalDecoder), "{\"a\":\"b\"}");
+        assertValueField(record, getResolvedColumnName("after/jsonbval", logicalDecoder), "{\"a\": \"b\"}");
+        assertValueField(record, getResolvedColumnName("after/mc", logicalDecoder), "2c:54:91:88:c9:e3");
+        assertValueField(record, getResolvedColumnName("after/mc8", logicalDecoder), "22:00:5c:03:55:08:01:02");
+        assertValueField(record, getResolvedColumnName("after/mn", logicalDecoder), 100.50);
+        assertValueField(record, getResolvedColumnName("after/rl", logicalDecoder), 32.145);
+        assertValueField(record, getResolvedColumnName("after/si", logicalDecoder), 12);
+        assertValueField(record, getResolvedColumnName("after/i4r", logicalDecoder), "[2,10)");
+        assertValueField(record, getResolvedColumnName("after/i8r", logicalDecoder), "[101,200)");
+        assertValueField(record, getResolvedColumnName("after/nr", logicalDecoder), "(10.45,21.32)");
+        assertValueField(record, getResolvedColumnName("after/tsr", logicalDecoder), "(\"1970-01-01 00:00:00\",\"2000-01-01 12:00:00\")");
+        assertValueField(record, getResolvedColumnName("after/tstzr", logicalDecoder), "(\"2017-07-04 18:00:30+05:30\",\"2021-07-04 12:30:30+05:30\")");
+        assertValueField(record, getResolvedColumnName("after/dr", logicalDecoder), "[2019-10-08,2021-10-07)");
+        assertValueField(record, getResolvedColumnName("after/txt", logicalDecoder), "text to verify behaviour");
+        assertValueField(record, getResolvedColumnName("after/tm", logicalDecoder), 46052000000L);
+        assertValueField(record, getResolvedColumnName("after/tmtz", logicalDecoder), "06:30:00Z");
+        assertValueField(record, getResolvedColumnName("after/ts", logicalDecoder), 1637841600123456L);
+        assertValueField(record, getResolvedColumnName("after/tstz", logicalDecoder), "2021-11-25T06:30:00.000000Z");
+        assertValueField(record, getResolvedColumnName("after/uuidval", logicalDecoder), "ffffffff-ffff-ffff-ffff-ffffffffffff");
+
+        // Update each column one by one.
+        TestHelper.execute("UPDATE all_types SET bigintcol = 234567 WHERE id = 1;");
+        TestHelper.execute("UPDATE all_types SET bitcol = '11111' WHERE id = 1;");
+        TestHelper.execute("UPDATE all_types SET varbitcol = '00011' WHERE id = 1;");
+        TestHelper.execute("UPDATE all_types SET booleanval = TRUE WHERE id = 1;");
+        TestHelper.execute("UPDATE all_types SET byteaval = null WHERE id = 1;");
+        TestHelper.execute("UPDATE all_types SET ch = 'four4' WHERE id = 1;");
+        TestHelper.execute("UPDATE all_types SET vchar = 'sample_text_updated' WHERE id = 1;");
+        TestHelper.execute("UPDATE all_types SET cidrval = '192.0.2.0/24' WHERE id = 1;");
+        TestHelper.execute("UPDATE all_types SET dt = '2024-08-06' WHERE id = 1;");
+        TestHelper.execute("UPDATE all_types SET dp = 23.456 WHERE id = 1;");
+        TestHelper.execute("UPDATE all_types SET inetval = '192.168.1.1' WHERE id = 1;");
+        TestHelper.execute("UPDATE all_types SET intervalval = '2020-03-11 00:00:00'::timestamp-'2020-02-10 00:00:00'::timestamp WHERE id = 1;");
+        TestHelper.execute("UPDATE all_types SET jsonval = '{\"c\":\"d\",\"e\":123}' WHERE id = 1;");
+        TestHelper.execute("UPDATE all_types SET jsonbval = '{\"c\":\"d\",\"e\":123}' WHERE id = 1;");
+        TestHelper.execute("UPDATE all_types SET mc = '2c:54:91:99:c9:e3' WHERE id = 1;");
+        TestHelper.execute("UPDATE all_types SET mc8 = '22:00:5c:3d:55:08:01:02' WHERE id = 1;");
+        TestHelper.execute("UPDATE all_types SET mn = '$200.5' WHERE id = 1;");
+        TestHelper.execute("UPDATE all_types SET rl = 44.556 WHERE id = 1;");
+        TestHelper.execute("UPDATE all_types SET si = 11 WHERE id = 1;");
+        TestHelper.execute("UPDATE all_types SET i4r = '(10, 100)' WHERE id = 1;");
+        TestHelper.execute("UPDATE all_types SET i8r = '(200, 10000)' WHERE id = 1;");
+        TestHelper.execute("UPDATE all_types SET nr = '(12.35, 56.78)' WHERE id = 1;");
+        TestHelper.execute("UPDATE all_types SET tsr = '(2000-01-01 00:00:00, 2000-01-02 00:00:00)' WHERE id = 1;");
+        TestHelper.execute("UPDATE all_types SET tstzr = '(2000-01-01 00:05:30+05:30, 2000-01-02 00:00:00 UTC)' WHERE id = 1;");
+        TestHelper.execute("UPDATE all_types SET dr = '(2000-01-01, 2000-01-03)' WHERE id = 1;");
+        TestHelper.execute("UPDATE all_types SET txt = 'updated text to verify behaviour' WHERE id = 1;");
+        TestHelper.execute("UPDATE all_types SET tm = '14:15:16' WHERE id = 1;");
+        TestHelper.execute("UPDATE all_types SET tmtz = '05:30:00+05:30' WHERE id = 1;");
+        TestHelper.execute("UPDATE all_types SET ts = '2024-08-06 12:00:00.123456' WHERE id = 1;");
+        TestHelper.execute("UPDATE all_types SET tstz = '2024-08-06 12:00:00+05:30' WHERE id = 1;");
+        TestHelper.execute("UPDATE all_types SET uuidval = 'ffffffff-ffff-ffff-ffff-123456789abc' WHERE id = 1;");
+
+        // This excludes the primary key column.
+        List<String> columnsInAllTypes = List.of("bigintcol", "bitcol", "varbitcol", "booleanval", "byteaval", "ch", "vchar", "cidrval", "dt", "dp", "inetval",
+                "intervalval", "jsonval", "jsonbval", "mc", "mc8", "mn", "rl", "si", "i4r", "i8r", "nr", "tsr", "tstzr", "dr", "txt", "tm", "tmtz", "ts", "tstz",
+                "uuidval");
+
+        SourceRecords allRecords = consumeRecordsByTopic(31 /* total records for updated */);
+        List<SourceRecord> records = allRecords.allRecordsInOrder();
+
+        assertThat(records.size()).isEqualTo(31);
+
+        assertColumnInUpdate(columnsInAllTypes, records.get(0), "after/bigintcol", 234567, logicalDecoder);
+        assertColumnInUpdate(columnsInAllTypes, records.get(1), "after/bitcol", new byte[]{31}, logicalDecoder);
+        assertColumnInUpdate(columnsInAllTypes, records.get(2), "after/varbitcol", new byte[]{3}, logicalDecoder);
+        assertColumnInUpdate(columnsInAllTypes, records.get(3), "after/booleanval", true, logicalDecoder);
+        assertColumnInUpdate(columnsInAllTypes, records.get(4), "after/byteaval", null, logicalDecoder);
+        assertColumnInUpdate(columnsInAllTypes, records.get(5), "after/ch", "four4", logicalDecoder);
+        assertColumnInUpdate(columnsInAllTypes, records.get(6), "after/vchar", "sample_text_updated", logicalDecoder);
+        assertColumnInUpdate(columnsInAllTypes, records.get(7), "after/cidrval", "192.0.2.0/24", logicalDecoder);
+        assertColumnInUpdate(columnsInAllTypes, records.get(8), "after/dt", 19941, logicalDecoder);
+        assertColumnInUpdate(columnsInAllTypes, records.get(9), "after/dp", 23.456, logicalDecoder);
+        assertColumnInUpdate(columnsInAllTypes, records.get(10), "after/inetval", "192.168.1.1", logicalDecoder);
+        assertColumnInUpdate(columnsInAllTypes, records.get(11), "after/intervalval", 2592000000000L, logicalDecoder);
+        assertColumnInUpdate(columnsInAllTypes, records.get(12), "after/jsonval", "{\"c\":\"d\",\"e\":123}", logicalDecoder);
+        assertColumnInUpdate(columnsInAllTypes, records.get(13), "after/jsonbval", "{\"c\": \"d\", \"e\": 123}", logicalDecoder);
+        assertColumnInUpdate(columnsInAllTypes, records.get(14), "after/mc", "2c:54:91:99:c9:e3", logicalDecoder);
+        assertColumnInUpdate(columnsInAllTypes, records.get(15), "after/mc8", "22:00:5c:3d:55:08:01:02", logicalDecoder);
+        assertColumnInUpdate(columnsInAllTypes, records.get(16), "after/mn", 200.50, logicalDecoder);
+        assertColumnInUpdate(columnsInAllTypes, records.get(17), "after/rl", 44.556, logicalDecoder);
+        assertColumnInUpdate(columnsInAllTypes, records.get(18), "after/si", 11, logicalDecoder);
+        assertColumnInUpdate(columnsInAllTypes, records.get(19), "after/i4r", "[11,100)", logicalDecoder);
+        assertColumnInUpdate(columnsInAllTypes, records.get(20), "after/i8r", "[201,10000)", logicalDecoder);
+        assertColumnInUpdate(columnsInAllTypes, records.get(21), "after/nr", "(12.35,56.78)", logicalDecoder);
+        assertColumnInUpdate(columnsInAllTypes, records.get(22), "after/tsr", "(\"2000-01-01 00:00:00\",\"2000-01-02 00:00:00\")", logicalDecoder);
+        assertColumnInUpdate(columnsInAllTypes, records.get(23), "after/tstzr", "(\"2000-01-01 00:05:30+05:30\",\"2000-01-02 05:30:00+05:30\")", logicalDecoder);
+        assertColumnInUpdate(columnsInAllTypes, records.get(24), "after/dr", "[2000-01-02,2000-01-03)", logicalDecoder);
+        assertColumnInUpdate(columnsInAllTypes, records.get(25), "after/txt", "updated text to verify behaviour", logicalDecoder);
+        assertColumnInUpdate(columnsInAllTypes, records.get(26), "after/tm", 51316000000L, logicalDecoder);
+        assertColumnInUpdate(columnsInAllTypes, records.get(27), "after/tmtz", "00:00:00Z", logicalDecoder);
+        assertColumnInUpdate(columnsInAllTypes, records.get(28), "after/ts", 1722945600123456L, logicalDecoder);
+        assertColumnInUpdate(columnsInAllTypes, records.get(29), "after/tstz", "2024-08-06T06:30:00.000000Z", logicalDecoder);
+        assertColumnInUpdate(columnsInAllTypes, records.get(30), "after/uuidval", "ffffffff-ffff-ffff-ffff-123456789abc", logicalDecoder);
+    }
+
+    @Test
+    public void verifyOperationsForTableWithMixedColumnsYbOutput() throws Exception {
+        verifyOperationsInTableWithMixedColumns(PostgresConnectorConfig.LogicalDecoder.YBOUTPUT);
+    }
+
+    @Test
+    public void verifyOperationsForTableWithMixedColumnsPgOutput() throws Exception {
+        verifyOperationsInTableWithMixedColumns(PostgresConnectorConfig.LogicalDecoder.PGOUTPUT);
+    }
+
+    public void verifyOperationsInTableWithMixedColumns(PostgresConnectorConfig.LogicalDecoder logicalDecoder) throws Exception {
+        String createStmt = "create table public.test_mixed (" +
+                "  id character varying not null," +
+                "  i_key character varying not null," +
+                "  c_id character varying not null," +
+                "  p_type character varying not null," +
+                "  p_id character varying," +
+                "  tx_id character varying," +
+                "  status character varying not null," +
+                "  amount numeric not null," +
+                "  currency character varying not null," +
+                "  loc character varying," +
+                "  quantity numeric," +
+                "  o_type character varying," +
+                "  o_created_at timestamp without time zone," +
+                "  o_updated_at timestamp without time zone," +
+                "  dis_details jsonb," +
+                "  o_metadata jsonb," +
+                "  tx_data jsonb," +
+                "  tx_ref_d jsonb," +
+                "  rw_d jsonb," +
+                "  meta jsonb," +
+                "  created_at timestamp without time zone," +
+                "  updated_at timestamp without time zone not null," +
+                "  deleted_at timestamp without time zone," +
+                "  version integer not null default 0," +
+                "  primary key (updated_at, id, c_id)" +
+                "); " +
+                "create unique index orders_i_key_key on test_mixed using lsm (i_key); " +
+                "create index idx_updated_at on test_mixed using lsm (updated_at);";
+
+        execute(createStmt);
+
+        if (logicalDecoder == PostgresConnectorConfig.LogicalDecoder.PGOUTPUT) {
+            LOGGER.info("Changing replica identity of all the tables to default");
+            TestHelper.execute("ALTER TABLE test_mixed REPLICA IDENTITY DEFAULT;");
+            TestHelper.execute("ALTER TABLE test_table REPLICA IDENTITY DEFAULT;");
+            TestHelper.execute("ALTER TABLE table_with_interval REPLICA IDENTITY DEFAULT;");
+            TestHelper.waitFor(Duration.ofSeconds(10));
+        }
+
+        TestHelper.dropDefaultReplicationSlot();
+        TestHelper.dropPublication();
+
+        start(YugabyteDBConnector.class,
+                TestHelper.defaultConfig()
+                        .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.test_mixed")
+                        .with(PostgresConnectorConfig.PUBLICATION_AUTOCREATE_MODE, "filtered")
+                        .with(PostgresConnectorConfig.SNAPSHOT_MODE, "never")
+                        .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DOUBLE)
+                        .with(PostgresConnectorConfig.PLUGIN_NAME, logicalDecoder.getPostgresPluginName())
+                        .build());
+        assertConnectorIsRunning();
+        waitForStreamingToStart();
+
+        String insertStmt = "insert into test_mixed values ('id_val', 'i_key', 'c_id', 'p_type_val', " +
+                "'p_id_val', 'ffffff-ffff', 'DONE', 30.5, 'INR', 'JJXX+HR8', 10.0, null, '2024-08-06 17:30:00', " +
+                "'2024-08-06 17:30:00', '{\"name\":\"Something for display\"}', '{\"year\": 2000}', '{\"tx_seq\":500}', " +
+                "null, null, null, '2024-08-06 17:30:00', '2024-08-06 17:30:00', null, 1)";
+
+        execute(insertStmt);
+        execute("UPDATE test_mixed SET status = 'NOT AVAILABLE', version = 2 WHERE id = 'id_val' AND c_id = 'c_id' AND updated_at = '2024-08-06 17:30:00';");
+
+        SourceRecords allRecords = consumeRecordsByTopic(2);
+        SourceRecord insertRecord = allRecords.allRecordsInOrder().get(0);
+        assertValueField(insertRecord, getResolvedColumnName("after/id", logicalDecoder), "id_val");
+        assertValueField(insertRecord, getResolvedColumnName("after/i_key", logicalDecoder), "i_key");
+        assertValueField(insertRecord, getResolvedColumnName("after/c_id", logicalDecoder), "c_id");
+        assertValueField(insertRecord, getResolvedColumnName("after/p_type", logicalDecoder), "p_type_val");
+        assertValueField(insertRecord, getResolvedColumnName("after/p_id", logicalDecoder), "p_id_val");
+        assertValueField(insertRecord, getResolvedColumnName("after/tx_id", logicalDecoder), "ffffff-ffff");
+        assertValueField(insertRecord, getResolvedColumnName("after/status", logicalDecoder), "DONE");
+        assertValueField(insertRecord, getResolvedColumnName("after/amount", logicalDecoder), 30.5);
+        assertValueField(insertRecord, getResolvedColumnName("after/currency", logicalDecoder), "INR");
+        assertValueField(insertRecord, getResolvedColumnName("after/loc", logicalDecoder), "JJXX+HR8");
+        assertValueField(insertRecord, getResolvedColumnName("after/quantity", logicalDecoder), 10.0);
+        assertValueField(insertRecord, getResolvedColumnName("after/o_type", logicalDecoder), null);
+        assertValueField(insertRecord, getResolvedColumnName("after/o_created_at", logicalDecoder), 1722965400000000L);
+        assertValueField(insertRecord, getResolvedColumnName("after/o_updated_at", logicalDecoder), 1722965400000000L);
+        assertValueField(insertRecord, getResolvedColumnName("after/dis_details", logicalDecoder), "{\"name\": \"Something for display\"}");
+        assertValueField(insertRecord, getResolvedColumnName("after/o_metadata", logicalDecoder), "{\"year\": 2000}");
+        assertValueField(insertRecord, getResolvedColumnName("after/tx_data", logicalDecoder), "{\"tx_seq\": 500}");
+        assertValueField(insertRecord, getResolvedColumnName("after/tx_ref_d", logicalDecoder), null);
+        assertValueField(insertRecord, getResolvedColumnName("after/rw_d", logicalDecoder), null);
+        assertValueField(insertRecord, getResolvedColumnName("after/meta", logicalDecoder), null);
+        assertValueField(insertRecord, getResolvedColumnName("after/created_at", logicalDecoder), 1722965400000000L);
+        assertValueField(insertRecord, getResolvedColumnName("after/updated_at", logicalDecoder), 1722965400000000L);
+        assertValueField(insertRecord, getResolvedColumnName("after/deleted_at", logicalDecoder), null);
+        assertValueField(insertRecord, getResolvedColumnName("after/version", logicalDecoder), 1);
+
+        SourceRecord updateRecord = allRecords.allRecordsInOrder().get(1);
+
+        assertValueField(updateRecord, getResolvedColumnName("after/id", logicalDecoder), "id_val");
+        assertValueField(updateRecord, getResolvedColumnName("after/c_id", logicalDecoder), "c_id");
+        assertValueField(updateRecord, getResolvedColumnName("after/updated_at", logicalDecoder), 1722965400000000L);
+        assertValueField(updateRecord, getResolvedColumnName("after/status", logicalDecoder), "NOT AVAILABLE");
+        assertValueField(updateRecord, getResolvedColumnName("after/version", logicalDecoder), 2);
+
+        if (logicalDecoder.isYBOutput()) {
+            // If decoder is not yboutput then all the other columns will be present as well.
+            assertValueField(updateRecord, "after/i_key", null);
+            assertValueField(updateRecord, "after/p_type", null);
+            assertValueField(updateRecord, "after/p_id", null);
+            assertValueField(updateRecord, "after/tx_id", null);
+            assertValueField(updateRecord, "after/amount", null);
+            assertValueField(updateRecord, "after/currency", null);
+            assertValueField(updateRecord, "after/loc", null);
+            assertValueField(updateRecord, "after/quantity", null);
+            assertValueField(updateRecord, "after/o_type", null);
+            assertValueField(updateRecord, "after/o_created_at", null);
+            assertValueField(updateRecord, "after/o_updated_at", null);
+            assertValueField(updateRecord, "after/dis_details", null);
+            assertValueField(updateRecord, "after/o_metadata", null);
+            assertValueField(updateRecord, "after/tx_data", null);
+            assertValueField(updateRecord, "after/tx_ref_d", null);
+            assertValueField(updateRecord, "after/rw_d", null);
+            assertValueField(updateRecord, "after/meta", null);
+            assertValueField(updateRecord, "after/created_at", null);
+            assertValueField(updateRecord, "after/deleted_at", null);
+        }
+        else {
+            // If decoder is not yboutput then all the other columns will be present as well.
+            assertValueField(updateRecord, getResolvedColumnName("after/i_key", logicalDecoder), "i_key");
+            assertValueField(updateRecord, getResolvedColumnName("after/p_type", logicalDecoder), "p_type_val");
+            assertValueField(updateRecord, getResolvedColumnName("after/p_id", logicalDecoder), "p_id_val");
+            assertValueField(updateRecord, getResolvedColumnName("after/tx_id", logicalDecoder), "ffffff-ffff");
+            assertValueField(updateRecord, getResolvedColumnName("after/amount", logicalDecoder), 30.5);
+            assertValueField(updateRecord, getResolvedColumnName("after/currency", logicalDecoder), "INR");
+            assertValueField(updateRecord, getResolvedColumnName("after/loc", logicalDecoder), "JJXX+HR8");
+            assertValueField(updateRecord, getResolvedColumnName("after/quantity", logicalDecoder), 10.0);
+            assertValueField(updateRecord, getResolvedColumnName("after/o_type", logicalDecoder), null);
+            assertValueField(updateRecord, getResolvedColumnName("after/o_created_at", logicalDecoder), 1722965400000000L);
+            assertValueField(updateRecord, getResolvedColumnName("after/o_updated_at", logicalDecoder), 1722965400000000L);
+            assertValueField(updateRecord, getResolvedColumnName("after/dis_details", logicalDecoder), "{\"name\": \"Something for display\"}");
+            assertValueField(updateRecord, getResolvedColumnName("after/o_metadata", logicalDecoder), "{\"year\": 2000}");
+            assertValueField(updateRecord, getResolvedColumnName("after/tx_data", logicalDecoder), "{\"tx_seq\": 500}");
+            assertValueField(updateRecord, getResolvedColumnName("after/tx_ref_d", logicalDecoder), null);
+            assertValueField(updateRecord, getResolvedColumnName("after/rw_d", logicalDecoder), null);
+            assertValueField(updateRecord, getResolvedColumnName("after/meta", logicalDecoder), null);
+            assertValueField(updateRecord, getResolvedColumnName("after/created_at", logicalDecoder), 1722965400000000L);
+            assertValueField(updateRecord, getResolvedColumnName("after/updated_at", logicalDecoder), 1722965400000000L);
+            assertValueField(updateRecord, getResolvedColumnName("after/deleted_at", logicalDecoder), null);
+        }
+    }
+
+    public void assertColumnInUpdate(List<String> allColumns, SourceRecord record, String column, Object expectedValue,
+                                     PostgresConnectorConfig.LogicalDecoder logicalDecoder) {
+        if (logicalDecoder.isYBOutput()) {
+            YBVerifyRecord.isValidUpdate(record, "id", 1);
+
+            // Assert that the other columns are null - note that this is only supposed to work with CHANGE.
+            for (String columnName : allColumns) {
+                if (!column.contains(columnName)) {
+                    assertValueField(record, "after/" + columnName, null);
+                }
+            }
+        } else {
+            VerifyRecord.isValidUpdate(record, "id", 1);
+        }
+
+        assertValueField(record, getResolvedColumnName(column, logicalDecoder), expectedValue);
+    }
+
+    /*
+     * create table public.orders (
+     *   order_reference_id character varying not null,
+     *   idempotency_key character varying not null,
+     *   customer_id character varying not null,
+     *   product_type character varying not null,
+     *   product_id character varying,
+     *   txn_reference_id character varying,
+     *   order_status character varying not null,
+     *   order_amount numeric not null,
+     *   order_currency character varying not null,
+     *   location character varying,
+     *   order_quantity numeric,
+     *   order_type character varying,
+     *   order_created_at timestamp without time zone,
+     *   order_updated_at timestamp without time zone,
+     *   order_display_details jsonb,
+     *   order_metadata jsonb,
+     *   txn_data jsonb,
+     *   txn_refund_data jsonb,
+     *   reward_data jsonb,
+     *   metadata jsonb,
+     *   created_at timestamp without time zone,
+     *   updated_at timestamp without time zone not null,
+     *   deleted_at timestamp without time zone,
+     *   version integer not null default 0,
+     *   primary key (updated_at, order_reference_id, customer_id)
+     * );
+     * create unique index orders_idempotency_key_key on orders using lsm (idempotency_key);
+     * create index idx_updated_at on orders using lsm (updated_at);
+     */
 
     @Ignore
     @Test
@@ -1405,8 +1782,6 @@ public class YBRecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 Envelope.FieldName.AFTER);
         statement = "UPDATE test_toast_table SET text = 'text';";
 
-        LOGGER.info("VKVK test verified till here");
-
         consumer.expects(1);
         executeAndWait(statement);
         consumer.process(record -> {
@@ -1421,6 +1796,69 @@ public class YBRecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "text")),
                 consumer.remove(),
                 Envelope.FieldName.AFTER);
+
+        colValue.clear();
+        colValue.put("a", "123456");
+        consumer.expects(1);
+        executeAndWait("UPDATE test_toast_table SET col = col || 'a=>\"123456\"'::hstore;");
+
+        assertRecordSchemaAndValues(Arrays.asList(
+                        new SchemaAndValueField("col", SchemaBuilder.map(SchemaBuilder.STRING_SCHEMA,
+                                SchemaBuilder.OPTIONAL_STRING_SCHEMA).optional().build(), colValue)),
+                consumer.remove(),
+                Envelope.FieldName.AFTER);
+    }
+
+    @Test
+    public void shouldHandleHstoreWithPgOutput() throws Exception {
+        TestHelper.execute("CREATE EXTENSION IF NOT EXISTS hstore SCHEMA public;");
+        TestHelper.execute(
+                "DROP TABLE IF EXISTS test_hstore;",
+                "CREATE TABLE test_hstore (id SERIAL PRIMARY KEY, text TEXT, col hstore);");
+
+        // We will need to change the replica identity of all the tables so that the service
+        // doesn't throw error.
+        TestHelper.execute("ALTER TABLE test_hstore REPLICA IDENTITY DEFAULT;");
+        TestHelper.execute("ALTER TABLE test_table REPLICA IDENTITY DEFAULT;");
+        TestHelper.execute("ALTER TABLE table_with_interval REPLICA IDENTITY DEFAULT;");
+
+        startConnector(config -> config
+                .with(PostgresConnectorConfig.HSTORE_HANDLING_MODE, PostgresConnectorConfig.HStoreHandlingMode.MAP)
+                .with(PostgresConnectorConfig.PLUGIN_NAME, PostgresConnectorConfig.LogicalDecoder.PGOUTPUT));
+        waitForStreamingToStart();
+
+        HashMap colValue = new HashMap();
+        TestHelper.execute("INSERT INTO test_hstore values (1, 'text_val', 'a=>\"hstoreValue\"');");
+        TestHelper.execute("UPDATE test_hstore SET text = 'text';");
+        TestHelper.execute("UPDATE test_hstore SET col = col || 'a=>\"123456\"'::hstore;");
+
+        SourceRecords allRecords = consumeRecordsByTopic(3);
+        List<SourceRecord> records = allRecords.allRecordsInOrder();
+
+        assertThat(records.size()).isEqualTo(3);
+
+        colValue.put("a", "hstoreValue");
+
+        // Assert insert record.
+        VerifyRecord.isValidInsert(records.get(0), "id", 1);
+        assertValueField(records.get(0), "after/id", 1);
+        assertValueField(records.get(0), "after/text", "text_val");
+        assertValueField(records.get(0), "after/col", colValue);
+
+        // Assert update record.
+        VerifyRecord.isValidUpdate(records.get(1), "id", 1);
+        assertValueField(records.get(1), "after/id", 1);
+        assertValueField(records.get(1), "after/text", "text");
+        assertValueField(records.get(1), "after/col", colValue);
+
+        colValue.clear();
+        colValue.put("a", "123456");
+
+        // Assert update record.
+        VerifyRecord.isValidUpdate(records.get(2), "id", 1);
+        assertValueField(records.get(2), "after/id", 1);
+        assertValueField(records.get(2), "after/text", "text");
+        assertValueField(records.get(2), "after/col", colValue);
     }
 
     @Ignore("Altering column not allowed while in replication, see https://github.com/yugabyte/yugabyte-db/issues/16625")
