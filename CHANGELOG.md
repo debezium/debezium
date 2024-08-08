@@ -2,6 +2,64 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.7.1.Final
+August 8th 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12430010)
+
+### New features since 2.7.0.Final
+
+* Update third-party LICENSE with LGPL forMariaDB Connector/J [DBZ-8099](https://issues.redhat.com/browse/DBZ-8099)
+
+
+### Breaking changes since 2.7.0.Final
+
+None
+
+
+### Fixes since 2.7.0.Final
+
+* Clarify that Oracle connector does not read from physical standby [DBZ-7895](https://issues.redhat.com/browse/DBZ-7895)
+* JdbcSinkTask doesn't clear offsets on stop [DBZ-7946](https://issues.redhat.com/browse/DBZ-7946)
+* Issue with Hybrid mode and DDL change [DBZ-7991](https://issues.redhat.com/browse/DBZ-7991)
+* Incorrect offset/history property mapping generatated  [DBZ-8007](https://issues.redhat.com/browse/DBZ-8007)
+* StackOverflow exception on incremental snapshot [DBZ-8011](https://issues.redhat.com/browse/DBZ-8011)
+* JDBC primary.key.fields cannot be empty when i set insert.mode to upsert  and primary.key.mode record_value [DBZ-8018](https://issues.redhat.com/browse/DBZ-8018)
+* Unable to acquire buffer lock, buffer queue is likely full [DBZ-8022](https://issues.redhat.com/browse/DBZ-8022)
+* ORA-65090: operation only allowed in a container database when connecting to a non-CDB database [DBZ-8023](https://issues.redhat.com/browse/DBZ-8023)
+* Added type to Prometheus JMX exporter [DBZ-8036](https://issues.redhat.com/browse/DBZ-8036)
+* Add `kafka.producer` metrics to debezium-server jmx exporter config [DBZ-8037](https://issues.redhat.com/browse/DBZ-8037)
+* "Unexpected input: ." when snapshot incremental empty Database [DBZ-8050](https://issues.redhat.com/browse/DBZ-8050)
+* Oracle connector inconsistency in redo log switches [DBZ-8055](https://issues.redhat.com/browse/DBZ-8055)
+* Blocking snapshot can fail due to CommunicationsException [DBZ-8058](https://issues.redhat.com/browse/DBZ-8058)
+* ParsingException (MySQL/MariaDB): rename table syntax [DBZ-8066](https://issues.redhat.com/browse/DBZ-8066)
+* Oracle histogram metrics are no longer printed in logs correctly [DBZ-8068](https://issues.redhat.com/browse/DBZ-8068)
+* In hybrid  log.mining.strategy reconstruction logs should be set to DEBUG [DBZ-8070](https://issues.redhat.com/browse/DBZ-8070)
+* Support capturing BLOB column types during snapshot for MySQL/MariaDB [DBZ-8076](https://issues.redhat.com/browse/DBZ-8076)
+* Vitess transaction Epoch should not reset to zero when tx ID is missing [DBZ-8087](https://issues.redhat.com/browse/DBZ-8087)
+* After changing the column datatype from int to float the Debezium fails to round it and i get a null value for this field in the stream [DBZ-8089](https://issues.redhat.com/browse/DBZ-8089)
+* MySQL and MariaDB keyword YES cannot be parsed as a column name [DBZ-8092](https://issues.redhat.com/browse/DBZ-8092)
+* NotificationIT tests seemingly seem to fail due to stepping on one another [DBZ-8100](https://issues.redhat.com/browse/DBZ-8100)
+* ORA-26928 - Unable to communicate with XStream apply coordinator process should be retriable [DBZ-8102](https://issues.redhat.com/browse/DBZ-8102)
+* Transformations are not closed in emebdded engine [DBZ-8106](https://issues.redhat.com/browse/DBZ-8106)
+* Don't close connection after loading timescale metadata in TimescaleDb SMT [DBZ-8109](https://issues.redhat.com/browse/DBZ-8109)
+* Primary Key Update/ Snapshot Race Condition [DBZ-8113](https://issues.redhat.com/browse/DBZ-8113)
+* Docs: connect-log4j.properties instead log4j.properties [DBZ-8117](https://issues.redhat.com/browse/DBZ-8117)
+* Recalculating mining range upper bounds causes getScnFromTimestamp to fail [DBZ-8119](https://issues.redhat.com/browse/DBZ-8119)
+
+
+### Other changes since 2.7.0.Final
+
+* Document new MariaDB connector [DBZ-7786](https://issues.redhat.com/browse/DBZ-7786)
+* Bump Infinispan to 14.0.29.Final [DBZ-8010](https://issues.redhat.com/browse/DBZ-8010)
+* Add disclaimer that PostProcessors and CustomConverters are Debezium source connectors only [DBZ-8031](https://issues.redhat.com/browse/DBZ-8031)
+* Conditionalize reference to the MySQL default value in description of `schema.history.internal.store.only.captured.databases.ddl` [DBZ-8081](https://issues.redhat.com/browse/DBZ-8081)
+* Add MariaDB to debezium/connect image [DBZ-8088](https://issues.redhat.com/browse/DBZ-8088)
+* Converters documentation uses incorrect examples [DBZ-8104](https://issues.redhat.com/browse/DBZ-8104)
+* Remove reference to`additional condition` signal parameter from ad hoc snapshots doc [DBZ-8107](https://issues.redhat.com/browse/DBZ-8107)
+* TimescaleDbDatabaseTest.shouldTransformCompressedChunks is failing [DBZ-8123](https://issues.redhat.com/browse/DBZ-8123)
+* Update Oracle connector doc to describe options for restricting access permissions for the Debezium LogMiner user  [DBZ-8124](https://issues.redhat.com/browse/DBZ-8124)
+
+
+
 ## 2.7.0.Final
 June 28th 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12429396)
 
