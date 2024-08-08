@@ -42,6 +42,9 @@ The following SMTs are provided by {prodname}:
 |xref:transformations/timescaledb.adoc[TimescaleDB Integration]
 |Routes and enriches messages that the {prodname} PostgreSQL connector captures from a TimescaleDB.
 
+|xref:transformations/decode-logical-decoding-message-content.adoc[Decode Logical Decoding Message Content]
+|Converts binary content of a logical decoding message captured by the {prodname} PostgreSQL connector to a structured form.
+
 |xref:transformations/convert-cloudevent-to-saveable-form.adoc[Convert CloudEvents to Saveable Form]
 |Converts values of records deserialized by {prodname} CloudEvents converter to a structure suitable for {prodname} JDBC sink connector.
 
