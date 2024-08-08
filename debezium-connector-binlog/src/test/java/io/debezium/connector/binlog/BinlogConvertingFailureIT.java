@@ -239,8 +239,6 @@ public abstract class BinlogConvertingFailureIT<C extends SourceConnector> exten
 
         SourceRecord tombstoneEvent = recordsForTopic.get(3);
         assertTombstone(tombstoneEvent);
-
-        stopConnector();
     }
 
     @Test
@@ -268,7 +266,7 @@ public abstract class BinlogConvertingFailureIT<C extends SourceConnector> exten
         }
 
         waitForConnectorShutdown(getConnectorName(), DATABASE.getServerName());
-        stopConnector();
+        waitForEngineShutdown();
 
         final Throwable e = exception.get();
         if (e == null) {
@@ -301,7 +299,7 @@ public abstract class BinlogConvertingFailureIT<C extends SourceConnector> exten
         }
 
         waitForConnectorShutdown(getConnectorName(), DATABASE.getServerName());
-        stopConnector();
+        waitForEngineShutdown();
 
         final Throwable e = exception.get();
         if (e == null) {
