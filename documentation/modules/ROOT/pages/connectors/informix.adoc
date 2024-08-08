@@ -1599,12 +1599,13 @@ To populate values in these fields from the source columns, the connector uses a
 The connector provides default mappings for the following Informix data types:
 
 * xref:informix-basic-types[Basic types]
-* xref:informix-temportal-types[Temporal types]
+* xref:informix-temporal-types[Temporal types]
 * xref:informix-timestamp-types[Timestamp types]
 * xref:informix-decimal-types[Decimal types]
+
 If the default data type conversions do not meet your needs, you can {link-prefix}:{link-custom-converters}#custom-converters[create a custom converter] for the connector.
 
-[id="informix-basic-types"]
+[[informix-basic-types]]
 === Basic types
 
 The following table describes how the connector maps each Informix data type to a _literal type_ and a _semantic type_ in event fields.
@@ -1778,6 +1779,9 @@ Represents the number of milliseconds since the epoch, and does not include time
 
 |===
 
+.INTERVAL
+The `INTERVAL` type is not supported by the Informix Change Stream client.
+
 [[informix-timestamp-types]]
 === Timestamp types
 
@@ -1804,7 +1808,7 @@ The `connect.decimal.precision` schema parameter contains an integer that repres
 |`DECIMAL[(P[,S])]`
 |`BYTES`
 |`org.apache.kafka.connect.data.Decimal` +
-+
+ +
 The `scale` schema parameter contains an integer that represents how many digits the decimal point is shifted.
 The `connect.decimal.precision` schema parameter contains an integer that represents the precision of the given decimal value.
 
