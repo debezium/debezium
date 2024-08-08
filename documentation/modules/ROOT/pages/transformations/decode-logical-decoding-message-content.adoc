@@ -1,0 +1,121 @@
+:page-aliases: configuration/decode-logical-decoding-message-content.adoc
+[id="decode-logical-decoding-message-content"]
+= Decode Logical Decoding Message Content
+
+:toc:
+:toc-placement: macro
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+
+toc::[]
+
+The `DecodeLogicalDecodingMessageContent` SMT converts binary content of a PostgreSQL logical decoding message to a structured form. It can be
+used standalone or used in conjunction with another SMT, such as link:/documentation/reference/transformations/outbox-event-router[Outbox Event Router].
+
+[[example-decode-logical-decoding-message-content]]
+== Example
+
+To convert binary content of a logical decoding message, configure the `DecodeLogicalDecodingMessageContent` SMT in the Kafka Connect configuration
+for a connector:
+
+[source]
+----
+"connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+...
+"transforms": "decodeLogicalDecodingMessageContent",
+"transforms.decodeLogicalDecodingMessageContent.type": "io.debezium.connector.postgresql.transforms.DecodeLogicalDecodingMessageContent",
+"key.converter": "org.apache.kafka.connect.json.JsonConverter",
+"key.converter.schemas.enable": false,
+"value.converter": "org.apache.kafka.connect.json.JsonConverter",
+"value.converter.schemas.enable": "false",
+...
+----
+
+The following example shows key and value of a record before and after the transformation is applied.
+
+.Effect of applying the `DecodeLogicalDecodingMessageContent` SMT
+====
+Key before the SMT processes the record::
++
+[source,json]
+----
+{
+	"prefix": "test-prefix"
+}
+----
+
+Value before the SMT processes the record::
++
+[source,json]
+----
+{
+	"op": "m",
+	"ts_ms": 1723115240065,
+	"source": {
+		"version": "3.0.0-SNAPSHOT",
+		"connector": "postgresql",
+		"name": "connector-name",
+		"ts_ms": 1723115239782,
+		"snapshot": "false",
+		"db": "source-db",
+		"sequence": "[\"26997744\",\"26997904\"]",
+		"ts_us": 1723115239782690,
+		"ts_ns": 1723115239782690000,
+		"schema": "",
+		"table": "",
+		"txId": 756,
+		"lsn": 26997904,
+		"xmin": null
+	},
+	"message": {
+		"prefix": "test-prefix",
+		"content": "eyJpZCI6IDEsICJpdGVtIjogIkRlYmV6aXVtIGluIEFjdGlvbiIsICJzdGF0dXMiOiAiRU5URVJFRCIsICJxdWFudGl0eSI6IDIsICJ0b3RhbFByaWNlIjogMzkuOTh9"
+	}
+}
+----
+
+Key after the SMT processes the record:: null
+
+Value after the SMT processes the record::
++
+[source,json]
+----
+{
+	"op": "c",
+	"ts_ms": 1723115415729,
+	"source": {
+		"version": "3.0.0-SNAPSHOT",
+		"connector": "postgresql",
+		"name": "connector-name",
+		"ts_ms": 1723115415640,
+		"snapshot": "false",
+		"db": "source-db",
+		"sequence": "[\"26717416\",\"26717576\"]",
+		"ts_us": 1723115415640161,
+		"ts_ns": 1723115415640161000,
+		"schema": "",
+		"table": "",
+		"txId": 745,
+		"lsn": 26717576,
+		"xmin": null
+	},
+	"after": {
+		"id": 1,
+		"item": "Debezium in Action",
+		"status": "ENTERED",
+		"quantity": 2,
+		"totalPrice": 39.98
+	}
+}
+----
+
+That is, the SMT does the following:
+
+. replaces `op` field value with `c` by which a record will look as an `INSERT` event
+. replaces `message` field with `after` field that contains the decoded content of a logical decoding message
+. drops a record's key that initially contains prefix of a logical decoding message
+
+Thus, the SMT also makes a record suitable for the further processing by Outbox Event Router.
+
+====
