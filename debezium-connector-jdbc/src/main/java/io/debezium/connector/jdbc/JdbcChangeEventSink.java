@@ -9,7 +9,7 @@ import static io.debezium.connector.jdbc.JdbcSinkConnectorConfig.SchemaEvolution
 
 import java.sql.SQLException;
 import java.util.Collection;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -65,8 +65,8 @@ public class JdbcChangeEventSink implements ChangeEventSink {
     @Override
     public void execute(Collection<SinkRecord> records) {
 
-        final Map<TableId, Buffer> updateBufferByTable = new HashMap<>();
-        final Map<TableId, Buffer> deleteBufferByTable = new HashMap<>();
+        final Map<TableId, Buffer> updateBufferByTable = new LinkedHashMap<>();
+        final Map<TableId, Buffer> deleteBufferByTable = new LinkedHashMap<>();
 
         for (SinkRecord record : records) {
 
