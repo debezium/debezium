@@ -262,6 +262,59 @@
                             </external>
                         </image>
                         <image>
+                            <!-- Docker image for the binlog-row-image test. -->
+                            <name>debezium/mysql-server-test-binlog-row-image-database</name>
+                            <run>
+                                <namingStrategy>none</namingStrategy>
+                                <env>
+                                    <MYSQL_ROOT_PASSWORD>debezium-rocks</MYSQL_ROOT_PASSWORD>
+                                    <MYSQL_DATABASE>mysql</MYSQL_DATABASE> <!-- database created upon init -->
+                                    <MYSQL_USER>${mysql.user}</MYSQL_USER>
+                                    <MYSQL_PASSWORD>${mysql.password}</MYSQL_PASSWORD>
+                                </env>
+                                <ports>
+                                    <port>${mysql.port}:3306</port>
+                                </ports>
+                                <log>
+                                    <prefix>mysql</prefix>
+                                    <enabled>true</enabled>
+                                    <color>yellow</color>
+                                </log>
+                                <wait>
+                                    <log>(MySQL|MariaDB) init process done. Ready for start up.(?s)(.*)(mysqld|mariadbd): ready for connections.</log>
+                                    <time>${mysql.init.timeout}</time>
+                                </wait>
+                            </run>
+                            <build>
+                                <from>${mysql.server.image.source}:${version.mysql.server}</from>
+                                <runCmds>
+                                    <run>${docker.initimage}</run>
+                                </runCmds>
+                                <assembly>
+                                    <inline>
+                                        <fileSets>
+                                            <fileSet>
+                                                <directory>${project.basedir}/src/test/docker/server-binlog-row-image</directory>
+                                                <includes>
+                                                    <include>my.cnf</include>
+                                                </includes>
+                                                <outputDirectory>etc/mysql</outputDirectory>
+                                            </fileSet>
+                                            <fileSet>
+                                                <directory>${project.basedir}/src/test/docker/init</directory>
+                                                <outputDirectory>docker-entrypoint-initdb.d</outputDirectory>
+                                            </fileSet>
+                                        </fileSets>
+                                    </inline>
+                                    <targetDir>/</targetDir>
+                                </assembly>
+                            </build>
+                            <external>
+                                <type>properties</type>
+                                <mode>override</mode>
+                            </external>
+                        </image>
+                        <image>
                             <!-- A Docker image using a partial MySQL installation maintained by MySQL team
                              that enable mysql ssl connection -->
                             <name>debezium/mysql-server-test-database-ssl</name>
