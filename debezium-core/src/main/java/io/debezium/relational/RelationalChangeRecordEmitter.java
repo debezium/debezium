@@ -171,16 +171,19 @@ public abstract class RelationalChangeRecordEmitter<P extends Partition>
     protected void emitUpdateAsPrimaryKeyChangeRecord(Receiver<P> receiver, TableSchema tableSchema, Struct oldKey,
                                                       Struct newKey, Struct oldValue, Struct newValue)
             throws InterruptedException {
+        final OffsetContext offset = getOffset();
+        final Struct sourceInfo = offset.getSourceInfo();
+
         ConnectHeaders headers = new ConnectHeaders();
         headers.add(PK_UPDATE_NEWKEY_FIELD, newKey, tableSchema.keySchema());
 
-        Struct envelope = tableSchema.getEnvelopeSchema().delete(oldValue, getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
-        receiver.changeRecord(getPartition(), tableSchema, Operation.DELETE, oldKey, envelope, getOffset(), headers);
+        Struct envelope = tableSchema.getEnvelopeSchema().delete(oldValue, sourceInfo, getClock().currentTimeAsInstant());
+        receiver.changeRecord(getPartition(), tableSchema, Operation.DELETE, oldKey, envelope, offset, headers);
 
         headers = new ConnectHeaders();
         headers.add(PK_UPDATE_OLDKEY_FIELD, oldKey, tableSchema.keySchema());
 
-        envelope = tableSchema.getEnvelopeSchema().create(newValue, getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
-        receiver.changeRecord(getPartition(), tableSchema, Operation.CREATE, newKey, envelope, getOffset(), headers);
+        envelope = tableSchema.getEnvelopeSchema().create(newValue, sourceInfo, getClock().currentTimeAsInstant());
+        receiver.changeRecord(getPartition(), tableSchema, Operation.CREATE, newKey, envelope, offset, headers);
     }
 }
