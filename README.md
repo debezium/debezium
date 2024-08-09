@@ -90,6 +90,15 @@ The Docker Maven Plugin will resolve the docker host by checking the following e
 
 These can be set automatically if using Docker Machine or something similar.
 
+#### Colima
+In order to run testcontainers against [colima](https://github.com/abiosoft/colima) the env vars below should be set (assume we use `default` profile of colima)
+
+    colima start
+    export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock
+    export TESTCONTAINERS_HOST_OVERRIDE="0.0.0.0"
+    export DOCKER_HOST="unix://${HOME}/.colima/default/docker.sock"
+
+
 ### Building the code
 
 First obtain the code by cloning the Git repository:
