@@ -9,11 +9,13 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
+import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.storage.Converter;
 import org.apache.kafka.connect.storage.ConverterConfig;
@@ -45,6 +47,7 @@ public class ConverterBuilder<R> {
     private static final String FIELD_CLASS = "class";
     private static final String TOPIC_NAME = "debezium";
     private static final String APICURIO_SCHEMA_REGISTRY_URL_CONFIG = "apicurio.registry.url";
+    private static final String PASS_HEADERS = "pass.headers";
 
     private Class<? extends SerializationFormat<?>> formatHeader;
     private Class<? extends SerializationFormat<?>> formatKey;
@@ -78,54 +81,29 @@ public class ConverterBuilder<R> {
     }
 
     public Function<SourceRecord, R> toFormat(HeaderConverter headerConverter) {
-        Function<SourceRecord, R> toFormat;
-
-        Converter keyConverter;
-        Converter valueConverter;
-
         if (formatValue == Connect.class) {
-            toFormat = (record) -> (R) new EmbeddedEngineChangeEvent<Void, SourceRecord, Object>(
+            return (record) -> (R) new EmbeddedEngineChangeEvent<Void, SourceRecord, Object>(
                     null,
                     record,
                     StreamSupport.stream(record.headers().spliterator(), false)
                             .map(EmbeddedEngineHeader::new).collect(Collectors.toList()),
                     record);
         }
-        else {
-            keyConverter = createConverter(formatKey, true);
-            valueConverter = createConverter(formatValue, false);
 
-            toFormat = (record) -> {
-                String topicName = record.topic();
-                if (topicName == null) {
-                    topicName = TOPIC_NAME;
-                }
-                final byte[] key = keyConverter.fromConnectData(topicName, record.keySchema(), record.key());
-                final byte[] value = valueConverter.fromConnectData(topicName, record.valueSchema(), record.value());
-
-                List<Header<?>> headers = Collections.emptyList();
-                if (headerConverter != null) {
-                    List<Header<byte[]>> byteArrayHeaders = convertHeaders(record, topicName, headerConverter);
-                    headers = (List) byteArrayHeaders;
-                    if (shouldConvertHeadersToString()) {
-                        headers = byteArrayHeaders.stream()
-                                .map(h -> new EmbeddedEngineHeader<>(h.getKey(), new String(h.getValue(), StandardCharsets.UTF_8)))
-                                .collect(Collectors.toList());
-                    }
-                }
-                Object convertedKey = key;
-                Object convertedValue = value;
-                if (key != null && shouldConvertKeyToString()) {
-                    convertedKey = new String(key, StandardCharsets.UTF_8);
-                }
-                if (value != null && shouldConvertValueToString()) {
-                    convertedValue = new String(value, StandardCharsets.UTF_8);
-                }
-                return (R) new EmbeddedEngineChangeEvent<>(convertedKey, convertedValue, (List) headers, record);
-            };
-        }
-
-        return toFormat;
+        return (record) -> {
+            KeyValueHeaders convertedRecord = convertRecord(record, headerConverter);
+            byte[] key = convertedRecord.key;
+            byte[] value = convertedRecord.value;
+            Object convertedKey = key;
+            Object convertedValue = value;
+            if (key != null && shouldConvertKeyToString()) {
+                convertedKey = new String(key, StandardCharsets.UTF_8);
+            }
+            if (value != null && shouldConvertValueToString()) {
+                convertedValue = new String(value, StandardCharsets.UTF_8);
+            }
+            return (R) new EmbeddedEngineChangeEvent<>(convertedKey, convertedValue, (List) convertedRecord.headers, record);
+        };
     }
 
     public Function<R, SourceRecord> fromFormat() {
@@ -148,14 +126,65 @@ public class ConverterBuilder<R> {
         return isFormat(formatHeader, Json.class);
     }
 
-    private List<Header<byte[]>> convertHeaders(
-                                                SourceRecord record, String topicName, HeaderConverter headerConverter) {
+    private boolean shouldPassHeaders() {
+        return config.subset(CONVERTER_PREFIX, true).getBoolean(PASS_HEADERS, false);
+    }
+
+    private KeyValueHeaders convertRecord(SourceRecord record, HeaderConverter headerConverter) {
+        Converter keyConverter = createConverter(formatKey, true);
+        Converter valueConverter = createConverter(formatValue, false);
+        String topicName = Objects.requireNonNullElse(record.topic(), TOPIC_NAME);
+
+        // If your key/value converters don't require headers for read or write, we can skip the header conversion to
+        // save some CPU cycles
+        if (shouldPassHeaders()) {
+            org.apache.kafka.common.header.internals.RecordHeaders recordHeaders = new RecordHeaders();
+            if (headerConverter != null) {
+                for (org.apache.kafka.connect.header.Header header : record.headers()) {
+                    byte[] rawHeader = headerConverter.fromConnectHeader(topicName, header.key(), header.schema(), header.value());
+                    recordHeaders.add(header.key(), rawHeader);
+                }
+            }
+            final byte[] key = keyConverter.fromConnectData(topicName, recordHeaders, record.keySchema(), record.key());
+            final byte[] value = valueConverter.fromConnectData(topicName, recordHeaders, record.valueSchema(), record.value());
+            return new KeyValueHeaders(key, value, convertFromCommonHeaders(recordHeaders));
+        }
+
+        final byte[] key = keyConverter.fromConnectData(topicName, record.keySchema(), record.key());
+        final byte[] value = valueConverter.fromConnectData(topicName, record.valueSchema(), record.value());
+
+        List<Header<?>> headers = Collections.emptyList();
+        if (headerConverter != null) {
+            List<Header<byte[]>> byteArrayHeaders = convertFromConnectHeaders(record, topicName, headerConverter);
+            headers = (List) byteArrayHeaders;
+            if (shouldConvertHeadersToString()) {
+                headers = byteArrayHeaders.stream()
+                        .map(h -> new EmbeddedEngineHeader<>(h.getKey(), new String(h.getValue(), StandardCharsets.UTF_8)))
+                        .collect(Collectors.toList());
+            }
+        }
+        return new KeyValueHeaders(key, value, headers);
+    }
+
+    private List<Header<byte[]>> convertFromConnectHeaders(
+                                                           SourceRecord record, String topicName, HeaderConverter headerConverter) {
         List<Header<byte[]>> headers = new ArrayList<>();
 
         for (org.apache.kafka.connect.header.Header header : record.headers()) {
             String headerKey = header.key();
             byte[] rawHeader = headerConverter.fromConnectHeader(topicName, headerKey, header.schema(), header.value());
             headers.add(new EmbeddedEngineHeader<>(headerKey, rawHeader));
+        }
+
+        return headers;
+    }
+
+    private List<Header<?>> convertFromCommonHeaders(
+                                                     org.apache.kafka.common.header.Headers recordHeaders) {
+        List<Header<?>> headers = new ArrayList<>();
+
+        for (org.apache.kafka.common.header.Header header : recordHeaders) {
+            headers.add(new EmbeddedEngineHeader<>(header.key(), header.value()));
         }
 
         return headers;
@@ -237,5 +266,8 @@ public class ConverterBuilder<R> {
         final Converter converter = converterConfig.getInstance(FIELD_CLASS, Converter.class);
         converter.configure(converterConfig.asMap(), key);
         return converter;
+    }
+
+    private record KeyValueHeaders(byte[] key, byte[] value, List<Header<?>> headers) {
     }
 }
