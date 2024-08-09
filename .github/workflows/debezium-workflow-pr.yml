@@ -30,6 +30,7 @@ jobs:
       postgresql-changed: ${{ steps.changed-files-postgresql.outputs.any_changed }}
       oracle-changed: ${{ steps.changed-files-oracle.outputs.any_changed }}
       sqlserver-changed: ${{ steps.changed-files-sqlserver.outputs.any_changed }}
+      jdbc-changed: ${{ steps.changed-files-jdbc.outputs.any_changed }}
       outbox-changed: ${{ steps.changed-files-outbox.outputs.any_changed }}
       rest-extension-changed: ${{ steps.changed-files-rest-extension.outputs.any_changed }}
       schema-generator-changed: ${{ steps.changed-files-schema-generator.outputs.any_changed }}
@@ -109,6 +110,13 @@ jobs:
         with:
           files: |
             debezium-connector-sqlserver/**
+
+      - name: Get modified files (JDBC)
+        id: changed-files-jdbc
+        uses: tj-actions/changed-files@v44.5.7
+        with:
+          files: |
+            debezium-connector-jdbc/**
 
       - name: Get modified files (Quarkus Outbox)
         id: changed-files-outbox
@@ -628,7 +636,7 @@ jobs:
     name: "JDBC"
     needs: [ check_style, file_changes ]
     runs-on: ubuntu-latest
-    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mysql-changed == 'true' || needs.file_changes.outputs.mysql-ddl-parser-changed == 'true' || needs.file_changes.outputs.mariadb-changed == 'true' || needs.file_changes.outputs.postgresql-changed == 'true' || needs.file_changes.outputs.sqlserver-changed == 'true' || needs.file_changes.outputs.sqlserver-changed == 'true' || needs.file_changes.outputs.db2-changed == 'true' }}
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mysql-changed == 'true' || needs.file_changes.outputs.mysql-ddl-parser-changed == 'true' || needs.file_changes.outputs.mariadb-changed == 'true' || needs.file_changes.outputs.postgresql-changed == 'true' || needs.file_changes.outputs.sqlserver-changed == 'true' || needs.file_changes.outputs.sqlserver-changed == 'true' || needs.file_changes.outputs.db2-changed == 'true' || needs.file_changes.outputs.jdbc-changed == 'true' }}
     steps:
       - name: Checkout Action
         uses: actions/checkout@v4
