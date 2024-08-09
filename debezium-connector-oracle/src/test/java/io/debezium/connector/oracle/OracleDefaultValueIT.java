@@ -71,11 +71,6 @@ public class OracleDefaultValueIT extends AbstractAsyncEngineConnectorTest {
     @Test
     @FixFor("DBZ-3710")
     public void shouldHandleNumericDefaultTypes() throws Exception {
-        // TODO: remove once we upgrade Apicurio version (DBZ-7357)
-        if (VerifyRecord.isApucurioAvailable()) {
-            skipAvroValidation();
-        }
-
         List<ColumnDefinition> columnDefinitions = Arrays.asList(
                 new ColumnDefinition("val_int", "int",
                         "1", "2",
@@ -152,11 +147,6 @@ public class OracleDefaultValueIT extends AbstractAsyncEngineConnectorTest {
     @Test
     @FixFor("DBZ-3710")
     public void shouldHandleFloatPointDefaultTypes() throws Exception {
-        // TODO: remove once we upgrade Apicurio version (DBZ-7357)
-        if (VerifyRecord.isApucurioAvailable()) {
-            skipAvroValidation();
-        }
-
         List<ColumnDefinition> columnDefinitions = Arrays.asList(
                 new ColumnDefinition("val_bf", "binary_float",
                         "3.14", "6.28",
