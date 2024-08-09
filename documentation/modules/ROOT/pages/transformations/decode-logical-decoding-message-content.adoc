@@ -10,14 +10,13 @@
 
 toc::[]
 
-The `DecodeLogicalDecodingMessageContent` SMT converts binary content of a PostgreSQL logical decoding message to a structured form. It can be
-used standalone or used in conjunction with another SMT, such as link:/documentation/reference/transformations/outbox-event-router[Outbox Event Router].
+The `DecodeLogicalDecodingMessageContent` SMT converts the binary content of a PostgreSQL logical decoding message to a structured form. 
+You can use the SMT on its own, or in conjunction with another SMT, such as the link:/documentation/reference/transformations/outbox-event-router[Outbox Event Router].
 
 [[example-decode-logical-decoding-message-content]]
 == Example
 
-To convert binary content of a logical decoding message, configure the `DecodeLogicalDecodingMessageContent` SMT in the Kafka Connect configuration
-for a connector:
+You configure a connector to use the `DecodeLogicalDecodingMessageContent` SMT by adding the SMT to the Kafka Connect configuration for the connector, as in the following example:
 
 [source]
 ----
@@ -32,7 +31,7 @@ for a connector:
 ...
 ----
 
-The following example shows key and value of a record before and after the transformation is applied.
+The following example shows key and value of an event record before and after the transformation is applied.
 
 .Effect of applying the `DecodeLogicalDecodingMessageContent` SMT
 ====
@@ -110,12 +109,13 @@ Value after the SMT processes the record::
 }
 ----
 
-That is, the SMT does the following:
+In the preceding example, the SMT applies the following changes to the original event record:
 
-. replaces `op` field value with `c` by which a record will look as an `INSERT` event
-. replaces `message` field with `after` field that contains the decoded content of a logical decoding message
-. drops a record's key that initially contains prefix of a logical decoding message
+. Removes the key that contained the `prefix` field in the original logical decoding message (`"prefix": "test-prefix"`)
+. Converts the value of the `op` field from an `m` (message) to a `c` (create), effectively changing the type of the event from a message to an `INSERT`.
+. Replaces the `message` field with an `after` field that contains the decoded content of a logical decoding message.
 
-Thus, the SMT also makes a record suitable for the further processing by Outbox Event Router.
+
+After the SMT applies these changes, the record can be more easily processed by other SMTs, such as the Outbox Event Router.
 
 ====
