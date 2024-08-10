@@ -15,7 +15,9 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Struct;
@@ -128,9 +130,9 @@ public class DecodeLogicalDecodingMessageContentTest extends AbstractConnectorTe
     @FixFor("DBZ-8103")
     @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Only supported on PgOutput")
     @SkipWhenDatabaseVersion(check = LESS_THAN, major = 14, minor = 0, reason = "Message not supported for PG version < 14")
-    public void shouldConvertRecordWithTransactionalLogicalDecodingMessageWithContent() throws Exception {
+    public void shouldConvertRecordWithTransactionalLogicalDecodingMessageWithContentNotIncludingNullField() throws Exception {
         // emit transactional logical decoding message
-        TestHelper.execute("SELECT pg_logical_emit_message(true, 'foo', '{\"bar\": \"baz\", \"qux\": 9703}');");
+        TestHelper.execute("SELECT pg_logical_emit_message(true, 'foo', '{\"bar\": \"baz\", \"qux\": 9703, \"quux\": null}');");
 
         SourceRecords records = consumeRecordsByTopic(1);
         List<SourceRecord> recordsForTopic = records.recordsForTopic(topicName("message"));
@@ -154,6 +156,45 @@ public class DecodeLogicalDecodingMessageContentTest extends AbstractConnectorTe
         assertEquals(2, after.schema().fields().size());
         assertEquals("baz", after.get("bar"));
         assertEquals(9703, after.get("qux"));
+        List<Field> recordValueSchemaFields = value.schema().fields();
+        assertTrue(recordValueSchemaFields.stream().noneMatch(f -> f.name().equals("message")));
+    }
+
+    @Test
+    @FixFor("DBZ-8103")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Only supported on PgOutput")
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 14, minor = 0, reason = "Message not supported for PG version < 14")
+    public void shouldConvertRecordWithTransactionalLogicalDecodingMessageWithContentIncludingNullField() throws Exception {
+        final Map<String, Object> config = new HashMap<>();
+        config.put("fields.null.include", true);
+        decodeLogicalDecodingMessageContent.configure(config);
+
+        // emit transactional logical decoding message
+        TestHelper.execute("SELECT pg_logical_emit_message(true, 'foo', '{\"bar\": \"baz\", \"qux\": 9703, \"quux\": null}');");
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        List<SourceRecord> recordsForTopic = records.recordsForTopic(topicName("message"));
+        assertThat(recordsForTopic).hasSize(1);
+
+        SourceRecord transformedRecord = decodeLogicalDecodingMessageContent.apply(recordsForTopic.get(0));
+        assertThat(transformedRecord).isNotNull();
+
+        Struct value = (Struct) transformedRecord.value();
+        String op = value.getString(Envelope.FieldName.OPERATION);
+        Struct source = value.getStruct(Envelope.FieldName.SOURCE);
+        Struct after = value.getStruct(Envelope.FieldName.AFTER);
+
+        assertNotNull(source.getInt64(SourceInfo.TXID_KEY));
+        assertNotNull(source.getInt64(SourceInfo.TIMESTAMP_KEY));
+        assertNotNull(source.getInt64(SourceInfo.LSN_KEY));
+        assertEquals("", source.getString(SourceInfo.TABLE_NAME_KEY));
+        assertEquals("", source.getString(SourceInfo.SCHEMA_NAME_KEY));
+
+        assertEquals(Envelope.Operation.CREATE.code(), op);
+        assertEquals(3, after.schema().fields().size());
+        assertEquals("baz", after.get("bar"));
+        assertEquals(9703, after.get("qux"));
+        assertNull(after.get("quux"));
         List<Field> recordValueSchemaFields = value.schema().fields();
         assertTrue(recordValueSchemaFields.stream().noneMatch(f -> f.name().equals("message")));
     }

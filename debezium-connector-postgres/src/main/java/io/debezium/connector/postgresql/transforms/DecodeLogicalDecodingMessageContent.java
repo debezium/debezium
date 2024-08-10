@@ -51,13 +51,22 @@ public class DecodeLogicalDecodingMessageContent<R extends ConnectRecord<R>> imp
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DecodeLogicalDecodingMessageContent.class);
 
-    private BoundedConcurrentHashMap<Schema, Schema> logicalDecodingMessageContentSchemaCache;
+    public static final io.debezium.config.Field FIELDS_NULL_INCLUDE = io.debezium.config.Field.create("fields.null.include")
+            .withDisplayName("Defines whether to include fields with null values to the decoded structure")
+            .withType(ConfigDef.Type.BOOLEAN)
+            .withDefault(false)
+            .withWidth(ConfigDef.Width.MEDIUM)
+            .withImportance(ConfigDef.Importance.MEDIUM)
+            .withDescription("Defines whether to include fields with null values to the decoded structure");
+
     private ObjectMapper objectMapper;
     private JsonSchemaData jsonSchemaData;
+    private BoundedConcurrentHashMap<Schema, Schema> logicalDecodingMessageContentSchemaCache;
 
     @Override
     public ConfigDef config() {
         final ConfigDef config = new ConfigDef();
+        io.debezium.config.Field.group(config, null, FIELDS_NULL_INCLUDE);
         return config;
     }
 
@@ -66,10 +75,14 @@ public class DecodeLogicalDecodingMessageContent<R extends ConnectRecord<R>> imp
         final Configuration config = Configuration.from(configs);
 
         objectMapper = new ObjectMapper();
-        CommonConnectorConfig.FieldNameAdjustmentMode fieldNameAdjustmentMode = CommonConnectorConfig.FieldNameAdjustmentMode.parse(
-                config.getString(CommonConnectorConfig.FIELD_NAME_ADJUSTMENT_MODE));
-        jsonSchemaData = new JsonSchemaData(EventRouterConfigDefinition.JsonPayloadNullFieldBehavior.IGNORE,
-                FieldNameSelector.defaultNonRelationalSelector(fieldNameAdjustmentMode.createAdjuster()));
+
+        boolean fieldsNullInclude = config.getBoolean(FIELDS_NULL_INCLUDE);
+        EventRouterConfigDefinition.JsonPayloadNullFieldBehavior nullFieldBehavior = fieldsNullInclude
+                ? EventRouterConfigDefinition.JsonPayloadNullFieldBehavior.OPTIONAL_BYTES
+                : EventRouterConfigDefinition.JsonPayloadNullFieldBehavior.IGNORE;
+        jsonSchemaData = new JsonSchemaData(nullFieldBehavior,
+                FieldNameSelector.defaultNonRelationalSelector(CommonConnectorConfig.FieldNameAdjustmentMode.NONE.createAdjuster()));
+
         logicalDecodingMessageContentSchemaCache = new BoundedConcurrentHashMap<>(10000, 10, BoundedConcurrentHashMap.Eviction.LRU);
     }
 
