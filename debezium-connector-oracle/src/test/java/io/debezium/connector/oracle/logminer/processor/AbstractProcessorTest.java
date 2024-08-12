@@ -12,6 +12,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -27,6 +28,7 @@ import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.util.Testing;
 
 /**
@@ -202,5 +204,39 @@ public abstract class AbstractProcessorTest extends AbstractConnectorTest {
         after = ((Struct) tableRecords.get(2).value()).getStruct(Envelope.FieldName.AFTER);
         assertThat(after.get("ID")).isEqualTo(4);
         assertThat(after.get("NAME")).isEqualTo("Roger Rabbit");
+    }
+
+    @Test
+    @FixFor("DBZ-8044")
+    public void shouldLogAdditionalDetailsForAbandonedTransaction() throws Exception {
+        TestHelper.dropTable(connection, "dbz8044");
+        try {
+            connection.execute("CREATE TABLE dbz8044 (id numeric(9,0) primary key, data varchar2(50))");
+            TestHelper.streamTable(connection, "dbz8044");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ8044")
+                    .with(OracleConnectorConfig.LOG_MINING_TRANSACTION_RETENTION_MS, "20000")
+                    .build();
+
+            final LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerEventProcessor.class);
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.executeWithoutCommitting("INSERT INTO dbz8044 (id,data) values (1, 'test')");
+
+            Awaitility.await()
+                    .atMost(5, TimeUnit.MINUTES)
+                    .until(() -> logInterceptor.containsMessage(" is being abandoned"));
+
+            connection.commit();
+
+            assertThat(logInterceptor.containsMessage(", 1 tables [ORCLPDB1.DEBEZIUM.DBZ8044]")).isTrue();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz8044");
+        }
     }
 }
