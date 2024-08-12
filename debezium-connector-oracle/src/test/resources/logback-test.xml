@@ -34,6 +34,13 @@
     </logger>
 
     <logger
+        name="io.debezium.connector.oracle.logminer.processor.AbstractLogMinerEventProcessor.AbandonedDetails"
+        level="debug"
+        additivity="false">
+        <appender-ref ref="CONSOLE" />
+    </logger>
+
+    <logger
         name="io.debezium.embedded.EmbeddedWorkerConfig"
         level="warn" additivity="false">
         <appender-ref ref="CONSOLE" />

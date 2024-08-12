@@ -82,6 +82,7 @@ import oracle.sql.RAW;
 public abstract class AbstractLogMinerEventProcessor<T extends Transaction> implements LogMinerEventProcessor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractLogMinerEventProcessor.class);
+    private static final Logger ABANDONED_DETAILS_LOGGER = LoggerFactory.getLogger(AbstractLogMinerEventProcessor.class.getName() + ".AbandonedDetails");
     private static final String NO_SEQUENCE_TRX_ID_SUFFIX = "ffffffff";
     private static final String XML_WRITE_PREAMBLE = "XML_REDO := ";
     private static final String XML_WRITE_PREAMBLE_NULL = XML_WRITE_PREAMBLE + "NULL";
@@ -1570,9 +1571,9 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
                         String key = entry.getKey();
                         T value = entry.getValue();
 
-                        LOGGER.warn("Transaction {} (start SCN {}, change time {}, redo thread {}, {} events) is being abandoned.",
-                                key, value.getStartScn(), value.getChangeTime(),
-                                value.getRedoThreadId(), value.getNumberOfEvents());
+                        LOGGER.warn("Transaction {} (start SCN {}, change time {}, redo thread {}, {} events{}) is being abandoned.",
+                                key, value.getStartScn(), value.getChangeTime(), value.getRedoThreadId(),
+                                value.getNumberOfEvents(), getLoggedAbandonedTransactionTableNames(value));
 
                         cleanupAfterTransactionRemovedFromCache(value, true);
 
@@ -1604,6 +1605,26 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
                 dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
             }
         }
+    }
+
+    /**
+     * Calculates a list of tables that participate in the abandoned transaction, but only if the
+     * {@link #ABANDONED_DETAILS_LOGGER} logger has {@code DEBUG} logging enabled.
+     *
+     * @param transaction the transaction to inspect events for
+     * @return details about abandoned transactions, or an empty string if logging level is INFO or higher.
+     */
+    protected String getLoggedAbandonedTransactionTableNames(T transaction) {
+        if (ABANDONED_DETAILS_LOGGER.isDebugEnabled()) {
+            final Set<String> tableNames = new HashSet<>();
+            final Iterator<LogMinerEvent> eventIterator = getTransactionEventIterator(transaction);
+            while (eventIterator.hasNext()) {
+                final LogMinerEvent event = eventIterator.next();
+                tableNames.add(event.getTableId().identifier());
+            }
+            return String.format(", %d tables [%s]", tableNames.size(), String.join(",", tableNames));
+        }
+        return "";
     }
 
     /**
