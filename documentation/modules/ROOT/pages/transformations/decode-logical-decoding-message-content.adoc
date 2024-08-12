@@ -136,5 +136,6 @@ The following table lists the configuration options that you can use with the `D
 |[[decode-logical-decoding-message-content-fields-null-include]]<<decode-logical-decoding-message-content-fields-null-include, `fields.null.include`>>
 |boolean
 |false
-|Defines whether to include fields with null values to the decoded structure
+|Specifies how the decoding process handles fields that have null values in the source message.
+By default, the transformation removes fields that have null values.
 |===
