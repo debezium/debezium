@@ -40,9 +40,9 @@ public class PostgresCloudEventsMaker extends CloudEventsMaker {
     @Override
     public String ceId() {
         return "name:" + sourceField(AbstractSourceInfo.SERVER_NAME_KEY)
-                + ";lsn:" + sourceField(LSN_KEY).toString()
-                + ";txId:" + sourceField(TXID_KEY).toString()
-                + ";sequence:" + sourceField(SEQUENCE_KEY).toString();
+                + ";lsn:" + sourceField(LSN_KEY)
+                + ";txId:" + sourceField(TXID_KEY)
+                + ";sequence:" + sourceField(SEQUENCE_KEY);
     }
 
     @Override

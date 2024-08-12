@@ -18,6 +18,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -28,6 +29,7 @@ import org.junit.Test;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
+import io.debezium.converters.CloudEventsConverterTest;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
@@ -441,6 +443,28 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
             Assert.assertTrue(e.getValue().getInt64("xmin") == null);
             Assert.assertTrue(e.getValue().getInt64("lsn") == null);
             Assert.assertTrue(e.getValue().getInt64("txId") == null);
+        }
+    }
+
+    @Test
+    public void shouldOutputRecordsInCloudEventsFormat() throws Exception {
+        // Testing.Print.enable();
+
+        try (JdbcConnection connection = databaseConnection()) {
+            populateTable(connection, "s1.anumeric");
+        }
+        startConnector(x -> x.with("value.converter", "io.debezium.converters.CloudEventsConverter")
+                .with("value.converter.serializer.type", "json")
+                .with("value.converter.data.serializer.type", "json"));
+
+        sendAdHocSnapshotSignal("s1.anumeric");
+
+        final SourceRecords snapshotRecords = consumeRecordsByTopic(ROW_COUNT);
+        final List<SourceRecord> snapshotTable1 = snapshotRecords.recordsForTopic("test_server.s1.anumeric");
+
+        // test snapshot
+        for (SourceRecord sourceRecord : snapshotTable1) {
+            CloudEventsConverterTest.shouldConvertToCloudEventsInJson(sourceRecord, false);
         }
     }
 
