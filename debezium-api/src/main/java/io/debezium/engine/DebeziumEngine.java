@@ -177,6 +177,32 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
     }
 
     /**
+     * Signaler defines the contract for sending signals to connector tasks.
+     * @param <T> signal type
+     */
+    interface Signaler<T> {
+
+        /**
+         * Initialize the signaler with the engine.
+         *
+         * <p>
+         *     Note that it is up the the implementation to decide whether it is compatible with given engine.
+         * </p>
+         *
+         * @param engine the engine instance
+         * @param <E> type of engine
+         */
+        <E extends DebeziumEngine<?>> void init(E engine);
+
+        /**
+         * Send a signal to the connector.
+         *
+         * @param signal the signal to send
+         */
+        void signal(T signal);
+    }
+
+    /**
      * A builder to set up and create {@link DebeziumEngine} instances.
      */
     interface Builder<R> {
@@ -198,6 +224,15 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
          * @return this builder object so methods can be chained together; never null
          */
         Builder<R> notifying(ChangeConsumer<R> handler);
+
+        /**
+         * Use the specified signaler to send signals to the connector.
+         * @param signaler the signaler
+         * @return this builder object so methods can be chained together; never null
+         */
+        default Builder<R> using(Signaler<?> signaler) {
+            return this;
+        };
 
         /**
          * Use the specified configuration for the connector. The configuration is assumed to already be valid.
