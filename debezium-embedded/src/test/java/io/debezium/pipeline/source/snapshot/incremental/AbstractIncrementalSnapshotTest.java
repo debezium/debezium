@@ -340,7 +340,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         startAndConsumeTillEnd(connectorClass(), config);
         waitForConnectorToStart();
 
-        waitForAvailableRecords(1, TimeUnit.SECONDS);
+        waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
         // there shouldn't be any snapshot records
         assertNoRecordsToConsume();
 
@@ -410,7 +410,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         startAndConsumeTillEnd(connectorClass(), config);
         waitForConnectorToStart();
 
-        waitForAvailableRecords(1, TimeUnit.SECONDS);
+        waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
         // there shouldn't be any snapshot records
         assertNoRecordsToConsume();
 
@@ -447,7 +447,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         startAndConsumeTillEnd(connectorClass(), config);
         waitForConnectorToStart();
 
-        waitForAvailableRecords(1, TimeUnit.SECONDS);
+        waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
         // there shouldn't be any snapshot records
         assertNoRecordsToConsume();
 
@@ -838,7 +838,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         startConnector(x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 50));
         waitForConnectorToStart();
 
-        waitForAvailableRecords(1, TimeUnit.SECONDS);
+        waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
         // there shouldn't be any snapshot records
         assertNoRecordsToConsume();
 
@@ -884,7 +884,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         startAndConsumeTillEnd(connectorClass(), config);
         waitForConnectorToStart();
 
-        waitForAvailableRecords(1, TimeUnit.SECONDS);
+        waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
         // there shouldn't be any snapshot records
         assertNoRecordsToConsume();
 
@@ -910,7 +910,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         startAndConsumeTillEnd(connectorClass(), config);
         waitForConnectorToStart();
 
-        waitForAvailableRecords(1, TimeUnit.SECONDS);
+        waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
         // there shouldn't be any snapshot records
         assertNoRecordsToConsume();
 
@@ -952,7 +952,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         startAndConsumeTillEnd(connectorClass(), config);
         waitForConnectorToStart();
 
-        waitForAvailableRecords(1, TimeUnit.SECONDS);
+        waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
         // there shouldn't be any snapshot records
         assertNoRecordsToConsume();
 
@@ -1004,7 +1004,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         startAndConsumeTillEnd(connectorClass(), config);
         waitForConnectorToStart();
 
-        waitForAvailableRecords(1, TimeUnit.SECONDS);
+        waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
         // there shouldn't be any snapshot records
         assertNoRecordsToConsume();
 
@@ -1029,7 +1029,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
         waitForConnectorToStart();
 
-        waitForAvailableRecords(1, TimeUnit.SECONDS);
+        waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
 
         waitForStreamingRunning(connector(), server(), getStreamingNamespace(), task());
 
