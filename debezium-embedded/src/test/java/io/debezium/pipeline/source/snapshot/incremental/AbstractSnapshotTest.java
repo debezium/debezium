@@ -277,7 +277,7 @@ public abstract class AbstractSnapshotTest<T extends SourceConnector> extends Ab
         start(connectorClass(), config, callback);
         waitForConnectorToStart();
 
-        waitForAvailableRecords(5, TimeUnit.SECONDS);
+        waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
         if (expectNoRecords) {
             // there shouldn't be any snapshot records
             assertNoRecordsToConsume();
