@@ -5,7 +5,11 @@
  */
 package io.debezium.engine.source;
 
+import java.util.Optional;
+
 import org.apache.kafka.connect.source.SourceTask;
+
+import io.debezium.connector.common.BaseSourceTask;
 
 /**
  * Implementation of {@link DebeziumSourceTask} which currently serves only as a wrapper
@@ -30,5 +34,12 @@ public class EngineSourceTask implements DebeziumSourceTask {
 
     public SourceTask connectTask() {
         return connectTask;
+    }
+
+    @SuppressWarnings("unchecked")
+    public Optional<BaseSourceTask<?, ?>> debeziumConnectTask() {
+        return Optional.of(connectTask)
+                .filter(BaseSourceTask.class::isInstance)
+                .map(BaseSourceTask.class::cast);
     }
 }
