@@ -126,15 +126,15 @@ After the SMT applies these changes, the record can be more easily processed by 
 The following table lists the configuration options that you can use with the `DecodeLogicalDecodingMessageContent` SMT.
 
 .`DecodeLogicalDecodingMessageContent` SMT configuration options
-[cols="15%a,65%a,10%a,10%a"]
+[cols="15%a,10%a,10%a,65%a"]
 |===
 |Property
-|Description
 |Type
 |Default
+|Description
 
-|[[decode-logical-decoding-message-content-fields-mapping]]<<decode-logical-decoding-message-content-fields-null-include, `fields.null.include`>>
-|Defines whether to include fields with null values to the decoded structure
+|[[decode-logical-decoding-message-content-fields-null-include]]<<decode-logical-decoding-message-content-fields-null-include, `fields.null.include`>>
 |boolean
 |false
+|Defines whether to include fields with null values to the decoded structure
 |===
