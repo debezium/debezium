@@ -10,7 +10,7 @@
 
 toc::[]
 
-The `DecodeLogicalDecodingMessageContent` SMT converts the binary content of a PostgreSQL logical decoding message to a structured form. 
+The `DecodeLogicalDecodingMessageContent` SMT converts the binary content of a PostgreSQL logical decoding message to a structured form.
 You can use the SMT on its own, or in conjunction with another SMT, such as the link:/documentation/reference/transformations/outbox-event-router[Outbox Event Router].
 
 [[example-decode-logical-decoding-message-content]]
@@ -119,3 +119,22 @@ In the preceding example, the SMT applies the following changes to the original 
 After the SMT applies these changes, the record can be more easily processed by other SMTs, such as the Outbox Event Router.
 
 ====
+
+[[decode-logical-decoding-message-content-configuration-options]]
+== Configuration options
+
+The following table lists the configuration options that you can use with the `DecodeLogicalDecodingMessageContent` SMT.
+
+.`DecodeLogicalDecodingMessageContent` SMT configuration options
+[cols="15%a,65%a,10%a,10%a"]
+|===
+|Property
+|Description
+|Type
+|Default
+
+|[[decode-logical-decoding-message-content-fields-mapping]]<<decode-logical-decoding-message-content-fields-null-include, `fields.null.include`>>
+|Defines whether to include fields with null values to the decoded structure
+|boolean
+|false
+|===
