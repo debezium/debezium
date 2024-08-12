@@ -32,6 +32,7 @@ import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.connector.postgresql.spi.CustomActionProvider;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
+import io.debezium.pipeline.signal.SignalRecord;
 import io.debezium.pipeline.signal.actions.Log;
 
 public class SignalsIT extends AbstractAsyncEngineConnectorTest {
@@ -63,11 +64,20 @@ public class SignalsIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
+    public void signalLogViaInProcessChannel() throws InterruptedException {
+        signalLog(false, false);
+    }
+
+    @Test
     public void signalLogWithEscapedCharacter() throws InterruptedException {
         signalLog(true);
     }
 
     private void signalLog(boolean includingEscapedCharacter) throws InterruptedException {
+        signalLog(includingEscapedCharacter, true);
+    }
+
+    private void signalLog(boolean includingEscapedCharacter, boolean useSource) throws InterruptedException {
         // Testing.Print.enable();
         final LogInterceptor logInterceptor = new LogInterceptor(Log.class);
 
@@ -81,6 +91,7 @@ public class SignalsIT extends AbstractAsyncEngineConnectorTest {
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                 .with(PostgresConnectorConfig.SIGNAL_DATA_COLLECTION, includingEscapedCharacter ? signalTableWithEscapedCharacter : signalTable)
                 .with(CommonConnectorConfig.SIGNAL_POLL_INTERVAL_MS, "500")
+                .with(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source,in-process")
                 .build();
         start(PostgresConnector.class, config);
         assertConnectorIsRunning();
@@ -93,15 +104,23 @@ public class SignalsIT extends AbstractAsyncEngineConnectorTest {
         // insert and verify a new record
         TestHelper.execute(INSERT_STMT);
 
-        // Insert the signal record
-        String insertSql = String.format("INSERT INTO %s VALUES('1', 'log', '{\"message\": \"Signal message at offset ''{}''\"}')",
-                includingEscapedCharacter ? signalTableWithEscapedCharacter : signalTable);
-        TestHelper.execute(insertSql);
+        int expectedNumRecords;
+        if (useSource) {
+            expectedNumRecords = 2;
+            // Insert the signal record
+            String insertSql = String.format("INSERT INTO %s VALUES('1', 'log', '{\"message\": \"Signal message at offset ''{}''\"}')",
+                    includingEscapedCharacter ? signalTableWithEscapedCharacter : signalTable);
+            TestHelper.execute(insertSql);
+        }
+        else {
+            expectedNumRecords = 1;
+            signaler.signal(new SignalRecord("1", "log", "{\"message\": \"Signal message at offset ''{}''\"}", null));
+        }
 
         waitForAvailableRecords(800, TimeUnit.MILLISECONDS);
 
-        final SourceRecords records = consumeRecordsByTopic(2);
-        assertThat(records.allRecordsInOrder()).hasSize(2);
+        final SourceRecords records = consumeRecordsByTopic(expectedNumRecords);
+        assertThat(records.allRecordsInOrder()).hasSize(expectedNumRecords);
         assertThat(logInterceptor.containsMessage("Signal message at offset")).isTrue();
     }
 

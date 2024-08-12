@@ -8,6 +8,7 @@ package io.debezium.embedded.async;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.embedded.TestingDebeziumEngine;
 import io.debezium.engine.DebeziumEngine;
+import io.debezium.pipeline.signal.SignalRecord;
 
 /**
  * Base class for testing connectors using {@link AsyncEmbeddedEngine}.
@@ -16,9 +17,14 @@ import io.debezium.engine.DebeziumEngine;
  */
 public class AbstractAsyncEngineConnectorTest extends AbstractConnectorTest {
 
+    protected DebeziumEngine.Signaler<SignalRecord> signaler;
+
     @Override
     protected DebeziumEngine.Builder createEngineBuilder() {
-        return new AsyncEmbeddedEngine.AsyncEngineBuilder();
+        this.signaler = new AsyncEngineSignaler();
+
+        return new AsyncEmbeddedEngine.AsyncEngineBuilder()
+                .using(signaler);
     }
 
     @Override
