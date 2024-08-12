@@ -2699,6 +2699,17 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
         stopConnector();
     }
 
+    @Test
+    @FixFor("DBZ-8134")
+    public void shouldAcceptLongAsServerId() throws InterruptedException {
+        Configuration config = DATABASE.defaultConfig()
+                .with(BinlogConnectorConfig.SERVER_ID, "202309181059")
+                .build();
+        start(getConnectorClass(), config);
+        waitForStreamingRunning(DATABASE.getServerName());
+        stopConnector();
+    }
+
     protected String getExpectedQuery(String statement) {
 
         return statement;

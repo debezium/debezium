@@ -832,7 +832,7 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
      * @return the database cluster server unique identifier
      */
     public long getServerId() {
-        return config.getInteger(SERVER_ID);
+        return config.getLong(SERVER_ID);
     }
 
     /**
