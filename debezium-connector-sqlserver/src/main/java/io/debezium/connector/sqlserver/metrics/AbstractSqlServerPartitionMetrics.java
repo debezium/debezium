@@ -92,6 +92,11 @@ abstract public class AbstractSqlServerPartitionMetrics extends Metrics implemen
     }
 
     @Override
+    public Map<String, Long> getNumberOfTruncateEventsSeen() {
+        return activityMonitoringMeter.getNumberOfTruncateEventsSeen();
+    }
+
+    @Override
     public void pause() {
         activityMonitoringMeter.pause();
     }
