@@ -26,6 +26,7 @@ public class ActivityMonitoringMeterTest {
         assertThat(activityMonitoringMeter.getNumberOfCreateEventsSeen()).isEmpty();
         assertThat(activityMonitoringMeter.getNumberOfUpdateEventsSeen()).isEmpty();
         assertThat(activityMonitoringMeter.getNumberOfDeleteEventsSeen()).isEmpty();
+        assertThat(activityMonitoringMeter.getNumberOfTruncateEventsSeen()).isEmpty();
 
     }
 
@@ -39,6 +40,7 @@ public class ActivityMonitoringMeterTest {
         activityMonitoringMeter.onEvent(TableId.parse("db.schema.table"), null, 1L, null, Envelope.Operation.UPDATE);
         activityMonitoringMeter.onEvent(TableId.parse("db.schema.table"), null, 1L, null, Envelope.Operation.DELETE);
         activityMonitoringMeter.onEvent(TableId.parse("db.schema.anotherTable"), null, 1L, null, Envelope.Operation.CREATE);
+        activityMonitoringMeter.onEvent(TableId.parse("db.schema.anotherTable"), null, 1L, null, Envelope.Operation.TRUNCATE);
 
         assertThat(activityMonitoringMeter.getNumberOfCreateEventsSeen())
                 .contains(Map.entry("db.schema.table", 2L), Map.entry("db.schema.anotherTable", 1L));
@@ -46,6 +48,8 @@ public class ActivityMonitoringMeterTest {
                 .contains(Map.entry("db.schema.table", 1L));
         assertThat(activityMonitoringMeter.getNumberOfDeleteEventsSeen())
                 .contains(Map.entry("db.schema.table", 1L));
+        assertThat(activityMonitoringMeter.getNumberOfTruncateEventsSeen())
+                .contains(Map.entry("db.schema.anotherTable", 1L));
 
     }
 
@@ -59,11 +63,13 @@ public class ActivityMonitoringMeterTest {
         activityMonitoringMeter.onEvent(TableId.parse("db.schema.table"), null, 1L, null, Envelope.Operation.UPDATE);
         activityMonitoringMeter.onEvent(TableId.parse("db.schema.table"), null, 1L, null, Envelope.Operation.DELETE);
         activityMonitoringMeter.onEvent(TableId.parse("db.schema.anotherTable"), null, 1L, null, Envelope.Operation.CREATE);
+        activityMonitoringMeter.onEvent(TableId.parse("db.schema.anotherTable"), null, 1L, null, Envelope.Operation.TRUNCATE);
 
         activityMonitoringMeter.reset();
 
         assertThat(activityMonitoringMeter.getNumberOfCreateEventsSeen()).isEmpty();
         assertThat(activityMonitoringMeter.getNumberOfUpdateEventsSeen()).isEmpty();
         assertThat(activityMonitoringMeter.getNumberOfDeleteEventsSeen()).isEmpty();
+        assertThat(activityMonitoringMeter.getNumberOfTruncateEventsSeen()).isEmpty();
     }
 }

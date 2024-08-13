@@ -130,4 +130,9 @@ public class DefaultStreamingChangeEventSourceMetrics<P extends Partition> exten
     public Map<String, Long> getNumberOfUpdateEventsSeen() {
         return activityMonitoringMeter.getNumberOfUpdateEventsSeen();
     }
+
+    @Override
+    public Map<String, Long> getNumberOfTruncateEventsSeen() {
+        return activityMonitoringMeter.getNumberOfTruncateEventsSeen();
+    }
 }
