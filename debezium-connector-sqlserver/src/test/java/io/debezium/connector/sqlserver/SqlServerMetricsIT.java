@@ -57,8 +57,6 @@ public class SqlServerMetricsIT extends AbstractMetricsTest<SqlServerConnector> 
     @Override
     protected void executeInsertStatements() throws Exception {
         connection.execute("INSERT INTO tablea VALUES('a')", "INSERT INTO tablea VALUES('b')");
-        TestHelper.enableTableCdc(connection, "tablea");
-        TestHelper.waitForEnabledCdc(connection, "tablea");
     }
 
     @Override
@@ -83,21 +81,24 @@ public class SqlServerMetricsIT extends AbstractMetricsTest<SqlServerConnector> 
 
     @Override
     protected String database() {
-        return "testDB1";
+        return TEST_DATABASE_1;
     }
 
     private SqlServerConnection connection;
 
     @Before
-    public void before() throws SQLException {
+    public void before() throws Exception {
+        // Testing.Print.enable();
         TestHelper.createTestDatabase();
         connection = TestHelper.testConnection();
         connection.execute(
                 "CREATE TABLE tablea (id int IDENTITY(1,1) primary key, cola varchar(30))");
         TestHelper.enableTableCdc(connection, "tablea");
-        TestHelper.adjustCdcPollingInterval(connection, 1);
         initializeConnectorTestFramework();
         Testing.Files.delete(SCHEMA_HISTORY_PATH);
+
+        // Be sure the agent is running
+        TestHelper.waitForMaxLsnAvailable(connection, TEST_DATABASE_1);
     }
 
     @After
@@ -139,9 +140,14 @@ public class SqlServerMetricsIT extends AbstractMetricsTest<SqlServerConnector> 
         assertConnectorIsRunning();
 
         assertSnapshotMetrics();
-        // For SQL Server we have two more since when the streaming will start from an empty offset
-        // it will take the last commited transaction in the log and so also the initial inserts will be streamed.
-        assertStreamingMetrics(false, expectedEvents() + 2);
+
+        consumeRecords(2);
+
+        TestHelper.disableTableCdc(connection, "tablea");
+        TestHelper.enableTableCdc(connection, "tablea");
+        TestHelper.waitForEnabledCdc(connection, "tablea");
+
+        assertStreamingMetrics(false, expectedEvents());
     }
 
     @Test
@@ -156,8 +162,13 @@ public class SqlServerMetricsIT extends AbstractMetricsTest<SqlServerConnector> 
         start(x -> x.with(CommonConnectorConfig.CUSTOM_METRIC_TAGS, "env=test,bu=bigdata"));
 
         assertSnapshotWithCustomMetrics(customMetricTags);
-        // For SQL Server we have two more since when the streaming will start from an empty offset
-        // it will take the last commited transaction in the log and so also the initial inserts will be streamed.
-        assertStreamingWithCustomMetrics(customMetricTags, expectedEvents() + 2);
+
+        consumeRecords(2);
+
+        TestHelper.disableTableCdc(connection, "tablea");
+        TestHelper.enableTableCdc(connection, "tablea");
+        TestHelper.waitForEnabledCdc(connection, "tablea");
+
+        assertStreamingWithCustomMetrics(customMetricTags, expectedEvents());
     }
 }

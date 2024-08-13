@@ -255,7 +255,7 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
 
         // Insert new records and wait for them to become available
         executeInsertStatements();
-        // Testing.Print.enable();
+
         consumeRecordsByTopic((int) expectedEvents);
         Thread.sleep(Duration.ofSeconds(2).toMillis());
 
