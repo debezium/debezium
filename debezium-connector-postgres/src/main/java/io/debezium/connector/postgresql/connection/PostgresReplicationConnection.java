@@ -538,8 +538,9 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                     break;
                 }
                 catch (SQLException ex) {
-                    // intercept the statement timeout error and retry
-                    if (ex.getMessage().contains("canceling statement due to user request")) {
+                    // intercept the statement timeout error (due to query_canceled or lock_not_available) and retry
+                    // ref: https://www.postgresql.org/docs/current/errcodes-appendix.html
+                    if (ex.getSQLState().equals("57014") || ex.getSQLState().equals("55P03")) {
                         String message = "Creation of replication slot failed; " +
                                 "query to create replication slot timed out, please make sure that there are no long running queries on the database.";
                         if (++tryCount > maxRetries) {
