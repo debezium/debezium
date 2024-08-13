@@ -121,7 +121,7 @@ jobs:
       max-parallel: 2
       matrix:
         profile: [ "mysql-ci", "mysql-ci-gtids", "mysql-ci-percona", "mysql-ci-ssl" ]
-        version-mysql-server: [ "8.0", "8.2" ]
+        version-mysql-server: [ "8.0", "8.4" ]
       fail-fast: false
     name: "MySQL ${{ matrix.version-mysql-server }} - ${{ matrix.profile }}"
     needs: [ check_style ]
