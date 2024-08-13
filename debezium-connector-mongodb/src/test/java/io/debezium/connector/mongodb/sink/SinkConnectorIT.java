@@ -77,7 +77,7 @@ public interface SinkConnectorIT {
     }
 
     default void startSink(Function<Configuration.Builder, Configuration.Builder> custConfig) {
-        TestInfrastructureHelper.setupDebeziumContainer(Module.version(), null);
+        TestInfrastructureHelper.setupDebeziumContainer(Module.version(), null, TestInfrastructureHelper.parseDebeziumVersion(Module.version()));
         TestInfrastructureHelper.startContainers(DATABASE.DEBEZIUM_ONLY);
         final Configuration config = custConfig.apply(mongodbSinkConfig()).build();
         TestInfrastructureHelper.getDebeziumContainer().registerConnector(SINK_CONNECTOR_NAME, ConnectorConfiguration.from(config.asMap()));
