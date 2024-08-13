@@ -7,13 +7,13 @@ package io.debezium.embedded;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
+import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.storage.Converter;
 import org.apache.kafka.connect.storage.ConverterConfig;
@@ -100,18 +100,24 @@ public class ConverterBuilder<R> {
                 if (topicName == null) {
                     topicName = TOPIC_NAME;
                 }
-                final byte[] key = keyConverter.fromConnectData(topicName, record.keySchema(), record.key());
-                final byte[] value = valueConverter.fromConnectData(topicName, record.valueSchema(), record.value());
+                org.apache.kafka.common.header.internals.RecordHeaders recordHeaders = new RecordHeaders();
 
-                List<Header<?>> headers = Collections.emptyList();
                 if (headerConverter != null) {
-                    List<Header<byte[]>> byteArrayHeaders = convertHeaders(record, topicName, headerConverter);
-                    headers = (List) byteArrayHeaders;
-                    if (shouldConvertHeadersToString()) {
-                        headers = byteArrayHeaders.stream()
-                                .map(h -> new EmbeddedEngineHeader<>(h.getKey(), new String(h.getValue(), StandardCharsets.UTF_8)))
-                                .collect(Collectors.toList());
+                    for (org.apache.kafka.connect.header.Header header : record.headers()) {
+                        byte[] rawHeader = headerConverter.fromConnectHeader(topicName, header.key(), header.schema(), header.value());
+                        recordHeaders.add(header.key(), rawHeader);
                     }
+                }
+
+                final byte[] key = keyConverter.fromConnectData(topicName, recordHeaders, record.keySchema(), record.key());
+                final byte[] value = valueConverter.fromConnectData(topicName, recordHeaders, record.valueSchema(), record.value());
+
+                List<Header<byte[]>> byteArrayHeaders = convertHeaders(recordHeaders);
+                List<Header<?>> headers = (List) byteArrayHeaders;
+                if (shouldConvertHeadersToString()) {
+                    headers = byteArrayHeaders.stream()
+                            .map(h -> new EmbeddedEngineHeader<>(h.getKey(), new String(h.getValue(), StandardCharsets.UTF_8)))
+                            .collect(Collectors.toList());
                 }
                 Object convertedKey = key;
                 Object convertedValue = value;
@@ -148,14 +154,11 @@ public class ConverterBuilder<R> {
         return isFormat(formatHeader, Json.class);
     }
 
-    private List<Header<byte[]>> convertHeaders(
-                                                SourceRecord record, String topicName, HeaderConverter headerConverter) {
+    private List<Header<byte[]>> convertHeaders(org.apache.kafka.common.header.Headers recordHeaders) {
         List<Header<byte[]>> headers = new ArrayList<>();
 
-        for (org.apache.kafka.connect.header.Header header : record.headers()) {
-            String headerKey = header.key();
-            byte[] rawHeader = headerConverter.fromConnectHeader(topicName, headerKey, header.schema(), header.value());
-            headers.add(new EmbeddedEngineHeader<>(headerKey, rawHeader));
+        for (org.apache.kafka.common.header.Header header : recordHeaders) {
+            headers.add(new EmbeddedEngineHeader<>(header.key(), header.value()));
         }
 
         return headers;
