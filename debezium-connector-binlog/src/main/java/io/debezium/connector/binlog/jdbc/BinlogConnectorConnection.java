@@ -47,6 +47,7 @@ public abstract class BinlogConnectorConnection extends JdbcConnection {
     private static final String SQL_SHOW_SYSTEM_VARIABLES_CHARACTER_SET = "SHOW VARIABLES WHERE Variable_name IN ('character_set_server','collation_server')";
     private static final String SQL_SHOW_SESSION_VARIABLE_SSL_VERSION = "SHOW SESSION STATUS LIKE 'Ssl_version'";
     private static final String QUOTED_CHARACTER = "`";
+    public static final String MASTER_STATUS_STATEMENT = "SHOW MASTER STATUS";
 
     private final ConnectionConfiguration connectionConfig;
     private final BinlogFieldReader fieldReader;
@@ -420,6 +421,10 @@ public abstract class BinlogConnectorConnection extends JdbcConnection {
         final String gtidSet = ((BinlogOffsetContext) offset).gtidSet();
         final String binlogFilename = ((BinlogOffsetContext) offset).getSource().binlogFilename();
         return isBinlogPositionAvailable((BinlogConnectorConfig) config, gtidSet, binlogFilename);
+    }
+
+    public String binaryLogStatusStatement() {
+        return MASTER_STATUS_STATEMENT;
     }
 
     /**

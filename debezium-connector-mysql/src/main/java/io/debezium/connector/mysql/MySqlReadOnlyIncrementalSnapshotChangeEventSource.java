@@ -11,8 +11,8 @@ import java.util.function.Consumer;
 import io.debezium.DebeziumException;
 import io.debezium.connector.binlog.BinlogReadOnlyIncrementalSnapshotChangeEventSource;
 import io.debezium.connector.binlog.gtid.GtidSet;
+import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection;
 import io.debezium.connector.mysql.gtid.MySqlGtidSet;
-import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
@@ -71,10 +71,10 @@ import io.debezium.util.Clock;
  */
 public class MySqlReadOnlyIncrementalSnapshotChangeEventSource extends BinlogReadOnlyIncrementalSnapshotChangeEventSource<MySqlPartition, MySqlOffsetContext> {
 
-    private static final String SHOW_MASTER_STMT = "SHOW MASTER STATUS";
+    private final BinlogConnectorConnection binlogConnectorConnection;
 
     public MySqlReadOnlyIncrementalSnapshotChangeEventSource(MySqlConnectorConfig config,
-                                                             JdbcConnection jdbcConnection,
+                                                             BinlogConnectorConnection jdbcConnection,
                                                              EventDispatcher<MySqlPartition, TableId> dispatcher,
                                                              DatabaseSchema<?> databaseSchema,
                                                              Clock clock,
@@ -82,12 +82,13 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource extends BinlogRea
                                                              DataChangeEventListener<MySqlPartition> dataChangeEventListener,
                                                              NotificationService<MySqlPartition, MySqlOffsetContext> notificationService) {
         super(config, jdbcConnection, dispatcher, databaseSchema, clock, progressListener, dataChangeEventListener, notificationService);
+        binlogConnectorConnection = jdbcConnection;
     }
 
     @Override
     protected void getExecutedGtidSet(Consumer<GtidSet> watermark) {
         try {
-            jdbcConnection.query(SHOW_MASTER_STMT, rs -> {
+            jdbcConnection.query(binlogConnectorConnection.binaryLogStatusStatement(), rs -> {
                 if (rs.next()) {
                     if (rs.getMetaData().getColumnCount() > 4) {
                         // This column exists only in MySQL 5.6.5 or later ...
