@@ -41,8 +41,12 @@ import io.debezium.connector.simple.SimpleSourceConnector;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.embedded.DebeziumEngineTestUtils;
+import io.debezium.embedded.EmbeddedEngineChangeEvent;
 import io.debezium.embedded.EmbeddedEngineConfig;
+import io.debezium.embedded.EmbeddedEngineHeader;
 import io.debezium.engine.DebeziumEngine;
+import io.debezium.engine.format.Json;
+import io.debezium.engine.format.KeyValueHeaderChangeEventFormat;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.Testing;
@@ -217,6 +221,47 @@ public class AsyncEmbeddedEngineTest {
 
         // As some of the tasks failed, engine should be stopped automatically.
         waitForEngineToStop();
+    }
+
+    @Test
+    public void testHeaderConverter() throws Exception {
+        final Properties props = new Properties();
+        props.setProperty(ConnectorConfig.NAME_CONFIG, "debezium-engine");
+        props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
+        props.setProperty(ConnectorConfig.CONNECTOR_CLASS_CONFIG, FileStreamSourceConnector.class.getName());
+        props.setProperty(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
+        props.setProperty(WorkerConfig.OFFSET_COMMIT_INTERVAL_MS_CONFIG, "0");
+        props.setProperty(FileStreamSourceConnector.FILE_CONFIG, TEST_FILE_PATH.toAbsolutePath().toString());
+        props.setProperty(FileStreamSourceConnector.TOPIC_CONFIG, "testTopic");
+        props.setProperty("transforms", "header");
+        props.setProperty("transforms.header.type", "io.debezium.embedded.async.FixedValueHeader");
+
+        appendLinesToSource(1);
+        CountDownLatch recordsLatch = new CountDownLatch(1); // 1 count down for headers
+
+        DebeziumEngine.Builder<EmbeddedEngineChangeEvent> builder = new AsyncEmbeddedEngine.AsyncEngineBuilder(
+                KeyValueHeaderChangeEventFormat.of(Json.class, Json.class, Json.class));
+        DebeziumEngine<EmbeddedEngineChangeEvent> embeddedEngine = builder
+                .using(props)
+                .using(new TestEngineConnectorCallback())
+                .notifying((records, committer) -> {
+                    for (EmbeddedEngineChangeEvent r : records) {
+                        committer.markProcessed(r);
+                        assertThat(r.headers().size()).isEqualTo(1);
+                        assertThat(
+                                ((EmbeddedEngineHeader) r.headers().get(0)).getValue()).isEqualTo("{\"schema\":{\"type\":\"int32\",\"optional\":false},\"payload\":2}");
+                    }
+                    committer.markBatchFinished();
+                }).build();
+
+        engineExecSrv.submit(() -> {
+            LoggingContext.forConnector(getClass().getSimpleName(), "", "engine");
+            embeddedEngine.run();
+        });
+
+        recordsLatch.await(AbstractConnectorTest.waitTimeForEngine(), TimeUnit.SECONDS);
+
+        embeddedEngine.close();
     }
 
     @Test
