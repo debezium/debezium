@@ -158,7 +158,7 @@ public class ReplicationConnectionIT {
         }
         catch (Exception e) {
             assertTrue(interceptor.containsWarnMessage("and retrying, attempt number"));
-            assertTrue(e.getCause().getMessage().contains("ERROR: canceling statement due to user request"));
+            assertTrue(((SQLException) e.getCause()).getSQLState().equals("57014"));
             assertTrue(e.getMessage().contains("query to create replication slot timed out"));
             throw e;
         }
@@ -185,7 +185,7 @@ public class ReplicationConnectionIT {
         }
         catch (Exception e) {
             assertTrue(interceptor.containsWarnMessage("and retrying, attempt number"));
-            assertTrue(e.getCause().getMessage().contains("ERROR: canceling statement due to user request"));
+            assertTrue(((SQLException) e.getCause()).getSQLState().equals("57014"));
             assertTrue(e.getMessage().contains("query to create replication slot timed out"));
         }
         finally {
