@@ -26,6 +26,7 @@ public class ActivityMonitoringMeter implements ActivityMonitoringMXBean {
     private final ActivityCounter createCount = new ActivityCounter();
     private final ActivityCounter updateCount = new ActivityCounter();
     private final ActivityCounter deleteCount = new ActivityCounter();
+    private final ActivityCounter truncateCount = new ActivityCounter();
 
     private boolean isPaused = false;
 
@@ -48,11 +49,14 @@ public class ActivityMonitoringMeter implements ActivityMonitoringMXBean {
             case DELETE:
                 deleteCount.add(1, tableName);
                 break;
+            case TRUNCATE:
+                truncateCount.add(1, tableName);
+                break;
             default:
                 break;
         }
 
-        LOGGER.trace("Counter status create:{}, delete:{}, update:{}", createCount, deleteCount, updateCount);
+        LOGGER.trace("Counter status create:{}, delete:{}, update:{}, truncate:{}", createCount, deleteCount, updateCount, truncateCount);
     }
 
     @Override
@@ -71,6 +75,11 @@ public class ActivityMonitoringMeter implements ActivityMonitoringMXBean {
     }
 
     @Override
+    public Map<String, Long> getNumberOfTruncateEventsSeen() {
+        return truncateCount.getCounter();
+    }
+
+    @Override
     public void pause() {
         isPaused = true;
     }
@@ -84,6 +93,7 @@ public class ActivityMonitoringMeter implements ActivityMonitoringMXBean {
         createCount.reset();
         updateCount.reset();
         deleteCount.reset();
+        truncateCount.reset();
     }
 
     public static class ActivityCounter {

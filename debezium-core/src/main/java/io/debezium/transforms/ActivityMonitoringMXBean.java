@@ -18,6 +18,8 @@ public interface ActivityMonitoringMXBean {
 
     Map<String, Long> getNumberOfUpdateEventsSeen();
 
+    Map<String, Long> getNumberOfTruncateEventsSeen();
+
     void pause();
 
     void resume();
