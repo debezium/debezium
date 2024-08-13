@@ -160,6 +160,16 @@ public class TestInfrastructureHelper {
         }
     }
 
+    public static String parseDebeziumVersion(String connectorVersion) {
+        var matcher = VERSION_PATTERN.matcher(connectorVersion);
+        if (matcher.find()) {
+            return matcher.toMatchResult().group();
+        }
+        else {
+            throw new RuntimeException("Cannot parse version: " + connectorVersion);
+        }
+    }
+
     public static void stopContainers() {
         Stream<Startable> containers = Stream.of(DEBEZIUM_CONTAINER, ORACLE_CONTAINER, SQL_SERVER_CONTAINER, MONGODB_REPLICA, MYSQL_CONTAINER, POSTGRES_CONTAINER,
                 MARIADB_CONTAINER,
@@ -224,13 +234,7 @@ public class TestInfrastructureHelper {
             debeziumContainerImageVersion = DEBEZIUM_CONTAINER_IMAGE_VERSION_LATEST;
         }
         else {
-            var matcher = VERSION_PATTERN.matcher(debeziumContainerImageVersion);
-            if (matcher.find()) {
-                debeziumContainerImageVersion = matcher.toMatchResult().group();
-            }
-            else {
-                throw new RuntimeException("Cannot parse version: " + debeziumContainerImageVersion);
-            }
+            debeziumContainerImageVersion = parseDebeziumVersion(debeziumContainerImageVersion);
         }
         final String registry = debeziumContainerImageVersion.startsWith("1.2") ? "" : "quay.io/";
         String imageName = registry + "debezium/connect:" + debeziumContainerImageVersion;

@@ -24,12 +24,12 @@ public abstract class AnnotationBasedTestRule implements TestRule {
             @Override
             public void evaluate() throws Throwable {
                 StringBuilder messageBuilder = new StringBuilder(description.testCount());
-                messageBuilder.append("Skipped ").append(description.toString());
+                messageBuilder.append("Skipped ").append(description);
                 if (reason != null && !reason.trim().isEmpty()) {
                     messageBuilder.append(" because: ").append(reason);
                 }
 
-                System.out.println(messageBuilder.toString());
+                System.out.println(messageBuilder);
             }
         };
     }
