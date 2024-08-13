@@ -606,7 +606,8 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
      * @throws SQLException if mining session failed to start
      */
     public boolean startMiningSession(OracleConnection connection, Scn startScn, Scn endScn, int attempts) throws SQLException {
-        LOGGER.debug("Starting mining session startScn={}, endScn={}, strategy={}, continuous={}", startScn, endScn, strategy, continuousMining);
+        LOGGER.debug("Starting mining session startScn={}, endScn={}, strategy={}, continuous={}, attempts={}/{}", startScn, endScn, strategy, continuousMining, attempts,
+                MINING_START_RETRIES);
         try {
             Instant start = Instant.now();
             // NOTE: we treat startSCN as the _exclusive_ lower bound for mining,
