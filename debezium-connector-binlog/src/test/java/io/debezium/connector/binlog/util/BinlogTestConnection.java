@@ -12,6 +12,7 @@ import static io.debezium.connector.binlog.jdbc.BinlogSystemVariables.LOWER_CASE
 import java.sql.SQLException;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
 
@@ -53,6 +54,18 @@ public abstract class BinlogTestConnection extends JdbcConnection {
             throw new IllegalStateException("Couldn't obtain MySQL Server version", e);
         }
         return versionString;
+    }
+
+    public String binaryLogStatusStatement() {
+        final var binaryLogStatus = "SHOW BINARY LOG STATUS";
+        try {
+            query(binaryLogStatus, rs -> {
+            });
+            return binaryLogStatus;
+        }
+        catch (SQLException e) {
+            return BinlogConnectorConnection.MASTER_STATUS_STATEMENT;
+        }
     }
 
     public abstract boolean isGtidEnabled();

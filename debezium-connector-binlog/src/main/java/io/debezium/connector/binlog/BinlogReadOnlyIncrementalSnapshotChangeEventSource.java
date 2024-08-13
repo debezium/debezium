@@ -36,7 +36,6 @@ public abstract class BinlogReadOnlyIncrementalSnapshotChangeEventSource<P exten
         extends AbstractIncrementalSnapshotChangeEventSource<P, TableId> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BinlogReadOnlyIncrementalSnapshotChangeEventSource.class);
-    private static final String SHOW_MASTER_STMT = "SHOW MASTER STATUS";
 
     private final GtidSetFactory gtidSetFactory;
 
