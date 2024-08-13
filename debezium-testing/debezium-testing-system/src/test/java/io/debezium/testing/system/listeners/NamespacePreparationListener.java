@@ -13,6 +13,9 @@ import java.net.UnknownHostException;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import io.fabric8.kubernetes.client.dsl.Listable;
+import io.fabric8.openshift.api.model.ClusterRoleBinding;
+import io.fabric8.openshift.api.model.ClusterRoleBindingList;
 import org.junit.platform.launcher.TestExecutionListener;
 import org.junit.platform.launcher.TestPlan;
 import org.slf4j.Logger;
@@ -74,8 +77,22 @@ public class NamespacePreparationListener implements TestExecutionListener {
         }
 
         waitForDefaultServiceAccount();
-        client.clusterRoleBindings().createOrReplace(anyUidBindingBuilder.build());
-        client.clusterRoleBindings().createOrReplace(privilegedBindingBuilder.build());
+        ClusterRoleBindingList clusterRoleBindings = client.clusterRoleBindings().list();
+        ClusterRoleBinding anyuid = anyUidBindingBuilder.build();
+        ClusterRoleBinding priviledged = privilegedBindingBuilder.build();
+        if (clusterRoleBindings.getItems().stream().anyMatch(clr ->
+                clr.getMetadata().getName().equals(anyuid.getMetadata().getName()))) {
+            client.resource(anyuid).update();
+        } else {
+            client.resource(anyuid).create();
+        }
+
+        if (clusterRoleBindings.getItems().stream().anyMatch(clr ->
+                clr.getMetadata().getName().equals(priviledged.getMetadata().getName()))) {
+            client.resource(priviledged).update();
+        } else {
+            client.resource(priviledged).create();
+        }
     }
 
     private void waitForDefaultServiceAccount() {
@@ -99,12 +116,11 @@ public class NamespacePreparationListener implements TestExecutionListener {
     }
 
     private void addServiceAccountToClusterRoleBinding(String saNamespace, ClusterRoleBindingBuilder bindingBuilder) {
-        bindingBuilder.addNewSubjectLike(new ObjectReferenceBuilder()
-                .withKind("SystemUser")
+        bindingBuilder.addToSubjects(new ObjectReferenceBuilder()
+                .withKind("ServiceAccount")
                 .withName("default")
                 .withNamespace(saNamespace)
                 .build());
-        bindingBuilder.withUserNames("system:serviceaccount:" + saNamespace + ":default");
     }
 
     /**

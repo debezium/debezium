@@ -66,6 +66,8 @@ Prepare namespace and pull secret for the testsuite
     --from-file=.dockercfg=<path/to/.dockercfg> \
     --type=kubernetes.io/dockercfg \
     -n debezium-testsuite
+    oc secrets link default <secret_name> --for=pull
+    oc secrets link builder <secret_name> --for=pull
 ```
 
 Edit Pod template
