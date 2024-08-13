@@ -1768,6 +1768,41 @@ public class LogFileCollectorTest {
         assertThat(collector.getLogs(Scn.ONE)).isEqualTo(files);
     }
 
+    @Test
+    @FixFor("DBZ-8144")
+    public void testOpenRedoThreadSwitchDoesNotMissArchiveLogIfNotYetAvailable() throws Exception {
+        // In this scenario, a redo log has recently transitioned to the archive, and the entry
+        // in the V$ARCHIVED_LOG table has not yet appeared; however by all accounts there are
+        // no log sequence gaps since the only log read is the online redo.
+        final RedoThreadState redoThreadState = RedoThreadState.builder()
+                .thread()
+                .threadId(1)
+                .enabled("PUBLIC")
+                .enabledScn(Scn.valueOf(12345))
+                .status("OPEN")
+                .lastRedoScn(Scn.valueOf(1234567890))
+                .lastRedoSequenceNumber(1065L)
+                .build()
+                .build();
+
+        final List<LogFile> files = new ArrayList<>();
+        files.add(createRedoLog("redo0", 1234567800, 1065, 1));
+
+        final Configuration config = getDefaultConfig().build();
+        final OracleConnection connection = getOracleConnectionMock(redoThreadState);
+
+        // This should be false because the read position is before the redo logs scn
+        LogFileCollector collector = setCollectorLogFiles(getLogFileCollector(config, connection), files);
+        assertThat(collector.isLogFileListConsistent(Scn.valueOf(1234567250), files, redoThreadState)).isFalse();
+
+        // Now add the archive log to the collected files
+        files.add(createArchiveLog("arc0", 123456700, 1234567800, 1064, 1));
+
+        // This should be true because the read position is within one log
+        collector = setCollectorLogFiles(getLogFileCollector(config, connection), files);
+        assertThat(collector.isLogFileListConsistent(Scn.valueOf(1234567250), files, redoThreadState)).isTrue();
+    }
+
     private static LogFile createRedoLog(String name, long startScn, int sequence, int threadId) {
         return createRedoLog(name, startScn, Long.MAX_VALUE, sequence, threadId);
     }
