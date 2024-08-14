@@ -49,14 +49,14 @@ public class OracleMetricsIT extends AbstractMetricsTest<OracleConnector> {
 
     @Override
     protected void executeInsertStatements() throws SQLException {
-        connection.execute("INSERT INTO debezium.customer VALUES (NULL, 'Billie-Bob', 1234.56, TO_DATE('2018-02-22', 'yyyy-mm-dd'))");
-        connection.execute("INSERT INTO debezium.customer VALUES (NULL, 'Bruce', 2345.67, null)");
+        connection.executeWithoutCommitting("INSERT INTO debezium.customer VALUES (NULL, 'Billie-Bob', 1234.56, TO_DATE('2018-02-22', 'yyyy-mm-dd'))");
+        connection.executeWithoutCommitting("INSERT INTO debezium.customer VALUES (NULL, 'Bruce', 2345.67, null)");
         connection.execute("COMMIT");
     }
 
     @Override
     protected String tableName() {
-        return "ORCLPDB1.DEBEZIUM.CUSTOMER";
+        return TestHelper.getDatabaseName() + ".DEBEZIUM.CUSTOMER";
     }
 
     @Override
