@@ -1,0 +1,1 @@
+include::../{partialsdir}/modules/snippets/oracle-frag-signaling-fq-table-formats.adoc[]

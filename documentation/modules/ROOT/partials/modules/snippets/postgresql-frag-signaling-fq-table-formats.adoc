@@ -1,0 +1,1 @@
+include::../{partialsdir}/modules/snippets/db2-frag-signaling-fq-table-formats.adoc[]
