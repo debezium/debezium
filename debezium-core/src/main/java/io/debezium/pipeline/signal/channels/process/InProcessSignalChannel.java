@@ -49,6 +49,9 @@ public class InProcessSignalChannel implements SignalChannelReader, SignalChanne
 
     @Override
     public List<SignalRecord> read() {
+        if (!open.get()) {
+            return List.of();
+        }
         return Stream.ofNullable(signals.poll()).toList();
     }
 
