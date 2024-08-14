@@ -14,7 +14,6 @@ import io.debezium.DebeziumException;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.Scn;
-import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.relational.TableId;
 import io.debezium.util.Strings;
 
@@ -37,7 +36,6 @@ public class CommitLogWriterFlushStrategy implements LogWriterFlushStrategy {
     private final TableId flushTableId;
     private final String databasePdbName;
     private final OracleConnection connection;
-    private final boolean closeConnectionOnClose;
 
     /**
      * Creates a transaction-commit Oracle LogWriter (LGWR) process flush strategy.
@@ -53,40 +51,11 @@ public class CommitLogWriterFlushStrategy implements LogWriterFlushStrategy {
         this.flushTableName = flushTableId.toDoubleQuotedString();
         this.databasePdbName = connectorConfig.getPdbName();
         this.connection = connection;
-        this.closeConnectionOnClose = false;
-        createFlushTableIfNotExists();
-    }
-
-    /**
-     * Creates a transaction-commit Oracle LogWriter (LGWR) process flush strategy.
-     *
-     * This will create a new database connection based on the supplied JDBC configuration and the
-     * connection will automatically be closed when the strategy is closed.
-     *
-     * @param connectorConfig the connector configuration, must not be {@code null}
-     * @param jdbcConfig the jdbc configuration
-     * @throws SQLException if there was a database problem
-     */
-    public CommitLogWriterFlushStrategy(OracleConnectorConfig connectorConfig, JdbcConfiguration jdbcConfig) throws SQLException {
-        this.flushTableId = TableId.parse(connectorConfig.getLogMiningFlushTableName());
-        this.flushTableName = flushTableId.toDoubleQuotedString();
-        this.databasePdbName = connectorConfig.getPdbName();
-        this.connection = new OracleConnection(jdbcConfig);
-        this.connection.setAutoCommit(false);
-        this.closeConnectionOnClose = true;
         createFlushTableIfNotExists();
     }
 
     @Override
     public void close() {
-        if (closeConnectionOnClose) {
-            try {
-                connection.close();
-            }
-            catch (SQLException e) {
-                throw new DebeziumException("Failed to close connection to host '" + getHost() + "'", e);
-            }
-        }
     }
 
     @Override
