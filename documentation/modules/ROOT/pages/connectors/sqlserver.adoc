@@ -12,6 +12,8 @@
 :connector-class: SqlServer
 :connector-name: SQL Server
 :include-list-example: dbo.customers
+:collection-container: database.schema
+
 ifdef::community[]
 
 :toc:
@@ -436,6 +438,14 @@ The {prodname} connector for SQL Server does not support schema changes while an
 ==== Triggering an incremental snapshot
 
 include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-sql.adoc[leveloffset=+1]
+
+// Type: procedure
+// ModuleID: debezium-sqlserver-running-an-incremental-snapshot-with-additional-conditions
+[id="sqlserver-incremental-snapshots-additional-conditions"]
+==== Running an ad hoc incremental snapshots with `additional-conditions`
+
+include::{partialsdir}/modules/all-connectors/proc-running-an-ad-hoc-snapshot-with-additional-conditions.adoc[leveloffset=+1]
+
 
 // Type: procedure
 // ModuleID: debezium-sqlserver-using-the-kafka-signaling-channel-to-trigger-an-incremental-snapshot

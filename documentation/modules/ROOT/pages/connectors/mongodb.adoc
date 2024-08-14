@@ -10,6 +10,7 @@
 :connector-class: MongoDb
 :connector-name: MongoDB
 :include-list-example: public.inventory
+:collection-container:  database
 ifdef::community[]
 
 :toc:
@@ -1793,7 +1794,7 @@ endif::product[]
 [WARNING]
 ====
 Setting the value of the `capture.scope` property to `collection` prevents the connector from using the default `source` {link-prefix}:{link-signalling}[signaling] channel.
-Because the `source` channel must be enabled to permit connectors to process incremental snapshot signals -- even for signals are sent over the Kafka, JMX, or File channels -- the connector cannot perform incremental snapshots when `capture-scope` is set to `collection`. 
+Because the `source` channel must be enabled to permit connectors to process incremental snapshot signals -- even for signals are sent over the Kafka, JMX, or File channels -- the connector cannot perform incremental snapshots when `capture-scope` is set to `collection`.
 ====
 
 |[[mongodb-property-capture-target]]<<mongodb-property-capture-target, `+capture.target+`>>

@@ -11,6 +11,8 @@
 :connector-file: {context}
 :connector-name: Oracle
 :include-list-example: PUBLIC.INVENTORY
+:collection-container: database.schema
+
 ifdef::community[]
 :toc:
 :toc-placement: macro
@@ -379,6 +381,14 @@ The {prodname} connector for Oracle does not support schema changes while an inc
 ==== Triggering an incremental snapshot
 
 include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-sql.adoc[leveloffset=+3]
+
+// Type: procedure
+// ModuleID: debezium-oracle-running-an-incremental-snapshot-with-additional-conditions
+[id="oracle-incremental-snapshots-additional-conditions"]
+==== Running an ad hoc incremental snapshots with `additional-conditions`
+
+include::{partialsdir}/modules/all-connectors/proc-running-an-ad-hoc-snapshot-with-additional-conditions.adoc[leveloffset=+1]
+
 
 // Type: procedure
 // ModuleID:debezium-oracle-using-the-kafka-signaling-channel-to-trigger-an-incremental-snapshot

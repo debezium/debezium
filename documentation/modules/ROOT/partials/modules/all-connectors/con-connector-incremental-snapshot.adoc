@@ -54,3 +54,8 @@ After the snapshot window for the chunk closes, the buffer contains only `READ` 
 {prodname} emits these remaining `READ` events to the {data-collection}'s Kafka topic.
 
 The connector repeats the process for each snapshot chunk.
+
+Currently, you can use one of the following methods to initiate an incremental snapshot:
+
+* xref:{context}-triggering-an-incremental-snapshot[Send an ad hoc snapshot signal to the signaling {data-collection} on the source database].
+* xref:{context}-triggering-an-incremental-snapshot-kafka[Send a message to a configured Kafka signaling topic].
