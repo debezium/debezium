@@ -125,6 +125,8 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
         assertConnectorIsRunning();
 
         assertSnapshotMetrics();
+        consumeRecords(2);
+
         assertStreamingMetrics(false, expectedEvents());
     }
 
@@ -140,6 +142,7 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
         start(x -> x.with(CommonConnectorConfig.CUSTOM_METRIC_TAGS, "env=test,bu=bigdata"));
 
         assertSnapshotWithCustomMetrics(customMetricTags);
+        consumeRecords(2);
         assertStreamingWithCustomMetrics(customMetricTags, expectedEvents());
     }
 
@@ -183,6 +186,7 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
 
         invokeOperation(getMultiplePartitionStreamingMetricsObjectName(), "resume");
         insertRecords();
+        consumeRecords(4);
         assertAdvancedMetrics(4);
     }
 
