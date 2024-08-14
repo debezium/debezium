@@ -58,8 +58,9 @@ Use this string to identify logging messages to entries in the signaling {data-c
 |4
 |`data-collections`
 |An optional component of the `data` field of a signal that specifies an array of {data-collection} names or regular expressions to match {data-collection} names to remove from the snapshot. +
-The array lists regular expressions which match {data-collection}s by their fully-qualified names, using the same format as you use to specify the name of the connector's signaling {data-collection} in the xref:{context}-property-signal-data-collection[`signal.data.collection`] configuration property.
-If this component of the `data` field is omitted, the signal stops the entire incremental snapshot that is in progress.
+The array lists regular expressions that match {data-collection}s by their fully-qualified names in the format `database.collection`.
+
+If you omit the `data-collections` array from the `data` field, the signal stops the entire incremental snapshot that is in progress.
 
 |5
 |`incremental`

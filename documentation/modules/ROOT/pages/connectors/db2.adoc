@@ -11,6 +11,7 @@
 :connector-class: Db2Connector
 :connector-name: Db2
 :include-list-example: public.inventory
+:collection-container: schema
 ifdef::community[]
 
 :toc:
@@ -450,6 +451,14 @@ The {prodname} connector for Db2 does not support schema changes while an increm
 ==== Triggering an incremental snapshot
 
 include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-sql.adoc[leveloffset=+1]
+
+// Type: procedure
+// ModuleID: debezium-db2-running-an-incremental-snapshot-with-additional-conditions
+[id="db2-incremental-snapshots-additional-conditions"]
+==== Running an ad hoc incremental snapshots with `additional-conditions`
+
+include::{partialsdir}/modules/all-connectors/proc-running-an-ad-hoc-snapshot-with-additional-conditions.adoc[leveloffset=+1]
+
 
 // Type: procedure
 // ModuleID: debezium-db2-using-the-kafka-signaling-channel-to-trigger-an-incremental-snapshot
@@ -2900,7 +2909,7 @@ Heartbeat messages are useful when there are many updates in a database that is 
 |[[db2-property-streaming-delay-ms]]<<db2-property-streaming-delay-ms, `+streaming.delay.ms+`>>
 |0
 |Specifies the time, in milliseconds, that the connector delays the start of the streaming process after it completes a snapshot.
-Setting a delay interval helps to prevent the connector from restarting snapshots in the event that a failure occurs immediately after the snapshot completes, but before the streaming process begins. 
+Setting a delay interval helps to prevent the connector from restarting snapshots in the event that a failure occurs immediately after the snapshot completes, but before the streaming process begins.
 Set a delay value that is higher than the value of the {link-kafka-docs}/#connectconfigs_offset.flush.interval.ms[`offset.flush.interval.ms`] property that is set for the Kafka Connect worker.
 
 |[[db2-property-snapshot-include-collection-list]]<<db2-property-snapshot-include-collection-list, `+snapshot.include.collection.list+`>>
