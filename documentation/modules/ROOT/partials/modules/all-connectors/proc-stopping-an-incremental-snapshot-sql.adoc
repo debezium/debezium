@@ -41,7 +41,7 @@ The following table describes the parameters in the example:
 |Item|Value |Description
 
 |1
-|`myschema.debezium_signal`
+|`{container}.debezium_signal`
 |Specifies the fully-qualified name of the signaling {data-collection} on the source database.
 
 |2
@@ -57,8 +57,9 @@ Use this string to identify logging messages to entries in the signaling {data-c
 |4
 |`data-collections`
 |An optional component of the `data` field of a signal that specifies an array of {data-collection} names or regular expressions to match {data-collection} names to remove from the snapshot. +
-The array lists regular expressions which match {data-collection}s by their fully-qualified names, using the same format as you use to specify the name of the connector's signaling {data-collection} in the xref:{context}-property-signal-data-collection[`signal.data.collection`] configuration property.
-If this component of the `data` field is omitted, the signal stops the entire incremental snapshot that is in progress.
+The array lists regular expressions which match {data-collection}s by their fully-qualified names in the format `{container}.table`
+
+If you omit this component from the `data` field, the signal stops the entire incremental snapshot that is in progress.
 
 |5
 |`incremental`

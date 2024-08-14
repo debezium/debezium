@@ -19,8 +19,8 @@ See the next section for more details.
 
 |`data-collections`
 |_N/A_
-| An optional array of comma-separated regular expressions that match the fully-qualified names of the tables to include in the snapshot. +
-Specify the names by using the same format as is required for the xref:{context}-property-signal-data-collection[signal.data.collection] configuration option.
+| An optional array of comma-separated regular expressions that match the fully-qualified names of the tables an array of {data-collection} names or regular expressions to match {data-collection} names to remove from the snapshot. +
+Specify {data-collection} names by using the format `{container}.{data-collection}`.
 
 |===
 

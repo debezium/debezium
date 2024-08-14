@@ -65,6 +65,8 @@ For example, `signal.data.collection = inventory.debezium_signals`. +
 The format for the fully-qualified name of the signaling collection depends on the connector. +
 The following example shows the naming formats to use for each connector:
 
+.Fully qualified {data-collection} names
+[id="format-for-specifying-fully-qualified-names-for-data-collections"]
 Db2:: `_<schemaName>_._<tableName>_`
 MongoDB:: `_<databaseName>_._<collectionName>_`
 MySQL:: `_<databaseName>_._<tableName>_`
@@ -199,9 +201,8 @@ Currently {prodname} supports the `incremental` and `blocking` types.
 
 |`data-collections`
 |_N/A_
-| An array of comma-separated regular expressions that match the fully-qualified names of the data collections to include in the snapshot. +
-Specify the names by using the same format as is required for the `signal.data.collection` configuration option.
-
+| An array of comma-separated regular expressions that match the fully qualified names of the data collections to include in the snapshot. +
+The xref:format-for-specifying-fully-qualified-names-for-data-collections[naming format] depends on the database.
 
 |`additional-conditions`
 |_N/A_
