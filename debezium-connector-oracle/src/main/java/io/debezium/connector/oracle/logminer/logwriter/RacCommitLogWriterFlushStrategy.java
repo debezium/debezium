@@ -136,12 +136,14 @@ public class RacCommitLogWriterFlushStrategy implements LogWriterFlushStrategy {
         for (String hostName : hosts) {
             try {
                 final RacNode node = new RacNode(hostName);
-                node.connect();
-
                 racNodes.add(node);
+
+                // This must be done after adding to collection in case connection fails because
+                // elastic retries happen during the flush call to this outer RAC strategy.
+                node.connect();
             }
-            catch (SQLException e) {
-                throw new DebeziumException("Cannot connect to RAC node '" + hostName + "'", e);
+            catch (Exception e) {
+                LOGGER.warn("Connect to RAC node '{}' failed (will be retried): {}", hostName, e.getMessage());
             }
         }
     }
@@ -234,7 +236,7 @@ public class RacCommitLogWriterFlushStrategy implements LogWriterFlushStrategy {
                 }
                 LOGGER.info("Successfully reconnected to Oracle RAC node '{}'", hostName);
             }
-            catch (SQLException e) {
+            catch (Exception e) {
                 LOGGER.warn("Failed to reconnect to RAC node '{}': {}", hostName, e.getMessage());
                 close();
             }
