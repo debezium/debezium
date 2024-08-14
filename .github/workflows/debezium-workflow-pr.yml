@@ -308,7 +308,7 @@ jobs:
       # Runs each combination concurrently
       matrix:
         profile: [ "mysql-ci", "mysql-ci-gtids", "mysql-ci-percona", "mysql-ci-ssl" ]
-        version-mysql-server: [ "8.0", "8.4" ]
+        version-mysql-server: [ "8.0", "8.4", "9.0" ]
       fail-fast: false
     name: "MySQL ${{ matrix.version-mysql-server }} - ${{ matrix.profile }}"
     needs: [ check_style, file_changes ]
