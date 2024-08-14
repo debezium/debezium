@@ -1,0 +1,1 @@
+include::../{partialsdir}/modules/snippets/mysql-frag-signaling-fq-table-formats.adoc[]
