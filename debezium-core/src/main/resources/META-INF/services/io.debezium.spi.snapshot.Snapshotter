@@ -6,4 +6,5 @@ io.debezium.snapshot.mode.RecoverySnapshotter
 io.debezium.snapshot.mode.WhenNeededSnapshotter
 io.debezium.snapshot.mode.NeverSnapshotter
 io.debezium.snapshot.mode.SchemaOnlySnapshotter
+io.debezium.snapshot.mode.SchemaOnlyRecoverySnapshotter
 io.debezium.snapshot.mode.ConfigurationBasedSnapshotter
