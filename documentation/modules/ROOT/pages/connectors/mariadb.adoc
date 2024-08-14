@@ -12,6 +12,8 @@
 :connector-name: MariaDB
 :include-list-example: inventory.*
 :MARIADB:
+:collection-container: database
+
 ifdef::community[]
 :toc:
 :toc-placement: macro
@@ -116,6 +118,12 @@ include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot
 ==== Triggering an incremental snapshot
 
 include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-sql.adoc[leveloffset=+1]
+
+[id="mariadb-incremental-snapshots-additional-conditions"]
+==== Running an ad hoc incremental snapshots with `additional-conditions`
+
+include::{partialsdir}/modules/all-connectors/proc-running-an-ad-hoc-snapshot-with-additional-conditions.adoc[leveloffset=+1]
+
 
 // Type: procedure
 // ModuleID: debezium-mariadb-using-the-kafka-signaling-channel-to-trigger-an-incremental-snapshot

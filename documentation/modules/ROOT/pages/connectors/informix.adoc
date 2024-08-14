@@ -379,6 +379,12 @@ The {prodname} connector for Informix does not support schema changes while an i
 
 include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-sql.adoc[leveloffset=+1]
 
+[id="informix-incremental-snapshots-additional-conditions"]
+==== Running an ad hoc incremental snapshots with `additional-conditions`
+
+include::{partialsdir}/modules/all-connectors/proc-running-an-ad-hoc-snapshot-with-additional-conditions.adoc[leveloffset=+1]
+
+
 // Type: procedure
 // ModuleID: debezium-informix-using-the-kafka-signaling-channel-to-trigger-an-incremental-snapshot
 [id="informix-triggering-an-incremental-snapshot-kafka"]
