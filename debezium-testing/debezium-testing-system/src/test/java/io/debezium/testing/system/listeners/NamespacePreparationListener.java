@@ -13,9 +13,6 @@ import java.net.UnknownHostException;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import io.fabric8.kubernetes.client.dsl.Listable;
-import io.fabric8.openshift.api.model.ClusterRoleBinding;
-import io.fabric8.openshift.api.model.ClusterRoleBindingList;
 import org.junit.platform.launcher.TestExecutionListener;
 import org.junit.platform.launcher.TestPlan;
 import org.slf4j.Logger;
@@ -27,7 +24,9 @@ import io.debezium.testing.system.tools.WaitConditions;
 import io.fabric8.kubernetes.api.model.ObjectMetaBuilder;
 import io.fabric8.kubernetes.api.model.ObjectReferenceBuilder;
 import io.fabric8.kubernetes.client.KubernetesClientException;
+import io.fabric8.openshift.api.model.ClusterRoleBinding;
 import io.fabric8.openshift.api.model.ClusterRoleBindingBuilder;
+import io.fabric8.openshift.api.model.ClusterRoleBindingList;
 import io.fabric8.openshift.api.model.Project;
 import io.fabric8.openshift.api.model.ProjectBuilder;
 import io.fabric8.openshift.client.OpenShiftClient;
@@ -80,17 +79,17 @@ public class NamespacePreparationListener implements TestExecutionListener {
         ClusterRoleBindingList clusterRoleBindings = client.clusterRoleBindings().list();
         ClusterRoleBinding anyuid = anyUidBindingBuilder.build();
         ClusterRoleBinding priviledged = privilegedBindingBuilder.build();
-        if (clusterRoleBindings.getItems().stream().anyMatch(clr ->
-                clr.getMetadata().getName().equals(anyuid.getMetadata().getName()))) {
+        if (clusterRoleBindings.getItems().stream().anyMatch(clr -> clr.getMetadata().getName().equals(anyuid.getMetadata().getName()))) {
             client.resource(anyuid).update();
-        } else {
+        }
+        else {
             client.resource(anyuid).create();
         }
 
-        if (clusterRoleBindings.getItems().stream().anyMatch(clr ->
-                clr.getMetadata().getName().equals(priviledged.getMetadata().getName()))) {
+        if (clusterRoleBindings.getItems().stream().anyMatch(clr -> clr.getMetadata().getName().equals(priviledged.getMetadata().getName()))) {
             client.resource(priviledged).update();
-        } else {
+        }
+        else {
             client.resource(priviledged).create();
         }
     }
