@@ -38,7 +38,7 @@ Only after collisions between the snapshot events and the streamed events are re
 
 .Snapshot window
 To assist in resolving collisions between late-arriving `READ` events and streamed events that modify the same {data-collection} row, {prodname} employs a so-called _snapshot window_.
-The snapshot windows demarcates the interval during which an incremental snapshot captures data for a specified {data-collection} chunk.
+The snapshot window demarcates the interval during which an incremental snapshot captures data for a specified {data-collection} chunk.
 Before the snapshot window for a chunk opens, {prodname} follows its usual behavior and emits events from the transaction log directly downstream to the target Kafka topic.
 But from the moment that the snapshot for a particular chunk opens, until it closes, {prodname} performs a de-duplication step to resolve collisions between events that have the same primary key..
 
@@ -55,7 +55,7 @@ After the snapshot window for the chunk closes, the buffer contains only `READ` 
 
 The connector repeats the process for each snapshot chunk.
 
-Currently, you can use one of the following methods to initiate an incremental snapshot:
+Currently, you can use either of the following methods to initiate an incremental snapshot:
 
 * xref:{context}-triggering-an-incremental-snapshot[Send an ad hoc snapshot signal to the signaling {data-collection} on the source database].
 * xref:{context}-triggering-an-incremental-snapshot-kafka[Send a message to a configured Kafka signaling topic].
