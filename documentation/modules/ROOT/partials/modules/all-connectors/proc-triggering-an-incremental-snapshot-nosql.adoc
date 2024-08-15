@@ -1,4 +1,4 @@
-Currently, the only way to initiate an incremental snapshot is to send an {link-prefix}:{link-signalling}#debezium-signaling-ad-hoc-snapshots[ad hoc snapshot signal] to the signaling {data-collection} on the source database.
+To initiate an incremental snapshot, you can send an {link-prefix}:{link-signalling}#debezium-signaling-ad-hoc-snapshots[ad hoc snapshot signal] to the signaling {data-collection} on the source database.
 
 You submit a signal to the signaling {data-collection} by using the MongoDB `insert()` method.
 

@@ -34,13 +34,14 @@ You can apply different filters to each {data-collection}.
 The values that you assign to the `filter` parameter are the same types of values that you might specify in the `WHERE` clause of `SELECT` statements when you set the `snapshot.select.statement.overrides` property for a blocking snapshot.
 |===
 
-An example of the execute-snapshot Kafka message:
-
+.An `execute-snapshot` Kafka message
+====
 ----
 Key = `test_connector`
 
-Value = `{"type":"execute-snapshot","data": {"data-collections": ["schema1.table1", "schema1.table2"], "type": "INCREMENTAL"}}`
+Value = `{"type":"execute-snapshot","data": {"data-collections": ["{collection-container}.table1", "{collection-container}.table2"], "type": "INCREMENTAL"}}`
 ----
+====
 
 .Ad hoc incremental snapshots with additional-conditions
 
@@ -50,22 +51,15 @@ Typically, when {prodname} runs a snapshot, it runs a SQL query such as:
 
 `SELECT * FROM _<tableName>_ ....`
 
-When the snapshot request includes an `additional-conditions` property, the `data-collection` and `filter` parameters of the  property are appended to the SQL query, for example:
+When the snapshot request includes an `additional-conditions` property, the `data-collection` and `filter` parameters of the property are appended to the SQL query, for example:
 
 `SELECT * FROM _<data-collection>_ WHERE _<filter>_ ....`
 
 For example, given a `products` {data-collection} with the columns `id` (primary key), `color`, and `brand`, if you want a snapshot to include only content for which `color='blue'`, when you request the snapshot, you could add the `additional-conditions` property to filter the content:
-----
-Key = `test_connector`
 
-Value = `{"type":"execute-snapshot","data": {"data-collections": ["schema1.products"], "type": "INCREMENTAL", "additional-conditions": [{"data-collection": "schema1.products" ,"filter":"color='blue'"}]}}`
-----
+include::{partialsdir}/modules/snippets/{context}-frag-signaling-fq-table-formats.adoc[leveloffset=+1,tags=triggering-incremental-snapshot-kafka-addtl-cond-example]
 
-You can use the `additional-conditions` property to pass conditions based on multiple columns.
+You can also use the `additional-conditions` property to pass conditions based on multiple columns.
 For example, using the same `products` {data-collection} as in the previous example, if you want a snapshot to include only the content from the `products` {data-collection} for which `color='blue'`, and `brand='MyBrand'`, you could send the following request:
 
-----
-Key = `test_connector`
-
-Value = `{"type":"execute-snapshot","data": {"data-collections": ["schema1.products"], "type": "INCREMENTAL", "additional-conditions": [{"data-collection": "schema1.products" ,"filter":"color='blue' AND brand='MyBrand'"}]}}`
-----
+include::{partialsdir}/modules/snippets/{context}-frag-signaling-fq-table-formats.adoc[leveloffset=+1,tags=triggering-incremental-snapshot-kafka-multi-addtl-cond-example]
