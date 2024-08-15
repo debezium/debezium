@@ -9,6 +9,7 @@
 :linkattrs:
 :icons: font
 :source-highlighter: highlight.js
+:connector-name: Vitess
 
 toc::[]
 
@@ -259,13 +260,13 @@ The following example shows a data change event with ordered transaction metadat
 [[vitess-efficient-transaction-metadata]]
 === Efficient Transaction Metadata
 
-If you enable the connector to provide transaction metadata, it generates significantly more data. 
+If you enable the connector to provide transaction metadata, it generates significantly more data.
 Not only does the connector send additional messages to the transaction topics, but messages that it sends to the data change topics are larger, because they include a transaction metadata block.
 The added volume is due to the following factors:
 
-* The VGTID is stored twice, once as `source.vgtid`, and then again as `transaction.id`. 
+* The VGTID is stored twice, once as `source.vgtid`, and then again as `transaction.id`.
 In keyspaces that include many shards, these VGTIDs can be quite large
-* In a sharded environment, the VGTID typically contains the VGTID for every shard. 
+* In a sharded environment, the VGTID typically contains the VGTID for every shard.
 In keyspaces with many shards, the amount of data in the VGTID field can be quite large.
 * The connector sends transaction topic messages for every transaction boundary event.
 Typically, keyspaces that include many shards tend to generate a high number of transaction boundary events.

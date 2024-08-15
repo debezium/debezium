@@ -1,8 +1,14 @@
-You can also stop an incremental snapshot by sending a signal to the {data-collection} on the source database.
-You submit a stop snapshot signal by inserting a document into the to the signaling {data-collection}.
+In some situations, it might be necessary to stop an incremental snapshot.
+For example, you might realize that snapshot was not configured correctly, or maybe you want to ensure that resources are available for other database operations.
+You can stop a snapshot that is already running by sending a signal to the {data-collection} on the source database.
+
+You submit a stop snapshot signal to the signaling {data-collection} by inserting a stop snapshot signal document into it.
+The stop snapshot signal that you submit specifies the `type` of the snapshot operation as `incremental`, and, optionally specifies the {data-collection}s that you want to omit from the currently running snapshot.
 After {prodname} detects the change in the signaling {data-collection}, it reads the signal, and stops the incremental snapshot operation if it's in progress.
 
-The query that you submit specifies the snapshot operation of `incremental`, and, optionally, the {data-collection}s of the current running snapshot to be removed.
+
+.Additional resources
+You can also stop an incremental snapshot by sending a JSON message to the xref:{context}-stopping-an-incremental-snapshot-kafka[Kafka signaling topic].
 
 .Prerequisites
 

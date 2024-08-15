@@ -9,6 +9,7 @@
 :linkattrs:
 :icons: font
 :source-highlighter: highlight.js
+:connector-name: Spanner
 
 toc::[]
 
