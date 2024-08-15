@@ -11,6 +11,8 @@
 :connector-class: InformixConnector
 :connector-name: Informix
 :include-list-example: public.inventory
+:collection-container:  database.schema
+
 ifdef::community[]
 
 :toc:

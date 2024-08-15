@@ -65,7 +65,7 @@ For example, `signal.data.collection = inventory.debezium_signals`. +
 The format for the fully-qualified name of the signaling collection depends on the connector. +
 The following example shows the naming formats to use for each connector:
 
-.Fully qualified {data-collection} names
+.Fully qualified table names
 [id="format-for-specifying-fully-qualified-names-for-data-collections"]
 Db2:: `_<schemaName>_._<tableName>_`
 MongoDB:: `_<databaseName>_._<collectionName>_`
@@ -210,10 +210,10 @@ The xref:format-for-specifying-fully-qualified-names-for-data-collections[naming
 Each additional condition is an object that specifies the criteria for filtering the data that an ad hoc snapshot captures.
 You can set the following properties for each additional condition:
 
-`data-collection`:: The fully-qualified name of the +{data-collection}+ that the filter applies to.
-You can apply different filters to each +{data-collection}+.
+`data-collection`:: The fully-qualified name of the data collection that the filter applies to.
+You can apply different filters to each data collection.
 `filter`:: Specifies column values that must be present in a database record for the snapshot to include it, for example,  `"color='blue'"`. +
-The snapshot process evaluates records in the +{data-collection}+ against the `filter` value and captures only records that contain matching values. +
+The snapshot process evaluates records in the data collection against the `filter` value and captures only records that contain matching values. +
  +
 The specific values that you assign to the `filter` property depend on the type of ad hoc snapshot:
 
@@ -263,8 +263,7 @@ Currently {prodname} supports the `incremental` and `blocking` types.
 
 |`data-collections`
 |_N/A_
-| An array of comma-separated regular expressions that match the fully-qualified names of the tables to include in the snapshot. +
-Specify the names by using the same format as is required for the xref:{context}-property-signal-data-collection[signal.data.collection] configuration option.
+| An array of comma-separated regular expressions that match the xref:format-for-specifying-fully-qualified-names-for-data-collections[fully-qualified names of the tables] to include in the snapshot. +
 
 |`additional-conditions`
 |_N/A_
@@ -272,11 +271,11 @@ Specify the names by using the same format as is required for the xref:{context}
 Each additional condition is an object that specifies the criteria for filtering the data that an ad hoc snapshot captures.
 You can set the following properties for each additional condition:
 
-`data-collection`:: The fully-qualified name of the +{data-collection}+ that the filter applies to.
-You can apply different filters to each +{data-collection}+.
+`data-collection`:: The fully-qualified name of the data collection that the filter applies to.
+You can apply different filters to each data collection.
 
 `filter`:: Specifies column values that must be present in a database record for the snapshot to include it, for example,  `"color='blue'"`. +
-The snapshot process evaluates records in the +{data-collection}+ against the `filter` value and captures only records that contain matching values. +
+The snapshot process evaluates records in the data collection against the `filter` value and captures only records that contain matching values. +
  +
 The specific values that you assign to the `filter` property depend on the type of ad hoc snapshot:
 

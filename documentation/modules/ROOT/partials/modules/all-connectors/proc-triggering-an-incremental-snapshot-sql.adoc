@@ -13,12 +13,7 @@ To specify the {data-collection}s to include in the snapshot, provide a `data-co
 The `data-collections` array for an incremental snapshot signal has no default value.
 If the `data-collections` array is empty, {prodname} interprets the empty array to mean that no action is required, and it does not perform a snapshot.
 
-[NOTE]
-====
-If the name of a {data-collection} that you want to include in a snapshot contains a dot (`.`) in the name of the database, schema, or table, to add the {data-collection} to the `data-collections` array, you must escape each part of the name in double quotes. +
- +
-For example, to include a table that exists in the `*public*` schema and that has the name `*My.Table*`, use the following format: `*"public"."My.Table"*`.
-====
+include::{partialsdir}/modules/snippets/{context}-frag-signaling-fq-table-formats.adoc[leveloffset=+1,tags=fq-table-name-format-note]
 
 .Prerequisites
 
@@ -37,15 +32,7 @@ INSERT INTO _<signalTable>_ (id, type, data) VALUES (_'<id>'_, _'<snapshotType>'
 +
 For example,
 +
-[source,sql,indent=0,subs="+attributes"]
-----
-INSERT INTO myschema.debezium_signal (id, type, data) // <1>
-values ('ad-hoc-1',   // <2>
-    'execute-snapshot',  // <3>
-    '{"data-collections": ["schema1.table1", "schema2.table2"], // <4>
-    "type":"incremental", // <5>
-    "additional-conditions":[{"data-collection": "schema1.table1" ,"filter":"color=\'blue\'"}]}'); // <6>
-----
+include::{partialsdir}/modules/snippets/{context}-frag-signaling-fq-table-formats.adoc[leveloffset=+1,tags=snapshot-signal-example]
 +
 The values of the `id`,`type`, and `data` parameters in the command correspond to the {link-prefix}:{link-signalling}#debezium-signaling-description-of-required-structure-of-a-signaling-data-collection[fields of the signaling {data-collection}].
 +
@@ -57,7 +44,7 @@ The following table describes the parameters in the example:
 |Item |Value |Description
 
 |1
-|`myschema.debezium_signal`
+|`{collection-container}.debezium_signal`
 |Specifies the fully-qualified name of the signaling {data-collection} on the source database.
 
 |2
@@ -74,14 +61,14 @@ Rather, during the snapshot, {prodname} generates its own `id` string as a water
 |4
 |`data-collections`
 |A required component of the `data` field of a signal that specifies an array of {data-collection} names or regular expressions to match {data-collection} names to include in the snapshot. +
-The array lists regular expressions that use the format `{container}.table` to match the fully-qualified names of {data-collection}s.
-This format is the same as the one that you use to specify the name of the connector's xref:{context}-property-signal-data-collection[signaling {data-collection}].
+The array lists regular expressions that use the format `{collection-container}.table` to match the fully-qualified names of the {data-collection}s.
+This format is the same as the one that you use to specify the name of the connector's {link-prefix}:{link-signalling}#format-for-specifying-fully-qualified-names-for-data-collections[signaling {data-collection}].
 
 |5
 |`incremental`
 |An optional `type` component of the `data` field of a signal that specifies the type of snapshot operation to run. +
 Valid values are `incremental` and `blocking`. +
-If you do not specify a value, the connector runs an incremental snapshot.
+If you do not specify a value, the connector defaults to performing an incremental snapshot.
 
 |6
 |`additional-conditions`
