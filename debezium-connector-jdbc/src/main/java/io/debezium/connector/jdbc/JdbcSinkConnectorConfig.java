@@ -689,13 +689,6 @@ public class JdbcSinkConnectorConfig {
                 LOGGER.error("When using UPSERT, please define '{}'.", PRIMARY_KEY_MODE);
                 return 1;
             }
-            else if (!config.hasKey(PRIMARY_KEY_FIELDS)) {
-                final PrimaryKeyMode primaryKeyMode = PrimaryKeyMode.parse(config.getString(PRIMARY_KEY_MODE_FIELD));
-                if (PrimaryKeyMode.RECORD_VALUE.equals(primaryKeyMode)) {
-                    LOGGER.error("When using UPSERT, please define '{}'.", PRIMARY_KEY_FIELDS);
-                    return 1;
-                }
-            }
         }
         return 0;
     }
