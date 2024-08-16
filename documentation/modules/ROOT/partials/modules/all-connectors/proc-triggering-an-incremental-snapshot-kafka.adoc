@@ -56,10 +56,8 @@ When the snapshot request includes an `additional-conditions` property, the `dat
 `SELECT * FROM _<data-collection>_ WHERE _<filter>_ ....`
 
 For example, given a `products` {data-collection} with the columns `id` (primary key), `color`, and `brand`, if you want a snapshot to include only content for which `color='blue'`, when you request the snapshot, you could add the `additional-conditions` property to filter the content:
-
-include::{partialsdir}/modules/snippets/{context}-frag-signaling-fq-table-formats.adoc[leveloffset=+1,tags=triggering-incremental-snapshot-kafka-addtl-cond-example]
+include::{snippetsdir}/{context}-frag-signaling-fq-table-formats.adoc[leveloffset=+1,tags=triggering-incremental-snapshot-kafka-addtl-cond-example]
 
 You can also use the `additional-conditions` property to pass conditions based on multiple columns.
 For example, using the same `products` {data-collection} as in the previous example, if you want a snapshot to include only the content from the `products` {data-collection} for which `color='blue'`, and `brand='MyBrand'`, you could send the following request:
-
-include::{partialsdir}/modules/snippets/{context}-frag-signaling-fq-table-formats.adoc[leveloffset=+1,tags=triggering-incremental-snapshot-kafka-multi-addtl-cond-example]
+include::{snippetsdir}/{context}-frag-signaling-fq-table-formats.adoc[leveloffset=+1,tags=triggering-incremental-snapshot-kafka-multi-addtl-cond-example]
