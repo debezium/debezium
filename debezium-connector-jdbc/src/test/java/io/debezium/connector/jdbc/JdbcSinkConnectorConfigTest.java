@@ -134,6 +134,21 @@ public class JdbcSinkConnectorConfigTest {
         assertThat(ormProperties.get(AvailableSettings.PASS)).isEqualTo("pass");
     }
 
+    @Test
+    @FixFor("DBZ-8151")
+    public void testPrimaryKeyRecordValueDoesNotRequirePrimaryKeyFields() {
+        final Map<String, String> properties = new HashMap<>();
+        properties.put(JdbcSinkConnectorConfig.CONNECTION_PROVIDER, "io.debezium.AcmeConnectionProvider");
+        properties.put(JdbcSinkConnectorConfig.CONNECTION_URL, "jdbc://url");
+        properties.put(JdbcSinkConnectorConfig.CONNECTION_USER, "user");
+        properties.put(JdbcSinkConnectorConfig.CONNECTION_PASSWORD, "pass");
+        properties.put(JdbcSinkConnectorConfig.INSERT_MODE, "upsert");
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, "record_value");
+
+        final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        assertThat(config.validateAndRecord(List.of(JdbcSinkConnectorConfig.INSERT_MODE_FIELD), LOGGER::error)).isTrue();
+    }
+
     // @Test
     // public void testNonDefaultSchemaEvolutionProperty() {
     // final Map<String, String> properties = new HashMap<>();
