@@ -478,6 +478,48 @@ The configuration will need to contain the list of predicates, implementation cl
 
 |===
 
+[id="debezium-async-engine-properties"]
+=== Asynchronous Engine Properties
+
+By default, Debezium server uses `AsyncEmbeddedEngine` as the processing engine.
+You can configure following options for asynchronous embedded engine:
+
+[cols="35%a,10%a,55%a"]
+|===
+|Property
+|Default
+|Description
+
+|`record.processing.threads`
+|The number of available cores.
+|The number of threads to use for processing CDC records.
+If you want to use all available cores on given machine, you can use the `AVAILABLE_CORES` placeholder.
+If the value is not specified, threads are created as needed, using Java https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/concurrent/Executors.html#newCachedThreadPool()[cached thread pool].
+
+|`record.processing.shutdown.timeout.ms`
+|1000
+|Maximum time in milliseconds to wait for processing submitted records after a task shutdown is called.
+
+|`record.processing.order`
+|`ORDERED`
+|Determines how the records should be produced.
+
+`ORDERED`:: Records are processed sequentially; that is, they are produced in the order in which they were obtained from the database.
+`UNORDERED`:: Records are processed non-sequentially; that is, they can be produced in an different order than in the source database.
+
+The non-sequential processing of the `UNORDERED` option results in better throughput, because records are produced immediately after any SMT processing and message serialization is complete, without waiting for other records.
+This option doesn't have any effect when the `ChangeConsumer` method is provided to the engine.
+
+|`record.processing.with.serial.consumer`
+|`false`
+|Specifies whether the default `ChangeConsumer` should be created from the provided `Consumer`, resulting in serial `Consumer` processing.
+This option has no effect if you specified the `ChangeConsumer` interface when you used the API to create the engine.
+
+|`task.management.timeout.ms`
+|180,000 (3 min)
+|Time, in milliseconds, that the engine waits for a task's lifecycle management operations (starting and stopping) to complete.
+|===
+
 [id="debezium-additional-configuration-options"]
 === Additional configuration
 
