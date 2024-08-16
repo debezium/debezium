@@ -25,4 +25,4 @@ Specify {data-collection} names by using the format `{collection-container}.{dat
 |===
 
 The following example shows a typical `stop-snapshot` Kafka message:
-include::{partialsdir}/modules/snippets/{context}-frag-signaling-fq-table-formats.adoc[leveloffset=+1,tags=stopping-incremental-snapshot-kafka-example]
+include::{snippetsdir}/{context}-frag-signaling-fq-table-formats.adoc[leveloffset=+1,tags=stopping-incremental-snapshot-kafka-example]

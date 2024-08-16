@@ -28,12 +28,12 @@ For example, suppose you have a `products` {data-collection} that contains the f
 
 If you want an incremental snapshot of the `products` {data-collection} to include only the data items where `color=blue`, you can use the following SQL statement to trigger the snapshot:
 
-include::{partialsdir}/modules/snippets/{context}-frag-signaling-fq-table-formats.adoc[leveloffset=+1,tags=snapshot-additional-conditions-example]
+include::{snippetsdir}/{context}-frag-signaling-fq-table-formats.adoc[leveloffset=+1,tags=snapshot-additional-conditions-example]
 
 The `additional-conditions` parameter also enables you to pass conditions that are based on more than one column.
 For example, using the `products` {data-collection} from the previous example, you can submit a query that triggers an incremental snapshot that includes the data of only those items for which `color=blue` and `quantity>10`:
 
-include::{partialsdir}/modules/snippets/{context}-frag-signaling-fq-table-formats.adoc[leveloffset=+1,tags=snapshot-multiple-additional-conditions-example]
+include::{snippetsdir}/{context}-frag-signaling-fq-table-formats.adoc[leveloffset=+1,tags=snapshot-multiple-additional-conditions-example]
 
 The following example, shows the JSON for an incremental snapshot event that is captured by a connector.
 
