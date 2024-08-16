@@ -13,8 +13,7 @@ To specify the {data-collection}s to include in the snapshot, provide a `data-co
 The `data-collections` array for an incremental snapshot signal has no default value.
 If the `data-collections` array is empty, {prodname} interprets the empty array to mean that no action is required, and it does not perform a snapshot.
 
-include::{partialsdir}/modules/snippets/{context}-frag-signaling-fq-table-formats.adoc[leveloffset=+1,tags=fq-table-name-format-note]
-
+include::{snippetsdir}/{context}-frag-signaling-fq-table-formats.adoc[leveloffset=+1,tags=fq-table-name-format-note]
 .Prerequisites
 
 * {link-prefix}:{link-signalling}#debezium-signaling-enabling-source-signaling-channel[Signaling is enabled]. +
@@ -32,7 +31,7 @@ INSERT INTO _<signalTable>_ (id, type, data) VALUES (_'<id>'_, _'<snapshotType>'
 +
 For example,
 +
-include::{partialsdir}/modules/snippets/{context}-frag-signaling-fq-table-formats.adoc[leveloffset=+1,tags=snapshot-signal-example]
+include::{snippetsdir}/{context}-frag-signaling-fq-table-formats.adoc[leveloffset=+1,tags=snapshot-signal-example]
 +
 The values of the `id`,`type`, and `data` parameters in the command correspond to the {link-prefix}:{link-signalling}#debezium-signaling-description-of-required-structure-of-a-signaling-data-collection[fields of the signaling {data-collection}].
 +
