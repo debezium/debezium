@@ -625,7 +625,11 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         /**
          * Enable publication on a specific set of tables.
          */
-        FILTERED("filtered");
+        FILTERED("filtered"),
+        /**
+         * Enable publication with no tables.
+         */
+        NO_TABLES("no_tables");
 
         private final String value;
 
