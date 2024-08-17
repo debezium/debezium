@@ -1248,7 +1248,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA.getValue())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
                 .with(PostgresConnectorConfig.REPLICA_IDENTITY_AUTOSET_VALUES, "s1.a:FULL,s2.a:DEFAULT")
-                .with(PostgresConnectorConfig.PUBLICATION_AUTOCREATE_MODE, "DISABLED")
+                .with(PostgresConnectorConfig.PUBLICATION_AUTOCREATE_MODE, PostgresConnectorConfig.AutoCreateMode.DISABLED.getValue())
                 .with("database.user", "role_2")
                 .with("database.password", "role_2_pass")
                 .build();
@@ -3539,6 +3539,37 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
                         assertTrue(success);
                     }
                 });
+    }
+
+    @Test
+    @FixFor("DBZ-8156")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Publication configuration only valid for PGOUTPUT decoder")
+    public void shouldProduceOnlyLogicalDecodingMessages() throws Exception {
+        TestHelper.dropAllSchemas();
+        TestHelper.dropPublication("cdc");
+
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.PUBLICATION_NAME, "cdc")
+                .with(PostgresConnectorConfig.PUBLICATION_AUTOCREATE_MODE, PostgresConnectorConfig.AutoCreateMode.NO_TABLES.getValue());
+
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted();
+
+        TestHelper.execute("SELECT pg_logical_emit_message(false, 'foo', '{}');");
+        SourceRecords actualRecords = consumeRecordsByTopic(1);
+        assertThat(actualRecords.topics()).hasSize(1);
+
+        List<SourceRecord> logicalDecodingMessages = actualRecords.recordsForTopic(topicName("message"));
+        assertThat(logicalDecodingMessages).hasSize(1);
+        logicalDecodingMessages.forEach(sourceRecord -> {
+            assertTrue(sourceRecord.value() instanceof Struct);
+            assertEquals("m", ((Struct) sourceRecord.value()).getString("op"));
+
+            Struct message = ((Struct) sourceRecord.value()).getStruct("message");
+            assertEquals("foo", message.getString("prefix"));
+            assertEquals("{}", new String(message.getBytes("content")));
+        });
     }
 
     private Predicate<SourceRecord> stopOnPKPredicate(int pkValue) {
