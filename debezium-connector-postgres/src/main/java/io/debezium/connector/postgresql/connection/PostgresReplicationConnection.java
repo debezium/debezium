@@ -155,7 +155,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
                 String selectPublication = String.format("SELECT puballtables FROM pg_publication WHERE pubname = '%s'", publicationName);
                 try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(selectPublication)) {
-                    if (!rs.next()) {
+                    final boolean publicationExists = rs.next();
+                    if (!publicationExists) {
                         // Close eagerly as the transaction might stay running
                         LOGGER.info("Creating new publication '{}' for plugin '{}'", publicationName, plugin);
                         switch (publicationAutocreateMode) {
@@ -168,7 +169,12 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                 stmt.execute(createPublicationStmt);
                                 break;
                             case FILTERED:
-                                createOrUpdatePublicationModeFilterted(stmt, false);
+                                createOrUpdatePublicationModeFiltered(stmt, false);
+                                break;
+                            case NO_TABLES:
+                                final String createPublicationWithNoTablesStmt = String.format("CREATE PUBLICATION %s;", publicationName);
+                                LOGGER.info("Creating publication with statement '{}'", createPublicationWithNoTablesStmt);
+                                stmt.execute(createPublicationWithNoTablesStmt);
                                 break;
                         }
                     }
@@ -188,7 +194,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                             publicationName, plugin, database()));
                                 }
                                 else {
-                                    createOrUpdatePublicationModeFilterted(stmt, true);
+                                    createOrUpdatePublicationModeFiltered(stmt, true);
                                 }
                                 break;
                             default:
@@ -209,7 +215,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         }
     }
 
-    private void createOrUpdatePublicationModeFilterted(Statement stmt, boolean isUpdate) {
+    private void createOrUpdatePublicationModeFiltered(Statement stmt, boolean isUpdate) {
         String tableFilterString = null;
         String createOrUpdatePublicationStmt;
         try {
