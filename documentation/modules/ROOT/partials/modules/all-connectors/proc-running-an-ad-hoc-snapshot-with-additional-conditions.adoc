@@ -17,7 +17,7 @@ SELECT * FROM _<data-collection>_ WHERE _<filter>_ ....
 The following example shows a SQL query to send an ad hoc incremental snapshot request with an additional condition to the signaling {data-collection}:
 [source,sql,indent=0,subs="+attributes,+quotes"]
 ----
-INSERT INTO _<signalTable>_ (id, type, data) VALUES (_'<id>'_, _'<snapshotType>'_, '{"data-collections": ["_<tableName>_","_<tableName>_"],"type":"_<snapshotType>_","additional-conditions":[{"data-collection": "_<tableName>_", "filter": "_<additional-condition>_"}]}');
+INSERT INTO _<signalTable>_ (id, type, data) VALUES (_'<id>'_, _'<snapshotType>'_, '{"data-collections": ["_<fullyQualfiedTableName>_","_<fullyQualfiedTableName>_"],"type":"_<snapshotType>_","additional-conditions":[{"data-collection": "_<fullyQualfiedTableName>_", "filter": "_<additional-condition>_"}]}');
 ----
 
 For example, suppose you have a `products` {data-collection} that contains the following columns:

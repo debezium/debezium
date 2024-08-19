@@ -21,7 +21,7 @@ You can also stop an incremental snapshot by sending a JSON message to the xref:
 +
 [source,sql,indent=0,subs="+attributes,+quotes"]
 ----
-INSERT INTO _<signalTable>_ (id, type, data) values (_'<id>'_, 'stop-snapshot', '{"data-collections": ["_<tableName>_","_<tableName>_"],"type":"incremental"}');
+INSERT INTO _<signalTable>_ (id, type, data) values (_'<id>'_, 'stop-snapshot', '{"data-collections": ["_<fullyQualfiedTableName>_","_<fullyQualfiedTableName>_"],"type":"incremental"}');
 ----
 +
 For example,
