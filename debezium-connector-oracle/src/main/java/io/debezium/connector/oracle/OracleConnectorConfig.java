@@ -624,34 +624,50 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withValidation(Field::isNonNegativeInteger)
             .withDescription("The number of attempts to retry database errors during snapshots before failing.");
 
-    public static final Field LOG_MINING_BUFFER_EHCACHE_STORAGE_PATH = Field.create("log.mining.buffer.ehcache.storage.path")
+    public static final Field LOG_MINING_BUFFER_EHCACHE_GLOBAL_CONFIG = Field.create("log.mining.buffer.ehcache.global.config")
+            .withDisplayName("Defines any global configuration for the Ehcache transaction buffer")
             .withType(Type.STRING)
-            .withValidation(OracleConnectorConfig::validateEhcacheFieldRequired)
-            .withDescription("The persistent location where the Ehcache off-heap files should be stored.");
+            .withWidth(Width.LONG)
+            .withImportance(Importance.LOW)
+            .withValidation(OracleConnectorConfig::validateEhCacheGlobalConfigField)
+            .withDescription("Specifies any Ehcache global configurations such as services or persistence. " +
+                    "This cannot include <cache/> nor <default-serializers/> tags as these are managed by Debezium.");
 
-    public static final Field LOG_MINING_BUFFER_EHCACHE_CACHE_TRANSACTIONS_BYTES = Field.create("log.mining.buffer.ehcache.cache.transactions.bytes")
-            .withType(Type.LONG)
-            .withDefault(0)
-            .withValidation(OracleConnectorConfig::validateEhcacheBytesFieldRequired)
-            .withDescription("The size of the Ehcache transaction cache in bytes");
+    public static final Field LOG_MINING_BUFFER_EHCACHE_TRANSACTIONS_CONFIG = Field.create("log.mining.buffer.ehcache.transactions.config")
+            .withDisplayName("Defines the partial ehcache configuration for the transaction cache")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.LOW)
+            .withValidation(OracleConnectorConfig::validateEhcacheConfigFieldRequired)
+            .withDescription("Specifies the inner body the Ehcache <cache/> tag for the transaction cache, but " +
+                    "should not include the <key-type/> nor the <value-type/> attributes as these are managed by Debezium.");
 
-    public static final Field LOG_MINING_BUFFER_EHCACHE_CACHE_PROCESSED_TRANSACTIONS_BYTES = Field.create("log.mining.buffer.ehcache.cache.processedtransactions.bytes")
-            .withType(Type.LONG)
-            .withDefault(0)
-            .withValidation(OracleConnectorConfig::validateEhcacheBytesFieldRequired)
-            .withDescription("The size of the Ehcache processed transaction cache in bytes");
+    public static final Field LOG_MINING_BUFFER_EHCACHE_PROCESSED_TRANSACTIONS_CONFIG = Field.create("log.mining.buffer.ehcache.processedtransactions.config")
+            .withDisplayName("Defines the partial ehcache configuration for the processed transaction cache")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.LOW)
+            .withValidation(OracleConnectorConfig::validateEhcacheConfigFieldRequired)
+            .withDescription("Specifies the inner body the Ehcache <cache/> tag for the processed transaction cache, but " +
+                    "should not include the <key-type/> nor the <value-type/> attributes as these are managed by Debezium.");
 
-    public static final Field LOG_MINING_BUFFER_EHCACHE_CACHE_SCHEMA_CHANGES_BYTES = Field.create("log.mining.buffer.ehcache.cache.schemachanges.bytes")
-            .withType(Type.LONG)
-            .withDefault(0)
-            .withValidation(OracleConnectorConfig::validateEhcacheBytesFieldRequired)
-            .withDescription("The size of the Ehcache schema changes cache in bytes");
+    public static final Field LOG_MINING_BUFFER_EHCACHE_SCHEMA_CHANGES_CONFIG = Field.create("log.mining.buffer.ehcache.schemachanges.config")
+            .withDisplayName("Defines the partial ehcache configuration for the schema changes cache")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.LOW)
+            .withValidation(OracleConnectorConfig::validateEhcacheConfigFieldRequired)
+            .withDescription("Specifies the inner body the Ehcache <cache/> tag for the schema changes cache, but " +
+                    "should not include the <key-type/> nor the <value-type/> attributes as these are managed by Debezium.");
 
-    public static final Field LOG_MINING_BUFFER_EHCACHE_CACHE_EVENTS_BYTES = Field.create("log.mining.buffer.ehcache.cache.events.bytes")
-            .withType(Type.LONG)
-            .withDefault(0)
-            .withValidation(OracleConnectorConfig::validateEhcacheBytesFieldRequired)
-            .withDescription("The size of the Ehcache transaction events cache in bytes");
+    public static final Field LOG_MINING_BUFFER_EHCACHE_EVENTS_CONFIG = Field.create("log.mining.buffer.ehcache.events.config")
+            .withDisplayName("Defines the partial ehcache configuration for the events cache")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.LOW)
+            .withValidation(OracleConnectorConfig::validateEhcacheConfigFieldRequired)
+            .withDescription("Specifies the inner body the Ehcache <cache/> tag for the events cache, but " +
+                    "should not include the <key-type/> nor the <value-type/> attributes as these are managed by Debezium.");
 
     @Deprecated
     public static final Field LOG_MINING_CONTINUOUS_MINE = Field.create("log.mining.continuous.mine")
@@ -738,11 +754,11 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     OLR_PORT,
                     SNAPSHOT_DATABASE_ERRORS_MAX_RETRIES,
                     LOG_MINING_CONTINUOUS_MINE,
-                    LOG_MINING_BUFFER_EHCACHE_STORAGE_PATH,
-                    LOG_MINING_BUFFER_EHCACHE_CACHE_TRANSACTIONS_BYTES,
-                    LOG_MINING_BUFFER_EHCACHE_CACHE_PROCESSED_TRANSACTIONS_BYTES,
-                    LOG_MINING_BUFFER_EHCACHE_CACHE_SCHEMA_CHANGES_BYTES,
-                    LOG_MINING_BUFFER_EHCACHE_CACHE_EVENTS_BYTES)
+                    LOG_MINING_BUFFER_EHCACHE_GLOBAL_CONFIG,
+                    LOG_MINING_BUFFER_EHCACHE_TRANSACTIONS_CONFIG,
+                    LOG_MINING_BUFFER_EHCACHE_PROCESSED_TRANSACTIONS_CONFIG,
+                    LOG_MINING_BUFFER_EHCACHE_SCHEMA_CHANGES_CONFIG,
+                    LOG_MINING_BUFFER_EHCACHE_EVENTS_CONFIG)
             .events(SOURCE_INFO_STRUCT_MAKER)
             .create();
 
@@ -811,12 +827,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final Set<String> logMiningSchemaChangesUsernameExcludes;
     private final Boolean logMiningIncludeRedoSql;
     private final boolean logMiningContinuousMining;
-
-    private final String logMiningBufferEhcacheStoragePath;
-    private final long logMiningBufferEhcacheTransactionCacheSizeBytes;
-    private final long logMiningBufferEhcacheProcessedTransactionsCacheSizeBytes;
-    private final long logMiningBufferEhcacheSchemaChangesCacheSizeBytes;
-    private final long logMiningBufferEhcacheEventsCacheSizeBytes;
+    private final Configuration logMiningEhCacheConfiguration;
 
     private final String openLogReplicatorSource;
     private final String openLogReplicatorHostname;
@@ -887,11 +898,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningIncludeRedoSql = config.getBoolean(LOG_MINING_INCLUDE_REDO_SQL);
         this.logMiningContinuousMining = config.getBoolean(LOG_MINING_CONTINUOUS_MINE);
 
-        this.logMiningBufferEhcacheStoragePath = config.getString(LOG_MINING_BUFFER_EHCACHE_STORAGE_PATH);
-        this.logMiningBufferEhcacheTransactionCacheSizeBytes = config.getLong(LOG_MINING_BUFFER_EHCACHE_CACHE_TRANSACTIONS_BYTES);
-        this.logMiningBufferEhcacheProcessedTransactionsCacheSizeBytes = config.getLong(LOG_MINING_BUFFER_EHCACHE_CACHE_PROCESSED_TRANSACTIONS_BYTES);
-        this.logMiningBufferEhcacheSchemaChangesCacheSizeBytes = config.getLong(LOG_MINING_BUFFER_EHCACHE_CACHE_SCHEMA_CHANGES_BYTES);
-        this.logMiningBufferEhcacheEventsCacheSizeBytes = config.getLong(LOG_MINING_BUFFER_EHCACHE_CACHE_EVENTS_BYTES);
+        this.logMiningEhCacheConfiguration = config.subset("log.mining.buffer.ehcache", false);
 
         // OpenLogReplicator
         this.openLogReplicatorSource = config.getString(OLR_SOURCE);
@@ -2000,24 +2007,14 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         return openLogReplicatorPort;
     }
 
-    public String getLogMiningBufferEhcacheStoragePath() {
-        return logMiningBufferEhcacheStoragePath;
-    }
-
-    public long getLogMiningBufferEhcacheTransactionCacheSizeBytes() {
-        return logMiningBufferEhcacheTransactionCacheSizeBytes;
-    }
-
-    public long getLogMiningBufferEhcacheProcessedTransactionsCacheSizeBytes() {
-        return logMiningBufferEhcacheProcessedTransactionsCacheSizeBytes;
-    }
-
-    public long getLogMiningBufferEhcacheSchemaChangesCacheSizeBytes() {
-        return logMiningBufferEhcacheSchemaChangesCacheSizeBytes;
-    }
-
-    public long getLogMiningBufferEhcacheEventsCacheSizeBytes() {
-        return logMiningBufferEhcacheEventsCacheSizeBytes;
+    /**
+     * Get the Ehcache buffer configuration, which is all attributes under the configuration prefix
+     * "log.mining.buffer.ehcache" namespace, with the prefix removed.
+     *
+      * @return the ehcache transaction buffer configuration, never {@code null}
+     */
+    public Configuration getLogMiningEhcacheConfiguration() {
+        return logMiningEhCacheConfiguration;
     }
 
     @Override
@@ -2207,19 +2204,27 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         return 0;
     }
 
-    public static int validateEhcacheFieldRequired(Configuration config, Field field, ValidationOutput problems) {
+    public static int validateEhCacheGlobalConfigField(Configuration config, Field field, ValidationOutput problems) {
         if (ConnectorAdapter.LOG_MINER.equals(ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER)))) {
             if (LogMiningBufferType.parse(config.getString(LOG_MINING_BUFFER_TYPE)).isEhcache()) {
-                return Field.isRequired(config, field, problems);
+                // The string cannot include any `<cache ` or `<default-serializers` tags.
+                final String globalConfig = config.getString(LOG_MINING_BUFFER_EHCACHE_GLOBAL_CONFIG, "").toLowerCase();
+                if (!Strings.isNullOrEmpty(globalConfig)) {
+                    if (globalConfig.contains("<cache") || globalConfig.contains("<default-serializers")) {
+                        problems.accept(LOG_MINING_BUFFER_EHCACHE_GLOBAL_CONFIG, globalConfig,
+                                "The ehcache global configuration should not contain a <cache/> or <default-serializers/> section");
+                        return 1;
+                    }
+                }
             }
         }
         return 0;
     }
 
-    public static int validateEhcacheBytesFieldRequired(Configuration config, Field field, ValidationOutput problems) {
+    public static int validateEhcacheConfigFieldRequired(Configuration config, Field field, ValidationOutput problems) {
         if (ConnectorAdapter.LOG_MINER.equals(ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER)))) {
             if (LogMiningBufferType.parse(config.getString(LOG_MINING_BUFFER_TYPE)).isEhcache()) {
-                return Field.isPositiveLong(config, field, problems);
+                return Field.isRequired(config, field, problems);
             }
         }
         return 0;

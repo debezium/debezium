@@ -181,11 +181,11 @@ public class TestHelper {
             else if (bufferType.isEhcache()) {
                 final long cacheSize = 1024 * 1024 * 10; // 10Mb each
                 builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_TYPE, bufferTypeName);
-                builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_STORAGE_PATH, "./target/data");
-                builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_CACHE_TRANSACTIONS_BYTES, cacheSize);
-                builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_CACHE_PROCESSED_TRANSACTIONS_BYTES, cacheSize);
-                builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_CACHE_SCHEMA_CHANGES_BYTES, cacheSize);
-                builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_CACHE_EVENTS_BYTES, cacheSize);
+                builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_GLOBAL_CONFIG, getEhcacheGlobalCacheConfig());
+                builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_TRANSACTIONS_CONFIG, getEhcacheBasicCacheConfig());
+                builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_PROCESSED_TRANSACTIONS_CONFIG, getEhcacheBasicCacheConfig());
+                builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_SCHEMA_CHANGES_CONFIG, getEhcacheBasicCacheConfig());
+                builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_EVENTS_CONFIG, getEhcacheBasicCacheConfig());
             }
             builder.withDefault(OracleConnectorConfig.LOG_MINING_BUFFER_DROP_ON_STOP, true);
         }
@@ -203,6 +203,17 @@ public class TestHelper {
                 .with(FileSchemaHistory.FILE_PATH, SCHEMA_HISTORY_PATH)
                 .with(OracleConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                 .with(AsyncEmbeddedEngine.TASK_MANAGEMENT_TIMEOUT_MS, 90_000);
+    }
+
+    private static String getEhcacheGlobalCacheConfig() {
+        return "<persistence directory=\"./target/data\"/>";
+    }
+
+    private static String getEhcacheBasicCacheConfig() {
+        return "<resources>" +
+                "<heap unit=\"entries\">50</heap>" +
+                "<disk unit=\"B\">10485760</disk>" +
+                "</resources>";
     }
 
     /**

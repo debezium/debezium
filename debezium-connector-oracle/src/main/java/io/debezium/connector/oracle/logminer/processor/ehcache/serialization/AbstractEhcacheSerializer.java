@@ -36,9 +36,11 @@ public abstract class AbstractEhcacheSerializer<T> implements Serializer<T> {
     @Override
     public T read(ByteBuffer buffer) throws ClassNotFoundException, SerializerException {
         try (ByteArrayInputStream input = new ByteArrayInputStream(buffer.array())) {
-            // todo: unsure what this magic "40" bytes represents
-            if (input.skip(40) != 40) {
-                throw new SerializerException("Failed to skip initial buffer payload");
+            // Depending on how the data is sourced by Ehcache, it may adjust the buffer offset
+            // to deal with off-heap preamble bytes. This makes sure skip the right number of
+            // bytes in the stream based on the current array offset in the buffer.
+            if (input.skip(buffer.arrayOffset()) != buffer.arrayOffset()) {
+                throw new SerializerException("Failed to adjust buffer offset position before read");
             }
             try (SerializerInputStream stream = new SerializerInputStream(input)) {
                 return deserialize(stream);
