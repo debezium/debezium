@@ -55,6 +55,16 @@ public class InProcessSignalChannel implements SignalChannelReader, SignalChanne
         return Stream.ofNullable(signals.poll()).toList();
     }
 
+    /**
+     * Close the channel and drain all the signals
+     *
+     * <p>
+     *     Note: To properly synchronise closing and reading a lock should be used.
+     *     However this is not necessary as any concurrent call to these methods is
+     *     equal to serially calling read and close (or the other way around). The
+     *     connector  handles both cases (and the queue is already thread safe).
+     * </p>
+     */
     @Override
     public void close() {
         if (open.compareAndSet(true, false)) {
