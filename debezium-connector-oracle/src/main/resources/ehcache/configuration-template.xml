@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns='http://www.ehcache.org/v3'>
+
+    <!--
+        Defines the ehcache global configuration
+
+        Caches should not be defined in this configuration but instead things like
+        services, persistence, etc.
+
+        NOTE: this configuration cannot contain the "<default-serializers>" tag.
+    -->
+    ${log.mining.buffer.ehcache.global.config}
+
+    <!-- Setup transactions cache -->
+    <cache alias="transactions">
+        <!-- Debezium specifically sets the key/value types -->
+        <key-type>java.lang.String</key-type>
+        <value-type>io.debezium.connector.oracle.logminer.processor.ehcache.EhcacheTransaction</value-type>
+        ${log.mining.buffer.ehcache.transactions.config}
+    </cache>
+
+    <!-- Setup processed transactions cache -->
+    <cache alias="processed-transactions">
+        <!-- Debezium specifically sets the key/value types -->
+        <key-type>java.lang.String</key-type>
+        <value-type>java.lang.String</value-type>
+        ${log.mining.buffer.ehcache.processedtransactions.config}
+    </cache>
+
+    <!-- Setup schema changes cache -->
+    <cache alias="schema-changes">
+        <!-- Debezium specifically sets the key/value types -->
+        <key-type>java.lang.String</key-type>
+        <value-type>java.lang.String</value-type>
+        ${log.mining.buffer.ehcache.schemachanges.config}
+    </cache>
+
+    <!-- Setup events cache -->
+    <cache alias="events">
+        <!-- Debezium specifically sets the key/value types -->
+        <key-type>java.lang.String</key-type>
+        <value-type>io.debezium.connector.oracle.logminer.events.LogMinerEvent</value-type>
+        ${log.mining.buffer.ehcache.events.config}
+    </cache>
+
+    <default-serializers>
+        <serializer type="io.debezium.connector.oracle.logminer.processor.ehcache.EhcacheTransaction">
+            io.debezium.connector.oracle.logminer.processor.ehcache.serialization.EhcacheTransactionSerializer
+        </serializer>
+        <serializer type="io.debezium.connector.oracle.logminer.events.LogMinerEvent">
+            io.debezium.connector.oracle.logminer.processor.ehcache.serialization.LogMinerEventSerializer
+        </serializer>
+    </default-serializers>
+
+</config>
