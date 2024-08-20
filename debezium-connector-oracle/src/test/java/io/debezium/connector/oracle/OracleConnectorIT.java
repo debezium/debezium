@@ -5543,6 +5543,9 @@ public class OracleConnectorIT extends AbstractConnectorTest {
                 // ignored
             }
 
+            // Assert connector did not fail
+            assertConnectorIsRunning();
+
             // Just concerned that every iteration has lag greater than deviation.
             stopConnector();
         }
