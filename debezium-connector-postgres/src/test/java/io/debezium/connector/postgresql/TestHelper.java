@@ -370,7 +370,7 @@ public final class TestHelper {
             execute("SELECT pg_drop_replication_slot('" + ReplicationConnection.Builder.DEFAULT_SLOT_NAME + "')");
         }
         catch (Exception e) {
-            if (!Throwables.getRootCause(e).getMessage().equals("ERROR: replication slot \"debezium\" does not exist")) {
+            if (!Throwables.getRootCause(e).getMessage().startsWith("ERROR: replication slot \"debezium\" does not exist")) {
                 throw e;
             }
         }
