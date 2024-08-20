@@ -446,14 +446,12 @@ The {prodname} connector for Db2 does not support schema changes while an increm
 ====
 
 // Type: procedure
-// ModuleID: debezium-db2-triggering-an-incremental-snapshot
 [id="db2-triggering-an-incremental-snapshot"]
 ==== Triggering an incremental snapshot
 
 include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-sql.adoc[leveloffset=+1]
 
 // Type: procedure
-// ModuleID: debezium-db2-running-an-incremental-snapshot-with-additional-conditions
 [id="db2-incremental-snapshots-additional-conditions"]
 ==== Running an ad hoc incremental snapshots with `additional-conditions`
 
@@ -461,21 +459,18 @@ include::{partialsdir}/modules/all-connectors/proc-running-an-ad-hoc-snapshot-wi
 
 
 // Type: procedure
-// ModuleID: debezium-db2-using-the-kafka-signaling-channel-to-trigger-an-incremental-snapshot
 [id="db2-triggering-an-incremental-snapshot-kafka"]
 ==== Using the Kafka signaling channel to trigger an incremental snapshot
 
 include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-kafka.adoc[leveloffset=+1]
 
 // Type: procedure
-// ModuleID: debezium-db2-stopping-an-incremental-snapshot
 [id="db2-stopping-an-incremental-snapshot"]
 ==== Stopping an incremental snapshot
 
 include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot-sql.adoc[leveloffset=+1]
 
 // Type: procedure
-// ModuleID: debezium-db2-using-the-kafka-signaling-channel-to-stop-an-incremental-snapshot
 [id="db2-stopping-an-incremental-snapshot-kafka"]
 ==== Using the Kafka signaling channel to stop an incremental snapshot
 
