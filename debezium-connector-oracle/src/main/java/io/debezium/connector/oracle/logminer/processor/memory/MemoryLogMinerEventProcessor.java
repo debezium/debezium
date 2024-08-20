@@ -13,7 +13,7 @@ import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
-import io.debezium.connector.oracle.logminer.processor.AbstractTransactionCachingLogMinerEventProcessor;
+import io.debezium.connector.oracle.logminer.processor.AbstractLogMinerEventProcessor;
 import io.debezium.connector.oracle.logminer.processor.LogMinerCache;
 import io.debezium.connector.oracle.logminer.processor.LogMinerEventProcessor;
 import io.debezium.pipeline.EventDispatcher;
@@ -26,7 +26,7 @@ import io.debezium.relational.TableId;
  *
  * @author Chris Cranford
  */
-public class MemoryLogMinerEventProcessor extends AbstractTransactionCachingLogMinerEventProcessor<MemoryTransaction> {
+public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor<MemoryTransaction> {
 
     private final LogMinerCache<String, MemoryTransaction> transactionCache = new MemoryBasedLogMinerCache<>();
     private final LogMinerCache<String, LogMinerEvent> eventCache = new MemoryBasedLogMinerCache<>();
@@ -41,7 +41,7 @@ public class MemoryLogMinerEventProcessor extends AbstractTransactionCachingLogM
                                         OracleOffsetContext offsetContext,
                                         OracleDatabaseSchema schema,
                                         LogMinerStreamingChangeEventSourceMetrics metrics) {
-        super(context, connectorConfig, jdbcConnection, dispatcher, partition, offsetContext, schema, metrics);
+        super(context, connectorConfig, schema, partition, offsetContext, dispatcher, metrics, jdbcConnection);
     }
 
     @Override
