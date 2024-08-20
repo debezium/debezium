@@ -54,7 +54,7 @@ public class PostgresSignalBasedIncrementalSnapshotChangeEventSource
     @Override
     protected Table refreshTableSchema(Table table) throws SQLException {
         LOGGER.debug("Refreshing table '{}' schema for incremental snapshot.", table.id());
-        schema.refresh(jdbcConnection, table.id(), true);
+        schema.refreshFromIncrementalSnapshot(jdbcConnection, table.id());
         return schema.tableFor(table.id());
     }
 }
