@@ -5,9 +5,9 @@
  */
 package io.debezium.connector.sqlserver.metrics;
 
+import io.debezium.metrics.activity.ActivityMonitoringMXBean;
 import io.debezium.pipeline.metrics.traits.CommonEventMetricsMXBean;
 import io.debezium.pipeline.metrics.traits.SchemaMetricsMXBean;
-import io.debezium.transforms.ActivityMonitoringMXBean;
 
 /**
  * Metrics scoped to a source partition that are common for both snapshot and streaming change event sources

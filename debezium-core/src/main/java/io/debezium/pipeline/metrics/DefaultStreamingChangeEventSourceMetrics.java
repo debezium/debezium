@@ -13,6 +13,7 @@ import io.debezium.annotation.ThreadSafe;
 import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.data.Envelope.Operation;
+import io.debezium.metrics.activity.ActivityMonitoringMeter;
 import io.debezium.pipeline.ConnectorEvent;
 import io.debezium.pipeline.meters.ConnectionMeter;
 import io.debezium.pipeline.meters.StreamingMeter;
@@ -20,7 +21,6 @@ import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.spi.schema.DataCollectionId;
-import io.debezium.transforms.ActivityMonitoringMeter;
 
 /**
  * The default implementation of metrics related to the streaming phase of a connector.
