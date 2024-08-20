@@ -433,14 +433,12 @@ The {prodname} connector for SQL Server does not support schema changes while an
 ====
 
 // Type: procedure
-// ModuleID: debezium-sqlserver-triggering-an-incremental-snapshot
 [id="sqlserver-triggering-an-incremental-snapshot"]
 ==== Triggering an incremental snapshot
 
 include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-sql.adoc[leveloffset=+1]
 
 // Type: procedure
-// ModuleID: debezium-sqlserver-running-an-incremental-snapshot-with-additional-conditions
 [id="sqlserver-incremental-snapshots-additional-conditions"]
 ==== Running an ad hoc incremental snapshots with `additional-conditions`
 
@@ -448,21 +446,18 @@ include::{partialsdir}/modules/all-connectors/proc-running-an-ad-hoc-snapshot-wi
 
 
 // Type: procedure
-// ModuleID: debezium-sqlserver-using-the-kafka-signaling-channel-to-trigger-an-incremental-snapshot
 [id="sqlserver-triggering-an-incremental-snapshot-kafka"]
 ==== Using the Kafka signaling channel to trigger an incremental snapshot
 
 include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-kafka.adoc[leveloffset=+1]
 
 // Type: procedure
-// ModuleID: debezium-sqlserver-stopping-an-incremental-snapshot
 [id="sqlserver-stopping-an-incremental-snapshot"]
 ==== Stopping an incremental snapshot
 
 include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot-sql.adoc[leveloffset=+1]
 
 // Type: procedure
-// ModuleID: debezium-sqlserver-using-the-kafka-signaling-channel-to-stop-an-incremental-snapshot
 [id="sqlserver-stopping-an-incremental-snapshot-kafka"]
 ==== Using the Kafka signaling channel to stop an incremental snapshot
 
