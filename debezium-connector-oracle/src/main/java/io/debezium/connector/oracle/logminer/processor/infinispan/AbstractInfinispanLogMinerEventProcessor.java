@@ -12,7 +12,7 @@ import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
-import io.debezium.connector.oracle.logminer.processor.AbstractTransactionCachingLogMinerEventProcessor;
+import io.debezium.connector.oracle.logminer.processor.AbstractLogMinerEventProcessor;
 import io.debezium.connector.oracle.logminer.processor.CacheProvider;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
@@ -24,7 +24,7 @@ import io.debezium.relational.TableId;
  *
  * @author Chris Cranford
  */
-public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractTransactionCachingLogMinerEventProcessor<InfinispanTransaction>
+public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractLogMinerEventProcessor<InfinispanTransaction>
         implements CacheProvider<InfinispanTransaction> {
 
     protected AbstractInfinispanLogMinerEventProcessor(ChangeEventSourceContext context,
@@ -35,7 +35,7 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractT
                                                        OracleOffsetContext offsetContext,
                                                        OracleDatabaseSchema schema,
                                                        LogMinerStreamingChangeEventSourceMetrics metrics) {
-        super(context, connectorConfig, jdbcConnection, dispatcher, partition, offsetContext, schema, metrics);
+        super(context, connectorConfig, schema, partition, offsetContext, dispatcher, metrics, jdbcConnection);
     }
 
     @Override

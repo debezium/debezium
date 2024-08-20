@@ -38,19 +38,19 @@ import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
-import io.debezium.connector.oracle.logminer.processor.AbstractTransactionCachingLogMinerEventProcessor;
+import io.debezium.connector.oracle.logminer.processor.AbstractLogMinerEventProcessor;
 import io.debezium.connector.oracle.logminer.processor.LogMinerCache;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
 import io.debezium.relational.TableId;
 
 /**
- * An {@link AbstractTransactionCachingLogMinerEventProcessor} implementation for storing buffer details
- * off-heap in a set of Ehcache-backed caches.
+ * An {@link AbstractLogMinerEventProcessor} implementation for storing buffer details off-heap in a
+ * set of Ehcache-backed caches.
  *
  * @author Chris Cranford
  */
-public class EhcacheLogMinerEventProcessor extends AbstractTransactionCachingLogMinerEventProcessor<EhcacheTransaction> {
+public class EhcacheLogMinerEventProcessor extends AbstractLogMinerEventProcessor<EhcacheTransaction> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(EhcacheLogMinerEventProcessor.class);
 
@@ -69,7 +69,7 @@ public class EhcacheLogMinerEventProcessor extends AbstractTransactionCachingLog
                                          OracleOffsetContext offsetContext,
                                          OracleDatabaseSchema schema,
                                          LogMinerStreamingChangeEventSourceMetrics metrics) {
-        super(context, connectorConfig, jdbcConnection, dispatcher, partition, offsetContext, schema, metrics);
+        super(context, connectorConfig, schema, partition, offsetContext, dispatcher, metrics, jdbcConnection);
         LOGGER.info("Using Ehcache buffer");
 
         this.cacheManager = createCacheManager(connectorConfig);
