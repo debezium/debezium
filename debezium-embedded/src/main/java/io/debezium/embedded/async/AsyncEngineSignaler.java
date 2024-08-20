@@ -5,6 +5,7 @@
  */
 package io.debezium.embedded.async;
 
+import java.util.List;
 import java.util.Optional;
 
 import io.debezium.DebeziumException;
@@ -15,6 +16,7 @@ import io.debezium.pipeline.signal.channels.process.InProcessSignalChannel;
 
 public class AsyncEngineSignaler implements DebeziumEngine.Signaler<SignalRecord> {
     private AsyncEmbeddedEngine<?> engine;
+    private List<InProcessSignalChannel> channels;
 
     @Override
     public <E extends DebeziumEngine<?>> void init(E engine) {
@@ -26,11 +28,14 @@ public class AsyncEngineSignaler implements DebeziumEngine.Signaler<SignalRecord
 
     @Override
     public void signal(SignalRecord signal) {
-        engine.tasks().stream()
-                .map(EngineSourceTask::debeziumConnectTask)
-                .flatMap(Optional::stream)
-                .map(task -> task.getSignalChannel(InProcessSignalChannel.class))
-                .flatMap(Optional::stream)
-                .forEach(channel -> channel.signal(signal));
+        if (channels == null) {
+            channels = engine.tasks().stream()
+                    .map(EngineSourceTask::debeziumConnectTask)
+                    .flatMap(Optional::stream)
+                    .map(task -> task.getSignalChannel(InProcessSignalChannel.class))
+                    .flatMap(Optional::stream)
+                    .toList();
+        }
+        channels.forEach(channel -> channel.signal(signal));
     }
 }
