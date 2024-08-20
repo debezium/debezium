@@ -1,0 +1,37 @@
+site:
+  title: Debezium Documentation
+  # the 404, site-map, and canonical urls are only generated when a url is defined
+  url: https://debezium.io/documentation
+  start_page: reference::index.adoc
+
+content:
+  sources:
+    - url: ../
+      start_path: documentation
+      branches: HEAD
+
+ui:
+  bundle:
+    url: https://gitlab.com/antora/antora-ui-default/-/jobs/artifacts/HEAD/raw/build/ui-bundle.zip?job=bundle-stable
+    snapshot: true
+  output_dir: ../build/debezium-antora
+
+runtime:
+  fetch: true
+
+output:
+  dir: ../build/site/_site/documentation
+
+# See notes about this section in playbook.yml.
+asciidoc:
+  attributes:
+    prodname: 'Debezium'
+    context@: 'debezium'
+    jira-url: 'https://issues.redhat.com'
+    # because of how handlebars templates work with page.attributes, these must be prefixed with "page-"
+    page-copyright-year: '2024'
+    # this should be changed every stable release to indicate the most recent stable release.
+    # A version prior to this in the version list will display the banner-development.hbs partial.
+    # A version after this in the version list will display the banner-outdated.hbs partial.
+    # This specific version will display the banner-current.hbs partial.
+    page-version-current: '2.7'

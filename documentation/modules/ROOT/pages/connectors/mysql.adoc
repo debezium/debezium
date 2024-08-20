@@ -3,6 +3,7 @@
 [id="debezium-connector-for-mysql"]
 = {prodname} connector for MySQL
 
+:partialsdir: ../../partials/
 :context: mysql
 :data-collection: table
 :database-port: 3306

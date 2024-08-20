@@ -27,8 +27,6 @@ npm-debug.log
 phantomjsdriver.log
 
 generated-sources/
-documentation/assemblies/
-documentation/modules/using-debezium/
 
 /state/
 bin/

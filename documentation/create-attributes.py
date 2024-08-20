@@ -3,7 +3,7 @@ import os
 
 # Define the input and output file paths
 input_file = 'antora.yml'
-output_file = 'attributes.adoc'
+output_file = 'gen-attributes.adoc'
 
 # Function to parse the YAML file and extract attributes
 def parse_antora_yaml(file_path):
