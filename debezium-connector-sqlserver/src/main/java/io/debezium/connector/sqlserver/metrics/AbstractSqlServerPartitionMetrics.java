@@ -12,12 +12,12 @@ import org.apache.kafka.connect.data.Struct;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.metrics.Metrics;
+import io.debezium.metrics.activity.ActivityMonitoringMeter;
 import io.debezium.pipeline.ConnectorEvent;
 import io.debezium.pipeline.meters.CommonEventMeter;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.spi.schema.DataCollectionId;
-import io.debezium.transforms.ActivityMonitoringMeter;
 
 /**
  * Base implementation of partition-scoped multi-partition SQL Server connector metrics.
