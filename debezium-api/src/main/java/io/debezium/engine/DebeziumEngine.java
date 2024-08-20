@@ -19,6 +19,7 @@ import java.util.function.Consumer;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.common.annotation.Incubating;
 import io.debezium.engine.format.ChangeEventFormat;
 import io.debezium.engine.format.KeyValueChangeEventFormat;
 import io.debezium.engine.format.KeyValueHeaderChangeEventFormat;
@@ -180,6 +181,7 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
      * Signaler defines the contract for sending signals to connector tasks.
      * @param <T> signal type
      */
+    @Incubating
     interface Signaler<T> {
 
         /**
