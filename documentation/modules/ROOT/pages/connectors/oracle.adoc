@@ -376,14 +376,12 @@ The {prodname} connector for Oracle does not support schema changes while an inc
 ====
 
 // Type: procedure
-// ModuleID: debezium-oracle-triggering-an-incremental-snapshot
 [id="oracle-triggering-an-incremental-snapshot"]
 ==== Triggering an incremental snapshot
 
 include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-sql.adoc[leveloffset=+3]
 
 // Type: procedure
-// ModuleID: debezium-oracle-running-an-incremental-snapshot-with-additional-conditions
 [id="oracle-incremental-snapshots-additional-conditions"]
 ==== Running an ad hoc incremental snapshots with `additional-conditions`
 
@@ -391,21 +389,18 @@ include::{partialsdir}/modules/all-connectors/proc-running-an-ad-hoc-snapshot-wi
 
 
 // Type: procedure
-// ModuleID:debezium-oracle-using-the-kafka-signaling-channel-to-trigger-an-incremental-snapshot
 [id="oracle-triggering-an-incremental-snapshot-kafka"]
 ==== Using the Kafka signaling channel to trigger an incremental snapshot
 
 include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-kafka.adoc[leveloffset=+1]
 
 // Type: procedure
-// ModuleID: debezium-oracle-stopping-an-incremental-snapshot
 [id="oracle-stopping-an-incremental-snapshot"]
 ==== Stopping an incremental snapshot
 
 include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot-sql.adoc[leveloffset=+3]
 
 // Type: procedure
-// ModuleID: debezium-oracle-using-the-kafka-signaling-channel-to-stop-an-incremental-snapshot
 [id="oracle-stopping-an-incremental-snapshot-kafka"]
 ==== Using the Kafka signaling channel to stop an incremental snapshot
 
