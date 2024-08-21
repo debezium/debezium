@@ -48,7 +48,7 @@ public abstract class AbstractEventDispatcher extends AbstractEventWriter<Uni<Vo
     }
 
     protected Uni<Integer> removeFromOutbox(Map<String, Object> dataMap) {
-        if (config.removeAfterInsert) {
+        if (config.removeAfterInsert()) {
             LOGGER.debug("removing outbox event");
             return factory.withSession(
                     session -> session.withTransaction(

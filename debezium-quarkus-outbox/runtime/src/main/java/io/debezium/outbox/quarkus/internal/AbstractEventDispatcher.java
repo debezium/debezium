@@ -47,7 +47,7 @@ public abstract class AbstractEventDispatcher extends AbstractEventWriter<Void> 
 
     private void remove(Map<String, Object> dataMap, Session session) {
         // Remove entity if the configuration deems doing so, leaving useful for debugging
-        if (config.removeAfterInsert) {
+        if (config.removeAfterInsert()) {
             session.delete(OUTBOX_ENTITY_FULLNAME, dataMap);
         }
     }
