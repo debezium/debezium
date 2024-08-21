@@ -265,9 +265,12 @@ public class LogFileCollector {
         else {
             // If thread is open and read position is after enabled position, then redo thread should
             // have a log with the read position within its bounds; otherwise it's inconsistent.
-            if (threadLogs.stream().noneMatch(log -> log.isScnInLogFileRange(startScn))) {
-                logException(String.format("Redo Thread %d is inconsistent; does not have a log that contains scn %s", threadId, startScn));
-                return false;
+            if (startScn.compareTo(thread.getCheckpointScn()) >= 0) {
+                // Read position is after last checkpoint for open redo-thread, we should have a log with SCN
+                if (threadLogs.stream().noneMatch(log -> log.isScnInLogFileRange(startScn))) {
+                    logException(String.format("Redo Thread %d is inconsistent; does not have a log that contains scn %s", threadId, startScn));
+                    return false;
+                }
             }
 
             final Optional<Long> missingSequence = getFirstLogMissingSequence(threadLogs);
