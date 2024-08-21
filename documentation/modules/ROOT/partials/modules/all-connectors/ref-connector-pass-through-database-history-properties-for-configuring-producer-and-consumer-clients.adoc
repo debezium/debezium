@@ -1,0 +1,25 @@
+{prodname} relies on a Kafka producer to write schema changes to database schema history topics.
+Similarly, it relies on a Kafka consumer to read from database schema history topics when a connector starts.
+You define the configuration for the Kafka producer and consumer clients by assigning values to a set of pass-through configuration properties that begin with the `schema.history.internal.producer.\*` and `schema.history.internal.consumer.*` prefixes.
+The pass-through producer and consumer database schema history properties control a range of behaviors, such as how these clients secure connections with the Kafka broker, as shown in the following example:
+
+[source,indent=0]
+----
+schema.history.internal.producer.security.protocol=SSL
+schema.history.internal.producer.ssl.keystore.location=/var/private/ssl/kafka.server.keystore.jks
+schema.history.internal.producer.ssl.keystore.password=test1234
+schema.history.internal.producer.ssl.truststore.location=/var/private/ssl/kafka.server.truststore.jks
+schema.history.internal.producer.ssl.truststore.password=test1234
+schema.history.internal.producer.ssl.key.password=test1234
+
+schema.history.internal.consumer.security.protocol=SSL
+schema.history.internal.consumer.ssl.keystore.location=/var/private/ssl/kafka.server.keystore.jks
+schema.history.internal.consumer.ssl.keystore.password=test1234
+schema.history.internal.consumer.ssl.truststore.location=/var/private/ssl/kafka.server.truststore.jks
+schema.history.internal.consumer.ssl.truststore.password=test1234
+schema.history.internal.consumer.ssl.key.password=test1234
+----
+
+{prodname} strips the prefix from the property name before it passes the property to the Kafka client.
+
+See the Kafka documentation for more details about link:https://kafka.apache.org/documentation.html#producerconfigs[Kafka producer configuration properties] and link:https://kafka.apache.org/documentation.html#consumerconfigs[Kafka consumer configuration properties].
