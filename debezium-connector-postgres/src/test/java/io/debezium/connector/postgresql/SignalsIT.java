@@ -31,8 +31,8 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.connector.postgresql.spi.CustomActionProvider;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
+import io.debezium.engine.DebeziumEngine;
 import io.debezium.junit.logging.LogInterceptor;
-import io.debezium.pipeline.signal.SignalRecord;
 import io.debezium.pipeline.signal.actions.Log;
 
 public class SignalsIT extends AbstractAsyncEngineConnectorTest {
@@ -114,7 +114,7 @@ public class SignalsIT extends AbstractAsyncEngineConnectorTest {
         }
         else {
             expectedNumRecords = 1;
-            signaler.signal(new SignalRecord("1", "log", "{\"message\": \"Signal message at offset ''{}''\"}", null));
+            getSignaler().signal(new DebeziumEngine.Signal("1", "log", "{\"message\": \"Signal message at offset ''{}''\"}", null));
         }
 
         waitForAvailableRecords(800, TimeUnit.MILLISECONDS);
