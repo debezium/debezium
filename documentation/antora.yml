@@ -25,7 +25,7 @@ asciidoc:
     community: true
     registry: 'Apicurio Registry'
     registry-name-full: Apicurio API and Schema Registry
-    snippetsdir: /snippets
+    snippetsdir: ../snippets
     link-avro-serialization: 'configuration/avro.adoc'
     link-cassandra-connector: 'connectors/cassandra.adoc'
     link-cloud-events: 'integrations/cloudevents.adoc'
@@ -41,6 +41,7 @@ asciidoc:
     link-filtering: 'transformations/filtering.adoc'
     link-install-debezium: 'install.adoc'
     link-jdbc-connector: 'connectors/jdbc.adoc'
+    link-mariadb-connector: 'connectors/mariadb.adoc'
     link-mongodb-connector: 'connectors/mongodb.adoc'
     link-mongodb-event-flattening: 'transformations/mongodb-event-flattening.adoc'
     link-mongodb-outbox-event-router: 'transformations/mongodb-outbox-event-router.adoc'
