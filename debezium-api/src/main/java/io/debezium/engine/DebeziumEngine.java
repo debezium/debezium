@@ -48,6 +48,15 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
     String OFFSET_FLUSH_INTERVAL_MS_PROP = "offset.flush.interval.ms";
 
     /**
+     * @return this engine's signaler, if it supports signaling
+     * @throws UnsupportedOperationException if signaling is not supported by this engine
+     */
+    @Incubating
+    default Signaler getSignaler() {
+        throw new UnsupportedOperationException("Signaling is not supported by this engine");
+    }
+
+    /**
      * A callback function to be notified when the connector completes.
      */
     interface CompletionCallback {
@@ -178,30 +187,28 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
     }
 
     /**
-     * Signaler defines the contract for sending signals to connector tasks.
-     * @param <T> signal type
+     * A record representing signal sent to the engine via {@link DebeziumEngine.Signaler}.
+     * @param id the unique identifier of the signal sent, usually UUID, can be used for deduplication
+     * @param type the unique logical name of the code executing the signal
+     * @param data  the data in JSON format that are passed to the signal code
+     * @param additionalData additional data which might be required by  specific signal types
      */
     @Incubating
-    interface Signaler<T> {
+    record Signal(String id, String type, String data, Map<String, Object> additionalData) {
+    }
 
-        /**
-         * Initialize the signaler with the engine.
-         *
-         * <p>
-         *     Note that it is up the the implementation to decide whether it is compatible with given engine.
-         * </p>
-         *
-         * @param engine the engine instance
-         * @param <E> type of engine
-         */
-        <E extends DebeziumEngine<?>> void init(E engine);
+    /**
+     * Signaler defines the contract for sending signals to connector tasks.
+     */
+    @Incubating
+    interface Signaler {
 
         /**
          * Send a signal to the connector.
          *
          * @param signal the signal to send
          */
-        void signal(T signal);
+        void signal(Signal signal);
     }
 
     /**
@@ -226,15 +233,6 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
          * @return this builder object so methods can be chained together; never null
          */
         Builder<R> notifying(ChangeConsumer<R> handler);
-
-        /**
-         * Use the specified signaler to send signals to the connector.
-         * @param signaler the signaler
-         * @return this builder object so methods can be chained together; never null
-         */
-        default Builder<R> using(Signaler<?> signaler) {
-            return this;
-        };
 
         /**
          * Use the specified configuration for the connector. The configuration is assumed to already be valid.
