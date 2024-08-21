@@ -1272,6 +1272,11 @@ https://kafka.apache.org/[Apache Kafka] is a popular open-source platform for di
 This means that all Kafka producer https://kafka.apache.org/documentation/#producerconfigs[configuration properties] are passed to the producer with the prefix removed.
 At least `bootstrap.servers`, `key.serializer` and `value.serializer` properties must be provided. The `topic` is set by {prodname}.
 
+|[[kafka-producer-wait-message-delivery-timeout-ms]]<<kafka-producer-wait-message-delivery-timeout-ms, `debezium.sink.kafka.wait.message.delivery.timeout.ms`>>
+|`30000`
+|The maximum time, in milliseconds, that the server waits for a request to complete and return metadata for a record.
+The specified timeout also governs the interval that the server waits for Kafka to respond to a request.
+Set the value to `0` to disable the timeout.
 |===
 
 ===== Injection points
@@ -1284,7 +1289,6 @@ When the alternative implementations are not available then the default ones are
 |Interface
 |CDI classifier
 |Description
-
 |[[kafka-producer-ext-stream-name-mapper]]<<kafka-producer-ext-stream-name-mapper, `io.debezium.server.StreamNameMapper`>>
 |
 |Custom implementation maps the original destination (topic) name into another Kafka topic. By default, the same name is used.
