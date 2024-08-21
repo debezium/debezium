@@ -455,6 +455,12 @@ include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-s
 
 include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-notification-configuration-properties.adoc[leveloffset=+1]
 
+
+[id="debezium-mariadb-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients"]
+==== Pass-through database schema history properties for configuring producer and consumer clients
+
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients.adoc[leveloffset=+1]
+
 [id="debezium-mariadb-connector-pass-through-database-driver-configuration-properties"]
 ==== {prodname} connector pass-through database driver configuration properties
 

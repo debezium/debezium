@@ -2418,7 +2418,8 @@ Information about the properties is organized as follows:
 * xref:db2-required-configuration-properties[Required configuration properties]
 * xref:db2-advanced-configuration-properties[Advanced configuration properties]
 * xref:debezium-db2-connector-database-history-configuration-properties[Database schema history connector configuration properties] that control how {prodname} processes events that it reads from the database schema history topic.
-** xref:debezium-db2-connector-pass-through-database-driver-configuration-properties[Pass-through database schema history properties]
+* xref:debezium-db2-connector-pass-through-database-driver-configuration-properties[Pass-through database schema history properties]
+* xref:db2-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients[Pass-through database schema history properties]
 * xref:debezium-db2-connector-pass-through-database-driver-configuration-properties[Pass-through database driver properties] that control the behavior of the database driver.
 
 
@@ -3121,10 +3122,17 @@ include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-s
 
 include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-notification-configuration-properties.adoc[leveloffset=+1]
 
+[id="debezium-db2-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients"]
+==== Pass-through database schema history properties for configuring producer and consumer clients
+
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients.adoc[leveloffset=+1]
+
 [id="debezium-db2-connector-pass-through-database-driver-configuration-properties"]
 ==== {prodname} connector pass-through database driver configuration properties
 
 include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-database-driver-configuration-properties.adoc[leveloffset=+1]
+
+
 
 // Type: assembly
 // ModuleID: monitoring-debezium-db2-connector-performance
