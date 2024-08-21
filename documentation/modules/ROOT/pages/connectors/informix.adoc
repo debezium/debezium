@@ -1967,7 +1967,9 @@ Information about the properties is organized as follows:
 * xref:informix-required-configuration-properties[Required configuration properties]
 * xref:informix-advanced-configuration-properties[Advanced configuration properties]
 * xref:debezium-informix-connector-database-history-configuration-properties[Database schema history connector configuration properties] that control how {prodname} processes events that it reads from the database schema history topic.
-** xref:debezium-informix-connector-pass-through-database-driver-configuration-properties[Pass-through database schema history properties]
+* xref:debezium-informix-connector-kafka-signals-configuration-properties[Kafka signals configuration properties]
+* xref:debezium-informix-connector-kafka-notifications-configuration-properties[Sink notifications configuration properties]
+* xref:debezium-informix-connector-pass-through-database-schema-history-properties[Pass-through database schema history properties]
 * xref:debezium-informix-connector-pass-through-database-driver-configuration-properties[Pass-through database driver properties] that control the behavior of the database driver.
 
 
@@ -2679,15 +2681,20 @@ Set the value to `0` (zero) to remove the timeout limit.
 
 include::{partialsdir}/modules/all-connectors/ref-connector-configuration-database-history-properties.adoc[leveloffset=+1]
 
-[id="debezium-{context}-connector-kafka-signals-configuration-properties"]
+[id="debezium-informix-connector-kafka-signals-configuration-properties"]
 ==== {prodname} connector Kafka signals configuration properties
 
 include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-signals-configuration-properties.adoc[leveloffset=+1]
 
-[id="debezium-{context}-connector-kafka-notifications-configuration-properties"]
-==== {prodname} connector sink notifications configuration properties
+[id="debezium-informix-connector-kafka-notifications-configuration-properties"]
+==== Pass-through Kafka sink notification configuration properties
 
 include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-notification-configuration-properties.adoc[leveloffset=+1]
+
+[id="debezium-informix-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients"]
+==== Pass-through database schema history properties for configuring producer and consumer clients
+
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients.adoc[leveloffset=+1]
 
 [id="debezium-informix-connector-pass-through-database-driver-configuration-properties"]
 ==== {prodname} connector pass-through database driver configuration properties
