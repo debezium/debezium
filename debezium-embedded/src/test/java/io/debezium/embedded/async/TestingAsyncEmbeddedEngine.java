@@ -36,4 +36,9 @@ public class TestingAsyncEmbeddedEngine implements TestingDebeziumEngine {
     public void runWithTask(Consumer consumer) {
         engine.runWithTask(consumer);
     }
+
+    @Override
+    public Signaler getSignaler() {
+        return engine.getSignaler();
+    }
 }
