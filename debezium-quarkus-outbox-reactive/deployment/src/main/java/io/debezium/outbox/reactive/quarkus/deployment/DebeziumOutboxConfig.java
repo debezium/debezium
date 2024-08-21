@@ -8,6 +8,7 @@ package io.debezium.outbox.reactive.quarkus.deployment;
 import io.debezium.outbox.quarkus.deployment.DebeziumOutboxCommonConfig;
 import io.quarkus.runtime.annotations.ConfigPhase;
 import io.quarkus.runtime.annotations.ConfigRoot;
+import io.smallrye.config.ConfigMapping;
 
 /**
  * Configuration root class for Debezium Outbox pattern that defines the available user
@@ -15,7 +16,8 @@ import io.quarkus.runtime.annotations.ConfigRoot;
  *
  * @author Chris Cranford
  */
-@ConfigRoot(phase = ConfigPhase.BUILD_TIME, name = "debezium-outbox")
-public class DebeziumOutboxConfig extends DebeziumOutboxCommonConfig {
+@ConfigMapping(prefix = "quarkus.debezium-outbox")
+@ConfigRoot(phase = ConfigPhase.BUILD_TIME)
+public interface DebeziumOutboxConfig extends DebeziumOutboxCommonConfig {
 
 }

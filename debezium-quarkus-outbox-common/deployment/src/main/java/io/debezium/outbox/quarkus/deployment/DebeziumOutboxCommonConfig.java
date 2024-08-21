@@ -8,10 +8,11 @@ package io.debezium.outbox.quarkus.deployment;
 import java.util.Optional;
 
 import io.debezium.outbox.quarkus.internal.OutboxConstants;
-import io.quarkus.runtime.annotations.ConfigGroup;
-import io.quarkus.runtime.annotations.ConfigItem;
 import io.quarkus.runtime.annotations.ConfigPhase;
 import io.quarkus.runtime.annotations.ConfigRoot;
+import io.smallrye.config.ConfigMapping;
+import io.smallrye.config.WithDefault;
+import io.smallrye.config.WithName;
 
 /**
  * Configuration root class for Debezium Outbox pattern that defines the available user
@@ -19,211 +20,185 @@ import io.quarkus.runtime.annotations.ConfigRoot;
  *
  * @author Chris Cranford
  */
-@ConfigRoot(phase = ConfigPhase.BUILD_TIME, name = "debezium-outbox")
-public class DebeziumOutboxCommonConfig {
+@ConfigMapping(prefix = "quarkus.debezium-outbox")
+@ConfigRoot(phase = ConfigPhase.BUILD_TIME)
+public interface DebeziumOutboxCommonConfig {
     /**
      * The table name to be used for the outbox table
      */
-    @ConfigItem(defaultValue = "OutboxEvent")
-    public String tableName;
+    @WithDefault("OutboxEvent")
+    String tableName();
 
     /**
      * Outbox identifier configurable attributes
      */
-    @ConfigItem
-    public DebeziumOutboxConfigId id;
+    DebeziumOutboxConfigId id();
 
     /**
      * Outbox aggregate-id configurable attributes
      */
-    @ConfigItem
-    public DebeziumOutboxConfigAggregateId aggregateId;
+    DebeziumOutboxConfigAggregateId aggregateId();
 
     /**
      * Outbox aggregate-type configurable attributes
      */
-    @ConfigItem
-    public DebeziumOutboxConfigAggregateType aggregateType;
+    DebeziumOutboxConfigAggregateType aggregateType();
 
     /**
      * Outbox type configurable attributes
      */
-    @ConfigItem
-    public DebeziumOutboxConfigType type;
+    DebeziumOutboxConfigType type();
 
     /**
      * Outbox timestamp configurable attributes
      */
-    @ConfigItem
-    public DebeziumOutboxConfigTimestamp timestamp;
+    DebeziumOutboxConfigTimestamp timestamp();
 
     /**
      * Outbox payload configurable attributes
      */
-    @ConfigItem
-    public DebeziumOutboxConfigPayload payload;
+    DebeziumOutboxConfigPayload payload();
 
     /**
      * Outbox additional fields
      */
-    @ConfigItem
-    public Optional<String> additionalFields;
+    Optional<String> additionalFields();
 
     /**
      * Outbox Tracing configurable attributes
      */
-    @ConfigItem
-    public DebeziumOutboxConfigTracingSpan tracingSpan;
+    DebeziumOutboxConfigTracingSpan tracingSpan();
 
     /**
      * OpenTelemetry configuration option
      */
-    @ConfigItem(name = "tracing.enabled", defaultValue = "true")
-    public boolean tracingEnabled;
+    @WithDefault("true")
+    @WithName("tracing.enabled")
+    boolean tracingEnabled();
 
-    @ConfigGroup
-    public static class DebeziumOutboxConfigId {
+    interface DebeziumOutboxConfigId {
         /**
          * The column name.
          */
-        @ConfigItem(defaultValue = "id")
-        public String name;
+        @WithDefault("id")
+        String name();
 
         /**
          * The column definition.
          */
-        @ConfigItem
-        public Optional<String> columnDefinition;
+        Optional<String> columnDefinition();
     }
 
-    @ConfigGroup
-    public static class DebeziumOutboxConfigAggregateType {
+    interface DebeziumOutboxConfigAggregateType {
         /**
          * The column name.
          */
-        @ConfigItem(defaultValue = "aggregatetype")
-        public String name;
+        @WithDefault("aggregatetype")
+        String name();
 
         /**
          * The column definition.
          */
-        @ConfigItem
-        public Optional<String> columnDefinition;
+        Optional<String> columnDefinition();
 
         /**
          * The column's attribute converter fully qualified class name.
          * @see jakarta.persistence.AttributeConverter
          */
-        @ConfigItem
-        public Optional<String> converter;
+        Optional<String> converter();
     }
 
-    @ConfigGroup
-    public static class DebeziumOutboxConfigAggregateId {
+    interface DebeziumOutboxConfigAggregateId {
         /**
          * The column name.
          */
-        @ConfigItem(defaultValue = "aggregateid")
-        public String name;
+        @WithDefault("aggregateid")
+        String name();
 
         /**
          * The column definition.
          */
-        @ConfigItem
-        public Optional<String> columnDefinition;
+        Optional<String> columnDefinition();
 
         /**
          * The column's attribute converter fully qualified class name.
          * @see jakarta.persistence.AttributeConverter
          */
-        @ConfigItem
-        public Optional<String> converter;
+        Optional<String> converter();
     }
 
-    @ConfigGroup
-    public static class DebeziumOutboxConfigType {
+    interface DebeziumOutboxConfigType {
         /**
          * The column name.
          */
-        @ConfigItem(defaultValue = "type")
-        public String name;
+        @WithDefault("type")
+        String name();
 
         /**
          * The column definition.
          */
-        @ConfigItem
-        public Optional<String> columnDefinition;
+        Optional<String> columnDefinition();
 
         /**
          * The column's attribute converter fully qualified class name.
          * @see jakarta.persistence.AttributeConverter
          */
-        @ConfigItem
-        public Optional<String> converter;
+        Optional<String> converter();
     }
 
-    @ConfigGroup
-    public static class DebeziumOutboxConfigTimestamp {
+    interface DebeziumOutboxConfigTimestamp {
         /**
          * The column name.
          */
-        @ConfigItem(defaultValue = "timestamp")
-        public String name;
+        @WithDefault("timestamp")
+        String name();
 
         /**
          * The column definition.
          */
-        @ConfigItem
-        public Optional<String> columnDefinition;
+        Optional<String> columnDefinition();
 
         /**
          * The column's attribute converter fully qualified class name.
          * @see jakarta.persistence.AttributeConverter
          */
-        @ConfigItem
-        public Optional<String> converter;
+        Optional<String> converter();
     }
 
-    @ConfigGroup
-    public static class DebeziumOutboxConfigPayload {
+    interface DebeziumOutboxConfigPayload {
         /**
          * The column name.
          */
-        @ConfigItem(defaultValue = "payload")
-        public String name;
+        @WithDefault("payload")
+        String name();
 
         /**
          * The column definition.
          */
-        @ConfigItem
-        public Optional<String> columnDefinition;
+        Optional<String> columnDefinition();
 
         /**
          * The column's attribute converter fully qualified class name.
          * @see jakarta.persistence.AttributeConverter
          */
-        @ConfigItem
-        public Optional<String> converter;
+        Optional<String> converter();
 
         /**
          * The column's type definition class
          */
-        @ConfigItem
-        public Optional<String> type;
+        Optional<String> type();
     }
 
-    @ConfigGroup
-    public static class DebeziumOutboxConfigTracingSpan {
+    interface DebeziumOutboxConfigTracingSpan {
         /**
          * The column name.
          */
-        @ConfigItem(defaultValue = OutboxConstants.TRACING_SPAN_CONTEXT)
-        public String name;
+        @WithDefault(OutboxConstants.TRACING_SPAN_CONTEXT)
+        String name();
 
         /**
          * The column definition.
          */
-        @ConfigItem
-        public Optional<String> columnDefinition;
+        Optional<String> columnDefinition();
     }
 }
