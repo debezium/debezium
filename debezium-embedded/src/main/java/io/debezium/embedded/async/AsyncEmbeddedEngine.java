@@ -114,6 +114,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
     private final ExecutorService recordService;
     // A latch to make sure close() method finishes before we call completion callback, see also DBZ-7496.
     private final CountDownLatch shutDownLatch = new CountDownLatch(1);
+    private Signaler signaler;
 
     private AsyncEmbeddedEngine(Properties config,
                                 Consumer<R> consumer,
@@ -124,8 +125,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
                                 ConnectorCallback connectorCallback,
                                 OffsetCommitPolicy offsetCommitPolicy,
                                 HeaderConverter headerConverter,
-                                Function<SourceRecord, R> recordConverter,
-                                Signaler<?> signaler) {
+                                Function<SourceRecord, R> recordConverter) {
 
         this.config = Configuration.from(Objects.requireNonNull(config, "A connector configuration must be specified."));
         this.consumer = consumer;
@@ -137,9 +137,6 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         this.headerConverter = headerConverter;
         this.recordConverter = recordConverter;
         this.sourceConverter = (record) -> ((EmbeddedEngineChangeEvent<?, ?, ?>) record).sourceRecord();
-        if (signaler != null) {
-            signaler.init(this);
-        }
 
         // Ensure either user ChangeConsumer or Consumer is provided and validate supported records ordering is provided when relevant.
         if (this.handler == null & this.consumer == null) {
@@ -830,6 +827,14 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         return true;
     }
 
+    @Override
+    public Signaler getSignaler() {
+        if (signaler == null) {
+            signaler = new AsyncEngineSignaler(this);
+        }
+        return signaler;
+    }
+
     /**
      * Implementation of {@link DebeziumEngine.Builder} which creates {@link AsyncEmbeddedEngine}.
      */
@@ -846,7 +851,6 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         private HeaderConverter headerConverter;
         private Function<SourceRecord, R> recordConverter;
         private ConverterBuilder converterBuilder;
-        private Signaler<?> signaler;
 
         AsyncEngineBuilder() {
             this((KeyValueHeaderChangeEventFormat<?, ?, ?>) null);
@@ -890,12 +894,6 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
                 LOGGER.info("Consumer doesn't support tombstone events, setting '{}' to false.", CommonConnectorConfig.TOMBSTONES_ON_DELETE.name());
                 config.put(CommonConnectorConfig.TOMBSTONES_ON_DELETE.name(), "false");
             }
-            return this;
-        }
-
-        @Override
-        public Builder<R> using(Signaler<?> signaler) {
-            this.signaler = signaler;
             return this;
         }
 
@@ -945,7 +943,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
                 recordConverter = converterBuilder.toFormat(headerConverter);
             }
             return new AsyncEmbeddedEngine(config, consumer, handler, classLoader, clock, completionCallback, connectorCallback, offsetCommitPolicy, headerConverter,
-                    recordConverter, signaler);
+                    recordConverter);
         }
     }
 
