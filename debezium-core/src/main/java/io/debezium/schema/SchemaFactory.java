@@ -21,6 +21,8 @@ import io.debezium.data.Json;
 import io.debezium.data.Uuid;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.data.Xml;
+import io.debezium.data.vector.DoubleVector;
+import io.debezium.data.vector.FloatVector;
 import io.debezium.heartbeat.HeartbeatImpl;
 import io.debezium.pipeline.notification.Notification;
 import io.debezium.pipeline.txmetadata.TransactionStructMaker;
@@ -332,6 +334,18 @@ public class SchemaFactory {
         return SchemaBuilder.string()
                 .name(Xml.LOGICAL_NAME)
                 .version(Xml.SCHEMA_VERSION);
+    }
+
+    public SchemaBuilder datatypeDoubleVectorSchema() {
+        return SchemaBuilder.array(Schema.FLOAT64_SCHEMA)
+                .name(DoubleVector.LOGICAL_NAME)
+                .version(DoubleVector.SCHEMA_VERSION);
+    }
+
+    public SchemaBuilder datatypeFloatVectorSchema() {
+        return SchemaBuilder.array(Schema.FLOAT32_SCHEMA)
+                .name(FloatVector.LOGICAL_NAME)
+                .version(FloatVector.SCHEMA_VERSION);
     }
 
     public Envelope.Builder datatypeEnvelopeSchema() {

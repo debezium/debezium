@@ -190,6 +190,8 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
                         .setDefaultLengthScaleDimension(10, 0),
                 new DataTypeEntry(Types.BIT, MySqlParser.BIT)
                         .setDefaultLengthDimension(1),
+                new DataTypeEntry(Types.OTHER, MySqlParser.VECTOR)
+                        .setDefaultLengthDimension(2048),
                 new DataTypeEntry(Types.TIME, MySqlParser.TIME),
                 new DataTypeEntry(Types.TIMESTAMP_WITH_TIMEZONE, MySqlParser.TIMESTAMP),
                 new DataTypeEntry(Types.TIMESTAMP, MySqlParser.DATETIME),
