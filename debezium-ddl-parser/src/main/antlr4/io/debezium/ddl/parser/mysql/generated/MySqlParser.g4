@@ -2349,7 +2349,7 @@ dataType
       )                                                             #simpleDataType
     | typeName=(
         BIT | TIME | TIMESTAMP | DATETIME | BINARY
-        | VARBINARY | BLOB | YEAR
+        | VARBINARY | BLOB | YEAR | VECTOR
       )
       lengthOneDimension?                                           #dimensionDataType
     | typeName=(ENUM | SET)
