@@ -2,6 +2,74 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 3.0.0.Beta1
+August 22nd 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12431096)
+
+### New features since 3.0.0.Alpha2
+
+* Implement Ehcache event buffer [DBZ-7758](https://issues.redhat.com/browse/DBZ-7758)
+* Expose a metric for number of create, update, delete events per table [DBZ-8035](https://issues.redhat.com/browse/DBZ-8035)
+* Log additional details about abandoned transactions [DBZ-8044](https://issues.redhat.com/browse/DBZ-8044)
+* Introduce timeout for replication slot creation [DBZ-8073](https://issues.redhat.com/browse/DBZ-8073)
+* ConverterBuilder doesn't pass Headers to be manipulated [DBZ-8082](https://issues.redhat.com/browse/DBZ-8082)
+* Add SMT to decode binary content of a logical decoding message [DBZ-8103](https://issues.redhat.com/browse/DBZ-8103)
+* Support DECIMAL(p) Floating Point [DBZ-8114](https://issues.redhat.com/browse/DBZ-8114)
+* Support for PgVector datatypes [DBZ-8121](https://issues.redhat.com/browse/DBZ-8121)
+* Implement in process signal channel  [DBZ-8135](https://issues.redhat.com/browse/DBZ-8135)
+* Validate log position method missing gtid info from SourceInfo [DBZ-8140](https://issues.redhat.com/browse/DBZ-8140)
+* Vitess Connector Epoch should support parallelism & shard changes [DBZ-8154](https://issues.redhat.com/browse/DBZ-8154)
+* Add an option for `publication.autocreate.mode` to create a publication with no tables [DBZ-8156](https://issues.redhat.com/browse/DBZ-8156)
+
+
+### Breaking changes since 3.0.0.Alpha2
+
+* Debezium Server Kafka BLOCKED forever when Kafka send failed [DBZ-7575](https://issues.redhat.com/browse/DBZ-7575)
+* Rabbitmq native stream support individual stream for each table [DBZ-8118](https://issues.redhat.com/browse/DBZ-8118)
+
+
+### Fixes since 3.0.0.Alpha2
+
+* Incremental snapshots don't work with CloudEvent converter [DBZ-7601](https://issues.redhat.com/browse/DBZ-7601)
+* Snapshot retrying logic falls into infinite retry loop [DBZ-7860](https://issues.redhat.com/browse/DBZ-7860)
+* Primary Key Update/ Snapshot Race Condition [DBZ-8113](https://issues.redhat.com/browse/DBZ-8113)
+* Docs: connect-log4j.properties instead log4j.properties [DBZ-8117](https://issues.redhat.com/browse/DBZ-8117)
+* Recalculating mining range upper bounds causes getScnFromTimestamp to fail [DBZ-8119](https://issues.redhat.com/browse/DBZ-8119)
+* ORA-00600: internal error code, arguments: [krvrdGetUID:2], [18446744073709551614], [], [], [], [], [], [], [], [], [], [] [DBZ-8125](https://issues.redhat.com/browse/DBZ-8125)
+* ConvertingFailureIT#shouldFailConversionTimeTypeWithConnectModeWhenFailMode fails randomly [DBZ-8128](https://issues.redhat.com/browse/DBZ-8128)
+* ibmi Connector does not take custom properties into account anymore [DBZ-8129](https://issues.redhat.com/browse/DBZ-8129)
+* Unpredicatable ordering of table rows during insertion causing foreign key error [DBZ-8130](https://issues.redhat.com/browse/DBZ-8130)
+* schema_only crashes ibmi Connector [DBZ-8131](https://issues.redhat.com/browse/DBZ-8131)
+* Support larger database.server.id values [DBZ-8134](https://issues.redhat.com/browse/DBZ-8134)
+* Open redo thread consistency check can lead to ORA-01291 - missing logfile [DBZ-8144](https://issues.redhat.com/browse/DBZ-8144)
+* SchemaOnlyRecoverySnapshotter not registered as an SPI service implementation [DBZ-8147](https://issues.redhat.com/browse/DBZ-8147)
+* When stopping the Oracle rac node the Debezium server throws an expections - ORA-12514: Cannot connect to database and retries  [DBZ-8149](https://issues.redhat.com/browse/DBZ-8149)
+* Issue with Debezium Snapshot: DateTimeParseException with plugin pgoutput [DBZ-8150](https://issues.redhat.com/browse/DBZ-8150)
+* JDBC connector validation fails when using record_value with no primary.key.fields [DBZ-8151](https://issues.redhat.com/browse/DBZ-8151)
+* Taking RAC node offline and back online can lead to thread inconsistency [DBZ-8162](https://issues.redhat.com/browse/DBZ-8162)
+
+
+### Other changes since 3.0.0.Alpha2
+
+* MySQL has deprecated mysql_native_password usage [DBZ-7049](https://issues.redhat.com/browse/DBZ-7049)
+* Upgrade to Apicurio 2.5.8 or higher [DBZ-7357](https://issues.redhat.com/browse/DBZ-7357)
+* Write and publish Debezium Orchestra blog post [DBZ-7972](https://issues.redhat.com/browse/DBZ-7972)
+* Move Debezium Conductor repository under Debezium Organisation [DBZ-7973](https://issues.redhat.com/browse/DBZ-7973)
+* Decide on name, jira components, etc... for Debezium Orchestra platform [DBZ-7975](https://issues.redhat.com/browse/DBZ-7975)
+* Migrate Postgres testsuite to async engine [DBZ-8077](https://issues.redhat.com/browse/DBZ-8077)
+* Conditionalize reference to the MySQL default value in description of `schema.history.internal.store.only.captured.databases.ddl` [DBZ-8081](https://issues.redhat.com/browse/DBZ-8081)
+* Bump Debezium Server to Quarkus 3.8.5 [DBZ-8095](https://issues.redhat.com/browse/DBZ-8095)
+* Converters documentation uses incorrect examples [DBZ-8104](https://issues.redhat.com/browse/DBZ-8104)
+* Remove reference to`additional condition` signal parameter from ad hoc snapshots doc [DBZ-8107](https://issues.redhat.com/browse/DBZ-8107)
+* TimescaleDbDatabaseTest.shouldTransformCompressedChunks is failing [DBZ-8123](https://issues.redhat.com/browse/DBZ-8123)
+* Update Oracle connector doc to describe options for restricting access permissions for the Debezium LogMiner user  [DBZ-8124](https://issues.redhat.com/browse/DBZ-8124)
+* Use SQLSTATE to handle exceptions for replication slot creation command timeout [DBZ-8127](https://issues.redhat.com/browse/DBZ-8127)
+* Re-add check to test for if assembly profile is active [DBZ-8138](https://issues.redhat.com/browse/DBZ-8138)
+* Add LogMiner start mining session retry attempt counter to logs [DBZ-8143](https://issues.redhat.com/browse/DBZ-8143)
+* Reduce logging verbosity of XStream DML event data [DBZ-8148](https://issues.redhat.com/browse/DBZ-8148)
+* Upgrade Outbox Extension to Quarkus 3.14.0 [DBZ-8164](https://issues.redhat.com/browse/DBZ-8164)
+
+
+
 ## 3.0.0.Alpha2
 August 2nd 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12430393)
 
