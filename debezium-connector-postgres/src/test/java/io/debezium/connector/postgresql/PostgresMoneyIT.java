@@ -22,6 +22,7 @@ import io.debezium.config.Configuration;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
+import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingMode;
 
 /**
  * Integration test to verify postgres money types defined in public schema.
@@ -144,11 +145,57 @@ public class PostgresMoneyIT extends AbstractAsyncEngineConnectorTest {
         assertThat(after.get("m")).isEqualTo(BigDecimal.ZERO.setScale(2));
     }
 
+    @Test
+    @FixFor("DBZ-8027")
+    public void shouldReceiveCorrectDefaultValueForHandlingMode() throws Exception {
+        createTableWithNotNull();
+        TestHelper.execute("insert into post_money.debezium_test(id, m) values(10, '3.14'::money);");
+
+        var config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.ALWAYS)
+                .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.STRING)
+                .with(PostgresConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, "post_money.debezium_test")
+                .with(PostgresConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + ".post_money.debezium_test",
+                        "SELECT id, null AS m FROM post_money.debezium_test")
+                .build();
+        start(PostgresConnector.class, config);
+
+        var records = consumeRecordsByTopic(1);
+        var recordsForTopic = records.recordsForTopic(topicName("post_money.debezium_test"));
+
+        assertThat(recordsForTopic).hasSize(1);
+        assertThat(((Struct) recordsForTopic.get(0).value()).getStruct("after").getString("m")).isEqualTo("0.00");
+
+        stopConnector();
+
+        config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.ALWAYS)
+                .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DOUBLE)
+                .with(PostgresConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, "post_money.debezium_test")
+                .with(PostgresConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + ".post_money.debezium_test",
+                        "SELECT id, null AS m FROM post_money.debezium_test")
+                .build();
+        start(PostgresConnector.class, config);
+
+        records = consumeRecordsByTopic(1);
+        recordsForTopic = records.recordsForTopic(topicName("post_money.debezium_test"));
+
+        assertThat(recordsForTopic).hasSize(1);
+        assertThat(((Struct) recordsForTopic.get(0).value()).getStruct("after").getFloat64("m")).isEqualTo(0.0);
+    }
+
     private void createTable() {
         TestHelper.execute(
                 "DROP SCHEMA IF EXISTS post_money CASCADE;",
                 "CREATE SCHEMA post_money;",
                 "CREATE TABLE post_money.debezium_test (id int4 NOT NULL, m money, CONSTRAINT dbz_test_pkey PRIMARY KEY (id));");
+    }
+
+    private void createTableWithNotNull() {
+        TestHelper.execute(
+                "DROP SCHEMA IF EXISTS post_money CASCADE;",
+                "CREATE SCHEMA post_money;",
+                "CREATE TABLE post_money.debezium_test (id int4 NOT NULL, m money NOT NULL, CONSTRAINT dbz_test_pkey PRIMARY KEY (id));");
     }
 
     private void insertTwoRecords() {
