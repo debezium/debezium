@@ -69,6 +69,7 @@ The following example shows the naming formats to use for each connector:
 .Fully qualified table names
 [id="format-for-specifying-fully-qualified-names-for-data-collections"]
 Db2:: `_<schemaName>_._<tableName>_`
+MariaDB (Technology Preview):: `_<databaseName>_._<tableName>_`
 MongoDB:: `_<databaseName>_._<collectionName>_`
 MySQL:: `_<databaseName>_._<tableName>_`
 Oracle:: `_<databaseName>_._<schemaName>_._<tableName>_`
@@ -168,6 +169,7 @@ After you enable the signaling channel, a Kafka consumer is created to consume s
 .Additional configuration available for the consumer
 
 * {link-prefix}:{link-db2-connector}#debezium-db2-connector-kafka-signals-configuration-properties[Db2 connector Kafka signal configuration properties]
+* {link-prefix}:{link-mariadb-connector}#debezium-mariadb-connector-kafka-signals-configuration-properties[MariaDB connector Kafka signal configuration properties]
 * {link-prefix}:{link-mongodb-connector}#debezium-mongodb-connector-kafka-signals-configuration-properties[MongoDB connector Kafka signal configuration properties]
 * {link-prefix}:{link-mysql-connector}#debezium-mysql-connector-kafka-signals-configuration-properties[MySQL connector Kafka signal configuration properties]
 * {link-prefix}:{link-oracle-connector}#debezium-oracle-connector-kafka-signals-configuration-properties[Oracle connector Kafka signal configuration properties]
