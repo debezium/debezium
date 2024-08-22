@@ -325,6 +325,7 @@ Lourens Naudé
 Luca Scannapieco
 Luis Garcés-Erice
 Lukas Krejci
+Lukas Langegger
 Lukasz Korzeniowski
 lyidataminr
 M Sazzadul Hoque
