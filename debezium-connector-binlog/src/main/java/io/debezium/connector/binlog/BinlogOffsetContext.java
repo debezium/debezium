@@ -170,7 +170,6 @@ public class BinlogOffsetContext<T extends BinlogSourceInfo> extends CommonOffse
      *            have been previously processed
      */
     public void setCompletedGtidSet(String gtidSet) {
-        sourceInfo.startGtid(gtidSet);
         if (gtidSet != null && !gtidSet.trim().isEmpty()) {
             // Remove all the newline chars that exist in the GTID set string ...
             String trimmedGtidSet = gtidSet.replace("\n", "").replace("\r", "");
