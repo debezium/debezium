@@ -81,6 +81,7 @@ jobs:
         with:
           files: |
             debezium-connector-mysql/**
+            debezium-connector-binlog/**
 
       - name: Get modified files (MariaDB)
         id: changed-files-mariadb
