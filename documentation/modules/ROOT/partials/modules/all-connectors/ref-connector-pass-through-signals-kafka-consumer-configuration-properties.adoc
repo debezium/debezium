@@ -1,0 +1,5 @@
+The {prodname} connector provides for pass-through configuration of the signals Kafka consumer.
+Pass-through signals properties begin with the prefix `signals.consumer.*`.
+For example, the connector passes properties such as `signal.consumer.security.protocol=SSL` to the Kafka consumer.
+
+{prodname} strips the prefixes from the properties before it passes the properties to the Kafka signals consumer.
