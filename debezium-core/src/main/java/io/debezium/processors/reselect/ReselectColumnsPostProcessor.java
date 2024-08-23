@@ -250,10 +250,8 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
             case MAP:
                 return unavailableValuePlaceholderMap.equals(value);
             case STRING:
-                if (Json.LOGICAL_NAME.equals(schema.name())) {
-                    return unavailableValuePlaceholderJson.equals(value);
-                }
-                return unavailableValuePlaceholder.equals(value);
+                final boolean isJsonAndUnavailable = Json.LOGICAL_NAME.equals(schema.name()) && unavailableValuePlaceholderJson.equals(value);
+                return unavailableValuePlaceholder.equals(value) || isJsonAndUnavailable;
         }
         return false;
     }
