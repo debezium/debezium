@@ -14,6 +14,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigDef;
@@ -39,6 +40,7 @@ public class SqlServerConnector extends RelationalBaseSourceConnector {
     private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerConnector.class);
 
     private Map<String, String> properties;
+    private Map<String, String> realDatabaseNames;
 
     @Override
     public String version() {
@@ -61,17 +63,10 @@ public class SqlServerConnector extends RelationalBaseSourceConnector {
             throw new IllegalArgumentException("Only a single connector task may be started in single-partition mode");
         }
 
-        final SqlServerConnectorConfig config = new SqlServerConnectorConfig(Configuration.from(properties));
-
-        try (SqlServerConnection connection = connect(config)) {
-            return buildTaskConfigs(connection, config, maxTasks);
-        }
-        catch (SQLException e) {
-            throw new IllegalArgumentException("Could not build task configs", e);
-        }
+        return buildTaskConfigs(new SqlServerConnectorConfig(Configuration.from(properties)), maxTasks);
     }
 
-    private List<Map<String, String>> buildTaskConfigs(SqlServerConnection connection, SqlServerConnectorConfig config,
+    private List<Map<String, String>> buildTaskConfigs(SqlServerConnectorConfig config,
                                                        int maxTasks) {
         List<String> databaseNames = config.getDatabaseNames();
 
@@ -85,7 +80,7 @@ public class SqlServerConnector extends RelationalBaseSourceConnector {
         // Add each database to a task list via round-robin.
         for (int databaseNameIndex = 0; databaseNameIndex < databaseNames.size(); databaseNameIndex++) {
             int taskIndex = databaseNameIndex % numTasks;
-            String realDatabaseName = connection.retrieveRealDatabaseName(databaseNames.get(databaseNameIndex));
+            String realDatabaseName = realDatabaseNames.get(databaseNames.get(databaseNameIndex));
             databasesByTask.get(taskIndex).add(realDatabaseName);
         }
 
@@ -100,6 +95,13 @@ public class SqlServerConnector extends RelationalBaseSourceConnector {
         }
 
         return taskConfigs;
+    }
+
+    private Map<String, String> initRealDatabaseNames(SqlServerConnection connection,
+                                                      SqlServerConnectorConfig config) {
+
+        return config.getDatabaseNames().stream()
+                .collect(Collectors.toMap(Function.identity(), connection::retrieveRealDatabaseName));
     }
 
     @Override
@@ -125,6 +127,11 @@ public class SqlServerConnector extends RelationalBaseSourceConnector {
             connection.execute("SELECT @@VERSION");
             LOGGER.debug("Successfully tested connection for {} with user '{}'", connection.connectionString(),
                     connection.username());
+
+            // Real database names would be better to run in taskConfigs but Connect runtime
+            // has issues with exceptions throw in them so the database interaction is moved here
+            realDatabaseNames = initRealDatabaseNames(connection, sqlServerConfig);
+
             LOGGER.info("Checking if user has access to CDC table");
             if (sqlServerConfig.getSnapshotMode() != SqlServerConnectorConfig.SnapshotMode.INITIAL_ONLY) {
                 final List<String> noAccessDatabaseNames = new ArrayList<>();

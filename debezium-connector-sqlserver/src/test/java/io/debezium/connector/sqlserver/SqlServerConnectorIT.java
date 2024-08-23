@@ -2564,6 +2564,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
                 .asMap();
 
         SqlServerConnector connector = new SqlServerConnector();
+        connector.validate(props);
         connector.start(props);
         List<Map<String, String>> taskConfigs = connector.taskConfigs(1);
         assertThat(taskConfigs).hasSize(1);
@@ -2579,6 +2580,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
                 .asMap();
 
         SqlServerConnector connector = new SqlServerConnector();
+        connector.validate(props);
         connector.start(props);
         List<Map<String, String>> taskConfigs = connector.taskConfigs(3);
         assertThat(taskConfigs).hasSize(2);
@@ -2596,6 +2598,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
                 .asMap();
 
         SqlServerConnector connector = new SqlServerConnector();
+        connector.validate(props);
         connector.start(props);
         List<Map<String, String>> taskConfigs = connector.taskConfigs(2);
         assertThat(taskConfigs).hasSize(2);
