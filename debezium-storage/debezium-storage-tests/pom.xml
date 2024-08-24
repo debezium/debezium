@@ -13,7 +13,7 @@
 
     <properties>
 	<!-- S3 -->
-        <version.s3mock>2.4.14</version.s3mock>
+        <version.s3mock>3.10.0</version.s3mock>
 
     <!-- Azurite -->
         <version.azurite>3.22.0</version.azurite>
