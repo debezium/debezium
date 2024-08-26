@@ -250,6 +250,12 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
             case MAP:
                 return unavailableValuePlaceholderMap.equals(value);
             case STRING:
+                // Both PostgreSQL HSTORE and JSON/JSONB have a schema name of "json".
+                // PostgreSQL HSTORE fields use a JSON-like unavailable value placeholder, e.g., {"key":"value"},
+                // while JSON/JSONB fields use a simple string placeholder.
+                // This condition is needed to handle both cases:
+                // - HSTORE unavailable value placeholders (as JSON objects)
+                // - JSON/JSONB unavailable value placeholders (as strings)
                 final boolean isJsonAndUnavailable = Json.LOGICAL_NAME.equals(schema.name()) && unavailableValuePlaceholderJson.equals(value);
                 return unavailableValuePlaceholder.equals(value) || isJsonAndUnavailable;
         }
