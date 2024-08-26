@@ -353,7 +353,11 @@ public abstract class AbstractNotificationsIT<T extends SourceConnector> extends
 
     private ObjectName getObjectName() throws MalformedObjectNameException {
 
-        return new ObjectName(String.format("debezium.%s:type=management,context=notifications,server=%s", connector(), server()));
+        String objName = String.format("debezium.%s:type=management,context=notifications,server=%s", connector(), server());
+        if (task() != null) {
+            objName += ",task=" + task();
+        }
+        return new ObjectName(objName);
     }
 
     private List<javax.management.Notification> registerJmxNotificationListener()

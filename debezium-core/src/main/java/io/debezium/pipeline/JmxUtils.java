@@ -116,7 +116,10 @@ public class JmxUtils {
 
     private static String getManagementJmxObjectName(String type, String context, CommonConnectorConfig connectorConfig) {
         String tags = String.format(JMX_OBJECT_NAME_FORMAT, connectorConfig.getContextName().toLowerCase(), type, context, connectorConfig.getLogicalName());
-        if (connectorConfig.getCustomMetricTags().size() > 0) {
+        if (connectorConfig.getTaskId() != null) {
+            tags += ",task=" + connectorConfig.getTaskId();
+        }
+        if (!connectorConfig.getCustomMetricTags().isEmpty()) {
             String customTags = connectorConfig.getCustomMetricTags().entrySet().stream()
                     .map(e -> e.getKey() + "=" + Sanitizer.jmxSanitize(e.getValue()))
                     .collect(Collectors.joining(","));
