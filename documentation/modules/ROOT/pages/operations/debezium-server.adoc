@@ -491,10 +491,11 @@ You can configure the following options for the asynchronous embedded engine:
 |Description
 
 |[[debezium-server-property-record-processing-threads]]<<debezium-server-property-record-processing-threads, `+record.processing.threads+`>>
-|The number of available cores.
+|
 |The number of threads that are available to process change event records.
-If you want to use all available cores on given machine, you can use the `AVAILABLE_CORES` placeholder.
-If the value is not specified, threads are created as needed, using Java https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/concurrent/Executors.html#newCachedThreadPool()[cached thread pool].
+If the value is not specified (the default), threads are created and eventually removed as needed, using Java https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/concurrent/Executors.html#newCachedThreadPool()[cached thread pool].
+If the value is specified, Java https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/concurrent/Executors.html#newFixedThreadPool(int)[fixed thread pool] with speficied number of threads is used.
+To use all available cores on given machine, you can use the `AVAILABLE_CORES` placeholder.
 
 |[[debezium-server-property-shutdown-timeout-ms]]<<debezium-server-property-shutdown-timeout-ms, `+record.processing.shutdown.timeout.ms+`>>
 |1000
