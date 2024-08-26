@@ -2802,11 +2802,11 @@ To deploy a {prodname} Oracle connector, you install the {prodname} Oracle conne
 
 . Download the {prodname} https://repo1.maven.org/maven2/io/debezium/debezium-connector-oracle/{debezium-version}/debezium-connector-oracle-{debezium-version}-plugin.tar.gz[Oracle connector plug-in archive].
 . Extract the files into your Kafka Connect environment.
-. Download the link:https://repo1.maven.org/maven2/com/oracle/database/jdbc/ojdbc11/{ojdbc11-version}/ojdbc11-{ojdbc11-version}.jar[JDBC driver for Oracle] from Maven Central and extract the downloaded driver file to the directory that contains the {prodname} Oracle connector JAR file.
+. Download the link:https://repo1.maven.org/maven2/com/oracle/database/jdbc/ojdbc11/{ojdbc-version}/ojdbc11-{ojdbc-version}.jar[JDBC driver for Oracle] from Maven Central and extract the downloaded driver file to the directory that contains the {prodname} Oracle connector JAR file.
 +
 NOTE: If you use the {prodname} Oracle connector with Oracle XStream, obtain the JDBC driver as part of the Oracle Instant Client package.
 For more information, see xref:obtaining-oracle-jdbc-driver-and-xstreams-api-files[].
-. Download the link:https://repo1.maven.org/maven2/com/oracle/database/xml/xdb/{ojdbc11-version}/xdb-{ojdbc11-version}.jar[XDB library for Oracle] from Maven Central and extract the downloaded file to the directory that contains the {prodname} Oracle connector JAR file.
+. Download the link:https://repo1.maven.org/maven2/com/oracle/database/xml/xdb/{ojdbc-version}/xdb-{ojdbc-version}.jar[XDB library for Oracle] from Maven Central and extract the downloaded file to the directory that contains the {prodname} Oracle connector JAR file.
 . Add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`].
 . Restart your Kafka Connect process to pick up the new JAR files.
 
@@ -2909,7 +2909,7 @@ RUN cd /opt/kafka/plugins/debezium/ \
 && unzip debezium-connector-{connector-file}-{debezium-version}-redhat-{debezium-build-number}-plugin.zip \
 && rm debezium-connector-{connector-file}-{debezium-version}-redhat-{debezium-build-number}-plugin.zip
 RUN cd /opt/kafka/plugins/debezium/ \
-&& curl -O https://repo1.maven.org/maven2/com/oracle/ojdbc/ojdbc11/{ojdbc11-version}/ojdbc11-{ojdbc11-version}.jar
+&& curl -O https://repo1.maven.org/maven2/com/oracle/ojdbc/ojdbc11/{ojdbc-version}/ojdbc11-{ojdbc-version}.jar
 USER 1001
 EOF
 ----
