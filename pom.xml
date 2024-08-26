@@ -148,8 +148,8 @@
         <version.mariadb.driver>3.2.0</version.mariadb.driver>
         <!-- These two should be aligned by major versions but minor could vary -->
         <!-- Oracle publishes the driver versions more frequently than the instant client -->
-        <version.oracle.driver>21.11.0.0</version.oracle.driver>
-        <version.oracle.instantclient>21.11.0.0</version.oracle.instantclient>
+        <version.oracle.driver>21.15.0.0</version.oracle.driver>
+        <version.oracle.instantclient>21.15.0.0</version.oracle.instantclient>
 
         <!-- Databases, should align with database drivers -->
         <version.mysql.server>8.2</version.mysql.server>
