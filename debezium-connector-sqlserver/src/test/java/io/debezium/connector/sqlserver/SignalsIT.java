@@ -18,6 +18,7 @@ import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 import javax.management.ReflectionException;
 
+import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -88,7 +89,8 @@ public class SignalsIT extends AbstractAsyncEngineConnectorTest {
         sendLogSignalWithJmx("1", "log", "{\"message\": \"Signal message at offset ''{}''\"}", "0");
         sendLogSignalWithJmx("1", "log", "{\"message\": \"Signal message at offset ''{}''\"}", "1");
 
-        waitForAvailableRecords(800, TimeUnit.MILLISECONDS);
+        Awaitility.await("Waiting for metrics to appear").atMost(waitTimeForRecords(), TimeUnit.SECONDS)
+                .until(() -> logInterceptor.countOccurrences("Signal message at offset") == 2);
 
         assertThat(logInterceptor.countOccurrences("Signal message at offset")).isEqualTo(2);
 
@@ -99,6 +101,16 @@ public class SignalsIT extends AbstractAsyncEngineConnectorTest {
 
         ObjectName objectName = new ObjectName(String.format("debezium.sql_server:type=management,context=signals,server=server1,task=%s", taskId));
         MBeanServer server = ManagementFactory.getPlatformMBeanServer();
+
+        Awaitility.await("Waiting for metrics to appear").atMost(waitTimeForRecords(), TimeUnit.SECONDS).until(() -> {
+            try {
+                server.getObjectInstance(objectName);
+                return true;
+            }
+            catch (InstanceNotFoundException e) {
+                return false;
+            }
+        });
 
         server.invoke(objectName, "signal", new Object[]{ id, type, data }, new String[]{ String.class.getName(), String.class.getName(), String.class.getName() });
     }
