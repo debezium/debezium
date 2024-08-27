@@ -8,10 +8,13 @@ package io.debezium.embedded;
 import java.io.IOException;
 import java.util.function.Consumer;
 
+import org.apache.kafka.connect.source.SourceRecord;
+import org.apache.kafka.connect.source.SourceTask;
+
 /**
  * Implementation of {@link TestingDebeziumEngine} for {@link EmbeddedEngine}.
  */
-public class TestingEmbeddedEngine implements TestingDebeziumEngine {
+public class TestingEmbeddedEngine implements TestingDebeziumEngine<SourceRecord> {
 
     private final EmbeddedEngine engine;
 
@@ -30,7 +33,7 @@ public class TestingEmbeddedEngine implements TestingDebeziumEngine {
     }
 
     @Override
-    public void runWithTask(Consumer consumer) {
+    public void runWithTask(Consumer<SourceTask> consumer) {
         engine.runWithTask(consumer);
     }
 
