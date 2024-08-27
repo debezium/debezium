@@ -491,15 +491,15 @@ You can configure the following options for the asynchronous embedded engine:
 |Description
 
 |[[debezium-server-property-record-processing-threads]]<<debezium-server-property-record-processing-threads, `+record.processing.threads+`>>
-|
+|Threads allocated on demand, based on the workload and the number of available threads.
 |The number of threads that are available to process change event records.
-If the value is not specified (the default), threads are created and eventually removed as needed, using Java https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/concurrent/Executors.html#newCachedThreadPool()[cached thread pool].
-If the value is specified, Java https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/concurrent/Executors.html#newFixedThreadPool(int)[fixed thread pool] with speficied number of threads is used.
-To use all available cores on given machine, you can use the `AVAILABLE_CORES` placeholder.
+If no value is specified (the default), the engine uses the Java https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/concurrent/Executors.html#newCachedThreadPool()[cached thread pool] method to dynamically adjust the number of threads, based on the current workload.
+If a value is specified, the engine uses the Java https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/concurrent/Executors.html#newFixedThreadPool(int)[fixed thread pool] method to create a thread pool with the specified number of threads.
+To use all available cores on given machine, set the placeholder value, `AVAILABLE_CORES`.
 
 |[[debezium-server-property-shutdown-timeout-ms]]<<debezium-server-property-shutdown-timeout-ms, `+record.processing.shutdown.timeout.ms+`>>
 |1000
-|Maximum time, in milliseconds, that the engine waits to process pending records after a task shutdown is called.
+|Maximum time, in milliseconds, that the engine allows for processing pending records after a task shutdown is called.
 
 |[[debezium-server-property-record-processing-order]]<<debezium-server-property-record-processing-order, `+record.processing.order+`>>
 |`ORDERED`
