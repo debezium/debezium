@@ -30,7 +30,7 @@ import io.debezium.relational.history.SchemaHistory;
  * @author Mario Fiore Vitale
  */
 public abstract class BinlogBlockingSnapshotIT<C extends SourceConnector>
-        extends AbstractBlockingSnapshotTest
+        extends AbstractBlockingSnapshotTest<C>
         implements BinlogConnectorTest<C> {
 
     protected static final String SERVER_NAME = "is_test";
