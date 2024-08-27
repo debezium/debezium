@@ -99,7 +99,7 @@ public class AsyncEmbeddedEngineTest {
         CountDownLatch snapshotLatch = new CountDownLatch(1);
         CountDownLatch allLatch = new CountDownLatch(6);
 
-        DebeziumEngine.Builder<SourceRecord> builder = new AsyncEmbeddedEngine.AsyncEngineBuilder();
+        DebeziumEngine.Builder<SourceRecord> builder = new AsyncEmbeddedEngine.AsyncEngineBuilder<>();
         engine = builder
                 .using(props)
                 .using(new TestEngineConnectorCallback())
@@ -149,7 +149,7 @@ public class AsyncEmbeddedEngineTest {
         props.put(SimpleSourceConnector.BATCH_COUNT, 1);
 
         final AtomicInteger recordsRead = new AtomicInteger(0);
-        DebeziumEngine.Builder<SourceRecord> builder = new AsyncEmbeddedEngine.AsyncEngineBuilder();
+        DebeziumEngine.Builder<SourceRecord> builder = new AsyncEmbeddedEngine.AsyncEngineBuilder<>();
         engine = builder
                 .using(props)
                 .notifying((records, committer) -> {
@@ -188,7 +188,7 @@ public class AsyncEmbeddedEngineTest {
         props.put(AsyncEngineConfig.TASK_MANAGEMENT_TIMEOUT_MS, "10");
 
         final AtomicInteger recordsRead = new AtomicInteger(0);
-        DebeziumEngine.Builder<SourceRecord> builder = new AsyncEmbeddedEngine.AsyncEngineBuilder();
+        DebeziumEngine.Builder<SourceRecord> builder = new AsyncEmbeddedEngine.AsyncEngineBuilder<>();
         engine = builder
                 .using(props)
                 .using(new TestEngineConnectorCallback())
@@ -239,7 +239,7 @@ public class AsyncEmbeddedEngineTest {
         appendLinesToSource(1);
         CountDownLatch recordsLatch = new CountDownLatch(1); // 1 count down for headers
 
-        DebeziumEngine.Builder<EmbeddedEngineChangeEvent> builder = new AsyncEmbeddedEngine.AsyncEngineBuilder(
+        DebeziumEngine.Builder<EmbeddedEngineChangeEvent> builder = new AsyncEmbeddedEngine.AsyncEngineBuilder<>(
                 KeyValueHeaderChangeEventFormat.of(Json.class, Json.class, Json.class));
         DebeziumEngine<EmbeddedEngineChangeEvent> embeddedEngine = builder
                 .using(props)
@@ -281,7 +281,7 @@ public class AsyncEmbeddedEngineTest {
         CountDownLatch callbackLatch = new CountDownLatch(1);
         AtomicInteger recordsSent = new AtomicInteger();
 
-        DebeziumEngine.Builder<SourceRecord> builder = new AsyncEmbeddedEngine.AsyncEngineBuilder();
+        DebeziumEngine.Builder<SourceRecord> builder = new AsyncEmbeddedEngine.AsyncEngineBuilder<>();
         engine = builder
                 .using(props)
                 .using(new TestEngineConnectorCallback())
@@ -326,7 +326,7 @@ public class AsyncEmbeddedEngineTest {
 
         CountDownLatch callbackLatch = new CountDownLatch(1);
 
-        DebeziumEngine.Builder<SourceRecord> builder = new AsyncEmbeddedEngine.AsyncEngineBuilder();
+        DebeziumEngine.Builder<SourceRecord> builder = new AsyncEmbeddedEngine.AsyncEngineBuilder<>();
         engine = builder
                 .using(props)
                 .using(new TestEngineConnectorCallback())
@@ -363,7 +363,7 @@ public class AsyncEmbeddedEngineTest {
         CountDownLatch taskStartingLatch = new CountDownLatch(1);
         CountDownLatch enginStopLatch = new CountDownLatch(1);
 
-        DebeziumEngine.Builder<SourceRecord> builder = new AsyncEmbeddedEngine.AsyncEngineBuilder();
+        DebeziumEngine.Builder<SourceRecord> builder = new AsyncEmbeddedEngine.AsyncEngineBuilder<>();
         engine = builder
                 .using(props)
                 .using(new TestEngineConnectorCallback())
@@ -404,7 +404,7 @@ public class AsyncEmbeddedEngineTest {
         props.put(SimpleSourceConnector.BATCH_COUNT, 1);
         props.put(AsyncEngineConfig.TASK_MANAGEMENT_TIMEOUT_MS, "10");
 
-        DebeziumEngine.Builder<SourceRecord> builder = new AsyncEmbeddedEngine.AsyncEngineBuilder();
+        DebeziumEngine.Builder<SourceRecord> builder = new AsyncEmbeddedEngine.AsyncEngineBuilder<>();
         engine = builder
                 .using(props)
                 .using(new TestEngineConnectorCallback())
@@ -457,7 +457,7 @@ public class AsyncEmbeddedEngineTest {
         // We have only 5 groups as the first one is filtered out (first records is filtered out and therefore group not counted)
         CountDownLatch allLatch = new CountDownLatch(5);
 
-        DebeziumEngine.Builder<SourceRecord> builder = new AsyncEmbeddedEngine.AsyncEngineBuilder();
+        DebeziumEngine.Builder<SourceRecord> builder = new AsyncEmbeddedEngine.AsyncEngineBuilder<>();
         engine = builder
                 .using(props)
                 .using(new TestEngineConnectorCallback())
@@ -514,7 +514,7 @@ public class AsyncEmbeddedEngineTest {
 
         CountDownLatch callbackLatch = new CountDownLatch(1);
 
-        DebeziumEngine.Builder<SourceRecord> builder = new AsyncEmbeddedEngine.AsyncEngineBuilder();
+        DebeziumEngine.Builder<SourceRecord> builder = new AsyncEmbeddedEngine.AsyncEngineBuilder<>();
         engine = builder
                 .using(props)
                 .using(new TestEngineConnectorCallback())
@@ -550,7 +550,7 @@ public class AsyncEmbeddedEngineTest {
 
         CountDownLatch recordsLatch = new CountDownLatch(SimpleSourceConnector.DEFAULT_BATCH_COUNT);
 
-        DebeziumEngine.Builder<SourceRecord> builder = new AsyncEmbeddedEngine.AsyncEngineBuilder();
+        DebeziumEngine.Builder<SourceRecord> builder = new AsyncEmbeddedEngine.AsyncEngineBuilder<>();
         engine = builder
                 .using(props)
                 .using(new TestEngineConnectorCallback())
@@ -586,7 +586,7 @@ public class AsyncEmbeddedEngineTest {
         CountDownLatch recordsLatch = new CountDownLatch(SimpleSourceConnector.DEFAULT_BATCH_COUNT);
         final LogInterceptor interceptor = new LogInterceptor(AsyncEmbeddedEngine.class);
 
-        DebeziumEngine.Builder<SourceRecord> builder = new AsyncEmbeddedEngine.AsyncEngineBuilder();
+        DebeziumEngine.Builder<SourceRecord> builder = new AsyncEmbeddedEngine.AsyncEngineBuilder<>();
         engine = builder
                 .using(props)
                 .using(new TestEngineConnectorCallback())
@@ -664,7 +664,7 @@ public class AsyncEmbeddedEngineTest {
         AtomicInteger recordsSent = new AtomicInteger();
         AtomicBoolean connectorCallbackCalled = new AtomicBoolean(false);
 
-        DebeziumEngine.Builder<SourceRecord> builder = new AsyncEmbeddedEngine.AsyncEngineBuilder();
+        DebeziumEngine.Builder<SourceRecord> builder = new AsyncEmbeddedEngine.AsyncEngineBuilder<>();
         engine = builder
                 .using(props)
                 .using((success, message, error) -> {
@@ -721,7 +721,7 @@ public class AsyncEmbeddedEngineTest {
         appendLinesToSource(NUMBER_OF_LINES);
         CountDownLatch allLatch = new CountDownLatch(6 * NUMBER_OF_LINES);
 
-        DebeziumEngine.Builder<SourceRecord> builder = new AsyncEmbeddedEngine.AsyncEngineBuilder();
+        DebeziumEngine.Builder<SourceRecord> builder = new AsyncEmbeddedEngine.AsyncEngineBuilder<>();
         engine = builder
                 .using(props)
                 .using(new TestEngineConnectorCallback())

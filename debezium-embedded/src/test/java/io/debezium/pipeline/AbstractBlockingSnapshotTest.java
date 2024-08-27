@@ -30,6 +30,7 @@ import javax.management.openmbean.CompositeDataSupport;
 import javax.management.openmbean.TabularDataSupport;
 
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.source.SourceConnector;
 import org.awaitility.Awaitility;
 import org.junit.Test;
 
@@ -42,7 +43,7 @@ import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.source.AbstractSnapshotChangeEventSource;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractSnapshotTest;
 
-public abstract class AbstractBlockingSnapshotTest extends AbstractSnapshotTest {
+public abstract class AbstractBlockingSnapshotTest<T extends SourceConnector> extends AbstractSnapshotTest<T> {
     private int signalingRecords;
 
     protected static final int ROW_COUNT = 1000;
