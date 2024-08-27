@@ -130,9 +130,7 @@ public class PostgresReselectColumnsProcessorIT extends AbstractReselectProcesso
         start(PostgresConnector.class, config);
         waitForStreamingStarted();
 
-        final String json = "{\"key\": \""+ RandomStringUtils.randomAlphabetic(10000) +"\"}";
-
-
+        final String json = "{\"key\": \"" + RandomStringUtils.randomAlphabetic(10000) + "\"}";
 
         TestHelper.execute("INSERT INTO s1.dbz8168_toast (id,data,data2) values (1,'" + json + "',1);",
                 "UPDATE s1.dbz8168_toast SET data2 = 2 where id = 1;");
@@ -158,7 +156,6 @@ public class PostgresReselectColumnsProcessorIT extends AbstractReselectProcesso
 
         assertColumnReselectedForUnavailableValue(logInterceptor, "s1.dbz8168_toast", "data");
     }
-
 
     @Test
     @FixFor("DBZ-4321")
