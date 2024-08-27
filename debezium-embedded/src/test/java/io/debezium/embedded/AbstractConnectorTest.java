@@ -109,7 +109,7 @@ public abstract class AbstractConnectorTest implements Testing {
     private static final String TEST_PROPERTY_PREFIX = "debezium.test.";
 
     private ExecutorService executor;
-    protected TestingDebeziumEngine engine;
+    protected TestingDebeziumEngine<SourceRecord> engine;
     protected BlockingQueue<SourceRecord> consumedLines;
     protected long pollTimeoutInMs = TimeUnit.SECONDS.toMillis(10);
     protected final Logger logger = LoggerFactory.getLogger(getClass());
@@ -331,7 +331,7 @@ public abstract class AbstractConnectorTest implements Testing {
      * @param changeConsumer {@link io.debezium.engine.DebeziumEngine.ChangeConsumer} invoked when a record arrives and is stored in the queue
      */
     protected void start(Class<? extends SourceConnector> connectorClass, Configuration connectorConfig,
-                         DebeziumEngine.ChangeConsumer changeConsumer) {
+                         DebeziumEngine.ChangeConsumer<SourceRecord> changeConsumer) {
         start(connectorClass, connectorConfig, loggingCompletion(), null, x -> {
         }, true, changeConsumer);
     }
@@ -369,7 +369,7 @@ public abstract class AbstractConnectorTest implements Testing {
      */
     protected void start(Class<? extends SourceConnector> connectorClass, Configuration connectorConfig,
                          DebeziumEngine.CompletionCallback callback, Predicate<SourceRecord> isStopRecord,
-                         Consumer<SourceRecord> recordArrivedListener, boolean ignoreRecordsAfterStop, DebeziumEngine.ChangeConsumer changeConsumer) {
+                         Consumer<SourceRecord> recordArrivedListener, boolean ignoreRecordsAfterStop, DebeziumEngine.ChangeConsumer<SourceRecord> changeConsumer) {
         Configuration config = Configuration.copy(connectorConfig)
                 .with(EmbeddedEngineConfig.ENGINE_NAME, "testing-connector")
                 .with(EmbeddedEngineConfig.CONNECTOR_CLASS, connectorClass.getName())
@@ -413,7 +413,7 @@ public abstract class AbstractConnectorTest implements Testing {
         };
 
         // Create the connector ...
-        DebeziumEngine.Builder builder = createEngineBuilder();
+        DebeziumEngine.Builder<SourceRecord> builder = createEngineBuilder();
         builder.using(config.asProperties())
                 .notifying(getConsumer(isStopRecord, recordArrivedListener, ignoreRecordsAfterStop))
                 .using(this.getClass().getClassLoader())
@@ -444,11 +444,11 @@ public abstract class AbstractConnectorTest implements Testing {
         }
     }
 
-    protected DebeziumEngine.Builder createEngineBuilder() {
+    protected DebeziumEngine.Builder<SourceRecord> createEngineBuilder() {
         return new EmbeddedEngine.EngineBuilder();
     }
 
-    protected TestingDebeziumEngine createEngine(DebeziumEngine.Builder builder) {
+    protected TestingDebeziumEngine<SourceRecord> createEngine(DebeziumEngine.Builder<SourceRecord> builder) {
         return new TestingEmbeddedEngine((EmbeddedEngine) builder.build());
     }
 
