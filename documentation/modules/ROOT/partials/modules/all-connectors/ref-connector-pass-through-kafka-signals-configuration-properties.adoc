@@ -31,16 +31,17 @@ Each pair references the Kafka cluster that is used by the {prodname} Kafka Conn
 
 |[[{context}-kafka-consumer-offset-commit-enabled]]<<{context}-kafka-consumer-offset-commit-enabled, `+kafka.consumer.offset.commit.enabled+`>>
 |`false`
-|Specifies whether the connector processes signal requests that the signaling topic receives while the connector is off-line.
+|Specifies whether the Kafka consumer writes an offset commit after it reads a message from the signaling topic.
+The value that you assign to this property determines whether the connector can process requests that the signaling topic receives while the connector is offline.
 Choose one of the following settings:
 
-`false`:: {prodname} processes only signals that are sent while the connector is running.
-When the connector is unavailable, the Kafka consumer does not commit an offset after it reads signals received by the signaling topic.
-As a result, after the connector restarts, it processes only signals that it receives after the restart.
-Earlier signals are ignored, and are effectively lost.
-`true`:: Enables {prodname} to process signals that are sent while the connector is offline, helping to ensure At-Least-Once delivery.
-The Kakfa consumer for the signaling topic commits a topic offset whenever it reads a signal, so that it maintains a persistent history of signals that the signaling topic receives while offline.
-When you restart the connector, it resumes processing from the last stored position, and not just from the offset of the most recent request since the restart.
- 
+`false`:: When the connector is unavailable, the Kafka consumer does not commit an offset after it reads a signal received by the signaling topic.
+As a result, if the connector is offline for any interval, it cannot process requests that the signaling topic receives during the downtime.
+After the connector restarts, it always reads from the last position in the Kafka signaling topic, processing only signals that it receives after the restart.
+Signals received while the connector is offline are ignored, and are effectively lost.
 
+`true`::
+When a user submits a request to the signaling topic, after the Kafka consumer reads the signal message it commits a topic offset, even if the connector is offline.
+Choose this option to provide {prodname} with information about the last signal message that the consumer read, helping to ensure At-Least-Once delivery.
+After a connector restarts, it resumes processing from the last recorded offset, responding to signals that users submitted while the connector is offline.
 |===
