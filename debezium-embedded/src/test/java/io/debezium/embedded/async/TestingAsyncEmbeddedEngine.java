@@ -8,6 +8,8 @@ package io.debezium.embedded.async;
 import java.io.IOException;
 import java.util.function.Consumer;
 
+import org.apache.kafka.connect.source.SourceTask;
+
 import io.debezium.embedded.TestingDebeziumEngine;
 
 /**
@@ -15,10 +17,10 @@ import io.debezium.embedded.TestingDebeziumEngine;
  *
  * @author vjuranek
  */
-public class TestingAsyncEmbeddedEngine implements TestingDebeziumEngine {
-    private final AsyncEmbeddedEngine engine;
+public class TestingAsyncEmbeddedEngine<T> implements TestingDebeziumEngine<T> {
+    private final AsyncEmbeddedEngine<T> engine;
 
-    public TestingAsyncEmbeddedEngine(AsyncEmbeddedEngine engine) {
+    public TestingAsyncEmbeddedEngine(AsyncEmbeddedEngine<T> engine) {
         this.engine = engine;
     }
 
@@ -33,7 +35,7 @@ public class TestingAsyncEmbeddedEngine implements TestingDebeziumEngine {
     }
 
     @Override
-    public void runWithTask(Consumer consumer) {
+    public void runWithTask(Consumer<SourceTask> consumer) {
         engine.runWithTask(consumer);
     }
 
