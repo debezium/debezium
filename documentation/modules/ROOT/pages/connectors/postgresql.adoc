@@ -3812,7 +3812,7 @@ include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-s
 [id="debezium-{context}-connector-kafka-notifications-configuration-properties"]
 ==== {prodname} connector sink notifications configuration properties
 
-include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-notification-configuration-properties.adoc[leveloffset=+1]
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-sink-notification-configuration-properties.adoc[leveloffset=+1]
 
 
 [id="postgresql-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients"]
