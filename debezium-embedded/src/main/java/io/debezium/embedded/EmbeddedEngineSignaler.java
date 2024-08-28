@@ -12,9 +12,12 @@ import io.debezium.pipeline.signal.SignalRecord;
 import io.debezium.pipeline.signal.channels.process.SignalChannelWriter;
 
 public class EmbeddedEngineSignaler implements DebeziumEngine.Signaler {
-    private final List<SignalChannelWriter> channels;
+    private final List<? extends SignalChannelWriter> channels;
 
-    public EmbeddedEngineSignaler(List<SignalChannelWriter> channels) {
+    public EmbeddedEngineSignaler(List<? extends SignalChannelWriter> channels) {
+        if (channels == null || channels.isEmpty()) {
+            throw new IllegalArgumentException("At least one channel must be provided");
+        }
         this.channels = channels;
     }
 

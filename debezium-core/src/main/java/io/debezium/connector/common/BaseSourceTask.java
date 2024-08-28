@@ -40,6 +40,7 @@ import io.debezium.function.LogPositionValidator;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.notification.channels.NotificationChannel;
 import io.debezium.pipeline.signal.channels.SignalChannelReader;
+import io.debezium.pipeline.signal.channels.process.SignalChannelWriter;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.spi.Partition;
@@ -277,16 +278,14 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
     }
 
     /**
-     * Returns the first available signal channel of the given type.
+     * Returns the first available signal channel writer
      *
-     * @param type the type of the signal channel
-     * @param <T> the type of the signal channel
-     * @return the first available signal channel of the given type or empty optional if not available
+     * @return the first available signal channel writer empty optional if not available
      */
-    public <T extends SignalChannelReader> Optional<T> getSignalChannel(Class<T> type) {
+    public Optional<? extends SignalChannelWriter> getAvailableSignalChannelWriter() {
         return getAvailableSignalChannels().stream()
-                .filter(type::isInstance)
-                .map(type::cast)
+                .filter(SignalChannelWriter.class::isInstance)
+                .map(SignalChannelWriter.class::cast)
                 .findFirst();
     }
 
