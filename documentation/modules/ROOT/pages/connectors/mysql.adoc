@@ -533,31 +533,52 @@ include::{partialsdir}/modules/all-connectors/ref-mariadb-mysql-rqd-connector-cf
 
 include::{partialsdir}/modules/all-connectors/ref-mariadb-mysql-adv-connector-cfg-props.adoc[leveloffset=+1]
 
-/
 [id="debezium-mysql-connector-database-history-configuration-properties"]
 ==== {prodname} connector database schema history configuration properties
 
 include::{partialsdir}/modules/all-connectors/ref-connector-configuration-database-history-properties.adoc[leveloffset=+1]
 
-[id="debezium-{context}-connector-kafka-signals-configuration-properties"]
-==== {prodname} connector Kafka signals configuration properties
+[id="debezium-mysql-connector-pass-through-properties"]
+==== Pass-through MySQL connector configuration properties
 
-include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-signals-configuration-properties.adoc[leveloffset=+1]
-
-[id="debezium-{context}-connector-kafka-notifications-configuration-properties"]
-==== {prodname} connector sink notifications configuration properties
-
-include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-notification-configuration-properties.adoc[leveloffset=+1]
+You can set  _pass-through_ properties in the connector configuration to customize the behavior of the Apache Kafka producer and consumer.
+For information about the full range of configuration properties for Kafka producers and consumers, see the {link-kafka-docs}/#configuration[Kafka documentation].
 
 [id="debezium-mysql-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients"]
-==== Pass-through database schema history properties for configuring producer and consumer clients
+===== Pass-through database schema history properties for configuring producer and consumer clients
 
 include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients.adoc[leveloffset=+1]
 
-[id="debezium-{context}-connector-pass-through-database-driver-configuration-properties"]
-==== {prodname} connector pass-through database driver configuration properties
+
+[id="debezium-mysql-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients"]
+===== Pass-through properties for configuring how producer and consumer clients interact with schema history topics
+
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients.adoc[leveloffset=+1]
+
+
+[id="debezium-mysql-connector-pass-through-kafka-signals-configuration-properties"]
+===== Pass-through properties for configuring how the MySQL connector interacts with the Kafka signaling topic
+
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-signals-configuration-properties.adoc[leveloffset=+1]
+
+
+[id="debezium-mysql-connector-pass-through-signals-kafka-consumer-client-configuration-properties"]
+===== Pass-through properties for configuring the Kafka consumer client for the signaling channel
+
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-signals-kafka-consumer-client-configuration-properties.adoc[leveloffset=+1]
+
+
+[id="debezium-mysql-connector-pass-through-kafka-sink-notification-configuration-properties"]
+===== Pass-through properties for configuring the MySQL connector sink notification channel
+
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-sink-notification-configuration-properties.adoc[leveloffset=+1]
+
+
+[id="debezium-mysql-connector-pass-through-database-driver-configuration-properties"]
+===== {prodname} connector pass-through database driver configuration properties
 
 include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-database-driver-configuration-properties.adoc[leveloffset=+1]
+
 
 
 
