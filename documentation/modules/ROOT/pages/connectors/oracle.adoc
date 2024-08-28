@@ -3244,8 +3244,13 @@ Information about the properties is organized as follows:
 
 * xref:required-debezium-oracle-connector-configuration-properties[Required {prodname} Oracle connector configuration properties]
 * xref:debezium-oracle-connector-database-history-configuration-properties[Database schema history connector configuration properties] that control how {prodname} processes events that it reads from the database schema history topic.
-** xref:oracle-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients[Pass-through database schema history properties]
-* xref:debezium-oracle-connector-pass-through-database-driver-configuration-properties[Pass-through database driver properties] that control the behavior of the database driver.
+
+* xref:debezium-oracle-connector-pass-through-properties[Pass-through Db2 connector configuration properties]
+** xref:debezium-oracle-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients[Pass-through database schema history properties for configuring producer and consumer clients]
+** xref:debezium-oracle-connector-pass-through-kafka-signals-configuration-properties[Pass-through Kafka signals configuration properties]
+** xref:debezium-oracle-connector-pass-through-signals-kafka-consumer-client-configuration-properties[Pass-through Kafka signals consumer client configuration properties]
+** xref:debezium-oracle-connector-pass-through-kafka-sink-notification-configuration-properties[Pass-through sink notification configuration properties]
+** xref:debezium-oracle-connector-pass-through-database-driver-configuration-properties[Pass-through database driver configuration properties]
 
 [id="required-debezium-{context}-connector-configuration-properties"]
 === Required {prodname} Oracle connector configuration properties
@@ -4273,25 +4278,40 @@ After the next failure, the connector stops, and user intervention is required t
 
 [id="debezium-oracle-connector-database-history-configuration-properties"]
 ==== {prodname} Oracle connector database schema history configuration properties
-include::../../partials/modules/all-connectors/ref-connector-configuration-database-history-properties.adoc[leveloffset=+1]
+include::{partialsdir}/modules/all-connectors/ref-connector-configuration-database-history-properties.adoc[leveloffset=+1]
 
-[id="debezium-{context}-connector-kafka-signals-configuration-properties"]
-==== {prodname} connector Kafka signals configuration properties
+[id="debezium-oracle-connector-pass-through-properties"]
+==== Pass-through Oracle connector configuration properties
 
-include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-signals-configuration-properties.adoc[leveloffset=+1]
+The connector supports _pass-through_ properties that enable {prodname} to specify custom configuration options for fine-tuning the behavior of the Apache Kafka producer and consumer.
+For information about the full range of configuration properties for Kafka producers and consumers, see the {link-kafka-docs}/#configuration[Kafka documentation].
 
-[id="debezium-{context}-connector-kafka-notifications-configuration-properties"]
-==== {prodname} connector sink notifications configuration properties
-
-include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-notification-configuration-properties.adoc[leveloffset=+1]
-
-[id="db2-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients"]
-==== Pass-through database schema history properties for configuring producer and consumer clients
+[id="debezium-oracle-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients"]
+===== Pass-through properties for configuring how producer and consumer clients interact with schema history topics
 
 include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients.adoc[leveloffset=+1]
 
+
+[id="debezium-oracle-connector-pass-through-kafka-signals-configuration-properties"]
+===== Pass-through properties for configuring how the Oracle connector interacts with the Kafka signaling topic
+
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-signals-configuration-properties.adoc[leveloffset=+1]
+
+
+[id="debezium-oracle-connector-pass-through-signals-kafka-consumer-client-configuration-properties"]
+===== Pass-through properties for configuring the Kafka consumer client for the signaling channel
+
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-signals-kafka-consumer-client-configuration-properties.adoc[leveloffset=+1]
+
+
+[id="debezium-oracle-connector-pass-through-kafka-sink-notification-configuration-properties"]
+===== Pass-through properties for configuring the Oracle connector sink notification channel
+
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-sink-notification-configuration-properties.adoc[leveloffset=+1]
+
+
 [id="debezium-oracle-connector-pass-through-database-driver-configuration-properties"]
-==== {prodname} Oracle connector pass-through database driver configuration properties
+===== {prodname} connector pass-through database driver configuration properties
 
 include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-database-driver-configuration-properties.adoc[leveloffset=+1]
 
