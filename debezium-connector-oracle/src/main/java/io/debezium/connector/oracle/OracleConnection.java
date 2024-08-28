@@ -850,6 +850,23 @@ public class OracleConnection extends JdbcConnection {
         }
     }
 
+    public boolean hasExtendedStringSupport() {
+        try {
+            final String value = Strings.defaultIfBlank(getDatabaseParameterValue("MAX_STRING_SIZE"), "STANDARD");
+            LOGGER.info("Oracle MAX_STRING_SIZE is {}", value);
+            return "EXTENDED".equals(value);
+        }
+        catch (Exception e) {
+            LOGGER.warn("Failed to check MAX_STRING_SIZE status, defaulting to STANDARD.", e);
+            return false;
+        }
+    }
+
+    public String getDatabaseParameterValue(String parameterName) throws SQLException {
+        final String query = "SELECT VALUE FROM V$PARAMETER WHERE UPPER(NAME) = UPPER(?)";
+        return prepareQueryAndMap(query, ps -> ps.setString(1, parameterName), rs -> rs.next() ? rs.getString(1) : null);
+    }
+
     private static Scn readScnColumnAsScn(ResultSet rs, String columnName) throws SQLException {
         final String value = rs.getString(columnName);
         return Strings.isNullOrEmpty(value) ? Scn.NULL : Scn.valueOf(value);

@@ -574,7 +574,8 @@ public abstract class AbstractProcessorUnitTest<T extends AbstractLogMinerEventP
                 defaultValueConverter,
                 schemaNameAdjuster,
                 topicNamingStrategy,
-                sensitivity);
+                sensitivity,
+                false);
 
         Table table = Table.editor()
                 .tableId(TableId.parse("ORCLPDB1.DEBEZIUM.TEST_TABLE"))
