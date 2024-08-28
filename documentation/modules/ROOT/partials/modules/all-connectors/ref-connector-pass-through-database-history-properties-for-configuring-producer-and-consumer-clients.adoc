@@ -1,4 +1,4 @@
-{prodname} relies on a Kafka producer to write schema changes to database schema history topics.
+{prodname} relies on an Apache Kafka producer to write schema changes to database schema history topics.
 Similarly, it relies on a Kafka consumer to read from database schema history topics when a connector starts.
 You define the configuration for the Kafka producer and consumer clients by assigning values to a set of pass-through configuration properties that begin with the `schema.history.internal.producer.\*` and `schema.history.internal.consumer.*` prefixes.
 The pass-through producer and consumer database schema history properties control a range of behaviors, such as how these clients secure connections with the Kafka broker, as shown in the following example:
@@ -22,4 +22,4 @@ schema.history.internal.consumer.ssl.key.password=test1234
 
 {prodname} strips the prefix from the property name before it passes the property to the Kafka client.
 
-See the Kafka documentation for more details about link:https://kafka.apache.org/documentation.html#producerconfigs[Kafka producer configuration properties] and link:https://kafka.apache.org/documentation.html#consumerconfigs[Kafka consumer configuration properties].
+For more information about link:https://kafka.apache.org/documentation.html#producerconfigs[Kafka producer configuration properties] and link:https://kafka.apache.org/documentation.html#consumerconfigs[Kafka consumer configuration properties], see the Apache Kafka documentation .
