@@ -63,6 +63,7 @@ import io.debezium.embedded.ConverterBuilder;
 import io.debezium.embedded.DebeziumEngineCommon;
 import io.debezium.embedded.EmbeddedEngineChangeEvent;
 import io.debezium.embedded.EmbeddedEngineConfig;
+import io.debezium.embedded.EmbeddedEngineSignaler;
 import io.debezium.embedded.EmbeddedWorkerConfig;
 import io.debezium.embedded.KafkaConnectUtil;
 import io.debezium.embedded.Transformations;
@@ -840,7 +841,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
                     .map(SignalChannelWriter.class::cast)
                     .toList();
 
-            signaler = new AsyncEngineSignaler(channels);
+            signaler = new EmbeddedEngineSignaler(channels);
         }
         return signaler;
     }
