@@ -528,12 +528,6 @@ You can set  _pass-through_ properties in the connector configuration to customi
 For information about the full range of configuration properties for Kafka producers and consumers, see the {link-kafka-docs}/#configuration[Kafka documentation].
 
 [id="debezium-mysql-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients"]
-===== Pass-through database schema history properties for configuring producer and consumer clients
-
-include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients.adoc[leveloffset=+1]
-
-
-[id="debezium-mysql-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients"]
 ===== Pass-through properties for configuring how producer and consumer clients interact with schema history topics
 
 include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients.adoc[leveloffset=+1]
