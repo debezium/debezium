@@ -66,6 +66,12 @@ public class LogMinerDmlEntryImpl implements LogMinerDmlEntry {
         return new LogMinerDmlEntryImpl(EventType.XML_BEGIN, newColumnValues, oldColumnValues);
     }
 
+    public static LogMinerDmlEntry forExtendedString(Object[] newColumnValues) {
+        // TODO: can that copy be avoided?
+        final Object[] oldColumnValues = Arrays.copyOf(newColumnValues, newColumnValues.length);
+        return new LogMinerDmlEntryImpl(EventType.EXTENDED_STRING_BEGIN, newColumnValues, oldColumnValues);
+    }
+
     @Override
     public EventType getEventType() {
         return eventType;

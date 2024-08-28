@@ -27,6 +27,8 @@ import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.connector.oracle.logminer.LogMinerHelper;
 import io.debezium.connector.oracle.logminer.events.DmlEvent;
 import io.debezium.connector.oracle.logminer.events.EventType;
+import io.debezium.connector.oracle.logminer.events.ExtendedStringBeginEvent;
+import io.debezium.connector.oracle.logminer.events.ExtendedStringWriteEvent;
 import io.debezium.connector.oracle.logminer.events.LobEraseEvent;
 import io.debezium.connector.oracle.logminer.events.LobWriteEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
@@ -87,6 +89,7 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
     private final OracleDatabaseSchema schema;
     private final Map<String, RowState> rows = new HashMap<>();
     private final ConstructionDetails currentLobDetails = new ConstructionDetails();
+    private final ConstructionDetails currentExtendedStringDetails = new ConstructionDetails();
     private final ConstructionDetails currentXmlDetails = new ConstructionDetails();
 
     private int transactionIndex = 0;
@@ -164,6 +167,9 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
             if (rowId.equals(currentLobDetails.rowId)) {
                 currentLobDetails.reset();
             }
+            else if (rowId.equals(currentExtendedStringDetails.rowId)) {
+                currentExtendedStringDetails.reset();
+            }
             else if (rowId.equals(currentXmlDetails.rowId)) {
                 currentXmlDetails.reset();
             }
@@ -175,6 +181,10 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
             final String columnName = ((SelectLobLocatorEvent) event).getColumnName();
             initConstructable(currentLobDetails, rowId, columnName, table, accumulatorEvent, LobUnderConstruction::fromInitialValue);
         }
+        else if (EventType.EXTENDED_STRING_BEGIN == event.getEventType()) {
+            final String columnName = ((ExtendedStringBeginEvent) event).getColumnName();
+            initConstructable(currentExtendedStringDetails, rowId, columnName, table, accumulatorEvent, ExtendedStringUnderConstruction::fromInitialValue);
+        }
         else if (EventType.XML_BEGIN == event.getEventType()) {
             final String columnName = ((XmlBeginEvent) event).getColumnName();
             initConstructable(currentXmlDetails, rowId, columnName, table, accumulatorEvent, XmlUnderConstruction::fromInitialValue);
@@ -184,6 +194,9 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
     private void acceptManipulationEvent(LogMinerEvent event) {
         if (event instanceof LobWriteEvent || event instanceof LobEraseEvent) {
             acceptLobManipulationEvent(event);
+        }
+        else if (event instanceof ExtendedStringWriteEvent) {
+            acceptExtendedStringManipulationEvent(event);
         }
         else if (event instanceof XmlWriteEvent || event instanceof XmlEndEvent) {
             acceptXmlManipulationEvent(event);
@@ -210,6 +223,28 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
         }
         catch (final DebeziumException exception) {
             LOGGER.warn("\tInvalid LOB manipulation event: {} ; ignoring {} {}", exception, event.getEventType(), event);
+        }
+    }
+
+    private void acceptExtendedStringManipulationEvent(LogMinerEvent event) {
+        if (!currentExtendedStringDetails.isInitialized()) {
+            LOGGER.debug("Got ExtendedString manipulation event without preceding ExtendedString begin; ignoring {} {}.", event.getEventType(), event);
+            return;
+        }
+
+        if (EventType.EXTENDED_STRING_WRITE != event.getEventType()) {
+            LOGGER.warn("\t{} for table '{}' column '{}' is not supported.", event.getEventType(), event.getTableId(), currentExtendedStringDetails.columnName);
+            LOGGER.trace("All ExtendedString manipulation events apart from 32K_WRITE are currently ignored; ignoring {} {}.", event.getEventType(), event);
+            discardCurrentMergeState(currentExtendedStringDetails);
+            return;
+        }
+
+        final ExtendedStringUnderConstruction lob = (ExtendedStringUnderConstruction) getConstructable(currentExtendedStringDetails);
+        try {
+            lob.add(new ExtendedStringFragment((ExtendedStringWriteEvent) event));
+        }
+        catch (final DebeziumException exception) {
+            LOGGER.warn("\tInvalid ExtendedString manipulation event: {} ; ignoring {} {}", exception, event.getEventType(), event);
         }
     }
 
@@ -303,6 +338,7 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
             case UPDATE:
             case XML_BEGIN:
             case SELECT_LOB_LOCATOR:
+            case EXTENDED_STRING_BEGIN:
                 switch (next.getEventType()) {
                     case XML_BEGIN:
                         merge = true;
@@ -329,7 +365,19 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
                             mergeEvents(prev, next);
                             merge = true;
                         }
+                        break;
+                    case EXTENDED_STRING_BEGIN:
+                        // todo: are there any special logic here?
+                        merge = true;
+                        break;
+                    case EXTENDED_STRING_WRITE:
+                        if (EventType.EXTENDED_STRING_BEGIN == prev.getEventType()) {
+                            mergeEvents(prev, next);
+                            merge = true;
+                        }
+                        break;
                     default:
+                        break;
                 }
             default:
         }
@@ -885,6 +933,53 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
             return builder.toString();
         }
 
+    }
+
+    static class ExtendedStringFragment extends Fragment {
+        private final String data;
+
+        ExtendedStringFragment(ExtendedStringWriteEvent event) {
+            if (EventType.EXTENDED_STRING_WRITE != event.getEventType()) {
+                throw new IllegalArgumentException("Can only construct ExtendedStringFragment from 32K_WRITE events");
+            }
+            this.data = event.getData();
+        }
+
+        ExtendedStringFragment(String data) {
+            this.data = data;
+        }
+    }
+
+    static class ExtendedStringUnderConstruction extends AbstractUnderConstruction<ExtendedStringFragment> {
+        static ExtendedStringUnderConstruction fromInitialValue(Object value) {
+            if (null == value) {
+                return new ExtendedStringUnderConstruction();
+            }
+            if (value instanceof ExtendedStringUnderConstruction) {
+                return (ExtendedStringUnderConstruction) value;
+            }
+            if (value instanceof String) {
+                final String strval = (String) value;
+                ExtendedStringUnderConstruction lob = new ExtendedStringUnderConstruction();
+                if (!OracleValueConverters.EMPTY_EXTENDED_STRING.equals(strval)) {
+                    lob.add(new ExtendedStringFragment((String) value));
+                }
+                return lob;
+            }
+
+            LOGGER.trace("Don't know how to construct an initial extended string value from {}.", value);
+            return new ExtendedStringUnderConstruction();
+        }
+
+        @Override
+        Object merge() {
+            if (isNull) {
+                return null;
+            }
+            final StringBuilder builder = new StringBuilder();
+            fragments.forEach(fragment -> builder.append(fragment.data));
+            return builder.toString();
+        }
     }
 
     private static class RowState {

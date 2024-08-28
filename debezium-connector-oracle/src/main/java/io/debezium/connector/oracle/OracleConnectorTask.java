@@ -69,11 +69,13 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
                 () -> new OracleConnection(jdbcConfig));
         jdbcConnection = connectionFactory.mainConnection();
 
+        final boolean extendedStringsSupported = jdbcConnection.hasExtendedStringSupport();
+
         OracleValueConverters valueConverters = connectorConfig.getAdapter().getValueConverter(connectorConfig, jdbcConnection);
         OracleDefaultValueConverter defaultValueConverter = new OracleDefaultValueConverter(valueConverters, jdbcConnection);
         TableNameCaseSensitivity tableNameCaseSensitivity = connectorConfig.getAdapter().getTableNameCaseSensitivity(jdbcConnection);
         this.schema = new OracleDatabaseSchema(connectorConfig, valueConverters, defaultValueConverter, schemaNameAdjuster,
-                topicNamingStrategy, tableNameCaseSensitivity);
+                topicNamingStrategy, tableNameCaseSensitivity, extendedStringsSupported);
 
         Offsets<OraclePartition, OracleOffsetContext> previousOffsets = getPreviousOffsets(new OraclePartition.Provider(connectorConfig),
                 connectorConfig.getAdapter().getOffsetContextLoader());

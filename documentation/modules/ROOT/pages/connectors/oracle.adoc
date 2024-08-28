@@ -2757,6 +2757,33 @@ internal.log.mining.read.only=true
 The preceding setting prevents the database from creating and updating the `LOG_MINING_FLUSH` table.
 You can use the `internal.log.mining.read.only` property with an Oracle Standalone database, or with an Oracle RAC installation.
 
+[id="support-for-extended-max-string-size"]
+=== Extended max string size
+
+The database parameter `max_string_size` controls how the Oracle database, and by extension, Debezium, interprets values for `VARCHAR2`, `NVARCHAR2`, and `RAW` fields.
+The default, `STANDARD`, means the lengths for these data types align with the same limits with releases prior to Oracle 12c (4000 bytes for `VARCHAR2` and `NVARCHAR2` and 2000 bytes for `RAW`).
+When configured as `EXTENDED`, these columns now allow up to 32767 bytes of data to be stored.
+
+[WARNING]
+====
+While a database administrator can change the `max_string_size` from `STANDARD` to `EXTENDED`, the opposite isn't allowed.
+Once the database is updated to `EXTENDED` string support, that cannot be undone.
+====
+
+For the {prodname} Oracle connector, when the database parameter `max_string_size` is `EXTENDED`, the `lob.enabled` connector configuration option should be set to `true` to capture changes made to `VARCHAR2` and `NVARCHAR2` fields that have string lengths that exceed 4000 bytes or `RAW` fields with more than 2000 bytes.
+
+When set to `EXTENDED`, Oracle performs an implicit conversion of the character data in-flight when the byte length of the string data exceeds the legacy maximums.
+This implicit conversion means that Oracle internally treats the string data as though it is a `CLOB`, so you get the benefit of treating the field as a regular string to the outside world, but with all the pitfalls and concerns about storage at the database tier level.
+
+Since Oracle treats these strings as `CLOB` internally, the redo logs also reflect several unique operation types that the {prodname} Oracle connector needs to be aware that it should mine.
+And because these operation types very closely resemble `CLOB` operations, the redo log entries must be mined in the same way as any other LOB type, which is why `lob.enabled` must be set to `true` to capture changes from the redo logs regardless of the string data's byte length.
+
+[WARNING]
+====
+When storing strings when `EXTENDED` is enabled that contain apostrophe. (`'`) characters and the byte length does not exceed the legacy maximum lengths.
+In this use case, Oracle LogMiner does not properly escape the single apostrophe characters in the reconstructed SQL, which leads to invalid SQL that cannot be handled by the {prodname} Oracle connector.
+Please see https://issues.redhat.com/browse/DBZ-8034[DBZ-8034] for more details.
+====
 
 // Type: assembly
 // ModuleID: deployment-of-debezium-oracle-connectors

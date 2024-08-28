@@ -54,6 +54,7 @@ public class LogMinerChangeRecordEmitter extends BaseChangeRecordEmitter<Object>
                 return Operation.CREATE;
             case UPDATE:
             case SELECT_LOB_LOCATOR:
+            case EXTENDED_STRING_BEGIN:
             case XML_BEGIN:
                 return Operation.UPDATE;
             case DELETE:

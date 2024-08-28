@@ -45,6 +45,8 @@ import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceM
 import io.debezium.connector.oracle.logminer.SqlUtils;
 import io.debezium.connector.oracle.logminer.events.DmlEvent;
 import io.debezium.connector.oracle.logminer.events.EventType;
+import io.debezium.connector.oracle.logminer.events.ExtendedStringBeginEvent;
+import io.debezium.connector.oracle.logminer.events.ExtendedStringWriteEvent;
 import io.debezium.connector.oracle.logminer.events.LobEraseEvent;
 import io.debezium.connector.oracle.logminer.events.LobWriteEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
@@ -57,6 +59,7 @@ import io.debezium.connector.oracle.logminer.events.XmlEndEvent;
 import io.debezium.connector.oracle.logminer.events.XmlWriteEvent;
 import io.debezium.connector.oracle.logminer.logwriter.LogWriterFlushStrategy;
 import io.debezium.connector.oracle.logminer.parser.DmlParserException;
+import io.debezium.connector.oracle.logminer.parser.ExtendedStringParser;
 import io.debezium.connector.oracle.logminer.parser.LogMinerColumnResolverDmlParser;
 import io.debezium.connector.oracle.logminer.parser.LogMinerDmlEntry;
 import io.debezium.connector.oracle.logminer.parser.LogMinerDmlEntryImpl;
@@ -100,6 +103,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
     private final LogMinerDmlParser dmlParser;
     private final LogMinerColumnResolverDmlParser reconstructColumnDmlParser;
     private final SelectLobParser selectLobParser;
+    private final ExtendedStringParser extendedStringParser;
     private final XmlBeginParser xmlBeginParser;
     private final Tables.TableFilter tableFilter;
 
@@ -135,6 +139,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
         this.dmlParser = new LogMinerDmlParser();
         this.reconstructColumnDmlParser = new LogMinerColumnResolverDmlParser();
         this.selectLobParser = new SelectLobParser();
+        this.extendedStringParser = new ExtendedStringParser();
         this.xmlBeginParser = new XmlBeginParser();
         this.sqlQuery = LogMinerQueryBuilder.build(connectorConfig);
         this.jdbcConnection = jdbcConnection;
@@ -516,6 +521,15 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
                 break;
             case LOB_ERASE:
                 handleLobErase(row);
+                break;
+            case EXTENDED_STRING_BEGIN:
+                handleExtendedStringBegin(row);
+                break;
+            case EXTENDED_STRING_WRITE:
+                handleExtendedStringWrite(row);
+                break;
+            case EXTENDED_STRING_END:
+                handleExtendedStringEnd(row);
                 break;
             case XML_BEGIN:
                 handleXmlBegin(row);
@@ -1128,6 +1142,69 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
         addToTransaction(row.getTransactionId(), row, () -> new LobEraseEvent(row));
     }
 
+    /**
+     * Handle processing a LogMinerEventRow for a {@code 32K_BEGIN} event.
+     *
+     * @param row the result set row
+     */
+    private void handleExtendedStringBegin(LogMinerEventRow row) {
+        if (!getConfig().isLobEnabled()) {
+            LOGGER.trace("LOB support is disabled, 32K_START '{}' skipped.", row.getRedoSql());
+            return;
+        }
+
+        LOGGER.debug("32K_BEGIN: {}", row);
+        final TableId tableId = row.getTableId();
+        final Table table = getSchema().tableFor(tableId);
+        if (table == null) {
+            LOGGER.warn("32K_BEGIN for table '{}' is not known, skipped.", tableId);
+            return;
+        }
+
+        addToTransaction(row.getTransactionId(),
+                row,
+                () -> {
+                    final LogMinerDmlEntry dmlEntry = extendedStringParser.parse(row.getRedoSql(), table);
+                    dmlEntry.setObjectName(row.getTableName());
+                    dmlEntry.setObjectOwner(row.getTablespaceName());
+
+                    final String columnName = extendedStringParser.getColumnName();
+                    return new ExtendedStringBeginEvent(row, dmlEntry, columnName);
+                });
+
+        metrics.incrementTotalChangesCount();
+    }
+
+    private void handleExtendedStringWrite(LogMinerEventRow row) {
+        if (!getConfig().isLobEnabled()) {
+            LOGGER.trace("LOB support is disabled, 32K_WRITE '{}' skipped.", row.getRedoSql());
+            return;
+        }
+
+        LOGGER.debug("32K_WRITE: scn={}, tableId={}, changeTime={}, transactionId={}",
+                row.getScn(), row.getTableId(), row.getChangeTime(), row.getTransactionId());
+
+        final TableId tableId = row.getTableId();
+        final Table table = getSchema().tableFor(tableId);
+        if (table == null) {
+            LOGGER.warn("32K_WRITE for table '{}' is not known, skipped", tableId);
+            return;
+        }
+
+        if (row.getRedoSql() != null) {
+            addToTransaction(row.getTransactionId(), row, () -> {
+                final String data = parseExtendedStringWriteSql(row.getRedoSql());
+                return new ExtendedStringWriteEvent(row, data);
+            });
+        }
+    }
+
+    private void handleExtendedStringEnd(LogMinerEventRow row) {
+        if (!getConfig().isLobEnabled()) {
+            LOGGER.trace("LOB support is disabled, 32K_END '{}' skipped.", row.getRedoSql());
+        }
+    }
+
     private void handleXmlBegin(LogMinerEventRow row) {
         if (!getConfig().isLobEnabled()) {
             LOGGER.trace("LOB support is disabled, XML_BEGIN '{}' skipped.", row.getRedoSql());
@@ -1689,6 +1766,26 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
             length = _length;
             data = _data;
         }
+    }
+
+    /**
+     * Parses the data from a {@code 32K_WRITE} event.
+     *
+     * @param sql the event's redo sql
+     * @return the string data being written
+     */
+    private String parseExtendedStringWriteSql(String sql) {
+        int endIndex = sql.lastIndexOf(";");
+        if (endIndex == -1) {
+            throw new DebeziumException("Failed to find end index on 32K_WRITE operation");
+        }
+
+        endIndex = sql.lastIndexOf(";", endIndex - 1);
+        if (endIndex == -1) {
+            throw new DebeziumException("Failed to find end index on 32K_WRITE operation");
+        }
+
+        return sql.substring(12, endIndex - 1);
     }
 
     /**
