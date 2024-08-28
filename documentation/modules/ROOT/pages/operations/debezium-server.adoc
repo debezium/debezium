@@ -1201,6 +1201,31 @@ NATS has a built-in distributed persistence system called https://docs.nats.io/n
 | memory
 | Controls how the messages are saved in the stream. Can be memory or file.
 
+|[[nats-jetstream-auth-jwt]]<<nats-jetstream-auth-jwt, `debezium.sink.nats-jetstream.auth.jwt`>>
+|No default value
+|Specifies the identity of the NATS server client.
+Add this property to the configuration to enable JSON Web Token (JWT) authentication with NATS.
+To use JWT authentication with NATS, you must specify the xref:nats-jetstream-auth-seed[NKey seed].
+Do not enable JWT authentication, if xref:nats-jetstream-auth-user[password authentication] is enabled.
+
+|[[nats-jetstream-auth-seed]]<<nats-jetstream-auth-seed, `debezium.sink.nats-jetstream.auth.seed`>>
+|No default value
+|When xref:nats-jetstream-auth-jwt[JWT authentication] is enabled for NATS, use this property so specify the NKey seed that represents the {prodname} user.
+{prodname} uses the specified NKey seed to derive a private key.
+It then uses the private key to cryptographically sign the nonce challenge that the NATS server issues during the authentication process.
+{prodname} returns the signed nonce to the server, along with the public key for the specified xref:nats-jetstream-auth-jwt[`debezium.sink.nats-jetstream.auth.jwt`] client.
+
+|[[nats-jetstream-auth-user]]<<nats-jetstream-auth-user, `debezium.sink.nats-jetstream.auth.user`>>
+|No default value
+|Specifies the username of the authorized NAT user. +
+When this property is present in the configuration, password authentication with NATS is enabled. +
+To use password authentication with NATS, specify a xref:nats-jetstream-auth-password[`debezium.sink.nats-jetstream.auth.password`].
+Do not enable password authentication if xref:nats-jetstream-auth-jwt[JWT authentication] is enabled.
+
+|[[nats-jetstream-auth-password]]<<nats-jetstream-auth-password, `debezium.sink.nats-jetstream.auth.password`>>
+|No default value
+|Specifies the password to use when xref:nats-jetstream-auth-user[password authentication] is enabled.
+
 |===
 
 If you need a more configurable stream, it can be created with nats cli. More about streams at: https://docs.nats.io/nats-concepts/jetstream/streams
