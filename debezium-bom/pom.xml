@@ -196,7 +196,7 @@
                 <version>${version.mysql.driver}</version>
             </dependency>
             <dependency>
-                <groupId>com.zendesk</groupId>
+                <groupId>io.debezium</groupId>
                 <artifactId>mysql-binlog-connector-java</artifactId>
                 <version>${version.mysql.binlog}</version>
             </dependency>
