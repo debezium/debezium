@@ -78,8 +78,6 @@ import io.debezium.engine.source.EngineSourceConnectorContext;
 import io.debezium.engine.source.EngineSourceTask;
 import io.debezium.engine.source.EngineSourceTaskContext;
 import io.debezium.engine.spi.OffsetCommitPolicy;
-import io.debezium.pipeline.signal.channels.process.InProcessSignalChannel;
-import io.debezium.pipeline.signal.channels.process.SignalChannelWriter;
 import io.debezium.util.DelayStrategy;
 
 /**
@@ -834,11 +832,8 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
     public Signaler getSignaler() {
         if (signaler == null) {
             var channels = tasks().stream()
-                    .map(EngineSourceTask::debeziumConnectTask)
+                    .map(EngineSourceTask::signalChannelWriter)
                     .flatMap(Optional::stream)
-                    .map(task -> task.getSignalChannel(InProcessSignalChannel.class))
-                    .flatMap(Optional::stream)
-                    .map(SignalChannelWriter.class::cast)
                     .toList();
 
             signaler = new EmbeddedEngineSignaler(channels);
