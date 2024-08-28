@@ -26,6 +26,9 @@ public enum EventType {
     XML_BEGIN(68),
     XML_WRITE(70),
     XML_END(71),
+    EXTENDED_STRING_BEGIN(91),
+    EXTENDED_STRING_WRITE(92),
+    EXTENDED_STRING_END(93),
     UNSUPPORTED(255);
 
     private static EventType[] types = new EventType[256];

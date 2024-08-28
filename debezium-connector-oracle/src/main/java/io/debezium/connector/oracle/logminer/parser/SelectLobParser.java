@@ -6,7 +6,6 @@
 package io.debezium.connector.oracle.logminer.parser;
 
 import io.debezium.annotation.NotThreadSafe;
-import io.debezium.relational.Table;
 
 /**
  * Simple text-based parser implementation for Oracle LogMiner SEL_LOB_LOCATOR Redo SQL.
@@ -14,9 +13,7 @@ import io.debezium.relational.Table;
  * @author Chris Cranford
  */
 @NotThreadSafe
-public class SelectLobParser extends PreambleSingleColumnReconstructedSelectParser {
-
-    private static final String BEGIN = "BEGIN";
+public class SelectLobParser extends AbstractSelectSingleColumnSqlRedoPreambleParser {
 
     private static final String BLOB_LOCATOR = "loc_b";
     private static final String BLOB_BUFFER = "buf_b";
@@ -32,8 +29,7 @@ public class SelectLobParser extends PreambleSingleColumnReconstructedSelectPars
     }
 
     @Override
-    protected void reset(Table table) {
-        super.reset(table);
+    protected void reset() {
         this.binary = false;
     }
 

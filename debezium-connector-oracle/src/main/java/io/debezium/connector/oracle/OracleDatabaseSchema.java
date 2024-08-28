@@ -49,10 +49,12 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
     private final ConcurrentMap<TableId, List<Column>> lobColumnsByTableId = new ConcurrentHashMap<>();
     private final OracleValueConverters valueConverters;
     private final LRUCacheMap<Long, TableId> objectIdToTableId;
+    private final boolean extendedStringsSupported;
 
     public OracleDatabaseSchema(OracleConnectorConfig connectorConfig, OracleValueConverters valueConverters,
                                 DefaultValueConverter defaultValueConverter, SchemaNameAdjuster schemaNameAdjuster,
-                                TopicNamingStrategy<TableId> topicNamingStrategy, TableNameCaseSensitivity tableNameCaseSensitivity) {
+                                TopicNamingStrategy<TableId> topicNamingStrategy, TableNameCaseSensitivity tableNameCaseSensitivity,
+                                boolean extendedStringsSupported) {
         super(connectorConfig, topicNamingStrategy, connectorConfig.getTableFilters().dataCollectionFilter(),
                 connectorConfig.getColumnFilter(),
                 new TableSchemaBuilder(
@@ -75,6 +77,7 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
                 connectorConfig.getTableFilters().dataCollectionFilter());
 
         this.objectIdToTableId = new LRUCacheMap<>(connectorConfig.getObjectIdToTableIdCacheSize());
+        this.extendedStringsSupported = extendedStringsSupported;
     }
 
     public Tables getTables() {
@@ -181,7 +184,7 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
      * Returns whether the specified value is the unavailable value placeholder for an LOB column.
      */
     public boolean isColumnUnavailableValuePlaceholder(Column column, Object value) {
-        if (isClobColumn(column) || isXmlColumn(column)) {
+        if (isClobColumn(column) || isXmlColumn(column) || isExtendedStringColumn(column)) {
             return valueConverters.getUnavailableValuePlaceholderString().equals(value);
         }
         else if (isBlobColumn(column)) {
@@ -191,16 +194,23 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
     }
 
     /**
+     * Return whether the column is replaced by the {@code unavailable.value.placeholder}.
+     */
+    public static boolean isNullReplacedByUnavailableValue(Column column) {
+        return isLobColumn(column) || isXmlColumn(column) || isExtendedStringColumn(column);
+    }
+
+    /**
      * Return whether the provided relational column model is a LOB data type.
      */
-    public static boolean isLobColumn(Column column) {
+    private static boolean isLobColumn(Column column) {
         return isClobColumn(column) || isBlobColumn(column);
     }
 
     /**
      * Return whether the provided relational column model is a XML data type.
      */
-    public static boolean isXmlColumn(Column column) {
+    private static boolean isXmlColumn(Column column) {
         return column.jdbcType() == OracleTypes.SQLXML;
     }
 
@@ -216,6 +226,16 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
      */
     private static boolean isBlobColumn(Column column) {
         return column.jdbcType() == OracleTypes.BLOB;
+    }
+
+    /**
+     * Returns whether the provided relational column model is an extended string data type.
+     */
+    private static boolean isExtendedStringColumn(Column column) {
+        if (column.jdbcType() == OracleTypes.VARCHAR && column.length() > 4000) {
+            return true;
+        }
+        return column.jdbcType() == OracleTypes.NVARCHAR && column.length() > 2000;
     }
 
     private void buildAndRegisterTableObjectIdReferences(Table table) {
@@ -234,6 +254,16 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
                 case OracleTypes.BLOB:
                 case OracleTypes.SQLXML:
                     lobColumns.add(column);
+                    break;
+                case OracleTypes.VARCHAR:
+                    if (extendedStringsSupported && column.length() > 4000) {
+                        lobColumns.add(column);
+                    }
+                    break;
+                case OracleTypes.NVARCHAR:
+                    if (extendedStringsSupported && column.length() > 2000) {
+                        lobColumns.add(column);
+                    }
                     break;
             }
         }

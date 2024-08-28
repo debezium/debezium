@@ -66,6 +66,7 @@ public class OracleValueConverters extends JdbcValueConverters {
     public static final Object UNAVAILABLE_VALUE = new Object();
     public static final String EMPTY_BLOB_FUNCTION = "EMPTY_BLOB()";
     public static final String EMPTY_CLOB_FUNCTION = "EMPTY_CLOB()";
+    public static final String EMPTY_EXTENDED_STRING = "LM_EMPTY_STRING";
     public static final String HEXTORAW_FUNCTION_START = "HEXTORAW('";
     public static final String HEXTORAW_FUNCTION_END = "')";
 
@@ -295,7 +296,7 @@ public class OracleValueConverters extends JdbcValueConverters {
         }
         if (data instanceof String) {
             String s = (String) data;
-            if (EMPTY_CLOB_FUNCTION.equals(s)) {
+            if (EMPTY_CLOB_FUNCTION.equals(s) || EMPTY_EXTENDED_STRING.equals(s)) {
                 return column.isOptional() ? null : "";
             }
             else if (UnistrHelper.isUnistrFunction(s)) {
