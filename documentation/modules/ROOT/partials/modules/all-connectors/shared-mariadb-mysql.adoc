@@ -1857,11 +1857,13 @@ Details are in the following sections:
 * xref:{context}-decimal-types[]
 * xref:{context}-boolean-values[]
 * xref:{context}-spatial-types[]
-
 endif::product[]
 end::data-type-mappings[]
-
-
+tag::data-type-mappings-list-mysql-only[]
+ifdef::product[]
+* xref:mysql-vector-types[]
+endif::product[]
+end::data-type-mappings-list-mysql-only[]
 
 
 
