@@ -3772,7 +3772,7 @@ After the next failure, the connector stops, and user intervention is required t
 Set the value to `0` (zero) to remove the timeout limit.
 |===
 
-[id="postgresql-pass-through-properties"]
+[id="debezium-postgresql-connector-pass-through-properties"]
 ==== Pass-through PostgreSQL connector configuration properties
 
 The connector supports _pass-through_ properties that enable {prodname} to specify custom configuration options for fine-tuning the behavior of the Apache Kafka producer and consumer.
