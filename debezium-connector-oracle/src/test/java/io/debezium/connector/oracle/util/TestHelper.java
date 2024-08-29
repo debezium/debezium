@@ -202,7 +202,8 @@ public class TestHelper {
                 .with(OracleConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
                 .with(FileSchemaHistory.FILE_PATH, SCHEMA_HISTORY_PATH)
                 .with(OracleConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
-                .with(AsyncEmbeddedEngine.TASK_MANAGEMENT_TIMEOUT_MS, 90_000);
+                .with(AsyncEmbeddedEngine.TASK_MANAGEMENT_TIMEOUT_MS, 90_000)
+                .with(OracleConnectorConfig.SNAPSHOT_DATABASE_ERRORS_MAX_RETRIES, 3);
     }
 
     private static String getEhcacheGlobalCacheConfig() {
