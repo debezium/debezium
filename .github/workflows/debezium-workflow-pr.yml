@@ -216,7 +216,16 @@ jobs:
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
-          restore-keys: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
+          # Caches should be restored based on a logical order to minimize the build and test
+          # execution time. Here the logic is as follows:
+          #   1. Restore this PR's cache if the PR has previously been built
+          #   2. Restore the latest main cache if the core pom has not changed
+          #   3. Restore the latest main cache available
+          # This should minimize the download time required for updating dependencies
+          restore-keys: |
+            maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
+            maven-debezium-test-push-build-${{ hashFiles('core/**/pom.xml') }}
+            maven-debezium-test-push-build-
 
       # This step is responsible for pulling down artifacts
       # Unfortunately due to the nature of how some of the maven workflows work, the only reliable way
