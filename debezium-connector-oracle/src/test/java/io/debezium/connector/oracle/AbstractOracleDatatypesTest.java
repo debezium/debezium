@@ -124,6 +124,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
             "  val_tsltz timestamp with local time zone, " +
             "  val_int_ytm interval year to month, " +
             "  val_int_dts interval day(3) to second(2), " +
+            "  val_max_date date, " +
             "  primary key (id)" +
             ")";
 
@@ -232,7 +233,8 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
                     LocalDateTime.of(2018, 3, 27, 1, 34, 56, 7890 * 1_000).atZone(ZoneOffset.systemDefault())
                             .withZoneSameInstant(ZoneOffset.UTC).format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'"))),
             new SchemaAndValueField("VAL_INT_YTM", MicroDuration.builder().optional().build(), -110451600_000_000L),
-            new SchemaAndValueField("VAL_INT_DTS", MicroDuration.builder().optional().build(), -93784_560_000L));
+            new SchemaAndValueField("VAL_INT_DTS", MicroDuration.builder().optional().build(), -93784_560_000L),
+            new SchemaAndValueField("VAL_MAX_DATE", Timestamp.builder().optional().build(), 71_863_286_400_000L));
 
     private static final List<SchemaAndValueField> EXPECTED_TIME_AS_CONNECT = Arrays.asList(
             new SchemaAndValueField("VAL_DATE", org.apache.kafka.connect.data.Timestamp.builder().optional().build(),
@@ -250,7 +252,9 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
                     LocalDateTime.of(2018, 3, 27, 1, 34, 56, 7890 * 1_000).atZone(ZoneOffset.systemDefault())
                             .withZoneSameInstant(ZoneOffset.UTC).format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'"))),
             new SchemaAndValueField("VAL_INT_YTM", MicroDuration.builder().optional().build(), -110451600_000_000L),
-            new SchemaAndValueField("VAL_INT_DTS", MicroDuration.builder().optional().build(), -93784_560_000L));
+            new SchemaAndValueField("VAL_INT_DTS", MicroDuration.builder().optional().build(), -93784_560_000L),
+            new SchemaAndValueField("VAL_MAX_DATE", org.apache.kafka.connect.data.Timestamp.builder().optional().build(),
+                    java.util.Date.from(LocalDate.of(4247, 4, 5).atStartOfDay().atOffset(ZoneOffset.UTC).toInstant())));
 
     private static final String CLOB_JSON = Testing.Files.readResourceAsString("data/test_lob_data.json");
     private static final String NCLOB_JSON = Testing.Files.readResourceAsString("data/test_lob_data2.json");
@@ -732,6 +736,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
                 + ", TO_TIMESTAMP_TZ('2018-03-27 01:34:56.00789', 'yyyy-mm-dd HH24:MI:SS.FF5')"
                 + ", INTERVAL '-3-6' YEAR TO MONTH"
                 + ", INTERVAL '-1 2:3:4.56' DAY TO SECOND"
+                + ", TO_DATE('4247-04-05', 'yyyy-mm-dd')"
                 + ")");
         connection.execute("COMMIT");
     }

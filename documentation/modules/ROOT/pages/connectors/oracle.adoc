@@ -4932,6 +4932,7 @@ sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba <<- EOF
   GRANT SELECT, FLASHBACK ON SYS.TABSUBPART$ TO c##dbzuser;
   GRANT SELECT, FLASHBACK ON SYS.TS$ TO c##dbzuser;
   GRANT SELECT, FLASHBACK ON SYS.USER$ TO c##dbzuser;
+  GRANT SELECT, FLASHBACK ON XDB.XDB$TTSET TO c##dbzuser;
 
   exit;
 EOF
@@ -5002,7 +5003,7 @@ For more information about the required format of this file, see the https://git
 [source,json,indent=0]
 ----
 {
-  "version": "1.5.0",
+  "version": "1.6.0",
   "source": [{
     "alias": "SOURCE",
     "name": "ORACLE", <1>
