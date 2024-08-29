@@ -48,7 +48,7 @@ public class TruncateColumnTest {
     }
 
     @Test
-    public void shouldTruncateByteBuffer() {
+    public void shouldTruncateByteBufferToPositiveLength() {
         converter = new TruncateColumn(3).create(column);
         ByteBuffer buffer5 = createBuffer(5);
         ByteBuffer buffer4 = createBuffer(4);
@@ -56,20 +56,41 @@ public class TruncateColumnTest {
         ByteBuffer buffer2 = createBuffer(2);
         ByteBuffer buffer1 = createBuffer(1);
         assertThat(converter.convert(buffer5)).isEqualTo(buffer3);
+        assertThat(((ByteBuffer) converter.convert(buffer5)).array()).isEqualTo(buffer3.array());
         assertThat(converter.convert(buffer4)).isEqualTo(buffer3);
+        assertThat(((ByteBuffer) converter.convert(buffer4)).array()).isEqualTo(buffer3.array());
         assertThat(converter.convert(buffer3)).isEqualTo(buffer3);
+        assertThat(((ByteBuffer) converter.convert(buffer3)).array()).isEqualTo(buffer3.array());
         assertThat(converter.convert(buffer2)).isEqualTo(buffer2);
+        assertThat(((ByteBuffer) converter.convert(buffer2)).array()).isEqualTo(buffer2.array());
         assertThat(converter.convert(buffer1)).isEqualTo(buffer1);
+        assertThat(((ByteBuffer) converter.convert(buffer1)).array()).isEqualTo(buffer1.array());
         assertThat(converter.convert(null)).isNull();
+    }
+
+    @Test
+    public void shouldTruncateByteBufferToZero() {
+        converter = new TruncateColumn(3).create(column);
+        ByteBuffer buffer5 = createBuffer(5);
+        ByteBuffer buffer4 = createBuffer(4);
+        ByteBuffer buffer3 = createBuffer(3);
+        ByteBuffer buffer2 = createBuffer(2);
+        ByteBuffer buffer1 = createBuffer(1);
 
         converter = new TruncateColumn(0).create(column);
         ByteBuffer buffer0 = createBuffer(0);
         assertThat(converter.convert(buffer5)).isEqualTo(buffer0);
+        assertThat(((ByteBuffer) converter.convert(buffer5)).array()).isEqualTo(buffer0.array());
         assertThat(converter.convert(buffer4)).isEqualTo(buffer0);
+        assertThat(((ByteBuffer) converter.convert(buffer4)).array()).isEqualTo(buffer0.array());
         assertThat(converter.convert(buffer3)).isEqualTo(buffer0);
+        assertThat(((ByteBuffer) converter.convert(buffer3)).array()).isEqualTo(buffer0.array());
         assertThat(converter.convert(buffer2)).isEqualTo(buffer0);
+        assertThat(((ByteBuffer) converter.convert(buffer2)).array()).isEqualTo(buffer0.array());
         assertThat(converter.convert(buffer1)).isEqualTo(buffer0);
+        assertThat(((ByteBuffer) converter.convert(buffer1)).array()).isEqualTo(buffer0.array());
         assertThat(converter.convert(buffer0)).isEqualTo(buffer0);
+        assertThat(((ByteBuffer) converter.convert(buffer0)).array()).isEqualTo(buffer0.array());
         assertThat(converter.convert(null)).isNull();
     }
 
